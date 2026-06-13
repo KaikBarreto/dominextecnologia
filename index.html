@@ -60,29 +60,36 @@
       "operatingSystem": "Web",
       "description": "Plataforma completa para gestão de equipes de campo, ordens de serviço digitais, rastreamento em tempo real e relatórios automáticos.",
       "url": "https://dominextecnologia.lovable.app/",
-      "offers": [
-        {
-          "@type": "Offer",
-          "name": "Start",
-          "price": "200",
-          "priceCurrency": "BRL",
-          "description": "Para equipes de até 5 usuários — OS ilimitadas, app para técnicos, agenda e relatórios"
-        },
-        {
-          "@type": "Offer",
-          "name": "Avançado",
-          "price": "350",
-          "priceCurrency": "BRL",
-          "description": "Para equipes de até 10 usuários — tudo do Start + RH/ponto e financeiro avançado com contas a pagar/receber e DRE"
-        },
-        {
-          "@type": "Offer",
-          "name": "Master",
-          "price": "650",
-          "priceCurrency": "BRL",
-          "description": "Para equipes de até 15 usuários — tudo do Avançado + CRM, NFS-e integrada, precificação avançada (BDI), portal do cliente e White Label"
-        }
-      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "BRL",
+        "lowPrice": "197",
+        "highPrice": "697",
+        "offerCount": "3",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Essencial",
+            "price": "197",
+            "priceCurrency": "BRL",
+            "description": "Para equipes de até 5 usuários — OS ilimitadas, app para técnicos, agenda, portal do cliente e relatórios básicos"
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro",
+            "price": "447",
+            "priceCurrency": "BRL",
+            "description": "Para equipes de até 10 usuários — tudo do Essencial + RH/ponto e financeiro avançado com contas a pagar/receber e DRE"
+          },
+          {
+            "@type": "Offer",
+            "name": "Business",
+            "price": "697",
+            "priceCurrency": "BRL",
+            "description": "Para equipes de até 15 usuários — tudo do Pro + CRM, NFS-e integrada, precificação avançada (BDI), portal do cliente e White Label"
+          }
+        ]
+      },
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "4.9",

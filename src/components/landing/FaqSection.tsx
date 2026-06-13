@@ -33,11 +33,11 @@ const faqs = [
   },
   {
     q: 'Tem CRM e funil de vendas integrado?',
-    a: 'Sim. O plano Master inclui um CRM completo com funil Kanban, etapas customizáveis, webhooks para captação de leads e conversão direta em orçamentos e ordens de serviço.',
+    a: 'Sim. O plano Business inclui um CRM completo com funil Kanban, etapas customizáveis, webhooks para captação de leads e conversão direta em orçamentos e ordens de serviço.',
   },
   {
     q: 'Consigo controlar o financeiro, contas a pagar e DRE?',
-    a: 'Sim. A partir do plano Avançado você tem contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria e DRE para análise de resultado.',
+    a: 'Sim. A partir do plano Pro você tem contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria e DRE para análise de resultado.',
   },
   {
     q: 'Como funciona o controle de ponto e folha dos funcionários?',
@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     q: 'Como é o suporte? Falo com gente de verdade?',
-    a: 'Sim. Atendimento humano via WhatsApp e e-mail em horário comercial. Os planos Master e Personalizado contam com suporte prioritário e gestor de conta dedicado.',
+    a: 'Sim. Atendimento humano via WhatsApp e e-mail em horário comercial. Os planos Business e Enterprise contam com suporte prioritário e gestor de conta dedicado.',
   },
   {
     q: 'Meus dados estão seguros? E a LGPD?',

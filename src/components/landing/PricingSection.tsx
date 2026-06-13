@@ -11,17 +11,17 @@ import { buildWhatsAppUrl } from '@/lib/whatsapp';
 const plans = [
   {
     code: 'start',
-    name: 'Start',
+    name: 'Essencial',
     desc: 'Gestão básica para pequenas equipes',
-    monthly: 200,
-    annual: 160,
+    monthly: 197,
+    annual: 158,
     popular: false,
     features: [
       'OS ilimitadas',
       '5 usuários inclusos',
       'App para técnicos',
       'Agenda e calendário',
-      'Gestão de contratos/PMOC',
+      'Portal do cliente',
       'Relatórios básicos',
       'Suporte por email',
     ],
@@ -30,35 +30,37 @@ const plans = [
   },
   {
     code: 'avancado',
-    name: 'Avançado',
+    name: 'Pro',
     desc: 'Para empresas que precisam de RH e finanças',
-    monthly: 350,
-    annual: 280,
+    monthly: 447,
+    annual: 358,
     popular: true,
     features: [
-      'Tudo do Start +',
+      'Tudo do Essencial +',
       '10 usuários inclusos',
       'Módulo Funcionários / RH',
       'Financeiro avançado',
       'Contas a pagar/receber',
       'DRE e relatórios financeiros',
+      'Gestão de Contratos e PMOC',
     ],
     cta: 'Testar 14 Dias Grátis',
     ctaLink: '/cadastro?plano=avancado&origem=Site',
   },
   {
     code: 'master',
-    name: 'Master',
+    name: 'Business',
     desc: 'Operação completa com CRM e portal',
-    monthly: 650,
-    annual: 520,
+    monthly: 697,
+    annual: 558,
     popular: false,
     features: [
-      'Tudo do Avançado +',
+      'Tudo do Pro +',
       '15 usuários inclusos',
       'CRM / Funil de vendas',
       'NFS-e integrada',
       'Precificação avançada (BDI)',
+      'Gestão de Contratos e PMOC',
       'Portal do Cliente/Portal do Contrato',
       'White Label (sua marca)',
       'Suporte prioritário',
@@ -70,16 +72,8 @@ const plans = [
 
 const customPlan = {
   code: 'personalizado',
-  name: 'Personalizado',
-  desc: 'Para grandes operações e múltiplas filiais',
-  features: [
-    'Tudo do Master +',
-    'Usuários sob medida',
-    'Módulos sob medida',
-    'Múltiplas filiais',
-    'Gestor de conta dedicado',
-    'Suporte prioritário',
-  ],
+  name: 'Plano Enterprise',
+  desc: 'Personalize seu plano sob medida para a sua operação.',
   cta: 'Falar com Consultor',
 };
 
@@ -202,30 +196,19 @@ export default function PricingSection() {
           })}
         </div>
 
-        {/* Personalizado — linha horizontal abaixo */}
+        {/* Enterprise — linha horizontal abaixo, enxuta */}
         <div className="mt-6 rounded-md border border-white/10 bg-white/[0.03] p-7">
-          <div className="grid md:grid-cols-3 gap-6 items-center">
-            {/* Coluna 1 — Identificação */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            {/* Identificação */}
             <div>
               <div className="inline-flex items-center gap-2 mb-2">
                 <Badge className="bg-white/10 text-white/80 text-[10px] uppercase tracking-widest">Enterprise</Badge>
               </div>
               <h3 className="text-2xl font-bold text-white">{customPlan.name}</h3>
               <p className="text-sm text-white/50 mt-1">{customPlan.desc}</p>
-              <p className="mt-3 text-lg font-semibold text-white">Sob consulta</p>
             </div>
 
-            {/* Coluna 2 — Recursos */}
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-              {customPlan.features.map((f) => (
-                <li key={f} className="flex items-center gap-2 text-sm text-white/60">
-                  <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            {/* Coluna 3 — CTA */}
+            {/* CTA */}
             <div className="flex md:justify-end">
               <Button
                 className="bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold rounded-md w-full md:w-auto px-8 gap-2"
