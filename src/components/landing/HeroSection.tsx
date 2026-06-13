@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ const TOTAL_LENGTH = FULL_TEXT_PRE.length + FULL_TEXT_HIGHLIGHT.length;
 export default function HeroSection() {
   const ref = useScrollReveal();
   const [typedCount, setTypedCount] = useState(0);
+  const heroVideoStarted = useRef(false);
 
   useEffect(() => {
     if (typedCount >= TOTAL_LENGTH) return;
@@ -122,6 +123,13 @@ export default function HeroSection() {
                 controls
                 preload="metadata"
                 playsInline
+                onPlay={(e) => {
+                  // A capa é o frame do segundo 10 (via #t=10), mas o play começa do zero.
+                  if (!heroVideoStarted.current) {
+                    heroVideoStarted.current = true;
+                    e.currentTarget.currentTime = 0;
+                  }
+                }}
                 className="w-full aspect-video lg:aspect-[9/16] lg:h-[640px] lg:w-auto rounded-xl bg-black object-cover lg:object-contain"
                 aria-label="Demonstração do Dominex"
               >
