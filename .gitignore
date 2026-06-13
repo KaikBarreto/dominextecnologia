@@ -44,3 +44,6 @@ public/videos/
 *.njsproj
 *.sln
 *.sw?
+
+# Ferramenta interna de scraping de leads (dados pessoais/LGPD — fora do repo)
+tools/maps-lead-scraper/
