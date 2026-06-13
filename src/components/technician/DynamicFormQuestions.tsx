@@ -318,9 +318,26 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    const allowMultiple = (questions.find(q => q.id === questionId) as any)?.allow_multiple_photos !== false;
+    const existingUrls = (responses[questionId]?.response_photo_url || '').split(',').filter(Boolean);
+
+    // Pergunta de foto única que já tem uma foto: bloqueia e orienta a remover.
+    if (!allowMultiple && existingUrls.length >= 1) {
+      toast({
+        variant: 'destructive',
+        title: 'Apenas uma foto permitida',
+        description: 'Remova a atual para enviar outra.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    // Foto única: mesmo que cheguem vários arquivos, considera só o primeiro.
+    const selectedFiles = allowMultiple ? Array.from(files) : [files[0]];
+
     // Guarda os arquivos CRUS do input antes do processamento: servem como cópia
     // pra oferecer "salvar no aparelho" sem depender do resultado do upload.
-    const rawFiles = Array.from(files);
+    const rawFiles = Array.from(selectedFiles);
 
     setUploadingPhotos(prev => new Set(prev).add(questionId));
     try {
@@ -329,7 +346,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       const existing = responses[questionId]?.response_photo_url;
       if (existing) uploadedUrls.push(...existing.split(','));
 
-      for (const rawFile of Array.from(files)) {
+      for (const rawFile of selectedFiles) {
         const file = await processImageFile(rawFile);
 
         const fileExt = file.name.split('.').pop();
@@ -352,7 +369,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
       const combinedUrl = uploadedUrls.join(',');
       await saveResponse(questionId, responses[questionId]?.response_value || null, combinedUrl);
-      toast({ title: `${files.length > 1 ? `${files.length} fotos enviadas` : 'Foto enviada'}!` });
+      toast({ title: `${selectedFiles.length > 1 ? `${selectedFiles.length} fotos enviadas` : 'Foto enviada'}!` });
 
       // Só ABRE o modal perguntando se quer salvar no aparelho (câmera + toggle ON).
       // NÃO chama savePhotosToDevice aqui: o iOS bloqueia o share sem gesto fresco;
@@ -556,6 +573,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         const photoUrlRaw = response?.response_photo_url;
         const photoUrls = photoUrlRaw ? photoUrlRaw.split(',').filter(Boolean) : [];
         const cameraOnly = !!(question as any).require_camera;
+        const allowMultiple = (question as any).allow_multiple_photos !== false;
 
         return (
           <div className="space-y-2">
@@ -598,7 +616,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 <input
                   type="file"
                   accept="image/*"
-                  multiple
+                  multiple={allowMultiple}
                   capture="environment"
                   className="hidden"
                   onChange={(e) => handlePhotoUpload(e, question.id, true)}
@@ -616,7 +634,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   <input
                     type="file"
                     accept="image/*"
-                    multiple
+                    multiple={allowMultiple}
                     className="hidden"
                     onChange={(e) => handlePhotoUpload(e, question.id)}
                     disabled={uploadingPhotos.has(question.id)}
@@ -631,7 +649,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               )}
             </div>
             {photoUrls.length > 0 && (
-              <p className="text-xs text-muted-foreground text-center">{photoUrls.length} foto{photoUrls.length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-muted-foreground text-center">{photoUrls.length} foto{allowMultiple && photoUrls.length > 1 ? 's' : ''}</p>
             )}
           </div>
         );

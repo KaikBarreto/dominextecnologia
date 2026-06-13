@@ -88,9 +88,10 @@ export default function QuestionnaireDetail() {
       description: question.description || '',
       options: opts,
       require_camera: (question as any).require_camera || false,
+      allow_multiple_photos: (question as any).allow_multiple_photos !== false,
       answer_types: effectiveTypes,
       answer_mode: (question as any).answer_mode || 'exclusive',
-    });
+    } as any);
     setNewOption('');
     setQuestionModalOpen(true);
   };
@@ -153,6 +154,7 @@ export default function QuestionnaireDetail() {
         description: qForm.description || null,
         options: optionsToSave,
         require_camera: qForm.require_camera || false,
+        allow_multiple_photos: (qForm as any).allow_multiple_photos !== false,
         answer_types: answerTypes,
         answer_mode: answerMode,
       } as any, {
@@ -172,6 +174,7 @@ export default function QuestionnaireDetail() {
         options: optionsToSave || undefined,
         position,
         require_camera: qForm.require_camera || false,
+        allow_multiple_photos: (qForm as any).allow_multiple_photos !== false,
         answer_types: answerTypes,
         answer_mode: answerMode,
       } as any, {
@@ -548,6 +551,20 @@ export default function QuestionnaireDetail() {
               <div>
                 <Label className="text-sm cursor-pointer">Exigir foto da câmera</Label>
                 <p className="text-xs text-muted-foreground">Bloqueia upload da galeria, exige foto tirada na hora</p>
+              </div>
+            </div>
+          )}
+
+          {/* Allow multiple photos toggle for photo type */}
+          {selectedAnswerTypes.includes('photo') && (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={(qForm as any).allow_multiple_photos !== false}
+                onCheckedChange={(checked) => setQForm({ ...qForm, allow_multiple_photos: checked } as any)}
+              />
+              <div>
+                <Label className="text-sm cursor-pointer">Permitir múltiplas fotos</Label>
+                <p className="text-xs text-muted-foreground">Se desativado, o técnico envia apenas uma foto</p>
               </div>
             </div>
           )}
