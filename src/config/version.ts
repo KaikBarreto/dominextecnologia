@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.25";
+export const APP_VERSION = "1.11.26";
 
-export const VERSION_NOTES = "Corrigimos um detalhe em que, em empresas com identidade visual personalizada, as cores da marca demoravam um instante para aparecer ao atualizar a tela. Agora aparecem na hora.";
+export const VERSION_NOTES = "No iPhone, ao tirar foto na ordem de serviço com a opção de salvar no aparelho, agora abre direto a tela de salvar imagem nas Fotos, em vez da pré-visualização do arquivo.";

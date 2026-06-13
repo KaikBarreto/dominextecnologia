@@ -29,6 +29,47 @@ interface FormResponse {
   response_photo_url: string | null;
 }
 
+// Detecta iPhone/iPad (inclui iPadOS que se disfarça de Mac no userAgent).
+const isIOS = () => {
+  const ua = navigator.userAgent || '';
+  return /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
+// Salva cópia(s) da foto no aparelho. Best-effort: nunca bloqueia/quebra o upload.
+// iOS: usa a folha nativa de compartilhamento (tem "Salvar Imagem"), pois o
+// download de blob no WebKit abre o Quick Look em vez de salvar em Fotos.
+// Android/desktop: download direto via <a download> (vai pros Downloads, silencioso).
+// IMPORTANTE: precisa ser chamada ANTES de qualquer await pra preservar o gesto
+// do usuário (transient activation), exigência do navigator.share.
+function savePhotosToDevice(files: File[]) {
+  if (!files.length) return;
+
+  if (isIOS() && typeof navigator.canShare === 'function' && navigator.canShare({ files })) {
+    // Folha nativa do iOS com "Salvar Imagem". Sem await: o upload roda em
+    // paralelo enquanto a folha está aberta. .catch engole o AbortError (cancelar).
+    navigator.share({ files, title: 'Foto da OS' }).catch(() => {
+      /* cancelado pelo usuário ou sem suporte */
+    });
+    return;
+  }
+
+  // Android/desktop (ou iOS antigo sem canShare): download direto.
+  for (const file of files) {
+    try {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name || `os-foto-${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      // download é best-effort; ignora silenciosamente
+    }
+  }
+}
+
 export interface FormValidationResult {
   isValid: boolean;
   missingQuestions: string[];
@@ -208,6 +249,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       }
     })();
 
+    // Salva cópia(s) no aparelho ANTES de qualquer await, com os arquivos CRUS
+    // do input. Preserva o gesto do usuário (transient activation) exigido pelo
+    // navigator.share no iOS. Foto da câmera já vem JPEG, serve como cópia.
+    if (fromCamera && saveToDevice) {
+      savePhotosToDevice(Array.from(files));
+    }
+
     setUploadingPhotos(prev => new Set(prev).add(questionId));
     try {
       const uploadedUrls: string[] = [];
@@ -217,23 +265,6 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
       for (const rawFile of Array.from(files)) {
         const file = await processImageFile(rawFile);
-
-        // Efeito colateral: baixa uma cópia da foto no aparelho.
-        // Nunca bloqueia/atrasa nem quebra o upload se falhar.
-        if (fromCamera && saveToDevice) {
-          try {
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = file.name || `os-foto-${Date.now()}.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-          } catch {
-            // download é best-effort; ignora silenciosamente
-          }
-        }
 
         const fileExt = file.name.split('.').pop();
         const fileName = `${serviceOrderId}/form-${questionId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;

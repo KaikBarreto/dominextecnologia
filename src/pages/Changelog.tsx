@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.26',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Salvar foto da OS no iPhone ficou direto',
+        description: 'No iPhone, ao tirar uma foto durante o preenchimento da ordem de serviço com a opção de salvar no aparelho ligada, agora abre direto a tela para salvar a imagem nas suas Fotos — em vez de mostrar uma pré-visualização do arquivo. No Android e no computador, a foto continua sendo baixada normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.25',
     date: '13 de junho de 2026',
     type: 'patch',
