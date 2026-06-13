@@ -7,6 +7,19 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 
+export interface TransactionCreator {
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+}
+
+export type TransactionWithRelations = FinancialTransaction & {
+  customer: any;
+  account: any;
+  employee: any;
+  creator: TransactionCreator | null;
+};
+
 export interface TransactionInput {
   transaction_type: TransactionType;
   category?: string;
@@ -57,7 +70,37 @@ export function useFinancial() {
           .is('parent_transaction_id', null)
           .order('transaction_date', { ascending: false })
       );
-      return data;
+
+      // O FK de created_by aponta pra auth.users, então não dá pra embutir
+      // profiles no .select() do PostgREST. Resolvemos o criador em lote:
+      // uma query em profiles por user_id (regra-lei: join de perfil é user_id).
+      const creatorIds = [
+        ...new Set(
+          (data || [])
+            .map((t) => t.created_by)
+            .filter((v): v is string => !!v),
+        ),
+      ];
+
+      const creatorsMap = new Map<string, TransactionCreator>();
+      if (creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email, avatar_url')
+          .in('user_id', creatorIds);
+        (profiles || []).forEach((p) => {
+          creatorsMap.set(p.user_id, {
+            full_name: p.full_name ?? null,
+            email: p.email ?? null,
+            avatar_url: p.avatar_url ?? null,
+          });
+        });
+      }
+
+      return (data || []).map((t) => ({
+        ...t,
+        creator: t.created_by ? creatorsMap.get(t.created_by) ?? null : null,
+      })) as TransactionWithRelations[];
     },
   });
 

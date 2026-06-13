@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
+import { idealForeground } from '@/lib/colorContrast';
 import type { FinancialTransaction } from '@/types/database';
 
 const ALL_TAB = '__all__';
@@ -263,36 +264,58 @@ export function FinanceMovimentacoes({
     ? null
     : accounts.find(a => a.id === activeTab) ?? null;
 
-  // Header da conta selecionada (nome + saldo + ações). Desktop mostra os botões
-  // inline; mobile concentra tudo num botão "Ações" que abre um drawer.
+  // Header da conta selecionada — card-herói colorido (estilo EcoSistema).
+  // Regra de fundo dirigida pelo saldo: positivo = cor da conta; zero = degradê
+  // escuro; negativo = degradê vermelho. Texto contrastante via idealForeground
+  // quando o fundo é a cor da conta (evita branco-no-branco). Mobile concentra
+  // as ações num botão "Ações"; desktop deixa-as no menu de 3 pontinhos.
   const renderAccountHeader = (a: FinancialAccount) => {
     const Icon = getTypeIcon(a.type);
     const hasInst = !!(a.institution_name || a.bank_name);
     const balance = balances[a.id] ?? a.initial_balance;
+
+    const useAccountColor = balance > 0 && !!a.color;
+    const fg = useAccountColor ? idealForeground(a.color) : '#ffffff';
+    const heroClass = useAccountColor
+      ? 'shadow-lg'
+      : balance === 0
+      ? 'bg-gradient-to-r from-gray-900 to-gray-700 shadow-lg'
+      : balance < 0
+      ? 'bg-gradient-to-r from-red-900 to-red-700 shadow-lg'
+      // Saldo positivo sem cor da conta: degradê escuro neutro.
+      : 'bg-gradient-to-r from-gray-900 to-gray-700 shadow-lg';
+
     return (
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div
+        className={cn('rounded-2xl p-5 sm:p-6 flex items-start justify-between gap-3', heroClass)}
+        style={{ backgroundColor: useAccountColor ? a.color : undefined, color: fg }}
+      >
         <div className="flex items-center gap-3 min-w-0">
           {hasInst ? (
-            <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
-              <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
+            <div className="rounded-lg p-1 shrink-0 bg-white border border-white/20">
+              <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
             </div>
           ) : (
-            <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
-              <Icon className="h-4 w-4 text-white" />
+            <div className="rounded-full p-2.5 shrink-0 bg-white/20">
+              <Icon className="h-5 w-5" />
             </div>
           )}
           <div className="min-w-0">
-            <p className="font-semibold text-base truncate">{a.name}</p>
-            <p className={cn('text-sm font-bold tabular-nums', balance >= 0 ? 'text-success' : 'text-destructive')}>
-              {formatBRL(balance)}
+            <p className="font-medium text-sm truncate opacity-90">{a.name}</p>
+            <p className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
+              R$ {formatBRL(balance)}
             </p>
           </div>
         </div>
 
-        {/* Desktop: as ações vivem no menu de 3 pontinhos do sidebar — o header
-            fica limpo (ícone + nome + saldo). Mobile concentra tudo no "Ações". */}
+        {/* Mobile concentra tudo no "Ações". Desktop: ações no menu de 3 pontinhos
+            do sidebar — o card fica limpo. */}
         {isMobile && (
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setMobileActionsAccount(a)}>
+          <Button
+            size="sm"
+            className="gap-2 shrink-0 bg-white/20 text-current border-0 hover:bg-white/30"
+            onClick={() => setMobileActionsAccount(a)}
+          >
             <SlidersHorizontal className="h-4 w-4" />
             Ações
           </Button>
@@ -386,22 +409,34 @@ export function FinanceMovimentacoes({
             {(cashBankAccounts.length > 0 || cardAccounts.length > 0) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {cashBankAccounts.length > 0 && (
-                  <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="rounded-full bg-primary/10 p-2 shrink-0">
-                        <Wallet className="h-4 w-4 text-primary" />
+                  /* Card-herói do SALDO TOTAL. Sem cor de conta única na Visão
+                     Geral → degradê pela semântica: positivo verde, zero escuro,
+                     negativo vermelho. Texto sempre branco. */
+                  <div
+                    className={cn(
+                      'rounded-2xl p-5 sm:p-6 text-white shadow-lg flex flex-col justify-between gap-3',
+                      totalBalance > 0
+                        ? 'bg-gradient-to-r from-emerald-700 to-emerald-600'
+                        : totalBalance === 0
+                        ? 'bg-gradient-to-r from-gray-900 to-gray-700'
+                        : 'bg-gradient-to-r from-red-900 to-red-700',
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="rounded-full bg-white/20 p-2 shrink-0">
+                        <Wallet className="h-4 w-4" />
                       </div>
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Saldo em contas
+                      <span className="text-xs font-medium uppercase tracking-wider opacity-90">
+                        Saldo total em contas
                       </span>
                     </div>
-                    <span className={cn('text-lg font-bold tabular-nums shrink-0', totalBalance >= 0 ? 'text-success' : 'text-destructive')}>
+                    <span className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
                       R$ {formatBRL(totalBalance)}
                     </span>
                   </div>
                 )}
                 {cardAccounts.length > 0 && (
-                  <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3 sm:self-stretch">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="rounded-full bg-primary/10 p-2 shrink-0">
                         <CreditCard className="h-4 w-4 text-primary" />
@@ -613,38 +648,56 @@ export function FinanceMovimentacoes({
     </div>
   );
 
-  // Header do cartão selecionado (nome + fatura + ações).
+  // Header do cartão selecionado — card-herói. Cartão NÃO tem "saldo de conta"
+  // (tem fatura), então não vale a regra de saldo: usa a cor do cartão como
+  // fundo se houver (texto contrastante via idealForeground), senão degradê
+  // escuro neutro. Mostra o valor da FATURA em destaque + disponível.
   function renderCardHeader(a: FinancialAccount) {
     const hasInst = !!(a.institution_name || a.bank_name);
     const billTotal = cardBillTotals[a.id] ?? 0;
     const availableLimit = a.credit_limit ? a.credit_limit - billTotal : null;
+
+    const useCardColor = !!a.color;
+    const fg = useCardColor ? idealForeground(a.color) : '#ffffff';
+
     return (
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div
+        className={cn(
+          'rounded-2xl p-5 sm:p-6 flex items-start justify-between gap-3',
+          useCardColor ? 'shadow-lg' : 'bg-gradient-to-r from-gray-900 to-gray-700 shadow-lg',
+        )}
+        style={{ backgroundColor: useCardColor ? a.color : undefined, color: fg }}
+      >
         <div className="flex items-center gap-3 min-w-0">
           {hasInst ? (
-            <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
-              <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
+            <div className="rounded-lg p-1 shrink-0 bg-white border border-white/20">
+              <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
             </div>
           ) : (
-            <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
-              <CreditCard className="h-4 w-4 text-white" />
+            <div className="rounded-full p-2.5 shrink-0 bg-white/20">
+              <CreditCard className="h-5 w-5" />
             </div>
           )}
           <div className="min-w-0">
-            <p className="font-semibold text-base truncate">{a.name}</p>
-            <p className="text-sm text-muted-foreground">
-              Fatura aberta <span className={cn('font-bold', billTotal > 0 ? 'text-destructive' : 'text-muted-foreground')}>{formatBRL(billTotal)}</span>
-              {availableLimit !== null && (
-                <> · Disp. <span className={cn('font-medium', availableLimit >= 0 ? 'text-success' : 'text-destructive')}>{formatBRL(availableLimit)}</span></>
-              )}
+            <p className="font-medium text-sm truncate opacity-90">{a.name}</p>
+            <p className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
+              R$ {formatBRL(billTotal)}
+            </p>
+            <p className="text-xs opacity-80 mt-0.5">
+              Fatura aberta
+              {availableLimit !== null && <> · Disp. R$ {formatBRL(availableLimit)}</>}
             </p>
           </div>
         </div>
 
-        {/* Desktop: ações no menu de 3 pontinhos do sidebar — header limpo
-            (ícone + nome + fatura). Mobile concentra tudo no "Ações". */}
+        {/* Desktop: ações no menu de 3 pontinhos do sidebar — card limpo.
+            Mobile concentra tudo no "Ações". */}
         {isMobile && (
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setMobileActionsAccount(a)}>
+          <Button
+            size="sm"
+            className="gap-2 shrink-0 bg-white/20 text-current border-0 hover:bg-white/30"
+            onClick={() => setMobileActionsAccount(a)}
+          >
             <SlidersHorizontal className="h-4 w-4" />
             Ações
           </Button>

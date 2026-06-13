@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.19',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Veja quem lançou cada movimentação',
+        description: 'A lista de movimentações do Financeiro agora mostra a foto de quem cadastrou cada lançamento, logo depois da data. Ao passar o mouse sobre a foto, aparece o nome e o e-mail da pessoa — fica fácil saber a origem de cada entrada e saída.',
+        category: 'recurso',
+      },
+      {
+        title: 'Financeiro com cabeçalho colorido e saldo em destaque',
+        description: 'O topo de cada conta e da Visão Geral virou um cartão colorido com o saldo bem grande: usa a cor da conta quando o saldo está positivo, fica escuro quando está zerado e vermelho quando está negativo — você bate o olho e entende a situação na hora.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Contas e cartões de cor clara não somem mais',
+        description: 'Quando uma conta ou cartão tinha uma cor clara, ao selecionar ou passar o mouse o nome e o valor ficavam ilegíveis (texto claro sobre fundo claro). Agora o texto se ajusta automaticamente para continuar sempre legível, com qualquer cor que você escolher.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.18',
     date: '13 de junho de 2026',
     type: 'patch',

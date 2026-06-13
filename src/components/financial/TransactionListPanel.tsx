@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, User } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -88,7 +89,6 @@ export function TransactionListPanel({
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   // Filtros multi-select: vazio = "todos" (mostra tudo). Pattern FilterCheckboxGroup.
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   // Deep-link de conta vem como string única do parent → vira array de 1.
   const [accountFilter, setAccountFilter] = useState<string[]>(initialAccountFilter ? [initialAccountFilter] : []);
 
@@ -127,14 +127,12 @@ export function TransactionListPanel({
 
   const activeFiltersCount = [
     categoryFilter.length > 0,
-    statusFilter.length > 0,
     accountFilter.length > 0,
     type === 'all' && typeFilter.length > 0,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     setCategoryFilter([]);
-    setStatusFilter([]);
     setAccountFilter([]);
     setTypeFilter([]);
     onClearAccountFilter?.();
@@ -145,7 +143,6 @@ export function TransactionListPanel({
       ? (typeFilter.length === 0 || typeFilter.includes(t.transaction_type))
       : t.transaction_type === type))
     .filter((t) => categoryFilter.length === 0 || (t.category != null && categoryFilter.includes(t.category)))
-    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.is_paid ? 'paid' : 'unpaid'))
     .filter((t) => accountFilter.length === 0 || accountFilter.includes((t as any).account_id))
     .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
 
@@ -292,6 +289,40 @@ export function TransactionListPanel({
     return <span>{formatDate(t.transaction_date)}</span>;
   };
 
+  // Avatar de quem criou a movimentação (creator vem resolvido do hook useFinancial).
+  // Tooltip com nome completo + e-mail; fallback neutro quando não identificado.
+  const renderCreatorAvatar = (t: any) => {
+    const creator = t.creator as { full_name: string | null; email: string | null; avatar_url: string | null } | null;
+    const fullName = creator?.full_name?.trim() || '';
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    const initials = parts.length
+      ? (parts.length === 1 ? parts[0][0] : parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : '';
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Avatar className="h-7 w-7 cursor-default">
+            {creator?.avatar_url && <AvatarImage src={creator.avatar_url} alt={fullName || 'Usuário'} />}
+            <AvatarFallback className="text-[10px] bg-muted">
+              {initials || <User className="h-3.5 w-3.5 text-muted-foreground" />}
+            </AvatarFallback>
+          </Avatar>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {creator ? (
+            <>
+              <p className="font-medium">{fullName || 'Sem nome'}</p>
+              {creator.email && <p className="text-xs text-muted-foreground">{creator.email}</p>}
+            </>
+          ) : (
+            <p className="text-xs">Usuário não identificado</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
   const newLabel = type === 'entrada' ? 'Receita' : type === 'saida' ? 'Despesa' : 'Transação';
 
   return (
@@ -381,7 +412,8 @@ export function TransactionListPanel({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        {/* FilterButton standard: tipo (quando type==='all') + categoria + status + conta.
+        {/* FilterButton standard: tipo (quando type==='all') + categoria + conta.
+            Sem filtro de Status: Movimentações = só realizado (is_paid), todo registro é "Pago".
             Drawer de baixo no mobile, sheet lateral no desktop (pattern v1.9.9). */}
         <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
           {type === 'all' && (
@@ -402,16 +434,6 @@ export function TransactionListPanel({
             onChange={setCategoryFilter}
             emptyLabel="Todas"
             options={categories.map((c) => ({ value: c, label: c }))}
-          />
-          <FilterCheckboxGroup
-            label="Status"
-            selected={statusFilter}
-            onChange={setStatusFilter}
-            emptyLabel="Todos"
-            options={[
-              { value: 'paid', label: 'Pago' },
-              { value: 'unpaid', label: 'Pendente' },
-            ]}
           />
           <FilterCheckboxGroup
             label="Caixa / Conta bancária"
@@ -489,6 +511,7 @@ export function TransactionListPanel({
                   }
                   subtitle={
                     <div className="flex items-center gap-2 flex-wrap">
+                      {renderCreatorAvatar(t)}
                       <span>{renderTransactionDate(t)}</span>
                       {!hideAccountColumn && (t as any).account && (
                         <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -504,9 +527,6 @@ export function TransactionListPanel({
                       <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', isEntrada ? 'text-success' : 'text-destructive')}>
                         {isEntrada ? '+' : '-'} {formatCurrency(t.amount)}
                       </span>
-                      <Badge variant={t.is_paid ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
-                        {t.is_paid ? 'Pago' : 'Pendente'}
-                      </Badge>
                     </div>
                   }
                 />
@@ -532,6 +552,7 @@ export function TransactionListPanel({
                       </SortableTableHead>
                     )}
                     <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Usuário</SortableTableHead>
                     {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
                     <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Categoria</SortableTableHead>
@@ -539,7 +560,6 @@ export function TransactionListPanel({
                       <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Conta</SortableTableHead>
                     )}
                     <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
-                    <SortableTableHead sortKey="is_paid" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                     <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">Ações</SortableTableHead>
                   </TableRow>
                 </TableHeader>
@@ -548,6 +568,7 @@ export function TransactionListPanel({
                     <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
                       {type !== 'all' && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
                       <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
+                      <TableCell>{renderCreatorAvatar(t)}</TableCell>
                       {showTypeColumn && (
                         <TableCell>
                           <Badge className={t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}>
@@ -588,7 +609,6 @@ export function TransactionListPanel({
                           {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                         </span>
                       </TableCell>
-                      <TableCell><Badge variant={t.is_paid ? 'default' : 'secondary'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge></TableCell>
                       <TableCell>
                         <RowActionsMenu
                           actions={[

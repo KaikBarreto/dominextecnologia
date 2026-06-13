@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.18";
+export const APP_VERSION = "1.11.19";
 
-export const VERSION_NOTES = "O faturamento do início e o total recebido/pago do Financeiro agora seguem sempre a data em que o valor entrou ou saiu, então os números batem entre as telas.";
+export const VERSION_NOTES = "O Financeiro ganhou cabeçalhos coloridos por conta com o saldo em destaque, passou a mostrar quem lançou cada movimentação (com foto, nome e e-mail) e corrigimos contas e cartões de cor clara que ficavam ilegíveis.";

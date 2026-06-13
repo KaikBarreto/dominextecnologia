@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobilePillTabs } from "@/components/mobile/MobilePillTabs";
+import { hexToRgbTriplet, idealForeground } from "@/lib/colorContrast";
 
 export interface SettingsTab {
   value: string;
@@ -26,15 +27,6 @@ export interface SettingsTab {
    * `accentColor` mantém o estilo sutil e abas sem cor mantêm o primary.
    */
   useColorBackground?: boolean;
-}
-
-/** Converte hex (#RRGGBB) em `r, g, b` pra usar em rgba(). Fallback: null. */
-function hexToRgbTriplet(hex?: string): string | null {
-  if (!hex) return null;
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const int = parseInt(m[1], 16);
-  return `${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}`;
 }
 
 interface SettingsSidebarLayoutProps {
@@ -135,8 +127,11 @@ export function SettingsSidebarLayout({
                   const accentStyle: React.CSSProperties = colorBg
                     ? ({
                         ['--tab-accent' as any]: `rgb(${rgb})`,
+                        // Texto contrastante calculado pela luminância da cor da
+                        // conta (evita branco-no-branco quando a cor é clara).
+                        ['--tab-accent-fg' as any]: idealForeground(tab.accentColor),
                         backgroundColor: isActive ? `rgb(${rgb})` : undefined,
-                        color: isActive ? '#fff' : undefined,
+                        color: isActive ? 'var(--tab-accent-fg)' : undefined,
                       } as React.CSSProperties)
                     : accented
                     ? ({
@@ -157,7 +152,7 @@ export function SettingsSidebarLayout({
                         colorBg
                           ? isActive
                             ? "font-medium shadow-sm"
-                            : "text-muted-foreground hover:font-medium hover:[background-color:var(--tab-accent)] hover:text-white"
+                            : "text-muted-foreground hover:font-medium hover:[background-color:var(--tab-accent)] hover:[color:var(--tab-accent-fg)]"
                           : accented
                           ? isActive
                             ? "font-medium shadow-sm"
@@ -183,10 +178,14 @@ export function SettingsSidebarLayout({
                         <span className="block truncate">{tab.label}</span>
                         {tab.sublabel && (
                           <span
+                            // No estilo colorBg, o sublabel herda a cor contrastante
+                            // do pai (var --tab-accent-fg, setada no ativo e no hover)
+                            // e só aplica opacidade — sem branco hardcoded.
+                            style={colorBg && isActive ? { opacity: 0.85 } : undefined}
                             className={cn(
                               "block truncate text-[11px] leading-tight tabular-nums",
                               colorBg
-                                ? isActive ? "text-white/90" : "text-muted-foreground/80 group-hover/tab:text-white/90"
+                                ? isActive ? "" : "text-muted-foreground/80 group-hover/tab:[color:var(--tab-accent-fg)] group-hover/tab:opacity-85"
                                 : accented
                                 ? isActive ? "opacity-80" : "text-muted-foreground/80"
                                 : isActive ? "text-primary-foreground/80" : "text-muted-foreground/80 group-hover/tab:text-primary-foreground/80"

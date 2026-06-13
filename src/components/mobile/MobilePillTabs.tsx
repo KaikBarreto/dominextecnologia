@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { hexToRgbTriplet, idealForeground } from '@/lib/colorContrast';
 
 export interface PillTab {
   value: string;
@@ -13,15 +14,6 @@ export interface PillTab {
    * seguem o padrão primary.
    */
   accentColor?: string;
-}
-
-/** Converte hex (#RRGGBB) em `r, g, b`. Fallback: null (cai no padrão primary). */
-function hexToRgbTriplet(hex?: string): string | null {
-  if (!hex) return null;
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const int = parseInt(m[1], 16);
-  return `${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}`;
 }
 
 interface MobilePillTabsProps {
@@ -49,9 +41,13 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: Mobi
           // Pill com cor própria (conta financeira): ativo = fundo translúcido
           // da cor + texto/ícone na cor + borda sutil. Inativo segue o muted.
           // Sem cor → mantém o padrão primary.
+          // Cor de texto: a própria cor da conta, EXCETO quando ela é muito clara
+          // (ex: #ffffff) — aí cai no token escuro pra não sumir sobre o fundo
+          // translúcido claro.
+          const pillTextColor = idealForeground(tab.accentColor) === '#0f172a' ? '#0f172a' : `rgb(${rgb})`;
           const accentStyle: React.CSSProperties = accented
             ? isActive
-              ? { backgroundColor: `rgba(${rgb}, 0.16)`, color: `rgb(${rgb})`, boxShadow: `inset 0 0 0 1px rgba(${rgb}, 0.4)` }
+              ? { backgroundColor: `rgba(${rgb}, 0.16)`, color: pillTextColor, boxShadow: `inset 0 0 0 1px rgba(${rgb}, 0.4)` }
               : {}
             : {};
 
