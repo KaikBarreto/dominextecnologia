@@ -23,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
+import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 
 interface Props {
   companyId: string;
@@ -33,6 +39,14 @@ interface UsageEvent {
   created_at: string;
   event_type: string;
   metadata: Record<string, any> | null;
+  user_id: string | null;
+}
+
+interface EventAuthor {
+  name: string;
+  avatarUrl: string | null;
+  email: string | null;
+  role: string | null;
 }
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -41,6 +55,25 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   sale: 'Venda',
   os_completion: 'OS concluída',
 };
+
+// Tradução dos perfis (user_roles.role) pra PT-BR legível.
+const ROLE_LABELS: Record<string, string> = {
+  tecnico: 'Técnico',
+  admin: 'Administrador',
+  super_admin: 'Super Admin',
+};
+
+// Hierarquia pra escolher o perfil "mais alto" quando o usuário tem vários.
+const ROLE_RANK: Record<string, number> = {
+  super_admin: 3,
+  admin: 2,
+  tecnico: 1,
+};
+
+function getRoleLabel(role: string | null): string | null {
+  if (!role) return null;
+  return ROLE_LABELS[role] ?? role;
+}
 
 const PATH_LABELS: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -118,7 +151,7 @@ export function CompanyActivityTab({ companyId }: Props) {
       const since = subDays(new Date(), periodDays).toISOString();
       const { data, error } = await supabase
         .from('usage_events')
-        .select('id, created_at, event_type, metadata')
+        .select('id, created_at, event_type, metadata, user_id')
         .eq('company_id', companyId)
         .gte('created_at', since)
         .order('created_at', { ascending: false });
@@ -126,6 +159,59 @@ export function CompanyActivityTab({ companyId }: Props) {
       return (data ?? []) as UsageEvent[];
     },
     enabled: !!companyId,
+  });
+
+  const recent = useMemo(() => (events ?? []).slice(0, 20), [events]);
+
+  // IDs distintos dos autores que aparecem na lista "Últimos eventos".
+  const authorIds = useMemo(() => {
+    const ids = new Set<string>();
+    recent.forEach((e) => {
+      if (e.user_id) ids.add(e.user_id);
+    });
+    return Array.from(ids).sort();
+  }, [recent]);
+
+  // Fetch agregado (sem N+1): perfis + roles dos autores da página.
+  const { data: authorMap } = useQuery({
+    queryKey: ['usage_event_authors', authorIds],
+    queryFn: async () => {
+      const map = new Map<string, EventAuthor>();
+      if (authorIds.length === 0) return map;
+
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('user_id, full_name, avatar_url, email')
+          .in('user_id', authorIds),
+        supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', authorIds),
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+
+      // Escolhe o perfil mais alto por usuário.
+      const topRole = new Map<string, string>();
+      (rolesRes.data ?? []).forEach((r) => {
+        const current = topRole.get(r.user_id);
+        if (!current || (ROLE_RANK[r.role] ?? 0) > (ROLE_RANK[current] ?? 0)) {
+          topRole.set(r.user_id, r.role);
+        }
+      });
+
+      (profilesRes.data ?? []).forEach((p) => {
+        map.set(p.user_id, {
+          name: (p.full_name || '').trim() || 'Usuário',
+          avatarUrl: p.avatar_url ?? null,
+          email: p.email ?? null,
+          role: topRole.get(p.user_id) ?? null,
+        });
+      });
+      return map;
+    },
+    enabled: authorIds.length > 0,
   });
 
   const totalEvents = events?.length ?? 0;
@@ -197,8 +283,6 @@ export function CompanyActivityTab({ companyId }: Props) {
         count,
       }));
   }, [events]);
-
-  const recent = (events ?? []).slice(0, 20);
 
   if (isLoading) {
     return (
@@ -375,26 +459,76 @@ export function CompanyActivityTab({ companyId }: Props) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {recent.map((e) => (
-                <div
-                  key={e.id}
-                  className="flex items-center justify-between gap-2 text-sm"
-                >
-                  <Badge variant="secondary">
-                    {EVENT_TYPE_LABELS[e.event_type] || e.event_type}
-                  </Badge>
-                  {e.metadata?.path && (
-                    <span className="text-xs text-muted-foreground flex-1 truncate">
-                      {e.metadata.path}
+              {recent.map((e) => {
+                const author = e.user_id
+                  ? authorMap?.get(e.user_id)
+                  : undefined;
+                const authorName = author?.name ?? 'Sistema';
+                const roleLabel = getRoleLabel(author?.role ?? null);
+
+                return (
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between gap-2 text-sm"
+                  >
+                    {/* Autor: foto + nome sempre visível (mobile-first). */}
+                    <HoverCard openDelay={120} closeDelay={80}>
+                      <HoverCardTrigger asChild>
+                        <div className="flex items-center gap-1.5 min-w-0 max-w-[40%] cursor-default">
+                          <SalespersonAvatar
+                            name={authorName}
+                            photoUrl={author?.avatarUrl}
+                            size="sm"
+                            className="shrink-0"
+                          />
+                          <span className="text-xs font-medium truncate">
+                            {authorName}
+                          </span>
+                        </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-64" align="start">
+                        <div className="flex items-start gap-3">
+                          <SalespersonAvatar
+                            name={authorName}
+                            photoUrl={author?.avatarUrl}
+                            size="md"
+                            className="shrink-0"
+                          />
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-sm font-semibold truncate">
+                              {authorName}
+                            </p>
+                            {author?.email && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {author.email}
+                              </p>
+                            )}
+                            {roleLabel && (
+                              <Badge variant="secondary" className="mt-1">
+                                {roleLabel}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+
+                    <Badge variant="secondary" className="shrink-0">
+                      {EVENT_TYPE_LABELS[e.event_type] || e.event_type}
+                    </Badge>
+                    {e.metadata?.path && (
+                      <span className="text-xs text-muted-foreground flex-1 truncate hidden sm:inline">
+                        {e.metadata.path}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {format(new Date(e.created_at), 'dd/MM HH:mm', {
+                        locale: ptBR,
+                      })}
                     </span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {format(new Date(e.created_at), 'dd/MM HH:mm', {
-                      locale: ptBR,
-                    })}
-                  </span>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
