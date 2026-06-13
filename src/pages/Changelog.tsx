@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.22',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A Agenda lembra como você gosta de visualizar',
+        description: 'Agora a Agenda guarda, para cada pessoa, a forma de visualização escolhida — Dia, Semana ou Mês — e separada por aparelho: o jeito do seu celular e o do seu computador ficam independentes. Na próxima vez que você abrir, ela já aparece do seu jeito. Quem ainda não escolheu continua abrindo em Dia no celular e Mês no computador.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.11.21',
     date: '13 de junho de 2026',
     type: 'patch',

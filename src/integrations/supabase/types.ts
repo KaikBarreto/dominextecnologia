@@ -5663,6 +5663,27 @@ export type Database = {
           },
         ]
       }
+      user_preferences: {
+        Row: {
+          schedule_view_mode_desktop: string
+          schedule_view_mode_mobile: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          schedule_view_mode_desktop?: string
+          schedule_view_mode_mobile?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          schedule_view_mode_desktop?: string
+          schedule_view_mode_mobile?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

@@ -26,6 +26,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
@@ -64,9 +65,37 @@ export default function Schedule() {
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  // Mobile abre em "Dia" (padrão de app nativo de calendário); desktop continua em "Mês".
-  // Inicialização única — se o usuário trocar manualmente depois, mantém a escolha dele.
+
+  // Preferência de visualização da Agenda persistida no banco, SEPARADA por aparelho.
+  // 1º acesso (sem preferência): celular abre em "Dia", computador em "Mês".
+  const {
+    scheduleViewMode,
+    isLoading: isPrefsLoading,
+    setScheduleViewMode,
+  } = useUserPreferences();
+  const scheduleDevice: 'mobile' | 'desktop' = isMobile ? 'mobile' : 'desktop';
+
   const [viewMode, setViewMode] = useState<ViewMode>(isMobile ? 'day' : 'month');
+
+  // Hidrata o viewMode a partir da preferência salva do aparelho atual. Também
+  // reage ao redimensionamento que cruza o breakpoint (celular ↔ computador):
+  // ao trocar de slot lógico, relê a view daquele aparelho.
+  useEffect(() => {
+    if (isPrefsLoading) return;
+    const saved = scheduleViewMode?.[scheduleDevice];
+    setViewMode(saved ?? (isMobile ? 'day' : 'month'));
+    // scheduleViewMode é o objeto memoizado da query; scheduleDevice cobre o resize.
+  }, [isPrefsLoading, scheduleViewMode, scheduleDevice, isMobile]);
+
+  // Troca explícita do usuário: atualiza o estado local E persiste no slot do
+  // aparelho atual. O default NÃO é gravado no load — só a escolha manual.
+  const handleViewModeChange = useCallback(
+    (mode: ViewMode) => {
+      setViewMode(mode);
+      setScheduleViewMode(scheduleDevice, mode);
+    },
+    [setScheduleViewMode, scheduleDevice],
+  );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
@@ -573,7 +602,9 @@ export default function Schedule() {
     }
   };
 
-  if (isLoading) {
+  // Anti-flicker: segura a tela no skeleton enquanto a preferência de view do
+  // aparelho atual ainda não carregou — evita renderizar a view errada e "saltar".
+  if (isLoading || isPrefsLoading) {
     return (
       <div className="space-y-6 p-1">
         <MobilePageHeader
@@ -709,7 +740,7 @@ export default function Schedule() {
                 { value: 'month', label: 'Mês' },
               ]}
               activeTab={viewMode}
-              onTabChange={(v) => setViewMode(v as ViewMode)}
+              onTabChange={(v) => handleViewModeChange(v as ViewMode)}
             />
           </div>
           <FilterSheet
@@ -944,7 +975,7 @@ export default function Schedule() {
       <ScheduleHeader
         currentDate={currentDate}
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}

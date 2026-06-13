@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.21";
+export const APP_VERSION = "1.11.22";
 
-export const VERSION_NOTES = "Ao abrir uma conta bancária, cada movimentação agora mostra o saldo que ficou na conta depois dela — a mais recente traz o saldo atual e as anteriores, o saldo passo a passo. E corrigimos a geração e edição dos documentos do contrato (Termo de Responsabilidade Técnica, Certificado, Cronograma e Dossiê PMOC) para qualquer usuário com acesso aos contratos.";
+export const VERSION_NOTES = "Agora a Agenda lembra como você gosta de visualizar — Dia, Semana ou Mês — e guarda essa escolha separada por aparelho, para o seu celular e o seu computador. Na próxima vez que abrir, ela já aparece do seu jeito.";
