@@ -40,6 +40,54 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.10',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Régua de Gases',
+        description: 'Nova ferramenta: escolha a temperatura e veja na hora a pressão de saturação dos principais gases refrigerantes (R-410A, R-22, R-32, R-134a, R-290 e R-404A) — a régua do manômetro, agora digital. Também converte pressão em temperatura.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.12.9',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Superaquecimento e Subresfriamento',
+        description: 'Nova ferramenta para calcular o superaquecimento e o subresfriamento a partir da pressão e da temperatura medidas em campo, já indicando se está na faixa ideal — apoiada em tabelas de saturação dos principais refrigerantes.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.12.8',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cálculo de Capacitor mais preciso',
+        description: 'O Cálculo de Capacitor ganhou o modo Preciso: informe o LRA do compressor (na etiqueta) e veja o capacitor exato. O modo por BTU continua disponível como estimativa rápida.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.12.7',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atalhos nas Ferramentas do Técnico',
+        description: 'A tela inicial das Ferramentas do Técnico passou a mostrar seus Favoritos e itens Recentes (conversões feitas e equipamentos abertos) para acesso rápido, e a Conversão ganhou atalhos para os pares mais usados (°C→°F, bar→psi, HP→BTU/h, mm→pol).',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.6',
     date: '13 de junho de 2026',
     type: 'patch',

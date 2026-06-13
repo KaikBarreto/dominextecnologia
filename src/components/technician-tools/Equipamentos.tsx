@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   Boxes,
@@ -8,6 +8,7 @@ import {
   AlertCircle,
   ChevronRight,
   PackageSearch,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { cn } from '@/lib/utils';
 import {
   useEquipmentBrands,
+  useEquipmentModel,
   useEquipmentModelsByBrand,
   useEquipmentErrorCodes,
   useAllModelsWithBrand,
@@ -22,6 +24,12 @@ import {
   type EquipmentBrand,
   type EquipmentModel,
 } from '@/hooks/useEquipmentCatalog';
+import {
+  registrarModeloRecente,
+  isModeloFavorito,
+  toggleModeloFavorito,
+  useToolHistory,
+} from '@/lib/technicianToolsHistory';
 
 /** Normaliza texto pra busca: minúsculo + sem acento. */
 function norm(s: string | null | undefined): string {
@@ -47,8 +55,23 @@ type View =
  * códigos de erro. A busca do topo é GLOBAL (marca, modelo, código de erro) e
  * é resolvida client-side dentro da própria tela inicial.
  */
-export function Equipamentos() {
+export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) {
   const [view, setView] = useState<View>({ kind: 'brands' });
+
+  // Deep-link: abre direto na tela de erros do modelo recebido (Recentes/Favoritos).
+  const { data: modeloDeepLink, isLoading: loadingDeepLink } = useEquipmentModel(modeloInicialId);
+  useEffect(() => {
+    if (modeloDeepLink) setView({ kind: 'errors', model: modeloDeepLink });
+  }, [modeloDeepLink]);
+
+  // Enquanto resolve o deep-link, mostra loading em vez de piscar a lista de marcas.
+  if (modeloInicialId && view.kind === 'brands' && loadingDeepLink) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (view.kind === 'models') {
     return (
@@ -499,6 +522,25 @@ function CodigosErro({
   const brandName = model.brand?.name ?? '';
   const tituloTopo = brandName ? `${model.name} - ${brandName}` : model.name;
 
+  // Registra como recente ao abrir o modelo (uma vez por modelo).
+  useEffect(() => {
+    registrarModeloRecente({
+      modelId: model.id,
+      modelName: model.name,
+      brandName: brandName || 'Marca',
+    });
+  }, [model.id, model.name, brandName]);
+
+  // Estado de favorito (reativo ao toggle via useToolHistory).
+  useToolHistory();
+  const favorito = isModeloFavorito(model.id);
+  const onToggleFavorito = () =>
+    toggleModeloFavorito({
+      modelId: model.id,
+      modelName: model.name,
+      brandName: brandName || 'Marca',
+    });
+
   const filtroNorm = filtro.trim().toLowerCase();
   const filtrados = filtroNorm
     ? codes.filter((c) => c.code.toLowerCase().includes(filtroNorm))
@@ -506,7 +548,29 @@ function CodigosErro({
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={AlertCircle} title="Código de Erro" subtitle={tituloTopo} onBack={onBack} />
+      <Header
+        icon={AlertCircle}
+        title="Código de Erro"
+        subtitle={tituloTopo}
+        onBack={onBack}
+        action={
+          <button
+            type="button"
+            aria-pressed={favorito}
+            aria-label={favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            onClick={onToggleFavorito}
+            className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              favorito
+                ? 'border-warning/40 bg-warning/10 text-warning'
+                : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40',
+            )}
+          >
+            <Star className={cn('h-5 w-5', favorito && 'fill-current')} />
+          </button>
+        }
+      />
 
       {/* Campo de busca estilo display */}
       <div className="space-y-2">
@@ -600,12 +664,15 @@ function Header({
   subtitle,
   onBack,
   backDesktopOnly,
+  action,
 }: {
   icon: typeof Boxes;
   title: string;
   subtitle?: string;
   onBack: () => void;
   backDesktopOnly?: boolean;
+  /** Ação opcional alinhada à direita (ex: favoritar). */
+  action?: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -617,13 +684,14 @@ function Header({
       >
         <ArrowLeft className="h-5 w-5" />
       </Button>
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <Icon className="h-6 w-6 text-foreground/70 shrink-0" />
         <div className="min-w-0">
           <h1 className="text-lg font-semibold tracking-tight truncate lg:text-2xl">{title}</h1>
           {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
         </div>
       </div>
+      {action}
     </div>
   );
 }

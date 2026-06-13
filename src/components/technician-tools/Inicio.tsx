@@ -1,4 +1,16 @@
-import { Boxes, Thermometer, ArrowLeftRight, Zap, BookOpen, ChevronRight } from 'lucide-react';
+import {
+  Boxes,
+  Thermometer,
+  ArrowLeftRight,
+  Zap,
+  Snowflake,
+  Table2,
+  BookOpen,
+  ChevronRight,
+  Star,
+  Clock,
+  Package,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Accordion,
@@ -8,9 +20,29 @@ import {
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { GLOSSARIO } from '@/lib/glossario';
+import { CONVERSAO_CATEGORIAS } from '@/lib/conversoes';
+import {
+  useToolHistory,
+  type ConversaoRecente,
+  type ModeloRecente,
+} from '@/lib/technicianToolsHistory';
+import type { ToolNavPayload } from '@/pages/TechnicianTools';
 
 /** Ids das abas — devem bater com os de TechnicianTools.tsx. */
-export type ToolNavId = 'equipamentos' | 'carga-termica' | 'conversao' | 'calculo-capacitor';
+export type ToolNavId =
+  | 'equipamentos'
+  | 'carga-termica'
+  | 'conversao'
+  | 'calculo-capacitor'
+  | 'superaquecimento'
+  | 'regua-gases';
+
+/** Rótulo de unidade (label PT-BR curto) a partir do code, dentro da categoria. */
+function rotuloUnidade(item: ConversaoRecente): { de: string; para: string } {
+  const unidades = CONVERSAO_CATEGORIAS[item.categoria]?.unidades ?? [];
+  const lbl = (code: string) => unidades.find((u) => u.code === code)?.label ?? code;
+  return { de: lbl(item.de), para: lbl(item.para) };
+}
 
 interface AtalhoFerramenta {
   id: ToolNavId;
@@ -50,14 +82,48 @@ const ATALHOS: AtalhoFerramenta[] = [
     icon: Zap,
     accent: 'hsl(38 92% 50%)',
   },
+  {
+    id: 'superaquecimento',
+    label: 'Superaquecimento',
+    descricao: 'Calcule SH e SC pela pressão e temperatura.',
+    icon: Snowflake,
+    accent: 'hsl(190 90% 42%)',
+  },
+  {
+    id: 'regua-gases',
+    label: 'Régua de Gases',
+    descricao: 'Pressão de saturação dos gases por temperatura.',
+    icon: Table2,
+    accent: 'hsl(262 83% 58%)',
+  },
 ];
+// NOTE: ATALHOS deve espelhar as abas de TechnicianTools.tsx (menos "inicio").
+// Ao adicionar uma aba nova lá, adicione o card aqui também.
 
 interface InicioProps {
-  /** Troca a aba ativa em TechnicianTools (estado interno, funciona standalone e no overlay da OS). */
-  onNavigate: (id: ToolNavId) => void;
+  /**
+   * Troca a aba ativa em TechnicianTools (estado interno, funciona standalone e
+   * no overlay da OS). `payload` opcional faz deep-link no item escolhido.
+   */
+  onNavigate: (id: ToolNavId, payload?: ToolNavPayload) => void;
 }
 
 export function Inicio({ onNavigate }: InicioProps) {
+  const { recentesConversao, recentesModelos, favoritosModelos, favoritosConversao } =
+    useToolHistory();
+
+  const irParaConversao = (item: ConversaoRecente) =>
+    onNavigate('conversao', {
+      tab: 'conversao',
+      inicial: { categoria: item.categoria, de: item.de, para: item.para },
+    });
+
+  const irParaModelo = (item: ModeloRecente) =>
+    onNavigate('equipamentos', { tab: 'equipamentos', modeloInicialId: item.modelId });
+
+  const temFavoritos = favoritosModelos.length > 0 || favoritosConversao.length > 0;
+  const temRecentes = recentesConversao.length > 0 || recentesModelos.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Navegação pras ferramentas */}
@@ -119,6 +185,50 @@ export function Inicio({ onNavigate }: InicioProps) {
         </div>
       </section>
 
+      {/* Favoritos (antes de Recentes; oculto se vazio) */}
+      {temFavoritos && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Star className="h-5 w-5 shrink-0 text-warning" />
+            <h2 className="text-base font-semibold md:text-xl">Favoritos</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {favoritosModelos.map((m) => (
+              <ModeloChip key={m.modelId} item={m} onClick={() => irParaModelo(m)} />
+            ))}
+            {favoritosConversao.map((c) => (
+              <ConversaoChip
+                key={`${c.categoria}:${c.de}:${c.para}`}
+                item={c}
+                onClick={() => irParaConversao(c)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Recentes (oculto se vazio) */}
+      {temRecentes && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <h2 className="text-base font-semibold md:text-xl">Recentes</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {recentesConversao.map((c) => (
+              <ConversaoChip
+                key={`${c.categoria}:${c.de}:${c.para}`}
+                item={c}
+                onClick={() => irParaConversao(c)}
+              />
+            ))}
+            {recentesModelos.map((m) => (
+              <ModeloChip key={m.modelId} item={m} onClick={() => irParaModelo(m)} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Glossário */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
@@ -149,5 +259,45 @@ export function Inicio({ onNavigate }: InicioProps) {
         </Accordion>
       </section>
     </div>
+  );
+}
+
+/** Chip de um par de conversão (recente ou favorito). */
+function ConversaoChip({ item, onClick }: { item: ConversaoRecente; onClick: () => void }) {
+  const { de, para } = rotuloUnidade(item);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium transition-all',
+        'hover:border-primary/40 hover:bg-muted active:scale-[0.97]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      )}
+    >
+      <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className="text-foreground">{de}</span>
+      <span className="text-muted-foreground">→</span>
+      <span className="text-foreground">{para}</span>
+    </button>
+  );
+}
+
+/** Chip de um modelo de equipamento (recente ou favorito). */
+function ModeloChip({ item, onClick }: { item: ModeloRecente; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium transition-all',
+        'hover:border-primary/40 hover:bg-muted active:scale-[0.97]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      )}
+    >
+      <Package className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate text-muted-foreground">{item.brandName}</span>
+      <span className="truncate text-foreground">{item.modelName}</span>
+    </button>
   );
 }

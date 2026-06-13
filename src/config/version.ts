@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.6";
+export const APP_VERSION = "1.12.10";
 
-export const VERSION_NOTES = "Corrigimos o tipo de serviço das ordens: o tipo que você escolhe (como Instalação Split) agora aparece certinho na agenda, nas listas, no app do técnico e no relatório — em vez de um tipo genérico.";
+export const VERSION_NOTES = "Ferramentas do Técnico mais completas: nova Régua de Gases, cálculo de Superaquecimento e Subresfriamento, modo Preciso (LRA) no Cálculo de Capacitor, além de Favoritos, Recentes e atalhos de conversão.";

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, AlertTriangle, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,33 @@ import {
   formatarResultado,
   type ConversaoCategoria,
 } from '@/lib/conversoes';
+import {
+  registrarConversaoRecente,
+  toggleConversaoFavorita,
+  useToolHistory,
+} from '@/lib/technicianToolsHistory';
+
+/** Par inicial de deep-link vindo de Recentes/Favoritos do Início. */
+export interface ConversaoInicial {
+  categoria: ConversaoCategoria;
+  de: string;
+  para: string;
+}
+
+/** Atalhos de conversões comuns (chips no topo). */
+interface AtalhoConversao {
+  label: string;
+  categoria: ConversaoCategoria;
+  de: string;
+  para: string;
+}
+
+const ATALHOS_RAPIDOS: AtalhoConversao[] = [
+  { label: '°C → °F', categoria: 'temperatura', de: 'C', para: 'F' },
+  { label: 'bar → psi', categoria: 'pressao', de: 'bar', para: 'psi' },
+  { label: 'HP → BTU/h', categoria: 'potencia', de: 'HP', para: 'BTU/h' },
+  { label: 'mm → pol', categoria: 'comprimento', de: 'mm', para: 'pol' },
+];
 
 /** Converte string crua de input numérico em number, com default seguro. */
 function num(str: string, def = 0): number {
@@ -46,14 +73,50 @@ const CATEGORIA_ACCENT: Record<ConversaoCategoria, string> = {
 
 const ORDEM: ConversaoCategoria[] = ['pressao', 'temperatura', 'potencia', 'comprimento'];
 
-export function Conversao() {
-  const [categoria, setCategoria] = useState<ConversaoCategoria>('pressao');
+export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
+  const [categoria, setCategoria] = useState<ConversaoCategoria>(inicial?.categoria ?? 'pressao');
+  // Par inicial pra view (deep-link OU atalho rápido). Trocar a categoria pelos
+  // cards limpa o par forçado e deixa a view usar seus defaults.
+  const [parInicial, setParInicial] = useState<ConversaoInicial | undefined>(inicial);
+
+  const escolherCategoria = (cat: ConversaoCategoria) => {
+    setParInicial(undefined);
+    setCategoria(cat);
+  };
+
+  const aplicarAtalho = (a: AtalhoConversao) => {
+    setParInicial({ categoria: a.categoria, de: a.de, para: a.para });
+    setCategoria(a.categoria);
+  };
+
+  // Chave da view: remonta ao trocar categoria OU par forçado, pra reinicializar.
+  const viewKey = parInicial
+    ? `${categoria}:${parInicial.de}:${parInicial.para}`
+    : categoria;
 
   return (
     <div className="space-y-4 pb-4">
       <div>
         <h2 className="text-base font-semibold tracking-tight md:text-xl">Conversão</h2>
         <p className="text-sm text-muted-foreground md:text-base">Converta entre unidades de medida.</p>
+      </div>
+
+      {/* Atalhos de conversões comuns */}
+      <div className="flex flex-wrap gap-2">
+        {ATALHOS_RAPIDOS.map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={() => aplicarAtalho(a)}
+            className={cn(
+              'rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all',
+              'hover:border-primary/40 hover:text-foreground active:scale-[0.97]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            )}
+          >
+            {a.label}
+          </button>
+        ))}
       </div>
 
       {/* Seleção de categoria — cards compactos em grid */}
@@ -65,7 +128,7 @@ export function Conversao() {
             <button
               key={cat}
               type="button"
-              onClick={() => setCategoria(cat)}
+              onClick={() => escolherCategoria(cat)}
               style={isActive ? { backgroundColor: CATEGORIA_ACCENT[cat] } : undefined}
               className={cn(
                 'flex flex-col items-center justify-center gap-1.5 rounded-lg border p-3 text-center transition-colors md:gap-2.5 md:p-5',
@@ -84,16 +147,31 @@ export function Conversao() {
         })}
       </div>
 
-      <ConversaoCategoriaView key={categoria} categoria={categoria} />
+      <ConversaoCategoriaView key={viewKey} categoria={categoria} inicial={parInicial} />
     </div>
   );
 }
 
-function ConversaoCategoriaView({ categoria }: { categoria: ConversaoCategoria }) {
+function ConversaoCategoriaView({
+  categoria,
+  inicial,
+}: {
+  categoria: ConversaoCategoria;
+  inicial?: ConversaoInicial;
+}) {
   const { unidades } = CONVERSAO_CATEGORIAS[categoria];
 
-  const [de, setDe] = useState(unidades[0].code);
-  const [para, setPara] = useState(unidades[1]?.code ?? unidades[0].code);
+  // Só usa o par inicial se for da mesma categoria e as unidades existirem.
+  const usarInicial =
+    inicial &&
+    inicial.categoria === categoria &&
+    unidades.some((u) => u.code === inicial.de) &&
+    unidades.some((u) => u.code === inicial.para);
+
+  const [de, setDe] = useState(usarInicial ? (inicial as ConversaoInicial).de : unidades[0].code);
+  const [para, setPara] = useState(
+    usarInicial ? (inicial as ConversaoInicial).para : (unidades[1]?.code ?? unidades[0].code),
+  );
   // Valor cru digitado pelo usuário (string) e qual lado é a fonte da verdade.
   const [valor, setValor] = useState('');
   const [lastEdited, setLastEdited] = useState<'left' | 'right'>('left');
@@ -148,8 +226,48 @@ function ConversaoCategoriaView({ categoria }: { categoria: ConversaoCategoria }
   // Aviso informativo: par HP ↔ BTU/h na categoria Potência (qualquer direção).
   const mostrarAvisoHpBtu = isParHpBtu;
 
+  // ── Recentes/Favoritos ──
+  const { favoritosConversao } = useToolHistory();
+  // O par "lógico" da conversão segue o lado que o usuário está editando.
+  const isFavorito =
+    origemCode !== destinoCode &&
+    favoritosConversao.some(
+      (c) => c.categoria === categoria && c.de === origemCode && c.para === destinoCode,
+    );
+
+  // Registra o par recente quando há valor digitado e par válido (debounce leve
+  // pra não gravar a cada tecla; re-grava só quando o par muda).
+  useEffect(() => {
+    if (valor.trim() === '' || origemCode === destinoCode) return;
+    const id = setTimeout(() => {
+      registrarConversaoRecente({ categoria, de: origemCode, para: destinoCode });
+    }, 600);
+    return () => clearTimeout(id);
+    // Intencional: só re-agenda ao mudar o par ou se passa a ter valor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoria, origemCode, destinoCode, valor.trim() === '']);
+
   return (
     <div className="space-y-3">
+    {origemCode !== destinoCode && (
+      <div className="flex justify-end">
+        <button
+          type="button"
+          aria-pressed={isFavorito}
+          onClick={() => toggleConversaoFavorita({ categoria, de: origemCode, para: destinoCode })}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.97]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            isFavorito
+              ? 'border-warning/40 bg-warning/10 text-warning'
+              : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40',
+          )}
+        >
+          <Star className={cn('h-3.5 w-3.5 shrink-0', isFavorito && 'fill-current')} />
+          {isFavorito ? 'Favorito' : 'Favoritar'}
+        </button>
+      </div>
+    )}
     {isParHpBtu && (
       <div className="rounded-lg border border-border bg-card p-3">
         <p className="mb-2 text-xs font-medium text-muted-foreground">Modo de cálculo</p>
@@ -258,77 +376,79 @@ function ConversaoCategoriaView({ categoria }: { categoria: ConversaoCategoria }
         />
       </div>
 
-      {/* ===== Layout DESKTOP (inalterado) ===== */}
-      <div className="hidden items-end gap-2 lg:flex">
-        {/* Campo esquerdo (de) */}
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg text-center md:text-left">De</Label>
-          <Select value={de} onValueChange={trocarDe}>
-            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg [&>span]:flex-1 [&>span]:text-center md:[&>span]:text-left">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {unidades.map((u) => (
-                <SelectItem key={u.code} value={u.code}>
-                  {u.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            type="text"
-            inputMode="decimal"
-            placeholder="0"
-            value={valorEsquerdo}
-            onChange={(e) => {
-              setValor(e.target.value);
-              setLastEdited('left');
-            }}
-            className="h-14 text-lg text-center md:h-20 md:text-3xl md:text-left"
-          />
-        </div>
+      {/* ===== Layout DESKTOP (3 linhas: labels / selects+⇄ / valores+"=") ===== */}
+      <div className="hidden grid-cols-[1fr_auto_1fr] items-end gap-3 lg:grid">
+        {/* Linha 1: labels */}
+        <Label className="text-lg text-muted-foreground">De</Label>
+        <span aria-hidden className="w-16" />
+        <Label className="text-lg text-muted-foreground">Para</Label>
 
-        {/* Botão de troca (vice e versa) */}
+        {/* Linha 2: selects + botão de troca no meio */}
+        <Select value={de} onValueChange={trocarDe}>
+          <SelectTrigger className="h-14 text-lg [&>span]:flex-1 [&>span]:text-left">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {unidades.map((u) => (
+              <SelectItem key={u.code} value={u.code}>
+                {u.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <button
           type="button"
           onClick={handleSwap}
           aria-label="Inverter unidades"
           className={cn(
-            'mb-1 flex h-14 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors md:h-20 md:w-16',
+            'flex h-14 w-16 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors',
             'hover:border-primary/40 hover:text-primary',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           )}
         >
-          <ArrowLeftRight className="h-5 w-5 md:h-6 md:w-6" />
+          <ArrowLeftRight className="h-6 w-6" />
         </button>
 
-        {/* Campo direito (para) */}
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg text-center md:text-left">Para</Label>
-          <Select value={para} onValueChange={trocarPara}>
-            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg [&>span]:flex-1 [&>span]:text-center md:[&>span]:text-left">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {unidades.map((u) => (
-                <SelectItem key={u.code} value={u.code}>
-                  {u.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            type="text"
-            inputMode="decimal"
-            placeholder="0"
-            value={valorDireito}
-            onChange={(e) => {
-              setValor(e.target.value);
-              setLastEdited('right');
-            }}
-            className="h-14 text-lg text-center md:h-20 md:text-3xl md:text-left"
-          />
-        </div>
+        <Select value={para} onValueChange={trocarPara}>
+          <SelectTrigger className="h-14 text-lg [&>span]:flex-1 [&>span]:text-left">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {unidades.map((u) => (
+              <SelectItem key={u.code} value={u.code}>
+                {u.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Linha 3: inputs de valor + "=" no meio */}
+        <Input
+          type="text"
+          inputMode="decimal"
+          placeholder="0"
+          value={valorEsquerdo}
+          onChange={(e) => {
+            setValor(e.target.value);
+            setLastEdited('left');
+          }}
+          className="h-20 text-3xl text-left"
+        />
+        <span aria-hidden className="flex h-20 w-16 items-center justify-center text-4xl font-semibold text-primary">
+          =
+        </span>
+        <Input
+          type="text"
+          inputMode="decimal"
+          placeholder="0"
+          value={valorDireito}
+          onChange={(e) => {
+            setValor(e.target.value);
+            setLastEdited('right');
+          }}
+          className="h-20 text-3xl text-left"
+        />
       </div>
     </div>
 

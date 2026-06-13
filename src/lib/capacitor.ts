@@ -58,6 +58,24 @@ export function calcularCapacitor(btu: number, tensao: number): ResultadoCapacit
   return { capacitorUF, amper, potenciaWatts };
 }
 
+/**
+ * Cálculo PRECISO do capacitor a partir do LRA (Locked Rotor Amps) do compressor.
+ *
+ * Fonte: método ECP Peças / Escola do HVAC — o capacitor é dimensionado pelo LRA
+ * do compressor (corrente de rotor bloqueado, na etiqueta), NÃO pelo BTU.
+ *
+ * Fórmula técnica padrão do setor:
+ *   µF = (LRA ÷ 5) × 2296 ÷ 450
+ *
+ * Ex.: LRA 40 → (40/5)×2296/450 = 8×2296/450 = 18368/450 ≈ 40,8 → 41 µF.
+ *
+ * Retorna null para LRA vazio/zero/negativo (estado neutro na UI).
+ */
+export function calcularCapacitorPorLRA(lra: number): number | null {
+  if (!lra || lra <= 0) return null;
+  return Math.round((lra / 5) * 2296 / 450);
+}
+
 /** Formata número no padrão PT-BR (vírgula decimal, milhar), até 2 casas. Ex: 1844 → "1.844". */
 export function formatarNumero(valor: number): string {
   return valor.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
