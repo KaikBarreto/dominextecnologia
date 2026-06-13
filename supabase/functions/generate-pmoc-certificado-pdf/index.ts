@@ -180,15 +180,17 @@ Deno.serve(async (req) => {
     // ---- Service-role client (RLS bypass + queries explícitas com filtro defensivo)
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // ---- 3. Resolver tenant + role do user
-    const [{ data: profileRow }, { data: rolesRows }] = await Promise.all([
+    // ---- 3. Resolver tenant + role do user + permissão de contratos
+    //    can_manage_contracts é a fonte única da verdade da régua de acesso
+    //    (super_admin/admin/gestor OU acesso total OU permissão de contratos).
+    const [{ data: profileRow }, { data: rolesRows }, { data: canManage }] = await Promise.all([
       supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.rpc("can_manage_contracts", { _user_id: userId }),
     ]);
     const userCompany = profileRow?.company_id ?? null;
     const roles = new Set((rolesRows ?? []).map((r) => r.role));
     const isSuperAdmin = roles.has("super_admin");
-    const isAdminOrGestor = roles.has("admin") || roles.has("gestor");
 
     // ---- 4. Resolver contrato — 404 unificado pra cross-tenant
     const { data: contract } = await supabase
@@ -231,12 +233,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- Checagem de role (depois do cross-tenant pra não vazar existência)
-    if (!isAdminOrGestor && !isSuperAdmin) {
+    // ---- Checagem de permissão (depois do cross-tenant pra não vazar existência)
+    if (canManage !== true) {
       return jsonResponse(
         errorBody(
           "forbidden_role",
-          "Apenas administradores e gestores podem gerar documentos PMOC. Peça acesso ao administrador da empresa.",
+          "Você não tem permissão para gerar documentos deste contrato. Peça acesso aos contratos ao administrador da sua empresa.",
         ),
         403,
       );

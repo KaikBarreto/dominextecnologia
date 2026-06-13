@@ -169,14 +169,16 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const [{ data: profileRow }, { data: rolesRows }] = await Promise.all([
+    // can_manage_contracts é a fonte única da verdade da régua de acesso
+    // (super_admin/admin/gestor OU acesso total OU permissão de contratos).
+    const [{ data: profileRow }, { data: rolesRows }, { data: canManage }] = await Promise.all([
       supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.rpc("can_manage_contracts", { _user_id: userId }),
     ]);
     const userCompany = profileRow?.company_id ?? null;
     const roles = new Set((rolesRows ?? []).map((r) => r.role));
     const isSuperAdmin = roles.has("super_admin");
-    const isAdminOrGestor = roles.has("admin") || roles.has("gestor");
 
     const { data: contract } = await supabase
       .from("contracts")
@@ -215,11 +217,11 @@ Deno.serve(async (req) => {
         404,
       );
     }
-    if (!isAdminOrGestor && !isSuperAdmin) {
+    if (canManage !== true) {
       return jsonResponse(
         errorBody(
           "forbidden_role",
-          "Apenas administradores e gestores podem gerar documentos PMOC. Peça acesso ao administrador da empresa.",
+          "Você não tem permissão para gerar documentos deste contrato. Peça acesso aos contratos ao administrador da sua empresa.",
         ),
         403,
       );
