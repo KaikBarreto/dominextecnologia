@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Wallet, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAsaasBalance } from '@/hooks/useAsaasReconciliation';
 
@@ -19,12 +19,22 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 
 export function FinancialSummaryCards({ income, expenses, transactionsCount, onOpenIncome, onOpenExpense, onCreateIncome, onCreateExpense }: Props) {
   const net = income - expenses;
-  const { data: asaasBalance, isLoading: balanceLoading, isError: balanceError } = useAsaasBalance();
+  const { data: asaasBalance, isLoading: balanceLoading, isError: balanceError, isFetching: balanceFetching, refetch: refetchBalance } = useAsaasBalance();
   return (
     <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card to-muted/20">
       <CardContent className="p-6 md:p-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6 border-b border-border/50">
-          <div className="text-center space-y-1 p-4 rounded-xl bg-muted/40 border border-border/50">
+          <div className="relative text-center space-y-1 p-4 rounded-xl bg-muted/40 border border-border/50">
+            <button
+              type="button"
+              onClick={() => refetchBalance()}
+              disabled={balanceFetching}
+              aria-label="Atualizar saldo"
+              title="Atualizar saldo"
+              className="absolute top-2 right-2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={cn('h-4 w-4', balanceFetching && 'animate-spin')} />
+            </button>
             <div className="flex items-center justify-center gap-2">
               <Wallet className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Saldo em conta</span>
