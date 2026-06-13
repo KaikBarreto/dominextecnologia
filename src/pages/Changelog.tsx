@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.30',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ajuda para salvar a foto no iPhone',
+        description: 'Ao salvar uma foto da ordem de serviço no iPhone, o app agora mostra uma ilustração indicando onde tocar em "Salvar Imagem".',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ajustes visuais no celular',
+        description: 'O rodapé com a versão do sistema agora tem o espaçamento certo em relação ao menu inferior em todas as telas — e a Agenda, que não exibia esse rodapé, passou a mostrá-lo como as demais.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.29',
     date: '13 de junho de 2026',
     type: 'patch',

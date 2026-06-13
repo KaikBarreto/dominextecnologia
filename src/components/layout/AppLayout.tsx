@@ -240,7 +240,7 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
         onRefresh={handleRefresh}
         className="flex-1 overflow-x-hidden min-w-0 max-w-full bg-background"
       >
-        <main className="p-4 pb-28 bg-background">
+        <main className="p-4 pb-[calc(8rem+env(safe-area-inset-bottom))] bg-background">
           <RouteTransition>
             <Outlet />
           </RouteTransition>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon, AlertTriangle, Download } from 'lucide-react';
+import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon, AlertTriangle, Download, Copy, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -841,8 +841,35 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         }
       >
         <p className="text-sm text-muted-foreground">
-          Deseja guardar {photosToSave && photosToSave.length > 1 ? `estas ${photosToSave.length} fotos` : 'esta foto'} no seu aparelho? No iPhone, vai abrir a opção "Salvar Imagem".
+          Deseja guardar {photosToSave && photosToSave.length > 1 ? `estas ${photosToSave.length} fotos` : 'esta foto'} no seu aparelho?
         </p>
+        {isIOS() && (
+          <div className="mt-3 rounded-lg border bg-muted/40 p-3">
+            <p className="text-[11px] text-muted-foreground mb-2 text-center">
+              Quando abrir, toque em <span className="font-semibold text-foreground">"Salvar Imagem"</span>:
+            </p>
+            <div className="flex items-end justify-center gap-4">
+              <div className="flex flex-col items-center gap-1 opacity-40">
+                <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center">
+                  <Copy className="h-5 w-5 text-foreground" />
+                </div>
+                <span className="text-[10px] text-muted-foreground">Copiar</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-11 w-11 rounded-full bg-muted ring-2 ring-primary ring-offset-2 ring-offset-background flex items-center justify-center">
+                  <Download className="h-5 w-5 text-foreground" />
+                </div>
+                <span className="text-[10px] font-semibold text-foreground text-center leading-tight">Salvar<br/>Imagem</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 opacity-40">
+                <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center">
+                  <ChevronDown className="h-5 w-5 text-foreground" />
+                </div>
+                <span className="text-[10px] text-muted-foreground">Ver Mais</span>
+              </div>
+            </div>
+          </div>
+        )}
       </ResponsiveModal>
     </div>
   );

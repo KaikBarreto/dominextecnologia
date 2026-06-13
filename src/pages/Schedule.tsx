@@ -964,7 +964,7 @@ export default function Schedule() {
 
   // Desktop layout
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col lg:h-[calc(100vh-8rem)]">
       <PageHeader
         title="Agenda"
         subtitle="Visualize e gerencie os agendamentos de ordens de serviço"
