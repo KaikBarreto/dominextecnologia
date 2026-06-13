@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.17";
+export const APP_VERSION = "1.11.18";
 
-export const VERSION_NOTES = "Corrigimos o salvamento automático em Configurações → Dados da Empresa: agora tudo que você digita é gravado na hora, e qualquer problema na gravação mostra um aviso claro.";
+export const VERSION_NOTES = "O faturamento do início e o total recebido/pago do Financeiro agora seguem sempre a data em que o valor entrou ou saiu, então os números batem entre as telas.";

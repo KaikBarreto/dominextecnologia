@@ -32,6 +32,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { isTransactionInDateRange } from '@/lib/finance-date';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
@@ -322,8 +323,27 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       .filter((b) => b.status !== 'paid' && !isBefore(parseLocalDate(b.due_date), today) && isBefore(parseLocalDate(b.due_date), next7Days))
       .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
 
-    // Card "Pago/Recebido": txns pagas + valor amount_paid das faturas (parciais contam).
-    const pagoTxn = txnUniverse.filter((t) => t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
+    // Card "Pago/Recebido": padronizado na DATA DO RECEBIMENTO (decisão CEO 2026-06-13).
+    // Os demais cards (pendente/vencido/7dias) seguem por VENCIMENTO via txnUniverse;
+    // só este card mede realização de caixa. Por isso o pool é separado:
+    //   - parte do dataset COMPLETO (allTransactions, sem filtro de período do parent),
+    //     já que `transactions` chega pré-filtrado por vencimento (scope 'pagar') —
+    //     usá-lo aqui contaminaria o "pago" com a régua de vencimento.
+    //   - mesma regra de tipo do subTab + exclui despesa de cartão em 'pagar'.
+    //   - só is_paid, filtrado pelo período pela DATA DO MOVIMENTO (scope 'caixa':
+    //     transaction_date pra itens comuns, fatura pra cartão). Como o pool já é
+    //     100% pago, 'caixa' e 'caixa-misto' dariam o mesmo resultado — 'caixa' é o
+    //     mais semântico ("caixa realizado, sempre pela data do movimento").
+    //   - dateRange vazio (sem período) inclui todos os pagos.
+    const pagoPool = (allTransactions ?? transactions).filter((t) => {
+      const correctType = subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada';
+      if (!correctType) return false;
+      if (subTab === 'pagar' && t.credit_card_bill_date) return false;
+      if (!t.is_paid) return false;
+      if (!dateRange?.from && !dateRange?.to) return true;
+      return isTransactionInDateRange(t, dateRange, 'caixa');
+    });
+    const pagoTxn = pagoPool.reduce((s, t) => s + Number(t.amount), 0);
     const pagoBill = billUniverse.reduce((s, b) => s + Number(b.amount_paid ?? 0), 0);
 
     return {
@@ -332,7 +352,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       prox7: prox7Txn + prox7Bill,
       pago: pagoTxn + pagoBill,
     };
-  }, [transactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange]);
+  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange]);
 
   // Lista de categorias presentes nas transações atuais (baseFiltered, antes do
   // filtro de categoria) pra popular o <Select> de filtro. Ordena alfabeticamente.

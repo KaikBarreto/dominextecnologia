@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.18',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Faturamento e total recebido agora batem entre as telas',
+        description: 'O "Faturamento" do início e o "Total Recebido / Total Pago" da tela de Contas a Pagar/Receber podiam mostrar valores diferentes, porque um contava pela data em que o dinheiro entrou e o outro pela data de vencimento. Padronizamos: agora os dois seguem sempre a data em que o valor foi recebido ou pago, então os números conversam entre si. Os totais de "Pendente", "Vencido" e "Próximos 7 dias" continuam olhando o vencimento, como antes.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.17',
     date: '12 de junho de 2026',
     type: 'patch',
