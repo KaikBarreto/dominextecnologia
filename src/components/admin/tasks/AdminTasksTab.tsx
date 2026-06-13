@@ -338,7 +338,13 @@ export function AdminTasksTab() {
         </div>
       ) : viewMode === 'agenda' ? (
         // === AGENDA (desktop: grade mensal; mobile: lista por dia) ===========
-        <TaskAgendaView tasks={filteredTasks} adminByUserId={adminByUserId} onTaskClick={setSelectedTask} />
+        // onResolve passa pelo interceptor de follow-up (CompleteTaskModal).
+        <TaskAgendaView
+          tasks={filteredTasks}
+          adminByUserId={adminByUserId}
+          onTaskClick={setSelectedTask}
+          onResolve={(id) => handleStatusChange(id, 'resolvido')}
+        />
       ) : isMobile ? (
         // === MOBILE: lista nativa (default) ===================================
         filteredTasks.length === 0 ? (
