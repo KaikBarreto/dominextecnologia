@@ -19,6 +19,8 @@ export interface ItemAction {
   /** Define cor no swipe e no menu. */
   variant?: ItemActionVariant;
   onClick: () => void;
+  /** Quando true, o item aparece no menu mas não é clicável (sem swipe). */
+  disabled?: boolean;
 }
 
 interface MobileListItemProps {
@@ -98,7 +100,7 @@ export function MobileListItem({
   const swipeActions = useMemo(
     () =>
       (actions ?? []).filter(
-        (a) => a.variant != null && SWIPE_VARIANTS.includes(a.variant),
+        (a) => !a.disabled && a.variant != null && SWIPE_VARIANTS.includes(a.variant),
       ),
     [actions],
   );
@@ -210,16 +212,18 @@ export function MobileListItem({
             {actions!.map((action) => (
               <DropdownMenuItem
                 key={action.key}
+                disabled={action.disabled}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (action.disabled) return;
                   action.onClick();
                 }}
                 className={cn(
                   'gap-2 cursor-pointer',
-                  action.variant === 'destructive' && 'text-destructive focus:text-destructive',
-                  action.variant === 'edit' && 'text-warning focus:text-warning',
-                  action.variant === 'success' && 'text-success focus:text-success',
-                  action.variant === 'whatsapp' && 'text-[#128C7E] focus:text-[#128C7E]',
+                  !action.disabled && action.variant === 'destructive' && 'text-destructive focus:text-destructive',
+                  !action.disabled && action.variant === 'edit' && 'text-warning focus:text-warning',
+                  !action.disabled && action.variant === 'success' && 'text-success focus:text-success',
+                  !action.disabled && action.variant === 'whatsapp' && 'text-[#128C7E] focus:text-[#128C7E]',
                 )}
               >
                 <span className="shrink-0">{action.icon}</span>

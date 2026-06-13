@@ -1,7 +1,9 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAsaasBalance } from '@/hooks/useAsaasReconciliation';
 
 interface Props {
   income: number;
@@ -17,6 +19,7 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 
 export function FinancialSummaryCards({ income, expenses, transactionsCount, onOpenIncome, onOpenExpense, onCreateIncome, onCreateExpense }: Props) {
   const net = income - expenses;
+  const { data: asaasBalance, isLoading: balanceLoading, isError: balanceError } = useAsaasBalance();
   return (
     <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card to-muted/20">
       <CardContent className="p-6 md:p-8">
@@ -24,9 +27,15 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
           <div className="text-center space-y-1 p-4 rounded-xl bg-muted/40 border border-border/50">
             <div className="flex items-center justify-center gap-2">
               <Wallet className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Saldo do Período</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Saldo em conta</span>
             </div>
-            <p className={cn('text-2xl md:text-3xl font-bold tracking-tight', net >= 0 ? 'text-foreground' : 'text-destructive')}>{fmt(net)}</p>
+            {balanceLoading ? (
+              <Skeleton className="h-8 w-32 mx-auto" />
+            ) : balanceError ? (
+              <p className="text-sm text-muted-foreground">Indisponível</p>
+            ) : (
+              <p className={cn('text-2xl md:text-3xl font-bold tracking-tight', (asaasBalance ?? 0) >= 0 ? 'text-foreground' : 'text-destructive')}>{fmt(asaasBalance ?? 0)}</p>
+            )}
           </div>
           <div className="text-center space-y-1 p-4 rounded-xl bg-muted/40 border border-border/50">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Transações</span>

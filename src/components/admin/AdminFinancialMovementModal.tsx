@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  useUpdateAdminFinancialTransaction,
+  type AdminFinancialTransaction,
+} from '@/hooks/useAdminFinancialTransactions';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,12 +27,20 @@ interface AdminFinancialMovementModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultType?: 'income' | 'expense';
+  /** Quando passada, o modal abre em modo edição (corrige a própria row). */
+  transaction?: AdminFinancialTransaction | null;
 }
 
-export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 'income' }: AdminFinancialMovementModalProps) {
+// Formata um número (ex: 1234.5) pro input pt-BR (ex: "1.234,50").
+const formatAmountForInput = (v: number) =>
+  v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 'income', transaction }: AdminFinancialMovementModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const updateMutation = useUpdateAdminFinancialTransaction();
   const { data: allCategories = [] } = useAdminFinancialCategories();
+  const isEditing = Boolean(transaction);
   const [type, setType] = useState<'income' | 'expense'>(defaultType);
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
@@ -37,27 +49,64 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
   const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
-    if (open) { setType(defaultType); setCategory(''); setAmount(''); setDescription(''); setDate(new Date()); setShowErrors(false); }
-  }, [open, defaultType]);
+    if (!open) return;
+    if (transaction) {
+      setType(transaction.type);
+      setCategory(transaction.category);
+      setAmount(formatAmountForInput(Number(transaction.amount)));
+      setDescription(transaction.description ?? '');
+      setDate(new Date(transaction.transaction_date));
+    } else {
+      setType(defaultType);
+      setCategory('');
+      setAmount('');
+      setDescription('');
+      setDate(new Date());
+    }
+    setShowErrors(false);
+  }, [open, defaultType, transaction]);
 
   const typeCategories = allCategories.filter((c) => c.type === type);
-  const categories = typeCategories.map((c) => ({ value: c.name, label: c.label, color: c.color, icon: c.icon }));
-  const selectedCategory = typeCategories.find((c) => c.name === category);
+  const categories = typeCategories.map((c) => ({ value: c.name, label: c.label, color: c.color, icon: c.icon as string | null }));
+
+  // Em edição, a categoria do lançamento pode estar desativada (is_active=false)
+  // e por isso ausente da lista de opções (o hook só traz ativas). Sem isso o
+  // Select abre vazio. Injeta uma opção sintética pra ela aparecer e ficar
+  // selecionada. Some sozinha ao trocar o tipo (category vira '').
+  const hasCurrentCategory = !category || categories.some((c) => c.value === category);
+  if (transaction && category && !hasCurrentCategory) {
+    const known = allCategories.find((c) => c.name === category);
+    categories.unshift({
+      value: category,
+      label: known?.label ?? category,
+      color: known?.color ?? '#64748b',
+      icon: known?.icon ?? null,
+    });
+  }
+
+  const selectedCategory = categories.find((c) => c.value === category);
 
   const parsedAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
   const amountInvalid = isNaN(parsedAmount) || parsedAmount <= 0;
   const categoryMissing = !category;
   const formInvalid = amountInvalid || categoryMissing;
 
-  const mutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('admin_financial_transactions').insert({ type, category, amount: parsedAmount, description: description || null, transaction_date: date.toISOString(), created_by: user?.id });
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-financial-transactions'] }); toast({ title: 'Movimentação criada!' }); onOpenChange(false); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-financial-transactions-all'] });
+      toast({ title: 'Movimentação criada!' });
+      onOpenChange(false);
+    },
     onError: (error: any) => { toast({ title: 'Erro', description: getErrorMessage(error), variant: 'destructive' }); },
   });
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   const handleSubmit = () => {
     if (formInvalid) {
@@ -65,18 +114,25 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
       toast({ title: 'Confira os campos', description: 'Preencha o valor e selecione uma categoria.', variant: 'destructive' });
       return;
     }
-    mutation.mutate();
+    if (isEditing && transaction) {
+      updateMutation.mutate(
+        { id: transaction.id, type, category, amount: parsedAmount, description: description || null, transaction_date: date.toISOString() },
+        { onSuccess: () => onOpenChange(false) },
+      );
+    } else {
+      createMutation.mutate();
+    }
   };
 
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Nova Transação"
+      title={isEditing ? 'Editar Transação' : 'Nova Transação'}
       footer={
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={mutation.isPending || formInvalid} className="flex-1">{mutation.isPending ? 'Salvando...' : 'Salvar'}</Button>
+          <Button onClick={handleSubmit} disabled={isPending || formInvalid} className="flex-1">{isPending ? 'Salvando...' : 'Salvar'}</Button>
         </div>
       }
     >
