@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.29',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Campos de preço deixam digitar e apagar normalmente',
+        description: 'Na tela de precificação de serviços, os campos de valores (impostos, lucro, custo por KM, desconto à vista e parcelas) agora deixam apagar o conteúdo e digitar à vontade — acabou aquele "0" que ficava preso na frente do número.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.28',
     date: '13 de junho de 2026',
     type: 'patch',

@@ -7,32 +7,42 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calculator, Save } from 'lucide-react';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 
+// Converte a string crua do input para number, com fallback se estiver vazia/inválida.
+const num = (s: string, fallback = 0) => {
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 export function PricingConfigForm() {
   const { settings, isLoading, upsertSettings } = usePricingSettings();
 
-  const [taxRate, setTaxRate] = useState(10);
-  const [adminRate, setAdminRate] = useState(12);
-  const [profitRate, setProfitRate] = useState(10);
-  const [kmCost, setKmCost] = useState(1);
-  const [cardDiscountRate, setCardDiscountRate] = useState(6);
-  const [cardInstallments, setCardInstallments] = useState(10);
+  const [taxRate, setTaxRate] = useState('10');
+  const [adminRate, setAdminRate] = useState('12');
+  const [profitRate, setProfitRate] = useState('10');
+  const [kmCost, setKmCost] = useState('1');
+  const [cardDiscountRate, setCardDiscountRate] = useState('6');
+  const [cardInstallments, setCardInstallments] = useState('10');
 
   useEffect(() => {
     if (!settings) return;
-    setTaxRate(Number(settings.tax_rate ?? 10));
-    setAdminRate(Number(settings.admin_indirect_rate ?? 12));
-    setProfitRate(Number(settings.default_profit_rate ?? 10));
-    setKmCost(Number(settings.km_cost ?? 1));
-    setCardDiscountRate(Number(settings.card_discount_rate ?? 6));
-    setCardInstallments(Number(settings.card_installments ?? 10));
+    setTaxRate(String(Number(settings.tax_rate ?? 10)));
+    setAdminRate(String(Number(settings.admin_indirect_rate ?? 12)));
+    setProfitRate(String(Number(settings.default_profit_rate ?? 10)));
+    setKmCost(String(Number(settings.km_cost ?? 1)));
+    setCardDiscountRate(String(Number(settings.card_discount_rate ?? 6)));
+    setCardInstallments(String(Number(settings.card_installments ?? 10)));
   }, [settings]);
 
-  const bdiFactor = useMemo(() => {
-    const raw = (100 - (taxRate + adminRate + profitRate)) / 100;
-    return Math.max(0.01, raw);
-  }, [taxRate, adminRate, profitRate]);
+  const taxNum = num(taxRate, 10);
+  const adminNum = num(adminRate, 12);
+  const profitNum = num(profitRate, 10);
 
-  const bdiRemainder = Math.max(0, 100 - taxRate - adminRate - profitRate);
+  const bdiFactor = useMemo(() => {
+    const raw = (100 - (taxNum + adminNum + profitNum)) / 100;
+    return Math.max(0.01, raw);
+  }, [taxNum, adminNum, profitNum]);
+
+  const bdiRemainder = Math.max(0, 100 - taxNum - adminNum - profitNum);
 
   if (isLoading) {
     return (
@@ -77,38 +87,38 @@ export function PricingConfigForm() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Imposto (%)</Label>
-              <Input type="number" min={0} step="0.01" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value) || 0)} />
+              <Input type="number" min={0} step="0.01" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Adm. Indireta (%)</Label>
-              <Input type="number" min={0} step="0.01" value={adminRate} onChange={(e) => setAdminRate(Number(e.target.value) || 0)} />
+              <Input type="number" min={0} step="0.01" value={adminRate} onChange={(e) => setAdminRate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Lucro Padrão (%)</Label>
-              <Input type="number" min={0} step="0.01" value={profitRate} onChange={(e) => setProfitRate(Number(e.target.value) || 0)} />
+              <Input type="number" min={0} step="0.01" value={profitRate} onChange={(e) => setProfitRate(e.target.value)} />
             </div>
           </div>
 
           {/* Barra de composição */}
           <div>
             <div className="flex rounded-full overflow-hidden h-2.5">
-              <div style={{ width: `${taxRate}%` }} className="bg-destructive transition-all" title={`Imposto: ${taxRate}%`} />
-              <div style={{ width: `${adminRate}%` }} className="bg-warning transition-all" title={`Adm. Indireta: ${adminRate}%`} />
-              <div style={{ width: `${profitRate}%` }} className="bg-success transition-all" title={`Lucro: ${profitRate}%`} />
+              <div style={{ width: `${taxNum}%` }} className="bg-destructive transition-all" title={`Imposto: ${taxNum}%`} />
+              <div style={{ width: `${adminNum}%` }} className="bg-warning transition-all" title={`Adm. Indireta: ${adminNum}%`} />
+              <div style={{ width: `${profitNum}%` }} className="bg-success transition-all" title={`Lucro: ${profitNum}%`} />
               <div style={{ width: `${bdiRemainder}%` }} className="bg-primary transition-all" title={`BDI restante: ${bdiRemainder.toFixed(1)}%`} />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
-                Imposto {taxRate}%
+                Imposto {taxNum}%
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-warning inline-block" />
-                Adm. {adminRate}%
+                Adm. {adminNum}%
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-success inline-block" />
-                Lucro {profitRate}%
+                Lucro {profitNum}%
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-primary inline-block" />
@@ -120,12 +130,12 @@ export function PricingConfigForm() {
           <div className="flex justify-end">
             <Button
               onClick={() => upsertSettings.mutate({
-                tax_rate: taxRate,
-                admin_indirect_rate: adminRate,
-                default_profit_rate: profitRate,
-                km_cost: kmCost,
-                card_discount_rate: cardDiscountRate,
-                card_installments: cardInstallments,
+                tax_rate: num(taxRate, 10),
+                admin_indirect_rate: num(adminRate, 12),
+                default_profit_rate: num(profitRate, 10),
+                km_cost: num(kmCost, 1),
+                card_discount_rate: num(cardDiscountRate, 6),
+                card_installments: Math.max(1, num(cardInstallments, 10)),
               } as any)}
               disabled={upsertSettings.isPending}
             >
@@ -143,27 +153,27 @@ export function PricingConfigForm() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Custo por KM (R$)</Label>
-              <Input type="number" min={0} step="0.01" value={kmCost} onChange={(e) => setKmCost(Number(e.target.value) || 0)} />
+              <Input type="number" min={0} step="0.01" value={kmCost} onChange={(e) => setKmCost(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Desconto à vista (%)</Label>
-              <Input type="number" min={0} step="0.01" value={cardDiscountRate} onChange={(e) => setCardDiscountRate(Number(e.target.value) || 0)} />
+              <Input type="number" min={0} step="0.01" value={cardDiscountRate} onChange={(e) => setCardDiscountRate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Parcelas (cartão)</Label>
-              <Input type="number" min={1} step="1" value={cardInstallments} onChange={(e) => setCardInstallments(Math.max(1, Number(e.target.value) || 1))} />
+              <Input type="number" min={1} step="1" value={cardInstallments} onChange={(e) => setCardInstallments(e.target.value)} />
             </div>
           </div>
 
           <div className="flex justify-end">
             <Button
               onClick={() => upsertSettings.mutate({
-                tax_rate: taxRate,
-                admin_indirect_rate: adminRate,
-                default_profit_rate: profitRate,
-                km_cost: kmCost,
-                card_discount_rate: cardDiscountRate,
-                card_installments: cardInstallments,
+                tax_rate: num(taxRate, 10),
+                admin_indirect_rate: num(adminRate, 12),
+                default_profit_rate: num(profitRate, 10),
+                km_cost: num(kmCost, 1),
+                card_discount_rate: num(cardDiscountRate, 6),
+                card_installments: Math.max(1, num(cardInstallments, 10)),
               } as any)}
               disabled={upsertSettings.isPending}
             >

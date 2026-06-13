@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.28";
+export const APP_VERSION = "1.11.29";
 
-export const VERSION_NOTES = "Ao remover uma foto da ordem de serviço, o app agora pede confirmação. E, ao tirar uma foto, pergunta se você quer salvá-la no aparelho — no iPhone abre a opção \"Salvar Imagem\".";
+export const VERSION_NOTES = "Na tela de precificação de serviços, os campos de valores (impostos, lucro, custo por KM, desconto e parcelas) voltaram a permitir apagar e digitar normalmente — sem aquele \"0\" preso na frente do número.";
