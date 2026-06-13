@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.21',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Saldo após cada movimentação na conta',
+        description: 'Ao abrir uma conta bancária, cada movimentação agora mostra o saldo que ficou na conta depois dela. A movimentação mais recente exibe o saldo atual da conta, e as anteriores mostram como o saldo estava a cada passo — fácil de acompanhar o extrato linha a linha.',
+        category: 'recurso',
+      },
+      {
+        title: 'Voltamos a gerar os documentos do contrato para quem tem acesso',
+        description: 'Corrigimos um problema que impedia alguns usuários com acesso aos contratos de gerar e editar os documentos do contrato (Termo de Responsabilidade Técnica, Certificado de Conformidade, Cronograma Anual e Dossiê PMOC) e de atualizar o link do portal do cliente. Agora qualquer usuário com acesso aos contratos consegue.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.20',
     date: '13 de junho de 2026',
     type: 'patch',
