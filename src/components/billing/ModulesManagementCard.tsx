@@ -22,6 +22,7 @@ import { usePlanChange } from '@/hooks/usePlanChange';
 import { useUsers } from '@/hooks/useUsers';
 import { UserExcessModal } from '@/components/billing/UserExcessModal';
 import { calculateYearlyPrice, calculateMonthlyEquivalent } from '@/utils/subscriptionPricing';
+import { PriceAmount } from '@/components/ui/PriceAmount';
 
 const EXTRA_USER_PRICE = 50;
 const BASE_USERS = 2; // usuários inclusos no personalizado
@@ -606,13 +607,17 @@ export function ModulesManagementCard({
                   </p>
                   {billingCycle === 'yearly' ? (
                     <>
-                      <p className="text-2xl font-bold">R$ {formatBRL(calculateYearlyPrice(customMonthly))}</p>
+                      <PriceAmount
+                        value={calculateYearlyPrice(customMonthly)}
+                        suffix="/ano"
+                        className="text-2xl font-bold"
+                      />
                       <p className="text-[11px] text-white/80">
                         ≈ R$ {formatBRL(calculateMonthlyEquivalent(calculateYearlyPrice(customMonthly)))}/mês
                       </p>
                     </>
                   ) : (
-                    <p className="text-2xl font-bold">R$ {formatBRL(customMonthly)}</p>
+                    <PriceAmount value={customMonthly} suffix="/mês" className="text-2xl font-bold" />
                   )}
                 </div>
                 <div className="text-right text-[11px] text-white/80 shrink-0">

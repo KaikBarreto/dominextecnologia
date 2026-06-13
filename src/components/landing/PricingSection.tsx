@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { PriceAmount } from '@/components/ui/PriceAmount';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
 
@@ -147,13 +148,16 @@ export default function PricingSection() {
                   <p className="text-[10px] uppercase tracking-widest text-white/40 font-medium mb-1">
                     {annual ? 'equivalente a' : 'a partir de'}
                   </p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-sm text-white/60">R$</span>
-                    <span className={cn('font-extrabold tracking-tight text-white', plan.popular ? 'text-4xl text-primary' : 'text-3xl')}>
-                      {displayPrice}
-                    </span>
-                    <span className="text-white/40 text-sm">/mês</span>
-                  </div>
+                  <PriceAmount
+                    value={displayPrice}
+                    suffix="/mês"
+                    className={cn(
+                      'tracking-tight',
+                      plan.popular
+                        ? 'text-4xl font-extrabold text-primary'
+                        : 'text-3xl font-extrabold text-white'
+                    )}
+                  />
                   {annual && (
                     <div className="mt-1 space-y-0.5">
                       <p className="text-xs text-white/40 line-through">R$ {plan.monthly}/mês</p>

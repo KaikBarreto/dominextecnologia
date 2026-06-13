@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MODULE_INFO } from '@/components/ModuleGateModal';
 import { formatBRL } from '@/utils/currency';
+import { PriceAmount } from '@/components/ui/PriceAmount';
 import { CancelSubscriptionModal } from '@/components/billing/CancelSubscriptionModal';
 import { ModulesManagementCard } from '@/components/billing/ModulesManagementCard';
 import { PaymentHistoryList } from '@/components/billing/PaymentHistoryList';
@@ -211,9 +212,11 @@ export default function Billing() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs md:text-sm text-primary-foreground/70">Valor mensal</p>
-                    <p className="text-lg md:text-2xl font-bold truncate">
-                      R$ {formatBRL(effectiveValue)}
-                    </p>
+                    <PriceAmount
+                      value={effectiveValue}
+                      suffix="/mês"
+                      className="text-lg md:text-2xl font-bold"
+                    />
                   </div>
                 </div>
               </div>

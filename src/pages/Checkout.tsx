@@ -28,6 +28,7 @@ import { useAsaasPayment } from "@/hooks/useAsaasPayment";
 import logoWhite from "@/assets/logo-white-horizontal.png";
 import logoDark from "@/assets/logo-horizontal-verde.png";
 import { useWhiteLabel } from "@/hooks/useWhiteLabel";
+import { PriceAmount } from "@/components/ui/PriceAmount";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -564,12 +565,12 @@ export default function Checkout() {
                         <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">
                           {billingCycle === "yearly" ? "equivalente a" : "a partir de"}
                         </p>
-                        <div className="flex items-baseline justify-center gap-1">
-                          <span className="text-sm text-muted-foreground">R$</span>
-                          <span className={cn("font-extrabold tracking-tight", isPopular ? "text-5xl text-primary" : "text-4xl")}>
-                            {displayPrice.toFixed(0)}
-                          </span>
-                          <span className="text-muted-foreground text-sm">/mês</span>
+                        <div className="flex items-baseline justify-center">
+                          <PriceAmount
+                            value={displayPrice}
+                            suffix="/mês"
+                            className={cn("font-extrabold tracking-tight", isPopular ? "text-5xl text-primary" : "text-4xl")}
+                          />
                         </div>
                         {billingCycle === "yearly" && (
                           <div className="mt-1 space-y-0.5">

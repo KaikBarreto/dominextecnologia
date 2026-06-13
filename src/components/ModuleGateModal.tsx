@@ -2,8 +2,8 @@ import { Lock, Sparkles, ArrowRight, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import { formatBRL } from '@/utils/currency';
 import { useModuleCatalog } from '@/hooks/useModuleCatalog';
+import { PriceAmount } from '@/components/ui/PriceAmount';
 
 interface ModuleGateModalProps {
   open: boolean;
@@ -57,12 +57,13 @@ export function ModuleGateModal({
         </div>
 
         {displayPrice != null && displayPrice > 0 && (
-          <div className="bg-muted rounded-lg px-4 py-2">
-            <span className="text-sm text-muted-foreground">A partir de </span>
-            <span className="text-lg font-bold text-foreground">
-              R$ {formatBRL(displayPrice)}
-            </span>
-            <span className="text-sm text-muted-foreground">/mês</span>
+          <div className="bg-muted rounded-lg px-4 py-2 flex items-baseline justify-center gap-1">
+            <span className="text-sm text-muted-foreground">A partir de</span>
+            <PriceAmount
+              value={displayPrice}
+              suffix="/mês"
+              className="text-lg font-bold text-foreground"
+            />
           </div>
         )}
 
