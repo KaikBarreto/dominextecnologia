@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.20',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Movimentações mostra só o que já aconteceu',
+        description: 'A tela de Movimentações passou a listar apenas o que já entrou ou saiu de fato (recebido ou pago). Tudo que ainda está por vencer — parcelas de contrato, contas a pagar e compras de cartão em aberto — fica na tela de Contas a Pagar/Receber. Assim os totais e as exportações em PDF e Excel refletem só o dinheiro que realmente movimentou.',
+        category: 'correcao',
+      },
+      {
+        title: 'Mensalidades de contrato aparecem no mês certo',
+        description: 'As parcelas geradas a partir de um contrato passaram a aparecer no mês de cada vencimento, e não mais todas concentradas no mês em que foram criadas. Também acertamos as parcelas que já estavam cadastradas, sem alterar nenhum valor.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.19',
     date: '13 de junho de 2026',
     type: 'patch',

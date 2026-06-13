@@ -368,7 +368,8 @@ export default function ContractDetail() {
           transaction_type: 'entrada',
           description: `${recDescription}${monthLabel}${suffix}`,
           amount,
-          transaction_date: new Date().toISOString().split('T')[0],
+          // transaction_date = mês da parcela (não a data da geração), pra a receita realizada cair no mês certo em Movimentações
+          transaction_date: format(dueDate, 'yyyy-MM-dd'),
           due_date: format(dueDate, 'yyyy-MM-dd'),
           is_paid: false,
           customer_id: contract.customer_id,

@@ -87,6 +87,14 @@ export default function Finance() {
     [transactions, range]
   );
 
+  // Movimentações = só o que JÁ FOI REALIZADO (is_paid). Pendentes/parcelas futuras
+  // (e despesas de cartão, que entram is_paid=false por design) vivem em "Contas a
+  // Pagar/Receber", não aqui. Sem isso, parcelas futuras poluíam a tela e o export.
+  const movimentacoesTransactions = useMemo(
+    () => filteredTransactions.filter((t) => t.is_paid),
+    [filteredTransactions]
+  );
+
   // Resumo: despesas de cartão entram no mês da fatura; demais itens pagos
   // usam transaction_date e não pagos usam due_date.
   const summaryTransactions = useMemo(
@@ -282,7 +290,7 @@ export default function Finance() {
 
         {screen === 'movimentacoes' && (
           <FinanceMovimentacoes
-            transactions={filteredTransactions}
+            transactions={movimentacoesTransactions}
             isLoading={isLoading}
             onNew={() => handleNew('entrada')}
             onEdit={handleEdit}
