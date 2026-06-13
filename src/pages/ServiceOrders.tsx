@@ -44,7 +44,7 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import { OsStatusManagerDialog } from '@/components/service-orders/OsStatusManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
-import { osStatusLabels, osTypeLabels } from '@/types/database';
+import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -634,11 +634,13 @@ export default function ServiceOrders() {
                                   {getIsPmocFromOrder(os as any) && (
                                     <PmocComplianceBadge variant="chip" />
                                   )}
-                                  {os.service_type && (
+                                  {os.service_type ? (
                                     <span className="inline-flex items-center gap-1">
                                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
                                       {os.service_type.name}
                                     </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1">{getOsTypeLabel(os as any)}</span>
                                   )}
                                   {os.scheduled_date && (
                                     <span className="inline-flex items-center gap-1">
@@ -744,7 +746,7 @@ export default function ServiceOrders() {
                                             <span className="text-sm">{os.service_type.name}</span>
                                           </div>
                                         ) : (
-                                          <span className="text-sm">{osTypeLabels[os.os_type]}</span>
+                                          <span className="text-sm">{getOsTypeLabel(os as any)}</span>
                                         )}
                                       </TableCell>
                                       <TableCell className="hidden sm:table-cell">

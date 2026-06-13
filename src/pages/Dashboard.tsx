@@ -179,6 +179,9 @@ export default function Dashboard() {
   const criticalOS = useMemo((): CriticalOS[] => {
     if (!stats?.allOS) return [];
     const today = new Date();
+    const serviceTypeMap = new Map(
+      (stats.serviceTypes ?? []).map((st: any) => [st.id, st.name])
+    );
     return (stats.allOS as any[])
       .filter(os => {
         if (!os.scheduled_date) return false;
@@ -193,10 +196,12 @@ export default function Dashboard() {
         location: [os.customer?.city, os.customer?.state].filter(Boolean).join(', '),
         daysOverdue: differenceInDays(today, new Date(os.scheduled_date)),
         hasTechnician: !!os.technician_id,
-        osType: osTypeLabels[os.os_type as keyof typeof osTypeLabels] || os.os_type,
+        osType: (os.service_type_id && serviceTypeMap.get(os.service_type_id))
+          || osTypeLabels[os.os_type as keyof typeof osTypeLabels]
+          || os.os_type,
       }))
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
-  }, [stats?.allOS]);
+  }, [stats?.allOS, stats?.serviceTypes]);
 
   // Top technicians
   const topTechnicians = useMemo((): TechnicianPerf[] => {

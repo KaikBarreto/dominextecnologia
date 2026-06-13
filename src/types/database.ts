@@ -292,6 +292,35 @@ export const osTypeLabels: Record<OsType, string> = {
   visita_tecnica: 'Visita Técnica',
 };
 
+/**
+ * Rótulo de exibição do "tipo" de uma OS.
+ *
+ * O cliente escolhe um service_type do catálogo do tenant ("Instalação Split",
+ * "Garantia", "PMOC", etc.) — é ESSE nome que deve aparecer nos cards/badges.
+ * O `os_type` é o enum legado fixo (4 valores), usado só como fallback quando a
+ * OS não tem service_type carregado/escolhido.
+ *
+ * Em OS concluída/com snapshot, o nome do snapshot tem prioridade (preserva o
+ * tipo histórico mesmo que o catálogo mude depois).
+ *
+ * @param fallbackLabels permite passar um mapa de rótulos curtos por tela
+ *        (ex.: a agenda usa "Corretiva" em vez de "Manutenção Corretiva").
+ */
+export function getOsTypeLabel(
+  order: {
+    service_type?: { name?: string | null } | null;
+    snapshot_data?: { service_type?: { name?: string | null } | null } | null;
+    os_type: OsType;
+  },
+  fallbackLabels: Record<OsType, string> = osTypeLabels,
+): string {
+  const snapshotName = order.snapshot_data?.service_type?.name?.trim();
+  if (snapshotName) return snapshotName;
+  const liveName = order.service_type?.name?.trim();
+  if (liveName) return liveName;
+  return fallbackLabels[order.os_type] ?? order.os_type;
+}
+
 export const leadStatusLabels: Record<LeadStatus, string> = {
   lead: 'Lead',
   proposta: 'Proposta',

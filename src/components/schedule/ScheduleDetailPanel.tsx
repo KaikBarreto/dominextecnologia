@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
+import { getOsTypeLabel } from '@/types/database';
 import { buildCustomerAddress } from '@/utils/geolocation';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import {
@@ -151,7 +152,7 @@ function OrderDetail({
             {isTask ? (
               <Badge variant="outline" className="text-xs truncate max-w-[140px] border-violet-500/50 text-violet-400">Tarefa</Badge>
             ) : (
-              <Badge variant="outline" className="text-xs truncate max-w-[140px]">{osTypeLabels[order.os_type]}</Badge>
+              <Badge variant="outline" className="text-xs truncate max-w-[140px]">{getOsTypeLabel(order, osTypeLabels)}</Badge>
             )}
             {order.order_number > 0 && (
               <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : 'OS #'}{order.order_number}</Badge>

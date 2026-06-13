@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import type { ServiceOrder, FormQuestion } from '@/types/database';
-import { osTypeLabels } from '@/types/database';
+import { osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
@@ -98,6 +98,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     customer: rawServiceOrder.customer || snapshot?.customer || null,
     equipment: rawServiceOrder.equipment || snapshot?.equipment || null,
     form_template: rawServiceOrder.form_template || snapshot?.form_template || null,
+    service_type: (rawServiceOrder as any).service_type || snapshot?.service_type || null,
   };
 
   const reportRef = useRef<HTMLDivElement>(null);
@@ -514,7 +515,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
           } : null}
           orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
-          osType={osTypeLabels[serviceOrder.os_type]}
+          osType={getOsTypeLabel(serviceOrder)}
           checkOutTime={serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
           config={headerConfig}
         />

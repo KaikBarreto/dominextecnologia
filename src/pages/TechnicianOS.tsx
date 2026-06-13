@@ -45,7 +45,7 @@ import { OSReport } from '@/components/technician/OSReport';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
-import { osStatusLabels, osTypeLabels } from '@/types/database';
+import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
@@ -741,7 +741,7 @@ export default function TechnicianOS() {
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
               <div>
                 <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
-                <p className="text-xs sm:text-sm opacity-80">{osTypeLabels[serviceOrder.os_type]}</p>
+                <p className="text-xs sm:text-sm opacity-80">{getOsTypeLabel(serviceOrder)}</p>
               </div>
               {serviceOrder.scheduled_date && (
                 <div className="flex items-center gap-1.5 text-xs sm:text-sm opacity-80">
@@ -1345,7 +1345,7 @@ export default function TechnicianOS() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
             <div>
               <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
-              <p className="text-xs sm:text-sm opacity-80">{osTypeLabels[serviceOrder.os_type]}</p>
+              <p className="text-xs sm:text-sm opacity-80">{getOsTypeLabel(serviceOrder)}</p>
             </div>
             {serviceOrder.scheduled_date && (
               <div className="flex items-center gap-1.5 text-xs sm:text-sm opacity-80">

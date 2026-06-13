@@ -5,6 +5,7 @@ import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
+import { getOsTypeLabel } from '@/types/database';
 
 const ICON_MAP: Record<string, any> = {
   UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
@@ -224,7 +225,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           {taskTitle || 'Tarefa'}
         </p>
       ) : (
-        <p className={cn('text-xs font-medium truncate', bgColor ? 'text-white/90' : 'text-primary')}>{osTypeLabels[order.os_type]}</p>
+        <p className={cn('text-xs font-medium truncate', bgColor ? 'text-white/90' : 'text-primary')}>{getOsTypeLabel(order, osTypeLabels)}</p>
       )}
       {!isTask && (
         <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>

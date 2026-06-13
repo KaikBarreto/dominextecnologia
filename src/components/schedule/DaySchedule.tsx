@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
+import { getOsTypeLabel } from '@/types/database';
 
 interface DayScheduleProps {
   date: Date;
@@ -105,7 +106,7 @@ export function DaySchedule({ date, orders, onOrderSelect }: DayScheduleProps) {
 
                   <div className="space-y-1.5">
                     <p className="text-sm font-medium text-primary">
-                      {osTypeLabels[order.os_type]}
+                      {getOsTypeLabel(order, osTypeLabels)}
                     </p>
 
                     <div className="flex items-center gap-2 text-sm">

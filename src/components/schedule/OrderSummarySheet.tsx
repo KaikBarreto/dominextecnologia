@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
+import { getOsTypeLabel } from '@/types/database';
 import { TechnicianDistanceBadge } from '@/components/service-orders/TechnicianDistanceBadge';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { OrderTimeline } from './OrderTimeline';
@@ -98,7 +99,7 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={cn('text-xs shadow-sm shadow-black/15', statusBadge.className)}>{statusBadge.label}</Badge>
-          <Badge variant="outline" className="text-xs">{osTypeLabels[order.os_type]}</Badge>
+          <Badge variant="outline" className="text-xs">{getOsTypeLabel(order, osTypeLabels)}</Badge>
           <Badge variant="secondary" className="text-xs">OS #{order.order_number}</Badge>
         </div>
 

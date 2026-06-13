@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsCompact } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsStatus, FormQuestion } from '@/types/database';
-import { osStatusLabels, osTypeLabels } from '@/types/database';
+import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
@@ -110,7 +110,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     try {
       const { data: osData, error: osError } = await supabase
         .from('service_orders')
-        .select(`*, customer:customers(id, name, phone, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name)`)
+        .select(`*, customer:customers(id, name, phone, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name), service_type:service_types(id, name, color)`)
         .eq('id', serviceOrderId).single();
       if (osError) throw osError;
       // Use snapshot as fallback when live joins return null (e.g. deleted customer/equipment)
@@ -120,6 +120,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         customer: osData.customer || snapshot?.customer || null,
         equipment: osData.equipment || snapshot?.equipment || null,
         form_template: osData.form_template || snapshot?.form_template || null,
+        service_type: (osData as any).service_type || snapshot?.service_type || null,
       };
       setServiceOrder(enriched as any);
       const { data: photosData } = await supabase.from('os_photos').select('*').eq('service_order_id', serviceOrderId).order('created_at', { ascending: true });
@@ -223,7 +224,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         );
       })()}
       <div className="flex items-center gap-4 text-sm">
-        <Badge variant="secondary">{osTypeLabels[serviceOrder.os_type]}</Badge>
+        <Badge variant="secondary">{getOsTypeLabel(serviceOrder)}</Badge>
         {serviceOrder.scheduled_date && (
           <span className="flex items-center gap-1 text-muted-foreground">
             <Calendar className="h-3 w-3" />

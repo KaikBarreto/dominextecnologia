@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.6',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tipo de serviço correto na agenda e nas ordens',
+        description: 'Ao escolher o tipo de serviço de uma ordem (como Instalação Split, Garantia ou PMOC), agora é esse tipo que aparece na agenda, na lista de ordens, no app do técnico e no relatório — em vez de um tipo genérico. A cor do tipo continua a mesma.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.12.5',
     date: '13 de junho de 2026',
     type: 'patch',
