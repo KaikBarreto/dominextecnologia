@@ -132,6 +132,8 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 2s infinite",
         marquee: "marquee 30s linear infinite",
+        "marquee-slow": "marquee 58s linear infinite",
+        "marquee-mid": "marquee 44s linear infinite",
         "glow-pulse": "glow-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
         "ping-wave": "ping-wave 4s cubic-bezier(0,0,0.2,1) infinite",
         "ping-wave-sm": "ping-wave-sm 4s cubic-bezier(0,0,0.2,1) infinite",
