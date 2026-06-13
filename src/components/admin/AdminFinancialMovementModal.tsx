@@ -17,6 +17,7 @@ import { CalendarIcon, TrendingUp, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { brtTransactionTimestamp } from '@/lib/date-br';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 
@@ -94,7 +95,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
   const createMutation = useMutation({
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('admin_financial_transactions').insert({ type, category, amount: parsedAmount, description: description || null, transaction_date: date.toISOString(), created_by: user?.id });
+      const { error } = await supabase.from('admin_financial_transactions').insert({ type, category, amount: parsedAmount, description: description || null, transaction_date: brtTransactionTimestamp(date), created_by: user?.id });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -116,7 +117,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
     }
     if (isEditing && transaction) {
       updateMutation.mutate(
-        { id: transaction.id, type, category, amount: parsedAmount, description: description || null, transaction_date: date.toISOString() },
+        { id: transaction.id, type, category, amount: parsedAmount, description: description || null, transaction_date: brtTransactionTimestamp(date) },
         { onSuccess: () => onOpenChange(false) },
       );
     } else {

@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { brtTransactionTimestamp } from '@/lib/date-br';
 
 interface Props {
   salesperson: Salesperson;
@@ -96,7 +97,7 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
       commission_amount: selected.totalCommission,
       advances_deducted: selected.totalAdvances,
       total_amount: selected.totalToReceive,
-      paid_at: payDate.toISOString(),
+      paid_at: brtTransactionTimestamp(payDate),
     });
     setConfirmOpen(false);
   };
@@ -108,7 +109,7 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
 
   const confirmEditDate = async () => {
     if (!editPayment) return;
-    await updatePaymentDate.mutateAsync({ id: editPayment.id, paidAt: editDate.toISOString() });
+    await updatePaymentDate.mutateAsync({ id: editPayment.id, paidAt: brtTransactionTimestamp(editDate) });
     setEditPayment(null);
   };
 

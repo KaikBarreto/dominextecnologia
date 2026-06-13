@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { brtDateOnlyToTimestamp } from '@/lib/date-br';
 
 export type SalespersonRole = 'sdr' | 'closer';
 
@@ -404,8 +405,12 @@ export function useCreateAdvance() {
       if (error) throw error;
 
       // 2) Lança a despesa correspondente no financeiro admin.
-      //    transaction_date = data do lançamento do vale (reference_month/created_at).
-      const txnDate = advance.reference_month || advance.created_at;
+      //    transaction_date ancorado ao meio-dia BRT pra não cair no dia anterior:
+      //    - reference_month é date-only ("yyyy-MM-dd") → ancora via helper;
+      //    - created_at já é timestamp real → usa direto, sem reformatar.
+      const txnDate = advance.reference_month
+        ? brtDateOnlyToTimestamp(advance.reference_month)
+        : advance.created_at;
       const { error: finError } = await supabase.from('admin_financial_transactions').insert([
         {
           type: 'expense',
@@ -414,7 +419,7 @@ export function useCreateAdvance() {
           description: `Vale - ${salesperson_name}: ${payload.description || 'Vale/Adiantamento'}`,
           reference_id: advance.id,
           reference_type: 'salesperson_advance',
-          transaction_date: txnDate ? format(new Date(txnDate), 'yyyy-MM-dd') : undefined,
+          transaction_date: txnDate || undefined,
           created_by: user?.id || null,
         },
       ]);
@@ -484,10 +489,10 @@ export function useCreatePayment() {
         .single();
       if (error) throw error;
 
-      // Data do financeiro = paid_at do pagamento.
-      const txnDate = payment.paid_at
-        ? format(new Date(payment.paid_at), 'yyyy-MM-dd')
-        : undefined;
+      // Data do financeiro = paid_at do pagamento, DIRETO (ISO completo).
+      // O paid_at já nasce ancorado ao meio-dia BRT (ver SalespersonPaymentControl),
+      // então não reformatar pra 'yyyy-MM-dd' (isso reintroduziria o off-by-one).
+      const txnDate = payment.paid_at || undefined;
       const monthLabel = format(new Date(`${payment.reference_month}T00:00:00`), 'MM/yyyy');
 
       // 2) Despesa de SALÁRIO LÍQUIDO (desconta vales já lançados como despesa
@@ -543,8 +548,8 @@ export function useUpdatePaymentDate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, paidAt }: { id: string; paidAt: string }) => {
-      const dateOnly = format(new Date(paidAt), 'yyyy-MM-dd');
-
+      // paidAt chega como ISO completo já ancorado ao meio-dia BRT (ver
+      // SalespersonPaymentControl). Usa direto, sem reformatar pra 'yyyy-MM-dd'.
       const { error } = await supabase
         .from('salesperson_payments')
         .update({ paid_at: paidAt })
@@ -554,7 +559,7 @@ export function useUpdatePaymentDate() {
       // Propaga pro financeiro: salário + comissão deste pagamento.
       const { error: salErr } = await supabase
         .from('admin_financial_transactions')
-        .update({ transaction_date: dateOnly })
+        .update({ transaction_date: paidAt })
         .eq('reference_id', id)
         .in('reference_type', ['salesperson_payment_salary', 'salesperson_payment_commission']);
       if (salErr) throw salErr;
