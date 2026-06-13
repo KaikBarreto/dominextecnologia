@@ -40,6 +40,88 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.5',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Segurança ao preencher OS pausada',
+        description: 'Enquanto uma ordem de serviço estiver pausada, o preenchimento fica bloqueado com um aviso claro — é preciso retomar o atendimento antes de continuar, evitando registros por engano.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Calculadoras com resultado em tempo real',
+        description: 'A carga térmica e a conversão de unidades agora mostram o resultado na hora, conforme você digita ou ajusta os valores — sem precisar tocar em calcular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.12.4',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela inicial e Glossário nas Ferramentas do Técnico',
+        description: 'A área de Ferramentas do Técnico ganhou uma tela inicial com acesso rápido a cada ferramenta e um glossário que explica os termos e unidades técnicas (BTU, capacitor, HP, pressão, temperatura e mais) com exemplos práticos.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.12.3',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca no catálogo de equipamentos',
+        description: 'No catálogo de equipamentos, agora dá para buscar por marca, modelo ou código de erro de uma vez — e ver em quais máquinas cada código de erro acontece.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.12.2',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cálculo de Capacitor',
+        description: 'Nova ferramenta: informe o BTU (modelos padrão ou personalizado) e a tensão e veja o capacitor recomendado, a corrente (amperagem) e a potência do equipamento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.12.1',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ferramentas do Técnico dentro da ordem de serviço',
+        description: 'Durante o preenchimento de uma OS, um botão abre as Ferramentas do Técnico em tela cheia sem sair da ordem — ao voltar, você retorna exatamente de onde parou, sem perder nada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Copiar link do cliente no menu de ações',
+        description: 'O link público de acompanhamento da ordem de serviço passou para o menu de ações (três pontinhos) durante o preenchimento, deixando a tela mais limpa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.12.0',
+    date: '13 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Ferramentas do Técnico',
+        description: 'Nova área no menu Operacional com utilidades para o dia a dia em campo: calcule a capacidade de BTUs ideal para o ambiente (carga térmica), converta unidades de temperatura, pressão, potência e comprimento, e consulte o catálogo de equipamentos de ar-condicionado com os códigos de erro e o diagnóstico. As calculadoras funcionam mesmo sem internet.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.11.31',
     date: '13 de junho de 2026',
     type: 'patch',

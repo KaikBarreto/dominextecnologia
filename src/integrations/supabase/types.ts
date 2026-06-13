@@ -2191,6 +2191,33 @@ export type Database = {
           },
         ]
       }
+      equipment_brands: {
+        Row: {
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          slug: string | null
+          sort: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          slug?: string | null
+          sort?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          slug?: string | null
+          sort?: number
+        }
+        Relationships: []
+      }
       equipment_categories: {
         Row: {
           color: string
@@ -2225,6 +2252,50 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_error_codes: {
+        Row: {
+          code: string
+          component: string | null
+          created_at: string
+          description: string | null
+          diagnosis: string | null
+          id: string
+          model_id: string
+          solution: string | null
+          title: string | null
+        }
+        Insert: {
+          code: string
+          component?: string | null
+          created_at?: string
+          description?: string | null
+          diagnosis?: string | null
+          id?: string
+          model_id: string
+          solution?: string | null
+          title?: string | null
+        }
+        Update: {
+          code?: string
+          component?: string | null
+          created_at?: string
+          description?: string | null
+          diagnosis?: string | null
+          id?: string
+          model_id?: string
+          solution?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_error_codes_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_models"
             referencedColumns: ["id"]
           },
         ]
@@ -2275,6 +2346,72 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_model_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      equipment_models: {
+        Row: {
+          brand_id: string
+          category_id: string | null
+          code: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          manual_url: string | null
+          name: string
+        }
+        Insert: {
+          brand_id: string
+          category_id?: string | null
+          code?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          manual_url?: string | null
+          name: string
+        }
+        Update: {
+          brand_id?: string
+          category_id?: string | null
+          code?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          manual_url?: string | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_models_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_models_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_model_categories"
             referencedColumns: ["id"]
           },
         ]

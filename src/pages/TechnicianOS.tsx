@@ -23,6 +23,7 @@ import {
   Wrench,
   ShieldCheck,
   Pause,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +51,9 @@ import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
+import TechnicianTools from '@/pages/TechnicianTools';
+import { Calculator } from 'lucide-react';
 
 interface OSPhoto {
   id: string;
@@ -109,6 +113,35 @@ export default function TechnicianOS() {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
+
+  // Overlay fullscreen das Ferramentas do Técnico (atalho a partir do FAB).
+  // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
+  const [toolsOpen, setToolsOpen] = useState(false);
+  // Copia o link público de acompanhamento e mostra toast (link gerado já copia no ato).
+  const handleCopyTrackingLink = async () => {
+    if (!id) return;
+    try {
+      const link = buildServiceOrderShareLink(id);
+      await navigator.clipboard.writeText(link);
+      setTrackingLinkCopied(true);
+      toast({ title: 'Link copiado!' });
+      setTimeout(() => setTrackingLinkCopied(false), 2000);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Não foi possível copiar o link', description: getErrorMessage(error) });
+    }
+  };
+  const speedDialActions: SpeedDialAction[] = [
+    {
+      icon: Link2,
+      label: 'Copiar o link público da OS (cliente)',
+      onClick: handleCopyTrackingLink,
+    },
+    {
+      icon: Calculator,
+      label: 'Ferramentas do Técnico',
+      onClick: () => setToolsOpen(true),
+    },
+  ];
 
   // Helper to safely extract joined object (Supabase may return array for some joins)
   const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
@@ -1412,21 +1445,6 @@ export default function TechnicianOS() {
                 </span>
               )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={async () => {
-                const link = buildServiceOrderShareLink(id!);
-                await navigator.clipboard.writeText(link);
-                setTrackingLinkCopied(true);
-                toast({ title: 'Link copiado!' });
-                setTimeout(() => setTrackingLinkCopied(false), 2000);
-              }}
-            >
-              {trackingLinkCopied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
-              {trackingLinkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento do cliente'}
-            </Button>
           </div>
         )}
 
@@ -1482,13 +1500,21 @@ export default function TechnicianOS() {
         {isCheckedIn && equipmentItems.length > 0 && (
           <Card>
             <CardHeader className="pb-2 px-3 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold">
+                <ClipboardCheck className="h-5 w-5 text-primary shrink-0" />
                 Checklists
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3">
-              <Accordion type="multiple" className="w-full">
+              {isPaused && (
+                <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
+                  <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p className="text-sm font-medium">
+                    OS pausada — retome o atendimento para preencher os checklists.
+                  </p>
+                </div>
+              )}
+              <Accordion type="multiple" className={`w-full ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}>
                 {equipmentItems.map((item, idx) => {
                   if (!item.form_template_id) return null;
                   // Composite key — same equipment can carry multiple templates
@@ -1568,6 +1594,7 @@ export default function TechnicianOS() {
                           serviceOrderId={id!}
                           templateId={item.form_template_id!}
                           equipmentId={item.equipment_id || undefined}
+                          readOnly={isPaused}
                           onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
                         />
                       </AccordionContent>
@@ -1603,11 +1630,22 @@ export default function TechnicianOS() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 sm:px-6">
-              <DynamicFormQuestions 
-                serviceOrderId={id!}
-                templateId={serviceOrder.form_template_id}
-                onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
-              />
+              {isPaused && (
+                <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
+                  <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p className="text-sm font-medium">
+                    OS pausada — retome o atendimento para preencher os checklists.
+                  </p>
+                </div>
+              )}
+              <div className={isPaused ? 'opacity-60 cursor-not-allowed' : ''}>
+                <DynamicFormQuestions
+                  serviceOrderId={id!}
+                  templateId={serviceOrder.form_template_id}
+                  readOnly={isPaused}
+                  onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
+                />
+              </div>
             </CardContent>
           </Card>
         )}
@@ -1627,6 +1665,7 @@ export default function TechnicianOS() {
                   value={techSignature}
                   onChange={setTechSignature}
                   label="Assinatura do Técnico"
+                  disabled={isPaused}
                 />
               )}
               {(serviceOrder as any)?.require_client_signature && (
@@ -1634,6 +1673,7 @@ export default function TechnicianOS() {
                   value={clientSignature}
                   onChange={setClientSignature}
                   label="Assinatura do Cliente"
+                  disabled={isPaused}
                 />
               )}
             </CardContent>
@@ -1762,6 +1802,27 @@ export default function TechnicianOS() {
         currentIndex={galleryIndex}
         onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
       />
+
+      {/* FAB speed-dial (canto inferior esquerdo) — atalho pras Ferramentas do Técnico */}
+      <SpeedDialFAB actions={speedDialActions} side="left" />
+
+      {/* Overlay fullscreen: mesmo componente da tela de Ferramentas do Técnico.
+          A OS continua montada por baixo (toolsOpen é estado local), então o
+          técnico volta exatamente onde estava. A navegação interna virou estado
+          (abas), então não precisa mais de router dedicado. */}
+      {toolsOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-background">
+          <div className="flex items-center gap-2 border-b border-border bg-background px-3 py-2 shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => setToolsOpen(false)} className="gap-1.5">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para OS
+            </Button>
+          </div>
+          <div className="flex-1 overflow-auto p-3 sm:p-4">
+            <TechnicianTools hideBack />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

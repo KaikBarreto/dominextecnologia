@@ -31,6 +31,7 @@ import {
   Clapperboard,
   Video,
   Crown,
+  Calculator,
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -79,6 +80,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
+      { title: 'Ferramentas do Técnico', icon: Calculator, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
@@ -361,15 +363,15 @@ export function SidebarMenuContent() {
                           to={child.path}
                           className={({ isActive }) =>
                             cn(
-                              'flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-normal transition-all duration-200',
+                              'flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-200',
                               isActive
-                                ? 'bg-primary text-primary-foreground font-medium'
-                                : 'text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:font-medium'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-muted-foreground hover:bg-primary hover:text-primary-foreground'
                             )
                           }
                         >
-                          <child.icon className="h-4 w-4" />
-                          <span>{child.title}</span>
+                          <child.icon className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 truncate whitespace-nowrap">{child.title}</span>
                         </NavLink>
                       ))}
                     </CollapsibleContent>
@@ -415,7 +417,7 @@ export function SidebarMenuContent() {
                   }
                 >
                   <item.icon className={ICON_SIZE} />
-                  <span>{item.title}</span>
+                  <span className="min-w-0 truncate whitespace-nowrap">{item.title}</span>
                 </NavLink>
               );
             })}

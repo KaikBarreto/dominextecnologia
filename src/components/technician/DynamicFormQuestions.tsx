@@ -102,9 +102,14 @@ interface DynamicFormQuestionsProps {
   templateId: string;
   equipmentId?: string;
   onValidationChange?: (result: FormValidationResult) => void;
+  /**
+   * Bloqueia o preenchimento (OS pausada). Mantém a leitura das respostas já
+   * dadas, mas desabilita toggles, inputs, uploads e edição. Liberar = retomar a OS.
+   */
+  readOnly?: boolean;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
@@ -171,26 +176,47 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     setPendingRemoval(null);
   };
 
-  // Validation effect
+  // Mantém a callback do pai sempre fresca SEM colocá-la nas deps do effect.
+  // O pai (TechnicianOS) passa um arrow inline recriado a cada render; se ele
+  // entrasse nas deps, o effect rodaria → setState no pai → novo render →
+  // nova função → effect de novo = loop infinito ("Maximum update depth").
+  const onValidationChangeRef = useRef(onValidationChange);
   useEffect(() => {
-    if (onValidationChange && questions.length > 0) {
-      const requiredQuestions = questions.filter(q => q.is_required);
-      const missingQuestions: string[] = [];
-      
-      requiredQuestions.forEach(q => {
-        const response = responses[q.id];
-        const hasValue = response?.response_value?.trim() || response?.response_photo_url;
-        if (!hasValue) {
-          missingQuestions.push(q.question);
-        }
-      });
+    onValidationChangeRef.current = onValidationChange;
+  });
 
-      onValidationChange({
-        isValid: missingQuestions.length === 0,
-        missingQuestions,
-      });
-    }
-  }, [questions, responses, onValidationChange]);
+  // Última validação emitida, pra não notificar o pai com resultado idêntico
+  // (corta re-renders desnecessários e qualquer eco de loop).
+  const lastValidationRef = useRef<string | null>(null);
+
+  // Validation effect — depende SÓ de dados (questions/responses), não da callback.
+  useEffect(() => {
+    const cb = onValidationChangeRef.current;
+    if (!cb || questions.length === 0) return;
+
+    const requiredQuestions = questions.filter(q => q.is_required);
+    const missingQuestions: string[] = [];
+
+    requiredQuestions.forEach(q => {
+      const response = responses[q.id];
+      const hasValue = response?.response_value?.trim() || response?.response_photo_url;
+      if (!hasValue) {
+        missingQuestions.push(q.question);
+      }
+    });
+
+    const result: FormValidationResult = {
+      isValid: missingQuestions.length === 0,
+      missingQuestions,
+    };
+
+    // Só emite se mudou de fato.
+    const signature = JSON.stringify(result);
+    if (signature === lastValidationRef.current) return;
+    lastValidationRef.current = signature;
+
+    cb(result);
+  }, [questions, responses]);
 
   useEffect(() => {
     fetchQuestions();
@@ -411,7 +437,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const renderSingleTypeInput = (question: FormQuestion, type: string) => {
     const response = responses[question.id];
     const value = response?.response_value || '';
-    const isSaving = saving === question.id;
+    // OS pausada (readOnly) desabilita tudo junto com o estado de salvando.
+    const isSaving = saving === question.id || readOnly;
 
     switch (type) {
       case 'boolean':
@@ -574,6 +601,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         const photoUrls = photoUrlRaw ? photoUrlRaw.split(',').filter(Boolean) : [];
         const cameraOnly = !!(question as any).require_camera;
         const allowMultiple = (question as any).allow_multiple_photos !== false;
+        // Pausada: trava câmera/galeria (e some o "remover" no overlay via readOnly).
+        const photoDisabled = uploadingPhotos.has(question.id) || readOnly;
 
         return (
           <div className="space-y-2">
@@ -585,14 +614,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 renderImage={(url, alt, className) => <SignedImg src={url} alt={alt} className={className} />}
                 renderOverlay={(idx) => (
                   <>
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 z-10 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
-                      onClick={() => setPendingRemoval({ questionId: question.id, index: idx })}
-                      title="Remover foto"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="absolute top-1 right-1 z-10 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
+                        onClick={() => setPendingRemoval({ questionId: question.id, index: idx })}
+                        title="Remover foto"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
                     {saveToDeviceEnabled && (
                       <button
                         type="button"
@@ -612,7 +643,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               </div>
             )}
             <div className={cameraOnly ? '' : 'grid grid-cols-2 gap-2'}>
-              <label className="cursor-pointer">
+              <label className={photoDisabled ? 'pointer-events-none' : 'cursor-pointer'}>
                 <input
                   type="file"
                   accept="image/*"
@@ -620,9 +651,9 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   capture="environment"
                   className="hidden"
                   onChange={(e) => handlePhotoUpload(e, question.id, true)}
-                  disabled={uploadingPhotos.has(question.id)}
+                  disabled={photoDisabled}
                 />
-                <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
+                <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
                   <span>
                     <Camera className="h-3 w-3 mr-1" />
                     {uploadingPhotos.has(question.id) ? 'Enviando...' : 'Tirar Foto'}
@@ -630,16 +661,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 </Button>
               </label>
               {!cameraOnly && (
-                <label className="cursor-pointer">
+                <label className={photoDisabled ? 'pointer-events-none' : 'cursor-pointer'}>
                   <input
                     type="file"
                     accept="image/*"
                     multiple={allowMultiple}
                     className="hidden"
                     onChange={(e) => handlePhotoUpload(e, question.id)}
-                    disabled={uploadingPhotos.has(question.id)}
+                    disabled={photoDisabled}
                   />
-                  <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
+                  <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
                     <span>
                       <ImageIcon className="h-3 w-3 mr-1" />
                       {uploadingPhotos.has(question.id) ? 'Enviando...' : 'Galeria'}
@@ -737,7 +768,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             </div>
           );
         })}
-        {answeredType && (
+        {answeredType && !readOnly && (
           <Button
             variant="ghost"
             size="sm"
@@ -767,7 +798,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 {question.question}
                 {question.is_required && <span className="text-destructive ml-1">*</span>}
               </span>
-              {hasAnswer && !isEditing && (
+              {hasAnswer && !isEditing && !readOnly && (
                 <button
                   type="button"
                   className="p-1 rounded hover:bg-muted transition-colors shrink-0"
