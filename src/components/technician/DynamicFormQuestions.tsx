@@ -20,6 +20,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { SignedImg } from '@/components/ui/SignedImg';
+import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
@@ -112,6 +114,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
   // Confirmação antes de remover uma foto (qual pergunta + índice da foto).
   const [pendingRemoval, setPendingRemoval] = useState<{ questionId: string; index: number } | null>(null);
+  // Visualizador de foto ampliada ao tocar (nunca abre nova aba).
+  const [previewImages, setPreviewImages] = useState<{ urls: string[]; index: number } | null>(null);
   // Fotos recém-tiradas pela câmera, aguardando o usuário decidir se salva no aparelho.
   const [photosToSave, setPhotosToSave] = useState<File[] | null>(null);
 
@@ -556,13 +560,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         return (
           <div className="space-y-2">
             {photoUrls.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {photoUrls.map((url, idx) => (
-                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                    <SignedImg src={url} alt={`Resposta ${idx + 1}`} className="w-full h-full object-cover" />
+              <PhotoCarousel
+                urls={photoUrls}
+                aspectClassName="aspect-square"
+                onOpen={(i) => setPreviewImages({ urls: photoUrls, index: i })}
+                renderImage={(url, alt, className) => <SignedImg src={url} alt={alt} className={className} />}
+                renderOverlay={(idx) => (
+                  <>
                     <button
                       type="button"
-                      className="absolute top-1 right-1 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
+                      className="absolute top-1 right-1 z-10 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
                       onClick={() => setPendingRemoval({ questionId: question.id, index: idx })}
                       title="Remover foto"
                     >
@@ -571,18 +578,18 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                     {saveToDeviceEnabled && (
                       <button
                         type="button"
-                        className="absolute bottom-1 right-1 p-1.5 rounded-full bg-black/60 text-white shadow-sm"
-                        onClick={() => handleSavePhotoToDevice(url)}
+                        className="absolute bottom-1 right-1 z-10 p-1.5 rounded-full bg-black/60 text-white shadow-sm"
+                        onClick={() => handleSavePhotoToDevice(photoUrls[idx])}
                         title="Salvar imagem no aparelho"
                       >
                         <Download className="h-3 w-3" />
                       </button>
                     )}
-                  </div>
-                ))}
-              </div>
+                  </>
+                )}
+              />
             ) : (
-              <div className="aspect-video rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+              <div className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
                 <Camera className="h-8 w-8 text-muted-foreground/50" />
               </div>
             )}
@@ -871,6 +878,18 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           </div>
         )}
       </ResponsiveModal>
+
+      {/* Visualizador de foto ampliada — tocar numa foto enviada abre aqui (não em nova aba). */}
+      {previewImages && (
+        <ImagePreviewModal
+          open
+          src={previewImages.urls[previewImages.index]}
+          images={previewImages.urls}
+          currentIndex={previewImages.index}
+          onNavigate={(index) => setPreviewImages((prev) => (prev ? { ...prev, index } : prev))}
+          onClose={() => setPreviewImages(null)}
+        />
+      )}
     </div>
   );
 }

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.31',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos da OS em carrossel',
+        description: 'No preenchimento da ordem de serviço, as fotos já enviadas agora aparecem quadradas e, quando há mais de uma, em carrossel deslizável (igual ao relatório). Tocar na foto amplia em tela cheia.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.30',
     date: '13 de junho de 2026',
     type: 'patch',

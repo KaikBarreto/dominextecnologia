@@ -25,12 +25,15 @@ export function PhotoCarousel({
   onOpen,
   renderImage,
   renderOverlay,
+  aspectClassName = 'aspect-[4/3]',
 }: {
   urls: string[];
   onOpen: (index: number) => void;
   /** Componente de imagem do consumidor. Recebe url, alt e className. */
   renderImage: (url: string, alt: string, className: string) => ReactNode;
   renderOverlay?: (index: number) => ReactNode;
+  /** Proporção do quadro da foto (default 4/3). Ex.: 'aspect-square' no preenchimento. */
+  aspectClassName?: string;
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -45,16 +48,22 @@ export function PhotoCarousel({
     };
   }, [api]);
 
+  // O overlay é IRMÃO do button (não filho) pra permitir overlays interativos
+  // — botão dentro de botão é HTML inválido e engole o clique. Quem consome o
+  // overlay posiciona absolute por cima; como não está aninhado, seus cliques
+  // não disparam o onOpen.
   const renderPhoto = (url: string, index: number) => (
-    <button
-      type="button"
-      onClick={() => onOpen(index)}
-      aria-label={`Ampliar foto ${index + 1} de ${urls.length}`}
-      className="relative block w-full aspect-[4/3] rounded-lg overflow-hidden bg-muted hover:opacity-90 active:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      {renderImage(url, `Foto ${index + 1}`, 'w-full h-full object-cover')}
+    <div className={cn('relative w-full overflow-hidden rounded-lg bg-muted', aspectClassName)}>
+      <button
+        type="button"
+        onClick={() => onOpen(index)}
+        aria-label={`Ampliar foto ${index + 1} de ${urls.length}`}
+        className="block w-full h-full hover:opacity-90 active:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {renderImage(url, `Foto ${index + 1}`, 'w-full h-full object-cover')}
+      </button>
       {renderOverlay?.(index)}
-    </button>
+    </div>
   );
 
   // Uma foto só: sem carrossel nem dots.
