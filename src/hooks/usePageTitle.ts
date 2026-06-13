@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 const ROUTE_TITLES: Record<string, string> = {
-  "/": "Início",
   "/login": "Login",
   "/cadastro": "Cadastro",
   "/reset-password": "Redefinir Senha",
@@ -43,7 +42,7 @@ const ROUTE_TITLES: Record<string, string> = {
 };
 
 const SUFFIX = " | Dominex";
-const DEFAULT_TITLE = "Dominex — Gestão de Equipes de Campo";
+const DEFAULT_TITLE = "Dominex — Gestão de Equipes de Campo e Ordens de Serviço";
 
 export const usePageTitle = () => {
   const { pathname } = useLocation();
