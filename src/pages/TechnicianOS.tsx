@@ -1063,7 +1063,7 @@ export default function TechnicianOS() {
                         const hasMultipleOnSameEquip = sameEquipCount > 1;
                         return (
                           <AccordionItem key={groupKey} value={groupKey} className="border-b last:border-0">
-                            <AccordionTrigger className="hover:no-underline py-3 gap-2">
+                            <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
                               <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                                 {group.equipment?.equipment?.photo_url ? (
                                   <SignedImg
@@ -1505,7 +1505,7 @@ export default function TechnicianOS() {
                   const hasMultipleOnSameEquip = sameEquipCount > 1;
                   return (
                     <AccordionItem key={itemKey} value={itemKey} className="border-b last:border-0">
-                      <AccordionTrigger className="hover:no-underline py-3 gap-2">
+                      <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                           {item.equipment?.photo_url ? (
                             <SignedImg
