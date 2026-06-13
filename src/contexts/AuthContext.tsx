@@ -253,6 +253,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     WHITE_LABEL_VARS.forEach((v) => root.style.removeProperty(v));
     root.classList.remove('dark');
     localStorage.removeItem('theme');
+    // Limpa a cache da marca usada no boot síncrono (index.html). Sem isto o
+    // próximo usuário a logar neste aparelho veria a cor do tenant anterior
+    // piscar no reload antes do useWhiteLabel re-rodar (regra-lei nº2).
+    localStorage.removeItem('__wl_primary');
+    localStorage.removeItem('__wl_gradient');
     queryClient.clear();
     setUser(null);
     setSession(null);

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.25',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Sua identidade visual aparece na hora',
+        description: 'Para empresas com cores e logo personalizados, corrigimos um detalhe em que, ao puxar a tela para atualizar, as cores da sua marca demoravam um instante para carregar. Agora elas aparecem imediatamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.24',
     date: '13 de junho de 2026',
     type: 'patch',

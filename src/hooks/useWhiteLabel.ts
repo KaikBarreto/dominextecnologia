@@ -52,26 +52,54 @@ function buildBrandGradient(hsl: string) {
   return `linear-gradient(135deg, hsl(${hsl}) 0%, hsl(${h} ${s} ${glowLightness}%) 100%)`;
 }
 
+// Cache da marca do tenant para reaplicação síncrona no boot (index.html),
+// eliminando o flash da cor verde padrão da Dominex no reload/pull-to-refresh.
+// Os nomes das chaves são FIXOS e duplicados como string literal no script
+// inline do index.html (que é JS puro e não importa constantes).
+function cacheWhiteLabel(hsl: string, gradient: string) {
+  try {
+    localStorage.setItem('__wl_primary', hsl);
+    localStorage.setItem('__wl_gradient', gradient);
+  } catch (_) {
+    /* localStorage pode lançar em modo privado/iOS — ignorar */
+  }
+}
+
+function clearWhiteLabelCache() {
+  try {
+    localStorage.removeItem('__wl_primary');
+    localStorage.removeItem('__wl_gradient');
+  } catch (_) {
+    /* localStorage pode lançar em modo privado/iOS — ignorar */
+  }
+}
+
 export function applyWhiteLabelTheme(enabled: boolean, primaryColor?: string | null) {
   const root = document.documentElement;
 
   if (!enabled || !primaryColor) {
     WHITE_LABEL_VARS.forEach((variable) => root.style.removeProperty(variable));
+    clearWhiteLabelCache();
     return;
   }
 
   const hsl = hexToHsl(primaryColor);
   if (!hsl) {
     WHITE_LABEL_VARS.forEach((variable) => root.style.removeProperty(variable));
+    clearWhiteLabelCache();
     return;
   }
 
+  const gradient = buildBrandGradient(hsl);
   root.style.setProperty('--primary', hsl);
   root.style.setProperty('--ring', hsl);
   root.style.setProperty('--sidebar-primary', hsl);
   root.style.setProperty('--sidebar-accent', hsl);
   root.style.setProperty('--sidebar-ring', hsl);
-  root.style.setProperty('--gradient-brand', buildBrandGradient(hsl));
+  root.style.setProperty('--gradient-brand', gradient);
+
+  // Persiste a marca já computada para o boot síncrono no próximo load.
+  cacheWhiteLabel(hsl, gradient);
 }
 
 export function useWhiteLabel() {

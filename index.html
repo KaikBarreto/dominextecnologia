@@ -143,6 +143,13 @@
     <script>
       (function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})();
     </script>
+    <!-- Reaplica a marca (white-label) do tenant ANTES do React montar, lendo o
+         HSL e o gradient já computados no localStorage. Evita o flash da cor
+         verde padrão da Dominex no reload/pull-to-refresh em tenant white-label.
+         Não recomputa nada — só lê as chaves prontas gravadas por applyWhiteLabelTheme. -->
+    <script>
+      (function(){try{var p=localStorage.getItem('__wl_primary');if(!p)return;var g=localStorage.getItem('__wl_gradient');var r=document.documentElement.style;r.setProperty('--primary',p);r.setProperty('--ring',p);r.setProperty('--sidebar-primary',p);r.setProperty('--sidebar-accent',p);r.setProperty('--sidebar-ring',p);if(g)r.setProperty('--gradient-brand',g)}catch(e){}})();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
