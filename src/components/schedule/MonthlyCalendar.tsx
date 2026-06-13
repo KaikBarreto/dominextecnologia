@@ -145,7 +145,14 @@ export function MonthlyCalendar({
                 {dayOrders.length > 0 && (
                   <div className="flex gap-0.5 mt-1 h-2">
                     {dayOrders.slice(0, 3).map((order) => {
-                      const color = (order as any).service_type?.color || 'hsl(var(--primary))';
+                      // Mesma regra de cor do EventCard (visões Dia/Semana):
+                      // tarefa sem tipo → roxo (violet-500 = #8b5cf6);
+                      // senão cor do tipo de serviço; senão cor da marca.
+                      const isTask = (order as any).entry_type === 'tarefa';
+                      const serviceTypeColor = (order as any).service_type?.color;
+                      const color = isTask && !serviceTypeColor
+                        ? '#8b5cf6'
+                        : serviceTypeColor || 'hsl(var(--primary))';
                       return (
                         <div
                           key={order.id}
