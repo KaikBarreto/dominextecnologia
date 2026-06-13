@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.11',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Régua de Gases e Superaquecimento aprimorados',
+        description: 'A Régua de Gases ganhou escala dupla (pressão e temperatura juntas), com seleção de gás e de fórmula (bolha/orvalho). E no Superaquecimento, quando a pressão informada está fora da faixa na unidade escolhida, o app avisa e oferece recalcular na unidade certa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.10',
     date: '13 de junho de 2026',
     type: 'patch',

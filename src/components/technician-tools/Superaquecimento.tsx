@@ -17,11 +17,14 @@ import {
   calcularSuperaquecimento,
   calcularSubresfriamento,
   pressaoParaTempSat,
+  sugerirOutraUnidade,
   formatarTemp,
   getRefrigerante,
   type UnidadePressao,
   type ClassificacaoFaixa,
   type ResultadoSaturacao,
+  type SugestaoUnidade,
+  type Curva,
 } from '@/lib/refrigerantes';
 
 /** Converte string crua de input numérico em number, com default seguro. */
@@ -57,6 +60,12 @@ interface CardCalculoProps {
   faixaTexto: string;
   /** true se a pressão foi digitada mas caiu fora da faixa da tabela. */
   foraDaFaixa: boolean;
+  /** Texto do valor digitado (pra mostrar no aviso). */
+  pressaoBruta: string;
+  /** Sugestão de troca de unidade quando a outra encaixa, ou null. */
+  sugestao: SugestaoUnidade | null;
+  /** Troca a unidade para a sugerida (atalho do aviso). */
+  onTrocarUnidade: (u: UnidadePressao) => void;
 }
 
 function CardCalculo({
@@ -72,6 +81,9 @@ function CardCalculo({
   resultado,
   faixaTexto,
   foraDaFaixa,
+  pressaoBruta,
+  sugestao,
+  onTrocarUnidade,
 }: CardCalculoProps) {
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
@@ -132,6 +144,13 @@ function CardCalculo({
               </p>
             )}
           </>
+        ) : sugestao ? (
+          <AvisoUnidade
+            pressaoBruta={pressaoBruta}
+            unidade={unidade}
+            sugestao={sugestao}
+            onTrocarUnidade={onTrocarUnidade}
+          />
         ) : foraDaFaixa ? (
           <p className="text-sm text-amber-600 dark:text-amber-400">
             Pressão fora da faixa da tabela para este refrigerante. Confira a leitura.
@@ -141,6 +160,87 @@ function CardCalculo({
             Informe a pressão e a temperatura para ver o resultado.
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface AvisoUnidadeProps {
+  pressaoBruta: string;
+  unidade: UnidadePressao;
+  sugestao: SugestaoUnidade;
+  onTrocarUnidade: (u: UnidadePressao) => void;
+}
+
+/**
+ * Aviso útil quando a pressão está fora da faixa na unidade atual mas encaixa
+ * na outra. Mostra a T_sat que daria e um atalho pra trocar e recalcular.
+ */
+function AvisoUnidade({ pressaoBruta, unidade, sugestao, onTrocarUnidade }: AvisoUnidadeProps) {
+  return (
+    <div className="space-y-3 text-left">
+      <p className="text-sm text-amber-600 dark:text-amber-400">
+        <span className="font-semibold">{pressaoBruta.trim()}</span> está fora da faixa em{' '}
+        <span className="font-semibold">{unidade}</span>. Em{' '}
+        <span className="font-semibold">{sugestao.unidadeSugerida}</span> daria saturação ≈{' '}
+        <span className="font-semibold">{formatarTemp(sugestao.tempSat)} °C</span>.
+      </p>
+      <button
+        type="button"
+        onClick={() => onTrocarUnidade(sugestao.unidadeSugerida)}
+        className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity active:opacity-80"
+      >
+        Trocar para {sugestao.unidadeSugerida} e recalcular
+      </button>
+    </div>
+  );
+}
+
+interface SelecoesCompartilhadasProps {
+  refrigId: string;
+  setRefrigId: (v: string) => void;
+  unidade: UnidadePressao;
+  setUnidade: (v: UnidadePressao) => void;
+}
+
+/** Selects de Refrigerante + Unidade — estado vive no pai, aparece em toda subaba. */
+function SelecoesCompartilhadas({
+  refrigId,
+  setRefrigId,
+  unidade,
+  setUnidade,
+}: SelecoesCompartilhadasProps) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label className="text-base text-muted-foreground md:text-lg">Refrigerante</Label>
+          <Select value={refrigId} onValueChange={setRefrigId}>
+            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+              <SelectValue placeholder="Refrigerante" />
+            </SelectTrigger>
+            <SelectContent>
+              {REFRIGERANTES.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-base text-muted-foreground md:text-lg">Unidade de pressão</Label>
+          <Select value={unidade} onValueChange={(v) => setUnidade(v as UnidadePressao)}>
+            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+              <SelectValue placeholder="Unidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bar">bar</SelectItem>
+              <SelectItem value="psi">psi</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );
@@ -198,6 +298,25 @@ export function Superaquecimento() {
   const scForaFaixa = Number.isFinite(num(pAlta)) && resultadoSC.tempSat === null;
   const consultaForaFaixa = Number.isFinite(num(pConsulta)) && tempConsulta === null;
 
+  // Curvas usadas em cada cálculo (SH=dew/única, SC=bubble/única, PT=dew/única).
+  const curvaSH: Curva = refrig?.temGlide ? 'dew' : 'unica';
+  const curvaSC: Curva = refrig?.temGlide ? 'bubble' : 'unica';
+  const curvaPT: Curva = refrig?.temGlide ? 'dew' : 'unica';
+
+  // Sugestão de troca de unidade: só quando fora na atual e dentro na outra.
+  const sugestaoSH = useMemo(
+    () => sugerirOutraUnidade(refrigId, num(pBaixa), unidade, curvaSH),
+    [refrigId, pBaixa, unidade, curvaSH],
+  );
+  const sugestaoSC = useMemo(
+    () => sugerirOutraUnidade(refrigId, num(pAlta), unidade, curvaSC),
+    [refrigId, pAlta, unidade, curvaSC],
+  );
+  const sugestaoPT = useMemo(
+    () => sugerirOutraUnidade(refrigId, num(pConsulta), unidade, curvaPT),
+    [refrigId, pConsulta, unidade, curvaPT],
+  );
+
   return (
     <div className="space-y-4 pb-4">
       <div>
@@ -207,43 +326,6 @@ export function Superaquecimento() {
         <p className="text-sm text-muted-foreground md:text-base">
           Calcule SH e SC pela pressão e temperatura medidas em campo.
         </p>
-      </div>
-
-      {/* Seleções compartilhadas */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">Refrigerante</Label>
-            <Select value={refrigId} onValueChange={setRefrigId}>
-              <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-                <SelectValue placeholder="Refrigerante" />
-              </SelectTrigger>
-              <SelectContent>
-                {REFRIGERANTES.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">Unidade de pressão</Label>
-            <Select
-              value={unidade}
-              onValueChange={(v) => setUnidade(v as UnidadePressao)}
-            >
-              <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-                <SelectValue placeholder="Unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bar">bar</SelectItem>
-                <SelectItem value="psi">psi</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
       </div>
 
       {/* Subnavegação underline — rolável horizontalmente no mobile */}
@@ -264,6 +346,14 @@ export function Superaquecimento() {
         ))}
       </div>
 
+      {/* Seleções compartilhadas — agora dentro do conteúdo, válidas em toda subaba */}
+      <SelecoesCompartilhadas
+        refrigId={refrigId}
+        setRefrigId={setRefrigId}
+        unidade={unidade}
+        setUnidade={setUnidade}
+      />
+
       {/* Superaquecimento */}
       {subAba === 'sh' && (
         <CardCalculo
@@ -279,6 +369,9 @@ export function Superaquecimento() {
           resultado={resultadoSH}
           faixaTexto={`ideal ${FAIXA_SH.min}–${FAIXA_SH.max} °C`}
           foraDaFaixa={shForaFaixa}
+          pressaoBruta={pBaixa}
+          sugestao={sugestaoSH}
+          onTrocarUnidade={setUnidade}
         />
       )}
 
@@ -297,6 +390,9 @@ export function Superaquecimento() {
           resultado={resultadoSC}
           faixaTexto={`ideal ${FAIXA_SC.min}–${FAIXA_SC.max} °C`}
           foraDaFaixa={scForaFaixa}
+          pressaoBruta={pAlta}
+          sugestao={sugestaoSC}
+          onTrocarUnidade={setUnidade}
         />
       )}
 
@@ -328,6 +424,13 @@ export function Superaquecimento() {
                 {formatarTemp(tempConsulta)}
                 <span className="ml-1.5 text-2xl font-semibold sm:text-3xl">°C</span>
               </p>
+            ) : sugestaoPT ? (
+              <AvisoUnidade
+                pressaoBruta={pConsulta}
+                unidade={unidade}
+                sugestao={sugestaoPT}
+                onTrocarUnidade={setUnidade}
+              />
             ) : consultaForaFaixa ? (
               <p className="text-sm text-amber-600 dark:text-amber-400">
                 Pressão fora da faixa da tabela para este refrigerante.

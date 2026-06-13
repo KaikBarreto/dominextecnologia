@@ -311,6 +311,39 @@ export function tempParaPressao(
   return null;
 }
 
+/** A outra unidade de pressão (helper). */
+export function outraUnidade(u: UnidadePressao): UnidadePressao {
+  return u === 'bar' ? 'psi' : 'bar';
+}
+
+/**
+ * Sugestão quando a pressão está fora da faixa na unidade escolhida MAS
+ * dentro da faixa na outra unidade (caso clássico: digitar 120 em bar
+ * querendo psi). Retorna a unidade alternativa e a T_sat que ela daria,
+ * ou null se também estiver fora na outra unidade.
+ */
+export interface SugestaoUnidade {
+  unidadeSugerida: UnidadePressao;
+  tempSat: number;
+}
+
+export function sugerirOutraUnidade(
+  refrigId: string,
+  pressao: number,
+  unidadeAtual: UnidadePressao,
+  curva: Curva,
+): SugestaoUnidade | null {
+  if (!Number.isFinite(pressao)) return null;
+  // Só sugere se está fora na unidade atual.
+  if (pressaoParaTempSat(refrigId, pressao, unidadeAtual, curva) !== null) {
+    return null;
+  }
+  const alt = outraUnidade(unidadeAtual);
+  const tempSat = pressaoParaTempSat(refrigId, pressao, alt, curva);
+  if (tempSat === null) return null;
+  return { unidadeSugerida: alt, tempSat };
+}
+
 /** Classificação de uma medida frente a uma faixa-alvo. */
 export type ClassificacaoFaixa = 'baixo' | 'ideal' | 'alto';
 

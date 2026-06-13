@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.10";
+export const APP_VERSION = "1.12.11";
 
-export const VERSION_NOTES = "Ferramentas do Técnico mais completas: nova Régua de Gases, cálculo de Superaquecimento e Subresfriamento, modo Preciso (LRA) no Cálculo de Capacitor, além de Favoritos, Recentes e atalhos de conversão.";
+export const VERSION_NOTES = "Régua de Gases com escala dupla (pressão e temperatura) e seleção de gás e fórmula, e o Superaquecimento agora sugere a unidade certa quando a leitura está fora da faixa.";

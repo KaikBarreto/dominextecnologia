@@ -249,25 +249,6 @@ function ConversaoCategoriaView({
 
   return (
     <div className="space-y-3">
-    {origemCode !== destinoCode && (
-      <div className="flex justify-end">
-        <button
-          type="button"
-          aria-pressed={isFavorito}
-          onClick={() => toggleConversaoFavorita({ categoria, de: origemCode, para: destinoCode })}
-          className={cn(
-            'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.97]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            isFavorito
-              ? 'border-warning/40 bg-warning/10 text-warning'
-              : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40',
-          )}
-        >
-          <Star className={cn('h-3.5 w-3.5 shrink-0', isFavorito && 'fill-current')} />
-          {isFavorito ? 'Favorito' : 'Favoritar'}
-        </button>
-      </div>
-    )}
     {isParHpBtu && (
       <div className="rounded-lg border border-border bg-card p-3">
         <p className="mb-2 text-xs font-medium text-muted-foreground">Modo de cálculo</p>
@@ -300,7 +281,25 @@ function ConversaoCategoriaView({
         </div>
       </div>
     )}
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="relative rounded-lg border border-border bg-card p-4 pt-9">
+      {/* Favoritar o par atual — canto superior direito do card */}
+      {origemCode !== destinoCode && (
+        <button
+          type="button"
+          aria-pressed={isFavorito}
+          aria-label={isFavorito ? 'Remover dos favoritos' : 'Favoritar conversão'}
+          onClick={() => toggleConversaoFavorita({ categoria, de: origemCode, para: destinoCode })}
+          className={cn(
+            'absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full transition-all active:scale-[0.92]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            isFavorito
+              ? 'text-warning hover:bg-warning/10'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          )}
+        >
+          <Star className={cn('h-5 w-5 shrink-0', isFavorito && 'fill-current')} />
+        </button>
+      )}
       {/* ===== Layout MOBILE (3 linhas: labels / selects+⇄ / valores+"=") ===== */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2 lg:hidden">
         {/* Linha 1: labels */}
