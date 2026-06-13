@@ -108,7 +108,7 @@ const tenantMenuItems: MenuItem[] = [
       // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
       // escondia a aba dentro da página); Relatório (Visão Geral + DRE) e
       // Movimentações são base. A aba DRE dentro do Relatório é gateada inline.
-      { title: 'Relatório Financeiro', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
+      { title: 'Visão Geral', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
       { title: 'Movimentações Financeiras', icon: HistoryIcon, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
       { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
     ],

@@ -1,8 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown, Landmark, CreditCard } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown, Landmark, CreditCard, HelpCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+// Tooltip do shadcn vem com alias pra não colidir com o <Tooltip> do recharts (acima).
+// O TooltipProvider global vive em App.tsx, então aqui só consumimos.
+import {
+  Tooltip as UiTooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -222,10 +229,23 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               <CardContent className="p-3 sm:p-5">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo do Período</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo do Período</p>
+                      <UiTooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-white/70 hover:text-white transition-colors" aria-label="Como o saldo é calculado">
+                            <HelpCircle className="h-3 w-3" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[240px]">
+                          O saldo do período é o total de receitas já recebidas menos o total de despesas já pagas dentro do período filtrado. Não considera valores a receber/a pagar nem o saldo existente nas contas.
+                        </TooltipContent>
+                      </UiTooltip>
+                    </div>
                     <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">
                       {formatCurrency(summary.saldo)}
                     </p>
+                    <p className="text-[10px] text-white/70 mt-0.5">(Receitas − Despesas)</p>
                   </div>
                   <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
                     <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
