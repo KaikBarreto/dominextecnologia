@@ -17,6 +17,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 
 import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
+import { getCategoryIcon } from '@/components/financial/categoryIcons';
 
 interface AdminFinancialMovementModalProps {
   open: boolean;
@@ -33,18 +34,23 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date>(new Date());
+  const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
-    if (open) { setType(defaultType); setCategory(''); setAmount(''); setDescription(''); setDate(new Date()); }
+    if (open) { setType(defaultType); setCategory(''); setAmount(''); setDescription(''); setDate(new Date()); setShowErrors(false); }
   }, [open, defaultType]);
 
-  const categories = allCategories.filter((c) => c.type === type).map((c) => ({ value: c.name, label: c.label }));
+  const typeCategories = allCategories.filter((c) => c.type === type);
+  const categories = typeCategories.map((c) => ({ value: c.name, label: c.label, color: c.color, icon: c.icon }));
+  const selectedCategory = typeCategories.find((c) => c.name === category);
+
+  const parsedAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
+  const amountInvalid = isNaN(parsedAmount) || parsedAmount <= 0;
+  const categoryMissing = !category;
+  const formInvalid = amountInvalid || categoryMissing;
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const parsedAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.'));
-      if (isNaN(parsedAmount) || parsedAmount <= 0) throw new Error('Valor inválido');
-      if (!category) throw new Error('Selecione uma categoria');
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('admin_financial_transactions').insert({ type, category, amount: parsedAmount, description: description || null, transaction_date: date.toISOString(), created_by: user?.id });
       if (error) throw error;
@@ -52,6 +58,15 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-financial-transactions'] }); toast({ title: 'Movimentação criada!' }); onOpenChange(false); },
     onError: (error: any) => { toast({ title: 'Erro', description: getErrorMessage(error), variant: 'destructive' }); },
   });
+
+  const handleSubmit = () => {
+    if (formInvalid) {
+      setShowErrors(true);
+      toast({ title: 'Confira os campos', description: 'Preencha o valor e selecione uma categoria.', variant: 'destructive' });
+      return;
+    }
+    mutation.mutate();
+  };
 
   return (
     <ResponsiveModal
@@ -61,11 +76,11 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
       footer={
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="flex-1">{mutation.isPending ? 'Salvando...' : 'Salvar'}</Button>
+          <Button onClick={handleSubmit} disabled={mutation.isPending || formInvalid} className="flex-1">{mutation.isPending ? 'Salvando...' : 'Salvar'}</Button>
         </div>
       }
     >
-      <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
         <div className="space-y-2">
           <Label>Tipo</Label>
           <div className="grid grid-cols-2 gap-3">
@@ -83,14 +98,52 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
         <div className="space-y-2">
           <Label>Categoria</Label>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-            <SelectContent>{categories.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+            <SelectTrigger className={cn(showErrors && categoryMissing && 'border-destructive focus:ring-destructive')}>
+              <SelectValue placeholder="Selecione">
+                {selectedCategory && (() => {
+                  const Icon = getCategoryIcon(selectedCategory.icon);
+                  return (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: selectedCategory.color }} />
+                      <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: selectedCategory.color }} />
+                      <span>{selectedCategory.label}</span>
+                    </span>
+                  );
+                })()}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => {
+                const Icon = getCategoryIcon(c.icon);
+                return (
+                  <SelectItem key={c.value} value={c.value}>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                      <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: c.color }} />
+                      <span>{c.label}</span>
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
           </Select>
+          {showErrors && categoryMissing && (
+            <p className="text-xs text-destructive">Selecione uma categoria</p>
+          )}
         </div>
 
         <div className="space-y-2">
           <Label>Valor (R$)</Label>
-          <Input placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} className="text-lg font-medium" />
+          <Input
+            placeholder="0,00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            className={cn('text-lg font-medium', showErrors && amountInvalid && 'border-destructive focus-visible:ring-destructive')}
+          />
+          {showErrors && amountInvalid && (
+            <p className="text-xs text-destructive">Informe um valor maior que zero</p>
+          )}
         </div>
 
         <div className="space-y-2">

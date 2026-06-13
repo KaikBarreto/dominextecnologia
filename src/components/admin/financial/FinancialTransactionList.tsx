@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { AdminFinancialCategory } from '@/hooks/useAdminFinancialCategories';
+import { AdminCategoryPill } from './AdminCategoryPill';
 
 interface Props {
   transactions: any[];
@@ -22,7 +23,6 @@ export function FinancialTransactionList({ transactions, categories, variant = '
   const isMobile = useIsMobile();
 
   const labelFor = (name: string) => categories.find((c) => c.name === name)?.label ?? name;
-  const colorFor = (name: string) => categories.find((c) => c.name === name)?.color ?? '#64748b';
 
   if (transactions.length === 0) {
     return (
@@ -59,10 +59,7 @@ export function FinancialTransactionList({ transactions, categories, variant = '
               subtitle={
                 <div className="flex items-center gap-2 flex-wrap text-[11px]">
                   <span>{format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorFor(t.category) }} />
-                    {labelFor(t.category)}
-                  </span>
+                  <AdminCategoryPill name={t.category} categories={categories} size="sm" />
                 </div>
               }
               trailing={
@@ -107,9 +104,7 @@ export function FinancialTransactionList({ transactions, categories, variant = '
                 </TableCell>
               )}
               <TableCell>
-                <Badge variant="outline" style={{ borderColor: colorFor(t.category), color: colorFor(t.category) }}>
-                  {labelFor(t.category)}
-                </Badge>
+                <AdminCategoryPill name={t.category} categories={categories} />
               </TableCell>
               <TableCell className="text-sm max-w-[300px] truncate">{t.description || '-'}</TableCell>
               <TableCell className={cn('text-right font-medium', t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>

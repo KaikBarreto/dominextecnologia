@@ -7,6 +7,7 @@ import {
   Heart, Star, Gift, Coffee, UtensilsCrossed, Car,
   Plane, MapPin, Package, Box, Layers, Target,
   Percent, Calculator, CircleDollarSign, HandCoins, Landmark, BadgeDollarSign,
+  RefreshCw, Handshake, Megaphone, Code, Server, Building, MoreHorizontal, Plus, Circle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -60,6 +61,15 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   HandCoins,
   Landmark,
   BadgeDollarSign,
+  RefreshCw,
+  Handshake,
+  Megaphone,
+  Code,
+  Server,
+  Building,
+  MoreHorizontal,
+  Plus,
+  Circle,
 };
 
 export type CategoryIconKey = keyof typeof CATEGORY_ICONS;
