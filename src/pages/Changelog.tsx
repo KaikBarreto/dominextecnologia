@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.12',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Superaquecimento por modelo/fabricante',
+        description: 'No Superaquecimento, escolha o modelo/fabricante do equipamento e o app indica a faixa ideal de superaquecimento e subresfriamento conforme a referência daquele fabricante — avisando quando a marca não publica esse dado. A tela ganhou uma ilustração do ciclo de refrigeração e avisos reforçados de que os valores são estimativas; sempre confira o manual do fabricante.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.11',
     date: '13 de junho de 2026',
     type: 'patch',

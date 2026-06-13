@@ -554,8 +554,10 @@ export function ReguaGases() {
         <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
         <p className="text-xs leading-relaxed">
           <span className="font-semibold text-foreground">Atenção: </span>
-          valores de saturação baseados em tabelas NIST/fabricantes. Só o R-404A tem glide (curvas
-          bubble/dew diferentes); nos demais a curva é única. Sempre confira a carta do fabricante.
+          estes valores são sempre uma estimativa de referência e não devem ser usados
+          isoladamente. Sempre confira o manual do fabricante do equipamento antes de tomar
+          decisões de carga ou diagnóstico. Só o R-404A tem glide (curvas bubble/dew diferentes);
+          nos demais a curva é única.
         </p>
       </div>
     </div>

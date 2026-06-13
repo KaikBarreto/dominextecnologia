@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.11";
+export const APP_VERSION = "1.12.12";
 
-export const VERSION_NOTES = "Régua de Gases com escala dupla (pressão e temperatura) e seleção de gás e fórmula, e o Superaquecimento agora sugere a unidade certa quando a leitura está fora da faixa.";
+export const VERSION_NOTES = "No Superaquecimento, escolha o modelo/fabricante do equipamento para ver a faixa ideal conforme a referência do fabricante, com ilustração do ciclo de refrigeração e avisos reforçados.";

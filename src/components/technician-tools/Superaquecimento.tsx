@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,12 +10,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { CicloRefrigeracaoIlustracao } from './CicloRefrigeracaoIlustracao';
+import {
+  MODELOS_SUPERAQUECIMENTO,
+  MODELO_PADRAO_ID,
+  getModeloSuperaquecimento,
+  type ConfiancaModelo,
+  type Faixa,
+} from '@/lib/superaquecimentoModelos';
 import {
   REFRIGERANTES,
   FAIXA_SH,
   FAIXA_SC,
   calcularSuperaquecimento,
   calcularSubresfriamento,
+  classificarFaixa,
   pressaoParaTempSat,
   sugerirOutraUnidade,
   formatarTemp,
@@ -46,6 +55,36 @@ function corSelo(c: ClassificacaoFaixa): string {
   return 'bg-amber-500/15 text-amber-600 dark:text-amber-400';
 }
 
+/** Rótulo curto da confiança da fonte do alvo (pra acompanhar a nota). */
+const ROTULO_CONFIANCA: Record<ConfiancaModelo, string | null> = {
+  alta: null, // fonte firme — não precisa ressalva
+  media: 'Fonte secundária',
+  baixa: 'Fonte limitada',
+  generico: 'Referência genérica',
+};
+
+/**
+ * Resolve a faixa-alvo efetiva de um cálculo a partir do alvo do modelo,
+ * com fallback pra faixa genérica quando o fabricante não publica.
+ * `delta` vem da física pura — aqui só reclassificamos contra a faixa do modelo.
+ */
+function resolverAlvo(
+  alvoModelo: Faixa,
+  generica: { min: number; max: number },
+  delta: number | null,
+): {
+  faixa: { min: number; max: number };
+  /** true quando caiu no genérico (fabricante não publica este alvo). */
+  generico: boolean;
+  /** Classificação do delta frente à faixa efetiva, ou null sem delta. */
+  classificacao: ClassificacaoFaixa | null;
+} {
+  const faixa = alvoModelo ? { min: alvoModelo[0], max: alvoModelo[1] } : generica;
+  const generico = alvoModelo === null;
+  const classificacao = delta !== null ? classificarFaixa(delta, faixa) : null;
+  return { faixa, generico, classificacao };
+}
+
 interface CardCalculoProps {
   titulo: string;
   descricao: string;
@@ -57,6 +96,11 @@ interface CardCalculoProps {
   temp: string;
   setTemp: (v: string) => void;
   resultado: ResultadoSaturacao;
+  /**
+   * Classificação do selo frente à faixa-alvo do modelo (sobrepõe a do
+   * resultado, que usa a faixa genérica da física). null = sem delta.
+   */
+  classificacaoSelo: ClassificacaoFaixa | null;
   faixaTexto: string;
   /** true se a pressão foi digitada mas caiu fora da faixa da tabela. */
   foraDaFaixa: boolean;
@@ -66,6 +110,8 @@ interface CardCalculoProps {
   sugestao: SugestaoUnidade | null;
   /** Troca a unidade para a sugerida (atalho do aviso). */
   onTrocarUnidade: (u: UnidadePressao) => void;
+  /** Bloco de nota do modelo (renderizado abaixo do resultado), opcional. */
+  notaModelo?: React.ReactNode;
 }
 
 function CardCalculo({
@@ -79,11 +125,13 @@ function CardCalculo({
   temp,
   setTemp,
   resultado,
+  classificacaoSelo,
   faixaTexto,
   foraDaFaixa,
   pressaoBruta,
   sugestao,
   onTrocarUnidade,
+  notaModelo,
 }: CardCalculoProps) {
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
@@ -121,7 +169,7 @@ function CardCalculo({
 
       {/* Resultado ao vivo */}
       <div className="rounded-lg border border-border bg-background p-4 text-center">
-        {resultado.delta !== null && resultado.classificacao ? (
+        {resultado.delta !== null && classificacaoSelo ? (
           <>
             <p className="text-5xl font-bold leading-none text-primary sm:text-6xl">
               {formatarTemp(resultado.delta)}
@@ -131,10 +179,10 @@ function CardCalculo({
               <span
                 className={cn(
                   'rounded-full px-3 py-1 text-sm font-semibold',
-                  corSelo(resultado.classificacao),
+                  corSelo(classificacaoSelo),
                 )}
               >
-                {ROTULO_FAIXA[resultado.classificacao]}
+                {ROTULO_FAIXA[classificacaoSelo]}
               </span>
               <span className="text-xs text-muted-foreground">{faixaTexto}</span>
             </div>
@@ -160,6 +208,42 @@ function CardCalculo({
             Informe a pressão e a temperatura para ver o resultado.
           </p>
         )}
+      </div>
+
+      {notaModelo}
+    </div>
+  );
+}
+
+interface NotaModeloProps {
+  /** Texto da nota de campo do modelo (PT-BR). */
+  nota: string;
+  /** Confiança da fonte — vira ressalva curta quando não é 'alta'. */
+  confianca: ConfiancaModelo;
+  /** true quando a faixa-alvo deste cálculo caiu no genérico. */
+  alvoGenerico: boolean;
+}
+
+/** Bloco discreto com a nota de campo do modelo + ressalvas de fonte/alvo. */
+function NotaModelo({ nota, confianca, alvoGenerico }: NotaModeloProps) {
+  const rotuloConfianca = ROTULO_CONFIANCA[confianca];
+  return (
+    <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
+      <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+      <div className="space-y-1.5">
+        <p className="text-xs leading-relaxed">{nota}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {alvoGenerico && (
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+              Alvo não publicado — usando referência genérica
+            </span>
+          )}
+          {rotuloConfianca && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {rotuloConfianca}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -266,6 +350,11 @@ export function Superaquecimento() {
   const [pBaixa, setPBaixa] = useState('');
   const [tSuccao, setTSuccao] = useState('');
 
+  // Modelo/fabricante (subaba SH). Por ora NÃO altera o cálculo — só registra a
+  // escolha do técnico. Padrão para todos os modelos.
+  // TODO: aplicar regra/alvo por fabricante quando a base de dados for fornecida pelo CEO.
+  const [modeloId, setModeloId] = useState<string>(MODELO_PADRAO_ID);
+
   // Subresfriamento (SC)
   const [pAlta, setPAlta] = useState('');
   const [tLiquido, setTLiquido] = useState('');
@@ -283,6 +372,20 @@ export function Superaquecimento() {
   const resultadoSC = useMemo(
     () => calcularSubresfriamento(refrigId, num(pAlta), unidade, num(tLiquido)),
     [refrigId, pAlta, unidade, tLiquido],
+  );
+
+  // Modelo escolhido (compartilhado entre as subabas SH e SC).
+  const modelo = getModeloSuperaquecimento(modeloId) ?? getModeloSuperaquecimento(MODELO_PADRAO_ID)!;
+
+  // Faixa-alvo efetiva por cálculo: alvo do modelo OU genérico da física.
+  // O delta vem da física; aqui só reclassificamos contra a faixa do modelo.
+  const alvoSH = useMemo(
+    () => resolverAlvo(modelo.alvoSH, FAIXA_SH, resultadoSH.delta),
+    [modelo, resultadoSH.delta],
+  );
+  const alvoSC = useMemo(
+    () => resolverAlvo(modelo.alvoSC, FAIXA_SC, resultadoSC.delta),
+    [modelo, resultadoSC.delta],
   );
 
   // Consulta PT: usa a curva de vapor (dew) p/ blends, única p/ os demais.
@@ -328,6 +431,9 @@ export function Superaquecimento() {
         </p>
       </div>
 
+      {/* Ilustração do ciclo de refrigeração (acima dos selects e das subabas) */}
+      <CicloRefrigeracaoIlustracao />
+
       {/* Subnavegação underline — rolável horizontalmente no mobile */}
       <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
         {SUBABAS.map((aba) => (
@@ -354,6 +460,29 @@ export function Superaquecimento() {
         setUnidade={setUnidade}
       />
 
+      {/* Modelo/fabricante — só na subaba SH. Não altera o cálculo por ora. */}
+      {subAba === 'sh' && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-1.5">
+          <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
+          <Select value={modeloId} onValueChange={setModeloId}>
+            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+              <SelectValue placeholder="Selecione o modelo/fabricante" />
+            </SelectTrigger>
+            <SelectContent>
+              {MODELOS_SUPERAQUECIMENTO.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="pt-1 text-xs text-muted-foreground">
+            O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
+            continua sendo calculado pela física.
+          </p>
+        </div>
+      )}
+
       {/* Superaquecimento */}
       {subAba === 'sh' && (
         <CardCalculo
@@ -367,11 +496,19 @@ export function Superaquecimento() {
           temp={tSuccao}
           setTemp={setTSuccao}
           resultado={resultadoSH}
-          faixaTexto={`ideal ${FAIXA_SH.min}–${FAIXA_SH.max} °C`}
+          classificacaoSelo={alvoSH.classificacao}
+          faixaTexto={`ideal ${formatarTemp(alvoSH.faixa.min)}–${formatarTemp(alvoSH.faixa.max)} °C`}
           foraDaFaixa={shForaFaixa}
           pressaoBruta={pBaixa}
           sugestao={sugestaoSH}
           onTrocarUnidade={setUnidade}
+          notaModelo={
+            <NotaModelo
+              nota={modelo.nota}
+              confianca={modelo.confianca}
+              alvoGenerico={alvoSH.generico}
+            />
+          }
         />
       )}
 
@@ -388,11 +525,19 @@ export function Superaquecimento() {
           temp={tLiquido}
           setTemp={setTLiquido}
           resultado={resultadoSC}
-          faixaTexto={`ideal ${FAIXA_SC.min}–${FAIXA_SC.max} °C`}
+          classificacaoSelo={alvoSC.classificacao}
+          faixaTexto={`ideal ${formatarTemp(alvoSC.faixa.min)}–${formatarTemp(alvoSC.faixa.max)} °C`}
           foraDaFaixa={scForaFaixa}
           pressaoBruta={pAlta}
           sugestao={sugestaoSC}
           onTrocarUnidade={setUnidade}
+          notaModelo={
+            <NotaModelo
+              nota={modelo.nota}
+              confianca={modelo.confianca}
+              alvoGenerico={alvoSC.generico}
+            />
+          }
         />
       )}
 
@@ -449,9 +594,11 @@ export function Superaquecimento() {
         <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
         <p className="text-xs leading-relaxed">
           <span className="font-semibold text-foreground">Atenção: </span>
-          estimativa baseada em tabelas de saturação (NIST/fabricantes). Sempre siga a carta do
-          fabricante do equipamento quando disponível. O R-404A tem glide — o superaquecimento usa a
-          curva de vapor (dew) e o subresfriamento a de líquido (bubble).
+          estes valores são sempre uma estimativa de referência e não devem ser usados
+          isoladamente. Sempre confira o manual do fabricante do equipamento antes de tomar
+          decisões de carga ou diagnóstico. O superaquecimento usa a curva de vapor (dew) e o
+          subresfriamento a de líquido (bubble) — em refrigerantes com glide, como o R-404A, são
+          curvas distintas.
         </p>
       </div>
     </div>
