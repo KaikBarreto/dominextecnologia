@@ -79,6 +79,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Teams from "./pages/Teams";
+import TechnicianTools from "./pages/TechnicianTools";
 // Lazy: TechnicianOS importa o anonClient. Carregando sob demanda,
 // o bundle do /login fica livre de inicializar dois GoTrueClient na mesma aba.
 const TechnicianOS = React.lazy(() => import("./pages/TechnicianOS"));
@@ -420,6 +421,9 @@ const AppRoutes = () => (
       <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
+      {/* Ferramentas do Técnico — hub client-side/offline. Sub-rotas internas
+         via <Routes> dentro da página, então registra com /* (wildcard). */}
+      <Route path="/ferramentas-tecnico/*" element={<PermissionRoute screenKey="screen:technician_tools"><TechnicianTools /></PermissionRoute>} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />
@@ -478,10 +482,10 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        
-        
-        <OfflineIndicator />
+
+
         <BrowserRouter>
+          <OfflineIndicator />
           <PageTitleUpdater />
           <AuthProvider>
             <UsageTracker />
