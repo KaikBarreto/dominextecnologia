@@ -20,6 +20,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { SignedImg } from '@/components/ui/SignedImg';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
 
@@ -69,6 +70,26 @@ function savePhotoToDevice(file: File): 'share' | 'download' {
   return 'download';
 }
 
+// Versão PLURAL: salva várias fotos de uma vez. Disparada por TOQUE do usuário
+// no modal "Salvar foto no aparelho?" (gesto fresco → iOS aceita).
+// iOS: UM único navigator.share com TODOS os arquivos (uma folha só). SEM await
+// pra preservar o gesto. Android/desktop: baixa cada arquivo via <a download>.
+// Retorna 'share' ou 'download' pra UI decidir se mostra toast (só no download).
+function savePhotosToDevice(files: File[]): 'share' | 'download' {
+  if (isIOS() && typeof navigator.canShare === 'function' && navigator.canShare({ files })) {
+    navigator.share({ files, title: 'Foto da OS' }).catch(() => {
+      /* cancelado pelo usuário ou sem suporte */
+    });
+    return 'share';
+  }
+
+  // Android/desktop: baixa cada arquivo individualmente.
+  for (const file of files) {
+    savePhotoToDevice(file);
+  }
+  return 'download';
+}
+
 export interface FormValidationResult {
   isValid: boolean;
   missingQuestions: string[];
@@ -89,6 +110,10 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const [saving, setSaving] = useState<string | null>(null);
   const [uploadingPhotos, setUploadingPhotos] = useState<Set<string>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
+  // Confirmação antes de remover uma foto (qual pergunta + índice da foto).
+  const [pendingRemoval, setPendingRemoval] = useState<{ questionId: string; index: number } | null>(null);
+  // Fotos recém-tiradas pela câmera, aguardando o usuário decidir se salva no aparelho.
+  const [photosToSave, setPhotosToSave] = useState<File[] | null>(null);
 
   // Guarda o File processado de cada foto enviada NESTA sessão, indexado pela
   // mesma publicUrl que aparece em photoUrls. Permite salvar no aparelho sem
@@ -128,6 +153,18 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       .catch(() => {
         /* best-effort */
       });
+  };
+
+  // Remove a foto de fato, só após confirmação no modal. Reconstrói a lista a
+  // partir de pendingRemoval (não usa o closure local do case 'photo').
+  const confirmRemovePhoto = () => {
+    if (!pendingRemoval) return;
+    const { questionId, index } = pendingRemoval;
+    const raw = responses[questionId]?.response_photo_url;
+    const urls = raw ? raw.split(',').filter(Boolean) : [];
+    const remaining = urls.filter((_, i) => i !== index);
+    saveResponse(questionId, responses[questionId]?.response_value || null, remaining.length ? remaining.join(',') : null);
+    setPendingRemoval(null);
   };
 
   // Validation effect
@@ -277,6 +314,10 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    // Guarda os arquivos CRUS do input antes do processamento: servem como cópia
+    // pra oferecer "salvar no aparelho" sem depender do resultado do upload.
+    const rawFiles = Array.from(files);
+
     setUploadingPhotos(prev => new Set(prev).add(questionId));
     try {
       const uploadedUrls: string[] = [];
@@ -308,6 +349,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       const combinedUrl = uploadedUrls.join(',');
       await saveResponse(questionId, responses[questionId]?.response_value || null, combinedUrl);
       toast({ title: `${files.length > 1 ? `${files.length} fotos enviadas` : 'Foto enviada'}!` });
+
+      // Só ABRE o modal perguntando se quer salvar no aparelho (câmera + toggle ON).
+      // NÃO chama savePhotosToDevice aqui: o iOS bloqueia o share sem gesto fresco;
+      // o share/download só dispara quando o usuário toca "Salvar imagem" no modal.
+      if (fromCamera && saveToDeviceEnabled && rawFiles.length) {
+        setPhotosToSave(rawFiles);
+      }
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -504,13 +552,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         const photoUrlRaw = response?.response_photo_url;
         const photoUrls = photoUrlRaw ? photoUrlRaw.split(',').filter(Boolean) : [];
         const cameraOnly = !!(question as any).require_camera;
-        
-        const removePhoto = (indexToRemove: number) => {
-          const remaining = photoUrls.filter((_, i) => i !== indexToRemove);
-          const newUrl = remaining.length > 0 ? remaining.join(',') : null;
-          saveResponse(question.id, responses[question.id]?.response_value || null, newUrl);
-        };
-        
+
         return (
           <div className="space-y-2">
             {photoUrls.length > 0 ? (
@@ -521,7 +563,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                     <button
                       type="button"
                       className="absolute top-1 right-1 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
-                      onClick={() => removePhoto(idx)}
+                      onClick={() => setPendingRemoval({ questionId: question.id, index: idx })}
                       title="Remover foto"
                     >
                       <X className="h-3 w-3" />
@@ -748,6 +790,60 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           </div>
         );
       })}
+
+      {/* Confirmação antes de remover uma foto (qualquer pergunta). */}
+      <ResponsiveModal
+        open={pendingRemoval !== null}
+        onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
+        title="Remover foto?"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setPendingRemoval(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={confirmRemovePhoto}>
+              Remover
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Tem certeza que deseja remover esta foto? Essa ação não pode ser desfeita.
+        </p>
+      </ResponsiveModal>
+
+      {/* Após tirar foto pela câmera: pergunta se quer salvar uma cópia no aparelho. */}
+      <ResponsiveModal
+        open={photosToSave !== null}
+        onOpenChange={(o) => { if (!o) setPhotosToSave(null); }}
+        title="Salvar foto no aparelho?"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setPhotosToSave(null)}>
+              Agora não
+            </Button>
+            <Button
+              variant="default"
+              className="flex-1"
+              onClick={() => {
+                // Chama ANTES do setState e SEM await: o gesto do toque habilita
+                // o navigator.share no iOS (folha "Salvar Imagem").
+                if (photosToSave) {
+                  const how = savePhotosToDevice(photosToSave);
+                  if (how === 'download') toast({ title: 'Imagem salva no aparelho' });
+                }
+                setPhotosToSave(null);
+              }}
+            >
+              Salvar imagem
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Deseja guardar {photosToSave && photosToSave.length > 1 ? `estas ${photosToSave.length} fotos` : 'esta foto'} no seu aparelho? No iPhone, vai abrir a opção "Salvar Imagem".
+        </p>
+      </ResponsiveModal>
     </div>
   );
 }

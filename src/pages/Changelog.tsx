@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.28',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Confirmação ao remover foto',
+        description: 'Agora, ao tocar no "X" para remover uma foto da ordem de serviço, o app pede uma confirmação antes de apagar — para evitar perder uma foto sem querer no campo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Salvar foto no aparelho ficou mais claro',
+        description: 'Ao tirar uma foto na ordem de serviço (com a opção ligada), o app pergunta na hora se você quer guardá-la no aparelho. No iPhone abre a opção "Salvar Imagem"; no Android baixa direto.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.27',
     date: '13 de junho de 2026',
     type: 'patch',
