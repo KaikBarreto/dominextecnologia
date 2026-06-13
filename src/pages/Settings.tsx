@@ -135,20 +135,20 @@ export default function Settings() {
   const [reportStatusBarColor, setReportStatusBarColor] = useState(DEFAULT_HEADER_CONFIG.statusBarColor);
   const [reportLogoType, setReportLogoType] = useState<'full' | 'icon'>(DEFAULT_HEADER_CONFIG.logoType);
 
-  const [usabilitySettings, setUsabilitySettings] = useState(() => {
+  const [usabilitySettings, setUsabilitySettings] = useState<Record<string, boolean>>(() => {
+    // Defaults canônicos. Chave nova ausente no localStorage do usuário resolve
+    // para o default via merge — sem backfill. `saveOSPhotosToDevice` nasce ligado.
+    const USABILITY_DEFAULTS = {
+      autoSaveOS: true, confirmDelete: true, showOSValues: true,
+      requireSignature: false, compactTables: false, showEquipmentPhotos: true,
+      showHolidays: true, saveOSPhotosToDevice: true,
+    };
     try {
       const saved = localStorage.getItem('usability-settings');
-      return saved ? JSON.parse(saved) : {
-        autoSaveOS: true, confirmDelete: true, showOSValues: true,
-        requireSignature: false, compactTables: false, showEquipmentPhotos: true,
-        showHolidays: true,
-      };
+      const parsed = saved ? JSON.parse(saved) : null;
+      return { ...USABILITY_DEFAULTS, ...(parsed || {}) };
     } catch {
-      return {
-        autoSaveOS: true, confirmDelete: true, showOSValues: true,
-        requireSignature: false, compactTables: false, showEquipmentPhotos: true,
-        showHolidays: true,
-      };
+      return { ...USABILITY_DEFAULTS };
     }
   });
 
@@ -440,6 +440,7 @@ export default function Settings() {
         { key: 'autoSaveOS', title: 'Salvamento Automático', description: 'Salvar automaticamente rascunhos de ordens de serviço ao editar' },
         { key: 'showOSValues', title: 'Exibir Valores', description: 'Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço' },
         { key: 'requireSignature', title: 'Exigir Assinatura', description: 'Tornar obrigatória a assinatura do cliente ao finalizar OS' },
+        { key: 'saveOSPhotosToDevice', title: 'Salvar fotos no dispositivo', description: 'Ao tirar foto na ordem de serviço, salvar uma cópia também no seu aparelho.' },
       ],
     },
     {

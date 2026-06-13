@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.23',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Salve as fotos da OS no seu aparelho',
+        description: 'Agora, ao tirar uma foto durante o preenchimento de uma ordem de serviço, você pode guardar automaticamente uma cópia no seu celular. A opção já vem ligada e fica em Configurações › Usabilidade — é só desligar se não quiser que as fotos sejam salvas no aparelho.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.11.22',
     date: '13 de junho de 2026',
     type: 'patch',

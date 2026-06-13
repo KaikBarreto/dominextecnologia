@@ -193,9 +193,20 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     }
   };
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionId: string) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionId: string, fromCamera: boolean = false) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
+
+    // Toggle "Salvar fotos no dispositivo" (Configurações › Usabilidade).
+    // Chave ausente => default ligado (!== false). Só vale pra foto de câmera.
+    const saveToDevice = (() => {
+      try {
+        const s = JSON.parse(localStorage.getItem('usability-settings') || '{}');
+        return s.saveOSPhotosToDevice !== false;
+      } catch {
+        return true;
+      }
+    })();
 
     setUploadingPhotos(prev => new Set(prev).add(questionId));
     try {
@@ -206,6 +217,24 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
       for (const rawFile of Array.from(files)) {
         const file = await processImageFile(rawFile);
+
+        // Efeito colateral: baixa uma cópia da foto no aparelho.
+        // Nunca bloqueia/atrasa nem quebra o upload se falhar.
+        if (fromCamera && saveToDevice) {
+          try {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name || `os-foto-${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          } catch {
+            // download é best-effort; ignora silenciosamente
+          }
+        }
+
         const fileExt = file.name.split('.').pop();
         const fileName = `${serviceOrderId}/form-${questionId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
 
@@ -459,7 +488,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   multiple
                   capture="environment"
                   className="hidden"
-                  onChange={(e) => handlePhotoUpload(e, question.id)}
+                  onChange={(e) => handlePhotoUpload(e, question.id, true)}
                   disabled={uploadingPhotos.has(question.id)}
                 />
                 <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
