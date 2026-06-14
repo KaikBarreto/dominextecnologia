@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.16',
+    date: '14 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Termos de elétrica no glossário',
+        description: 'A seção de termos técnicos (tela inicial das Ferramentas do Técnico) ganhou o grupo "Elétrica e Instalação", explicando em linguagem simples bitola do cabo, disjuntor, monopolar/bipolar, queda de tensão, ampacidade, corrente de projeto e NBR 5410 — os conceitos usados na ferramenta de Cabo Elétrico.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.15',
     date: '14 de junho de 2026',
     type: 'patch',

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.15";
+export const APP_VERSION = "1.12.16";
 
-export const VERSION_NOTES = "Nova ferramenta Cabo Elétrico: informe BTU, tensão e a distância até o quadro e veja a bitola do cabo e o disjuntor recomendados (base NBR 5410). O campo de BTU ganhou a opção Personalizado, e a Conversão já abre com o valor 1 convertido.";
+export const VERSION_NOTES = "Os termos técnicos da tela inicial das Ferramentas do Técnico ganharam um grupo de Elétrica e Instalação: bitola do cabo, disjuntor, queda de tensão, ampacidade e mais, em linguagem simples.";

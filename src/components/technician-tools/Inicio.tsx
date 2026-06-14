@@ -28,6 +28,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GLOSSARIO } from '@/lib/glossario';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
+import { GLOSSARIO_ELETRICA } from '@/lib/glossarioEletrica';
 import { CONVERSAO_CATEGORIAS } from '@/lib/conversoes';
 import {
   useToolHistory,
@@ -147,6 +148,12 @@ const GLOSSARIO_SECOES: SecaoGlossario[] = [
     rotulo: 'Ciclo Básico de Refrigeração',
     icon: RefreshCcw,
     termos: GLOSSARIO_CICLO,
+  },
+  {
+    id: 'eletrica',
+    rotulo: 'Elétrica e Instalação',
+    icon: Cable,
+    termos: GLOSSARIO_ELETRICA,
   },
 ];
 
