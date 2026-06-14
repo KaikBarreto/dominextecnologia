@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Info } from 'lucide-react';
+import { AlertTriangle, Info, RefreshCcw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,7 +10,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { CicloRefrigeracaoIlustracao } from './CicloRefrigeracaoIlustracao';
 import {
   MODELOS_SUPERAQUECIMENTO,
   MODELO_PADRAO_ID,
@@ -338,7 +337,12 @@ const SUBABAS: { key: SubAba; label: string }[] = [
   { key: 'pt', label: 'Consulta P×T' },
 ];
 
-export function Superaquecimento() {
+interface SuperaquecimentoProps {
+  /** Navega pra aba "Ciclo de Refrigeração" (atalho discreto no topo). */
+  onIrParaCiclo?: () => void;
+}
+
+export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
   // Compartilhados: padrão R-410A, bar.
   const [refrigId, setRefrigId] = useState<string>('R-410A');
   const [unidade, setUnidade] = useState<UnidadePressao>('bar');
@@ -431,8 +435,17 @@ export function Superaquecimento() {
         </p>
       </div>
 
-      {/* Ilustração do ciclo de refrigeração (acima dos selects e das subabas) */}
-      <CicloRefrigeracaoIlustracao />
+      {/* Atalho discreto pra aba do ciclo (a calculadora é o foco aqui) */}
+      {onIrParaCiclo && (
+        <button
+          type="button"
+          onClick={onIrParaCiclo}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-opacity hover:underline active:opacity-70"
+        >
+          <RefreshCcw className="h-4 w-4 shrink-0" />
+          Ver o ciclo de refrigeração
+        </button>
+      )}
 
       {/* Subnavegação underline — rolável horizontalmente no mobile */}
       <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">

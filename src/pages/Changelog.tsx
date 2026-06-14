@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.13',
+    date: '14 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ciclo de Refrigeração nas Ferramentas do Técnico',
+        description: 'Nova aba "Ciclo de Refrigeração": um diagrama interativo do ciclo — toque em cada parte (compressor, evaporador, condensador, válvula, linhas) para entender o que faz — com uma versão em imagem 2D que acompanha o tema, mais um glossário do ciclo. A seção de termos técnicos da tela inicial passou a agrupar por categorias e ganhou busca.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.12',
     date: '13 de junho de 2026',
     type: 'patch',

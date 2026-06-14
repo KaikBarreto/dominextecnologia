@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { Wrench, Thermometer, ArrowLeftRight, Boxes, Zap, Home, Snowflake, Table2 } from 'lucide-react';
+import {
+  Wrench,
+  Thermometer,
+  ArrowLeftRight,
+  Boxes,
+  Zap,
+  Home,
+  Snowflake,
+  Table2,
+  RefreshCcw,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -13,6 +23,7 @@ import { Equipamentos } from '@/components/technician-tools/Equipamentos';
 import { CalculoCapacitor } from '@/components/technician-tools/CalculoCapacitor';
 import { Superaquecimento } from '@/components/technician-tools/Superaquecimento';
 import { ReguaGases } from '@/components/technician-tools/ReguaGases';
+import { CicloRefrigeracao } from '@/components/technician-tools/CicloRefrigeracao';
 import type { ConversaoCategoria } from '@/lib/conversoes';
 
 type ToolTab =
@@ -22,7 +33,8 @@ type ToolTab =
   | 'conversao'
   | 'calculo-capacitor'
   | 'superaquecimento'
-  | 'regua-gases';
+  | 'regua-gases'
+  | 'ciclo-refrigeracao';
 
 /** Alvo de deep-link ao trocar de aba a partir de Recentes/Favoritos do Início. */
 export type ToolNavPayload =
@@ -43,6 +55,7 @@ const TOOLS: ToolDef[] = [
   { value: 'calculo-capacitor', label: 'Cálculo de Capacitor', icon: Zap },
   { value: 'superaquecimento', label: 'Superaquecimento', icon: Snowflake },
   { value: 'regua-gases', label: 'Régua de Gases', icon: Table2 },
+  { value: 'ciclo-refrigeracao', label: 'Ciclo de Refrigeração', icon: RefreshCcw },
 ];
 
 interface TechnicianToolsProps {
@@ -81,7 +94,7 @@ export default function TechnicianTools({ hideBack }: TechnicianToolsProps) {
       : undefined;
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-6 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2">
         {!hideBack && (
@@ -150,8 +163,11 @@ export default function TechnicianTools({ hideBack }: TechnicianToolsProps) {
             <Conversao key={conversaoInicial ? 'deep' : 'browse'} inicial={conversaoInicial} />
           )}
           {activeTab === 'calculo-capacitor' && <CalculoCapacitor />}
-          {activeTab === 'superaquecimento' && <Superaquecimento />}
+          {activeTab === 'superaquecimento' && (
+            <Superaquecimento onIrParaCiclo={() => switchTab('ciclo-refrigeracao')} />
+          )}
           {activeTab === 'regua-gases' && <ReguaGases />}
+          {activeTab === 'ciclo-refrigeracao' && <CicloRefrigeracao />}
         </div>
       </div>
     </div>
