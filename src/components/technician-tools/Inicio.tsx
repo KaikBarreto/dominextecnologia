@@ -345,9 +345,7 @@ export function Inicio({ onNavigate }: InicioProps) {
                 {/* Cabeçalho da seção: barrinha de acento + ícone + rótulo */}
                 <div className="flex items-center gap-2.5">
                   <span className="h-5 w-1 shrink-0 rounded-full bg-primary" aria-hidden />
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <secao.icon className="h-4 w-4" />
-                  </span>
+                  <secao.icon className="h-5 w-5 shrink-0 text-primary" />
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground md:text-base">
                     {secao.rotulo}
                   </h3>
