@@ -227,8 +227,8 @@ export function Inicio({ onNavigate }: InicioProps) {
                 className="snap-start shrink-0 flex w-[185px] flex-col items-center gap-3 rounded-2xl p-5 text-center text-white shadow-sm transition-all active:scale-95"
                 style={{ backgroundColor: a.accent }}
               >
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 shrink-0">
-                  <a.icon className="h-7 w-7" />
+                <span className="flex h-12 items-center justify-center shrink-0">
+                  <a.icon className="h-9 w-9" />
                 </span>
                 <span className="text-base font-semibold leading-tight">{a.label}</span>
                 <span className="text-xs leading-snug text-white/85">{a.descricao}</span>
