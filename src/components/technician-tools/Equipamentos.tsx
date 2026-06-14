@@ -29,6 +29,7 @@ import {
   toggleModeloFavorito,
   useToolHistory,
 } from '@/lib/technicianToolsHistory';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 /** Normaliza texto pra busca: minúsculo + sem acento. */
 function norm(s: string | null | undefined): string {
@@ -444,31 +445,51 @@ function ModelCard({
   // Linha de identificação: "Marca · Categoria" (omite o que faltar).
   const subtitulo = [brandName, categoria].filter(Boolean).join(' · ');
   const temManual = Boolean(model.manual_url);
+  const temFoto = Boolean(model.image_url);
+
+  // Viewer dedicado da foto (igual OS) — abre no clique, fecha fora, baixa, mobile/desktop.
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
-      {/* Identificação */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
-          {model.image_url ? (
-            <img
-              src={model.image_url}
-              alt={model.name}
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <PackageSearch className="h-7 w-7 text-muted-foreground" />
-          )}
+    <div
+      // Corpo do card no tema normal (bg-card). Só a faixa da foto no topo é branca
+      // fixa nos 2 temas — proposital, pra fotos de aparelho não sumirem no dark.
+      className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+    >
+      {/* TOPO — foto em destaque, full width, aparelho inteiro (object-contain) */}
+      {temFoto ? (
+        <button
+          type="button"
+          onClick={() => setViewerOpen(true)}
+          aria-label={`Ampliar foto de ${model.name}`}
+          className="flex h-44 w-full cursor-pointer items-center justify-center bg-white p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        >
+          <img
+            src={model.image_url!}
+            alt={model.name}
+            className="h-full w-full object-contain"
+            loading="lazy"
+          />
+        </button>
+      ) : (
+        <div className="flex h-44 w-full flex-col items-center justify-center gap-1 bg-white">
+          <PackageSearch className="h-12 w-12 text-neutral-300" />
+          <span className="text-xs text-neutral-400">Sem foto</span>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold leading-tight">{model.name}</p>
-          {subtitulo && (
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitulo}</p>
-          )}
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      )}
+
+      {/* CORPO — identificação centralizada (tokens de tema) */}
+      <div className="p-4">
+        <p className="text-center text-base font-semibold leading-snug text-foreground">
+          {model.name}
+        </p>
+        {subtitulo && (
+          <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
+        )}
+        {(btu || model.code) && (
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
             {btu && (
-              <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              <span className="rounded-md bg-sky-500 px-2 py-0.5 text-xs font-semibold text-white">
                 {btu}
               </span>
             )}
@@ -478,26 +499,35 @@ function ModelCard({
               </span>
             )}
           </div>
+        )}
+
+        {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark). */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="outline" size="sm" onClick={onSelectErrors} className="w-full">
+            <AlertCircle className="h-4 w-4" />
+            Códigos de erro
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!temManual}
+            onClick={() => temManual && abrirManual(model.manual_url!)}
+            className={cn('w-full', !temManual && 'opacity-50 cursor-not-allowed')}
+          >
+            <Download className="h-4 w-4" />
+            {temManual ? 'Baixar manual' : 'Sem manual'}
+          </Button>
         </div>
       </div>
 
-      {/* Ações diretas — sem modal intermediário */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button variant="outline" size="sm" className="w-full" onClick={onSelectErrors}>
-          <AlertCircle className="h-4 w-4" />
-          Códigos de erro
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!temManual}
-          onClick={() => temManual && abrirManual(model.manual_url!)}
-          className={cn('w-full', !temManual && 'opacity-50 cursor-not-allowed')}
-        >
-          <Download className="h-4 w-4" />
-          {temManual ? 'Baixar manual' : 'Sem manual'}
-        </Button>
-      </div>
+      {temFoto && (
+        <ImagePreviewModal
+          src={model.image_url!}
+          alt={model.name}
+          open={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }
