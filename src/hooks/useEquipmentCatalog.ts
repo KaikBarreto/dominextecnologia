@@ -18,6 +18,12 @@ export interface EquipmentBrand {
   created_at: string;
 }
 
+/** Categoria (tipo) do modelo: Split Hi-Wall, Cassete, Piso-Teto, etc. */
+export interface EquipmentModelCategory {
+  id: string;
+  name: string;
+}
+
 export interface EquipmentModel {
   id: string;
   brand_id: string;
@@ -29,6 +35,8 @@ export interface EquipmentModel {
   created_at: string;
   /** Hidratado nas queries que fazem join com a marca. */
   brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
+  /** Hidratado nas queries que fazem join com a categoria (tipo do equipamento). */
+  category?: EquipmentModelCategory | null;
 }
 
 export interface EquipmentErrorCode {
@@ -84,7 +92,9 @@ export function useEquipmentModelsByBrand(brandId: string | null | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('equipment_models')
-        .select('id, brand_id, category_id, name, code, image_url, manual_url, created_at')
+        .select(
+          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, category:equipment_model_categories(id, name)',
+        )
         .eq('brand_id', brandId as string)
         .order('name', { ascending: true });
       if (error) throw error;
@@ -102,7 +112,7 @@ export function useEquipmentModel(modelId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('id', modelId as string)
         .maybeSingle();
@@ -125,7 +135,7 @@ export function useEquipmentModelsByCode(term: string) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .ilike('code', `%${trimmed}%`)
         .order('name', { ascending: true })
@@ -148,7 +158,7 @@ export function useAllModelsWithBrand() {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .order('name', { ascending: true });
       if (error) throw error;

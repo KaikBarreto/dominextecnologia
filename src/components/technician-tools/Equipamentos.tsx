@@ -44,6 +44,17 @@ function abrirManual(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+/**
+ * Extrai a potência (BTUs) do nome do modelo, quando presente.
+ * Ex: "Cassete 60.000 BTUs Inverter" → "60.000 BTUs". Retorna null se não achar.
+ */
+function extrairBtu(name: string): string | null {
+  const m = name.match(/(\d{1,3}(?:[.\s]\d{3})+|\d{4,6})\s*BTU?s?/i);
+  if (!m) return null;
+  const num = m[1].replace(/\s/g, '.');
+  return `${num} BTUs`;
+}
+
 type View =
   | { kind: 'brands' }
   | { kind: 'models'; brand: EquipmentBrand }
@@ -291,12 +302,16 @@ function BrandsList({
               )}
             >
               {brand.logo_url ? (
-                <img
-                  src={brand.logo_url}
-                  alt={brand.name}
-                  className="max-h-12 max-w-[80%] object-contain"
-                  loading="lazy"
-                />
+                // Fundo branco fixo (nos 2 temas) pra logos coloridos/escuros não
+                // sumirem no dark mode. bg-white é proposital — não usar token aqui.
+                <div className="flex h-16 w-full items-center justify-center rounded-xl bg-white p-2">
+                  <img
+                    src={brand.logo_url}
+                    alt={brand.name}
+                    className="max-h-12 max-w-[85%] object-contain"
+                    loading="lazy"
+                  />
+                </div>
               ) : (
                 <span className="text-base font-semibold leading-tight text-foreground">
                   {brand.name}
@@ -424,6 +439,11 @@ function ModelCard({
 }) {
   const [modalOpen, setModalOpen] = useState(false);
 
+  const categoria = model.category?.name ?? null;
+  const btu = extrairBtu(model.name);
+  // Linha de identificação: "Marca · Categoria" (omite o que faltar).
+  const subtitulo = [brandName, categoria].filter(Boolean).join(' · ');
+
   return (
     <>
       <button
@@ -448,10 +468,21 @@ function ModelCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold leading-tight">{model.name}</p>
-          <p className="truncate text-sm text-muted-foreground">{brandName}</p>
-          {model.code && (
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">Cód.: {model.code}</p>
+          {subtitulo && (
+            <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitulo}</p>
           )}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {btu && (
+              <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                {btu}
+              </span>
+            )}
+            {model.code && (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Cód.: {model.code}
+              </span>
+            )}
+          </div>
         </div>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
       </button>

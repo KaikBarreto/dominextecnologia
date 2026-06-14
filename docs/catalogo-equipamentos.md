@@ -5,14 +5,18 @@
 > Categoria usada nos modelos hi-wall: **Split Hi-Wall**.
 > `solution` fica NULL em todos os códigos novos; `description = title` quando não há descrição própria; `image_url` NULL (sem foto confiável).
 
-Atualizado em 2026-06-14 pela migration `20260614170000_equipment_catalog_seed_six_brands.sql`.
+Atualizado em 2026-06-14 pelas migrations `20260614170000_equipment_catalog_seed_six_brands.sql` e `20260614190000_equipment_catalog_seed_nine_brands.sql`.
+
+> Categorias GLOBAIS agora: **Split Hi-Wall, Cassete, Piso-Teto, Multi-Split** (as 3 últimas criadas na seed de 9 marcas).
+> A partir da seed de 9 marcas, os modelos passam a ter nomes DESCRITIVOS (tipo + linha + BTU) e podem ter `image_url` quando havia foto CDN verificada na pesquisa.
 
 ## Totais atuais
-- Marcas: 8 (Gree, Midea + 6 novas)
-- Modelos: 8 (1 por marca)
-- Códigos de erro: 126 (18 Gree/Midea pré-existentes + 108 novos)
+- Marcas: **17** (Gree, Midea + 6 + 9 novas). Whirlpool **não** entra (não vende AC no BR).
+- Categorias: **4** (Split Hi-Wall, Cassete, Piso-Teto, Multi-Split)
+- Modelos: **60**
+- Códigos de erro: **261**
 
-| Marca | sort | Logo | Modelo principal | Manual | Códigos |
+| Marca | sort | Logo | Modelo(s) | Manual | Códigos |
 |---|---|---|---|---|---|
 | Gree | 1 | — | Split Hi-Wall Inverter | — | 6 |
 | Midea | 2 | — | Split Inverter (Springer Midea) | — | 12 |
@@ -22,6 +26,20 @@ Atualizado em 2026-06-14 pela migration `20260614170000_equipment_catalog_seed_s
 | Consul | 6 | ✓ | Bem Estar / Maxi Inverter (linha geral) | ✓ | 7 |
 | Electrolux | 7 | ✓ | Color Adapt / Inverter (linha geral) | ✓ | 6 |
 | Fujitsu | 8 | ✓ | Airstage Inverter (linha geral) | ✓ | 23 |
+| Brastemp | 9 | ✓ | 5 (Hi-Wall on/off Clean/ative!) | ✓ | 15 (= plataforma Consul) |
+| Philco | 10 | ✓ | 7 (Hi-Wall/Cassete/Piso-Teto Eco Inverter) | — | 5 (plataforma Inverter F1–F5) |
+| Komeco | 11 | ✓ | 7 (Hi-Wall KOHI/KAC, Cassete, Piso-Teto) | ✓ | 28 (LX-HX E1–E8 + KOHI 1HX F/P) |
+| Agratto | 12 | ✓ | 9 (Hi-Wall NEO/ZEN/FIT, Cassete, Piso-Teto) | ✓ | 19 (família ICS NEO Inverter) |
+| Carrier | 13 | ✓ | 6 (Hi-Wall X-Power, Cassete, Piso-Teto) | ✓ | 12 (= tabela Midea global) |
+| Springer | 14 | ✓ | 4 (Hi-Wall AirVolution/Xtreme, Piso-Teto, Multi) | ✓ | 12 (= tabela Midea global) |
+| TCL | 15 | ✓ | 7 (Hi-Wall T-Pro 2.0, Cassete, Piso-Teto) | — | 25 (E/P-series + CL) |
+| Hitachi | 16 | ✓ | 5 (Hi-Wall airHome 600) | ✓ | 9 (Família B = proteção) |
+| Elgin | 17 | ✓ | 2 (Hi-Wall Eco Inverter II, Piso-Teto Plus) | — | 10 (Eco Plus II) |
+
+Notas das 9 novas:
+- **Brastemp**: só Split Hi-Wall on/off (Clean + ative!); reutiliza os códigos da **Consul** (mesma fabricante Whirlpool LatAm). 1 modelo com foto CDN (BBV12BB).
+- **Carrier/Springer**: plataforma **Midea**; códigos inverter = tabela Midea global onde a pesquisa confirmou coincidência.
+- **Fotos (`image_url`)**: preenchidas só onde a pesquisa tinha CDN verificada — Brastemp BBV12BB, Philco PAC12FB/Cassete/Piso-Teto, Komeco KOHI, Agratto NEO 9k/Cassete, Carrier X-Power 9k/12k, Springer Multi 42k, TCL 12k, Hitachi airHome 9k/12k, Elgin 12k/24k. Demais NULL.
 
 ---
 
@@ -170,3 +188,174 @@ Logo: Fujitsu (Wikimedia). Manual: Fujitsu HW Airstage (Leveros Integra). Códig
 | A1 | Temperatura de descarga alta | Compressor |
 | A3 | Temperatura do compressor alta | Compressor |
 | A5 | Baixa pressão | Sistema |
+
+## BRASTEMP — Split Hi-Wall on/off (plataforma Consul)
+Logo: Brastemp (Wikimedia). Códigos ligados ao modelo Clean 12k; equivalência Consul confirmada (mesma fabricante). "E__" no painel; numéricos via Sleep×4.
+
+| Código | Título | Componente |
+|---|---|---|
+| E2 | Superaquecimento (unidade externa) | Condensadora |
+| E4 | Falha do ventilador interno | Evaporadora |
+| E6 | Tensão de alimentação fora do especificado | Energia |
+| E42 | Proteção de subresfriamento | Sistema |
+| E43 | Proteção de superaquecimento | Sistema |
+| EA | Erro de comunicação | Comunicação |
+| 00 | Falha de comunicação / alimentação | Comunicação |
+| 1 | Sensor da serpentina externa | Condensadora |
+| 2 | Sensor de descarga (externa) | Compressor |
+| 5 | Proteção do módulo IPM | Placa inverter |
+| 6 | Proteção de tensão | Energia |
+| 7 | Comunicação interna↔externa | Comunicação |
+| 13 | Proteção de temperatura do compressor | Compressor |
+| 15 | Sensor de temperatura do compressor | Compressor |
+| 36 | Comunicação interna↔externa (com atraso) | Comunicação |
+
+## PHILCO — Eco Inverter (plataforma Inverter genérica)
+Logo: Philco (Wikimedia). Códigos F1–F5 ligados ao Eco Inverter 12k. (Conjunto E1–E10 do modelo ITQFM9W e plataformas FM/FM2/FM4 ficaram fora — divergem por placa, confiança média/baixa.)
+
+| Código | Título | Componente |
+|---|---|---|
+| F1 | Falha sensor de temperatura (unidade interna) | Evaporadora |
+| F2 | Falha sensor de temperatura (unidade externa) | Condensadora |
+| F3 | Falha sensor do evaporador (interna) | Evaporadora |
+| F4 | Falha sensor do condensador (externa) | Condensadora |
+| F5 | Falha sensor de descarga do compressor | Compressor |
+
+## KOMECO — linha LX-HX (E1–E8) + KOHI 1HX (F/P)
+Logo: Komeco (site oficial). Manuais oficiais de auto-diagnóstico (LX-HX e KOHI 1HX). E1–E8 ligados ao KAC on/off; F/P ligados ao KOHI 1HX inverter.
+
+| Código | Título | Componente |
+|---|---|---|
+| DF | Descongelamento (degelo) | Condensadora |
+| E1 | Falha sensor do condensador | Condensadora |
+| E2 | Falha sensor ambiente | Evaporadora |
+| E3 | Falha sensor do evaporador | Evaporadora |
+| E4 | Falha na unidade externa | Condensadora |
+| E5 | Falha motor ventilador interno | Evaporadora |
+| E6 | Falha na placa eletrônica principal | Placa interna |
+| E7 | Comunicação / alta pressão e corrente | Comunicação |
+| E8 | Falha na unidade interna (aumento de pressão) | Evaporadora |
+| F1 | Falha de comunicação | Comunicação |
+| F2 | Sensor ambiente (interna) | Evaporadora |
+| F3 | Sensor do trocador (interna) | Evaporadora |
+| F4 | Motor do ventilador (interna) | Evaporadora |
+| F5 | PCB módulo inversor (IPM) | Placa inverter |
+| F6 | Sensor ambiente (externa) | Condensadora |
+| F7 | Sensor do trocador (externa) | Condensadora |
+| F9 | Sensor de descarga do compressor | Compressor |
+| FC | Acionamento anormal do compressor | Compressor |
+| P2 | Superaquecimento do IPM / sobrecorrente | Placa inverter |
+| P3 | Proteção de sobrecorrente | Placa inverter |
+| P4 | Proteção do compressor (alta temp. descarga) | Compressor |
+| P5 | Superaquecimento do topo do compressor | Compressor |
+| P6 | Proteção de temperatura (sucção) | Sistema |
+| P7 | Proteção de baixa/alta tensão | Energia |
+| P8 | Proteção de baixa pressão de sucção | Sistema |
+| P9 | Proteção de alta pressão de descarga | Sistema |
+| PA | Proteção de alta temp. do trocador (externa) | Condensadora |
+| PC | Proteção de temp. ambiente excessiva (externa) | Condensadora |
+
+## AGRATTO — família ICS/ICST (NEO Inverter)
+Logo: Agratto (SeekLogo). Códigos ligados ao NEO Inverter 9k (fonte ClimaServices/CentralAr).
+
+| Código | Título | Componente |
+|---|---|---|
+| E1 | Sensor de temperatura ambiente | Evaporadora |
+| E2 | Sensor da bobina externa | Condensadora |
+| E3 | Sensor da bobina interna | Evaporadora |
+| E4 | Motor PG da unidade interna | Evaporadora |
+| E5 | Comunicação interna↔externa | Comunicação |
+| F0 | Motor CC da unidade externa | Condensadora |
+| F1 | Módulo IPM | Placa inverter |
+| F2 | Módulo PFC | Placa inverter |
+| F3 | Compressor | Compressor |
+| F4 | Sensor de descarga (externa) | Compressor |
+| F5 | Topo do compressor | Compressor |
+| F6 | Sensor ambiente externo | Condensadora |
+| F7 | Tensão | Energia |
+| F9 | EEPROM da unidade externa | Placa inverter |
+| FA | Sensor de sucção | Sistema |
+| P4 | Sobrecarga | Compressor |
+| P5 | Temperatura de descarga | Compressor |
+| P6 | Alta temperatura | Sistema |
+| P7 | Congelamento | Sistema |
+
+## CARRIER e SPRINGER — tabela Midea global (inverter)
+Logos: Carrier (Wikimedia), Springer (logodownload.org). Grupo Midea Carrier — códigos inverter coincidem com a Midea. Carrier ligado ao X-Power 9k; Springer ao AirVolution Connect 12k (mesma tabela).
+
+| Código | Título | Componente |
+|---|---|---|
+| E0 | Erro de EEPROM (interna) | Placa interna |
+| E1 | Comunicação interna↔externa | Comunicação |
+| E2 | Sinal de cruzamento por zero | Energia |
+| E3 | Ventilador interno fora de controle | Evaporadora |
+| EC | Fuga de gás refrigerante | Sistema |
+| F1 | Sensor externo (ambiente T4) | Condensadora |
+| F2 | Sensor da serpentina condensadora (T3) | Condensadora |
+| F3 | Sensor de descarga (TP) | Compressor |
+| F4 | EEPROM da unidade externa | Placa inverter |
+| P0 | Módulo IPM / IGBT | Placa inverter |
+| P1 | Sub/sobretensão | Energia |
+| P4 | Drive do compressor inverter | Compressor |
+
+## TCL — T-Pro 2.0 (E-series falha / P-series proteção / CL)
+Logo: TCL (Wikimedia). Códigos ligados ao T-Pro 2.0 12k (fonte tudosobreac + WebArCondicionado).
+
+| Código | Título | Componente |
+|---|---|---|
+| E0 | Falha de comunicação interna/externa | Comunicação |
+| E1 | Sensor de temperatura ambiente | Evaporadora |
+| E2 | Sensor da serpentina (evaporadora) | Evaporadora |
+| E3 | Sensor de temperatura da condensadora | Condensadora |
+| E4 | Falha geral do sistema | Sistema |
+| E5 | Configuração de modelo / EEPROM | Placa interna |
+| E6 | Falha do motor do ventilador interno | Evaporadora |
+| E7 | Sensor de temperatura externa | Condensadora |
+| E8 | Sensor de descarga do compressor | Compressor |
+| E9 | Falha do módulo de potência (IPM) | Placa inverter |
+| EA | Falha do sensor de corrente | Placa inverter |
+| EC | Falha de comunicação da condensadora | Comunicação |
+| EE | Falha de EEPROM (firmware) | Placa interna |
+| EF | Falha do motor do ventilador externo (DC) | Condensadora |
+| EH | Sensor de sucção do compressor | Sistema |
+| EP | Atuação do termostato do topo do compressor | Compressor |
+| EU | Falha do sensor de tensão | Energia |
+| P1 | Proteção de sub/sobretensão | Energia |
+| P2 | Proteção de sobrecorrente | Compressor |
+| P4 | Proteção de superaquecimento de descarga | Compressor |
+| P5 | Proteção de subresfriamento (frio) | Evaporadora |
+| P6 | Proteção superaquecimento da serpentina externa | Condensadora |
+| P7 | Proteção de superaquecimento (modo quente) | Evaporadora |
+| P9 | Proteção do drive inverter (software) | Placa inverter |
+| CL | Alerta de limpeza do filtro | Evaporadora |
+
+## HITACHI — airHome 600 (Família B = proteção)
+Logo: Hitachi (site oficial). Códigos ligados ao airHome 600 9k. Usada a **Família B** (proteção) como default do .md; E4/E7/E8 (conflito A/B = baixa) ficaram de fora.
+
+| Código | Título | Componente |
+|---|---|---|
+| E0 | Falha de comunicação interna↔externa | Comunicação |
+| E1 | Proteção de alta pressão do compressor | Compressor |
+| E2 | Proteção anti-congelamento | Evaporadora |
+| E3 | Proteção de baixa pressão / falta de gás | Sistema |
+| E5 | Erro de inverter / sobrecorrente | Placa inverter |
+| E6 | Falha de comunicação | Comunicação |
+| 01 | Bóia / nível de água no dreno | Sistema |
+| 03 | Anomalia interna↔externa (comunicação/fiação) | Comunicação |
+| CL | Aviso de manutenção (não é erro) | Evaporadora |
+
+## ELGIN — Eco Plus II (Split Hi-Wall)
+Logo: Elgin (loja VTEX oficial). Códigos ligados ao Eco Inverter II Wi-Fi 12k (fonte suporte oficial Elgin). A tabela Eco Life Inverter (E0/F/P) não foi semeada para evitar conflito de mesmo code/modelo — fica de lacuna.
+
+| Código | Título | Componente |
+|---|---|---|
+| E1 | Falha no EEPROM (interna) | Placa interna |
+| E2 | Erro de sinal do cruzamento zero | Energia |
+| E3 | Mau funcionamento do motor ventilador interno | Evaporadora |
+| E5 | Falha sensor de temperatura ambiente interno | Evaporadora |
+| E6 | Falha sensor de temperatura do evaporador | Evaporadora |
+| E7 | Falha sensor de temperatura externo | Condensadora |
+| E8 | Mau funcionamento do motor ventilador externo | Condensadora |
+| E9 | Falha de comunicação entre unidades | Comunicação |
+| EC | Detecção de vazamento de refrigerante | Sistema |
+| P6 | Proteção de pressão | Compressor |
