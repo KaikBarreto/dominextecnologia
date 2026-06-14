@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.15',
+    date: '14 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cabo Elétrico nas Ferramentas do Técnico',
+        description: 'Nova ferramenta "Cabo Elétrico": informe a capacidade (BTU), a tensão e a distância até o quadro elétrico, e veja a bitola do cabo (mm²) e o disjuntor recomendados, com base na NBR 5410. O campo de BTU permite escolher uma capacidade comum ou digitar uma personalizada, e a Conversão agora já abre com o valor "1" convertido para você ajustar a partir daí.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.14',
     date: '14 de junho de 2026',
     type: 'patch',

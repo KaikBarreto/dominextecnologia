@@ -173,7 +173,8 @@ function ConversaoCategoriaView({
     usarInicial ? (inicial as ConversaoInicial).para : (unidades[1]?.code ?? unidades[0].code),
   );
   // Valor cru digitado pelo usuário (string) e qual lado é a fonte da verdade.
-  const [valor, setValor] = useState('');
+  // Default "1" pra já mostrar a conversão calculada ao entrar na categoria.
+  const [valor, setValor] = useState('1');
   const [lastEdited, setLastEdited] = useState<'left' | 'right'>('left');
   // Modo de cálculo do par HP ↔ BTU/h (só relevante na categoria Potência).
   const [modo, setModo] = useState<ModoPotencia>('refrigeracao');

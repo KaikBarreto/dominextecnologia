@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   Boxes,
   Zap,
+  Cable,
   Home,
   Snowflake,
   Table2,
@@ -21,6 +22,7 @@ import { CargaTermica } from '@/components/technician-tools/CargaTermica';
 import { Conversao } from '@/components/technician-tools/Conversao';
 import { Equipamentos } from '@/components/technician-tools/Equipamentos';
 import { CalculoCapacitor } from '@/components/technician-tools/CalculoCapacitor';
+import { CaboEletrico } from '@/components/technician-tools/CaboEletrico';
 import { Superaquecimento } from '@/components/technician-tools/Superaquecimento';
 import { ReguaGases } from '@/components/technician-tools/ReguaGases';
 import { CicloRefrigeracao } from '@/components/technician-tools/CicloRefrigeracao';
@@ -32,6 +34,7 @@ type ToolTab =
   | 'carga-termica'
   | 'conversao'
   | 'calculo-capacitor'
+  | 'cabo-eletrico'
   | 'superaquecimento'
   | 'regua-gases'
   | 'ciclo-refrigeracao';
@@ -53,6 +56,7 @@ const TOOLS: ToolDef[] = [
   { value: 'carga-termica', label: 'Carga Térmica', icon: Thermometer },
   { value: 'conversao', label: 'Conversão', icon: ArrowLeftRight },
   { value: 'calculo-capacitor', label: 'Cálculo de Capacitor', icon: Zap },
+  { value: 'cabo-eletrico', label: 'Cabo Elétrico', icon: Cable },
   { value: 'superaquecimento', label: 'Superaquecimento', icon: Snowflake },
   { value: 'regua-gases', label: 'Régua de Gases', icon: Table2 },
   { value: 'ciclo-refrigeracao', label: 'Ciclo de Refrigeração', icon: RefreshCcw },
@@ -163,6 +167,7 @@ export default function TechnicianTools({ hideBack }: TechnicianToolsProps) {
             <Conversao key={conversaoInicial ? 'deep' : 'browse'} inicial={conversaoInicial} />
           )}
           {activeTab === 'calculo-capacitor' && <CalculoCapacitor />}
+          {activeTab === 'cabo-eletrico' && <CaboEletrico />}
           {activeTab === 'superaquecimento' && (
             <Superaquecimento onIrParaCiclo={() => switchTab('ciclo-refrigeracao')} />
           )}

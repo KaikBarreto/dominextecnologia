@@ -4,6 +4,7 @@ import {
   Thermometer,
   ArrowLeftRight,
   Zap,
+  Cable,
   Snowflake,
   Table2,
   RefreshCcw,
@@ -41,6 +42,7 @@ export type ToolNavId =
   | 'carga-termica'
   | 'conversao'
   | 'calculo-capacitor'
+  | 'cabo-eletrico'
   | 'superaquecimento'
   | 'regua-gases'
   | 'ciclo-refrigeracao';
@@ -89,6 +91,13 @@ const ATALHOS: AtalhoFerramenta[] = [
     descricao: 'Encontre o capacitor certo pelo BTU e tensão.',
     icon: Zap,
     accent: 'hsl(38 92% 50%)',
+  },
+  {
+    id: 'cabo-eletrico',
+    label: 'Cabo Elétrico',
+    descricao: 'Bitola do cabo e disjuntor pelo BTU, tensão e distância.',
+    icon: Cable,
+    accent: 'hsl(24 95% 53%)',
   },
   {
     id: 'superaquecimento',

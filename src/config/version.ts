@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.14";
+export const APP_VERSION = "1.12.15";
 
-export const VERSION_NOTES = "Documentos do contrato (TRT e Certificado de Conformidade) agora têm validade: cada documento mostra até quando vale, com selo de em dia, vence em breve ou vencido, e um aviso no contrato quando há documento vencido. A validade aparece também no portal do cliente e nas Configurações você define a duração de cada tipo.";
+export const VERSION_NOTES = "Nova ferramenta Cabo Elétrico: informe BTU, tensão e a distância até o quadro e veja a bitola do cabo e o disjuntor recomendados (base NBR 5410). O campo de BTU ganhou a opção Personalizado, e a Conversão já abre com o valor 1 convertido.";
