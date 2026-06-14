@@ -54,7 +54,8 @@ interface MenuItem {
   path?: string;
   screenKey?: string;
   moduleKey?: ModuleCode;
-  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
+  requiresSegment?: string;
+  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
 
 const tenantMenuItems: MenuItem[] = [
@@ -65,7 +66,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
-      { title: 'Ferramentas do Técnico', icon: Calculator, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools' },
+      { title: 'Ferramentas do Técnico', icon: Calculator, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresSegment: 'refrigeracao' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
@@ -228,6 +229,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const { hasScreenAccess, hasAdminScreenAccess, isAdminUser, roles } = useAuth();
   const { hasModule } = useCompanyModules();
+  const { settings } = useCompanySettings();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -237,10 +239,11 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
 
   const isSuperAdmin = roles.includes('super_admin');
 
-  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
+  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }>(items: T[]): T[] => {
     return items.filter((item) => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
+      if (item.requiresSegment && settings?.segment !== item.requiresSegment) return false;
       return true;
     });
   };

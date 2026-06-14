@@ -4,7 +4,7 @@ import {
   Boxes,
   Search,
   Loader2,
-  FileText,
+  Download,
   AlertCircle,
   ChevronRight,
   PackageSearch,
@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { cn } from '@/lib/utils';
 import {
   useEquipmentBrands,
@@ -58,7 +57,7 @@ function extrairBtu(name: string): string | null {
 type View =
   | { kind: 'brands' }
   | { kind: 'models'; brand: EquipmentBrand }
-  | { kind: 'errors'; model: EquipmentModel; initialCode?: string };
+  | { kind: 'errors'; model: EquipmentModel; initialCode?: string; brand?: EquipmentBrand };
 
 /**
  * Catálogo de equipamentos de ar-condicionado para consulta em campo.
@@ -89,17 +88,20 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
       <ModelosList
         brand={view.brand}
         onBack={() => setView({ kind: 'brands' })}
-        onSelectErrors={(model) => setView({ kind: 'errors', model })}
+        onSelectErrors={(model) => setView({ kind: 'errors', model, brand: view.brand })}
       />
     );
   }
 
   if (view.kind === 'errors') {
+    const originBrand = view.brand;
     return (
       <CodigosErro
         model={view.model}
         initialCode={view.initialCode}
-        onBack={() => setView({ kind: 'brands' })}
+        onBack={() =>
+          setView(originBrand ? { kind: 'models', brand: originBrand } : { kind: 'brands' })
+        }
       />
     );
   }
@@ -297,23 +299,23 @@ function BrandsList({
               type="button"
               onClick={() => onSelectBrand(brand)}
               className={cn(
-                'flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card p-4 text-center shadow-sm transition-all',
+                // Card inteiro branco fixo nos 2 temas pra logos coloridos/escuros
+                // não sumirem no dark mode. bg-white é proposital — não usar token aqui.
+                'flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-white p-4 text-center shadow-sm transition-all',
                 'hover:border-primary/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               )}
             >
               {brand.logo_url ? (
-                // Fundo branco fixo (nos 2 temas) pra logos coloridos/escuros não
-                // sumirem no dark mode. bg-white é proposital — não usar token aqui.
-                <div className="flex h-16 w-full items-center justify-center rounded-xl bg-white p-2">
-                  <img
-                    src={brand.logo_url}
-                    alt={brand.name}
-                    className="max-h-12 max-w-[85%] object-contain"
-                    loading="lazy"
-                  />
-                </div>
+                <img
+                  src={brand.logo_url}
+                  alt={brand.name}
+                  className="max-h-12 max-w-[85%] object-contain"
+                  loading="lazy"
+                />
               ) : (
-                <span className="text-base font-semibold leading-tight text-foreground">
+                // Cor escura fixa (não text-foreground) pra ficar legível sobre o
+                // card branco também no dark mode.
+                <span className="text-base font-semibold leading-tight text-neutral-800">
                   {brand.name}
                 </span>
               )}
@@ -425,7 +427,7 @@ function ModelosList({
 }
 
 /* ------------------------------------------------------------------ */
-/* Card de modelo + modal "Selecione"                                  */
+/* Card de modelo com ações diretas (Códigos de erro / Baixar manual)  */
 /* ------------------------------------------------------------------ */
 
 function ModelCard({
@@ -437,23 +439,16 @@ function ModelCard({
   brandName: string;
   onSelectErrors: () => void;
 }) {
-  const [modalOpen, setModalOpen] = useState(false);
-
   const categoria = model.category?.name ?? null;
   const btu = extrairBtu(model.name);
   // Linha de identificação: "Marca · Categoria" (omite o que faltar).
   const subtitulo = [brandName, categoria].filter(Boolean).join(' · ');
+  const temManual = Boolean(model.manual_url);
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setModalOpen(true)}
-        className={cn(
-          'flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-all',
-          'hover:border-primary/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        )}
-      >
+    <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+      {/* Identificação */}
+      <div className="flex items-center gap-3">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
           {model.image_url ? (
             <img
@@ -484,53 +479,26 @@ function ModelCard({
             )}
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-      </button>
+      </div>
 
-      <ResponsiveModal open={modalOpen} onOpenChange={setModalOpen} title="Selecione">
-        <div className="space-y-3 py-2">
-          <button
-            type="button"
-            onClick={() => {
-              setModalOpen(false);
-              onSelectErrors();
-            }}
-            className="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 active:scale-[0.99]"
-          >
-            <AlertCircle className="h-6 w-6 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="text-base font-semibold">Códigos de Erro</p>
-              <p className="text-xs text-muted-foreground">Consultar erros do display</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            disabled={!model.manual_url}
-            onClick={() => {
-              if (model.manual_url) {
-                setModalOpen(false);
-                abrirManual(model.manual_url);
-              }
-            }}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all',
-              model.manual_url
-                ? 'hover:border-primary/40 active:scale-[0.99]'
-                : 'cursor-not-allowed opacity-50',
-            )}
-          >
-            <FileText className="h-6 w-6 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="text-base font-semibold">Manuais</p>
-              <p className="text-xs text-muted-foreground">
-                {model.manual_url ? 'Abrir manual do equipamento' : 'Sem manual disponível'}
-              </p>
-            </div>
-          </button>
-        </div>
-      </ResponsiveModal>
-    </>
+      {/* Ações diretas — sem modal intermediário */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button variant="outline" size="sm" className="w-full" onClick={onSelectErrors}>
+          <AlertCircle className="h-4 w-4" />
+          Códigos de erro
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!temManual}
+          onClick={() => temManual && abrirManual(model.manual_url!)}
+          className={cn('w-full', !temManual && 'opacity-50 cursor-not-allowed')}
+        >
+          <Download className="h-4 w-4" />
+          {temManual ? 'Baixar manual' : 'Sem manual'}
+        </Button>
+      </div>
+    </div>
   );
 }
 

@@ -11,7 +11,6 @@ import {
   BookOpen,
   ChevronRight,
   Star,
-  Clock,
   Package,
   Search,
   Ruler,
@@ -176,8 +175,7 @@ function semAcento(s: string): string {
 }
 
 export function Inicio({ onNavigate }: InicioProps) {
-  const { recentesConversao, recentesModelos, favoritosModelos, favoritosConversao } =
-    useToolHistory();
+  const { favoritosModelos, favoritosConversao } = useToolHistory();
 
   const [buscaGlossario, setBuscaGlossario] = useState('');
   const secoesFiltradas = useMemo(() => {
@@ -201,7 +199,6 @@ export function Inicio({ onNavigate }: InicioProps) {
     onNavigate('equipamentos', { tab: 'equipamentos', modeloInicialId: item.modelId });
 
   const temFavoritos = favoritosModelos.length > 0 || favoritosConversao.length > 0;
-  const temRecentes = recentesConversao.length > 0 || recentesModelos.length > 0;
 
   return (
     <div className="space-y-8">
@@ -281,28 +278,6 @@ export function Inicio({ onNavigate }: InicioProps) {
                 item={c}
                 onClick={() => irParaConversao(c)}
               />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Recentes (oculto se vazio) */}
-      {temRecentes && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <h2 className="text-base font-semibold md:text-xl">Recentes</h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {recentesConversao.map((c) => (
-              <ConversaoChip
-                key={`${c.categoria}:${c.de}:${c.para}`}
-                item={c}
-                onClick={() => irParaConversao(c)}
-              />
-            ))}
-            {recentesModelos.map((m) => (
-              <ModeloChip key={m.modelId} item={m} onClick={() => irParaModelo(m)} />
             ))}
           </div>
         </section>

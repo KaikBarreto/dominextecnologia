@@ -456,6 +456,7 @@ export type Database = {
           neighborhood: string | null
           notes: string | null
           origin: string | null
+          payment_lock_bypass: boolean
           payment_method: string | null
           pending_billing_cycle: string | null
           pending_max_users: number | null
@@ -502,6 +503,7 @@ export type Database = {
           neighborhood?: string | null
           notes?: string | null
           origin?: string | null
+          payment_lock_bypass?: boolean
           payment_method?: string | null
           pending_billing_cycle?: string | null
           pending_max_users?: number | null
@@ -548,6 +550,7 @@ export type Database = {
           neighborhood?: string | null
           notes?: string | null
           origin?: string | null
+          payment_lock_bypass?: boolean
           payment_method?: string | null
           pending_billing_cycle?: string | null
           pending_max_users?: number | null
@@ -840,6 +843,7 @@ export type Database = {
           report_header_show_logo_bg: boolean | null
           report_header_text_color: string | null
           report_status_bar_color: string | null
+          segment: string | null
           show_address_in_documents: boolean
           show_cnpj_in_documents: boolean
           show_email_in_documents: boolean
@@ -875,6 +879,7 @@ export type Database = {
           report_header_show_logo_bg?: boolean | null
           report_header_text_color?: string | null
           report_status_bar_color?: string | null
+          segment?: string | null
           show_address_in_documents?: boolean
           show_cnpj_in_documents?: boolean
           show_email_in_documents?: boolean
@@ -910,6 +915,7 @@ export type Database = {
           report_header_show_logo_bg?: boolean | null
           report_header_text_color?: string | null
           report_status_bar_color?: string | null
+          segment?: string | null
           show_address_in_documents?: boolean
           show_cnpj_in_documents?: boolean
           show_email_in_documents?: boolean
@@ -927,7 +933,7 @@ export type Database = {
           {
             foreignKeyName: "company_settings_company_id_fkey"
             columns: ["company_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -2910,6 +2916,7 @@ export type Database = {
       }
       form_questions: {
         Row: {
+          allow_multiple_photos: boolean
           answer_mode: string | null
           answer_types: Json | null
           auto_classify: boolean
@@ -2928,6 +2935,7 @@ export type Database = {
           unit: string | null
         }
         Insert: {
+          allow_multiple_photos?: boolean
           answer_mode?: string | null
           answer_types?: Json | null
           auto_classify?: boolean
@@ -2946,6 +2954,7 @@ export type Database = {
           unit?: string | null
         }
         Update: {
+          allow_multiple_photos?: boolean
           answer_mode?: string | null
           answer_types?: Json | null
           auto_classify?: boolean
@@ -6165,6 +6174,7 @@ export type Database = {
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       can_bootstrap_admin: { Args: never; Returns: boolean }
+      can_manage_contracts: { Args: { _user_id: string }; Returns: boolean }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
       company_has_module: {

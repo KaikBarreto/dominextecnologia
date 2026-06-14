@@ -54,6 +54,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import TechnicianTools from '@/pages/TechnicianTools';
 import { Calculator } from 'lucide-react';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 interface OSPhoto {
   id: string;
@@ -130,17 +131,23 @@ export default function TechnicianOS() {
       toast({ variant: 'destructive', title: 'Não foi possível copiar o link', description: getErrorMessage(error) });
     }
   };
+  // "Ferramentas do Técnico" é exclusiva do segmento Refrigeração e Climatização.
+  // Enquanto settings carrega (undefined/null), showTools é false → atalho oculto.
+  const { settings } = useCompanySettings();
+  const showTools = settings?.segment === 'refrigeracao';
   const speedDialActions: SpeedDialAction[] = [
     {
       icon: Link2,
       label: 'Copiar o link público da OS (cliente)',
       onClick: handleCopyTrackingLink,
     },
-    {
-      icon: Calculator,
-      label: 'Ferramentas do Técnico',
-      onClick: () => setToolsOpen(true),
-    },
+    ...(showTools
+      ? [{
+          icon: Calculator,
+          label: 'Ferramentas do Técnico',
+          onClick: () => setToolsOpen(true),
+        } as SpeedDialAction]
+      : []),
   ];
 
   // Helper to safely extract joined object (Supabase may return array for some joins)

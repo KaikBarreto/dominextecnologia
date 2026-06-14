@@ -40,6 +40,9 @@ export interface CompanySettings {
   report_status_bar_color?: string;
   report_header_logo_type?: string;
   report_header_logo_bg_color?: string;
+  // Segmento da empresa (ex.: 'refrigeracao'). Gateia áreas exclusivas como
+  // as Ferramentas do Técnico no app de campo.
+  segment?: string | null;
   created_at: string;
   updated_at: string;
 }

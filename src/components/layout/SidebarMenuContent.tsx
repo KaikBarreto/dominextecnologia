@@ -53,6 +53,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -69,7 +70,8 @@ interface MenuItem {
   path?: string;
   screenKey?: string;
   moduleKey?: ModuleCode;
-  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
+  requiresSegment?: string;
+  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
 
 // Estrutura preservada do AppSidebar antigo do Dominex — não inventar itens novos.
@@ -81,7 +83,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
-      { title: 'Ferramentas do Técnico', icon: Calculator, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools' },
+      { title: 'Ferramentas do Técnico', icon: Calculator, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresSegment: 'refrigeracao' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
@@ -154,6 +156,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 export function SidebarMenuContent() {
   const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
+  const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   const location = useLocation();
   const navigate = useNavigate();
@@ -214,10 +217,11 @@ export function SidebarMenuContent() {
   const isCompanyAdmin = roles.includes('admin');
   const showLogoLoading = logoLoading && !isAdminUser;
 
-  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
+  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }>(items: T[]): T[] => {
     return items.filter(item => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
+      if (item.requiresSegment && settings?.segment !== item.requiresSegment) return false;
       return true;
     });
   };

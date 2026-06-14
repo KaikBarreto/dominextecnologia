@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { COMPANY_SEGMENTS } from '@/utils/companySegments';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { applyWhiteLabelTheme } from '@/hooks/useWhiteLabel';
@@ -75,6 +77,7 @@ function settingsToJson(settings: any): string {
     report_header_logo_bg_color: settings.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
     report_status_bar_color: settings.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
     report_header_logo_type: settings.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
+    segment: settings.segment || null,
   });
 }
 
@@ -117,6 +120,7 @@ export default function Settings() {
   const [companyCity, setCompanyCity] = useState('');
   const [companyState, setCompanyState] = useState('');
   const [companyZip, setCompanyZip] = useState('');
+  const [companySegment, setCompanySegment] = useState('');
   const [uploading, setUploading] = useState(false);
   const [wlUploading, setWlUploading] = useState(false);
   const [wlEnabled, setWlEnabled] = useState(false);
@@ -174,6 +178,7 @@ export default function Settings() {
       setCompanyZip(settings.zip_code || '');
       setCompanyNeighborhood(settings.neighborhood || '');
       setCompanyComplement(settings.complement || '');
+      setCompanySegment((settings as any).segment || '');
       setWlEnabled(!!settings.white_label_enabled);
       setWlColor(settings.white_label_primary_color || '#00C597');
       setShowNameInDocs(settings.show_name_in_documents ?? true);
@@ -232,7 +237,8 @@ export default function Settings() {
     report_header_logo_bg_color: reportLogoBgColor,
     report_status_bar_color: reportStatusBarColor,
     report_header_logo_type: reportLogoType,
-  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType]);
+    segment: companySegment || null,
+  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, companySegment]);
 
   useEffect(() => {
     // O gate do auto-save abre quando dá pra salvar (canSave), não quando
@@ -573,6 +579,28 @@ export default function Settings() {
                   </div>
                   <Input value={companyDoc} onChange={e => setCompanyDoc(cpfCnpjMask(e.target.value))} placeholder="00.000.000/0000-00" />
                 </div>
+              </div>
+
+              <div className="space-y-2 pl-0 sm:pl-6">
+                <Label>Segmento de Atuação da Empresa</Label>
+                <Select value={companySegment || 'none'} onValueChange={v => setCompanySegment(v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {COMPANY_SEGMENTS.map((s) => {
+                      const Icon = s.icon;
+                      return (
+                        <SelectItem key={s.value} value={s.value}>
+                          <span className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" style={{ color: s.color }} />
+                            {s.label}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Define quais ferramentas e recursos do seu segmento aparecem no sistema.</p>
               </div>
 
               <Separator className="my-6" />
