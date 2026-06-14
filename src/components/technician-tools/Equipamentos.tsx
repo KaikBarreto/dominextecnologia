@@ -9,10 +9,13 @@ import {
   ChevronRight,
   PackageSearch,
   Star,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import {
   useEquipmentBrands,
   useEquipmentModel,
@@ -53,6 +56,24 @@ function extrairBtu(name: string): string | null {
   if (!m) return null;
   const num = m[1].replace(/\s/g, '.');
   return `${num} BTUs`;
+}
+
+/**
+ * Extrai a potência (BTUs) como NÚMERO puro do nome do modelo.
+ * Ex: "Cassete 60.000 BTUs Inverter" → 60000. Retorna null se não achar.
+ * Reaproveita a mesma regex de `extrairBtu`.
+ */
+function btuNumero(name: string): number | null {
+  const m = name.match(/(\d{1,3}(?:[.\s]\d{3})+|\d{4,6})\s*BTU?s?/i);
+  if (!m) return null;
+  const digits = m[1].replace(/[.\s]/g, '');
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Formata um número de BTU para exibição. Ex: 9000 → "9.000 BTUs". */
+function formatarBtu(n: number): string {
+  return `${n.toLocaleString('pt-BR')} BTUs`;
 }
 
 type View =
@@ -156,8 +177,55 @@ function BrandsList({
     return () => clearTimeout(id);
   }, [termoRaw]);
 
+  // Filtros (só valem quando a busca está vazia — busca é universal).
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+
   const q = norm(termo);
   const searching = q.length > 0;
+
+  // Opções de Potência derivadas de TODOS os modelos (BTU distintos, crescente).
+  const btuOptions = useMemo(() => {
+    const set = new Set<number>();
+    for (const m of allModels) {
+      const n = btuNumero(m.name);
+      if (n != null) set.add(n);
+    }
+    return Array.from(set)
+      .sort((a, b) => a - b)
+      .map((n) => ({ value: String(n), label: formatarBtu(n) }));
+  }, [allModels]);
+
+  // Opções de Tipo derivadas das categorias presentes (alfabético).
+  const typeOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allModels) {
+      const name = m.category?.name;
+      if (name) set.add(name);
+    }
+    return Array.from(set)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      .map((name) => ({ value: name, label: name }));
+  }, [allModels]);
+
+  const activeFilterCount = selectedBtus.length + selectedTypes.length;
+  const filtering = !searching && activeFilterCount > 0;
+
+  // Modelos que casam com os filtros ativos (todas as marcas).
+  const filteredModels = useMemo(() => {
+    if (!filtering) return [];
+    return allModels.filter(
+      (m) =>
+        (selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)))) &&
+        (selectedTypes.length === 0 || selectedTypes.includes(m.category?.name ?? '')),
+    );
+  }, [allModels, filtering, selectedBtus, selectedTypes]);
+
+  const limparFiltros = () => {
+    setSelectedBtus([]);
+    setSelectedTypes([]);
+  };
 
   // Modelos que casam por nome do modelo, código do modelo OU nome da marca.
   const modelHits = useMemo(() => {
@@ -227,24 +295,79 @@ function BrandsList({
         <p className="text-sm text-muted-foreground md:text-base">Consulte modelos e códigos de erro.</p>
       </div>
 
-      {/* Busca global do catálogo */}
+      {/* Busca global do catálogo + botão de filtros */}
       <div className="space-y-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Buscar por marca, equipamento ou código de erro"
-            value={termoRaw}
-            onChange={(e) => setTermoRaw(e.target.value)}
-            className="h-14 pl-10 text-lg"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Buscar por marca, equipamento ou código de erro"
+              value={termoRaw}
+              onChange={(e) => setTermoRaw(e.target.value)}
+              className="h-14 pl-10 text-lg"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setFiltersOpen(true)}
+            className={cn('h-14 shrink-0', activeFilterCount > 0 && 'border-primary/50 text-primary')}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
         </div>
-        {!searching && (
+        {!searching && !filtering && (
           <p className="text-xs text-muted-foreground">
             Ou selecione uma marca para ver os modelos.
           </p>
         )}
       </div>
+
+      {/* Painel de filtros */}
+      <ResponsiveModal
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Filtros"
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={limparFiltros}
+              disabled={activeFilterCount === 0}
+            >
+              Limpar filtros
+            </Button>
+            <Button type="button" onClick={() => setFiltersOpen(false)}>
+              Ver resultados
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <FilterCheckboxGroup
+            label="Potência"
+            options={btuOptions}
+            selected={selectedBtus}
+            onChange={setSelectedBtus}
+            emptyLabel="Todas"
+          />
+          <FilterCheckboxGroup
+            label="Tipo"
+            options={typeOptions}
+            selected={selectedTypes}
+            onChange={setSelectedTypes}
+            emptyLabel="Todos"
+          />
+        </div>
+      </ResponsiveModal>
 
       {/* RESULTADOS DA BUSCA GLOBAL */}
       {searching ? (
@@ -284,6 +407,28 @@ function BrandsList({
               </section>
             )}
           </div>
+        )
+      ) : filtering ? (
+        /* FILTROS ATIVOS — lista de modelos (todas as marcas) que casam */
+        loadingModels ? (
+          <LoadingBlock />
+        ) : filteredModels.length === 0 ? (
+          <EmptyState
+            title="Nenhum equipamento encontrado"
+            message="Nenhum modelo corresponde aos filtros selecionados. Ajuste a potência ou o tipo."
+          />
+        ) : (
+          <section className="space-y-3">
+            <SectionHeader label="Equipamentos" count={filteredModels.length} />
+            {filteredModels.map((model) => (
+              <ModelCard
+                key={model.id}
+                model={model}
+                brandName={model.brand?.name ?? 'Marca'}
+                onSelectErrors={() => onSelectModelErrors(model)}
+              />
+            ))}
+          </section>
         )
       ) : /* BROWSE NORMAL — grid de marcas */ isLoading ? (
         <LoadingBlock />
