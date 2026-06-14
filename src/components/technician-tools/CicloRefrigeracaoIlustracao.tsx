@@ -167,6 +167,30 @@ function TermometroIcon({ cx, cy, height, fill }: { cx: number; cy: number; heig
   );
 }
 
+// `d` do ícone vetorial de MANÔMETRO (viewBox 92×80), extraído do SVG de origem.
+// O `fill` original era preto; aqui é sobrescrito pela cor da linha de sucção
+// (azul theme-aware), igual ao termômetro.
+const MANOMETRO_ICON_D =
+  "M68 80H24C23.4477 80 23 79.5523 23 79V65C23 64.4477 23.4477 64 24 64H68C68.5523 64 69 64.4477 69 65V79C69 79.5523 68.5523 80 68 80ZM1 66C0.45 66 0 66.45 0 67V77C0 77.55 0.45 78 1 78H20V66H1ZM91 66H72V78H91C91.55 78 92 77.55 92 77V67C92 66.45 91.55 66 91 66ZM46 28.5C46.8271 28.5 47.5 27.8271 47.5 27C47.5 26.1729 46.8271 25.5 46 25.5C45.1729 25.5 44.5 26.1729 44.5 27C44.5 27.8271 45.1729 28.5 46 28.5ZM57.2573 40.3787C54.2115 42.9457 50.2857 44.5 46 44.5C41.7143 44.5 37.7885 42.9457 34.7427 40.3787L36.4541 38.667C37.04 38.0816 37.04 37.1314 36.4541 36.5459C35.8682 35.96 34.9189 35.96 34.333 36.5459L32.6214 38.2575C30.3575 35.5715 28.8922 32.199 28.576 28.5H31C31.8286 28.5 32.5 27.8286 32.5 27C32.5 26.1714 31.8286 25.5 31 25.5H28.576C28.8922 21.801 30.3576 18.4285 32.6214 15.7425L34.333 17.4541C34.626 17.7471 35.0098 17.8936 35.3935 17.8936C35.7772 17.8936 36.1611 17.7471 36.454 17.4541C37.0399 16.8687 37.0399 15.9185 36.454 15.333L34.7424 13.6214C37.4284 11.3575 40.8009 9.8922 44.4999 9.576V12C44.4999 12.8286 45.1713 13.5 45.9999 13.5C46.8285 13.5 47.4999 12.8286 47.4999 12V9.576C51.1989 9.8922 54.5714 11.3576 57.2574 13.6214L55.5458 15.333C54.9599 15.9184 54.9599 16.8686 55.5458 17.4541C55.8388 17.7471 56.2226 17.8936 56.6063 17.8936C56.99 17.8936 57.3739 17.7471 57.6668 17.4541L59.3784 15.7425C61.6423 18.4285 63.1076 21.801 63.4238 25.5H60.9998C60.1712 25.5 59.4998 26.1714 59.4998 27C59.4998 27.8286 60.1712 28.5 60.9998 28.5H63.4238C63.1076 32.199 61.6422 35.5715 59.3784 38.2575L57.6668 36.5459C57.0809 35.96 56.1316 35.96 55.5457 36.5459C54.9598 37.1313 54.9598 38.0815 55.5457 38.667L57.2573 40.3787ZM41.5 27C41.5 29.4814 43.5186 31.5 46 31.5C48.4814 31.5 50.5 29.4814 50.5 27C50.5 25.6785 49.917 24.5002 49.007 23.6763L51.1865 18.4361C51.5049 17.671 51.1426 16.793 50.3779 16.4752C49.6118 16.1568 48.7348 16.5191 48.417 17.2838L46.2375 22.5241C46.1572 22.5198 46.0813 22.5001 46 22.5001C43.5186 22.5001 41.5 24.5186 41.5 27ZM52.5 37C52.5 36.1714 51.8286 35.5 51 35.5H41C40.1714 35.5 39.5 36.1714 39.5 37C39.5 37.8286 40.1714 38.5 41 38.5H51C51.8286 38.5 52.5 37.8286 52.5 37ZM73 27C73 39.85 64.02 50.6 52 53.32V61H40V53.32C27.98 50.6 19 39.85 19 27C19 12.09 31.09 0 46 0C60.91 0 73 12.09 73 27ZM66.5 27C66.5 21.37 64.22 16.27 60.53 12.56C60.52 12.54 60.51 12.52 60.5 12.5C60.48 12.49 60.46 12.48 60.44 12.47C56.73 8.78 51.63 6.5 46 6.5C40.37 6.5 35.27 8.78 31.56 12.47C31.54 12.48 31.52 12.49 31.5 12.5C31.49 12.52 31.48 12.54 31.47 12.56C27.78 16.27 25.5 21.37 25.5 27C25.5 32.63 27.78 37.73 31.47 41.44C31.48 41.46 31.49 41.48 31.5 41.5C31.52 41.51 31.54 41.52 31.56 41.53C35.27 45.22 40.37 47.5 46 47.5C51.63 47.5 56.73 45.22 60.44 41.53C60.46 41.52 60.48 41.51 60.5 41.5C60.51 41.48 60.52 41.46 60.53 41.44C64.22 37.73 66.5 32.63 66.5 27Z";
+
+/**
+ * Ícone vetorial de MANÔMETRO centralizado em (cx, cy), escalado para `height`
+ * px de altura (viewBox nativo 92×80). `fill` theme-aware (cor da linha de
+ * sucção / baixa pressão — azul). Substitui o mostrador improvisado antigo.
+ */
+function ManometroIcon({ cx, cy, height, fill }: { cx: number; cy: number; height: number; fill: string }) {
+  const scale = height / 80;
+  const w = 92 * scale;
+  const h = 80 * scale;
+  const tx = cx - w / 2;
+  const ty = cy - h / 2;
+  return (
+    <g transform={`translate(${tx} ${ty}) scale(${scale})`}>
+      <path d={MANOMETRO_ICON_D} fill={fill} stroke="none" />
+    </g>
+  );
+}
+
 /**
  * Gera o `d` de uma serpentina em MEANDRO como UM ÚNICO PATH CONTÍNUO, que
  * COMEÇA no tubo externo de entrada (centro-x na borda da caixa), entra no
@@ -728,7 +752,7 @@ export function CicloRefrigeracaoIlustracao() {
               quando desenhado direto sobre a linha de sucção (também azul). O
               círculo é desenhado POR CIMA da linha (a linha passa "atrás").
               =================================================================== */}
-          {/* Manômetro — círculo de contraste + ícone (mostrador) dentro */}
+          {/* Manômetro — círculo de contraste + ícone vetorial dentro */}
           <circle
             cx="130"
             cy="158"
@@ -737,20 +761,7 @@ export function CicloRefrigeracaoIlustracao() {
             className="stroke-sky-500/60 dark:stroke-sky-400/60"
             strokeWidth="1.5"
           />
-          <circle
-            cx="130"
-            cy="158"
-            r="8"
-            fill="none"
-            className="stroke-sky-500 dark:stroke-sky-400"
-            strokeWidth="2"
-          />
-          <path
-            d="M130 158 L134 152"
-            className="stroke-sky-600 dark:stroke-sky-300"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
+          <ManometroIcon cx={130} cy={158} height={18} fill={termoIconFill} />
           <line
             x1="145"
             y1="158"
@@ -1091,7 +1102,7 @@ export function CicloRefrigeracaoIlustracao() {
                    fica DENTRO de um círculo de fundo NEUTRO (theme-aware) com
                    borda azul sutil, pra dar CONTRASTE — o ícone azul some sobre a
                    linha de sucção azul. O círculo passa POR CIMA da linha. */}
-              {/* Manômetro — círculo de contraste + mostrador dentro */}
+              {/* Manômetro — círculo de contraste + ícone vetorial dentro */}
               <circle
                 cx={mEvapCx}
                 cy={158}
@@ -1100,20 +1111,7 @@ export function CicloRefrigeracaoIlustracao() {
                 className="stroke-sky-500/60 dark:stroke-sky-400/60"
                 strokeWidth="1.5"
               />
-              <circle
-                cx={mEvapCx}
-                cy={158}
-                r="8"
-                fill="none"
-                className="stroke-sky-500 dark:stroke-sky-400"
-                strokeWidth="2"
-              />
-              <path
-                d={`M${mEvapCx} 158 L${mEvapCx + 4} 152`}
-                className="stroke-sky-600 dark:stroke-sky-300"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
+              <ManometroIcon cx={mEvapCx} cy={158} height={18} fill={termoIconFill} />
               <line
                 x1={mEvapCx + 15}
                 y1={158}
