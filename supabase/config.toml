@@ -66,6 +66,40 @@ verify_jwt = false
 [functions.sync-asaas-ledger]
 verify_jwt = false
 
+# fisqal-register-company: onboarding fiscal (NFS-e). Authorization Bearer +
+# módulo 'nfe' + can_manage_system validados DENTRO da função (gateway não valida
+# o JWT pra a função poder traduzir os erros em PT-BR + checar módulo/permissão).
+[functions.fisqal-register-company]
+verify_jwt = false
+
+# fisqal-upload-certificate: upload do certificado A1 (multipart). Mesmo gate.
+[functions.fisqal-upload-certificate]
+verify_jwt = false
+
+# fisqal-check-coverage: checa cobertura de NFS-e do município. Mesmo gate.
+[functions.fisqal-check-coverage]
+verify_jwt = false
+
+# fisqal-emit-nfse (Fase 2.1): emite NFS-e a partir de uma OS. Auth de tenant +
+# módulo 'nfe' + can_manage_system validados na própria função (verify_jwt=false
+# porque o gate é feito via auth.getUser() com o Bearer do usuário).
+[functions.fisqal-emit-nfse]
+verify_jwt = false
+
+# fisqal-nfse-status (Fase 2.2): polling de status da emissão. Mesmo gate.
+[functions.fisqal-nfse-status]
+verify_jwt = false
+
+# fisqal-cancel-nfse (Fase 2.4): cancela uma NFS-e autorizada. Mesmo gate de
+# tenant (Authorization Bearer + módulo 'nfe' + can_manage_system).
+[functions.fisqal-cancel-nfse]
+verify_jwt = false
+
+# fisqal-webhook (Fase 2.3): recepção assíncrona da Fisqal. SEM JWT de usuário —
+# segurança é HMAC-SHA256 do corpo cru contra FISQAL_WEBHOOK_SECRET.
+[functions.fisqal-webhook]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)

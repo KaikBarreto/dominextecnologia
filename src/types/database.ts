@@ -53,6 +53,10 @@ export interface Customer {
   notes?: string;
   photo_url?: string;
   origin?: string;
+  // Dados fiscais (tomador NFS-e)
+  inscricao_municipal?: string;
+  street_number?: string;
+  ibge_municipality_code?: string;
   created_at: string;
   updated_at: string;
 }

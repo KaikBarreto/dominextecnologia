@@ -23,6 +23,10 @@ export interface CustomerInput {
   birth_date?: string;
   notes?: string;
   origin?: string;
+  // Dados fiscais (tomador NFS-e) — todos opcionais
+  inscricao_municipal?: string;
+  street_number?: string;
+  ibge_municipality_code?: string;
 }
 
 export function useCustomers() {

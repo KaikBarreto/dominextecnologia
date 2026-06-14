@@ -71,6 +71,8 @@ import EquipmentDetail from "./pages/EquipmentDetail";
 import CRM from "./pages/CRM";
 import Inventory from "./pages/Inventory";
 import Finance from "./pages/Finance";
+import FiscalSettings from "./pages/FiscalSettings";
+import NotasFiscais from "./pages/NotasFiscais";
 import PMOC from "./pages/PMOC";
 import Contracts from "./pages/Contracts";
 import ContractDetail from "./pages/ContractDetail";
@@ -406,6 +408,9 @@ const AppRoutes = () => (
       <Route path="/financeiro/caixas-bancos" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/movimentacoes" replace />} />
+      {/* Notas Fiscais (NFS-e via Fisqal) — gateada pelo módulo pago `nfe`. */}
+      <Route path="/notas-fiscais/configuracoes" element={<PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>} />
+      <Route path="/notas-fiscais" element={<PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>} />
       <Route path="/pmoc" element={<PMOC />} />
       <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><Contracts /></ModuleRoute></PermissionRoute>} />
       <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractDetail /></ModuleRoute></PermissionRoute>} />

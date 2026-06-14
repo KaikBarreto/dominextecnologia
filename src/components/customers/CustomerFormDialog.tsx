@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
@@ -12,9 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, ChevronRight, ChevronLeft, Check, Upload, Users } from 'lucide-react';
+import { Loader2, Upload, Users, User, FileText } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
@@ -46,27 +46,32 @@ const customerSchema = z.object({
   zip_code: z.string().optional(),
   notes: z.string().optional(),
   origin: z.string().optional(),
+  // Dados fiscais (tomador NFS-e) — todos opcionais
+  inscricao_municipal: z.string().optional(),
+  ibge_municipality_code: z.string().optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
+
+const EMPTY_FORM: CustomerFormData = {
+  name: '', customer_type: 'pj', company_name: '', document: '',
+  email: '', phone: '', birth_date: '', address: '', address_number: '',
+  complement: '', neighborhood: '', city: '', state: '', zip_code: '',
+  notes: '', origin: '', inscricao_municipal: '', ibge_municipality_code: '',
+};
 
 interface CustomerFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
-  onSubmit: (data: CustomerFormData) => Promise<void>;
+  onSubmit: (data: CustomerFormData & { street_number?: string }) => Promise<void>;
   isLoading?: boolean;
 }
-
-const STEPS = [
-  { key: 'dados', label: 'Dados pessoais' },
-  { key: 'endereco', label: 'Endereço e observações' },
-];
 
 export function CustomerFormDialog({
   open, onOpenChange, customer, onSubmit, isLoading,
 }: CustomerFormDialogProps) {
-  const [step, setStep] = useState(0);
+  const [activeTab, setActiveTab] = useState<'contato' | 'fiscal'>('contato');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -78,11 +83,7 @@ export function CustomerFormDialog({
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
-    defaultValues: {
-      name: '', customer_type: 'pj', company_name: '', document: '',
-      email: '', phone: '', birth_date: '', address: '', address_number: '',
-      complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '', origin: '',
-    },
+    defaultValues: EMPTY_FORM,
   });
 
   // Save draft on form changes
@@ -95,7 +96,7 @@ export function CustomerFormDialog({
 
   useEffect(() => {
     if (open) {
-      setStep(0);
+      setActiveTab('contato');
       setPhotoFile(null);
       setPhotoPreview((customer as any)?.photo_url || null);
       if (!isEditing && draft.hasDraft && draft.draftData) {
@@ -110,7 +111,7 @@ export function CustomerFormDialog({
           phone: customer?.phone ?? '',
           birth_date: (customer as any)?.birth_date ?? '',
           address: customer?.address ?? '',
-          address_number: (customer as any)?.address_number ?? '',
+          address_number: (customer as any)?.address_number ?? (customer as any)?.street_number ?? '',
           complement: (customer as any)?.complement ?? '',
           neighborhood: (customer as any)?.neighborhood ?? '',
           city: customer?.city ?? '',
@@ -118,6 +119,8 @@ export function CustomerFormDialog({
           zip_code: customer?.zip_code ?? '',
           notes: customer?.notes ?? '',
           origin: (customer as any)?.origin ?? '',
+          inscricao_municipal: (customer as any)?.inscricao_municipal ?? '',
+          ibge_municipality_code: (customer as any)?.ibge_municipality_code ?? '',
         });
       }
     }
@@ -140,11 +143,17 @@ export function CustomerFormDialog({
       if (photoFile) {
         photo_url = await uploadPhoto();
       }
-      const cleanedData = { ...data, birth_date: data.birth_date || undefined, ...(photo_url ? { photo_url } : {}) };
+      const cleanedData = {
+        ...data,
+        birth_date: data.birth_date || undefined,
+        // Espelha o número do endereço na coluna fiscal usada pela emissão de NFS-e.
+        street_number: data.address_number || undefined,
+        ...(photo_url ? { photo_url } : {}),
+      };
       await onSubmit(cleanedData);
       draft.clearDraft();
       form.reset();
-      setStep(0);
+      setActiveTab('contato');
       onOpenChange(false);
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
@@ -153,12 +162,9 @@ export function CustomerFormDialog({
     }
   };
 
-  const canGoNext = () => {
-    const name = form.watch('name');
-    return name && name.length >= 2;
-  };
-
-  const isLastStep = step === STEPS.length - 1;
+  // Erro de validação cai sempre num campo da aba Contato (nome) — garante que
+  // o usuário veja a mensagem mesmo se estiver na aba Fiscal ao salvar.
+  const onInvalid = () => setActiveTab('contato');
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? 'Editar Cliente' : 'Novo Cliente'}>
@@ -170,268 +176,278 @@ export function CustomerFormDialog({
         }}
         onDiscard={() => {
           draft.discardDraft();
-          form.reset({
-            name: '', customer_type: 'pj', company_name: '', document: '',
-            email: '', phone: '', birth_date: '', address: '', address_number: '',
-            complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '', origin: '',
-          });
+          form.reset(EMPTY_FORM);
         }}
       />
-      {/* Step indicators */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        {STEPS.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2">
-            <div className={cn(
-              'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
-              i < step ? 'bg-primary text-white' :
-              i === step ? 'bg-primary text-white' :
-              'bg-muted text-muted-foreground'
-            )}>
-              {i < step ? <Check className="h-4 w-4" /> : i + 1}
-            </div>
-            <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
-              {s.label}
-            </span>
-            {i < STEPS.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          </div>
-        ))}
-      </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          {step === 0 && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Photo upload */}
-              <div className="sm:col-span-2 flex items-center gap-4">
-                {photoPreview ? (
-                  <img src={photoPreview} alt="" className="h-16 w-16 rounded-full object-cover border" />
-                ) : (
-                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center border">
-                    <Users className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const processed = await processImageFile(file);
-                        setPhotoFile(processed);
-                        setPhotoPreview(URL.createObjectURL(processed));
-                      }
-                    }}
-                  />
-                  <Button type="button" variant="outline" size="sm" asChild>
-                    <span><Upload className="h-3 w-3 mr-1" /> Foto</span>
-                  </Button>
-                </label>
-              </div>
-              <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Nome *</FormLabel>
-                  <FormControl><Input placeholder="Nome do cliente" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="customer_type" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="pj">Pessoa Jurídica</SelectItem>
-                      <SelectItem value="pf">Pessoa Física</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="company_name" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Empresa</FormLabel>
-                  <FormControl><Input placeholder="Nome da empresa" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="document" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CPF/CNPJ</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="000.000.000-00" 
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(cpfCnpjMask(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="birth_date" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Nascimento</FormLabel>
-                  <FormControl><Input type="date" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefone</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="(00) 00000-0000" 
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(phoneMask(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="origin" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Origem</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)} value={field.value || '__none__'}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nenhuma</SelectItem>
-                      {activeOrigins.map((o) => {
-                        const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
-                        return (
-                          <SelectItem key={o.id} value={o.name}>
-                            <div className="flex items-center gap-2">
-                              {LucideIcon && <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: o.color }}><LucideIcon className="h-2.5 w-2.5 text-white" /></div>}
-                              <span>{o.name}</span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-          )}
+        <form onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="space-y-4">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contato' | 'fiscal')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="contato" className="flex items-center gap-2 text-xs sm:text-sm">
+                <User className="h-4 w-4" />
+                Contato
+              </TabsTrigger>
+              <TabsTrigger value="fiscal" className="flex items-center gap-2 text-xs sm:text-sm">
+                <FileText className="h-4 w-4" />
+                Fiscal
+              </TabsTrigger>
+            </TabsList>
 
-          {step === 1 && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField control={form.control} name="zip_code" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CEP</FormLabel>
-                  <FormControl>
-                    <CepLookup
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                      onAddressFound={(addr) => {
-                        if (addr.logradouro) form.setValue('address', addr.logradouro);
-                        if (addr.bairro) form.setValue('neighborhood', addr.bairro);
-                        if (addr.cidade) form.setValue('city', addr.cidade);
-                        if (addr.estado) form.setValue('state', addr.estado);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="address" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Endereço</FormLabel>
-                  <FormControl>
-                    <AddressAutocomplete
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                      onAddressSelected={(addr) => {
-                        if (addr.logradouro) form.setValue('address', addr.logradouro);
-                        if (addr.numero) form.setValue('address_number', addr.numero);
-                        if (addr.bairro) form.setValue('neighborhood', addr.bairro);
-                        if (addr.cidade) form.setValue('city', addr.cidade);
-                        if (addr.estado) form.setValue('state', addr.estado);
-                        if (addr.cep) {
-                          const c = addr.cep.replace(/\D/g, '');
-                          form.setValue('zip_code', c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+            {/* ===== Aba Contato — dados do dia a dia ===== */}
+            <TabsContent value="contato" className="mt-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Photo upload */}
+                <div className="sm:col-span-2 flex items-center gap-4">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="" className="h-16 w-16 rounded-full object-cover border" />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center border">
+                      <Users className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const processed = await processImageFile(file);
+                          setPhotoFile(processed);
+                          setPhotoPreview(URL.createObjectURL(processed));
                         }
                       }}
-                      placeholder="Rua, Avenida..."
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="address_number" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número</FormLabel>
-                  <FormControl><Input placeholder="Nº" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="complement" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Complemento</FormLabel>
-                  <FormControl><Input placeholder="Apto, sala, bloco..." {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="neighborhood" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bairro</FormLabel>
-                  <FormControl><Input placeholder="Bairro" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <div>
-                <FormLabel>UF / Cidade</FormLabel>
-                <StateCitySelector
-                  selectedState={form.watch('state') || ''}
-                  selectedCity={form.watch('city') || ''}
-                  onStateChange={(v) => form.setValue('state', v)}
-                  onCityChange={(v) => form.setValue('city', v)}
-                />
+                    <Button type="button" variant="outline" size="sm" asChild>
+                      <span><Upload className="h-3 w-3 mr-1" /> Foto</span>
+                    </Button>
+                  </label>
+                </div>
+                <FormField control={form.control} name="name" render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Nome *</FormLabel>
+                    <FormControl><Input placeholder="Nome do cliente" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="customer_type" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="pj">Pessoa Jurídica</SelectItem>
+                        <SelectItem value="pf">Pessoa Física</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="company_name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Empresa</FormLabel>
+                    <FormControl><Input placeholder="Nome da empresa" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="phone" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="(00) 00000-0000"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(phoneMask(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="birth_date" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Nascimento</FormLabel>
+                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="origin" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Origem</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)} value={field.value || '__none__'}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nenhuma</SelectItem>
+                        {activeOrigins.map((o) => {
+                          const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
+                          return (
+                            <SelectItem key={o.id} value={o.name}>
+                              <div className="flex items-center gap-2">
+                                {LucideIcon && <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: o.color }}><LucideIcon className="h-2.5 w-2.5 text-white" /></div>}
+                                <span>{o.name}</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl><Textarea placeholder="Observações sobre o cliente" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
-              <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl><Textarea placeholder="Observações sobre o cliente" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-          )}
+            </TabsContent>
 
-          {/* Navigation */}
-          <div className="flex justify-between pt-4 border-t">
-            <div>
-              {step > 0 && (
-                <Button type="button" variant="outline" onClick={() => setStep(0)}>
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Voltar
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              {isLastStep ? (
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {customer ? 'Salvar' : 'Criar'}
-                </Button>
-              ) : (
-                <Button type="button" onClick={(e) => { e.preventDefault(); if (canGoNext()) setStep(1); }} disabled={!canGoNext()}>
-                  Próximo
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              )}
-            </div>
+            {/* ===== Aba Fiscal — dados do tomador para NFS-e ===== */}
+            <TabsContent value="fiscal" className="mt-4">
+              <p className="text-xs text-muted-foreground mb-4">
+                Dados do tomador usados na emissão de NFS-e. Todos opcionais — preencha quando for emitir nota.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField control={form.control} name="document" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF/CNPJ</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="000.000.000-00"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(cpfCnpjMask(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="inscricao_municipal" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Inscrição Municipal</FormLabel>
+                    <FormControl><Input placeholder="Somente números" {...field} value={field.value || ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>E-mail fiscal</FormLabel>
+                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} value={field.value || ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <div className="sm:col-span-2 pt-2 text-sm font-medium text-muted-foreground">
+                  Endereço fiscal
+                </div>
+                <FormField control={form.control} name="zip_code" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CEP</FormLabel>
+                    <FormControl>
+                      <CepLookup
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        onAddressFound={(addr) => {
+                          if (addr.logradouro) form.setValue('address', addr.logradouro);
+                          if (addr.bairro) form.setValue('neighborhood', addr.bairro);
+                          if (addr.cidade) form.setValue('city', addr.cidade);
+                          if (addr.estado) form.setValue('state', addr.estado);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="address" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Logradouro</FormLabel>
+                    <FormControl>
+                      <AddressAutocomplete
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        onAddressSelected={(addr) => {
+                          if (addr.logradouro) form.setValue('address', addr.logradouro);
+                          if (addr.numero) form.setValue('address_number', addr.numero);
+                          if (addr.bairro) form.setValue('neighborhood', addr.bairro);
+                          if (addr.cidade) form.setValue('city', addr.cidade);
+                          if (addr.estado) form.setValue('state', addr.estado);
+                          if (addr.cep) {
+                            const c = addr.cep.replace(/\D/g, '');
+                            form.setValue('zip_code', c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+                          }
+                        }}
+                        placeholder="Rua, Avenida..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="address_number" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número</FormLabel>
+                    <FormControl><Input placeholder="Nº" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="complement" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Complemento</FormLabel>
+                    <FormControl><Input placeholder="Apto, sala, bloco..." {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="neighborhood" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bairro</FormLabel>
+                    <FormControl><Input placeholder="Bairro" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div>
+                  <FormLabel>UF / Cidade</FormLabel>
+                  <StateCitySelector
+                    selectedState={form.watch('state') || ''}
+                    selectedCity={form.watch('city') || ''}
+                    onStateChange={(v) => {
+                      form.setValue('state', v);
+                      form.setValue('city', '');
+                      form.setValue('ibge_municipality_code', '');
+                    }}
+                    onCityChange={(v, ibgeCode) => {
+                      form.setValue('city', v);
+                      if (ibgeCode) form.setValue('ibge_municipality_code', ibgeCode);
+                    }}
+                  />
+                </div>
+                <FormField control={form.control} name="ibge_municipality_code" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código IBGE do município</FormLabel>
+                    <FormControl><Input placeholder="Preenchido ao escolher a cidade" {...field} value={field.value || ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading || uploadingPhoto}>
+              {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {customer ? 'Salvar' : 'Criar'}
+            </Button>
           </div>
         </form>
       </Form>

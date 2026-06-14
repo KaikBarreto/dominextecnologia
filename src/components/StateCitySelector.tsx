@@ -10,7 +10,8 @@ interface StateCitySelectorProps {
   selectedState: string;
   selectedCity: string;
   onStateChange: (state: string) => void;
-  onCityChange: (city: string) => void;
+  /** Recebe o nome da cidade e, opcionalmente, o código IBGE do município. */
+  onCityChange: (city: string, ibgeCode?: string) => void;
   disabled?: boolean;
   showLabels?: boolean;
 }
@@ -182,7 +183,7 @@ export const StateCitySelector = ({
                     'flex items-center w-full px-3 py-1.5 text-sm hover:bg-accent transition-colors',
                     selectedCity === c.name && 'bg-accent font-medium'
                   )}
-                  onClick={() => { onCityChange(c.name); setCityOpen(false); setCitySearch(''); }}
+                  onClick={() => { onCityChange(c.name, c.id); setCityOpen(false); setCitySearch(''); }}
                 >
                   {selectedCity === c.name && <Check className="mr-1 h-3 w-3" />}
                   {c.name}

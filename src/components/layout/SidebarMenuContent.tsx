@@ -6,6 +6,7 @@ import {
   Package,
   DollarSign,
   FileText,
+  Receipt,
   Settings as SettingsIcon,
   User,
   TrendingUp,
@@ -113,6 +114,8 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Visão Geral', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
       { title: 'Movimentações Financeiras', icon: HistoryIcon, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
       { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      // Notas Fiscais (NFS-e) — gate duplo: módulo pago `nfe` (empresa) E permissão de tela dedicada (usuário).
+      { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
     ],
   },
 ];

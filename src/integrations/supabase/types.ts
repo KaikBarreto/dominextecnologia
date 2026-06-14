@@ -447,6 +447,7 @@ export type Database = {
           custom_price_permanent: boolean
           email: string | null
           extra_users: number | null
+          ibge_municipality_code: string | null
           id: string
           logo_url: string | null
           ltv: number
@@ -466,6 +467,7 @@ export type Database = {
           sdr_id: string | null
           segment: string | null
           state: string | null
+          street_number: string | null
           subscription_expires_at: string | null
           subscription_plan: string | null
           subscription_status: string
@@ -491,6 +493,7 @@ export type Database = {
           custom_price_permanent?: boolean
           email?: string | null
           extra_users?: number | null
+          ibge_municipality_code?: string | null
           id?: string
           logo_url?: string | null
           ltv?: number
@@ -510,6 +513,7 @@ export type Database = {
           sdr_id?: string | null
           segment?: string | null
           state?: string | null
+          street_number?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
@@ -535,6 +539,7 @@ export type Database = {
           custom_price_permanent?: boolean
           email?: string | null
           extra_users?: number | null
+          ibge_municipality_code?: string | null
           id?: string
           logo_url?: string | null
           ltv?: number
@@ -554,6 +559,7 @@ export type Database = {
           sdr_id?: string | null
           segment?: string | null
           state?: string | null
+          street_number?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
@@ -589,6 +595,77 @@ export type Database = {
             columns: ["sdr_id"]
             isOneToOne: false
             referencedRelation: "salespeople_basic"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_fiscal_settings: {
+        Row: {
+          certificate_expires_at: string | null
+          codigo_servico_default: string | null
+          company_id: string
+          created_at: string | null
+          fiscal_ambiente: string
+          fisqal_certificate_id: string | null
+          fisqal_company_id: string | null
+          id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          iss_aliquota: number | null
+          item_lc116: string | null
+          municipio_ibge: string | null
+          pode_emitir: boolean
+          regime_tributario: string | null
+          serie_dps: string | null
+          ultimo_numero_dps: number
+          updated_at: string | null
+        }
+        Insert: {
+          certificate_expires_at?: string | null
+          codigo_servico_default?: string | null
+          company_id: string
+          created_at?: string | null
+          fiscal_ambiente?: string
+          fisqal_certificate_id?: string | null
+          fisqal_company_id?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          iss_aliquota?: number | null
+          item_lc116?: string | null
+          municipio_ibge?: string | null
+          pode_emitir?: boolean
+          regime_tributario?: string | null
+          serie_dps?: string | null
+          ultimo_numero_dps?: number
+          updated_at?: string | null
+        }
+        Update: {
+          certificate_expires_at?: string | null
+          codigo_servico_default?: string | null
+          company_id?: string
+          created_at?: string | null
+          fiscal_ambiente?: string
+          fisqal_certificate_id?: string | null
+          fisqal_company_id?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          iss_aliquota?: number | null
+          item_lc116?: string | null
+          municipio_ibge?: string | null
+          pode_emitir?: boolean
+          regime_tributario?: string | null
+          serie_dps?: string | null
+          ultimo_numero_dps?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_fiscal_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -1485,7 +1562,9 @@ export type Database = {
           deleted_at: string | null
           document: string | null
           email: string | null
+          ibge_municipality_code: string | null
           id: string
+          inscricao_municipal: string | null
           is_deleted: boolean
           lat: number | null
           lng: number | null
@@ -1496,6 +1575,7 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           state: string | null
+          street_number: string | null
           updated_at: string
           zip_code: string | null
         }
@@ -1512,7 +1592,9 @@ export type Database = {
           deleted_at?: string | null
           document?: string | null
           email?: string | null
+          ibge_municipality_code?: string | null
           id?: string
+          inscricao_municipal?: string | null
           is_deleted?: boolean
           lat?: number | null
           lng?: number | null
@@ -1523,6 +1605,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           state?: string | null
+          street_number?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -1539,7 +1622,9 @@ export type Database = {
           deleted_at?: string | null
           document?: string | null
           email?: string | null
+          ibge_municipality_code?: string | null
           id?: string
+          inscricao_municipal?: string | null
           is_deleted?: boolean
           lat?: number | null
           lng?: number | null
@@ -1550,6 +1635,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           state?: string | null
+          street_number?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -3359,6 +3445,142 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfse_emissions: {
+        Row: {
+          chave_acesso: string | null
+          company_id: string
+          created_at: string | null
+          customer_id: string | null
+          descricao_servico: string | null
+          emitida_em: string | null
+          error_message: string | null
+          financial_transaction_id: string | null
+          fisqal_dps_id: string | null
+          fisqal_fiscal_request_id: string | null
+          id: string
+          idempotency_key: string | null
+          numero_nfse: string | null
+          pdf_url: string | null
+          protocolo: string | null
+          status: string
+          updated_at: string | null
+          valor_iss: number | null
+          valor_servico: number | null
+          xml_url: string | null
+        }
+        Insert: {
+          chave_acesso?: string | null
+          company_id: string
+          created_at?: string | null
+          customer_id?: string | null
+          descricao_servico?: string | null
+          emitida_em?: string | null
+          error_message?: string | null
+          financial_transaction_id?: string | null
+          fisqal_dps_id?: string | null
+          fisqal_fiscal_request_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          numero_nfse?: string | null
+          pdf_url?: string | null
+          protocolo?: string | null
+          status?: string
+          updated_at?: string | null
+          valor_iss?: number | null
+          valor_servico?: number | null
+          xml_url?: string | null
+        }
+        Update: {
+          chave_acesso?: string | null
+          company_id?: string
+          created_at?: string | null
+          customer_id?: string | null
+          descricao_servico?: string | null
+          emitida_em?: string | null
+          error_message?: string | null
+          financial_transaction_id?: string | null
+          fisqal_dps_id?: string | null
+          fisqal_fiscal_request_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          numero_nfse?: string | null
+          pdf_url?: string | null
+          protocolo?: string | null
+          status?: string
+          updated_at?: string | null
+          valor_iss?: number | null
+          valor_servico?: number | null
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfse_emissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_emissions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_emissions_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfse_events: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          event_type: string
+          id: string
+          nfse_emission_id: string
+          payload: Json | null
+          status: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          event_type: string
+          id?: string
+          nfse_emission_id: string
+          payload?: Json | null
+          status?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          nfse_emission_id?: string
+          payload?: Json | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfse_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_events_nfse_emission_id_fkey"
+            columns: ["nfse_emission_id"]
+            isOneToOne: false
+            referencedRelation: "nfse_emissions"
             referencedColumns: ["id"]
           },
         ]

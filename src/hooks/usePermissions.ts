@@ -44,6 +44,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:inventory', label: 'Estoque', group: 'Operacional', category: 'operacional' },
   { key: 'screen:technician_tools', label: 'Ferramentas do Técnico', group: 'Operacional', category: 'operacional' },
   { key: 'screen:finance', label: 'Financeiro', group: 'Financeiro', category: 'financeiro' },
+  { key: 'screen:fiscal_notes', label: 'Notas Fiscais', group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:employees', label: 'Funcionários', group: 'Administração', category: 'administracao' },
   { key: 'screen:users', label: 'Usuários', group: 'Administração', category: 'administracao' },
   { key: 'screen:settings', label: 'Configurações', group: 'Administração', category: 'administracao' },
