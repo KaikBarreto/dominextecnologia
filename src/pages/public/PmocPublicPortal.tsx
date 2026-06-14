@@ -53,6 +53,10 @@ import type {
   PortalTenant,
 } from '@/types/pmocPortal';
 import type { OsStatus, OsType } from '@/types/database';
+import {
+  getDocumentValidityStatus,
+  getValidityLabel,
+} from '@/lib/documentValidity';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
 /**
@@ -1056,6 +1060,18 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
 
   const showPendingSignature = available && doc.signature_status === 'pending';
 
+  // Validade do documento (só docs regulatórios trazem `valid_until`).
+  const validUntil = doc.valid_until ?? null;
+  const validityStatus = getDocumentValidityStatus(validUntil);
+  const showValidity = available && validityStatus !== 'sem_validade';
+  // Pílula com tokens semânticos: vigente=success, vence_em_breve=warning, vencido=destructive.
+  const validityPillClass =
+    validityStatus === 'vencido'
+      ? 'bg-destructive/15 text-destructive'
+      : validityStatus === 'vence_em_breve'
+        ? 'bg-warning/15 text-warning'
+        : 'bg-success/15 text-success';
+
   return (
     <div
       className={cn(
@@ -1076,6 +1092,22 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
         <div className="min-w-0 flex-1">
           <p className="break-words text-sm font-medium leading-snug">{doc.label}</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{sub}</p>
+          {showValidity && (
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                Válido até {formatLocal(validUntil)}
+              </span>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full px-2 py-0.5',
+                  'text-[10px] font-semibold uppercase tracking-wide',
+                  validityPillClass,
+                )}
+              >
+                {getValidityLabel(validityStatus)}
+              </span>
+            </div>
+          )}
           {showPendingSignature && (
             <span
               className={cn(

@@ -37,6 +37,12 @@ export interface PmocDocument {
   generated_at: string;
   generated_by: string | null;
   notes: string | null;
+  /**
+   * Data de vencimento do documento (date-only "yyyy-MM-dd"). Preenchida só
+   * pra docs regulatórios com validade (TRT e Certificado); `null` pra
+   * dossiê/cronograma e docs gerados antes desta feature.
+   */
+  valid_until: string | null;
   /** Derivado de `notes` (`signature:signed` | `signature:pending`). */
   signature_status: PmocDocumentSignatureStatus;
 }

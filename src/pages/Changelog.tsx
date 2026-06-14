@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.14',
+    date: '14 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Validade nos documentos do contrato (TRT e Certificado)',
+        description: 'Os documentos de conformidade do contrato — TRT e Certificado de Conformidade — agora têm prazo de validade (por padrão, 1 ano a partir da emissão). Cada documento mostra "válido até" com um selo colorido indicando se está em dia, se vence em breve (faltando 30 dias) ou se já venceu, e o contrato exibe um aviso quando há algum documento vencido. Essa validade também aparece para o cliente no portal e entra automaticamente no texto do documento. Nas Configurações de documentos, você pode definir a duração da validade de cada tipo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.13',
     date: '14 de junho de 2026',
     type: 'patch',

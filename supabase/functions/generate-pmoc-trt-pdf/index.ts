@@ -15,8 +15,10 @@ import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 import { drawTermoRtPage } from "../_shared/pmoc-templates/termo-rt.ts";
 import {
   TemplateContext,
+  computeValidUntil,
   dateToExtenso,
   extractContractCreatedParts,
+  formatDateBr,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
 import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
@@ -264,6 +266,7 @@ Deno.serve(async (req) => {
       { data: companySettings },
       { data: rt },
       { data: customDocs },
+      { data: docTemplates },
     ] = await Promise.all([
       supabase
         .from("customers")
@@ -297,6 +300,13 @@ Deno.serve(async (req) => {
         .select("termo_rt_content")
         .eq("contract_id", contract.id)
         .eq("company_id", contract.company_id) // filtro defensivo cross-tenant
+        .maybeSingle(),
+      // Validade configurável por empresa (default 12 meses se a linha/coluna
+      // não existir). Define o `valid_until` gravado em pmoc_documents.
+      supabase
+        .from("company_pmoc_document_templates")
+        .select("termo_rt_validity_months")
+        .eq("company_id", contract.company_id)
         .maybeSingle(),
     ]);
 
@@ -497,6 +507,17 @@ Deno.serve(async (req) => {
       (contract as { created_at?: string | null }).created_at ?? null,
     );
 
+    // Validade do documento (TRT): generated_at + N meses (config da empresa,
+    // default 12). `validUntilDateOnly` é gravado em pmoc_documents.valid_until;
+    // os textos formatados alimentam as variáveis `documento.*`.
+    const generatedAt = new Date();
+    const validityMonths =
+      ((docTemplates as { termo_rt_validity_months?: number | null } | null)
+        ?.termo_rt_validity_months) ?? 12;
+    const { dateOnly: validUntilDateOnly, formatted: validUntilFormatted } =
+      computeValidUntil(generatedAt, validityMonths);
+    const validadeLabel = `${validityMonths} ${validityMonths === 1 ? "mês" : "meses"}`;
+
     const variableContext: PmocVariableContext = {
       "empresa.nome": tenantName,
       "empresa.razao_social": tenantName,
@@ -523,7 +544,10 @@ Deno.serve(async (req) => {
       "contrato.criado_dia": createdParts.dia,
       "contrato.criado_mes": createdParts.mes,
       "contrato.criado_ano": createdParts.ano,
-      "data.hoje_extenso": dateToExtenso(new Date()),
+      "data.hoje_extenso": dateToExtenso(generatedAt),
+      "documento.validade": validadeLabel,
+      "documento.data_vencimento": validUntilFormatted,
+      "documento.data_emissao": formatDateBr(generatedAt),
     };
 
     // ---- 8. content_hash — INCLUI signature_image_url (Onda E:
@@ -546,8 +570,13 @@ Deno.serve(async (req) => {
     //         Onda K (v1.9.x): bump pra trt_v6 — mais respiro vertical entre
     //         seções do template do Termo RT (só espaçamento/layout, dados de
     //         entrada idênticos — sem bump, PDFs cacheados não regenerariam).
+    //         Onda Validade (2026-06): bump pra trt_v7 — linha "Validade deste
+    //         documento" entrou no template + 3 chaves `documento.*` no
+    //         variableContext (validade/vencimento/emissão). Como emissão/
+    //         vencimento mudam por dia, o cache passa a girar diariamente —
+    //         esperado (a data de emissão impressa precisa refletir o dia real).
     const hashInput = JSON.stringify({
-      v: "trt_v6",
+      v: "trt_v7",
       tenant: {
         name: tenantName,
         cnpj,
@@ -700,6 +729,8 @@ Deno.serve(async (req) => {
       pdf_storage_path: storagePath,
       generated_by: userId,
       notes: `signature:${signatureStatus}`,
+      // Data de vencimento = geração + validade configurada (TRT é regulatório).
+      valid_until: validUntilDateOnly,
     });
 
     if (insertErr) {

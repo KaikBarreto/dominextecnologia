@@ -25,7 +25,8 @@ export type PmocVariableCategory =
   | 'rt'
   | 'cliente'
   | 'contrato'
-  | 'data';
+  | 'data'
+  | 'documento';
 
 export interface PmocVariableMeta {
   /** Rótulo PT-BR exibido no badge e no dropdown. */
@@ -167,6 +168,23 @@ export const PMOC_VARIABLES = {
     source: 'now() formatado "23 de maio de 2026"',
     category: 'data',
   },
+
+  // ───── Documento (validade) ─────
+  'documento.validade': {
+    label: 'Validade do Documento',
+    source: 'company_pmoc_document_templates.{termo_rt|certificado}_validity_months (ex: "12 meses")',
+    category: 'documento',
+  },
+  'documento.data_vencimento': {
+    label: 'Data de Vencimento',
+    source: 'pmoc_documents.valid_until formatado DD/MM/AAAA',
+    category: 'documento',
+  },
+  'documento.data_emissao': {
+    label: 'Data de Emissão',
+    source: 'pmoc_documents.generated_at formatado DD/MM/AAAA',
+    category: 'documento',
+  },
 } as const satisfies Record<string, PmocVariableMeta>;
 
 /** Chave válida (`'empresa.cnpj' | 'rt.nome' | ...`). */
@@ -212,6 +230,10 @@ export const PMOC_PREVIEW_SAMPLE: Record<PmocVariableKey, string> = {
   'contrato.criado_ano': '2026',
   // ───── Data ─────
   'data.hoje_extenso': '01 de janeiro de 2026',
+  // ───── Documento (validade) ─────
+  'documento.validade': '12 meses',
+  'documento.data_vencimento': '01/01/2027',
+  'documento.data_emissao': '01/01/2026',
 };
 
 /**
@@ -246,6 +268,7 @@ export const PMOC_VARIABLES_BY_CATEGORY: Record<PmocVariableCategory, Array<{ ke
     cliente: [],
     contrato: [],
     data: [],
+    documento: [],
   };
   (Object.entries(PMOC_VARIABLES) as Array<[PmocVariableKey, PmocVariableMeta]>).forEach(([key, meta]) => {
     grouped[meta.category].push({ key, meta });
@@ -260,6 +283,7 @@ export const PMOC_VARIABLE_CATEGORY_LABELS: Record<PmocVariableCategory, string>
   cliente: 'Cliente',
   contrato: 'Contrato',
   data: 'Data',
+  documento: 'Documento',
 };
 
 /**

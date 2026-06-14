@@ -75,6 +75,10 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p>&nbsp;</p>
 
+<p><strong>Validade deste documento:</strong> <span data-pmoc-var="documento.validade"></span>. Válido até <span data-pmoc-var="documento.data_vencimento"></span>.</p>
+
+<p>&nbsp;</p>
+
 <p><span data-pmoc-var="empresa.cidade"></span>, <span data-pmoc-var="contrato.criado_dia"></span> de <span data-pmoc-var="contrato.criado_mes"></span> de <span data-pmoc-var="contrato.criado_ano"></span>.</p>
 
 <p>&nbsp;</p>

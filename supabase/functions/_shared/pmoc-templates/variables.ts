@@ -27,7 +27,8 @@ export type PmocVariableCategory =
   | "rt"
   | "cliente"
   | "contrato"
-  | "data";
+  | "data"
+  | "documento";
 
 export interface PmocVariableMeta {
   /** Rótulo PT-BR exibido no badge e no dropdown. */
@@ -168,6 +169,23 @@ export const PMOC_VARIABLES = {
     label: "Data Atual (extenso)",
     source: 'now() formatado "23 de maio de 2026"',
     category: "data",
+  },
+
+  // ───── Documento (validade) ─────
+  "documento.validade": {
+    label: "Validade do Documento",
+    source: "company_pmoc_document_templates.{termo_rt|certificado}_validity_months (ex: \"12 meses\")",
+    category: "documento",
+  },
+  "documento.data_vencimento": {
+    label: "Data de Vencimento",
+    source: "pmoc_documents.valid_until formatado DD/MM/AAAA",
+    category: "documento",
+  },
+  "documento.data_emissao": {
+    label: "Data de Emissão",
+    source: "pmoc_documents.generated_at formatado DD/MM/AAAA",
+    category: "documento",
   },
 } as const satisfies Record<string, PmocVariableMeta>;
 

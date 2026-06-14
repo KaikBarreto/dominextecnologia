@@ -16,6 +16,13 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  getDocumentValidityStatus,
+  getValidityLabel,
+  getValidityBadgeVariant,
+  resolveValidUntil,
+  type DocumentValidityStatus,
+} from '@/lib/documentValidity';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -184,6 +191,29 @@ function formatGeneratedAt(iso?: string | null): string {
   }
 }
 
+/** Formata um date-only "yyyy-MM-dd" como DD/MM/AAAA (sem off-by-one de fuso). */
+function formatValidUntil(dateOnly?: string | null): string {
+  if (!dateOnly) return '—';
+  const m = dateOnly.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '—';
+  const [, y, mm, d] = m;
+  return `${d}/${mm}/${y}`;
+}
+
+/**
+ * Selo de validade de um documento regulatório (TRT / Certificado). Cores via
+ * tokens semânticos (verde/amarelo/vermelho). Retorna `null` quando não há
+ * validade a exibir.
+ */
+function ValidityBadge({ status }: { status: DocumentValidityStatus }) {
+  if (status === 'sem_validade') return null;
+  return (
+    <Badge variant={getValidityBadgeVariant(status)} className="text-[10px]">
+      {getValidityLabel(status)}
+    </Badge>
+  );
+}
+
 function DocCardHeader({
   title,
   version,
@@ -220,6 +250,7 @@ function SubDocCard({
   edited,
   extraActions,
   topRightSlot,
+  validityNote,
 }: {
   title: string;
   preview: string;
@@ -230,6 +261,8 @@ function SubDocCard({
   extraActions?: ReactNode;
   /** Slot opcional no canto superior direito (ex: badge de status). */
   topRightSlot?: ReactNode;
+  /** Linha opcional de validade ("Válido até DD/MM/AAAA" + selo de status). */
+  validityNote?: ReactNode;
 }) {
   return (
     <div className="flex h-full flex-col gap-2 rounded-xl border bg-muted/20 p-3 transition-transform">
@@ -252,6 +285,11 @@ function SubDocCard({
       <p className="min-h-[40px] flex-1 break-words text-xs text-muted-foreground">
         {preview || 'Texto padrão do sistema. Toque em "Editar" pra personalizar.'}
       </p>
+      {validityNote && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {validityNote}
+        </div>
+      )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         {edited ? (
           <Badge variant="outline" className="self-start text-[10px]">
@@ -365,6 +403,20 @@ export function PmocContractDocsTab({
     ? latestDossie.signature_status ?? 'pending'
     : null;
 
+  // Validade dos documentos regulatórios (TRT / Certificado). Usa o
+  // `valid_until` persistido; cai no fallback de exibição (generated_at + 12
+  // meses) só pra docs legados gerados antes desta feature.
+  const trtValidUntil = latestTrt
+    ? resolveValidUntil(latestTrt.valid_until, latestTrt.generated_at)
+    : null;
+  const certValidUntil = latestCertificado
+    ? resolveValidUntil(latestCertificado.valid_until, latestCertificado.generated_at)
+    : null;
+  const trtValidityStatus = getDocumentValidityStatus(trtValidUntil);
+  const certValidityStatus = getDocumentValidityStatus(certValidUntil);
+  const hasExpiredDoc =
+    trtValidityStatus === 'vencido' || certValidityStatus === 'vencido';
+
   const handleGenerateDossie = async () => {
     await generateDossie.mutateAsync({ contract_id: contractId });
     refetch();
@@ -380,6 +432,23 @@ export function PmocContractDocsTab({
 
   return (
     <div className="space-y-6">
+      {/* Documentos vencidos — alerta no topo (validade regulatória PMOC). */}
+      {hasExpiredDoc && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Há documentos vencidos neste contrato.</AlertTitle>
+          <AlertDescription className="text-sm">
+            Gere uma nova versão do{' '}
+            {trtValidityStatus === 'vencido' && certValidityStatus === 'vencido'
+              ? 'Termo de Responsabilidade Técnica e do Certificado de Conformidade'
+              : trtValidityStatus === 'vencido'
+                ? 'Termo de Responsabilidade Técnica'
+                : 'Certificado de Conformidade'}{' '}
+            para renovar a validade.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Onda G — banner de campos obrigatórios faltando. Avisa o gestor antes
           dele gerar documento com placeholder literal no PDF. */}
       {missingFields.length > 0 && (
@@ -531,6 +600,14 @@ export function PmocContractDocsTab({
               edited={!!termoRtHtml}
               helperTooltip="Esse texto vai pra página 2 do Dossiê PMOC e também é o conteúdo do TRT individual (baixe abaixo). Editar aqui afeta os 2 PDFs."
               onEdit={() => setEditorOpen('termo_rt')}
+              validityNote={
+                latestTrt && trtValidUntil ? (
+                  <>
+                    <span>Válido até {formatValidUntil(trtValidUntil)}</span>
+                    <ValidityBadge status={trtValidityStatus} />
+                  </>
+                ) : null
+              }
               topRightSlot={
                 <div className="flex items-center gap-1.5">
                   {latestTrt && (
@@ -569,6 +646,14 @@ export function PmocContractDocsTab({
               edited={!!certificadoHtml}
               helperTooltip="Esse texto vai pra página 3 do Dossiê PMOC, com o selo da Lei Federal 13.589/2018. Editar aqui afeta o Dossiê e o Certificado individual (baixe abaixo)."
               onEdit={() => setEditorOpen('certificado')}
+              validityNote={
+                latestCertificado && certValidUntil ? (
+                  <>
+                    <span>Válido até {formatValidUntil(certValidUntil)}</span>
+                    <ValidityBadge status={certValidityStatus} />
+                  </>
+                ) : null
+              }
               topRightSlot={
                 <div className="flex items-center gap-1.5">
                   {latestCertificado && (

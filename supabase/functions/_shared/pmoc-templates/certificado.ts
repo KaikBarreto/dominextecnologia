@@ -48,6 +48,10 @@ export function buildDefaultCertificadoHtml(): string {
 
 <p>&nbsp;</p>
 
+<p><strong>Validade deste documento:</strong> <span data-pmoc-var="documento.validade"></span>. Válido até <span data-pmoc-var="documento.data_vencimento"></span>.</p>
+
+<p>&nbsp;</p>
+
 <p>Documento gerado em <span data-pmoc-var="data.hoje_extenso"></span>.</p>
 
 <p>&nbsp;</p>

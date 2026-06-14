@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import {
   FileText,
   FileCheck,
@@ -6,15 +6,22 @@ import {
   Info,
   Pencil,
   RotateCcw,
+  CalendarClock,
+  Loader2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { PmocDocEditorDialog } from './PmocDocEditorDialog';
-import { useCompanyPmocDocTemplates } from '@/hooks/useCompanyPmocDocTemplates';
+import {
+  useCompanyPmocDocTemplates,
+  DEFAULT_DOC_VALIDITY_MONTHS,
+} from '@/hooks/useCompanyPmocDocTemplates';
 import {
   buildDefaultTermoRtHtml,
   buildDefaultCertificadoHtml,
@@ -131,6 +138,16 @@ function TemplateCard({
   );
 }
 
+/**
+ * Converte string crua de input numérico em inteiro, com fallback. Estado é
+ * string crua (não `value={number}`) pra não prender um "0" intocável — lição
+ * do projeto (input numérico controlado).
+ */
+function num(s: string, fallback: number): number {
+  const n = Number(s.replace(/[^\d]/g, ''));
+  return Number.isFinite(n) && n >= 1 ? Math.round(n) : fallback;
+}
+
 export function CompanyPmocTemplatesTab() {
   const {
     templates,
@@ -138,10 +155,30 @@ export function CompanyPmocTemplatesTab() {
     saveCertificado,
     resetTermoRTToDefault,
     resetCertificadoToDefault,
+    saveValidity,
+    isSavingValidity,
     isSaving,
   } = useCompanyPmocDocTemplates();
 
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
+
+  // Validade (meses) — state string crua; converte só no save via `num`.
+  const [termoMonths, setTermoMonths] = useState('');
+  const [certMonths, setCertMonths] = useState('');
+
+  // Sincroniza os inputs quando os templates carregam (ou são salvos).
+  useEffect(() => {
+    if (!templates) return;
+    setTermoMonths(String(templates.termo_rt_validity_months ?? DEFAULT_DOC_VALIDITY_MONTHS));
+    setCertMonths(String(templates.certificado_validity_months ?? DEFAULT_DOC_VALIDITY_MONTHS));
+  }, [templates]);
+
+  const handleSaveValidity = () => {
+    saveValidity(
+      num(termoMonths, DEFAULT_DOC_VALIDITY_MONTHS),
+      num(certMonths, DEFAULT_DOC_VALIDITY_MONTHS),
+    );
+  };
 
   // Defaults de código — usados quando o template da empresa é NULL (nunca
   // editado). Mesma lógica do por-contrato: o editor pré-preenche com isto.
@@ -197,6 +234,66 @@ export function CompanyPmocTemplatesTab() {
               onReset={() => resetCertificadoToDefault()}
               resetDisabled={isSaving}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Validade dos documentos — duração (meses) usada pra calcular a data de
+          vencimento de cada TRT/Certificado gerado. */}
+      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:rounded-lg lg:shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
+            <CalendarClock className="h-5 w-5 shrink-0" />
+            <span className="min-w-0 break-words">Validade dos documentos</span>
+          </CardTitle>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Quantos meses cada documento gerado fica válido. A data de vencimento
+            é calculada a partir da data de geração. Padrão: {DEFAULT_DOC_VALIDITY_MONTHS} meses.
+          </p>
+        </CardHeader>
+        <CardContent className="min-w-0 space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="termo-validity">Validade do TRT (meses)</Label>
+              <Input
+                id="termo-validity"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={termoMonths}
+                onChange={(e) => setTermoMonths(e.target.value)}
+                placeholder={String(DEFAULT_DOC_VALIDITY_MONTHS)}
+                className="min-h-11"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cert-validity">Validade do Certificado (meses)</Label>
+              <Input
+                id="cert-validity"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={certMonths}
+                onChange={(e) => setCertMonths(e.target.value)}
+                placeholder={String(DEFAULT_DOC_VALIDITY_MONTHS)}
+                className="min-h-11"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={handleSaveValidity}
+              disabled={isSavingValidity}
+              className="min-h-11 rounded-xl transition-transform active:scale-[0.97] sm:min-h-[40px]"
+            >
+              {isSavingValidity ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : null}
+              Salvar validade
+            </Button>
           </div>
         </CardContent>
       </Card>

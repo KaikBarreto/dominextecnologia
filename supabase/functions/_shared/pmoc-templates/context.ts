@@ -126,6 +126,66 @@ export function extractContractCreatedParts(
   };
 }
 
+/**
+ * Formata um Date (instante) como DD/MM/AAAA no fuso de Brasília
+ * (America/Sao_Paulo). Usado pras variáveis `documento.data_emissao` e
+ * `documento.data_vencimento`. Sem dependência externa (Intl).
+ */
+export function formatDateBr(input: Date | string | null): string {
+  if (!input) return "";
+  const d = input instanceof Date ? input : new Date(input);
+  if (isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("day")}/${get("month")}/${get("year")}`;
+}
+
+/**
+ * Calcula a data de vencimento de um documento de conformidade PMOC.
+ * `generatedAt` (instante de geração) + `months` meses, devolvendo:
+ *  - `dateOnly` ("yyyy-MM-dd") pra gravar em `pmoc_documents.valid_until`;
+ *  - `formatted` (DD/MM/AAAA) pra variável `documento.data_vencimento`.
+ *
+ * Ancorado ao fuso de Brasília: o "dia" da geração é extraído em America/
+ * Sao_Paulo antes de somar os meses, evitando off-by-one quando o instante
+ * cai perto da meia-noite UTC. Overflow de mês é clampado pro último dia do
+ * mês destino (ex: 31/01 + 1 mês → 28/02).
+ */
+export function computeValidUntil(
+  generatedAt: Date,
+  months: number,
+): { dateOnly: string; formatted: string } {
+  // Dia de geração no fuso de Brasília.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(generatedAt);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const baseYear = get("year");
+  const baseMonthIdx = get("month") - 1;
+  const baseDay = get("day");
+
+  const safeMonths = Number.isFinite(months) && months > 0 ? Math.round(months) : 12;
+  const totalMonths = baseMonthIdx + safeMonths;
+  const targetYear = baseYear + Math.floor(totalMonths / 12);
+  const targetMonthIdx = ((totalMonths % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonthIdx + 1, 0)).getUTCDate();
+  const day = Math.min(baseDay, lastDay);
+
+  const yStr = String(targetYear).padStart(4, "0");
+  const mStr = String(targetMonthIdx + 1).padStart(2, "0");
+  const dStr = String(day).padStart(2, "0");
+  const dateOnly = `${yStr}-${mStr}-${dStr}`;
+  return { dateOnly, formatted: `${dStr}/${mStr}/${yStr}` };
+}
+
 export function frequencyLabelFrom(value: number | null, type: string | null): string {
   if (!value || !type) return "—";
   const v = Math.max(1, Math.round(value));

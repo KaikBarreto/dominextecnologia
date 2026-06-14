@@ -702,25 +702,31 @@ export type Database = {
       company_pmoc_document_templates: {
         Row: {
           certificado_content: string | null
+          certificado_validity_months: number
           company_id: string
           created_at: string
           termo_rt_content: string | null
+          termo_rt_validity_months: number
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           certificado_content?: string | null
+          certificado_validity_months?: number
           company_id: string
           created_at?: string
           termo_rt_content?: string | null
+          termo_rt_validity_months?: number
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           certificado_content?: string | null
+          certificado_validity_months?: number
           company_id?: string
           created_at?: string
           termo_rt_content?: string | null
+          termo_rt_validity_months?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -3642,6 +3648,7 @@ export type Database = {
           id: string
           notes: string | null
           pdf_storage_path: string
+          valid_until: string | null
           version: number
         }
         Insert: {
@@ -3654,6 +3661,7 @@ export type Database = {
           id?: string
           notes?: string | null
           pdf_storage_path: string
+          valid_until?: string | null
           version: number
         }
         Update: {
@@ -3666,6 +3674,7 @@ export type Database = {
           id?: string
           notes?: string | null
           pdf_storage_path?: string
+          valid_until?: string | null
           version?: number
         }
         Relationships: [

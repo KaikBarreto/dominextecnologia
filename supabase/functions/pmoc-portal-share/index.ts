@@ -682,6 +682,10 @@ Deno.serve(async (req) => {
     //      Onda E: 'termo_rt' adicionado como terceiro doc_type e exposto com
     //      signature_status ('signed' | 'pending') derivado de notes.
     //
+    //      1.8.0: 'certificado' (Certificado de Conformidade) adicionado como
+    //      quarto doc_type, com o MESMO gate de liberação e o MESMO formato do
+    //      TRT (incluindo valid_until pra o selo "Válido até …" e signature_status).
+    //
     //      GATE (2026-06): os documentos SÓ aparecem no portal público quando o
     //      gestor libera explicitamente (`contracts.portal_documents_released`).
     //      Enquanto false, retornamos `documents: []` e `documents_released:false`
@@ -691,11 +695,12 @@ Deno.serve(async (req) => {
     // tocamos no banco de documentos — o payload não traz `documents`/`released`.
     const documentsReleased = isPmoc && contract.portal_documents_released === true;
 
-    const DOC_TYPES = ["dossie_pmoc", "cronograma_anual", "termo_rt"] as const;
+    const DOC_TYPES = ["dossie_pmoc", "cronograma_anual", "termo_rt", "certificado"] as const;
     const DOC_LABELS: Record<typeof DOC_TYPES[number], string> = {
       dossie_pmoc: "Dossiê PMOC (Capa + Termo + Certificado)",
       cronograma_anual: "Cronograma 12 meses",
       termo_rt: "Termo de Responsabilidade Técnica (TRT)",
+      certificado: "Certificado de Conformidade",
     };
 
     // Quando não liberado, nem tocamos no banco de documentos/storage.
@@ -707,13 +712,15 @@ Deno.serve(async (req) => {
       generated_at: string | null;
       pdf_url: string | null;
       signature_status: "signed" | "pending" | null;
+      /** Data de vencimento (date-only "yyyy-MM-dd"). Só docs regulatórios (termo_rt). */
+      valid_until: string | null;
     };
     let documents: PortalDocument[] = [];
 
     if (documentsReleased) {
       const { data: docRows } = await supabase
         .from("pmoc_documents")
-        .select("doc_type, version, generated_at, pdf_storage_path, notes")
+        .select("doc_type, version, generated_at, pdf_storage_path, notes, valid_until")
         .eq("contract_id", contract.id)
         .eq("company_id", contract.company_id) // defesa em camada
         .in("doc_type", DOC_TYPES as unknown as string[])
@@ -722,7 +729,13 @@ Deno.serve(async (req) => {
       // Agrupa por doc_type pegando só a maior version
       const latestByType = new Map<
         string,
-        { version: number; generated_at: string; pdf_storage_path: string; notes: string | null }
+        {
+          version: number;
+          generated_at: string;
+          pdf_storage_path: string;
+          notes: string | null;
+          valid_until: string | null;
+        }
       >();
       for (const row of docRows ?? []) {
         if (!latestByType.has(row.doc_type)) {
@@ -731,13 +744,15 @@ Deno.serve(async (req) => {
             generated_at: row.generated_at,
             pdf_storage_path: row.pdf_storage_path,
             notes: row.notes ?? null,
+            valid_until: (row as { valid_until?: string | null }).valid_until ?? null,
           });
         }
       }
 
       // Onda E: signature_status só é relevante pra docs que carregam o bloco
-      // de assinatura do RT (termo_rt e dossie_pmoc; cronograma_anual não tem).
-      const SIG_RELEVANT = new Set<string>(["termo_rt", "dossie_pmoc"]);
+      // de assinatura do RT (termo_rt, dossie_pmoc e — desde 1.8.0 — certificado;
+      // cronograma_anual não tem).
+      const SIG_RELEVANT = new Set<string>(["termo_rt", "dossie_pmoc", "certificado"]);
       const deriveSigStatus = (
         type: string,
         notes: string | null,
@@ -765,6 +780,7 @@ Deno.serve(async (req) => {
               signature_status: SIG_RELEVANT.has(type)
                 ? ("pending" as "signed" | "pending")
                 : null,
+              valid_until: null as string | null,
             };
           }
           const { data: signed } = await supabase.storage
@@ -778,6 +794,7 @@ Deno.serve(async (req) => {
             generated_at: latest.generated_at,
             pdf_url: signed?.signedUrl ?? null,
             signature_status: deriveSigStatus(type, latest.notes),
+            valid_until: latest.valid_until,
             // NOTA: pdf_storage_path INTENCIONALMENTE não exposto (§6.3.5 RLS).
           };
         }),
@@ -808,7 +825,7 @@ Deno.serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.6.0", // 1.6.0 — Portal do Contrato: PMOC e não-PMOC + access/viewer_can_fill/is_pmoc + ocorrências
+      payload_version: "1.8.0", // 1.8.0 — Certificado de Conformidade exposto no portal (mesmo gate/formato do TRT)
       // Espelha get_portal_data: acesso liberado (já passamos pelo gate de
       // privacidade) + se o viewer logado pode preencher OS + se é PMOC.
       access: "granted",

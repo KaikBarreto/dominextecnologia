@@ -28,10 +28,17 @@ export interface CompanyPmocDocTemplates {
   company_id: string;
   termo_rt_content: string | null;
   certificado_content: string | null;
+  /** Validade do TRT em meses (default 12). Define a data de vencimento gravada ao gerar o PDF. */
+  termo_rt_validity_months: number;
+  /** Validade do Certificado em meses (default 12). */
+  certificado_validity_months: number;
   updated_at: string | null;
   updated_by: string | null;
   created_at: string;
 }
+
+/** Default de meses de validade quando a empresa nunca configurou. */
+export const DEFAULT_DOC_VALIDITY_MONTHS = 12;
 
 export function useCompanyPmocDocTemplates() {
   const { toast } = useToast();
@@ -94,6 +101,51 @@ export function useCompanyPmocDocTemplates() {
     }
   }
 
+  /**
+   * Upsert dos meses de validade (TRT e/ou Certificado). Recebe os dois valores
+   * já como número inteiro (a tela converte a string crua antes de chamar).
+   * Clampa pra >= 1 por segurança (banco é NOT NULL default 12).
+   */
+  async function upsertValidity(
+    termoMonths: number,
+    certMonths: number,
+  ): Promise<void> {
+    const company_id = await getCurrentUserCompanyId();
+    const safe = (n: number) =>
+      Number.isFinite(n) && n >= 1 ? Math.round(n) : DEFAULT_DOC_VALIDITY_MONTHS;
+
+    const { error } = await supabase
+      .from('company_pmoc_document_templates')
+      .upsert(
+        {
+          company_id,
+          termo_rt_validity_months: safe(termoMonths),
+          certificado_validity_months: safe(certMonths),
+        } as never,
+        { onConflict: 'company_id' },
+      );
+
+    if (error) {
+      const code = (error as { code?: string }).code;
+      if (code === '42P01') {
+        throw new Error('Recurso em deploy. Aguarde a próxima atualização para configurar a validade.');
+      }
+      throw error;
+    }
+  }
+
+  const saveValidityMutation = useMutation({
+    mutationFn: ({ termoMonths, certMonths }: { termoMonths: number; certMonths: number }) =>
+      upsertValidity(termoMonths, certMonths),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-pmoc-doc-templates'] });
+      toast({ title: 'Validade dos documentos salva!' });
+    },
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao salvar validade', description: getErrorMessage(err) });
+    },
+  });
+
   const saveTermoRTMutation = useMutation({
     mutationFn: (html: string) => upsertField('termo_rt', html),
     onSuccess: () => {
@@ -146,6 +198,9 @@ export function useCompanyPmocDocTemplates() {
     saveCertificado: (html: string) => saveCertificadoMutation.mutateAsync(html),
     resetTermoRTToDefault: () => resetTermoRTMutation.mutateAsync(),
     resetCertificadoToDefault: () => resetCertificadoMutation.mutateAsync(),
+    saveValidity: (termoMonths: number, certMonths: number) =>
+      saveValidityMutation.mutateAsync({ termoMonths, certMonths }),
+    isSavingValidity: saveValidityMutation.isPending,
     isSaving:
       saveTermoRTMutation.isPending ||
       saveCertificadoMutation.isPending ||

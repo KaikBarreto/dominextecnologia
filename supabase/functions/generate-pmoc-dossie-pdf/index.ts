@@ -34,8 +34,10 @@ import {
 } from "../_shared/pmoc-templates/cronograma-mes.ts";
 import {
   TemplateContext,
+  computeValidUntil,
   dateToExtenso,
   extractContractCreatedParts,
+  formatDateBr,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
 import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
@@ -289,6 +291,7 @@ Deno.serve(async (req) => {
       { data: companySettings },
       { data: rt },
       { data: customDocs },
+      { data: docTemplates },
     ] = await Promise.all([
       supabase
         .from("customers")
@@ -321,6 +324,14 @@ Deno.serve(async (req) => {
         .select("termo_rt_content, certificado_content")
         .eq("contract_id", contract.id)
         .eq("company_id", contract.company_id) // filtro defensivo cross-tenant
+        .maybeSingle(),
+      // Validade configurável por empresa (TRT + Certificado). O Dossiê NÃO
+      // persiste valid_until (fica null), mas usa a validade do TRT pra
+      // preencher a linha "Válido até …" nas páginas embutidas.
+      supabase
+        .from("company_pmoc_document_templates")
+        .select("termo_rt_validity_months, certificado_validity_months")
+        .eq("company_id", contract.company_id)
         .maybeSingle(),
     ]);
 
@@ -551,6 +562,21 @@ Deno.serve(async (req) => {
       (contract as { created_at?: string | null }).created_at ?? null,
     );
 
+    // Validade pras páginas embutidas (Termo RT + Certificado). O Dossiê é um
+    // documento composto: usamos a validade do TRT como referência da linha
+    // "Válido até …" — limitação conhecida quando TRT e Certificado têm
+    // durações diferentes (a página do Certificado embutida herda a do TRT).
+    // O Certificado individual (edge própria) usa a duração correta dele.
+    const generatedAt = new Date();
+    const termoValidityMonths =
+      ((docTemplates as { termo_rt_validity_months?: number | null } | null)
+        ?.termo_rt_validity_months) ?? 12;
+    const { formatted: validUntilFormatted } = computeValidUntil(
+      generatedAt,
+      termoValidityMonths,
+    );
+    const validadeLabel = `${termoValidityMonths} ${termoValidityMonths === 1 ? "mês" : "meses"}`;
+
     const variableContext: PmocVariableContext = {
       "empresa.nome": tenantName,
       "empresa.razao_social": tenantName,
@@ -577,7 +603,10 @@ Deno.serve(async (req) => {
       "contrato.criado_dia": createdParts.dia,
       "contrato.criado_mes": createdParts.mes,
       "contrato.criado_ano": createdParts.ano,
-      "data.hoje_extenso": dateToExtenso(new Date()),
+      "data.hoje_extenso": dateToExtenso(generatedAt),
+      "documento.validade": validadeLabel,
+      "documento.data_vencimento": validUntilFormatted,
+      "documento.data_emissao": formatDateBr(generatedAt),
     };
 
     // ---- 7.6 (Onda L) Cronograma anual — janela de 12 meses a partir do mês
@@ -632,8 +661,12 @@ Deno.serve(async (req) => {
     //    link + QR Code do Portal PMOC no canto inferior direito. O portal_url
     //    (derivado do token) entra no hash pra invalidar PDFs cacheados sem o
     //    QR e regenerar quando o token mudar.
+    //    Onda Validade (2026-06): bump pra dossie_v11 — linha "Validade deste
+    //    documento" entrou nas páginas embutidas do Termo RT e do Certificado +
+    //    3 chaves `documento.*` no variableContext. Emissão/vencimento mudam por
+    //    dia → o cache do Dossiê passa a girar diariamente (esperado).
     const hashInput = JSON.stringify({
-      v: "dossie_v10",
+      v: "dossie_v11",
       tenant: {
         name: tenantName,
         cnpj,

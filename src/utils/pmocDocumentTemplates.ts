@@ -88,6 +88,10 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p>&nbsp;</p>
 
+<p><strong>Validade deste documento:</strong> ${v('documento.validade')}. Válido até ${v('documento.data_vencimento')}.</p>
+
+<p>&nbsp;</p>
+
 <p>${v('empresa.cidade')}, ${v('contrato.criado_dia')} de ${v('contrato.criado_mes')} de ${v('contrato.criado_ano')}.</p>
 
 <p>&nbsp;</p>
@@ -109,6 +113,10 @@ export function buildDefaultCertificadoHtml(): string {
 
 <p><strong>Periodicidade das manutenções:</strong> ${v('contrato.frequencia')}.<br>
 <strong>Vigência:</strong> a partir de ${v('contrato.vigencia_inicio')}.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Validade deste documento:</strong> ${v('documento.validade')}. Válido até ${v('documento.data_vencimento')}.</p>
 
 <p>&nbsp;</p>
 

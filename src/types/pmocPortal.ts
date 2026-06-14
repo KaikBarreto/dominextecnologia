@@ -12,6 +12,11 @@
  *    de Serviço. Tenant ganha `document`, `phone`, `email`, `zip_code` e
  *    `report_header` (configs de cor/logo); telefone/email PASSARAM A ser
  *    expostos por decisão CEO.
+ *  - 1.7.0 — Validade dos documentos: cada documento real expõe `valid_until`
+ *    (data de vencimento) pra o cliente ver "Válido até …" + selo de status.
+ *  - 1.8.0 — Certificado de Conformidade adicionado à lista de documentos do
+ *    portal (`type:'certificado'`), com o mesmo gate de liberação e o mesmo
+ *    selo de validade do TRT.
  *
  * Planos:
  *  - docs/planos/2026-05-23-pmoc-v1.9-arquitetura.md §2.4
@@ -37,11 +42,14 @@ export type PortalOsStatus =
  *  - `dossie_pmoc` → capa + termo RT + certificado.
  *  - `cronograma_anual` → 12 páginas (1 mês/página).
  *  - `termo_rt` → PDF de 1 página com declaração de RT.
+ *  - `certificado` → Certificado de Conformidade (com validade), exposto no
+ *    portal a partir de 1.8.0 com o mesmo selo "Válido até …" do TRT.
  */
 export type PortalRealDocumentType =
   | 'dossie_pmoc'
   | 'cronograma_anual'
-  | 'termo_rt';
+  | 'termo_rt'
+  | 'certificado';
 
 /**
  * Onda E — status da assinatura embarcada no PDF.
@@ -187,6 +195,13 @@ export interface PortalRealDocument {
   generated_at: string | null;
   pdf_url: string | null;
   signature_status: PortalDocumentSignatureStatus;
+  /**
+   * 1.7.0 — data de vencimento (date-only "yyyy-MM-dd"). Preenchida só para
+   * documentos regulatórios com validade (TRT e, desde 1.8.0, o Certificado de
+   * Conformidade); `null` para dossiê/cronograma. Ausente em payloads antigos →
+   * tratar como `null`.
+   */
+  valid_until?: string | null;
 }
 
 export interface PortalPayload {
@@ -235,7 +250,7 @@ export interface PortalPayload {
    */
   documents_released?: boolean;
   /**
-   * Documentos reais (dossiê + cronograma + TRT). Só presente em contrato PMOC.
+   * Documentos reais (dossiê + cronograma + TRT + Certificado). Só presente em contrato PMOC.
    * Renomeado de `documents_real` em 1.3.0; opcional desde 1.6.0 (não-PMOC).
    */
   documents?: PortalRealDocument[];
