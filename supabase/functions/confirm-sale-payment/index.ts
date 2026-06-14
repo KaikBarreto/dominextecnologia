@@ -304,21 +304,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ===== 9) admin_financial_transactions (receita) — UNIQUE asaas_transaction_id =====
+    // ===== 9) admin_financial_transactions (receita) =====
+    // INSERT idempotente: o índice único é PARCIAL (WHERE asaas_transaction_id IS NOT NULL),
+    // e o PostgREST não emite o predicado no onConflict — UPSERT errava em SILÊNCIO e a
+    // receita não era gravada. Com payment_id (sempre não-null), INSERT direto e tratamos
+    // 23505 (unique_violation no índice parcial) como sucesso/idempotente.
     if (payment_id) {
-      await supabase.from("admin_financial_transactions").upsert(
-        {
-          type: "income",
-          category: financialCategory,
-          amount: paymentAmount,
-          description: financialDescription,
-          reference_id: company_id,
-          reference_type: "subscription_payment",
-          asaas_transaction_id: payment_id,
-          transaction_date: new Date().toISOString(),
-        },
-        { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-      );
+      const { error: incomeErr } = await supabase.from("admin_financial_transactions").insert({
+        type: "income",
+        category: financialCategory,
+        amount: paymentAmount,
+        description: financialDescription,
+        reference_id: company_id,
+        reference_type: "subscription_payment",
+        asaas_transaction_id: payment_id,
+        transaction_date: new Date().toISOString(),
+      });
+      if (incomeErr && incomeErr.code !== "23505") {
+        console.error(`[confirm-sale] insert receita falhou (${payment_id}):`, incomeErr.message);
+      }
     } else {
       await supabase.from("admin_financial_transactions").insert({
         type: "income",
@@ -334,19 +338,21 @@ Deno.serve(async (req) => {
     // ===== 10) Tarifa Asaas (se netValue válido) =====
     if (payment_id && netValue > 0 && netValue < paymentAmount) {
       const asaasFee = Math.round((paymentAmount - netValue) * 100) / 100;
-      await supabase.from("admin_financial_transactions").upsert(
-        {
-          type: "expense",
-          category: "asaas_fee",
-          amount: asaasFee,
-          description: `Tarifa Asaas - ${company.name} (${billingType})`,
-          reference_id: company_id,
-          reference_type: "asaas_fee",
-          asaas_transaction_id: `${payment_id}_fee`,
-          transaction_date: new Date().toISOString(),
-        },
-        { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-      );
+      // INSERT idempotente (mesmo motivo do índice parcial acima). 23505 = já existe → ok.
+      const feeTxId = `${payment_id}_fee`;
+      const { error: feeErr } = await supabase.from("admin_financial_transactions").insert({
+        type: "expense",
+        category: "asaas_fee",
+        amount: asaasFee,
+        description: `Tarifa Asaas - ${company.name} (${billingType})`,
+        reference_id: company_id,
+        reference_type: "asaas_fee",
+        asaas_transaction_id: feeTxId,
+        transaction_date: new Date().toISOString(),
+      });
+      if (feeErr && feeErr.code !== "23505") {
+        console.error(`[confirm-sale] insert tarifa falhou (${feeTxId}):`, feeErr.message);
+      }
     }
 
     // ===== 11) salesperson_sales — REMOVIDO (FURO 2) =====

@@ -227,22 +227,27 @@ async function recordRefundOrChargeback(
     const amount = Number(payment.value || 0);
     if (amount <= 0) return;
     const label = kind === "refund" ? "Estorno" : "Chargeback";
+    // INSERT idempotente. O índice único de asaas_transaction_id é PARCIAL
+    // (WHERE asaas_transaction_id IS NOT NULL); o PostgREST não emite o predicado no
+    // onConflict, então UPSERT errava em SILÊNCIO e o estorno/chargeback não era gravado.
+    // Fazemos INSERT direto e tratamos 23505 (unique_violation) como sucesso/idempotente.
+    // asaas_transaction_id aqui é SEMPRE `${payment.id}_${kind}` (nunca null).
     const txId = `${payment.id}_${kind}`;
-    await supabase
+    const { error } = await supabase
       .from("admin_financial_transactions")
-      .upsert(
-        {
-          type: "expense",
-          category: kind === "refund" ? "refund" : "chargeback",
-          amount,
-          description: `${label} Asaas - ${companyName} (${payment.id})`,
-          reference_id: companyId,
-          reference_type: kind === "refund" ? "subscription_refund" : "subscription_chargeback",
-          asaas_transaction_id: txId,
-          transaction_date: new Date().toISOString(),
-        },
-        { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-      );
+      .insert({
+        type: "expense",
+        category: kind === "refund" ? "refund" : "chargeback",
+        amount,
+        description: `${label} Asaas - ${companyName} (${payment.id})`,
+        reference_id: companyId,
+        reference_type: kind === "refund" ? "subscription_refund" : "subscription_chargeback",
+        asaas_transaction_id: txId,
+        transaction_date: new Date().toISOString(),
+      });
+    if (error && error.code !== "23505") {
+      console.error(`[${kind}] insert falhou (${txId}):`, error.message);
+    }
     console.log(`[${kind}] registrado para ${companyName}: R$ ${amount} (${payment.id})`);
   } catch (e) {
     console.error(`[${kind}] erro (engolido):`, (e as Error).message);
@@ -423,9 +428,13 @@ async function processConfirmedPayment(
     asaas_payment_id: opts.asaasPaymentId,
   });
 
-  // admin_financial_transactions (receita) — UPSERT ON CONFLICT DO NOTHING (UNIQUE asaas_transaction_id).
-  await supabase.from("admin_financial_transactions").upsert(
-    {
+  // admin_financial_transactions (receita) — INSERT idempotente.
+  // O índice único é PARCIAL (WHERE asaas_transaction_id IS NOT NULL); o PostgREST não
+  // emite o predicado no onConflict, então UPSERT errava em SILÊNCIO e a receita não era
+  // gravada. Fazemos INSERT direto e tratamos 23505 (unique_violation no índice parcial)
+  // como sucesso/idempotente. asaas_transaction_id aqui é SEMPRE o pay_* (nunca null).
+  {
+    const { error: incomeErr } = await supabase.from("admin_financial_transactions").insert({
       type: "income",
       category: financialCategory,
       amount: paymentAmount,
@@ -434,27 +443,31 @@ async function processConfirmedPayment(
       reference_type: "subscription_payment",
       asaas_transaction_id: opts.asaasPaymentId,
       transaction_date: new Date().toISOString(),
-    },
-    { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-  );
+    });
+    if (incomeErr && incomeErr.code !== "23505") {
+      console.error(`[process] insert receita falhou (${opts.asaasPaymentId}):`, incomeErr.message);
+    }
+  }
 
   // Tarifa Asaas (só quando netValue real veio e é menor que o bruto).
   const netValue = Number(opts.netValue ?? 0);
   if (netValue > 0 && netValue < paymentAmount) {
     const asaasFee = Math.round((paymentAmount - netValue) * 100) / 100;
-    await supabase.from("admin_financial_transactions").upsert(
-      {
-        type: "expense",
-        category: "asaas_fee",
-        amount: asaasFee,
-        description: `Tarifa Asaas - ${company.name} (${opts.billingType || "PIX"})`,
-        reference_id: companyId,
-        reference_type: "asaas_fee",
-        asaas_transaction_id: `${opts.asaasPaymentId}_fee`,
-        transaction_date: new Date().toISOString(),
-      },
-      { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-    );
+    // INSERT idempotente (mesmo motivo do índice parcial acima). 23505 = já existe → ok.
+    const feeTxId = `${opts.asaasPaymentId}_fee`;
+    const { error: feeErr } = await supabase.from("admin_financial_transactions").insert({
+      type: "expense",
+      category: "asaas_fee",
+      amount: asaasFee,
+      description: `Tarifa Asaas - ${company.name} (${opts.billingType || "PIX"})`,
+      reference_id: companyId,
+      reference_type: "asaas_fee",
+      asaas_transaction_id: feeTxId,
+      transaction_date: new Date().toISOString(),
+    });
+    if (feeErr && feeErr.code !== "23505") {
+      console.error(`[process] insert tarifa falhou (${feeTxId}):`, feeErr.message);
+    }
   }
 
   // subscription_payments — garante rastro (UPSERT por asaas_payment_id UNIQUE).
