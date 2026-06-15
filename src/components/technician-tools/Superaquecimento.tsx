@@ -53,8 +53,8 @@ const ROTULO_FAIXA: Record<ClassificacaoFaixa, string> = {
 
 /** Cores do selo de faixa por classificação. */
 function corSelo(c: ClassificacaoFaixa): string {
-  if (c === 'ideal') return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400';
-  return 'bg-amber-500/15 text-amber-600 dark:text-amber-400';
+  if (c === 'ideal') return 'bg-emerald-500 text-white';
+  return 'bg-amber-500 text-white';
 }
 
 /** Rótulo curto da confiança da fonte do alvo (pra acompanhar a nota). */

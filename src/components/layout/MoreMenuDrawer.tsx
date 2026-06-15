@@ -34,7 +34,6 @@ import {
   Clapperboard,
   Crown,
   Video,
-  PocketKnife,
 } from 'lucide-react';
 import { OperacionalIcon } from '@/components/icons/MenuIcons';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -75,7 +74,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
-  { title: 'Ferramentas do Técnico', icon: PocketKnife, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresSegment: 'refrigeracao' },
+  { title: 'Ferramentas do Técnico', icon: Wrench, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresSegment: 'refrigeracao' },
   { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
   {
     title: 'Gestão',
