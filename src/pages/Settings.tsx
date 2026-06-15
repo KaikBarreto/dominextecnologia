@@ -29,6 +29,8 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { useTermsOfService } from '@/hooks/useTermsOfService';
+import { formatBrtDateTime } from '@/lib/date-br';
 import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from '@/components/technician/ReportHeader';
 import { Slider } from '@/components/ui/slider';
@@ -91,6 +93,8 @@ export default function Settings() {
   const canResetSystem = hasRole('admin') || hasRole('super_admin' as AppRole);
   const [wlGateOpen, setWlGateOpen] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const { acceptedAt: termsAcceptedAt } = useTermsOfService();
+  const termsAcceptedLabel = formatBrtDateTime(termsAcceptedAt);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
@@ -1018,6 +1022,12 @@ export default function Settings() {
                 <FileText className="h-4 w-4" />
                 Ver termos de uso
               </Button>
+              {termsAcceptedLabel && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-500 shrink-0" />
+                  Aceito em {termsAcceptedLabel}
+                </p>
+              )}
             </CardContent>
           </Card>
 

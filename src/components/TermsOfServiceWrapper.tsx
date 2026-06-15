@@ -13,17 +13,34 @@ import { TermsOfServiceModal } from './TermsOfServiceModal';
  * - Nunca aparece em rotas públicas / portais públicos / autenticação /
  *   checkout (empresa pendente de pagamento fica travada no /checkout).
  * - No modo aceite o modal é obrigatório (não fecha sem aceitar).
+ *
+ * Modo LEITURA sob demanda (independente do aceite):
+ * - Qualquer parte do app pode disparar `window.dispatchEvent(new
+ *   CustomEvent('dominex:open-terms'))` pra abrir os Termos em modo leitura.
+ * - É como a notificação de "Termos atualizados" abre os termos pra QUALQUER
+ *   usuário, sem depender da permissão `screen:settings` (a tela de
+ *   Configurações é restrita; este wrapper é global e sempre montado).
  */
 export const TermsOfServiceWrapper = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const { hasAccepted, isLoading } = useTermsOfService();
   const location = useLocation();
 
+  // Modal de leitura sob demanda (readOnly), controlado por evento global.
+  const [showReadOnlyTerms, setShowReadOnlyTerms] = useState(false);
+
   // Guard anti-flicker: só libera o modal depois que o 1º fetch completou.
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   useEffect(() => {
     if (user && !isLoading) setInitialLoadDone(true);
   }, [user, isLoading]);
+
+  // Listener global: qualquer parte do app abre os Termos em modo leitura.
+  useEffect(() => {
+    const handler = () => setShowReadOnlyTerms(true);
+    window.addEventListener('dominex:open-terms', handler);
+    return () => window.removeEventListener('dominex:open-terms', handler);
+  }, []);
 
   // Reset quando perde o usuário (logout) pra que o próximo ciclo reavalie.
   useEffect(() => {
@@ -60,11 +77,19 @@ export const TermsOfServiceWrapper = ({ children }: { children: React.ReactNode 
   return (
     <>
       {children}
+      {/* Modal de ACEITE obrigatório (1º acesso): trava o fechamento. */}
       <TermsOfServiceModal
         open={showTermsModal}
         // Modo obrigatório: o modal ignora qualquer tentativa de fechar que não
         // seja via aceite. Passamos noop por segurança.
         onOpenChange={() => {}}
+      />
+      {/* Modal de LEITURA sob demanda (readOnly): aberto via evento global
+          'dominex:open-terms'. Independente do aceite — fecha normalmente. */}
+      <TermsOfServiceModal
+        readOnly
+        open={showReadOnlyTerms}
+        onOpenChange={setShowReadOnlyTerms}
       />
     </>
   );

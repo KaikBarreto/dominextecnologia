@@ -1,6 +1,6 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,10 @@ interface NotificationDetailModalProps {
  *   - Mensagem completa (`whitespace-pre-wrap`, sem truncate).
  *   - "Expira em DD/MM HH:mm" se `expires_at`.
  *   - Botão "Abrir" que navega pro `action_url` quando houver.
+ *   - Caso especial `terms_updated`: o botão "Ler Termos de Uso" abre o modal
+ *     de Termos GLOBALMENTE (evento `dominex:open-terms`) em vez de navegar por
+ *     rota — assim funciona pra qualquer usuário, sem depender da permissão
+ *     `screen:settings` da tela de Configurações.
  */
 export function NotificationDetailModal({
   notification,
@@ -34,8 +38,15 @@ export function NotificationDetailModal({
 }: NotificationDetailModalProps) {
   if (!notification) return null;
   const Icon = getNotificationIcon(notification.icon);
+  const isTermsUpdate = notification.type === 'terms_updated';
   const hasAction = !!notification.action_url;
   const isError = notification.icon === 'alert-circle';
+
+  // Termos atualizados: dispara o gatilho global e fecha o detalhe.
+  const handleOpenTerms = () => {
+    onOpenChange(false);
+    window.dispatchEvent(new CustomEvent('dominex:open-terms'));
+  };
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={notification.title}>
@@ -77,11 +88,18 @@ export function NotificationDetailModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          {hasAction && (
-            <Button onClick={() => onActionClick(notification)} className="gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Abrir
+          {isTermsUpdate ? (
+            <Button onClick={handleOpenTerms} className="gap-2">
+              <FileText className="h-4 w-4" />
+              Ler Termos de Uso
             </Button>
+          ) : (
+            hasAction && (
+              <Button onClick={() => onActionClick(notification)} className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Abrir
+              </Button>
+            )
           )}
         </div>
       </div>

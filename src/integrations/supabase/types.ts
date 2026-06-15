@@ -5804,6 +5804,21 @@ export type Database = {
           },
         ]
       }
+      terms_update_broadcasts: {
+        Row: {
+          broadcast_at: string
+          version: string
+        }
+        Insert: {
+          broadcast_at?: string
+          version: string
+        }
+        Update: {
+          broadcast_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       time_records: {
         Row: {
           address: string | null
@@ -6446,6 +6461,10 @@ export type Database = {
           p_year: number
         }
         Returns: string
+      }
+      notify_terms_update: {
+        Args: { p_version: string; p_title?: string; p_message?: string }
+        Returns: undefined
       }
       pay_payroll_transaction: {
         Args: {

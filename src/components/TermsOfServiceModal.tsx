@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { FileDown } from 'lucide-react';
+import { FileDown, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { downloadTermsOfUsePdf } from '@/utils/termsOfUsePdfGenerator';
@@ -14,6 +14,7 @@ import {
   TERMS_META_LINE,
 } from '@/data/termsOfUse';
 import { useTermsOfService } from '@/hooks/useTermsOfService';
+import { formatBrtDateTime } from '@/lib/date-br';
 
 interface TermsOfServiceModalProps {
   open: boolean;
@@ -48,7 +49,10 @@ export const TermsOfServiceModal = ({
 }: TermsOfServiceModalProps) => {
   const [accepted, setAccepted] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const { acceptTerms, isAccepting } = useTermsOfService();
+  const { acceptTerms, isAccepting, acceptedAt } = useTermsOfService();
+  // Só no modo leitura mostramos a data do aceite (no modo obrigatório a
+  // pessoa ainda não aceitou). `formatBrtDateTime` devolve null se vazio.
+  const acceptedAtLabel = readOnly ? formatBrtDateTime(acceptedAt) : null;
 
   // No modo aceite o modal é "travado": não fecha por ESC / clique fora / X.
   const isLocked = !readOnly;
@@ -103,6 +107,12 @@ export const TermsOfServiceModal = ({
           <p className="mt-1.5 md:mt-2 text-[10px] sm:text-[11px] md:text-xs text-muted-foreground text-center leading-tight">
             {TERMS_META_LINE}
           </p>
+          {acceptedAtLabel && (
+            <p className="mt-1 text-[10px] sm:text-[11px] md:text-xs text-muted-foreground text-center leading-tight flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-green-600 dark:text-green-500 shrink-0" />
+              Aceito em {acceptedAtLabel}
+            </p>
+          )}
         </div>
 
         {/* Corpo com scroll — div nativo (overflow-y-auto) é mais confiável que

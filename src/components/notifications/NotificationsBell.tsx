@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,37 @@ import { useUserNotifications, type UserNotification } from '@/hooks/useUserNoti
 import { NotificationItem } from './NotificationItem';
 import { NotificationDetailModal } from './NotificationDetailModal';
 
+type GroupKey = 'today' | 'yesterday' | 'week' | 'older';
+
+const GROUP_LABELS: Record<GroupKey, string> = {
+  today: 'Hoje',
+  yesterday: 'Ontem',
+  week: 'Esta semana',
+  older: 'Anteriores',
+};
+
+const GROUP_ORDER: GroupKey[] = ['today', 'yesterday', 'week', 'older'];
+
+/**
+ * Índice do dia (número de dias desde a época) no fuso de Brasília (UTC-3 fixo,
+ * conforme régua do projeto). Subtrai 3h do instante UTC e divide por 1 dia —
+ * assim notificações criadas após 21:00 UTC já caem no dia seguinte BRT.
+ */
+function brtDayIndex(iso: string): number {
+  const ms = new Date(iso).getTime() - 3 * 60 * 60 * 1000;
+  return Math.floor(ms / 86_400_000);
+}
+
+/** Classifica uma notificação num bucket de data relativo a "agora" (BRT). */
+function notificationGroup(createdAt: string, todayIndex: number): GroupKey {
+  const dayIndex = brtDayIndex(createdAt);
+  const diff = todayIndex - dayIndex;
+  if (diff <= 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  if (diff <= 6) return 'week';
+  return 'older';
+}
+
 /**
  * Sino de notificações do header.
  *
@@ -25,6 +56,8 @@ import { NotificationDetailModal } from './NotificationDetailModal';
  *   `NotificationDetailModal`. No mobile fecha o drawer antes.
  * - Click no X do item: `stopPropagation` + `dismiss` (DELETE).
  * - "Marcar todas como lidas" aparece só quando `unreadCount > 0`.
+ * - Lista agrupada por data (Hoje / Ontem / Esta semana / Anteriores) com
+ *   cabeçalhos discretos; dentro do grupo mantém a ordem `created_at DESC`.
  */
 export function NotificationsBell() {
   const navigate = useNavigate();
@@ -32,6 +65,24 @@ export function NotificationsBell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<UserNotification | null>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss } = useUserNotifications();
+
+  // Agrupa por data (BRT). Preserva a ordem original (created_at DESC) dentro
+  // de cada bucket porque iteramos sobre `notifications` já ordenada pelo hook.
+  const groupedNotifications = useMemo(() => {
+    const todayIndex = brtDayIndex(new Date().toISOString());
+    const buckets: Record<GroupKey, UserNotification[]> = {
+      today: [],
+      yesterday: [],
+      week: [],
+      older: [],
+    };
+    for (const n of notifications) {
+      buckets[notificationGroup(n.created_at, todayIndex)].push(n);
+    }
+    return GROUP_ORDER.map((key) => ({ key, label: GROUP_LABELS[key], items: buckets[key] })).filter(
+      (g) => g.items.length > 0,
+    );
+  }, [notifications]);
 
   // Click na notif: marca como lida + abre detalhe (em vez de navegar direto).
   // Detalhe tem botão "Abrir" que dispara o action_url efetivo.
@@ -81,13 +132,20 @@ export function NotificationsBell() {
         </div>
       ) : (
         <>
-          {notifications.map((n) => (
-            <NotificationItem
-              key={n.id}
-              notification={n}
-              onClick={() => handleClick(n)}
-              onDismiss={handleDismiss(n.id)}
-            />
+          {groupedNotifications.map((group) => (
+            <div key={group.key} className="space-y-2">
+              <p className="px-1 pt-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </p>
+              {group.items.map((n) => (
+                <NotificationItem
+                  key={n.id}
+                  notification={n}
+                  onClick={() => handleClick(n)}
+                  onDismiss={handleDismiss(n.id)}
+                />
+              ))}
+            </div>
           ))}
           {unreadCount > 0 && (
             <div className="pt-2 border-t">

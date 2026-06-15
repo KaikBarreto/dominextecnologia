@@ -46,8 +46,13 @@ const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Termos de Uso disponíveis no sistema',
-        description: 'Os Termos de Uso do Dominex agora ficam sempre disponíveis para consulta dentro do sistema, em Configurações › Empresa, com opção de baixar em PDF a qualquer momento. No primeiro acesso, pedimos a leitura e o aceite dos termos para continuar usando a plataforma.',
+        description: 'Os Termos de Uso do Dominex agora ficam sempre disponíveis para consulta dentro do sistema, em Configurações › Empresa, com opção de baixar em PDF a qualquer momento. No primeiro acesso, pedimos a leitura e o aceite dos termos para continuar usando a plataforma — e a data do seu aceite fica registrada e visível.',
         category: 'recurso',
+      },
+      {
+        title: 'Sino de notificações mais útil',
+        description: 'O sino de notificações agora avisa você sobre novidades importantes — começando pelos Termos de Uso — com as notificações organizadas por data (Hoje, Ontem, Esta semana e Anteriores) para você encontrar tudo mais fácil.',
+        category: 'melhoria',
       },
     ],
   },

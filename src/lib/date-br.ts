@@ -37,3 +37,30 @@ export function brtDateOnlyToTimestamp(dateOnly: string): string {
   // 15:00:00Z = 12:00:00 em Brasília (UTC-3).
   return new Date(Date.UTC(y, m - 1, d, 15, 0, 0)).toISOString();
 }
+
+/**
+ * Recebe um instante ISO (timestamptz UTC) e devolve "DD/MM/YYYY às HH:MM:SS"
+ * no horário de Brasília. Usado, por ex., para exibir quando o usuário aceitou
+ * os Termos de Uso. Retorna null se a entrada for vazia/inválida.
+ */
+export function formatBrtDateTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? '';
+
+  return `${get('day')}/${get('month')}/${get('year')} às ${get('hour')}:${get('minute')}:${get('second')}`;
+}
