@@ -30,6 +30,8 @@ export interface ModeloSuperaquecimento {
   confianca: ConfiancaModelo;
   /** Seção de agrupamento no select (null/undefined = sem cabeçalho, fica no topo). */
   grupo?: string;
+  /** Fluido refrigerante padrão do modelo (id de REFRIGERANTES). Selecionar o modelo já sugere esse gás. */
+  refrigPadrao?: string;
 }
 
 /** Opção padrão (default) — usada quando a marca não está na lista. */
@@ -53,6 +55,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'On/off: 5–7 °C. Em modelos inverter o superaquecimento é controlado por EEV — valide por peso, não pelo manifold.',
     confianca: 'alta',
     grupo: 'SPLIT HI-WALL',
+    refrigPadrao: 'R-32',
   },
   {
     id: 'samsung',
@@ -62,6 +65,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'A Samsung não publica superaquecimento alvo para splits residenciais (EEV). Carregue por peso: ~7,5 m sem adicional, +15 g/m (até 18.000 BTU) ou +30 g/m (24–48.000), R-32. Em VRF DVM, alvo ~5 K.',
     confianca: 'generico',
     grupo: 'SPLIT HI-WALL',
+    refrigPadrao: 'R-32',
   },
   {
     id: 'comfee',
@@ -71,6 +75,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'On/off (plataforma Midea), ARI 210. Em inverter, valide a carga por peso.',
     confianca: 'alta',
     grupo: 'SPLIT HI-WALL',
+    refrigPadrao: 'R-32',
   },
   {
     id: 'philco-elgin',
@@ -80,6 +85,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'Philco inverter: ideal 6–11 °C (aceitável 4–14). A Elgin não publica alvo de SA — valide por peso.',
     confianca: 'alta',
     grupo: 'SPLIT HI-WALL',
+    refrigPadrao: 'R-32',
   },
   {
     id: 'hitachi-hiwall',
@@ -89,6 +95,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'A Hitachi não publica superaquecimento alvo para hi-wall/piso-teto residencial (EEV/capilar). Usando referência genérica; em inverter, valide por peso.',
     confianca: 'generico',
     grupo: 'PISO-TETO',
+    refrigPadrao: 'R-32',
   },
   {
     id: 'york-hiwall',
@@ -98,6 +105,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'A York não publica alvo de SA para a linha BR. Em sistemas com válvula termostática, a York carrega por subresfriamento (~5,6 °C).',
     confianca: 'baixa',
     grupo: 'PISO-TETO',
+    refrigPadrao: 'R-410A',
   },
   {
     id: 'rheem-k7-hiwall',
@@ -107,6 +115,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'Rheem (capilar, R-22): ideal 5–7 °C, aceitável 4–9 °C. Fonte secundária — confira o manual.',
     confianca: 'media',
     grupo: 'PISO-TETO',
+    refrigPadrao: 'R-22',
   },
   {
     id: 'carrier-springer-pt-k7',
@@ -116,6 +125,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'Sistemas on/off (capilar/pistão), condição ARI 210. Em modelos inverter, valide a carga por peso.',
     confianca: 'alta',
     grupo: 'PISO-TETO',
+    refrigPadrao: 'R-410A',
   },
   {
     id: 'hitachi-serie-e',
@@ -125,6 +135,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'Splitão Série E (válvula termostática, R-410A). Confira o manual de serviço oficial.',
     confianca: 'alta',
     grupo: 'SPLITÃO / VRF',
+    refrigPadrao: 'R-410A',
   },
   {
     id: 'carrier-ecosplit',
@@ -134,6 +145,7 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
     nota: 'Carrier Ecosplit (válvula termostática, R-410A): SA 3–7 °C (fixa 5–7), SC 8–11 °C. Ajuste o subresfriamento antes do superaquecimento.',
     confianca: 'alta',
     grupo: 'SPLITÃO / VRF',
+    refrigPadrao: 'R-410A',
   },
 ];
 

@@ -323,6 +323,45 @@ function SelecoesCompartilhadas({
   const mostrarModelo = subAba === 'sh' || subAba === 'sc';
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+      {mostrarModelo && (
+        <div className="space-y-1.5">
+          <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
+          <Select
+            value={modeloId}
+            onValueChange={(v) => {
+              setModeloId(v);
+              const rp = getModeloSuperaquecimento(v)?.refrigPadrao;
+              if (rp) setRefrigId(rp);
+            }}
+          >
+            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+              <SelectValue placeholder="Selecione o modelo/fabricante" />
+            </SelectTrigger>
+            <SelectContent>
+              {MODELOS_SEM_GRUPO.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.label}
+                </SelectItem>
+              ))}
+              {Object.entries(MODELOS_POR_GRUPO).map(([grupo, modelos]) => (
+                <SelectGroup key={grupo}>
+                  <SelectSectionLabel>{grupo}</SelectSectionLabel>
+                  {modelos.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="pt-1 text-xs text-muted-foreground">
+            O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
+            continua sendo calculado pela física.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-base text-muted-foreground md:text-lg">Fluido Refrigerante</Label>
@@ -360,38 +399,6 @@ function SelecoesCompartilhadas({
           </div>
         </div>
       </div>
-
-      {mostrarModelo && (
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
-          <Select value={modeloId} onValueChange={setModeloId}>
-            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-              <SelectValue placeholder="Selecione o modelo/fabricante" />
-            </SelectTrigger>
-            <SelectContent>
-              {MODELOS_SEM_GRUPO.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                </SelectItem>
-              ))}
-              {Object.entries(MODELOS_POR_GRUPO).map(([grupo, modelos]) => (
-                <SelectGroup key={grupo}>
-                  <SelectSectionLabel>{grupo}</SelectSectionLabel>
-                  {modelos.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="pt-1 text-xs text-muted-foreground">
-            O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
-            continua sendo calculado pela física.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
