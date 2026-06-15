@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.18',
+    date: '15 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Catálogo de Equipamentos mais fácil de navegar',
+        description: 'Dentro de uma marca você agora troca de marca por um carrossel (deslize para o lado) e pode buscar e filtrar por potência (BTUs) e tipo ali mesmo, com os modelos ordenados da menor para a maior potência. Cada equipamento ganhou um selo de tipo (Hi-Wall, Cassete, Piso-Teto, Janela...) e a tela mostra o total de equipamentos catalogados. Também adicionamos os aparelhos de janela (ACJ) ao catálogo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Novo ícone do aplicativo',
+        description: 'O aplicativo ganhou um novo ícone. Se você já instalou o Dominex na tela inicial, pode ser necessário remover e adicionar novamente o atalho para ver o ícone atualizado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.17',
     date: '14 de junho de 2026',
     type: 'patch',

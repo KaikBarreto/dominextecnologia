@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.17";
+export const APP_VERSION = "1.12.18";
 
-export const VERSION_NOTES = "O Catálogo de Equipamentos ganhou foto de cada modelo em destaque, manuais em PDF, busca e filtros por potência (BTUs) e tipo, e códigos de erro com diagnóstico — de 17 marcas populares. Em Configurações você define o Segmento de Atuação da empresa.";
+export const VERSION_NOTES = "Catálogo de Equipamentos: navegue entre marcas por carrossel, busque e filtre por potência e tipo dentro de cada marca, com selo de tipo e contador de equipamentos. Adicionamos ar-condicionado de janela ao catálogo. E o aplicativo ganhou um novo ícone.";
