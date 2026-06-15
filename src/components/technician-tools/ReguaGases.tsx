@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { cn } from '@/lib/utils';
 import {
   REFRIGERANTES,
@@ -38,35 +39,6 @@ type Formula = 'bubble' | 'dew';
 /** Curto rótulo da unidade gauge na régua. */
 function rotuloUnidade(u: UnidadePressao): string {
   return u === 'bar' ? 'BAR (g)' : 'PSI (g)';
-}
-
-/** Toggle bar / psi, compartilhado pelos modos. */
-function UnidadeToggle({
-  unidade,
-  setUnidade,
-}: {
-  unidade: UnidadePressao;
-  setUnidade: (u: UnidadePressao) => void;
-}) {
-  return (
-    <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
-      {(['bar', 'psi'] as const).map((u) => (
-        <button
-          key={u}
-          type="button"
-          onClick={() => setUnidade(u)}
-          className={cn(
-            'rounded-md px-4 py-2 text-sm font-semibold transition-colors',
-            unidade === u
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {u}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 /** Marcas (ticks) da régua vertical, de TEMP_MAX (topo) a TEMP_MIN (base). */
@@ -292,7 +264,13 @@ function ReguaMobile({
         {/* Unidade */}
         <div className="space-y-1">
           <Label className="text-xs font-semibold text-muted-foreground">Unidade</Label>
-          <UnidadeToggle unidade={unidade} setUnidade={setUnidade} />
+          <LabeledSwitch
+            value={unidade}
+            onChange={setUnidade}
+            off={{ value: 'bar', label: 'bar' }}
+            on={{ value: 'psi', label: 'psi' }}
+            aria-label="Unidade de pressão"
+          />
         </div>
 
         {/* Leituras ao vivo */}
@@ -543,7 +521,13 @@ export function ReguaGases() {
             </div>
           </div>
 
-          <UnidadeToggle unidade={unidade} setUnidade={setUnidade} />
+          <LabeledSwitch
+            value={unidade}
+            onChange={setUnidade}
+            off={{ value: 'bar', label: 'bar' }}
+            on={{ value: 'psi', label: 'psi' }}
+            aria-label="Unidade de pressão"
+          />
         </div>
 
         {modoDesktop === 'temperatura' ? (

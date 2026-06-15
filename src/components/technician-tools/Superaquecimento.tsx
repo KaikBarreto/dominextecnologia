@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { cn } from '@/lib/utils';
 import {
   MODELOS_SUPERAQUECIMENTO,
@@ -347,15 +348,15 @@ function SelecoesCompartilhadas({
 
         <div className="space-y-1.5">
           <Label className="text-base text-muted-foreground md:text-lg">Unidade de pressão</Label>
-          <Select value={unidade} onValueChange={(v) => setUnidade(v as UnidadePressao)}>
-            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-              <SelectValue placeholder="Unidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="bar">bar</SelectItem>
-              <SelectItem value="psi">psi</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex h-14 items-center">
+            <LabeledSwitch
+              value={unidade}
+              onChange={setUnidade}
+              off={{ value: 'bar', label: 'bar' }}
+              on={{ value: 'psi', label: 'psi' }}
+              aria-label="Unidade de pressão"
+            />
+          </div>
         </div>
       </div>
 
