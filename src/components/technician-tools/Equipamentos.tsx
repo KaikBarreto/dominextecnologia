@@ -33,6 +33,12 @@ import {
   useToolHistory,
 } from '@/lib/technicianToolsHistory';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from '@/components/ui/carousel';
 
 /** Normaliza texto pra busca: minúsculo + sem acento. */
 function norm(s: string | null | undefined): string {
@@ -151,6 +157,7 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
       <ModelosList
         brand={view.brand}
         onBack={() => setView({ kind: 'brands' })}
+        onSelectBrand={(b) => setView({ kind: 'models', brand: b })}
         onSelectErrors={(model) => setView({ kind: 'errors', model, brand: view.brand })}
       />
     );
@@ -586,13 +593,50 @@ function ErrorCodeGroupCard({
 function ModelosList({
   brand,
   onBack,
+  onSelectBrand,
   onSelectErrors,
 }: {
   brand: EquipmentBrand;
   onBack: () => void;
+  onSelectBrand: (brand: EquipmentBrand) => void;
   onSelectErrors: (model: EquipmentModel) => void;
 }) {
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id);
+  const { data: brands = [] } = useEquipmentBrands();
+
+  // Carrossel de marcas: a marca atual fica no centro, vizinhas espiam nas
+  // laterais. Snapar/tocar numa marca diferente troca a marca ativa (onSelectBrand).
+  const [api, setApi] = useState<CarouselApi>();
+  const brandIndex = useMemo(
+    () => Math.max(0, brands.findIndex((b) => b.id === brand.id)),
+    [brands, brand.id],
+  );
+  const [selectedSnap, setSelectedSnap] = useState(brandIndex);
+
+  // Ao snapar numa marca diferente, troca a marca ativa (guard por id evita loop).
+  useEffect(() => {
+    if (!api) return;
+    const onSelect = () => {
+      const idx = api.selectedScrollSnap();
+      setSelectedSnap(idx);
+      const novaMarca = brands[idx];
+      if (novaMarca && novaMarca.id !== brand.id) onSelectBrand(novaMarca);
+    };
+    api.on('select', onSelect);
+    return () => {
+      api.off('select', onSelect);
+    };
+  }, [api, brands, brand.id, onSelectBrand]);
+
+  // Quando a marca muda (re-render após onSelectBrand), centraliza o carrossel
+  // na nova marca sem animação. Guard por índice evita re-disparar select.
+  useEffect(() => {
+    if (!api) return;
+    if (api.selectedScrollSnap() !== brandIndex) {
+      api.scrollTo(brandIndex, true);
+      setSelectedSnap(brandIndex);
+    }
+  }, [brand.id, api, brandIndex]);
 
   // Busca local (nome / código / BTU) com debounce leve.
   const [termoRaw, setTermoRaw] = useState('');
@@ -663,18 +707,61 @@ function ModelosList({
     <div className="space-y-6 pb-8">
       <Header icon={Boxes} title="Equipamentos" subtitle={brand.name} onBack={onBack} />
 
-      {/* Logo da marca em card branco fixo nos 2 temas (proposital). */}
-      <div className="flex items-center justify-center rounded-2xl border border-border bg-white p-6">
-        {brand.logo_url ? (
-          <img
-            src={brand.logo_url}
-            alt={brand.name}
-            className="max-h-16 max-w-[60%] object-contain"
-          />
-        ) : (
-          <span className="text-lg font-semibold text-neutral-800">{brand.name}</span>
-        )}
-      </div>
+      {/* Carrossel de marcas: a atual no centro, vizinhas espiando nas laterais.
+          Deslizar/tocar numa marca troca a marca ativa (mostra os modelos dela). */}
+      {brands.length > 1 ? (
+        <Carousel
+          opts={{ align: 'center', startIndex: brandIndex }}
+          setApi={setApi}
+          className="-mx-1"
+        >
+          <CarouselContent>
+            {brands.map((b, i) => {
+              const ativo = i === selectedSnap;
+              return (
+                <CarouselItem key={b.id} className="basis-2/3">
+                  <button
+                    type="button"
+                    onClick={() => api?.scrollTo(i)}
+                    aria-label={`Ver modelos da ${b.name}`}
+                    className={cn(
+                      // Card branco fixo nos 2 temas (proposital) pra logos coloridos
+                      // não sumirem no dark mode.
+                      'flex h-28 w-full items-center justify-center rounded-2xl border border-border bg-white p-6 transition-all duration-200',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      ativo ? 'scale-100 opacity-100 shadow-sm' : 'scale-95 opacity-50',
+                    )}
+                  >
+                    {b.logo_url ? (
+                      <img
+                        src={b.logo_url}
+                        alt={b.name}
+                        className="max-h-16 max-w-[80%] object-contain"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="text-lg font-semibold text-neutral-800">{b.name}</span>
+                    )}
+                  </button>
+                </CarouselItem>
+              );
+            })}
+          </CarouselContent>
+        </Carousel>
+      ) : (
+        /* Marca única: card estático (carrossel não faz sentido). */
+        <div className="flex items-center justify-center rounded-2xl border border-border bg-white p-6">
+          {brand.logo_url ? (
+            <img
+              src={brand.logo_url}
+              alt={brand.name}
+              className="max-h-16 max-w-[60%] object-contain"
+            />
+          ) : (
+            <span className="text-lg font-semibold text-neutral-800">{brand.name}</span>
+          )}
+        </div>
+      )}
 
       {/* Busca + filtros escopados a esta marca */}
       <div className="flex items-center gap-2">
