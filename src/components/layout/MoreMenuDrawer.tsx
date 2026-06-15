@@ -34,7 +34,6 @@ import {
   Clapperboard,
   Crown,
   Video,
-  Calculator,
 } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -70,11 +69,11 @@ const tenantMenuItems: MenuItem[] = [
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
-      { title: 'Ferramentas do Técnico', icon: Calculator, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresSegment: 'refrigeracao' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
+  { title: 'Ferramentas do Técnico', icon: Wrench, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresSegment: 'refrigeracao' },
   { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
   {
     title: 'Gestão',
