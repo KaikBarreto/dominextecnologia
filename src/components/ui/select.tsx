@@ -98,6 +98,25 @@ const SelectLabel = React.forwardRef<
 ));
 SelectLabel.displayName = SelectPrimitive.Label.displayName;
 
+const SelectSectionLabel = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
+>(({ className, children, ...props }, ref) => (
+  <SelectPrimitive.Label
+    ref={ref}
+    className={cn(
+      "flex items-center gap-2 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
+      className,
+    )}
+    {...props}
+  >
+    <span className="h-px flex-1 bg-border" />
+    <span className="shrink-0">{children}</span>
+    <span className="h-px flex-1 bg-border" />
+  </SelectPrimitive.Label>
+));
+SelectSectionLabel.displayName = "SelectSectionLabel";
+
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
@@ -136,6 +155,7 @@ export {
   SelectTrigger,
   SelectContent,
   SelectLabel,
+  SelectSectionLabel,
   SelectItem,
   SelectSeparator,
   SelectScrollUpButton,

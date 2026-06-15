@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectSectionLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -279,33 +281,64 @@ function AvisoUnidade({ pressaoBruta, unidade, sugestao, onTrocarUnidade }: Avis
   );
 }
 
+type SubAba = 'sh' | 'sc' | 'pt';
+
 interface SelecoesCompartilhadasProps {
   refrigId: string;
   setRefrigId: (v: string) => void;
   unidade: UnidadePressao;
   setUnidade: (v: UnidadePressao) => void;
+  modeloId: string;
+  setModeloId: (v: string) => void;
+  subAba: SubAba;
 }
 
-/** Selects de Refrigerante + Unidade — estado vive no pai, aparece em toda subaba. */
+/** Modelos sem grupo (aparecem no topo do select, sem cabeçalho). */
+const MODELOS_SEM_GRUPO = MODELOS_SUPERAQUECIMENTO.filter((m) => !m.grupo);
+
+/** Modelos agrupados por seção, preservando a ordem de inserção do array. */
+const MODELOS_POR_GRUPO = MODELOS_SUPERAQUECIMENTO.reduce(
+  (acc, m) => {
+    if (!m.grupo) return acc;
+    (acc[m.grupo] ??= []).push(m);
+    return acc;
+  },
+  {} as Record<string, typeof MODELOS_SUPERAQUECIMENTO>,
+);
+
+/**
+ * Selects de Fluido Refrigerante + Unidade — estado vive no pai, aparece em toda
+ * subaba. O select de Modelo/fabricante só entra em SH e SC.
+ */
 function SelecoesCompartilhadas({
   refrigId,
   setRefrigId,
   unidade,
   setUnidade,
+  modeloId,
+  setModeloId,
+  subAba,
 }: SelecoesCompartilhadasProps) {
+  const mostrarModelo = subAba === 'sh' || subAba === 'sc';
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Refrigerante</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">Fluido Refrigerante</Label>
           <Select value={refrigId} onValueChange={setRefrigId}>
             <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-              <SelectValue placeholder="Refrigerante" />
+              <SelectValue placeholder="Fluido refrigerante" />
             </SelectTrigger>
             <SelectContent>
               {REFRIGERANTES.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {r.nome}
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/25"
+                      style={{ backgroundColor: r.cor }}
+                    />
+                    {r.nome}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -325,11 +358,41 @@ function SelecoesCompartilhadas({
           </Select>
         </div>
       </div>
+
+      {mostrarModelo && (
+        <div className="space-y-1.5">
+          <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
+          <Select value={modeloId} onValueChange={setModeloId}>
+            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+              <SelectValue placeholder="Selecione o modelo/fabricante" />
+            </SelectTrigger>
+            <SelectContent>
+              {MODELOS_SEM_GRUPO.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.label}
+                </SelectItem>
+              ))}
+              {Object.entries(MODELOS_POR_GRUPO).map(([grupo, modelos]) => (
+                <SelectGroup key={grupo}>
+                  <SelectSectionLabel>{grupo}</SelectSectionLabel>
+                  {modelos.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="pt-1 text-xs text-muted-foreground">
+            O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
+            continua sendo calculado pela física.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
-
-type SubAba = 'sh' | 'sc' | 'pt';
 
 const SUBABAS: { key: SubAba; label: string }[] = [
   { key: 'sh', label: 'Superaquecimento (SH)' },
@@ -471,30 +534,10 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
         setRefrigId={setRefrigId}
         unidade={unidade}
         setUnidade={setUnidade}
+        modeloId={modeloId}
+        setModeloId={setModeloId}
+        subAba={subAba}
       />
-
-      {/* Modelo/fabricante — só na subaba SH. Não altera o cálculo por ora. */}
-      {subAba === 'sh' && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
-          <Select value={modeloId} onValueChange={setModeloId}>
-            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-              <SelectValue placeholder="Selecione o modelo/fabricante" />
-            </SelectTrigger>
-            <SelectContent>
-              {MODELOS_SUPERAQUECIMENTO.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="pt-1 text-xs text-muted-foreground">
-            O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
-            continua sendo calculado pela física.
-          </p>
-        </div>
-      )}
 
       {/* Superaquecimento */}
       {subAba === 'sh' && (

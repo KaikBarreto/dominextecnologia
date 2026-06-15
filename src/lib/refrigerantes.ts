@@ -27,6 +27,8 @@ export interface PontoSaturacao {
 export interface Refrigerante {
   id: string;
   nome: string;
+  /** Cor de referência do cilindro (hex), só visual. */
+  cor: string;
   /** true se tem glide (duas curvas bubble/dew). */
   temGlide: boolean;
   /** Curva única (refrigerantes sem glide). */
@@ -207,14 +209,15 @@ const R404A_DEW: PontoSaturacao[] = [
 
 /** Catálogo de refrigerantes suportados (ordem de exibição). */
 export const REFRIGERANTES: Refrigerante[] = [
-  { id: 'R-410A', nome: 'R-410A', temGlide: false, unica: R410A },
-  { id: 'R-22', nome: 'R-22', temGlide: false, unica: R22 },
-  { id: 'R-32', nome: 'R-32', temGlide: false, unica: R32 },
-  { id: 'R-134a', nome: 'R-134a', temGlide: false, unica: R134A },
-  { id: 'R-290', nome: 'R-290 (Propano)', temGlide: false, unica: R290 },
+  { id: 'R-410A', nome: 'R-410A', cor: '#EC6FAA', temGlide: false, unica: R410A },
+  { id: 'R-22', nome: 'R-22', cor: '#7AC74F', temGlide: false, unica: R22 },
+  { id: 'R-32', nome: 'R-32', cor: '#EF4444', temGlide: false, unica: R32 },
+  { id: 'R-134a', nome: 'R-134a', cor: '#56B4E9', temGlide: false, unica: R134A },
+  { id: 'R-290', nome: 'R-290 (Propano)', cor: '#EF4444', temGlide: false, unica: R290 },
   {
     id: 'R-404A',
     nome: 'R-404A',
+    cor: '#F97316',
     temGlide: true,
     bubble: R404A_BUBBLE,
     dew: R404A_DEW,
