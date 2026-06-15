@@ -10,19 +10,13 @@ import {
   PackageSearch,
   Star,
   SlidersHorizontal,
-  Cpu,
-  Settings2,
-  FileText,
+  AirVent,
+  Cylinder,
+  Refrigerator,
+  RadioReceiver,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -138,12 +132,12 @@ async function baixarManual(url: string, nome: string) {
   }
 }
 
-/** Domínios do catálogo, na ordem do segmented control. */
-const DOMAIN_OPTIONS: { value: EquipmentDomain; label: string }[] = [
-  { value: 'ar_condicionado', label: 'Ar Condicionado' },
-  { value: 'compressor', label: 'Compressores' },
-  { value: 'linha_branca', label: 'Linha Branca' },
-  { value: 'controle_remoto', label: 'Controles Remotos' },
+/** Domínios do catálogo, na ordem das sub-abas (cada um com ícone). */
+const DOMAIN_OPTIONS: { value: EquipmentDomain; label: string; icon: typeof AirVent }[] = [
+  { value: 'ar_condicionado', label: 'Ar Condicionado', icon: AirVent },
+  { value: 'compressor', label: 'Compressores', icon: Cylinder },
+  { value: 'linha_branca', label: 'Linha Branca', icon: Refrigerator },
+  { value: 'controle_remoto', label: 'Controles Remotos', icon: RadioReceiver },
 ];
 
 type View =
@@ -154,10 +148,8 @@ type View =
   | { kind: 'remote'; model: EquipmentModel; brand?: EquipmentBrand };
 
 /**
- * Seletor de domínio do catálogo.
- * - Desktop (sm+): segmented control limpo, 4 botões lado a lado (sem pills roláveis).
- * - Mobile: um Select que cabe bem na largura, evitando 2º nível de carrossel.
- * A régua do time é não empilhar pills aninhados sobre a navegação de abas.
+ * Seletor de domínio do catálogo — abas com sublinhado (mesmo estilo das subabas
+ * do Superaquecimento), roláveis horizontalmente no mobile. Cada domínio tem ícone.
  */
 function DomainSelector({
   value,
@@ -166,49 +158,30 @@ function DomainSelector({
   value: EquipmentDomain;
   onChange: (d: EquipmentDomain) => void;
 }) {
-  const current = DOMAIN_OPTIONS.find((o) => o.value === value) ?? DOMAIN_OPTIONS[0];
   return (
-    <>
-      {/* Mobile: Select compacto */}
-      <div className="sm:hidden">
-        <Select value={value} onValueChange={(v) => onChange(v as EquipmentDomain)}>
-          <SelectTrigger className="h-12 w-full">
-            <SelectValue>{current.label}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {DOMAIN_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Desktop: segmented control */}
-      <div className="hidden rounded-xl border border-border bg-muted/40 p-1 sm:grid sm:grid-cols-4 sm:gap-1">
-        {DOMAIN_OPTIONS.map((o) => {
-          const ativo = o.value === value;
-          return (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => onChange(o.value)}
-              aria-pressed={ativo}
-              className={cn(
-                'rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                ativo
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {o.label}
-            </button>
-          );
-        })}
-      </div>
-    </>
+    <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
+      {DOMAIN_OPTIONS.map((o) => {
+        const Icon = o.icon;
+        const ativo = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            aria-pressed={ativo}
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
+              ativo
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
