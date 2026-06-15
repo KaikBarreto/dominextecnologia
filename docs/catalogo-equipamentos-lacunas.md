@@ -1,13 +1,14 @@
 # Catálogo GLOBAL de equipamentos — mapa de lacunas
 
 > Companheiro de `catalogo-equipamentos.md`. Lista só o que AINDA falta / tem confiança baixa.
-> Atualizado em 2026-06-15 (pós expansão por BTU das 8 linhas gerais + códigos de erro em todos os modelos).
+> Atualizado em 2026-06-15 (pós ACJs de janela + tabela Hitachi de fontes secundárias).
 
 ## 0) Estado atual
-- 17 marcas, 4 categorias (Split Hi-Wall, Cassete, Piso-Teto, Multi-Split), **84 modelos**, 1452 códigos de erro.
-- **Fotos: 84/84** — todas no bucket próprio `equipment-catalog` (path `models/<id>.<ext>`). Sem hotlink de terceiro.
-- **Manuais: 84/84** — todos em PDF no `equipment-catalog` (path `manuals/<id>.pdf`).
-- **Códigos de erro: 83/84** — só o Brastemp "ative!" (BBF, on/off antigo) fica sem, pois NÃO tem código de display (diagnóstico por sintoma). Esperado.
+- 17 marcas, **5 categorias** (Split Hi-Wall, Cassete, Piso-Teto, Multi-Split, Janela (ACJ)), **110 modelos**.
+- **Fotos: 110/110** — todas no bucket próprio `equipment-catalog` (path `models/<id>.<ext>`). Sem hotlink de terceiro.
+- **Manuais: 105/110** — em PDF no `equipment-catalog`. Faltam 5 (4 Philco ACJ + 1 Consul ACJ Inverter — sem PDF público; mostram badge "Manual Indisponível").
+- **Códigos de erro:** todos os splits/cassete/piso-teto têm; os **26 ACJ de janela NÃO têm** (são mecânicos/eletrônicos simples, sem display de código — esperado). Brastemp "ative!" (on/off) idem.
+- **Hitachi airHome 600:** só o código `EA` é confirmado no manual oficial; os demais (01/03/06/09/10/13) vêm de docs Hitachi RAC da MESMA plataforma (fontes secundárias, confiança média) — registrados pra dar partida ao técnico, validar com a rede autorizada antes de tratar como definitivos.
 - **Logos** — re-hospedados (`logos/<slug>.png`); Agratto/Philco/Komeco corrigidos. (Demais marcas com logo_url externo estável — re-hospedar quando der.)
 - Bucket `equipment-catalog`: público (leitura), escrita só super_admin.
 

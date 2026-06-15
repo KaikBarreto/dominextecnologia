@@ -332,9 +332,16 @@ function BrandsList({
 
   return (
     <div className="space-y-4 pb-4">
-      <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Equipamentos</h2>
-        <p className="text-sm text-muted-foreground md:text-base">Consulte modelos e códigos de erro.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight md:text-xl">Equipamentos</h2>
+          <p className="text-sm text-muted-foreground md:text-base">Consulte modelos e códigos de erro.</p>
+        </div>
+        {allModels.length > 0 && (
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
+            {allModels.length} equipamentos
+          </span>
+        )}
       </div>
 
       {/* Busca global do catálogo + botão de filtros */}
@@ -778,8 +785,8 @@ function ModelCard({
 }) {
   const categoria = model.category?.name ?? null;
   const btu = extrairBtu(model.name);
-  // Linha de identificação: "Marca · Categoria" (omite o que faltar).
-  const subtitulo = [brandName, categoria].filter(Boolean).join(' · ');
+  // Linha de identificação: só a marca (o tipo virou badge ao lado do BTU).
+  const subtitulo = brandName;
   const temManual = Boolean(model.manual_url);
   const temFoto = Boolean(model.image_url);
 
@@ -822,11 +829,16 @@ function ModelCard({
         {subtitulo && (
           <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
         )}
-        {(btu || model.code) && (
+        {(btu || categoria || model.code) && (
           <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
             {btu && (
               <span className="rounded-md bg-sky-500 px-2 py-0.5 text-xs font-semibold text-white">
                 {btu}
+              </span>
+            )}
+            {categoria && (
+              <span className="rounded-md bg-violet-500 px-2 py-0.5 text-xs font-semibold text-white">
+                {categoria}
               </span>
             )}
             {model.code && (
