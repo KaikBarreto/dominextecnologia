@@ -8,7 +8,7 @@ import {
   Cable,
   Home,
   Snowflake,
-  Table2,
+  Ruler,
   RefreshCcw,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -58,7 +58,7 @@ const TOOLS: ToolDef[] = [
   { value: 'calculo-capacitor', label: 'Cálculo de Capacitor', icon: Zap },
   { value: 'cabo-eletrico', label: 'Cabo Elétrico', icon: Cable },
   { value: 'superaquecimento', label: 'Superaquecimento', icon: Snowflake },
-  { value: 'regua-gases', label: 'Régua de Gases', icon: Table2 },
+  { value: 'regua-gases', label: 'Régua de Gases', icon: Ruler },
   { value: 'ciclo-refrigeracao', label: 'Ciclo de Refrigeração', icon: RefreshCcw },
 ];
 

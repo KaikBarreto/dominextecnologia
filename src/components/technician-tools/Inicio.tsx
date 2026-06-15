@@ -6,7 +6,6 @@ import {
   Zap,
   Cable,
   Snowflake,
-  Table2,
   RefreshCcw,
   BookOpen,
   ChevronRight,
@@ -110,7 +109,7 @@ const ATALHOS: AtalhoFerramenta[] = [
     id: 'regua-gases',
     label: 'Régua de Gases',
     descricao: 'Pressão de saturação dos gases por temperatura.',
-    icon: Table2,
+    icon: Ruler,
     accent: 'hsl(262 83% 58%)',
   },
   {
