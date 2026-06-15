@@ -10,9 +10,19 @@ import {
   PackageSearch,
   Star,
   SlidersHorizontal,
+  Cpu,
+  Settings2,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -25,7 +35,10 @@ import {
   useAllErrorCodesWithModel,
   type EquipmentBrand,
   type EquipmentModel,
+  type EquipmentDomain,
 } from '@/hooks/useEquipmentCatalog';
+import { CompressorFicha } from './CompressorFicha';
+import { RemoteConfig } from './RemoteConfig';
 import {
   registrarModeloRecente,
   isModeloFavorito,
@@ -125,10 +138,79 @@ async function baixarManual(url: string, nome: string) {
   }
 }
 
+/** Domínios do catálogo, na ordem do segmented control. */
+const DOMAIN_OPTIONS: { value: EquipmentDomain; label: string }[] = [
+  { value: 'ar_condicionado', label: 'Ar Condicionado' },
+  { value: 'compressor', label: 'Compressores' },
+  { value: 'linha_branca', label: 'Linha Branca' },
+  { value: 'controle_remoto', label: 'Controles Remotos' },
+];
+
 type View =
   | { kind: 'brands' }
   | { kind: 'models'; brand: EquipmentBrand }
-  | { kind: 'errors'; model: EquipmentModel; initialCode?: string; brand?: EquipmentBrand };
+  | { kind: 'errors'; model: EquipmentModel; initialCode?: string; brand?: EquipmentBrand }
+  | { kind: 'compressor'; model: EquipmentModel; brand?: EquipmentBrand }
+  | { kind: 'remote'; model: EquipmentModel; brand?: EquipmentBrand };
+
+/**
+ * Seletor de domínio do catálogo.
+ * - Desktop (sm+): segmented control limpo, 4 botões lado a lado (sem pills roláveis).
+ * - Mobile: um Select que cabe bem na largura, evitando 2º nível de carrossel.
+ * A régua do time é não empilhar pills aninhados sobre a navegação de abas.
+ */
+function DomainSelector({
+  value,
+  onChange,
+}: {
+  value: EquipmentDomain;
+  onChange: (d: EquipmentDomain) => void;
+}) {
+  const current = DOMAIN_OPTIONS.find((o) => o.value === value) ?? DOMAIN_OPTIONS[0];
+  return (
+    <>
+      {/* Mobile: Select compacto */}
+      <div className="sm:hidden">
+        <Select value={value} onValueChange={(v) => onChange(v as EquipmentDomain)}>
+          <SelectTrigger className="h-12 w-full">
+            <SelectValue>{current.label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {DOMAIN_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Desktop: segmented control */}
+      <div className="hidden rounded-xl border border-border bg-muted/40 p-1 sm:grid sm:grid-cols-4 sm:gap-1">
+        {DOMAIN_OPTIONS.map((o) => {
+          const ativo = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onChange(o.value)}
+              aria-pressed={ativo}
+              className={cn(
+                'rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                ativo
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 /**
  * Catálogo de equipamentos de ar-condicionado para consulta em campo.
@@ -137,9 +219,17 @@ type View =
  * é resolvida client-side dentro da própria tela inicial.
  */
 export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) {
+  const [domain, setDomain] = useState<EquipmentDomain>('ar_condicionado');
   const [view, setView] = useState<View>({ kind: 'brands' });
 
-  // Deep-link: abre direto na tela de erros do modelo recebido (Recentes/Favoritos).
+  // Trocar de domínio reseta a navegação interna pra lista de marcas daquele domínio.
+  const onChangeDomain = (d: EquipmentDomain) => {
+    setDomain(d);
+    setView({ kind: 'brands' });
+  };
+
+  // Deep-link: abre direto na tela de detalhe do modelo recebido (Recentes/Favoritos).
+  // O deep-link atual é só de AC (códigos de erro); mantém o comportamento.
   const { data: modeloDeepLink, isLoading: loadingDeepLink } = useEquipmentModel(modeloInicialId);
   useEffect(() => {
     if (modeloDeepLink) setView({ kind: 'errors', model: modeloDeepLink });
@@ -154,13 +244,16 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
     );
   }
 
+  // Detalhe abre direto pelo componente do domínio do modelo (a partir da lista).
+  // Cada tela tem seu próprio header com voltar; o seletor de domínio some.
   if (view.kind === 'models') {
     return (
       <ModelosList
         brand={view.brand}
+        domain={domain}
         onBack={() => setView({ kind: 'brands' })}
         onSelectBrand={(b) => setView({ kind: 'models', brand: b })}
-        onSelectErrors={(model) => setView({ kind: 'errors', model, brand: view.brand })}
+        onSelectDetail={(model) => setView({ kind: detailKind(domain), model, brand: view.brand })}
       />
     );
   }
@@ -178,12 +271,49 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
     );
   }
 
+  if (view.kind === 'compressor') {
+    const originBrand = view.brand;
+    return (
+      <CompressorFicha
+        model={view.model}
+        onBack={() =>
+          setView(originBrand ? { kind: 'models', brand: originBrand } : { kind: 'brands' })
+        }
+      />
+    );
+  }
+
+  if (view.kind === 'remote') {
+    const originBrand = view.brand;
+    return (
+      <RemoteConfig
+        model={view.model}
+        onBack={() =>
+          setView(originBrand ? { kind: 'models', brand: originBrand } : { kind: 'brands' })
+        }
+      />
+    );
+  }
+
   return (
-    <BrandsList
-      onSelectBrand={(brand) => setView({ kind: 'models', brand })}
-      onSelectModelErrors={(model, initialCode) => setView({ kind: 'errors', model, initialCode })}
-    />
+    <div className="space-y-4 pb-4">
+      <DomainSelector value={domain} onChange={onChangeDomain} />
+      <BrandsList
+        domain={domain}
+        onSelectBrand={(brand) => setView({ kind: 'models', brand })}
+        onSelectModelDetail={(model) => setView({ kind: detailKind(domain), model })}
+        onSelectModelErrors={(model, initialCode) => setView({ kind: 'errors', model, initialCode })}
+      />
+    </div>
   );
+}
+
+/** Qual tela de detalhe abrir ao tocar a ação primária do card, por domínio. */
+function detailKind(domain: EquipmentDomain): 'errors' | 'compressor' | 'remote' {
+  if (domain === 'compressor') return 'compressor';
+  if (domain === 'controle_remoto') return 'remote';
+  // ar_condicionado e linha_branca usam a tela de códigos de erro.
+  return 'errors';
 }
 
 /* ------------------------------------------------------------------ */
@@ -208,15 +338,27 @@ interface GroupedErrorCode {
 }
 
 function BrandsList({
+  domain,
   onSelectBrand,
+  onSelectModelDetail,
   onSelectModelErrors,
 }: {
+  domain: EquipmentDomain;
   onSelectBrand: (brand: EquipmentBrand) => void;
+  /** Ação primária do card (erros / ficha / configurar, conforme o domínio). */
+  onSelectModelDetail: (model: EquipmentModel) => void;
   onSelectModelErrors: (model: EquipmentModel, initialCode?: string) => void;
 }) {
-  const { data: brands = [], isLoading } = useEquipmentBrands();
-  const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand();
+  const { data: brands = [], isLoading } = useEquipmentBrands(domain);
+  const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand(domain);
   const { data: allErrorCodes = [], isLoading: loadingCodes } = useAllErrorCodesWithModel();
+
+  // A busca por código de erro só faz sentido nos domínios que têm códigos
+  // (AC e linha branca). Nos demais, só busca de marca/equipamento.
+  const errorSearchEnabled = domain === 'ar_condicionado' || domain === 'linha_branca';
+  // IDs de modelos do domínio atual — restringe os resultados de código de erro
+  // (allErrorCodes é global) ao domínio selecionado.
+  const domainModelIds = useMemo(() => new Set(allModels.map((m) => m.id)), [allModels]);
 
   const [termoRaw, setTermoRaw] = useState('');
   const [termo, setTermo] = useState('');
@@ -292,13 +434,15 @@ function BrandsList({
   }, [allModels, q, searching]);
 
   // Códigos de erro que casam por code/título/descrição, agrupados por `code`.
+  // Só nos domínios com códigos, e restritos aos modelos do domínio atual.
   const codeGroups = useMemo<GroupedErrorCode[]>(() => {
-    if (!searching) return [];
+    if (!searching || !errorSearchEnabled) return [];
     const hits = allErrorCodes.filter(
       (ec) =>
-        norm(ec.code).includes(q) ||
-        norm(ec.title).includes(q) ||
-        norm(ec.description).includes(q),
+        (domainModelIds.size === 0 || (ec.model && domainModelIds.has(ec.model.id))) &&
+        (norm(ec.code).includes(q) ||
+          norm(ec.title).includes(q) ||
+          norm(ec.description).includes(q)),
     );
 
     const byCode = new Map<string, GroupedErrorCode>();
@@ -320,6 +464,7 @@ function BrandsList({
           image_url: m.image_url,
           manual_url: m.manual_url,
           refrigerant: m.refrigerant ?? null,
+          domain,
           created_at: '',
           brand: m.brand ?? null,
         },
@@ -334,18 +479,22 @@ function BrandsList({
       }
     }
     return Array.from(byCode.values()).sort((a, b) => a.code.localeCompare(b.code));
-  }, [allErrorCodes, q, searching]);
+  }, [allErrorCodes, q, searching, errorSearchEnabled, domainModelIds, domain]);
 
-  const loadingSearch = loadingModels || loadingCodes;
+  const loadingSearch = loadingModels || (errorSearchEnabled && loadingCodes);
   const nadaEncontrado =
     searching && !loadingSearch && modelHits.length === 0 && codeGroups.length === 0;
 
   return (
-    <div className="space-y-4 pb-4">
+    <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold tracking-tight md:text-xl">Equipamentos</h2>
-          <p className="text-sm text-muted-foreground md:text-base">Consulte modelos e códigos de erro.</p>
+          <p className="text-sm text-muted-foreground md:text-base">
+            {errorSearchEnabled
+              ? 'Consulte modelos e códigos de erro.'
+              : 'Consulte os modelos do catálogo.'}
+          </p>
         </div>
         {allModels.length > 0 && (
           <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
@@ -361,7 +510,11 @@ function BrandsList({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Buscar por marca, equipamento ou código de erro"
+              placeholder={
+                errorSearchEnabled
+                  ? 'Buscar por marca, equipamento ou código de erro'
+                  : 'Buscar por marca ou equipamento'
+              }
               value={termoRaw}
               onChange={(e) => setTermoRaw(e.target.value)}
               className="h-14 pl-10 text-lg"
@@ -447,8 +600,9 @@ function BrandsList({
                     <ModelCard
                       key={model.id}
                       model={model}
+                      domain={domain}
                       brandName={model.brand?.name ?? 'Marca'}
-                      onSelectErrors={() => onSelectModelErrors(model)}
+                      onSelectDetail={() => onSelectModelDetail(model)}
                     />
                   ))}
                 </div>
@@ -486,8 +640,9 @@ function BrandsList({
                 <ModelCard
                   key={model.id}
                   model={model}
+                  domain={domain}
                   brandName={model.brand?.name ?? 'Marca'}
-                  onSelectErrors={() => onSelectModelErrors(model)}
+                  onSelectDetail={() => onSelectModelDetail(model)}
                 />
               ))}
             </div>
@@ -599,17 +754,19 @@ function ErrorCodeGroupCard({
 
 function ModelosList({
   brand,
+  domain,
   onBack,
   onSelectBrand,
-  onSelectErrors,
+  onSelectDetail,
 }: {
   brand: EquipmentBrand;
+  domain: EquipmentDomain;
   onBack: () => void;
   onSelectBrand: (brand: EquipmentBrand) => void;
-  onSelectErrors: (model: EquipmentModel) => void;
+  onSelectDetail: (model: EquipmentModel) => void;
 }) {
-  const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id);
-  const { data: brands = [] } = useEquipmentBrands();
+  const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
+  const { data: brands = [] } = useEquipmentBrands(domain);
 
   // Carrossel de marcas: a marca atual fica no centro, vizinhas espiam nas
   // laterais. Snapar/tocar numa marca diferente troca a marca ativa (onSelectBrand).
@@ -854,8 +1011,9 @@ function ModelosList({
             <ModelCard
               key={model.id}
               model={model}
+              domain={domain}
               brandName={brand.name}
-              onSelectErrors={() => onSelectErrors(model)}
+              onSelectDetail={() => onSelectDetail(model)}
             />
           ))}
         </div>
@@ -865,27 +1023,54 @@ function ModelosList({
 }
 
 /* ------------------------------------------------------------------ */
-/* Card de modelo com ações diretas (Códigos de erro / Baixar manual)  */
+/* Card de modelo — badges e ações variam por domínio                  */
 /* ------------------------------------------------------------------ */
+
+/** Configuração da ação primária do card (rótulo + ícone) por domínio. */
+function detailAction(domain: EquipmentDomain): { label: string; icon: typeof AlertCircle } {
+  switch (domain) {
+    case 'compressor':
+      return { label: 'Ficha técnica', icon: Cpu };
+    case 'controle_remoto':
+      return { label: 'Como configurar', icon: Settings2 };
+    default:
+      // ar_condicionado e linha_branca → códigos de erro.
+      return { label: 'Códigos de erro', icon: AlertCircle };
+  }
+}
 
 function ModelCard({
   model,
+  domain,
   brandName,
-  onSelectErrors,
+  onSelectDetail,
 }: {
   model: EquipmentModel;
+  domain: EquipmentDomain;
   brandName: string;
-  onSelectErrors: () => void;
+  onSelectDetail: () => void;
 }) {
   const categoria = model.category?.name ?? null;
   const btu = extrairBtu(model.name);
-  // Linha de identificação: só a marca (o tipo virou badge ao lado do BTU).
   const subtitulo = brandName;
   const temManual = Boolean(model.manual_url);
   const temFoto = Boolean(model.image_url);
 
+  // Quais badges/segundo botão o domínio mostra.
+  const mostraBtu = domain === 'ar_condicionado';
+  const mostraGas = domain === 'ar_condicionado' || domain === 'compressor';
+  // AC e Linha Branca baixam manual; Compressor baixa "Datasheet" (mesma URL).
+  const segundoBotao: 'manual' | 'datasheet' | null =
+    domain === 'compressor' ? 'datasheet' : domain === 'controle_remoto' ? null : 'manual';
+
+  const detalhe = detailAction(domain);
+  const DetalheIcon = detalhe.icon;
+
   // Viewer dedicado da foto (igual OS) — abre no clique, fecha fora, baixa, mobile/desktop.
   const [viewerOpen, setViewerOpen] = useState(false);
+
+  const temBadges =
+    (mostraBtu && btu) || categoria || (mostraGas && model.refrigerant) || model.code;
 
   return (
     <div
@@ -923,9 +1108,9 @@ function ModelCard({
         {subtitulo && (
           <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
         )}
-        {(btu || categoria || model.refrigerant || model.code) && (
+        {temBadges && (
           <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-            {btu && (
+            {mostraBtu && btu && (
               <span className="rounded-md bg-sky-500 px-2 py-0.5 text-xs font-semibold text-white">
                 {btu}
               </span>
@@ -935,7 +1120,8 @@ function ModelCard({
                 {categoria}
               </span>
             )}
-            {model.refrigerant &&
+            {mostraGas &&
+              model.refrigerant &&
               (() => {
                 const cor = getRefrigerante(model.refrigerant)?.cor ?? '#6b7280';
                 return (
@@ -955,32 +1141,57 @@ function ModelCard({
           </div>
         )}
 
-        {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark). */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button variant="outline" size="sm" onClick={onSelectErrors} className="w-full">
-            <AlertCircle className="h-4 w-4" />
-            Códigos de erro
+        {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark).
+            Controle remoto tem só 1 ação (ocupa a largura cheia). */}
+        <div className={cn('mt-4 grid gap-2', segundoBotao ? 'grid-cols-2' : 'grid-cols-1')}>
+          <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
+            <DetalheIcon className="h-4 w-4" />
+            {detalhe.label}
           </Button>
-          {temManual ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                baixarManual(
-                  model.manual_url!,
-                  sanitizarNomeArquivo(`Manual ${model.name} - ${brandName}.pdf`),
-                )
-              }
-              className="w-full"
-            >
-              <Download className="h-4 w-4" />
-              Baixar manual
-            </Button>
-          ) : (
-            <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
-              Manual Indisponível
-            </div>
-          )}
+
+          {segundoBotao === 'manual' &&
+            (temManual ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  baixarManual(
+                    model.manual_url!,
+                    sanitizarNomeArquivo(`Manual ${model.name} - ${brandName}.pdf`),
+                  )
+                }
+                className="w-full"
+              >
+                <Download className="h-4 w-4" />
+                Baixar manual
+              </Button>
+            ) : (
+              <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
+                Manual Indisponível
+              </div>
+            ))}
+
+          {segundoBotao === 'datasheet' &&
+            (temManual ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  baixarManual(
+                    model.manual_url!,
+                    sanitizarNomeArquivo(`Datasheet ${model.name} - ${brandName}.pdf`),
+                  )
+                }
+                className="w-full"
+              >
+                <FileText className="h-4 w-4" />
+                Datasheet
+              </Button>
+            ) : (
+              <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
+                Datasheet Indisponível
+              </div>
+            ))}
         </div>
       </div>
 

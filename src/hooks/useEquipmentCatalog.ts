@@ -24,6 +24,16 @@ export interface EquipmentModelCategory {
   name: string;
 }
 
+/**
+ * Domínio do catálogo. Hoje o banco só tem 'ar_condicionado' populado; os demais
+ * existem no schema (enum/text) mas caem em catálogo vazio até serem cadastrados.
+ */
+export type EquipmentDomain =
+  | 'ar_condicionado'
+  | 'compressor'
+  | 'linha_branca'
+  | 'controle_remoto';
+
 export interface EquipmentModel {
   id: string;
   brand_id: string;
@@ -34,6 +44,8 @@ export interface EquipmentModel {
   manual_url: string | null;
   /** Gás refrigerante do modelo (ex.: 'R-32', 'R-410A'); null quando não cadastrado. */
   refrigerant: string | null;
+  /** Domínio do catálogo a que o modelo pertence. */
+  domain: string;
   created_at: string;
   /** Hidratado nas queries que fazem join com a marca. */
   brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
@@ -53,14 +65,31 @@ export interface EquipmentErrorCode {
   created_at: string;
 }
 
-/** Lista todas as marcas, ordenadas por `sort` (e nome como desempate). */
-export function useEquipmentBrands() {
+/**
+ * Marcas que têm ≥1 modelo NO domínio informado, ordenadas por `sort`
+ * (e nome como desempate). Faz 2 queries: pega os brand_ids distintos de
+ * `equipment_models` daquele domínio e filtra as marcas por esses ids.
+ * Domínios sem modelos cadastrados retornam lista vazia (catálogo em atualização).
+ */
+export function useEquipmentBrands(domain: string = 'ar_condicionado') {
   return useQuery({
-    queryKey: ['equipment-catalog', 'brands'],
+    queryKey: ['equipment-catalog', 'brands', domain],
     queryFn: async () => {
+      const { data: modelRows, error: modelErr } = await supabase
+        .from('equipment_models')
+        .select('brand_id')
+        .eq('domain', domain);
+      if (modelErr) throw modelErr;
+
+      const brandIds = Array.from(
+        new Set((modelRows ?? []).map((r) => r.brand_id).filter(Boolean)),
+      );
+      if (brandIds.length === 0) return [] as EquipmentBrand[];
+
       const { data, error } = await supabase
         .from('equipment_brands')
         .select('id, name, slug, logo_url, sort, created_at')
+        .in('id', brandIds)
         .order('sort', { ascending: true, nullsFirst: false })
         .order('name', { ascending: true });
       if (error) throw error;
@@ -86,18 +115,22 @@ export function useEquipmentBrand(brandId: string | null | undefined) {
   });
 }
 
-/** Modelos de uma marca, ordenados por nome. */
-export function useEquipmentModelsByBrand(brandId: string | null | undefined) {
+/** Modelos de uma marca dentro de um domínio, ordenados por nome. */
+export function useEquipmentModelsByBrand(
+  brandId: string | null | undefined,
+  domain: string = 'ar_condicionado',
+) {
   return useQuery({
-    queryKey: ['equipment-catalog', 'models-by-brand', brandId],
+    queryKey: ['equipment-catalog', 'models-by-brand', brandId, domain],
     enabled: !!brandId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, category:equipment_model_categories(id, name)',
         )
         .eq('brand_id', brandId as string)
+        .eq('domain', domain)
         .order('name', { ascending: true });
       if (error) throw error;
       return (data ?? []) as EquipmentModel[];
@@ -114,7 +147,7 @@ export function useEquipmentModel(modelId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('id', modelId as string)
         .maybeSingle();
@@ -137,7 +170,7 @@ export function useEquipmentModelsByCode(term: string) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .ilike('code', `%${trimmed}%`)
         .order('name', { ascending: true })
@@ -149,19 +182,20 @@ export function useEquipmentModelsByCode(term: string) {
 }
 
 /**
- * TODOS os modelos do catálogo com a marca hidratada.
+ * TODOS os modelos de um domínio com a marca hidratada.
  * Usado pela busca global client-side (catálogo é pequeno; sem paginação).
  */
-export function useAllModelsWithBrand() {
+export function useAllModelsWithBrand(domain: string = 'ar_condicionado') {
   return useQuery({
-    queryKey: ['equipment-catalog', 'all-models'],
+    queryKey: ['equipment-catalog', 'all-models', domain],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
+        .eq('domain', domain)
         .order('name', { ascending: true });
       if (error) throw error;
       return (data ?? []) as EquipmentModel[];
@@ -198,6 +232,73 @@ export function useAllErrorCodesWithModel() {
         .order('code', { ascending: true });
       if (error) throw error;
       return (data ?? []) as EquipmentErrorCodeWithModel[];
+    },
+  });
+}
+
+/** Ficha técnica de um compressor (1:1 com o modelo). Gás reusa model.refrigerant. */
+export interface CompressorSpec {
+  model_id: string;
+  hp: string | null;
+  capacidade_btu: string | null;
+  aplicacao: string | null;
+  tensao: string | null;
+  frequencia: string | null;
+  deslocamento_cm3: string | null;
+  rla: number | null;
+  lra: number | null;
+  capacitor_trabalho: string | null;
+  capacitor_partida: string | null;
+  rele_protetor: string | null;
+  oleo: string | null;
+  conexoes: string | null;
+  equivalencias: string | null;
+  observacoes: string | null;
+  created_at: string;
+}
+
+/** Ficha técnica do compressor de um modelo. Null quando ainda não cadastrada. */
+export function useCompressorSpec(modelId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['equipment-catalog', 'compressor-spec', modelId],
+    enabled: !!modelId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('compressor_specs')
+        .select('*')
+        .eq('model_id', modelId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as CompressorSpec | null;
+    },
+  });
+}
+
+/** Configuração de um controle remoto (1:1 com o modelo). */
+export interface RemoteConfig {
+  model_id: string;
+  instrucoes: string | null;
+  codigo_universal: string | null;
+  reset: string | null;
+  desbloqueio: string | null;
+  modos: string | null;
+  observacoes: string | null;
+  created_at: string;
+}
+
+/** Configuração do controle remoto de um modelo. Null quando ainda não cadastrada. */
+export function useRemoteConfig(modelId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['equipment-catalog', 'remote-config', modelId],
+    enabled: !!modelId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('remote_configs')
+        .select('*')
+        .eq('model_id', modelId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as RemoteConfig | null;
     },
   });
 }
