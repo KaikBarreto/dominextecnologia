@@ -352,8 +352,8 @@ function SelecoesCompartilhadas({
             <LabeledSwitch
               value={unidade}
               onChange={setUnidade}
-              off={{ value: 'bar', label: 'bar' }}
-              on={{ value: 'psi', label: 'psi' }}
+              off={{ value: 'psi', label: 'psi' }}
+              on={{ value: 'bar', label: 'bar' }}
               size="lg"
               aria-label="Unidade de pressão"
             />
@@ -410,7 +410,7 @@ interface SuperaquecimentoProps {
 export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
   // Compartilhados: padrão R-410A, bar.
   const [refrigId, setRefrigId] = useState<string>('R-410A');
-  const [unidade, setUnidade] = useState<UnidadePressao>('bar');
+  const [unidade, setUnidade] = useState<UnidadePressao>('psi');
 
   // Subaba ativa — começa no Superaquecimento (SH).
   const [subAba, setSubAba] = useState<SubAba>('sh');

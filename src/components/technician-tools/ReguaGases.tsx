@@ -272,8 +272,8 @@ function ReguaMobile({
           <LabeledSwitch
             value={unidade}
             onChange={setUnidade}
-            off={{ value: 'bar', label: 'bar' }}
-            on={{ value: 'psi', label: 'psi' }}
+            off={{ value: 'psi', label: 'psi' }}
+            on={{ value: 'bar', label: 'bar' }}
             aria-label="Unidade de pressão"
           />
         </div>
@@ -465,7 +465,7 @@ function ModoPressaoDesktop({ unidade, curva }: { unidade: UnidadePressao; curva
 type ModoDesktop = 'temperatura' | 'pressao';
 
 export function ReguaGases() {
-  const [unidade, setUnidade] = useState<UnidadePressao>('bar');
+  const [unidade, setUnidade] = useState<UnidadePressao>('psi');
   const [formula, setFormula] = useState<Formula>('dew');
   const [modoDesktop, setModoDesktop] = useState<ModoDesktop>('temperatura');
 
@@ -529,8 +529,8 @@ export function ReguaGases() {
           <LabeledSwitch
             value={unidade}
             onChange={setUnidade}
-            off={{ value: 'bar', label: 'bar' }}
-            on={{ value: 'psi', label: 'psi' }}
+            off={{ value: 'psi', label: 'psi' }}
+            on={{ value: 'bar', label: 'bar' }}
             aria-label="Unidade de pressão"
           />
         </div>
