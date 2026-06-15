@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.20',
+    date: '15 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Distribuição do saldo entre contas na Visão Geral',
+        description: 'A Visão Geral do Financeiro agora mostra um gráfico de distribuição do seu saldo entre as contas, acompanhado de etiquetas coloridas com o valor de cada conta. Passe o mouse sobre uma fatia para ver o valor e o percentual que ela representa. No computador, o gráfico aparece ao lado do saldo total; no celular, logo abaixo dele.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.19',
     date: '15 de junho de 2026',
     type: 'patch',

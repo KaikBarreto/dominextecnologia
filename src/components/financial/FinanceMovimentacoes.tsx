@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
 import { idealForeground } from '@/lib/colorContrast';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { FinancialTransaction } from '@/types/database';
 
 const ALL_TAB = '__all__';
@@ -34,6 +35,33 @@ function getTypeIcon(type: string) {
   if (type === 'caixa') return Wallet;
   if (type === 'cartao') return CreditCard;
   return Landmark;
+}
+
+/**
+ * Tooltip do donut de distribuição entre contas: nome, valor e % do total.
+ * `totalDonut` é a soma dos saldos das fatias (passada via closure no render).
+ */
+function AccountDistributionTooltip({
+  active,
+  payload,
+  totalDonut,
+}: {
+  active?: boolean;
+  payload?: any[];
+  totalDonut: number;
+}) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const value = Number(item.value ?? 0);
+  const pct = totalDonut > 0 ? (value / totalDonut) * 100 : 0;
+  return (
+    <div className="rounded-lg border bg-popover px-2.5 py-1.5 text-xs shadow-md">
+      <p className="font-semibold text-popover-foreground">{item.payload?.name}</p>
+      <p className="tabular-nums text-muted-foreground">
+        R$ {formatBRL(value)} · {pct.toFixed(1)}%
+      </p>
+    </div>
+  );
 }
 
 interface FinanceMovimentacoesProps {
@@ -120,6 +148,22 @@ export function FinanceMovimentacoes({
   const totalCardBills = useMemo(
     () => cardAccounts.reduce((sum, a) => sum + (cardBillTotals[a.id] ?? 0), 0),
     [cardAccounts, cardBillTotals]
+  );
+
+  // Distribuição do saldo entre as contas de caixa/banco (cartão fica de fora).
+  // Só contas com saldo POSITIVO entram no donut — fatia negativa não tem
+  // representação coerente numa rosca. Alimenta o bloco "Distribuição entre
+  // contas" da Visão Geral, que só aparece com 2+ contas positivas.
+  const pieData = useMemo(
+    () =>
+      cashBankAccounts
+        .map(a => ({
+          name: a.name,
+          value: balances[a.id] ?? Number(a.initial_balance ?? 0),
+          color: a.color || '#3B82F6',
+        }))
+        .filter(d => d.value > 0),
+    [cashBankAccounts, balances]
   );
 
   const openNewAccount = (initialType: string) => {
@@ -439,54 +483,131 @@ export function FinanceMovimentacoes({
       >
         {activeTab === ALL_TAB ? (
           <div className="space-y-4">
-            {/* Card consolidado: saldo em contas/caixa e, DISTINTO, total das
-                faturas abertas dos cartões. Nunca somar fatura no saldo de caixa. */}
-            {(cashBankAccounts.length > 0 || cardAccounts.length > 0) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {cashBankAccounts.length > 0 && (
-                  /* Card-herói do SALDO TOTAL. Sem cor de conta única na Visão
-                     Geral → degradê pela semântica: positivo verde, zero escuro,
-                     negativo vermelho. Texto sempre branco. */
-                  <div
-                    className={cn(
-                      'rounded-2xl p-5 sm:p-6 text-white shadow-lg flex flex-col justify-between gap-3',
-                      totalBalance > 0
-                        ? 'bg-gradient-to-r from-emerald-700 to-emerald-600'
-                        : totalBalance === 0
-                        ? 'bg-gradient-to-r from-gray-900 to-gray-700'
-                        : 'bg-gradient-to-r from-red-900 to-red-700',
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="rounded-full bg-white/20 p-2 shrink-0">
-                        <Wallet className="h-4 w-4" />
-                      </div>
-                      <span className="text-xs font-medium uppercase tracking-wider opacity-90">
-                        Saldo total em contas
-                      </span>
+            {/* Topo da Visão Geral. Quando há distribuição (2+ contas positivas),
+                no desktop fica lado a lado: saldo total + faturas empilhados à
+                esquerda, donut de distribuição à direita. Sem distribuição,
+                mantém o grid clássico de saldo + faturas lado a lado. Mobile
+                sempre empilhado. */}
+            {(() => {
+              const showDist = pieData.length >= 2;
+              const hasTop = cashBankAccounts.length > 0 || cardAccounts.length > 0;
+              if (!showDist && !hasTop) return null;
+
+              /* Card-herói do SALDO TOTAL. Sem cor de conta única na Visão Geral
+                 → degradê pela semântica: positivo verde, zero escuro, negativo
+                 vermelho. Texto sempre branco. */
+              const heroCard = cashBankAccounts.length > 0 && (
+                <div
+                  className={cn(
+                    'rounded-2xl p-5 sm:p-6 text-white shadow-lg flex flex-col justify-between gap-3',
+                    totalBalance > 0
+                      ? 'bg-gradient-to-r from-emerald-700 to-emerald-600'
+                      : totalBalance === 0
+                      ? 'bg-gradient-to-r from-gray-900 to-gray-700'
+                      : 'bg-gradient-to-r from-red-900 to-red-700',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="rounded-full bg-white/20 p-2 shrink-0">
+                      <Wallet className="h-4 w-4" />
                     </div>
-                    <span className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
-                      R$ {formatBRL(totalBalance)}
+                    <span className="text-xs font-medium uppercase tracking-wider opacity-90">
+                      Saldo total em contas
                     </span>
                   </div>
-                )}
-                {cardAccounts.length > 0 && (
-                  <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3 sm:self-stretch">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="rounded-full bg-primary/10 p-2 shrink-0">
-                        <CreditCard className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Faturas de cartão
-                      </span>
+                  <span className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
+                    R$ {formatBRL(totalBalance)}
+                  </span>
+                </div>
+              );
+
+              const cardBillsCard = cardAccounts.length > 0 && (
+                <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3 sm:self-stretch">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="rounded-full bg-primary/10 p-2 shrink-0">
+                      <CreditCard className="h-4 w-4 text-primary" />
                     </div>
-                    <span className={cn('text-lg font-bold tabular-nums shrink-0', totalCardBills > 0 ? 'text-destructive' : 'text-muted-foreground')}>
-                      R$ {formatBRL(totalCardBills)}
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Faturas de cartão
                     </span>
                   </div>
-                )}
-              </div>
-            )}
+                  <span className={cn('text-lg font-bold tabular-nums shrink-0', totalCardBills > 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                    R$ {formatBRL(totalCardBills)}
+                  </span>
+                </div>
+              );
+
+              /* Distribuição do saldo entre as contas de caixa/banco. Cartões
+                 ficam de fora (não têm saldo de conta). */
+              const distCard = showDist && (() => {
+                const totalDonut = pieData.reduce((s, d) => s + d.value, 0);
+                return (
+                  <div className="rounded-xl border bg-card p-4 space-y-3">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Distribuição entre contas
+                    </span>
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                      <div className="h-[150px] w-full lg:w-[200px] shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              dataKey="value"
+                              nameKey="name"
+                              innerRadius={45}
+                              outerRadius={70}
+                              paddingAngle={2}
+                              strokeWidth={0}
+                            >
+                              {pieData.map((entry, i) => (
+                                <Cell key={i} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              content={<AccountDistributionTooltip totalDonut={totalDonut} />}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex flex-wrap lg:flex-col gap-1.5 lg:gap-2 min-w-0">
+                        {pieData.map((entry, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                            style={{ backgroundColor: entry.color, color: idealForeground(entry.color) }}
+                          >
+                            <span className="truncate max-w-[8rem]">{entry.name}</span>
+                            <span className="tabular-nums">R$ {formatBRL(entry.value)}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })();
+
+              if (showDist) {
+                // Desktop: saldo (+ faturas empilhadas) à esquerda, distribuição
+                // à direita. Mobile: tudo empilhado.
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+                    <div className="space-y-3">
+                      {heroCard}
+                      {cardBillsCard}
+                    </div>
+                    {distCard}
+                  </div>
+                );
+              }
+
+              // Sem distribuição: grid clássico saldo + faturas lado a lado.
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {heroCard}
+                  {cardBillsCard}
+                </div>
+              );
+            })()}
             <TransactionListPanel
               title="Movimentações"
               type="all"

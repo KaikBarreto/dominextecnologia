@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.19";
+export const APP_VERSION = "1.12.20";
 
-export const VERSION_NOTES = "Agora você pode consultar e baixar os Termos de Uso do Dominex a qualquer momento em Configurações, e o sino de notificações passa a avisar sobre novidades, organizadas por data.";
+export const VERSION_NOTES = "A Visão Geral do Financeiro agora mostra um gráfico de distribuição do seu saldo entre as contas, com o valor de cada conta destacado em cores.";
