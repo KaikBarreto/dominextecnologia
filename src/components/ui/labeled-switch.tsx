@@ -15,6 +15,8 @@ interface LabeledSwitchProps<T extends string> {
   /** Lado direito = estado "ligado" do switch. */
   on: LabeledSwitchOption<T>;
   className?: string;
+  /** Tamanho dos rótulos. 'default' = text-base, 'lg' = text-lg. */
+  size?: "default" | "lg";
   "aria-label"?: string;
 }
 
@@ -24,16 +26,19 @@ export function LabeledSwitch<T extends string>({
   off,
   on,
   className,
+  size = "default",
   "aria-label": ariaLabel,
 }: LabeledSwitchProps<T>) {
   const isOn = value === on.value;
+  const textSize = size === "lg" ? "text-lg" : "text-base";
   return (
     <div className={cn("inline-flex items-center gap-2.5", className)}>
       <button
         type="button"
         onClick={() => onChange(off.value)}
         className={cn(
-          "text-sm font-semibold transition-colors",
+          textSize,
+          "font-semibold transition-colors",
           !isOn ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >
@@ -48,7 +53,8 @@ export function LabeledSwitch<T extends string>({
         type="button"
         onClick={() => onChange(on.value)}
         className={cn(
-          "text-sm font-semibold transition-colors",
+          textSize,
+          "font-semibold transition-colors",
           isOn ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >

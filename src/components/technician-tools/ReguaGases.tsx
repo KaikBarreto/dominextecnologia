@@ -118,69 +118,74 @@ function ReguaDupla({
         </span>
       </div>
 
-      {/* Trilho da régua */}
-      <div
-        ref={trilhoRef}
-        role="slider"
-        aria-label="Selecionar ponto da régua"
-        aria-valuemin={TEMP_MIN}
-        aria-valuemax={TEMP_MAX}
-        aria-valuenow={tempClamped}
-        tabIndex={0}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setTemp(Math.min(TEMP_MAX, tempClamped + 1));
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setTemp(Math.max(TEMP_MIN, tempClamped - 1));
-          }
-        }}
-        className="relative h-[60vh] max-h-[460px] min-h-[320px] w-[8.5rem] cursor-grab touch-none rounded-2xl border border-border bg-muted/40 active:cursor-grabbing"
-      >
-        {/* Trilho central */}
-        <div className="absolute left-1/2 top-3 bottom-3 w-1.5 -translate-x-1/2 rounded-full bg-border" />
-
-        {/* Marcas e rótulos das DUAS escalas */}
-        {TICKS_REGUA.map((t) => {
-          const top = ((TEMP_MAX - t) / (TEMP_MAX - TEMP_MIN)) * 100;
-          const rotulado = t % 10 === 0;
-          const p = rotulado ? tempParaPressao(refrigId, t, unidade, curva) : null;
-          return (
-            <div
-              key={t}
-              className="pointer-events-none absolute left-0 right-0 flex items-center justify-between px-1.5"
-              style={{ top: `${top}%`, transform: 'translateY(-50%)' }}
-            >
-              {/* Escala de PRESSÃO (esquerda) */}
-              <span className="w-12 text-right text-[10px] font-medium tabular-nums text-muted-foreground">
-                {rotulado && p !== null ? formatarPressao(p, unidade) : ''}
-              </span>
-              {/* Marca central */}
-              <span
-                className={cn(
-                  'rounded-full bg-border',
-                  rotulado ? 'h-0.5 w-5' : 'h-0.5 w-3',
-                )}
-              />
-              {/* Escala de TEMPERATURA (direita) */}
-              <span className="w-12 text-left text-[10px] font-medium tabular-nums text-muted-foreground">
-                {rotulado ? t : ''}
-              </span>
-            </div>
-          );
-        })}
-
-        {/* Cursor / indicador arrastável */}
+      {/* Trilho da régua — o container externo só desenha a moldura; a área útil
+          (medição do arrasto + ticks + cursor) vive na camada recuada abaixo,
+          pra que marcas e toque fiquem perfeitamente alinhados e nada vaze. */}
+      <div className="relative h-[60vh] max-h-[460px] min-h-[320px] w-[8.5rem] rounded-2xl border border-border bg-muted/40">
+        {/* Camada recuada (12px topo/base) — referência do arrasto e dos ticks */}
         <div
-          className="pointer-events-none absolute left-2 right-2 z-10 flex h-7 -translate-y-1/2 items-center justify-center rounded-full border-2 border-primary bg-background/90 shadow-md"
-          style={{ top: `${pctTopo}%` }}
+          ref={trilhoRef}
+          role="slider"
+          aria-label="Selecionar ponto da régua"
+          aria-valuemin={TEMP_MIN}
+          aria-valuemax={TEMP_MAX}
+          aria-valuenow={tempClamped}
+          tabIndex={0}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setTemp(Math.min(TEMP_MAX, tempClamped + 1));
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setTemp(Math.max(TEMP_MIN, tempClamped - 1));
+            }
+          }}
+          className="absolute inset-x-0 top-3 bottom-3 cursor-grab touch-none active:cursor-grabbing"
         >
-          <span className="h-1 w-10 rounded-full bg-primary" />
+          {/* Trilho central */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-1.5 -translate-x-1/2 rounded-full bg-border" />
+
+          {/* Marcas e rótulos das DUAS escalas */}
+          {TICKS_REGUA.map((t) => {
+            const top = ((TEMP_MAX - t) / (TEMP_MAX - TEMP_MIN)) * 100;
+            const rotulado = t % 10 === 0;
+            const p = rotulado ? tempParaPressao(refrigId, t, unidade, curva) : null;
+            return (
+              <div
+                key={t}
+                className="pointer-events-none absolute left-0 right-0 flex items-center justify-between px-1.5"
+                style={{ top: `${top}%`, transform: 'translateY(-50%)' }}
+              >
+                {/* Escala de PRESSÃO (esquerda) */}
+                <span className="w-12 text-right text-[10px] font-medium tabular-nums text-muted-foreground">
+                  {rotulado && p !== null ? formatarPressao(p, unidade) : ''}
+                </span>
+                {/* Marca central */}
+                <span
+                  className={cn(
+                    'rounded-full bg-border',
+                    rotulado ? 'h-0.5 w-5' : 'h-0.5 w-3',
+                  )}
+                />
+                {/* Escala de TEMPERATURA (direita) */}
+                <span className="w-12 text-left text-[10px] font-medium tabular-nums text-muted-foreground">
+                  {rotulado ? t : ''}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Cursor / indicador arrastável */}
+          <div
+            className="pointer-events-none absolute left-2 right-2 z-10 flex h-7 -translate-y-1/2 items-center justify-center rounded-full border-2 border-primary bg-background/90 shadow-md"
+            style={{ top: `${pctTopo}%` }}
+          >
+            <span className="h-1 w-10 rounded-full bg-primary" />
+          </div>
         </div>
       </div>
 
@@ -261,8 +266,8 @@ function ReguaMobile({
           </Select>
         </div>
 
-        {/* Unidade */}
-        <div className="space-y-1">
+        {/* Unidade — alavanca centralizada abaixo do label */}
+        <div className="flex flex-col items-center gap-1.5">
           <Label className="text-xs font-semibold text-muted-foreground">Unidade</Label>
           <LabeledSwitch
             value={unidade}

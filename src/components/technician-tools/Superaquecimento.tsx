@@ -354,6 +354,7 @@ function SelecoesCompartilhadas({
               onChange={setUnidade}
               off={{ value: 'bar', label: 'bar' }}
               on={{ value: 'psi', label: 'psi' }}
+              size="lg"
               aria-label="Unidade de pressão"
             />
           </div>
