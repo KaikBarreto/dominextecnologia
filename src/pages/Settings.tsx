@@ -33,6 +33,7 @@ import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from '@/components/technician/ReportHeader';
 import { Slider } from '@/components/ui/slider';
 import { DangerZoneCard } from '@/components/settings/DangerZoneCard';
+import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import type { AppRole } from '@/types/database';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
@@ -89,6 +90,7 @@ export default function Settings() {
   // Backend rechecka via RPC SECURITY DEFINER (regra-lei #1 — filtro client é UX).
   const canResetSystem = hasRole('admin') || hasRole('super_admin' as AppRole);
   const [wlGateOpen, setWlGateOpen] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
@@ -995,6 +997,35 @@ export default function Settings() {
 
             </CardContent>
           </Card>
+
+          {/* ========== DOCUMENTOS LEGAIS ========== */}
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Documentos Legais
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Consulte e baixe os termos que regem o uso do Dominex
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => setTermsModalOpen(true)}
+              >
+                <FileText className="h-4 w-4" />
+                Ver termos de uso
+              </Button>
+            </CardContent>
+          </Card>
+
+          <TermsOfServiceModal
+            open={termsModalOpen}
+            onOpenChange={setTermsModalOpen}
+            readOnly
+          />
 
           {/* Zona de Perigo — apenas admin do tenant OR super_admin Auctus.
               Backend rechecka via RPC SECURITY DEFINER. */}

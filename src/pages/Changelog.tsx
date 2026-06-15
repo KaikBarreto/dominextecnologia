@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.19',
+    date: '15 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Termos de Uso disponíveis no sistema',
+        description: 'Os Termos de Uso do Dominex agora ficam sempre disponíveis para consulta dentro do sistema, em Configurações › Empresa, com opção de baixar em PDF a qualquer momento. No primeiro acesso, pedimos a leitura e o aceite dos termos para continuar usando a plataforma.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.18',
     date: '15 de junho de 2026',
     type: 'patch',

@@ -6282,6 +6282,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_terms_of_service: {
+        Args: { p_version?: string }
+        Returns: undefined
+      }
       asaas_reconciliation_alert: { Args: never; Returns: number }
       asaas_reconciliation_check: {
         Args: never
