@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.17',
+    date: '14 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Catálogo de Equipamentos completo',
+        description: 'O Catálogo de Equipamentos (Ferramentas do Técnico) agora traz a foto de cada modelo em destaque (toque para ampliar), manuais em PDF para baixar e códigos de erro com diagnóstico de 17 marcas populares. Você pode buscar e filtrar por potência (BTUs) e tipo (Hi-Wall, Cassete, Piso-Teto, Multi-Split) tanto no catálogo todo quanto dentro de uma marca, com os modelos ordenados da menor para a maior potência. Cada equipamento mostra marca, categoria e potência, com botões diretos de "Códigos de erro" e "Baixar manual".',
+        category: 'recurso',
+      },
+      {
+        title: 'Segmento de Atuação da empresa',
+        description: 'Em Configurações › Empresa você agora define o Segmento de Atuação da sua empresa. As ferramentas específicas de refrigeração e climatização aparecem para empresas desse segmento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.16',
     date: '14 de junho de 2026',
     type: 'patch',

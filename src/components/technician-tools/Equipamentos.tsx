@@ -42,11 +42,6 @@ function norm(s: string | null | undefined): string {
     .replace(/[̀-ͯ]/g, '');
 }
 
-/** Abre o manual (PDF) — não há viewer dedicado no app, então window.open. */
-function abrirManual(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
-
 /**
  * Extrai a potência (BTUs) do nome do modelo, quando presente.
  * Ex: "Cassete 60.000 BTUs Inverter" → "60.000 BTUs". Retorna null se não achar.
@@ -74,6 +69,52 @@ function btuNumero(name: string): number | null {
 /** Formata um número de BTU para exibição. Ex: 9000 → "9.000 BTUs". */
 function formatarBtu(n: number): string {
   return `${n.toLocaleString('pt-BR')} BTUs`;
+}
+
+/**
+ * Ordena modelos por potência (BTU) crescente, de forma ESTÁVEL.
+ * Modelos sem BTU detectável vão pro fim, mantendo a ordem relativa original.
+ */
+function ordenarPorBtu<T extends { name: string }>(modelos: T[]): T[] {
+  return modelos
+    .map((m, i) => ({ m, i, btu: btuNumero(m.name) }))
+    .sort((a, b) => {
+      if (a.btu == null && b.btu == null) return a.i - b.i;
+      if (a.btu == null) return 1;
+      if (b.btu == null) return -1;
+      if (a.btu !== b.btu) return a.btu - b.btu;
+      return a.i - b.i;
+    })
+    .map((x) => x.m);
+}
+
+/** Remove caracteres inválidos de nome de arquivo e colapsa espaços. */
+function sanitizarNomeArquivo(nome: string): string {
+  return nome
+    .replace(/[/\\:*?"<>|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Baixa o manual (PDF) salvando com nome legível em vez do UUID do storage.
+ * Fallback para window.open se o fetch do blob falhar (ex: CORS).
+ */
+async function baixarManual(url: string, nome: string) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = u;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(u);
+  } catch {
+    window.open(url, '_blank');
+  }
 }
 
 type View =
@@ -215,11 +256,12 @@ function BrandsList({
   // Modelos que casam com os filtros ativos (todas as marcas).
   const filteredModels = useMemo(() => {
     if (!filtering) return [];
-    return allModels.filter(
+    const matched = allModels.filter(
       (m) =>
         (selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)))) &&
         (selectedTypes.length === 0 || selectedTypes.includes(m.category?.name ?? '')),
     );
+    return ordenarPorBtu(matched);
   }, [allModels, filtering, selectedBtus, selectedTypes]);
 
   const limparFiltros = () => {
@@ -545,9 +587,153 @@ function ModelosList({
 }) {
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id);
 
+  // Busca local (nome / código / BTU) com debounce leve.
+  const [termoRaw, setTermoRaw] = useState('');
+  const [termo, setTermo] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
+    return () => clearTimeout(id);
+  }, [termoRaw]);
+
+  // Filtros escopados aos modelos DESTA marca.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+
+  const q = norm(termo);
+
+  // Opções de Potência derivadas dos modelos desta marca (BTU distintos, crescente).
+  const btuOptions = useMemo(() => {
+    const set = new Set<number>();
+    for (const m of models) {
+      const n = btuNumero(m.name);
+      if (n != null) set.add(n);
+    }
+    return Array.from(set)
+      .sort((a, b) => a - b)
+      .map((n) => ({ value: String(n), label: formatarBtu(n) }));
+  }, [models]);
+
+  // Opções de Tipo derivadas das categorias presentes nesta marca (alfabético).
+  const typeOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of models) {
+      const name = m.category?.name;
+      if (name) set.add(name);
+    }
+    return Array.from(set)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      .map((name) => ({ value: name, label: name }));
+  }, [models]);
+
+  const activeFilterCount = selectedBtus.length + selectedTypes.length;
+  const limparFiltros = () => {
+    setSelectedBtus([]);
+    setSelectedTypes([]);
+  };
+
+  // Lista final: busca + filtros (vazio = todos), ordenada por BTU crescente.
+  const modelosVisiveis = useMemo(() => {
+    const filtrados = models.filter((m) => {
+      const buscaOk =
+        q.length === 0 ||
+        norm(m.name).includes(q) ||
+        norm(m.code).includes(q) ||
+        norm(extrairBtu(m.name)).includes(q);
+      const btuOk =
+        selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)));
+      const tipoOk =
+        selectedTypes.length === 0 || selectedTypes.includes(m.category?.name ?? '');
+      return buscaOk && btuOk && tipoOk;
+    });
+    return ordenarPorBtu(filtrados);
+  }, [models, q, selectedBtus, selectedTypes]);
+
+  const semResultado =
+    !isLoading && models.length > 0 && modelosVisiveis.length === 0;
+
   return (
     <div className="space-y-6 pb-8">
       <Header icon={Boxes} title="Equipamentos" subtitle={brand.name} onBack={onBack} />
+
+      {/* Logo da marca em card branco fixo nos 2 temas (proposital). */}
+      <div className="flex items-center justify-center rounded-2xl border border-border bg-white p-6">
+        {brand.logo_url ? (
+          <img
+            src={brand.logo_url}
+            alt={brand.name}
+            className="max-h-16 max-w-[60%] object-contain"
+          />
+        ) : (
+          <span className="text-lg font-semibold text-neutral-800">{brand.name}</span>
+        )}
+      </div>
+
+      {/* Busca + filtros escopados a esta marca */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar equipamento ou código..."
+            value={termoRaw}
+            onChange={(e) => setTermoRaw(e.target.value)}
+            className="h-14 pl-10 text-lg"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setFiltersOpen(true)}
+          className={cn('h-14 shrink-0', activeFilterCount > 0 && 'border-primary/50 text-primary')}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filtros
+          {activeFilterCount > 0 && (
+            <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+              {activeFilterCount}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      <ResponsiveModal
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Filtros"
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={limparFiltros}
+              disabled={activeFilterCount === 0}
+            >
+              Limpar filtros
+            </Button>
+            <Button type="button" onClick={() => setFiltersOpen(false)}>
+              Ver resultados
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <FilterCheckboxGroup
+            label="Potência"
+            options={btuOptions}
+            selected={selectedBtus}
+            onChange={setSelectedBtus}
+            emptyLabel="Todas"
+          />
+          <FilterCheckboxGroup
+            label="Tipo"
+            options={typeOptions}
+            selected={selectedTypes}
+            onChange={setSelectedTypes}
+            emptyLabel="Todos"
+          />
+        </div>
+      </ResponsiveModal>
 
       {isLoading ? (
         <LoadingBlock />
@@ -556,9 +742,14 @@ function ModelosList({
           title="Nenhum modelo cadastrado"
           message={`Ainda não há modelos da ${brand.name} no catálogo.`}
         />
+      ) : semResultado ? (
+        <EmptyState
+          title="Nenhum equipamento encontrado"
+          message="Nenhum modelo corresponde à busca ou aos filtros. Ajuste os critérios."
+        />
       ) : (
         <div className="space-y-3">
-          {models.map((model) => (
+          {modelosVisiveis.map((model) => (
             <ModelCard
               key={model.id}
               model={model}
@@ -652,16 +843,26 @@ function ModelCard({
             <AlertCircle className="h-4 w-4" />
             Códigos de erro
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!temManual}
-            onClick={() => temManual && abrirManual(model.manual_url!)}
-            className={cn('w-full', !temManual && 'opacity-50 cursor-not-allowed')}
-          >
-            <Download className="h-4 w-4" />
-            {temManual ? 'Baixar manual' : 'Sem manual'}
-          </Button>
+          {temManual ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                baixarManual(
+                  model.manual_url!,
+                  sanitizarNomeArquivo(`Manual ${model.name} - ${brandName}.pdf`),
+                )
+              }
+              className="w-full"
+            >
+              <Download className="h-4 w-4" />
+              Baixar manual
+            </Button>
+          ) : (
+            <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
+              Manual Indisponível
+            </div>
+          )}
         </div>
       </div>
 
