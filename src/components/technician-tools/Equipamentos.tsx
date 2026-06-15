@@ -442,14 +442,16 @@ function BrandsList({
             {modelHits.length > 0 && (
               <section className="space-y-3">
                 <SectionHeader label="Equipamentos" count={modelHits.length} />
-                {modelHits.map((model) => (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    brandName={model.brand?.name ?? 'Marca'}
-                    onSelectErrors={() => onSelectModelErrors(model)}
-                  />
-                ))}
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {modelHits.map((model) => (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      brandName={model.brand?.name ?? 'Marca'}
+                      onSelectErrors={() => onSelectModelErrors(model)}
+                    />
+                  ))}
+                </div>
               </section>
             )}
 
@@ -479,14 +481,16 @@ function BrandsList({
         ) : (
           <section className="space-y-3">
             <SectionHeader label="Equipamentos" count={filteredModels.length} />
-            {filteredModels.map((model) => (
-              <ModelCard
-                key={model.id}
-                model={model}
-                brandName={model.brand?.name ?? 'Marca'}
-                onSelectErrors={() => onSelectModelErrors(model)}
-              />
-            ))}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {filteredModels.map((model) => (
+                <ModelCard
+                  key={model.id}
+                  model={model}
+                  brandName={model.brand?.name ?? 'Marca'}
+                  onSelectErrors={() => onSelectModelErrors(model)}
+                />
+              ))}
+            </div>
           </section>
         )
       ) : /* BROWSE NORMAL — grid de marcas */ isLoading ? (
@@ -845,7 +849,7 @@ function ModelosList({
           message="Nenhum modelo corresponde à busca ou aos filtros. Ajuste os critérios."
         />
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {modelosVisiveis.map((model) => (
             <ModelCard
               key={model.id}
