@@ -983,6 +983,74 @@ export type Database = {
           },
         ]
       }
+      compressor_specs: {
+        Row: {
+          aplicacao: string | null
+          capacidade_btu: string | null
+          capacitor_partida: string | null
+          capacitor_trabalho: string | null
+          conexoes: string | null
+          created_at: string
+          deslocamento_cm3: string | null
+          equivalencias: string | null
+          frequencia: string | null
+          hp: string | null
+          lra: number | null
+          model_id: string
+          observacoes: string | null
+          oleo: string | null
+          rele_protetor: string | null
+          rla: number | null
+          tensao: string | null
+        }
+        Insert: {
+          aplicacao?: string | null
+          capacidade_btu?: string | null
+          capacitor_partida?: string | null
+          capacitor_trabalho?: string | null
+          conexoes?: string | null
+          created_at?: string
+          deslocamento_cm3?: string | null
+          equivalencias?: string | null
+          frequencia?: string | null
+          hp?: string | null
+          lra?: number | null
+          model_id: string
+          observacoes?: string | null
+          oleo?: string | null
+          rele_protetor?: string | null
+          rla?: number | null
+          tensao?: string | null
+        }
+        Update: {
+          aplicacao?: string | null
+          capacidade_btu?: string | null
+          capacitor_partida?: string | null
+          capacitor_trabalho?: string | null
+          conexoes?: string | null
+          created_at?: string
+          deslocamento_cm3?: string | null
+          equivalencias?: string | null
+          frequencia?: string | null
+          hp?: string | null
+          lra?: number | null
+          model_id?: string
+          observacoes?: string | null
+          oleo?: string | null
+          rele_protetor?: string | null
+          rla?: number | null
+          tensao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compressor_specs_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: true
+            referencedRelation: "equipment_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_items: {
         Row: {
           contract_id: string
@@ -2451,16 +2519,19 @@ export type Database = {
       equipment_model_categories: {
         Row: {
           created_at: string
+          domain: string
           id: string
           name: string
         }
         Insert: {
           created_at?: string
+          domain?: string
           id?: string
           name: string
         }
         Update: {
           created_at?: string
+          domain?: string
           id?: string
           name?: string
         }
@@ -2472,6 +2543,7 @@ export type Database = {
           category_id: string | null
           code: string | null
           created_at: string
+          domain: string
           id: string
           image_url: string | null
           manual_url: string | null
@@ -2483,6 +2555,7 @@ export type Database = {
           category_id?: string | null
           code?: string | null
           created_at?: string
+          domain?: string
           id?: string
           image_url?: string | null
           manual_url?: string | null
@@ -2494,6 +2567,7 @@ export type Database = {
           category_id?: string | null
           code?: string | null
           created_at?: string
+          domain?: string
           id?: string
           image_url?: string | null
           manual_url?: string | null
@@ -4042,6 +4116,7 @@ export type Database = {
           is_active: boolean
           navigation_style: string
           phone: string | null
+          terms_accepted_at: string | null
           updated_at: string
           user_id: string
         }
@@ -4056,6 +4131,7 @@ export type Database = {
           is_active?: boolean
           navigation_style?: string
           phone?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -4070,6 +4146,7 @@ export type Database = {
           is_active?: boolean
           navigation_style?: string
           phone?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -4340,6 +4417,47 @@ export type Database = {
             columns: ["proposal_template_id"]
             isOneToOne: false
             referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      remote_configs: {
+        Row: {
+          codigo_universal: string | null
+          created_at: string
+          desbloqueio: string | null
+          instrucoes: string | null
+          model_id: string
+          modos: string | null
+          observacoes: string | null
+          reset: string | null
+        }
+        Insert: {
+          codigo_universal?: string | null
+          created_at?: string
+          desbloqueio?: string | null
+          instrucoes?: string | null
+          model_id: string
+          modos?: string | null
+          observacoes?: string | null
+          reset?: string | null
+        }
+        Update: {
+          codigo_universal?: string | null
+          created_at?: string
+          desbloqueio?: string | null
+          instrucoes?: string | null
+          model_id?: string
+          modos?: string | null
+          observacoes?: string | null
+          reset?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remote_configs_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: true
+            referencedRelation: "equipment_models"
             referencedColumns: ["id"]
           },
         ]
