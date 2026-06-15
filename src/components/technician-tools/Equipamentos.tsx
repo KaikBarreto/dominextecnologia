@@ -39,6 +39,8 @@ import {
   CarouselItem,
   type CarouselApi,
 } from '@/components/ui/carousel';
+import { getRefrigerante } from '@/lib/refrigerantes';
+import { idealForeground } from '@/lib/colorContrast';
 
 /** Normaliza texto pra busca: minúsculo + sem acento. */
 function norm(s: string | null | undefined): string {
@@ -317,6 +319,7 @@ function BrandsList({
           code: m.code,
           image_url: m.image_url,
           manual_url: m.manual_url,
+          refrigerant: m.refrigerant ?? null,
           created_at: '',
           brand: m.brand ?? null,
         },
@@ -916,7 +919,7 @@ function ModelCard({
         {subtitulo && (
           <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
         )}
-        {(btu || categoria || model.code) && (
+        {(btu || categoria || model.refrigerant || model.code) && (
           <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
             {btu && (
               <span className="rounded-md bg-sky-500 px-2 py-0.5 text-xs font-semibold text-white">
@@ -928,6 +931,18 @@ function ModelCard({
                 {categoria}
               </span>
             )}
+            {model.refrigerant &&
+              (() => {
+                const cor = getRefrigerante(model.refrigerant)?.cor ?? '#6b7280';
+                return (
+                  <span
+                    className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                    style={{ backgroundColor: cor, color: idealForeground(cor) }}
+                  >
+                    {model.refrigerant}
+                  </span>
+                );
+              })()}
             {model.code && (
               <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 Cód.: {model.code}

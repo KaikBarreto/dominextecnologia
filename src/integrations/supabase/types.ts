@@ -2476,6 +2476,7 @@ export type Database = {
           image_url: string | null
           manual_url: string | null
           name: string
+          refrigerant: string | null
         }
         Insert: {
           brand_id: string
@@ -2486,6 +2487,7 @@ export type Database = {
           image_url?: string | null
           manual_url?: string | null
           name: string
+          refrigerant?: string | null
         }
         Update: {
           brand_id?: string
@@ -2496,6 +2498,7 @@ export type Database = {
           image_url?: string | null
           manual_url?: string | null
           name?: string
+          refrigerant?: string | null
         }
         Relationships: [
           {

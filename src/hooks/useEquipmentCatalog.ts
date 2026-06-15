@@ -32,6 +32,8 @@ export interface EquipmentModel {
   code: string | null;
   image_url: string | null;
   manual_url: string | null;
+  /** Gás refrigerante do modelo (ex.: 'R-32', 'R-410A'); null quando não cadastrado. */
+  refrigerant: string | null;
   created_at: string;
   /** Hidratado nas queries que fazem join com a marca. */
   brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
@@ -93,7 +95,7 @@ export function useEquipmentModelsByBrand(brandId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, category:equipment_model_categories(id, name)',
         )
         .eq('brand_id', brandId as string)
         .order('name', { ascending: true });
@@ -112,7 +114,7 @@ export function useEquipmentModel(modelId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('id', modelId as string)
         .maybeSingle();
@@ -135,7 +137,7 @@ export function useEquipmentModelsByCode(term: string) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .ilike('code', `%${trimmed}%`)
         .order('name', { ascending: true })
@@ -158,7 +160,7 @@ export function useAllModelsWithBrand() {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .order('name', { ascending: true });
       if (error) throw error;
@@ -170,7 +172,10 @@ export function useAllModelsWithBrand() {
 /** Código de erro com o modelo (e a marca do modelo) hidratados. */
 export interface EquipmentErrorCodeWithModel extends EquipmentErrorCode {
   model?:
-    | (Pick<EquipmentModel, 'id' | 'name' | 'code' | 'image_url' | 'manual_url' | 'brand_id'> & {
+    | (Pick<
+        EquipmentModel,
+        'id' | 'name' | 'code' | 'image_url' | 'manual_url' | 'refrigerant' | 'brand_id'
+      > & {
         brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
       })
     | null;
@@ -188,7 +193,7 @@ export function useAllErrorCodesWithModel() {
       const { data, error } = await supabase
         .from('equipment_error_codes')
         .select(
-          'id, model_id, code, title, description, diagnosis, solution, component, created_at, model:equipment_models(id, name, code, image_url, manual_url, brand_id, brand:equipment_brands(id, name, logo_url))',
+          'id, model_id, code, title, description, diagnosis, solution, component, created_at, model:equipment_models(id, name, code, image_url, manual_url, refrigerant, brand_id, brand:equipment_brands(id, name, logo_url))',
         )
         .order('code', { ascending: true });
       if (error) throw error;
