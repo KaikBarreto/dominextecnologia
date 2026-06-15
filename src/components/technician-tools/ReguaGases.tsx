@@ -256,7 +256,13 @@ function ReguaUnificada({
             <SelectContent>
               {REFRIGERANTES.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {r.nome}
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/25"
+                      style={{ backgroundColor: r.cor }}
+                    />
+                    {r.nome}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
