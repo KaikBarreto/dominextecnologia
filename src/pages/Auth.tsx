@@ -130,6 +130,12 @@ export default function Auth() {
   });
 
   const registerSession = useCallback(async (userId: string) => {
+    // Sessão admin-como-usuário (Token de Acesso) NÃO entra em active_sessions:
+    // é temporária e não pode expulsar nem aparecer entre as sessões reais do
+    // usuário. O single-session enforcement (useForcedLogout) só vale pras reais.
+    if (localStorage.getItem('is_admin_token_session') === 'true') {
+      return null;
+    }
     const sessionToken = generateSessionToken();
     await supabase
       .from('active_sessions')
@@ -229,6 +235,10 @@ export default function Auth() {
     setAuthError(null);
     // CRITICAL: Set ref BEFORE any async call to block the useEffect redirect
     loginInProgressRef.current = true;
+    // Limpa flag stale de sessão admin-como-usuário: um login NORMAL neste
+    // dispositivo precisa voltar a registrar em active_sessions. O branch do
+    // Token de Acesso abaixo re-seta a flag quando for o caso.
+    localStorage.removeItem('is_admin_token_session');
 
     try {
       // Call signInWithPassword directly to avoid AuthContext triggering redirect
@@ -238,6 +248,33 @@ export default function Auth() {
       });
 
       if (error) {
+        // Fallback "Token de Acesso" (painel master): se a senha digitada tem a
+        // cara do token global (8 hex), o login normal falhou e tentamos entrar
+        // como o usuário-alvo via admin-token-login. setSession injeta os tokens
+        // LOCALMENTE sem invalidar as sessões reais do usuário.
+        if (/^[A-Fa-f0-9]{8}$/.test(data.password)) {
+          const { data: tokenResp, error: tokenErr } = await supabase.functions.invoke(
+            'admin-token-login',
+            {
+              body: { action: 'login', email: data.email, token: data.password, deviceInfo: getDeviceInfo() },
+            },
+          );
+          if (!tokenErr && tokenResp?.access_token) {
+            const { data: sessionResult, error: setSessionErr } = await supabase.auth.setSession({
+              access_token: tokenResp.access_token,
+              refresh_token: tokenResp.refresh_token,
+            });
+            if (!setSessionErr && sessionResult.user) {
+              // Marca a sessão como admin-como-usuário: NÃO registramos em
+              // active_sessions (sessão temporária, não deve expulsar nem
+              // aparecer entre as sessões reais do usuário).
+              localStorage.setItem('is_admin_token_session', 'true');
+              await completeLogin(data, sessionResult.user.id);
+              return;
+            }
+          }
+        }
+
         loginInProgressRef.current = false;
         if (error.message.includes('Invalid login credentials')) {
           setAuthError('Email ou senha incorretos. Verifique suas credenciais e tente novamente.');

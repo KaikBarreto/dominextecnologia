@@ -19,6 +19,7 @@ import {
   Eye,
   Lock,
   Unlock,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
+import { AdminLoginTokenModal } from '@/components/admin/AdminLoginTokenModal';
 import { CompanyTable } from '@/components/admin/CompanyTable';
 import { CompanyKanbanBoard } from '@/components/admin/CompanyKanbanBoard';
 import { differenceInDays, format, parseISO } from 'date-fns';
@@ -118,6 +120,9 @@ export default function AdminCompanies() {
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [companyToDelete, setCompanyToDelete] = useState<any>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  // "Token de Acesso": capability de master (super_admin). Token global rotativo
+  // pra entrar como qualquer usuário sem derrubar as sessões reais dele.
+  const [showTokenModal, setShowTokenModal] = useState(false);
 
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => {
     const saved = localStorage.getItem('admin-companies-view-mode');
@@ -492,6 +497,17 @@ export default function AdminCompanies() {
             >
               <FilterContent withViewToggle />
             </FilterSheet>
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0"
+                onClick={() => setShowTokenModal(true)}
+                aria-label="Token de Acesso"
+              >
+                <Shield className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           <StatCarousel items={statItems} loading={isLoading} />
@@ -526,9 +542,19 @@ export default function AdminCompanies() {
               <ToggleGroupItem value="kanban" aria-label="Kanban"><Kanban className="h-4 w-4" /></ToggleGroupItem>
             </ToggleGroup>
 
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => setShowTokenModal(true)}
+                className="gap-2 w-full sm:w-auto sm:ml-auto"
+              >
+                <Shield className="h-4 w-4" /> Token de Acesso
+              </Button>
+            )}
+
             <Button
               onClick={() => { setEditingCompany(null); setShowForm(true); }}
-              className="gap-2 w-full sm:w-auto sm:ml-auto"
+              className={cn('gap-2 w-full sm:w-auto', !isSuperAdmin && 'sm:ml-auto')}
             >
               <Plus className="h-4 w-4" /> Nova Empresa
             </Button>
@@ -740,6 +766,10 @@ export default function AdminCompanies() {
           setShowForm(false);
         }}
       />
+
+      {isSuperAdmin && (
+        <AdminLoginTokenModal open={showTokenModal} onOpenChange={setShowTokenModal} />
+      )}
     </div>
   );
 }

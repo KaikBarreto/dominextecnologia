@@ -24,6 +24,13 @@ verify_jwt = false
 [functions.bootstrap-admin]
 verify_jwt = false
 
+# admin-token-login: "Token de Acesso" do painel master. A action 'login' NÃO
+# manda Authorization (é o fluxo de /auth do usuário-alvo) — por isso verify_jwt
+# fica false. A action 'generate' valida o Bearer + has_role 'super_admin' DENTRO
+# da função; a action 'login' valida email + token HMAC + rate-limit por IP.
+[functions.admin-token-login]
+verify_jwt = false
+
 # activate-scheduled-orders: protegido por CRON_SECRET no header Authorization
 [functions.activate-scheduled-orders]
 verify_jwt = false
