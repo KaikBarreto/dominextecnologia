@@ -132,12 +132,16 @@ function ReguaDupla({
 
   return (
     <div className="flex flex-col items-center gap-2 select-none">
-      {/* Rótulos das escalas */}
-      <div className="flex w-[8.5rem] items-center justify-between px-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      {/* Rótulos das escalas (espelha as 3 colunas das linhas de marca) */}
+      <div className="flex w-[8.5rem] items-center justify-between px-1.5">
+        {/* Cabeçalho da PRESSÃO (esquerda) */}
+        <span className="w-12 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {rotuloUnidade(unidade)}
         </span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {/* Espaçador no lugar da marca central */}
+        <span className="w-5" />
+        {/* Cabeçalho da TEMPERATURA (direita) */}
+        <span className="w-12 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           °C
         </span>
       </div>
