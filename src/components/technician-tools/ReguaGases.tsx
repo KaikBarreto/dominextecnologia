@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -15,8 +13,6 @@ import { cn } from '@/lib/utils';
 import {
   REFRIGERANTES,
   tempParaPressao,
-  pressaoParaTempSat,
-  formatarTemp,
   formatarPressao,
   getRefrigerante,
   type UnidadePressao,
@@ -105,7 +101,7 @@ function ReguaDupla({
   return (
     <div className="flex flex-col items-center gap-2 select-none">
       {/* Rótulos das escalas (espelha as 3 colunas das linhas de marca) */}
-      <div className="flex w-[8.5rem] items-center justify-between px-1.5">
+      <div className="flex w-[8.5rem] items-center justify-between px-1.5 lg:w-[9.5rem]">
         {/* Cabeçalho da PRESSÃO (esquerda) */}
         <span className="w-12 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {rotuloUnidade(unidade)}
@@ -120,8 +116,9 @@ function ReguaDupla({
 
       {/* Trilho da régua — o container externo só desenha a moldura; a área útil
           (medição do arrasto + ticks + cursor) vive na camada recuada abaixo,
-          pra que marcas e toque fiquem perfeitamente alinhados e nada vaze. */}
-      <div className="relative h-[60vh] max-h-[460px] min-h-[320px] w-[8.5rem] rounded-2xl border border-border bg-muted/40">
+          pra que marcas e toque fiquem perfeitamente alinhados e nada vaze.
+          Mais alta no desktop pra dar respiro. */}
+      <div className="relative h-[60vh] max-h-[460px] min-h-[320px] w-[8.5rem] rounded-2xl border border-border bg-muted/40 lg:h-[68vh] lg:max-h-[600px] lg:min-h-[440px] lg:w-[9.5rem]">
         {/* Camada recuada (12px topo/base) — referência do arrasto e dos ticks */}
         <div
           ref={trilhoRef}
@@ -195,11 +192,13 @@ function ReguaDupla({
 }
 
 /**
- * MOBILE unificado: régua de escala dupla (P × °C) + selects de Fórmula e Gás
- * (com label) + leituras ao vivo. Cobre os dois sentidos (a régua mostra P e T
- * juntas), então não há toggle "por temperatura / por pressão" no mobile.
+ * Régua unificada (mobile E desktop): régua de escala dupla (P × °C) +
+ * toggles de Fórmula e Unidade + select de Gás (com label) + leituras ao vivo.
+ * Cobre os dois sentidos (a régua mostra P e T juntas), então não há toggle
+ * "por temperatura / por pressão". No desktop ganha mais respiro (régua mais
+ * alta, painel lateral maior e leituras maiores).
  */
-function ReguaMobile({
+function ReguaUnificada({
   unidade,
   setUnidade,
 }: {
@@ -225,7 +224,7 @@ function ReguaMobile({
   const refrig = getRefrigerante(refrigId);
 
   return (
-    <div className="flex items-center justify-center gap-3 lg:hidden">
+    <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 lg:gap-6">
       <ReguaDupla
         tempClamped={tempClamped}
         setTemp={setTemp}
@@ -234,26 +233,24 @@ function ReguaMobile({
         unidade={unidade}
       />
 
-      <div className="flex w-40 flex-col items-stretch gap-3">
-        {/* Fórmula */}
-        <div className="space-y-1">
+      <div className="flex w-40 flex-col items-stretch gap-3 lg:w-56 lg:gap-4">
+        {/* Fórmula — alavanca centralizada abaixo do label */}
+        <div className="flex flex-col items-center gap-1.5">
           <Label className="text-xs font-semibold text-muted-foreground">Fórmula</Label>
-          <Select value={formula} onValueChange={(v) => setFormula(v as Formula)}>
-            <SelectTrigger className="h-11 text-sm font-semibold">
-              <SelectValue placeholder="Fórmula" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="dew">Dew (vapor)</SelectItem>
-              <SelectItem value="bubble">Bubble (líquido)</SelectItem>
-            </SelectContent>
-          </Select>
+          <LabeledSwitch
+            value={formula}
+            onChange={setFormula}
+            off={{ value: 'dew', label: 'Dew' }}
+            on={{ value: 'bubble', label: 'Bubble' }}
+            aria-label="Fórmula da curva"
+          />
         </div>
 
         {/* Gás */}
         <div className="space-y-1">
           <Label className="text-xs font-semibold text-muted-foreground">Gás</Label>
           <Select value={refrigId} onValueChange={setRefrigId}>
-            <SelectTrigger className="h-11 text-sm font-semibold">
+            <SelectTrigger className="h-11 text-sm font-semibold lg:h-12 lg:text-base">
               <SelectValue placeholder="Gás" />
             </SelectTrigger>
             <SelectContent>
@@ -279,13 +276,13 @@ function ReguaMobile({
         </div>
 
         {/* Leituras ao vivo */}
-        <div className="rounded-xl border border-border bg-card p-3 text-center">
+        <div className="rounded-xl border border-border bg-card p-3 text-center lg:p-4">
           <div className="leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
               {rotuloUnidade(unidade)}
             </p>
             {pressao !== null ? (
-              <p className="text-3xl font-bold tabular-nums text-primary">
+              <p className="text-3xl font-bold tabular-nums text-primary lg:text-4xl">
                 {formatarPressao(pressao, unidade)}
               </p>
             ) : (
@@ -293,13 +290,13 @@ function ReguaMobile({
             )}
           </div>
           <div className="mt-2 border-t border-border pt-2 leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
               °C
             </p>
-            <p className="text-3xl font-bold tabular-nums text-primary">{tempClamped}</p>
+            <p className="text-3xl font-bold tabular-nums text-primary lg:text-4xl">{tempClamped}</p>
           </div>
           {refrig?.temGlide && (
-            <span className="mt-2 inline-block text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            <span className="mt-2 inline-block text-[11px] font-medium text-amber-600 dark:text-amber-400 lg:text-xs">
               {formula === 'dew' ? 'vapor (dew)' : 'líquido (bubble)'}
             </span>
           )}
@@ -309,167 +306,8 @@ function ReguaMobile({
   );
 }
 
-/** DESKTOP — modo principal: escolhe temperatura, vê a pressão de saturação de todos os gases. */
-function ModoTemperaturaDesktop({ unidade, curva }: { unidade: UnidadePressao; curva: Curva }) {
-  const [tempStr, setTempStr] = useState('5');
-  const temp = num(tempStr, 5);
-  const tempClamped = Math.min(TEMP_MAX, Math.max(TEMP_MIN, Number.isFinite(temp) ? temp : 5));
-
-  const linhas = useMemo(
-    () =>
-      REFRIGERANTES.map((r) => {
-        const p = tempParaPressao(r.id, tempClamped, unidade, curva);
-        return { id: r.id, nome: r.nome, pressao: p, temGlide: r.temGlide };
-      }),
-    [tempClamped, unidade, curva],
-  );
-
-  return (
-    <div className="space-y-4">
-      {/* Controle de temperatura: slider (régua) + input numérico */}
-      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-        <div className="flex items-end justify-between gap-3">
-          <Label className="text-base text-muted-foreground md:text-lg">Temperatura</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              inputMode="numeric"
-              value={tempStr}
-              onChange={(e) => setTempStr(e.target.value)}
-              className="h-12 w-20 text-center text-lg font-semibold"
-              aria-label="Temperatura em graus Celsius"
-            />
-            <span className="text-lg font-semibold text-muted-foreground">°C</span>
-          </div>
-        </div>
-
-        <Slider
-          min={TEMP_MIN}
-          max={TEMP_MAX}
-          step={1}
-          value={[tempClamped]}
-          onValueChange={(v) => setTempStr(String(v[0]))}
-          aria-label="Selecionar temperatura"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{TEMP_MIN} °C</span>
-          <span>{TEMP_MAX} °C</span>
-        </div>
-      </div>
-
-      {/* Tabela multi-gás ao vivo */}
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Refrigerante
-          </span>
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Pressão ({unidade})
-          </span>
-        </div>
-        <ul className="divide-y divide-border">
-          {linhas.map((l) => (
-            <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
-              <div className="min-w-0">
-                <span className="text-base font-medium text-foreground">{l.nome}</span>
-                {l.temGlide && (
-                  <span className="ml-2 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                    glide
-                  </span>
-                )}
-              </div>
-              {l.pressao !== null ? (
-                <span className="shrink-0 text-2xl font-bold leading-none text-primary tabular-nums sm:text-3xl">
-                  {formatarPressao(l.pressao, unidade)}
-                  <span className="ml-1 text-sm font-semibold text-muted-foreground sm:text-base">
-                    {unidade}
-                  </span>
-                </span>
-              ) : (
-                <span className="shrink-0 text-sm text-muted-foreground">fora da faixa</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-/** DESKTOP — modo inverso: escolhe refrigerante + digita pressão, vê a temperatura de saturação. */
-function ModoPressaoDesktop({ unidade, curva }: { unidade: UnidadePressao; curva: Curva }) {
-  const [refrigId, setRefrigId] = useState<string>('R-410A');
-  const [pStr, setPStr] = useState('');
-
-  const refrig = getRefrigerante(refrigId);
-
-  const temp = useMemo(() => {
-    const p = num(pStr);
-    if (!Number.isFinite(p) || !refrig) return null;
-    return pressaoParaTempSat(refrigId, p, unidade, curva);
-  }, [refrigId, pStr, unidade, refrig, curva]);
-
-  const foraDaFaixa = Number.isFinite(num(pStr)) && temp === null;
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Refrigerante</Label>
-          <Select value={refrigId} onValueChange={setRefrigId}>
-            <SelectTrigger className="h-14 text-lg">
-              <SelectValue placeholder="Refrigerante" />
-            </SelectTrigger>
-            <SelectContent>
-              {REFRIGERANTES.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Pressão ({unidade})</Label>
-          <Input
-            type="text"
-            inputMode="decimal"
-            placeholder={unidade === 'bar' ? 'Ex: 8,3' : 'Ex: 120'}
-            value={pStr}
-            onChange={(e) => setPStr(e.target.value)}
-            className="h-14 text-lg"
-          />
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-border bg-background p-4 text-center">
-        {temp !== null ? (
-          <p className="text-5xl font-bold leading-none text-primary sm:text-6xl">
-            {formatarTemp(temp)}
-            <span className="ml-1.5 text-2xl font-semibold sm:text-3xl">°C</span>
-          </p>
-        ) : foraDaFaixa ? (
-          <p className="text-sm text-amber-600 dark:text-amber-400">
-            Pressão fora da faixa da tabela para este refrigerante. Confira a leitura.
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Informe a pressão para ver a temperatura de saturação.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-type ModoDesktop = 'temperatura' | 'pressao';
-
 export function ReguaGases() {
   const [unidade, setUnidade] = useState<UnidadePressao>('psi');
-  const [formula, setFormula] = useState<Formula>('dew');
-  const [modoDesktop, setModoDesktop] = useState<ModoDesktop>('temperatura');
-
-  const curva: Curva = formula;
 
   return (
     <div className="space-y-4 pb-4">
@@ -480,67 +318,8 @@ export function ReguaGases() {
         </p>
       </div>
 
-      {/* ===== MOBILE: régua de escala dupla unificada ===== */}
-      <ReguaMobile unidade={unidade} setUnidade={setUnidade} />
-
-      {/* ===== DESKTOP: controles + slider/tabela ===== */}
-      <div className="hidden space-y-4 lg:block">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Toggle de modo */}
-            <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
-              {(
-                [
-                  { v: 'temperatura', l: 'Por temperatura' },
-                  { v: 'pressao', l: 'Por pressão' },
-                ] as const
-              ).map((m) => (
-                <button
-                  key={m.v}
-                  type="button"
-                  onClick={() => setModoDesktop(m.v)}
-                  className={cn(
-                    'rounded-md px-4 py-2 text-sm font-semibold transition-colors',
-                    modoDesktop === m.v
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {m.l}
-                </button>
-              ))}
-            </div>
-
-            {/* Fórmula (consistência com o mobile) */}
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-semibold text-muted-foreground">Fórmula</Label>
-              <Select value={formula} onValueChange={(v) => setFormula(v as Formula)}>
-                <SelectTrigger className="h-10 w-40 text-sm font-semibold">
-                  <SelectValue placeholder="Fórmula" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dew">Dew (vapor)</SelectItem>
-                  <SelectItem value="bubble">Bubble (líquido)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <LabeledSwitch
-            value={unidade}
-            onChange={setUnidade}
-            off={{ value: 'psi', label: 'psi' }}
-            on={{ value: 'bar', label: 'bar' }}
-            aria-label="Unidade de pressão"
-          />
-        </div>
-
-        {modoDesktop === 'temperatura' ? (
-          <ModoTemperaturaDesktop unidade={unidade} curva={curva} />
-        ) : (
-          <ModoPressaoDesktop unidade={unidade} curva={curva} />
-        )}
-      </div>
+      {/* Régua de escala dupla unificada (mobile + desktop) */}
+      <ReguaUnificada unidade={unidade} setUnidade={setUnidade} />
 
       {/* Alerta sutil */}
       <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
