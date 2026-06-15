@@ -501,7 +501,7 @@ export default function AdminCompanies() {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 shrink-0"
+                className="h-10 w-10 shrink-0 transition-colors hover:bg-gradient-dark hover:text-white hover:border-transparent"
                 onClick={() => setShowTokenModal(true)}
                 aria-label="Token de Acesso"
               >
@@ -546,7 +546,7 @@ export default function AdminCompanies() {
               <Button
                 variant="outline"
                 onClick={() => setShowTokenModal(true)}
-                className="gap-2 w-full sm:w-auto sm:ml-auto"
+                className="gap-2 w-full sm:w-auto sm:ml-auto transition-colors hover:bg-gradient-dark hover:text-white hover:border-transparent"
               >
                 <Shield className="h-4 w-4" /> Token de Acesso
               </Button>

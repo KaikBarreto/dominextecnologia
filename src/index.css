@@ -231,6 +231,11 @@ Design Premium com Verde da Marca #00C597
     background-image: var(--gradient-brand);
   }
 
+  /* Degradê escuro (token --gradient-dark) — usado no hover do botão "Token de Acesso". */
+  .bg-gradient-dark {
+    background-image: var(--gradient-dark);
+  }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
