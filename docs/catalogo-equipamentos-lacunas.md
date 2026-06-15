@@ -1,19 +1,20 @@
 # Catálogo GLOBAL de equipamentos — mapa de lacunas
 
 > Companheiro de `catalogo-equipamentos.md`. Lista só o que AINDA falta / tem confiança baixa.
-> Atualizado em 2026-06-14 (pós re-hospedagem de fotos/manuais/logos no Storage próprio).
+> Atualizado em 2026-06-15 (pós expansão por BTU das 8 linhas gerais + códigos de erro em todos os modelos).
 
 ## 0) Estado atual
-- 17 marcas, 4 categorias (Split Hi-Wall, Cassete, Piso-Teto, Multi-Split), 60 modelos, 261 códigos de erro.
-- **Fotos: 60/60** — todas re-hospedadas no bucket próprio `equipment-catalog` (path `models/<id>.<ext>`). Sem hotlink de terceiro.
-- **Manuais: 60/60** — todos em PDF re-hospedados no `equipment-catalog` (path `manuals/<id>.pdf`). Sem dependência de site de fabricante.
-- **Logos** — re-hospedados (`logos/<slug>.png`); Agratto/Philco/Komeco corrigidos. (As demais marcas ainda têm logo_url externo estável — re-hospedar quando der.)
+- 17 marcas, 4 categorias (Split Hi-Wall, Cassete, Piso-Teto, Multi-Split), **84 modelos**, 1452 códigos de erro.
+- **Fotos: 84/84** — todas no bucket próprio `equipment-catalog` (path `models/<id>.<ext>`). Sem hotlink de terceiro.
+- **Manuais: 84/84** — todos em PDF no `equipment-catalog` (path `manuals/<id>.pdf`).
+- **Códigos de erro: 83/84** — só o Brastemp "ative!" (BBF, on/off antigo) fica sem, pois NÃO tem código de display (diagnóstico por sintoma). Esperado.
+- **Logos** — re-hospedados (`logos/<slug>.png`); Agratto/Philco/Komeco corrigidos. (Demais marcas com logo_url externo estável — re-hospedar quando der.)
 - Bucket `equipment-catalog`: público (leitura), escrita só super_admin.
 
-## 1) Entradas "linha geral" sem BTU específico (PRIORIDADE)
-8 marcas têm UMA entrada genérica de linha, SEM potência no nome (não aparecem no filtro de BTU, card sem selo de potência):
-- **Gree** (Split Hi-Wall Inverter), **Midea** (Split Inverter Springer Midea), **Consul** (Bem Estar/Maxi), **Daikin** (EcoSwing/SkyAir), **Electrolux** (Color Adapt), **Fujitsu** (Airstage), **LG** (Dual Inverter), **Samsung** (WindFree/Digital Inverter).
-- Ação sugerida: expandir cada uma em modelos POR BTU (9k/12k/18k/24k...), como as demais marcas — exige rodada de pesquisa por marca (códigos do modelo, códigos de erro por plataforma, foto e manual por BTU). Enquanto não expandir, esses 8 aparecem sem selo de potência.
+## 1) Entradas "linha geral" — RESOLVIDO (2026-06-15)
+As 8 marcas que tinham 1 entrada genérica sem BTU (Gree, Midea, Consul, Daikin, Electrolux, Fujitsu, LG, Samsung) foram **expandidas em variantes por BTU** (9k/12k/18k/24k; Consul 9/12/18/22k), com SKU real, e cada variante reusa a foto + manual + tabela de códigos da linha. As genéricas foram removidas. 32 variantes criadas.
+- Refinamento futuro (não-bloqueante): foto/manual hoje são compartilhados por linha (1 por marca, reusados entre BTUs — splits são visualmente idênticos). Se quiser foto/manual por SKU exato, é nova rodada de pesquisa.
+- GC do Storage: as 8 fotos/manuais das genéricas removidas seguem no bucket nos paths com o id antigo (reusados pelas variantes) — NÃO limpar por "id de modelo órfão".
 
 ## 2) Confiança / ressalvas de códigos de erro (mantidas)
 - Brastemp = plataforma Consul (equivalência ALTA, texto exato merece 2ª fonte). `E5` Brastemp não semeado.
