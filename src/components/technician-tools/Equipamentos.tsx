@@ -15,7 +15,9 @@ import {
   Cpu,
   Settings2,
   FileText,
+  Zap,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1282,6 +1284,203 @@ function RemoteCard({
 }
 
 /* ------------------------------------------------------------------ */
+/* Consumo de energia — config global (tarifa/horas) + cálculo          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Config GLOBAL da ferramenta (não por modelo): tarifa em R$/kWh e horas de uso
+ * por dia. Persiste por aparelho em localStorage, igual à aba Usabilidade —
+ * chave própria, default decidido aqui (não no load). É só conveniência: se o
+ * localStorage falhar, cai no default sem quebrar.
+ */
+const ENERGIA_CONFIG_KEY = 'catalogo-energia-config';
+const ENERGIA_DEFAULTS = { tarifa: 0.9, horasDia: 8 } as const;
+
+interface EnergiaConfig {
+  /** R$ por kWh. */
+  tarifa: number;
+  /** Horas de uso por dia (base da estimativa por potência). */
+  horasDia: number;
+}
+
+function lerEnergiaConfig(): EnergiaConfig {
+  try {
+    const raw = localStorage.getItem(ENERGIA_CONFIG_KEY);
+    if (!raw) return { ...ENERGIA_DEFAULTS };
+    const parsed = JSON.parse(raw) as Partial<EnergiaConfig>;
+    const tarifa = Number(parsed.tarifa);
+    const horasDia = Number(parsed.horasDia);
+    return {
+      tarifa: Number.isFinite(tarifa) && tarifa > 0 ? tarifa : ENERGIA_DEFAULTS.tarifa,
+      horasDia:
+        Number.isFinite(horasDia) && horasDia > 0 && horasDia <= 24
+          ? horasDia
+          : ENERGIA_DEFAULTS.horasDia,
+    };
+  } catch {
+    return { ...ENERGIA_DEFAULTS };
+  }
+}
+
+function salvarEnergiaConfig(cfg: EnergiaConfig): void {
+  try {
+    localStorage.setItem(ENERGIA_CONFIG_KEY, JSON.stringify(cfg));
+  } catch {
+    /* localStorage cheio/indisponível — silencioso, é só conveniência. */
+  }
+}
+
+/** Hook simples de config de energia (estado + persistência otimista). */
+function useEnergiaConfig(): [EnergiaConfig, (next: EnergiaConfig) => void] {
+  const [cfg, setCfg] = useState<EnergiaConfig>(() => lerEnergiaConfig());
+  const update = (next: EnergiaConfig) => {
+    setCfg(next);
+    salvarEnergiaConfig(next);
+  };
+  return [cfg, update];
+}
+
+/** Moeda BR. */
+function brl(v: number): string {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+/** kWh com vírgula decimal (2 casas máx, sem zeros à toa). */
+function kwh(v: number): string {
+  return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kWh`;
+}
+
+/**
+ * Bloco "Consumo de energia" do card de detalhe (só AC e linha branca).
+ *
+ * - Por hora: precisa de `potencia_w` → kWh/h = W/1000; gasto/h = kWh/h × tarifa.
+ * - Por mês: usa `consumo_kwh_mes` oficial quando existe (rótulo neutro); senão
+ *   estima por potência (W/1000 × horas/dia × 30) com aviso de cautela; gasto/mês
+ *   = kWh/mês × tarifa.
+ * - Sem nenhum dado → "Consumo não informado". Nunca inventa número.
+ */
+function ConsumoEnergia({ model }: { model: EquipmentModel }) {
+  const [cfg, setCfg] = useEnergiaConfig();
+  const [open, setOpen] = useState(false);
+  const [tarifaStr, setTarifaStr] = useState(() => String(cfg.tarifa).replace('.', ','));
+  const [horasStr, setHorasStr] = useState(() => String(cfg.horasDia).replace('.', ','));
+
+  // Defensivo: selects de busca por código não trazem as colunas → tratar como ausente.
+  const potencia = typeof model.potencia_w === 'number' ? model.potencia_w : null;
+  const oficialMes = typeof model.consumo_kwh_mes === 'number' ? model.consumo_kwh_mes : null;
+
+  const temDado = potencia != null || oficialMes != null;
+
+  const kwhHora = potencia != null ? potencia / 1000 : null;
+  const gastoHora = kwhHora != null ? kwhHora * cfg.tarifa : null;
+
+  // Mês: oficial tem prioridade; senão estima por potência.
+  const mesEstimado = potencia != null ? (potencia / 1000) * cfg.horasDia * 30 : null;
+  const kwhMes = oficialMes != null ? oficialMes : mesEstimado;
+  const mesEhEstimativa = oficialMes == null && mesEstimado != null;
+  const gastoMes = kwhMes != null ? kwhMes * cfg.tarifa : null;
+
+  function commitConfig() {
+    const t = Number(tarifaStr.replace(',', '.'));
+    const h = Number(horasStr.replace(',', '.'));
+    setCfg({
+      tarifa: Number.isFinite(t) && t > 0 ? t : ENERGIA_DEFAULTS.tarifa,
+      horasDia: Number.isFinite(h) && h > 0 && h <= 24 ? h : ENERGIA_DEFAULTS.horasDia,
+    });
+    setOpen(false);
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Zap className="h-4 w-4 text-amber-500" />
+          Consumo de energia
+        </div>
+        <Popover
+          open={open}
+          onOpenChange={(o) => {
+            // Ao abrir, sincroniza os inputs com o estado atual.
+            if (o) {
+              setTarifaStr(String(cfg.tarifa).replace('.', ','));
+              setHorasStr(String(cfg.horasDia).replace('.', ','));
+            }
+            setOpen(o);
+          }}
+        >
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Ajustar
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 space-y-3">
+            <p className="text-sm font-medium text-foreground">Tarifa e uso</p>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Tarifa (R$/kWh)</label>
+              <Input
+                inputMode="decimal"
+                value={tarifaStr}
+                onChange={(e) => setTarifaStr(e.target.value)}
+                placeholder="0,90"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Horas de uso por dia</label>
+              <Input
+                inputMode="decimal"
+                value={horasStr}
+                onChange={(e) => setHorasStr(e.target.value)}
+                placeholder="8"
+              />
+            </div>
+            <Button size="sm" className="w-full" onClick={commitConfig}>
+              Aplicar
+            </Button>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {!temDado ? (
+        <p className="mt-2 text-xs text-muted-foreground">Consumo não informado</p>
+      ) : (
+        <div className="mt-2 space-y-1.5 text-sm">
+          {kwhHora != null && (
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-muted-foreground">Por hora</span>
+              <span className="font-medium text-foreground">
+                {kwh(kwhHora)}/h
+                {gastoHora != null && (
+                  <span className="ml-1 text-muted-foreground">· {brl(gastoHora)}</span>
+                )}
+              </span>
+            </div>
+          )}
+          {kwhMes != null && (
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-muted-foreground">
+                Por mês{mesEhEstimativa ? ' (estimado)' : ''}
+              </span>
+              <span className="font-medium text-foreground">
+                {kwh(kwhMes)}
+                {gastoMes != null && (
+                  <span className="ml-1 text-muted-foreground">· {brl(gastoMes)}</span>
+                )}
+              </span>
+            </div>
+          )}
+          {mesEhEstimativa && (
+            <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
+              Estimativa em potência nominal; inverter consome menos.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Card de modelo — badges e ações variam por domínio                  */
 /* ------------------------------------------------------------------ */
 
@@ -1328,6 +1527,10 @@ function ModelCard({
   // placeholder, o `&& btu` já cuida disso).
   const mostraBtu = domain === 'ar_condicionado' || domain === 'compressor';
   const mostraGas = domain === 'ar_condicionado' || domain === 'compressor';
+
+  // Consumo de energia só faz sentido pra aparelho ligado direto na tomada:
+  // AC e linha branca. Compressor e controle remoto não mostram.
+  const mostraConsumo = domain === 'ar_condicionado' || domain === 'linha_branca';
 
   // AC e Linha Branca baixam manual; Compressor baixa "Datasheet" (mesma URL).
   const segundoBotao: 'manual' | 'datasheet' | null =
@@ -1416,6 +1619,8 @@ function ModelCard({
             )}
           </div>
         )}
+
+        {mostraConsumo && <ConsumoEnergia model={model} />}
 
         {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark).
             Controle remoto tem só 1 ação (largura cheia); os demais têm 2 botões

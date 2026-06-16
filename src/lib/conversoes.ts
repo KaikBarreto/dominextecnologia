@@ -12,7 +12,17 @@
  *                usa funções dedicadas de/para a base.
  */
 
-export type ConversaoCategoria = 'pressao' | 'temperatura' | 'potencia' | 'comprimento';
+/**
+ * Categorias NUMÉRICAS — têm unidades e passam por `converter()`.
+ */
+export type ConversaoCategoriaNumerica = 'pressao' | 'temperatura' | 'potencia' | 'comprimento';
+
+/**
+ * Todas as categorias da ferramenta de Conversão, incluindo as de REFERÊNCIA
+ * (não-numéricas, como `retrofit`, que NÃO entram em `CONVERSAO_CATEGORIAS`
+ * nem em `converter()` — são renderizadas com view própria).
+ */
+export type ConversaoCategoria = ConversaoCategoriaNumerica | 'retrofit';
 
 export interface UnidadeDef {
   /** Código interno único da unidade. */
@@ -115,7 +125,7 @@ function celsiusPara(valorC: number, para: string): number {
 // ─────────────────────────────── Catálogo público ───────────────────────────────
 
 export const CONVERSAO_CATEGORIAS: Record<
-  ConversaoCategoria,
+  ConversaoCategoriaNumerica,
   { label: string; unidades: UnidadeDef[] }
 > = {
   pressao: { label: 'Pressão', unidades: PRESSAO_UNIDADES },
@@ -129,7 +139,7 @@ export const CONVERSAO_CATEGORIAS: Record<
  * Retorna NaN se as unidades forem inválidas pra categoria.
  */
 export function converter(
-  categoria: ConversaoCategoria,
+  categoria: ConversaoCategoriaNumerica,
   de: string,
   para: string,
   valor: number,

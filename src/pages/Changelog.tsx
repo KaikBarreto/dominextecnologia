@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.29',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Consumo de energia no Catálogo de Equipamentos',
+        description: 'Ao abrir um ar-condicionado ou uma geladeira/lavadora no Catálogo de Equipamentos, agora aparece o consumo de energia do aparelho — por hora e por mês, em kWh e com o gasto estimado em reais. Você pode ajustar a tarifa (R$/kWh) e as horas de uso por dia, e essa preferência fica salva no seu aparelho. Quando o consumo de um modelo ainda não está cadastrado, o catálogo mostra "não informado" em vez de um valor estimado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Retrofit de Gás na ferramenta de Conversão',
+        description: 'A ferramenta de Conversão ganhou a aba Retrofit de Gás: uma tabela de consulta rápida para a troca de refrigerante do R-22 e do R-404A. Ela mostra quais gases substituem cada um, deixando claro o que pode ser trocado no próprio equipamento e o que só funciona em equipamento novo, além do tipo de óleo, do comportamento de pressão, dos cuidados e do aviso de gases inflamáveis.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.28',
     date: '16 de junho de 2026',
     type: 'patch',

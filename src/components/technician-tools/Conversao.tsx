@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, AlertTriangle, Star } from 'lucide-react';
+import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, AlertTriangle, Star, Replace, Flame } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,12 +16,14 @@ import {
   converter,
   formatarResultado,
   type ConversaoCategoria,
+  type ConversaoCategoriaNumerica,
 } from '@/lib/conversoes';
 import {
   registrarConversaoRecente,
   toggleConversaoFavorita,
   useToolHistory,
 } from '@/lib/technicianToolsHistory';
+import { RETROFIT_GASES } from '@/lib/retrofitGases';
 
 /** Par inicial de deep-link vindo de Recentes/Favoritos do Início. */
 export interface ConversaoInicial {
@@ -61,6 +63,7 @@ const CATEGORIA_ICONES: Record<ConversaoCategoria, LucideIcon> = {
   temperatura: Thermometer,
   potencia: Zap,
   comprimento: Ruler,
+  retrofit: Replace,
 };
 
 /** Cor de destaque por categoria (decorativa via style, à la Início). */
@@ -69,9 +72,25 @@ const CATEGORIA_ACCENT: Record<ConversaoCategoria, string> = {
   temperatura: 'hsl(0 84% 60%)', // vermelho
   potencia: 'hsl(38 92% 50%)', // âmbar
   comprimento: 'hsl(142 71% 45%)', // verde
+  retrofit: 'hsl(173 58% 39%)', // teal
 };
 
-const ORDEM: ConversaoCategoria[] = ['pressao', 'temperatura', 'potencia', 'comprimento'];
+/** Rótulo da categoria pro usuário (cobre as numéricas + as de referência). */
+const CATEGORIA_LABEL: Record<ConversaoCategoria, string> = {
+  pressao: CONVERSAO_CATEGORIAS.pressao.label,
+  temperatura: CONVERSAO_CATEGORIAS.temperatura.label,
+  potencia: CONVERSAO_CATEGORIAS.potencia.label,
+  comprimento: CONVERSAO_CATEGORIAS.comprimento.label,
+  retrofit: 'Retrofit de Gás',
+};
+
+const ORDEM: ConversaoCategoria[] = [
+  'pressao',
+  'temperatura',
+  'potencia',
+  'comprimento',
+  'retrofit',
+];
 
 export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
   const [categoria, setCategoria] = useState<ConversaoCategoria>(inicial?.categoria ?? 'pressao');
@@ -120,7 +139,7 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
       </div>
 
       {/* Seleção de categoria — cards compactos em grid */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {ORDEM.map((cat) => {
           const Icon = CATEGORIA_ICONES[cat];
           const isActive = categoria === cat;
@@ -140,7 +159,7 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
             >
               <Icon className="h-5 w-5 shrink-0 md:h-7 md:w-7" />
               <span className="text-xs font-medium leading-tight md:text-base">
-                {CONVERSAO_CATEGORIAS[cat].label}
+                {CATEGORIA_LABEL[cat]}
               </span>
             </button>
           );
@@ -157,6 +176,20 @@ function ConversaoCategoriaView({
   inicial,
 }: {
   categoria: ConversaoCategoria;
+  inicial?: ConversaoInicial;
+}) {
+  // Categoria de REFERÊNCIA (não-numérica) — view própria, sem conversor.
+  if (categoria === 'retrofit') {
+    return <RetrofitView />;
+  }
+  return <ConversaoNumericaView categoria={categoria} inicial={inicial} />;
+}
+
+function ConversaoNumericaView({
+  categoria,
+  inicial,
+}: {
+  categoria: ConversaoCategoriaNumerica;
   inicial?: ConversaoInicial;
 }) {
   const { unidades } = CONVERSAO_CATEGORIAS[categoria];
@@ -463,6 +496,118 @@ function ConversaoCategoriaView({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Bolinha de cor do gás (régua do projeto: refrigerante sempre com cor). */
+function BolinhaGas({ cor }: { cor: string }) {
+  return (
+    <span
+      aria-hidden
+      className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+      style={{ backgroundColor: cor }}
+    />
+  );
+}
+
+/**
+ * View de REFERÊNCIA de retrofit / troca de gás. Não converte número — lista,
+ * por gás de saída, as opções de substituição com óleo, pressão e cuidados.
+ * Mobile-first.
+ */
+function RetrofitView() {
+  return (
+    <div className="space-y-4">
+      {/* Aviso de segurança no topo — sempre visível */}
+      <div className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Guia de referência. <span className="font-semibold text-foreground">Drop-in</span> é a
+          troca de gás no mesmo equipamento (em geral só trocando o óleo).{' '}
+          <span className="font-semibold text-foreground">Equipamento novo</span> trabalha em
+          pressões incompatíveis — só em máquina projetada pra ele. Sempre siga a ficha técnica do
+          gás e do compressor.
+        </p>
+      </div>
+
+      {RETROFIT_GASES.map((gas) => (
+        <div key={gas.refrigeranteId} className="space-y-2.5">
+          {/* Cabeçalho do gás de saída */}
+          <div className="flex items-start gap-2 rounded-lg border border-border bg-card p-3">
+            <BolinhaGas cor={gas.cor} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-sm font-semibold text-foreground">Sai: {gas.nome}</span>
+              </div>
+              <p className="text-xs leading-snug text-muted-foreground">{gas.contexto}</p>
+            </div>
+          </div>
+
+          {/* Opções de substituição */}
+          <div className="space-y-2 pl-1">
+            {gas.opcoes.map((op) => {
+              const isDropIn = op.tipo === 'drop-in';
+              return (
+                <div
+                  key={op.gasNovo}
+                  className="rounded-lg border border-border bg-card p-3"
+                >
+                  {/* Linha do gás novo + selo de tipo */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <BolinhaGas cor={op.cor} />
+                    <span className="text-sm font-semibold text-foreground">{op.gasNovo}</span>
+                    {op.inflamavel && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                        <Flame className="h-3 w-3" />
+                        Inflamável
+                      </span>
+                    )}
+                  </div>
+
+                  <span
+                    className={cn(
+                      'mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium',
+                      isDropIn
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+                    )}
+                  >
+                    {op.tipoLabel}
+                  </span>
+
+                  {/* Óleo + pressão */}
+                  <dl className="mt-2.5 space-y-1.5 text-xs">
+                    <div className="flex gap-1.5">
+                      <dt className="shrink-0 font-medium text-muted-foreground">Óleo:</dt>
+                      <dd className="text-foreground">{op.oleo}</dd>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <dt className="shrink-0 font-medium text-muted-foreground">Pressão:</dt>
+                      <dd className="text-foreground">{op.pressao}</dd>
+                    </div>
+                  </dl>
+
+                  {/* Cuidados */}
+                  <div className="mt-2.5 rounded-md bg-muted/40 p-2.5">
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Cuidados
+                    </p>
+                    <ul className="space-y-1">
+                      {op.cuidados.map((c, i) => (
+                        <li key={i} className="flex gap-1.5 text-xs leading-snug text-foreground">
+                          <span aria-hidden className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                          <span>{c}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

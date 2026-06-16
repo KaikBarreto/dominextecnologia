@@ -576,6 +576,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "companies_nfse_tier_fkey"
+            columns: ["nfse_tier"]
+            isOneToOne: false
+            referencedRelation: "nfse_tiers"
+            referencedColumns: ["tier"]
+          },
+          {
             foreignKeyName: "companies_salesperson_id_fkey"
             columns: ["salesperson_id"]
             isOneToOne: false
@@ -942,50 +949,6 @@ export type Database = {
           },
         ]
       }
-      consent_records: {
-        Row: {
-          accepted_at: string
-          company_id: string | null
-          id: string
-          ip_address: unknown
-          purpose: string
-          revoked_at: string | null
-          user_agent: string | null
-          user_id: string | null
-          version: string
-        }
-        Insert: {
-          accepted_at?: string
-          company_id?: string | null
-          id?: string
-          ip_address?: unknown
-          purpose: string
-          revoked_at?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-          version?: string
-        }
-        Update: {
-          accepted_at?: string
-          company_id?: string | null
-          id?: string
-          ip_address?: unknown
-          purpose?: string
-          revoked_at?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "consent_records_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       compressor_specs: {
         Row: {
           aplicacao: string | null
@@ -1050,6 +1013,50 @@ export type Database = {
             columns: ["model_id"]
             isOneToOne: true
             referencedRelation: "equipment_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_records: {
+        Row: {
+          accepted_at: string
+          company_id: string | null
+          id: string
+          ip_address: unknown
+          purpose: string
+          revoked_at: string | null
+          user_agent: string | null
+          user_id: string | null
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          company_id?: string | null
+          id?: string
+          ip_address?: unknown
+          purpose: string
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Update: {
+          accepted_at?: string
+          company_id?: string | null
+          id?: string
+          ip_address?: unknown
+          purpose?: string
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_records_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -2545,36 +2552,45 @@ export type Database = {
           brand_id: string
           category_id: string | null
           code: string | null
+          compressor_model_id: string | null
+          consumo_kwh_mes: number | null
           created_at: string
           domain: string
           id: string
           image_url: string | null
           manual_url: string | null
           name: string
+          potencia_w: number | null
           refrigerant: string | null
         }
         Insert: {
           brand_id: string
           category_id?: string | null
           code?: string | null
+          compressor_model_id?: string | null
+          consumo_kwh_mes?: number | null
           created_at?: string
           domain?: string
           id?: string
           image_url?: string | null
           manual_url?: string | null
           name: string
+          potencia_w?: number | null
           refrigerant?: string | null
         }
         Update: {
           brand_id?: string
           category_id?: string | null
           code?: string | null
+          compressor_model_id?: string | null
+          consumo_kwh_mes?: number | null
           created_at?: string
           domain?: string
           id?: string
           image_url?: string | null
           manual_url?: string | null
           name?: string
+          potencia_w?: number | null
           refrigerant?: string | null
         }
         Relationships: [
@@ -2590,6 +2606,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "equipment_model_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_models_compressor_model_id_fkey"
+            columns: ["compressor_model_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_models"
             referencedColumns: ["id"]
           },
         ]
@@ -3537,6 +3560,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      master_login_audit: {
+        Row: {
+          created_at: string
+          device_info: string | null
+          id: string
+          ip_address: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       nfse_emissions: {
         Row: {
@@ -6485,15 +6535,6 @@ export type Database = {
         Returns: number
       }
       generate_pmoc_token: { Args: never; Returns: string }
-      get_portal_by_token: {
-        Args: { _token: string }
-        Returns: {
-          created_at: string
-          customer_id: string
-          id: string
-          is_active: boolean
-        }[]
-      }
       get_nps_criteria_averages: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -6505,28 +6546,37 @@ export type Database = {
       get_nps_open_detractors: {
         Args: { p_end: string; p_start: string }
         Returns: {
-          comment: string | null
-          customer_name: string | null
+          comment: string
+          customer_name: string
           nps_score: number
           order_number: number
           os_id: string
           rated_at: string
-          rated_by_name: string | null
-          technician_id: string | null
-          technician_name: string | null
+          rated_by_name: string
+          technician_id: string
+          technician_name: string
         }[]
       }
       get_nps_technician_ranking: {
         Args: { p_end: string; p_start: string }
         Returns: {
-          avatar_url: string | null
-          full_name: string | null
+          avatar_url: string
+          full_name: string
           media_estrelas: number
           nps_medio: number
           os_concluidas: number
           respostas: number
           taxa_resposta: number
           user_id: string
+        }[]
+      }
+      get_portal_by_token: {
+        Args: { _token: string }
+        Returns: {
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
         }[]
       }
       get_portal_data: { Args: { p_token: string }; Returns: Json }
@@ -6623,13 +6673,11 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: string
       }
-      nfse_can_emit: {
-        Args: { p_company_id: string }
-        Returns: Json
-      }
-      nfse_month_usage: {
-        Args: { p_company_id: string }
-        Returns: number
+      nfse_can_emit: { Args: { p_company_id: string }; Returns: Json }
+      nfse_month_usage: { Args: { p_company_id: string }; Returns: number }
+      notify_terms_update: {
+        Args: { p_message?: string; p_title?: string; p_version: string }
+        Returns: undefined
       }
       nth_business_day: {
         Args: {
@@ -6639,10 +6687,6 @@ export type Database = {
           p_year: number
         }
         Returns: string
-      }
-      notify_terms_update: {
-        Args: { p_version: string; p_title?: string; p_message?: string }
-        Returns: undefined
       }
       pay_payroll_transaction: {
         Args: {
@@ -6692,9 +6736,9 @@ export type Database = {
       }
       submit_public_os_rating: {
         Args: {
-          p_comment?: string | null
+          p_comment?: string
           p_criteria?: Json
-          p_name?: string | null
+          p_name?: string
           p_nps: number
           p_os_id: string
         }

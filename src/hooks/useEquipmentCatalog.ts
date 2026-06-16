@@ -44,6 +44,10 @@ export interface EquipmentModel {
   manual_url: string | null;
   /** Gás refrigerante do modelo (ex.: 'R-32', 'R-410A'); null quando não cadastrado. */
   refrigerant: string | null;
+  /** Consumo mensal OFICIAL (Procel/INMETRO) em kWh/mês; null quando não cadastrado. */
+  consumo_kwh_mes: number | null;
+  /** Potência nominal em W; base da estimativa de consumo quando não há valor oficial. Null quando não cadastrado. */
+  potencia_w: number | null;
   /** Domínio do catálogo a que o modelo pertence. */
   domain: string;
   /**
@@ -133,7 +137,7 @@ export function useEquipmentModelsByBrand(
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, compressor_model_id, created_at, category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, category:equipment_model_categories(id, name)',
         )
         .eq('brand_id', brandId as string)
         .eq('domain', domain)
@@ -153,7 +157,7 @@ export function useEquipmentModel(modelId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('id', modelId as string)
         .maybeSingle();
@@ -199,7 +203,7 @@ export function useAllModelsWithBrand(domain: string = 'ar_condicionado') {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('domain', domain)
         .order('name', { ascending: true });
