@@ -5,6 +5,40 @@
  * proporção mesmo quando o ícone não é quadrado (preserveAspectRatio default).
  */
 
+import { COMPRESSOR_ICON_D } from '@/components/technician-tools/CicloRefrigeracaoIlustracao';
+
+/**
+ * Compressor — mesmo desenho do compressor da ilustração do Ciclo Básico.
+ * O path nativo mapeia para 600×575 via o transform interno; fill currentColor.
+ */
+export const CompressorGlyph = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 600 575" fill="currentColor" className={className} aria-hidden="true">
+    <g transform="translate(0,575) scale(0.066667,-0.066667)">
+      <path d={COMPRESSOR_ICON_D} />
+    </g>
+  </svg>
+);
+
+/** Controle remoto de ar-condicionado (linha, estilo lucide). */
+export const RemoteGlyph = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <rect x="7" y="2" width="10" height="20" rx="3" />
+    <rect x="9.5" y="5" width="5" height="3.5" rx="0.8" />
+    <circle cx="9.6" cy="12.5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="14.4" cy="12.5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 /** Ciclo/loop de climatização — item Operacional. */
 export const OperacionalIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 100 100" fill="currentColor" className={className} aria-hidden="true">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode, type ComponentType } from 'react';
 import {
   ArrowLeft,
   Boxes,
@@ -11,10 +11,12 @@ import {
   Star,
   SlidersHorizontal,
   AirVent,
-  Cylinder,
   Refrigerator,
-  RadioReceiver,
+  Cpu,
+  Settings2,
+  FileText,
 } from 'lucide-react';
+import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -133,11 +135,11 @@ async function baixarManual(url: string, nome: string) {
 }
 
 /** Domínios do catálogo, na ordem das sub-abas (cada um com ícone). */
-const DOMAIN_OPTIONS: { value: EquipmentDomain; label: string; icon: typeof AirVent }[] = [
+const DOMAIN_OPTIONS: { value: EquipmentDomain; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { value: 'ar_condicionado', label: 'Ar Condicionado', icon: AirVent },
-  { value: 'compressor', label: 'Compressores', icon: Cylinder },
+  { value: 'compressor', label: 'Compressores', icon: CompressorGlyph },
   { value: 'linha_branca', label: 'Linha Branca', icon: Refrigerator },
-  { value: 'controle_remoto', label: 'Controles Remotos', icon: RadioReceiver },
+  { value: 'controle_remoto', label: 'Controles Remotos', icon: RemoteGlyph },
 ];
 
 type View =
@@ -652,7 +654,7 @@ function BrandsList({
               ) : (
                 // Cor escura fixa (não text-foreground) pra ficar legível sobre o
                 // card branco também no dark mode.
-                <span className="text-base font-semibold leading-tight text-neutral-800">
+                <span className="text-3xl font-semibold leading-tight text-neutral-800">
                   {brand.name}
                 </span>
               )}
@@ -877,7 +879,7 @@ function ModelosList({
                         loading="lazy"
                       />
                     ) : (
-                      <span className="text-lg font-semibold text-neutral-800">{b.name}</span>
+                      <span className="text-3xl font-semibold text-neutral-800">{b.name}</span>
                     )}
                   </button>
                 </CarouselItem>
@@ -895,7 +897,7 @@ function ModelosList({
               className="max-h-16 max-w-[60%] object-contain"
             />
           ) : (
-            <span className="text-lg font-semibold text-neutral-800">{brand.name}</span>
+            <span className="text-3xl font-semibold text-neutral-800">{brand.name}</span>
           )}
         </div>
       )}
