@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Star, ThumbsUp, ThumbsDown, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Star, Loader2, CheckCircle2, Smile, Meh, Frown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { cn } from '@/lib/utils';
@@ -13,14 +13,16 @@ import {
   isAlreadyRatedError,
   type PublicOsRating,
   type PublicNpsConfig,
+  type PublicNpsCriterion,
+  type SubmitCriterionValue,
 } from '@/hooks/useServiceRatings';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 
 /**
  * Faixa de NPS de uma nota 0–10:
- * - detrator (0–6) → destructive
- * - neutro   (7–8) → warning
- * - promotor (9–10)→ success
+ * - detrator (0–6) → destructive / triste
+ * - neutro   (7–8) → warning / neutro
+ * - promotor (9–10)→ success / feliz
  */
 type NpsBand = 'detractor' | 'passive' | 'promoter';
 
@@ -30,10 +32,31 @@ function bandOf(n: number): NpsBand {
   return 'promoter';
 }
 
-const BAND_LABEL: Record<NpsBand, string> = {
-  detractor: 'Vamos melhorar — obrigado por avisar',
-  passive: 'Bom! O que faltou pra ser excelente?',
-  promoter: 'Que ótimo! Ficamos muito felizes',
+const BAND_META: Record<
+  NpsBand,
+  { label: string; icon: typeof Smile; tone: string; bg: string; ring: string }
+> = {
+  detractor: {
+    label: 'Vamos melhorar — obrigado por avisar',
+    icon: Frown,
+    tone: 'text-destructive',
+    bg: 'bg-destructive/10',
+    ring: 'ring-destructive/40',
+  },
+  passive: {
+    label: 'Bom! O que faltou pra ser excelente?',
+    icon: Meh,
+    tone: 'text-warning',
+    bg: 'bg-warning/10',
+    ring: 'ring-warning/40',
+  },
+  promoter: {
+    label: 'Que ótimo! Ficamos muito felizes',
+    icon: Smile,
+    tone: 'text-success',
+    bg: 'bg-success/10',
+    ring: 'ring-success/40',
+  },
 };
 
 function StarRow({
@@ -83,74 +106,199 @@ function StarRow({
   );
 }
 
+/**
+ * Escala NPS 0–10 remodelada: carinha grande que reage à faixa + barra
+ * segmentada conectada com gradiente vermelho→âmbar→verde. Cada segmento é
+ * tocável (área de toque confortável no mobile). Mantém o NPS (0–10).
+ */
+function NpsScale({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (n: number) => void;
+}) {
+  const band = value !== null ? bandOf(value) : null;
+  const meta = band ? BAND_META[band] : null;
+  const FaceIcon = meta?.icon ?? Meh;
+
+  return (
+    <div className="space-y-4">
+      {/* Carinha grande + nota */}
+      <div className="flex flex-col items-center gap-1.5">
+        <FaceIcon
+          className={cn(
+            'h-16 w-16 transition-colors duration-300',
+            meta ? meta.tone : 'text-muted-foreground/40',
+          )}
+          aria-hidden
+        />
+        <span
+          className={cn(
+            'text-3xl font-bold tabular-nums transition-colors duration-200',
+            meta ? meta.tone : 'text-muted-foreground/50',
+          )}
+        >
+          {value !== null ? value : '–'}
+        </span>
+      </div>
+
+      {/* Barra segmentada conectada (0–10) com gradiente por faixa */}
+      <div
+        className="flex gap-0.5 rounded-full bg-muted/50 p-0.5"
+        role="radiogroup"
+        aria-label="Nota de 0 a 10"
+      >
+        {Array.from({ length: 11 }, (_, n) => {
+          const nBand = bandOf(n);
+          const selected = value === n;
+          const fillBg =
+            nBand === 'detractor'
+              ? 'bg-destructive'
+              : nBand === 'passive'
+                ? 'bg-warning'
+                : 'bg-success';
+          const fillFg =
+            nBand === 'detractor'
+              ? 'text-destructive-foreground'
+              : nBand === 'passive'
+                ? 'text-warning-foreground'
+                : 'text-success-foreground';
+          const restTint =
+            nBand === 'detractor'
+              ? 'text-destructive'
+              : nBand === 'passive'
+                ? 'text-warning'
+                : 'text-success';
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={`Nota ${n} de 10`}
+              onClick={() => onChange(n)}
+              className={cn(
+                'flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                selected
+                  ? cn(fillBg, fillFg, 'scale-105 shadow-md')
+                  : cn('bg-transparent hover:bg-background/60', restTint, 'opacity-70'),
+              )}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Rótulos das pontas */}
+      <div className="flex items-center justify-between px-1 text-[11px] font-medium text-muted-foreground">
+        <span>Nada provável</span>
+        <span>Muito provável</span>
+      </div>
+
+      {/* Mensagem contextual da faixa */}
+      {meta && (
+        <p
+          className={cn(
+            'rounded-lg px-3 py-2 text-center text-sm font-medium ring-1 animate-in fade-in duration-200',
+            meta.bg,
+            meta.tone,
+            meta.ring,
+          )}
+        >
+          {meta.label}
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface OSRatingSurveyProps {
   osId: string;
   rating: PublicOsRating;
-  /** Config de NPS da empresa (pergunta + estrelas opcionais). */
+  /** Config de NPS da empresa (pergunta + estrelas opcionais/obrigatórias). */
   npsConfig?: PublicNpsConfig | null;
+  /** Critérios de estrela ATIVOS da empresa (dinâmicos), já ordenados. */
+  criteria?: PublicNpsCriterion[];
 }
 
 const DEFAULT_QUESTION = 'De 0 a 10, o quão satisfeito(a) você ficou com o nosso serviço?';
 
 /**
- * Bloco "carona" de avaliação que aparece no link público de acompanhamento
- * (modo cliente) quando a OS está concluída e ainda não foi avaliada.
- * Fluxo 1-clique: escala NPS 0–10 visível de cara; ao tocar uma nota, revela
- * estrelas + comentário + nome + Enviar. Grava pela RPC submit_public_os_rating.
+ * Pesquisa de satisfação do link público (modo cliente). Aparece num drawer
+ * (de baixo no mobile) que JÁ VEM ABERTO quando a OS está concluída, a
+ * pesquisa está habilitada e ainda não foi avaliada. O cliente pode fechar;
+ * após enviar, o drawer fecha e o relatório da OS fica em foco.
  *
- * Após enviar (ou se já avaliado), o bloco colapsa para um aviso enxuto de
- * sucesso e dá foco ao relatório da OS (renderizado logo abaixo), rolando o
- * topo da página pra ele.
+ * Escala NPS 0–10 remodelada (carinha + barra segmentada com gradiente) e
+ * critérios de estrela DINÂMICOS vindos de get_public_os.nps_criteria.
  */
-export function OSRatingSurvey({ osId, rating, npsConfig }: OSRatingSurveyProps) {
+export function OSRatingSurvey({ osId, rating, npsConfig, criteria }: OSRatingSurveyProps) {
   const { toast } = useToast();
-  const [thanked, setThanked] = useState(rating.already_rated === true);
-  const [submitting, setSubmitting] = useState(false);
-
   const requireStars = npsConfig?.require_stars === true;
   const question = npsConfig?.question?.trim() || DEFAULT_QUESTION;
+  const dynamicCriteria = criteria ?? [];
+
+  const [thanked, setThanked] = useState(rating.already_rated === true);
+  // Abre sozinho quando ainda não avaliado. Se já avaliado, fica fechado.
+  const [open, setOpen] = useState(rating.already_rated !== true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [npsScore, setNpsScore] = useState<number | null>(null);
-  // 0 = "não tocado". No envio convertemos 0 → null (estrelas opcionais).
-  const [qualityRating, setQualityRating] = useState(0);
-  const [punctualityRating, setPunctualityRating] = useState(0);
-  const [professionalismRating, setProfessionalismRating] = useState(0);
+  // Estrelas por critério (id → 1..5). 0/ausente = "não tocado".
+  const [criteriaValues, setCriteriaValues] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
   const [ratedByName, setRatedByName] = useState('');
 
-  const revealed = npsScore !== null;
-  const band = npsScore !== null ? bandOf(npsScore) : null;
+  // Se a OS chegar já avaliada (poll), garante estado "obrigado" e fechado.
+  useEffect(() => {
+    if (rating.already_rated === true) {
+      setThanked(true);
+      setOpen(false);
+    }
+  }, [rating.already_rated]);
+
+  const setCriterion = (id: string, v: number) =>
+    setCriteriaValues((prev) => ({ ...prev, [id]: v }));
 
   const handleSubmit = async () => {
-    if (npsScore === null) return;
-    // Estrelas obrigatórias só quando a empresa exige.
-    if (requireStars && (qualityRating === 0 || punctualityRating === 0 || professionalismRating === 0)) {
-      toast({ variant: 'destructive', title: 'Toque nas estrelas das três categorias' });
+    if (npsScore === null) {
+      toast({ variant: 'destructive', title: 'Escolha uma nota de 0 a 10' });
+      return;
+    }
+    // Estrelas obrigatórias só quando a empresa exige: todos os critérios.
+    if (requireStars && dynamicCriteria.some((c) => !criteriaValues[c.id])) {
+      toast({ variant: 'destructive', title: 'Avalie todas as categorias com estrelas' });
       return;
     }
     setSubmitting(true);
     try {
+      // Envia só os critérios que o cliente avaliou (value 1..5).
+      const payloadCriteria: SubmitCriterionValue[] = dynamicCriteria
+        .filter((c) => (criteriaValues[c.id] ?? 0) > 0)
+        .map((c) => ({ criterion_id: c.id, value: criteriaValues[c.id] }));
+
       await submitPublicOsRating(
         osId,
         {
           nps_score: npsScore,
-          // Estrela não tocada (0) vira null — nunca 0.
-          quality_rating: qualityRating || null,
-          punctuality_rating: punctualityRating || null,
-          professionalism_rating: professionalismRating || null,
+          criteria: payloadCriteria,
           comment: comment.trim() || undefined,
           rated_by_name: ratedByName.trim() || undefined,
         },
         supabaseAnon,
       );
       setThanked(true);
+      setOpen(false);
       toast({ title: 'Avaliação enviada' });
-      // Foco volta ao relatório da OS (renderizado abaixo deste bloco).
+      // Relatório da OS (renderizado abaixo do drawer) fica em foco.
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       if (isAlreadyRatedError(err)) {
         toast({ title: 'Esta avaliação já foi enviada. Obrigado!' });
         setThanked(true);
+        setOpen(false);
         return;
       }
       toast({
@@ -163,8 +311,8 @@ export function OSRatingSurvey({ osId, rating, npsConfig }: OSRatingSurveyProps)
     }
   };
 
-  // Pós-envio / já avaliado: aviso enxuto, sem ocupar a tela toda.
-  // O relatório da OS abaixo fica em foco para o cliente conferir o serviço.
+  // Já avaliado / pós-envio: aviso enxuto inline (sem drawer). O relatório da
+  // OS abaixo fica em foco para o cliente conferir o serviço.
   if (thanked) {
     return (
       <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-success/5 px-4 py-3 text-sm animate-in fade-in zoom-in-95 duration-300">
@@ -178,140 +326,65 @@ export function OSRatingSurvey({ osId, rating, npsConfig }: OSRatingSurveyProps)
   }
 
   return (
-    <Card className="overflow-hidden border-primary/30 shadow-sm">
-      <CardContent className="space-y-6 pt-6">
-        {/* Cabeçalho acolhedor */}
-        <div className="space-y-1.5 text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            Sua opinião importa
-          </div>
-          <h3 className="text-lg font-bold text-foreground">Como foi seu atendimento?</h3>
-          <p className="mx-auto max-w-md text-sm text-muted-foreground">{question}</p>
-        </div>
-
-        {/* Escala NPS 0–10 — 1-clique, faixas por cor */}
-        <div className="space-y-3">
-          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-11">
-            {Array.from({ length: 11 }, (_, n) => {
-              const selected = npsScore === n;
-              const nBand = bandOf(n);
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  aria-label={`Nota ${n} de 10`}
-                  aria-pressed={selected}
-                  onClick={() => setNpsScore(n)}
-                  className={cn(
-                    'flex h-11 items-center justify-center rounded-lg border text-base font-semibold transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                    selected
-                      ? nBand === 'detractor'
-                        ? 'border-destructive bg-destructive text-destructive-foreground shadow-md ring-destructive/50'
-                        : nBand === 'passive'
-                          ? 'border-warning bg-warning text-warning-foreground shadow-md ring-warning/50'
-                          : 'border-success bg-success text-success-foreground shadow-md ring-success/50'
-                      : 'border-border bg-muted/40 text-foreground hover:bg-muted focus-visible:ring-primary/50',
-                  )}
-                >
-                  {n}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Régua das faixas (sempre visível, comunica o padrão NPS) */}
-          <div className="flex h-1.5 overflow-hidden rounded-full">
-            <div className="flex-[7] bg-destructive/70" />
-            <div className="flex-[2] bg-warning/70" />
-            <div className="flex-[2] bg-success/70" />
-          </div>
-
-          <div className="flex items-center justify-between px-0.5 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <ThumbsDown className="h-3 w-3 text-destructive" /> Nada provável
-            </span>
-            <span className="flex items-center gap-1">
-              Muito provável <ThumbsUp className="h-3 w-3 text-success" />
-            </span>
-          </div>
-
-          {/* Feedback da faixa selecionada */}
-          {band && (
-            <p
-              className={cn(
-                'rounded-md px-3 py-2 text-center text-sm font-medium animate-in fade-in duration-200',
-                band === 'detractor'
-                  ? 'bg-destructive/10 text-destructive'
-                  : band === 'passive'
-                    ? 'bg-warning/10 text-warning'
-                    : 'bg-success/10 text-success',
-              )}
-            >
-              {BAND_LABEL[band]}
-            </p>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={setOpen}
+      title="Como foi seu atendimento?"
+      footer={
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="h-12 w-full text-base"
+          size="lg"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
+            </>
+          ) : (
+            'Enviar avaliação'
           )}
-        </div>
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        <p className="text-center text-sm text-muted-foreground">{question}</p>
 
-        {revealed && (
-          <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+        <NpsScale value={npsScore} onChange={setNpsScore} />
+
+        {dynamicCriteria.length > 0 && (
+          <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+            {dynamicCriteria.map((c) => (
               <StarRow
-                label="Qualidade do serviço"
-                value={qualityRating}
-                onChange={setQualityRating}
+                key={c.id}
+                label={c.label}
+                value={criteriaValues[c.id] ?? 0}
+                onChange={(v) => setCriterion(c.id, v)}
                 optional={!requireStars}
               />
-              <StarRow
-                label="Pontualidade"
-                value={punctualityRating}
-                onChange={setPunctualityRating}
-                optional={!requireStars}
-              />
-              <StarRow
-                label="Profissionalismo"
-                value={professionalismRating}
-                onChange={setProfessionalismRating}
-                optional={!requireStars}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Seu nome (opcional)</Label>
-              <Input
-                placeholder="Digite seu nome"
-                value={ratedByName}
-                onChange={(e) => setRatedByName(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Comentário (opcional)</Label>
-              <Textarea
-                placeholder="Conte como foi sua experiência..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="h-12 w-full text-base"
-              size="lg"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
-                </>
-              ) : (
-                'Enviar avaliação'
-              )}
-            </Button>
+            ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        <div className="space-y-2">
+          <Label className="text-sm">Seu nome (opcional)</Label>
+          <Input
+            placeholder="Digite seu nome"
+            value={ratedByName}
+            onChange={(e) => setRatedByName(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm">Comentário (opcional)</Label>
+          <Textarea
+            placeholder="Conte como foi sua experiência..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+          />
+        </div>
+      </div>
+    </ResponsiveModal>
   );
 }

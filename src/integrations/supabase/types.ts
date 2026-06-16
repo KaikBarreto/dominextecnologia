@@ -3701,6 +3701,36 @@ export type Database = {
         }
         Relationships: []
       }
+      nps_criteria: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          id: string
+          label: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nps_settings: {
         Row: {
           company_id: string
@@ -5347,6 +5377,48 @@ export type Database = {
           },
         ]
       }
+      service_rating_criteria: {
+        Row: {
+          created_at: string
+          criterion_id: string | null
+          id: string
+          label_snapshot: string
+          rating_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          criterion_id?: string | null
+          id?: string
+          label_snapshot: string
+          rating_id: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          criterion_id?: string | null
+          id?: string
+          label_snapshot?: string
+          rating_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_rating_criteria_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "nps_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_rating_criteria_rating_id_fkey"
+            columns: ["rating_id"]
+            isOneToOne: false
+            referencedRelation: "service_ratings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_ratings: {
         Row: {
           comment: string | null
@@ -6422,6 +6494,14 @@ export type Database = {
           is_active: boolean
         }[]
       }
+      get_nps_criteria_averages: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          label: string
+          media: number
+          respostas: number
+        }[]
+      }
       get_nps_open_detractors: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -6613,12 +6693,10 @@ export type Database = {
       submit_public_os_rating: {
         Args: {
           p_comment?: string | null
+          p_criteria?: Json
           p_name?: string | null
           p_nps: number
           p_os_id: string
-          p_professionalism?: number | null
-          p_punctuality?: number | null
-          p_quality?: number | null
         }
         Returns: Json
       }

@@ -43,7 +43,7 @@ import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
-import type { PublicOsRating, PublicNpsConfig } from '@/hooks/useServiceRatings';
+import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hooks/useServiceRatings';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
@@ -88,6 +88,8 @@ export default function TechnicianOS() {
   // Config de NPS + flag de habilitação vindas de get_public_os (modo cliente).
   const [surveyEnabled, setSurveyEnabled] = useState(false);
   const [npsConfig, setNpsConfig] = useState<PublicNpsConfig | null>(null);
+  // Critérios de estrela dinâmicos (ativos da empresa) vindos de get_public_os.
+  const [npsCriteria, setNpsCriteria] = useState<PublicNpsCriterion[]>([]);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
@@ -323,6 +325,7 @@ export default function TechnicianOS() {
       // avaliação no modo cliente. get_public_os sempre devolve defaults.
       setSurveyEnabled(payload.survey_enabled === true);
       setNpsConfig((payload.nps_config as PublicNpsConfig | null) || null);
+      setNpsCriteria((payload.nps_criteria as PublicNpsCriterion[] | null) || []);
 
       // company white-label — só na carga inicial (o reset interno causaria
       // flicker do logo a cada poll; o branding não muda durante a OS).
@@ -737,7 +740,7 @@ export default function TechnicianOS() {
               pesquisa habilitada pela empresa (survey_enabled). Ainda sem
               avaliação → formulário; já avaliada → aviso enxuto de sucesso. */}
           {forceReadOnly && id && rating && rating.is_concluded && surveyEnabled && (
-            <OSRatingSurvey osId={id} rating={rating} npsConfig={npsConfig} />
+            <OSRatingSurvey osId={id} rating={rating} npsConfig={npsConfig} criteria={npsCriteria} />
           )}
           <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} />
         </div>

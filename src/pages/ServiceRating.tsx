@@ -1,44 +1,185 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Star, Smile, Meh, Frown, CheckCircle2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Star, Smile, Meh, Frown, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { usePublicRating, isAlreadyRatedError } from '@/hooks/useServiceRatings';
+import {
+  usePublicRating,
+  isAlreadyRatedError,
+  type PublicNpsConfig,
+  type PublicNpsCriterion,
+  type SubmitCriterionValue,
+} from '@/hooks/useServiceRatings';
+import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { cn } from '@/lib/utils';
 
-const npsEmojis = [
-  { min: 0, max: 3, icon: Frown, label: 'Insatisfeito', color: 'text-destructive' },
-  { min: 4, max: 6, icon: Frown, label: 'Neutro', color: 'text-warning' },
-  { min: 7, max: 8, icon: Meh, label: 'Satisfeito', color: 'text-info' },
-  { min: 9, max: 10, icon: Smile, label: 'Muito Satisfeito', color: 'text-success' },
-];
+type NpsBand = 'detractor' | 'passive' | 'promoter';
 
-function StarRating({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
+function bandOf(n: number): NpsBand {
+  if (n <= 6) return 'detractor';
+  if (n <= 8) return 'passive';
+  return 'promoter';
+}
+
+const BAND_META: Record<
+  NpsBand,
+  { label: string; icon: typeof Smile; tone: string; bg: string; ring: string }
+> = {
+  detractor: {
+    label: 'Vamos melhorar — obrigado por avisar',
+    icon: Frown,
+    tone: 'text-destructive',
+    bg: 'bg-destructive/10',
+    ring: 'ring-destructive/40',
+  },
+  passive: {
+    label: 'Bom! O que faltou pra ser excelente?',
+    icon: Meh,
+    tone: 'text-warning',
+    bg: 'bg-warning/10',
+    ring: 'ring-warning/40',
+  },
+  promoter: {
+    label: 'Que ótimo! Ficamos muito felizes',
+    icon: Smile,
+    tone: 'text-success',
+    bg: 'bg-success/10',
+    ring: 'ring-success/40',
+  },
+};
+
+function NpsScale({ value, onChange }: { value: number | null; onChange: (n: number) => void }) {
+  const band = value !== null ? bandOf(value) : null;
+  const meta = band ? BAND_META[band] : null;
+  const FaceIcon = meta?.icon ?? Meh;
+
   return (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium">{label}</Label>
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => onChange(star)}
-            className="transition-transform hover:scale-110"
-          >
-            <Star
-              className={`h-8 w-8 ${star <= value ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`}
-            />
-          </button>
-        ))}
+    <div className="space-y-4">
+      <div className="flex flex-col items-center gap-1.5">
+        <FaceIcon
+          className={cn(
+            'h-16 w-16 transition-colors duration-300',
+            meta ? meta.tone : 'text-muted-foreground/40',
+          )}
+          aria-hidden
+        />
+        <span
+          className={cn(
+            'text-3xl font-bold tabular-nums transition-colors duration-200',
+            meta ? meta.tone : 'text-muted-foreground/50',
+          )}
+        >
+          {value !== null ? value : '–'}
+        </span>
+      </div>
+
+      <div className="flex gap-0.5 rounded-full bg-muted/50 p-0.5" role="radiogroup" aria-label="Nota de 0 a 10">
+        {Array.from({ length: 11 }, (_, n) => {
+          const nBand = bandOf(n);
+          const selected = value === n;
+          const fillBg =
+            nBand === 'detractor' ? 'bg-destructive' : nBand === 'passive' ? 'bg-warning' : 'bg-success';
+          const fillFg =
+            nBand === 'detractor'
+              ? 'text-destructive-foreground'
+              : nBand === 'passive'
+                ? 'text-warning-foreground'
+                : 'text-success-foreground';
+          const restTint =
+            nBand === 'detractor' ? 'text-destructive' : nBand === 'passive' ? 'text-warning' : 'text-success';
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={`Nota ${n} de 10`}
+              onClick={() => onChange(n)}
+              className={cn(
+                'flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                selected
+                  ? cn(fillBg, fillFg, 'scale-105 shadow-md')
+                  : cn('bg-transparent hover:bg-background/60', restTint, 'opacity-70'),
+              )}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between px-1 text-[11px] font-medium text-muted-foreground">
+        <span>Nada provável</span>
+        <span>Muito provável</span>
+      </div>
+
+      {meta && (
+        <p
+          className={cn(
+            'rounded-lg px-3 py-2 text-center text-sm font-medium ring-1 animate-in fade-in duration-200',
+            meta.bg,
+            meta.tone,
+            meta.ring,
+          )}
+        >
+          {meta.label}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StarRow({
+  value,
+  onChange,
+  label,
+  optional,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  label: string;
+  optional?: boolean;
+}) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1.5 text-sm font-medium">
+        {label}
+        {optional && <span className="text-[11px] font-normal text-muted-foreground">(opcional)</span>}
+      </Label>
+      <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((star) => {
+          const active = star <= (hover || value);
+          return (
+            <button
+              key={star}
+              type="button"
+              aria-label={`${label}: ${star} de 5 estrelas`}
+              aria-pressed={star <= value}
+              onClick={() => onChange(star)}
+              onMouseEnter={() => setHover(star)}
+              className="rounded-md p-0.5 transition-transform duration-150 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Star
+                className={cn(
+                  'h-8 w-8 transition-colors duration-150',
+                  active ? 'fill-warning text-warning' : 'text-muted-foreground/30',
+                )}
+              />
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+const DEFAULT_QUESTION = 'De 0 a 10, qual a chance de recomendar nosso serviço?';
 
 export default function ServiceRating() {
   const { token } = useParams<{ token: string }>();
@@ -47,36 +188,62 @@ export default function ServiceRating() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [npsScore, setNpsScore] = useState<number>(8);
-  const [qualityRating, setQualityRating] = useState(0);
-  const [punctualityRating, setPunctualityRating] = useState(0);
-  const [professionalismRating, setProfessionalismRating] = useState(0);
+  const [npsScore, setNpsScore] = useState<number | null>(null);
+  const [criteriaValues, setCriteriaValues] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
   const [ratedByName, setRatedByName] = useState('');
 
-  const currentEmoji = npsEmojis.find((e) => npsScore >= e.min && npsScore <= e.max) || npsEmojis[0];
-  const EmojiIcon = currentEmoji.icon;
+  // Critérios dinâmicos + config de estrelas vêm de get_public_os(os_id).
+  // A página já tem o os_id via service_order.id devolvido pelo RPC do token.
+  const [npsConfig, setNpsConfig] = useState<PublicNpsConfig | null>(null);
+  const [criteria, setCriteria] = useState<PublicNpsCriterion[]>([]);
+  const osId = rating?.service_order?.id;
 
+  useEffect(() => {
+    if (!osId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabaseAnon.rpc('get_public_os', { p_os_id: osId });
+      if (cancelled || !data) return;
+      const payload = data as any;
+      setNpsConfig((payload.nps_config as PublicNpsConfig | null) || null);
+      setCriteria((payload.nps_criteria as PublicNpsCriterion[] | null) || []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [osId]);
+
+  const requireStars = npsConfig?.require_stars === true;
+  const question = npsConfig?.question?.trim() || DEFAULT_QUESTION;
   const alreadyRated = rating?.rated_at != null;
 
+  const setCriterion = (id: string, v: number) =>
+    setCriteriaValues((prev) => ({ ...prev, [id]: v }));
+
   const handleSubmit = async () => {
-    if (qualityRating === 0 || punctualityRating === 0 || professionalismRating === 0) {
-      toast({ variant: 'destructive', title: 'Preencha todas as avaliações com estrelas' });
+    if (npsScore === null) {
+      toast({ variant: 'destructive', title: 'Escolha uma nota de 0 a 10' });
+      return;
+    }
+    if (requireStars && criteria.some((c) => !criteriaValues[c.id])) {
+      toast({ variant: 'destructive', title: 'Avalie todas as categorias com estrelas' });
       return;
     }
     setSubmitting(true);
     try {
+      const payloadCriteria: SubmitCriterionValue[] = criteria
+        .filter((c) => (criteriaValues[c.id] ?? 0) > 0)
+        .map((c) => ({ criterion_id: c.id, value: criteriaValues[c.id] }));
+
       await submitRating({
         nps_score: npsScore,
-        quality_rating: qualityRating,
-        punctuality_rating: punctualityRating,
-        professionalism_rating: professionalismRating,
-        comment: comment || undefined,
-        rated_by_name: ratedByName || undefined,
+        criteria: payloadCriteria,
+        comment: comment.trim() || undefined,
+        rated_by_name: ratedByName.trim() || undefined,
       });
       setSubmitted(true);
     } catch (err: any) {
-      // 2ª resposta concorrente: cai no estado "obrigado", não em erro.
       if (isAlreadyRatedError(err)) {
         toast({ title: 'Esta avaliação já foi enviada. Obrigado!' });
         setSubmitted(true);
@@ -144,42 +311,27 @@ export default function ServiceRating() {
         {/* NPS Score */}
         <Card>
           <CardContent className="pt-6 space-y-4">
-            <div className="text-center space-y-1">
-              <h3 className="font-semibold">De 0 a 10, qual a chance de recomendar nosso serviço?</h3>
-              <div className="flex items-center justify-center gap-2 mt-3">
-                <EmojiIcon className={`h-10 w-10 ${currentEmoji.color}`} />
-                <span className="text-4xl font-bold">{npsScore}</span>
-              </div>
-              <p className={`text-sm font-medium ${currentEmoji.color}`}>{currentEmoji.label}</p>
-            </div>
-            <div className="flex items-center gap-3 px-2">
-              <ThumbsDown className="h-4 w-4 text-destructive shrink-0" />
-              <Slider
-                value={[npsScore]}
-                onValueChange={([v]) => setNpsScore(v)}
-                min={0}
-                max={10}
-                step={1}
-                className="flex-1"
-              />
-              <ThumbsUp className="h-4 w-4 text-success shrink-0" />
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground px-2">
-              <span>0</span>
-              <span>5</span>
-              <span>10</span>
-            </div>
+            <h3 className="text-center font-semibold">{question}</h3>
+            <NpsScale value={npsScore} onChange={setNpsScore} />
           </CardContent>
         </Card>
 
-        {/* Star Ratings */}
-        <Card>
-          <CardContent className="pt-6 space-y-5">
-            <StarRating label="Qualidade do Serviço" value={qualityRating} onChange={setQualityRating} />
-            <StarRating label="Pontualidade" value={punctualityRating} onChange={setPunctualityRating} />
-            <StarRating label="Profissionalismo" value={professionalismRating} onChange={setProfessionalismRating} />
-          </CardContent>
-        </Card>
+        {/* Critérios dinâmicos em estrelas */}
+        {criteria.length > 0 && (
+          <Card>
+            <CardContent className="pt-6 space-y-5">
+              {criteria.map((c) => (
+                <StarRow
+                  key={c.id}
+                  label={c.label}
+                  value={criteriaValues[c.id] ?? 0}
+                  onChange={(v) => setCriterion(c.id, v)}
+                  optional={!requireStars}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Comment */}
         <Card>
@@ -205,13 +357,14 @@ export default function ServiceRating() {
         </Card>
 
         {/* Submit */}
-        <Button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full h-12 text-base"
-          size="lg"
-        >
-          {submitting ? 'Enviando...' : 'Enviar Avaliação'}
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 text-base" size="lg">
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
+            </>
+          ) : (
+            'Enviar Avaliação'
+          )}
         </Button>
       </div>
     </div>

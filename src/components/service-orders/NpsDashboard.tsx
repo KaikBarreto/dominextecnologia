@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useServiceRatings, calculateNps, classifyNps } from '@/hooks/useServiceRatings';
 import { useNpsTechnicianRanking, useNpsOpenDetractors } from '@/hooks/useNpsRanking';
+import { useNpsCriteriaAverages } from '@/hooks/useNpsCriteria';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { NpsSettingsModal } from '@/components/service-orders/NpsSettingsModal';
 import { idealForeground } from '@/lib/colorContrast';
@@ -62,6 +63,7 @@ export function NpsDashboard() {
 
   const { data: ranking = [], isLoading: rankingLoading } = useNpsTechnicianRanking(range.from, range.to);
   const { data: openDetractors = [], isLoading: detractorsLoading } = useNpsOpenDetractors(range.from, range.to);
+  const { data: criteriaAverages = [], isLoading: criteriaAvgLoading } = useNpsCriteriaAverages(range.from, range.to);
 
   // Filtros do feed (multi-seleção; vazio = mostra tudo)
   const [feedClasses, setFeedClasses] = useState<string[]>([]);
@@ -74,16 +76,6 @@ export function NpsDashboard() {
   }, [ratings, range]);
 
   const npsData = useMemo(() => calculateNps(filteredRatings), [filteredRatings]);
-
-  const avgStars = useMemo(() => {
-    const rated = filteredRatings.filter((r) => r.quality_rating);
-    if (rated.length === 0) return { quality: 0, punctuality: 0, professionalism: 0 };
-    return {
-      quality: +(rated.reduce((s, r) => s + (r.quality_rating || 0), 0) / rated.length).toFixed(1),
-      punctuality: +(rated.reduce((s, r) => s + (r.punctuality_rating || 0), 0) / rated.length).toFixed(1),
-      professionalism: +(rated.reduce((s, r) => s + (r.professionalism_rating || 0), 0) / rated.length).toFixed(1),
-    };
-  }, [filteredRatings]);
 
   const responseRate = useMemo(() => {
     const total = ratings.length;
@@ -116,12 +108,20 @@ export function NpsDashboard() {
     { name: 'Detratores', value: npsData.detractors, color: NPS_COLORS.detractor },
   ].filter((d) => d.value > 0);
 
-  // Star distribution
-  const starDistribution = [
-    { category: 'Qualidade', avg: avgStars.quality },
-    { category: 'Pontualidade', avg: avgStars.punctuality },
-    { category: 'Profissionalismo', avg: avgStars.professionalism },
-  ];
+  // Média por categoria — critérios dinâmicos por empresa (RPC do período).
+  const starDistribution = useMemo(
+    () =>
+      criteriaAverages
+        .filter((c) => (c.respostas ?? 0) > 0)
+        .map((c) => ({ category: c.label, avg: +(c.media ?? 0).toFixed(1) })),
+    [criteriaAverages],
+  );
+
+  // Média geral exibida no KPI = média dos critérios respondidos no período.
+  const overallStarAvg = useMemo(() => {
+    if (starDistribution.length === 0) return 0;
+    return +(starDistribution.reduce((s, c) => s + c.avg, 0) / starDistribution.length).toFixed(1);
+  }, [starDistribution]);
 
   // Feed de feedbacks — avaliações com nota NPS, ordenadas por data desc.
   const feedSource = useMemo(
@@ -216,7 +216,7 @@ export function NpsDashboard() {
               <div>
                 <p className="text-xs text-muted-foreground">Média Geral</p>
                 <p className="text-2xl font-bold">
-                  {avgStars.quality > 0 ? ((avgStars.quality + avgStars.punctuality + avgStars.professionalism) / 3).toFixed(1) : '—'}
+                  {overallStarAvg > 0 ? overallStarAvg.toFixed(1) : '—'}
                 </p>
               </div>
             </div>
@@ -304,7 +304,9 @@ export function NpsDashboard() {
             <CardTitle className="text-sm">Média por Categoria</CardTitle>
           </CardHeader>
           <CardContent>
-            {avgStars.quality > 0 ? (
+            {criteriaAvgLoading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : starDistribution.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={starDistribution} layout="vertical">
                   <defs>

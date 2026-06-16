@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 
@@ -47,13 +48,23 @@ export interface PublicNpsConfig {
   generate_on_finish: boolean;
 }
 
+// Critério dinâmico de estrelas configurado pela empresa (1–5).
+// get_public_os devolve só os critérios ATIVOS, já ordenados.
+export interface PublicNpsCriterion {
+  id: string;
+  label: string;
+}
+
+// Item de critério avaliado que vai pra RPC (p_criteria).
+export interface SubmitCriterionValue {
+  criterion_id: string;
+  value: number; // 1..5
+}
+
 export interface SubmitPublicOsRatingInput {
   nps_score: number;
-  // Estrelas são opcionais quando require_stars=false — enviar null (não 0)
-  // pras categorias que o cliente não tocou.
-  quality_rating: number | null;
-  punctuality_rating: number | null;
-  professionalism_rating: number | null;
+  // Critérios dinâmicos avaliados pelo cliente (enviar só os tocados).
+  criteria?: SubmitCriterionValue[];
   comment?: string;
   rated_by_name?: string;
 }
@@ -72,11 +83,9 @@ export async function submitPublicOsRating(
   const { error } = await client.rpc('submit_public_os_rating', {
     p_os_id: osId,
     p_nps: input.nps_score,
-    p_quality: input.quality_rating ?? null,
-    p_punctuality: input.punctuality_rating ?? null,
-    p_professionalism: input.professionalism_rating ?? null,
     p_comment: input.comment ?? null,
     p_name: input.rated_by_name ?? null,
+    p_criteria: (input.criteria ?? []) as unknown as Json,
   });
   if (error) throw error;
 }

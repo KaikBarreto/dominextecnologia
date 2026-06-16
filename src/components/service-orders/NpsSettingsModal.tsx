@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2, Lock, Plus, Trash2, ChevronUp, ChevronDown, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNpsSettings, NPS_DEFAULT_QUESTION } from '@/hooks/useNpsSettings';
+import { useNpsCriteria } from '@/hooks/useNpsCriteria';
 
 interface NpsSettingsModalProps {
   open: boolean;
@@ -24,6 +27,14 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const { settings, isLoading, save, isSaving } = useNpsSettings();
+  const {
+    criteria,
+    isLoading: criteriaLoading,
+    create: createCriterion,
+    update: updateCriterion,
+    remove: removeCriterion,
+    isMutating: criteriaMutating,
+  } = useNpsCriteria();
 
   // '*' (Acesso Total) ou a permissão de gestão do sistema liberam a edição.
   // O server (can_manage_system) é a fronteira real; isto é só UX.
@@ -32,6 +43,11 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
   const [question, setQuestion] = useState('');
   const [requireStars, setRequireStars] = useState(false);
   const [generateOnFinish, setGenerateOnFinish] = useState(true);
+
+  // Rascunho local dos rótulos (edição inline) — grava no blur/Enter.
+  const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({});
+  const labelOf = (id: string, fallback: string) =>
+    labelDrafts[id] !== undefined ? labelDrafts[id] : fallback;
 
   // Re-seed sempre que abrir / quando a config carregar.
   useEffect(() => {
@@ -53,6 +69,67 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
       onOpenChange(false);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Não foi possível salvar', description: getErrorMessage(err) });
+    }
+  };
+
+  // ——— Critérios de avaliação (CRUD) ———
+
+  const handleCommitLabel = async (id: string, original: string) => {
+    const next = (labelDrafts[id] ?? original).trim();
+    // Limpa o rascunho assim que processado.
+    setLabelDrafts((d) => {
+      const { [id]: _, ...rest } = d;
+      return rest;
+    });
+    if (!next || next === original) return;
+    try {
+      await updateCriterion({ id, label: next });
+      toast({ title: 'Critério atualizado' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Não foi possível salvar', description: getErrorMessage(err) });
+    }
+  };
+
+  const handleToggleActive = async (id: string, active: boolean) => {
+    try {
+      await updateCriterion({ id, active });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Não foi possível salvar', description: getErrorMessage(err) });
+    }
+  };
+
+  // Troca de posição com o vizinho (setas ↑/↓).
+  const handleMove = async (index: number, dir: -1 | 1) => {
+    const a = criteria[index];
+    const b = criteria[index + dir];
+    if (!a || !b) return;
+    try {
+      await Promise.all([
+        updateCriterion({ id: a.id, position: b.position }),
+        updateCriterion({ id: b.id, position: a.position }),
+      ]);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Não foi possível reordenar', description: getErrorMessage(err) });
+    }
+  };
+
+  const handleAdd = async () => {
+    const nextPos = criteria.length > 0 ? Math.max(...criteria.map((c) => c.position)) + 1 : 0;
+    try {
+      await createCriterion({ label: 'Novo critério', position: nextPos });
+      toast({ title: 'Critério adicionado' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Não foi possível adicionar', description: getErrorMessage(err) });
+    }
+  };
+
+  const handleRemove = async (id: string, label: string) => {
+    if (!window.confirm(`Remover o critério "${label}"? Ele deixará de aparecer na pesquisa.`)) return;
+    try {
+      await removeCriterion(id);
+      toast({ title: 'Critério removido' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Não foi possível remover', description: getErrorMessage(err) });
     }
   };
 
@@ -106,7 +183,7 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
           <Label className="text-sm font-medium">Avaliação por estrelas</Label>
           <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <span className="text-sm text-muted-foreground">
-              Exigir que o cliente toque nas estrelas das três categorias.
+              Exigir que o cliente toque nas estrelas de todos os critérios.
             </span>
             <LabeledSwitch
               value={requireStars ? 'on' : 'off'}
@@ -116,6 +193,109 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
               aria-label="Exigir avaliação por estrelas"
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm font-medium">Critérios de avaliação</Label>
+            {canEdit && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8"
+                onClick={handleAdd}
+                disabled={criteriaLoading || criteriaMutating}
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Cada critério é avaliado de 1 a 5 estrelas pelo cliente na pesquisa.
+          </p>
+
+          {criteriaLoading ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Carregando critérios…
+            </div>
+          ) : criteria.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              Nenhum critério cadastrado.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {criteria.map((c, i) => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-2 rounded-lg border p-2"
+                >
+                  <Star className="h-4 w-4 shrink-0 fill-warning text-warning" />
+                  <Input
+                    value={labelOf(c.id, c.label)}
+                    onChange={(e) => setLabelDrafts((d) => ({ ...d, [c.id]: e.target.value }))}
+                    onBlur={() => handleCommitLabel(c.id, c.label)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    }}
+                    disabled={!canEdit || criteriaMutating}
+                    className="h-9 flex-1"
+                  />
+                  {canEdit ? (
+                    <>
+                      <div className="flex flex-col">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-6"
+                          onClick={() => handleMove(i, -1)}
+                          disabled={i === 0 || criteriaMutating}
+                          aria-label="Mover para cima"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-6"
+                          onClick={() => handleMove(i, 1)}
+                          disabled={i === criteria.length - 1 || criteriaMutating}
+                          aria-label="Mover para baixo"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Switch
+                        checked={c.active}
+                        onCheckedChange={(v) => handleToggleActive(c.id, v)}
+                        disabled={criteriaMutating}
+                        aria-label={c.active ? 'Critério ativo' : 'Critério inativo'}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-destructive hover:text-destructive"
+                        onClick={() => handleRemove(c.id, c.label)}
+                        disabled={criteriaMutating}
+                        aria-label="Remover critério"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    !c.active && (
+                      <span className="shrink-0 text-xs text-muted-foreground">Inativo</span>
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

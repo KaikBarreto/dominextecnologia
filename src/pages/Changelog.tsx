@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.24',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Critérios da pesquisa de satisfação agora são seus',
+        description: 'Nas Configurações de NPS você passa a montar os próprios critérios de estrela que aparecem na avaliação: pode criar novos, renomear, reordenar, ativar/desativar e remover. Os critérios de qualidade, pontualidade e profissionalismo já vêm prontos para você ajustar como quiser.',
+        category: 'recurso',
+      },
+      {
+        title: 'Avaliação do cliente mais simples e bonita',
+        description: 'Ao abrir o link de acompanhamento de uma ordem de serviço concluída, a pesquisa de satisfação agora aparece já aberta para o cliente. E a nota de 0 a 10 ganhou um visual mais amigável: uma carinha que reage conforme a nota e uma régua colorida, bem mais fácil e agradável de responder no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.23',
     date: '16 de junho de 2026',
     type: 'patch',
