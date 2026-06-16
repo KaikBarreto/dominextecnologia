@@ -8,7 +8,8 @@ import {
 } from '@/hooks/useEquipmentCatalog';
 
 /**
- * "Como configurar" um controle remoto (Fase 1 — estrutura).
+ * Detalhes técnicos de um controle remoto (modos, símbolos, reset/desbloqueio,
+ * código universal, instruções de configuração).
  * Foto em destaque + seções de texto. Só renderiza as seções preenchidas.
  */
 export function RemoteConfig({
@@ -40,7 +41,7 @@ export function RemoteConfig({
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Settings2} title="Como Configurar" subtitle={tituloTopo} onBack={onBack} />
+      <Header icon={Settings2} title="Detalhes Técnicos" subtitle={tituloTopo} onBack={onBack} />
 
       {/* Foto em destaque */}
       {temFoto ? (
@@ -78,9 +79,9 @@ export function RemoteConfig({
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {s.label}
               </p>
-              <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
-                {s.value}
-              </p>
+              <div className="mt-1.5">
+                <FormattedText text={s.value!} />
+              </div>
             </div>
           ))}
         </div>
@@ -96,6 +97,138 @@ export function RemoteConfig({
       )}
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Renderer de texto formatado (Convenção de Formatação v1)            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Renderiza o corpo de um campo de texto seguindo a Convenção v1:
+ * - Blocos separados por linha em branco (\n\n).
+ * - Linha-rótulo: linha curta (<=40 chars) terminada em ":" → sub-rótulo discreto.
+ * - Itens de lista: linhas começando com "- " → <ul> com bullet + hanging indent.
+ *   Se houver " — " (travessão), destaca o termo antes do travessão.
+ * - Parágrafos: demais linhas.
+ * Robusto: texto solto vira parágrafo(s) sem quebrar.
+ */
+function FormattedText({ text }: { text: string }) {
+  const blocks = parseBlocks(text);
+  if (blocks.length === 0) return null;
+
+  return (
+    <div className="space-y-3 text-sm leading-relaxed text-foreground/90">
+      {blocks.map((block, bi) => {
+        if (block.type === 'label') {
+          return (
+            <p
+              key={bi}
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+            >
+              {block.text}
+            </p>
+          );
+        }
+        if (block.type === 'list') {
+          return (
+            <ul key={bi} className="space-y-1.5">
+              {block.items.map((item, ii) => (
+                <li key={ii} className="flex gap-2">
+                  <span aria-hidden className="select-none text-muted-foreground">
+                    •
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    {item.term ? (
+                      <>
+                        <span className="font-medium text-foreground">{item.term}</span>
+                        <span className="text-muted-foreground"> — {item.rest}</span>
+                      </>
+                    ) : (
+                      item.rest
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        // parágrafo (pode ter múltiplas linhas dentro do bloco)
+        return (
+          <p key={bi} className="whitespace-pre-line">
+            {block.text}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+type ParsedBlock =
+  | { type: 'label'; text: string }
+  | { type: 'paragraph'; text: string }
+  | { type: 'list'; items: { term: string | null; rest: string }[] };
+
+const LABEL_RE = /^.{1,40}:$/;
+
+function parseBlocks(raw: string): ParsedBlock[] {
+  const result: ParsedBlock[] = [];
+  // Split por linha em branco (tolera espaços/CR na linha "vazia")
+  const rawBlocks = raw.replace(/\r\n/g, '\n').split(/\n[ \t]*\n/);
+
+  for (const rawBlock of rawBlocks) {
+    const lines = rawBlock.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+
+    // Bloco com uma única linha-rótulo curta terminada em ":"
+    if (lines.length === 1 && LABEL_RE.test(lines[0])) {
+      result.push({ type: 'label', text: lines[0] });
+      continue;
+    }
+
+    // Processa o bloco linha a linha, agrupando itens de lista consecutivos
+    let listBuffer: { term: string | null; rest: string }[] = [];
+    let paraBuffer: string[] = [];
+
+    const flushList = () => {
+      if (listBuffer.length > 0) {
+        result.push({ type: 'list', items: listBuffer });
+        listBuffer = [];
+      }
+    };
+    const flushPara = () => {
+      if (paraBuffer.length > 0) {
+        result.push({ type: 'paragraph', text: paraBuffer.join('\n') });
+        paraBuffer = [];
+      }
+    };
+
+    for (const line of lines) {
+      if (line.startsWith('- ')) {
+        flushPara();
+        listBuffer.push(parseListItem(line.slice(2).trim()));
+      } else if (LABEL_RE.test(line)) {
+        // rótulo no meio de um bloco também vira sub-rótulo
+        flushList();
+        flushPara();
+        result.push({ type: 'label', text: line });
+      } else {
+        flushList();
+        paraBuffer.push(line);
+      }
+    }
+    flushList();
+    flushPara();
+  }
+
+  return result;
+}
+
+function parseListItem(content: string): { term: string | null; rest: string } {
+  const idx = content.indexOf(' — ');
+  if (idx > 0) {
+    return { term: content.slice(0, idx).trim(), rest: content.slice(idx + 3).trim() };
+  }
+  return { term: null, rest: content };
 }
 
 /* ------------------------------------------------------------------ */

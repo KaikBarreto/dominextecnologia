@@ -65,7 +65,7 @@ interface AtalhoFerramenta {
 const ATALHOS: AtalhoFerramenta[] = [
   {
     id: 'equipamentos',
-    label: 'Equipamentos',
+    label: 'Catálogo de Equipamentos',
     descricao: 'Consulte modelos, capacidades e códigos de erro.',
     icon: Boxes,
     accent: 'hsl(217 91% 60%)',

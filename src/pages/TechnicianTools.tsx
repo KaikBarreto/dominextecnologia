@@ -52,7 +52,7 @@ interface ToolDef {
 
 const TOOLS: ToolDef[] = [
   { value: 'inicio', label: 'Início', icon: Home },
-  { value: 'equipamentos', label: 'Equipamentos', icon: Boxes },
+  { value: 'equipamentos', label: 'Catálogo de Equipamentos', icon: Boxes },
   { value: 'carga-termica', label: 'Carga Térmica', icon: Thermometer },
   { value: 'conversao', label: 'Conversão', icon: ArrowLeftRight },
   { value: 'calculo-capacitor', label: 'Cálculo de Capacitor', icon: Zap },

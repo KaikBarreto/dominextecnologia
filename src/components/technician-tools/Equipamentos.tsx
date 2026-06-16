@@ -68,6 +68,25 @@ function norm(s: string | null | undefined): string {
 }
 
 /**
+ * Ordena as marcas de um domínio para exibição (grid e carrossel).
+ * No domínio 'compressor' as marcas mais conhecidas vêm primeiro, na ordem de
+ * MARCAS_PRIORITARIAS_COMPRESSOR; as demais preservam a ordem que veio do hook
+ * (sort/name) como desempate. Nos outros domínios, ordem inalterada.
+ * Sort estável: itens com mesma prioridade mantêm a ordem original.
+ */
+function ordenarMarcas(brands: EquipmentBrand[], domain: EquipmentDomain): EquipmentBrand[] {
+  if (domain !== 'compressor') return brands;
+  const prioridade = (b: EquipmentBrand) => {
+    const idx = MARCAS_PRIORITARIAS_COMPRESSOR.indexOf(norm(b.name));
+    return idx === -1 ? MARCAS_PRIORITARIAS_COMPRESSOR.length : idx;
+  };
+  return brands
+    .map((b, i) => ({ b, i }))
+    .sort((a, c) => prioridade(a.b) - prioridade(c.b) || a.i - c.i)
+    .map((x) => x.b);
+}
+
+/**
  * Extrai a potência (BTUs) do nome do modelo, quando presente.
  * Ex: "Cassete 60.000 BTUs Inverter" → "60.000 BTUs". Retorna null se não achar.
  */
@@ -150,17 +169,20 @@ const DOMAIN_OPTIONS: { value: EquipmentDomain; label: string; icon: ComponentTy
   { value: 'controle_remoto', label: 'Controles Remotos', icon: RemoteGlyph },
 ];
 
+/**
+ * Título da página por domínio ativo: "Catálogo - <label do domínio>".
+ * Reusa o label de DOMAIN_OPTIONS pra não duplicar texto.
+ */
+function tituloCatalogo(domain: EquipmentDomain): string {
+  const label = DOMAIN_OPTIONS.find((o) => o.value === domain)?.label ?? 'Equipamentos';
+  return `Catálogo - ${label}`;
+}
+
 type View =
   | { kind: 'brands' }
   | { kind: 'models'; brand: EquipmentBrand }
   | { kind: 'errors'; model: EquipmentModel; initialCode?: string; brand?: EquipmentBrand }
   | { kind: 'compressor'; model: EquipmentModel; brand?: EquipmentBrand }
-  | {
-      kind: 'compressor-xref';
-      model: EquipmentModel;
-      /** Para onde o "voltar" volta (a tela de origem do cross-ref). */
-      back: View;
-    }
   | { kind: 'remote'; model: EquipmentModel; brand?: EquipmentBrand };
 
 /**
@@ -211,20 +233,6 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
   const [domain, setDomain] = useState<EquipmentDomain>('ar_condicionado');
   const [view, setView] = useState<View>({ kind: 'brands' });
 
-  // Cross-reference "Compressor típico": id do compressor a abrir + view de origem
-  // (pra onde o voltar retorna). Resolvido por hook AQUI no topo (nunca dentro do
-  // card), e a View do compressor abre quando o modelo chega.
-  const [compressorXref, setCompressorXref] = useState<{ id: string; back: View } | null>(null);
-  const { data: compressorXrefModel, isLoading: loadingXref } = useEquipmentModel(
-    compressorXref?.id,
-  );
-  useEffect(() => {
-    if (compressorXref && compressorXrefModel) {
-      setView({ kind: 'compressor-xref', model: compressorXrefModel, back: compressorXref.back });
-      setCompressorXref(null);
-    }
-  }, [compressorXref, compressorXrefModel]);
-
   // Trocar de domínio reseta a navegação interna pra lista de marcas daquele domínio.
   const onChangeDomain = (d: EquipmentDomain) => {
     setDomain(d);
@@ -247,15 +255,6 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
     );
   }
 
-  // Enquanto resolve o compressor típico (cross-ref), mostra loading.
-  if (compressorXref && loadingXref) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   // Detalhe abre direto pelo componente do domínio do modelo (a partir da lista).
   // Cada tela tem seu próprio header com voltar; o seletor de domínio some.
   if (view.kind === 'models') {
@@ -266,9 +265,6 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
         onBack={() => setView({ kind: 'brands' })}
         onSelectBrand={(b) => setView({ kind: 'models', brand: b })}
         onSelectDetail={(model) => setView({ kind: detailKind(domain), model, brand: view.brand })}
-        onAbrirCompressor={(id) =>
-          setCompressorXref({ id, back: { kind: 'models', brand: view.brand } })
-        }
       />
     );
   }
@@ -298,11 +294,6 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
     );
   }
 
-  if (view.kind === 'compressor-xref') {
-    const back = view.back;
-    return <CompressorFicha model={view.model} typical onBack={() => setView(back)} />;
-  }
-
   if (view.kind === 'remote') {
     const originBrand = view.brand;
     return (
@@ -318,13 +309,20 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
   return (
     <div className="space-y-4 pb-4">
       <DomainSelector value={domain} onChange={onChangeDomain} />
-      <BrandsList
-        domain={domain}
-        onSelectBrand={(brand) => setView({ kind: 'models', brand })}
-        onSelectModelDetail={(model) => setView({ kind: detailKind(domain), model })}
-        onSelectModelErrors={(model, initialCode) => setView({ kind: 'errors', model, initialCode })}
-        onAbrirCompressor={(id) => setCompressorXref({ id, back: { kind: 'brands' } })}
-      />
+      {domain === 'controle_remoto' ? (
+        <RemotesList
+          onSelectDetail={(model) => setView({ kind: 'remote', model })}
+        />
+      ) : (
+        <BrandsList
+          domain={domain}
+          onSelectBrand={(brand) => setView({ kind: 'models', brand })}
+          onSelectModelDetail={(model) => setView({ kind: detailKind(domain), model })}
+          onSelectModelErrors={(model, initialCode) =>
+            setView({ kind: 'errors', model, initialCode })
+          }
+        />
+      )}
     </div>
   );
 }
@@ -363,33 +361,18 @@ function BrandsList({
   onSelectBrand,
   onSelectModelDetail,
   onSelectModelErrors,
-  onAbrirCompressor,
 }: {
   domain: EquipmentDomain;
   onSelectBrand: (brand: EquipmentBrand) => void;
   /** Ação primária do card (erros / ficha / configurar, conforme o domínio). */
   onSelectModelDetail: (model: EquipmentModel) => void;
   onSelectModelErrors: (model: EquipmentModel, initialCode?: string) => void;
-  /** Abre o compressor típico (cross-ref) a partir do id mapeado no modelo. */
-  onAbrirCompressor: (compressorModelId: string) => void;
 }) {
   const { data: brands = [], isLoading } = useEquipmentBrands(domain);
 
-  // No domínio Compressores, as marcas mais conhecidas vêm primeiro (ordem do
-  // array); o resto preserva a ordenação que veio do hook (sort/name) como
-  // desempate. Nos demais domínios mantém a ordem original do hook.
-  const brandsOrdenadas = useMemo(() => {
-    if (domain !== 'compressor') return brands;
-    const prioridade = (b: EquipmentBrand) => {
-      const idx = MARCAS_PRIORITARIAS_COMPRESSOR.indexOf(norm(b.name));
-      return idx === -1 ? MARCAS_PRIORITARIAS_COMPRESSOR.length : idx;
-    };
-    // Sort estável: itens com mesma prioridade mantêm a ordem original.
-    return brands
-      .map((b, i) => ({ b, i }))
-      .sort((a, c) => prioridade(a.b) - prioridade(c.b) || a.i - c.i)
-      .map((x) => x.b);
-  }, [brands, domain]);
+  // Ordenação compartilhada com o carrossel da tela de modelos (ordenarMarcas):
+  // no domínio Compressores as marcas mais conhecidas vêm primeiro.
+  const brandsOrdenadas = useMemo(() => ordenarMarcas(brands, domain), [brands, domain]);
 
   const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand(domain);
   const { data: allErrorCodes = [], isLoading: loadingCodes } = useAllErrorCodesWithModel();
@@ -530,7 +513,7 @@ function BrandsList({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">Equipamentos</h2>
+          <h2 className="text-base font-semibold tracking-tight md:text-xl">{tituloCatalogo(domain)}</h2>
           <p className="text-sm text-muted-foreground md:text-base">
             {errorSearchEnabled
               ? 'Consulte modelos e códigos de erro.'
@@ -644,7 +627,6 @@ function BrandsList({
                       domain={domain}
                       brandName={model.brand?.name ?? 'Marca'}
                       onSelectDetail={() => onSelectModelDetail(model)}
-                      onAbrirCompressor={onAbrirCompressor}
                     />
                   ))}
                 </div>
@@ -685,7 +667,6 @@ function BrandsList({
                   domain={domain}
                   brandName={model.brand?.name ?? 'Marca'}
                   onSelectDetail={() => onSelectModelDetail(model)}
-                  onAbrirCompressor={onAbrirCompressor}
                 />
               ))}
             </div>
@@ -801,25 +782,26 @@ function ModelosList({
   onBack,
   onSelectBrand,
   onSelectDetail,
-  onAbrirCompressor,
 }: {
   brand: EquipmentBrand;
   domain: EquipmentDomain;
   onBack: () => void;
   onSelectBrand: (brand: EquipmentBrand) => void;
   onSelectDetail: (model: EquipmentModel) => void;
-  /** Abre o compressor típico (cross-ref) a partir do id mapeado no modelo. */
-  onAbrirCompressor: (compressorModelId: string) => void;
 }) {
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
+
+  // Mesma ordenação do grid de marcas (BrandsList) — no compressor, marcas
+  // conhecidas primeiro. O carrossel inteiro (ordem, índice, snap) usa essa lista.
+  const brandsOrdenadas = useMemo(() => ordenarMarcas(brands, domain), [brands, domain]);
 
   // Carrossel de marcas: a marca atual fica no centro, vizinhas espiam nas
   // laterais. Snapar/tocar numa marca diferente troca a marca ativa (onSelectBrand).
   const [api, setApi] = useState<CarouselApi>();
   const brandIndex = useMemo(
-    () => Math.max(0, brands.findIndex((b) => b.id === brand.id)),
-    [brands, brand.id],
+    () => Math.max(0, brandsOrdenadas.findIndex((b) => b.id === brand.id)),
+    [brandsOrdenadas, brand.id],
   );
   const [selectedSnap, setSelectedSnap] = useState(brandIndex);
 
@@ -829,14 +811,14 @@ function ModelosList({
     const onSelect = () => {
       const idx = api.selectedScrollSnap();
       setSelectedSnap(idx);
-      const novaMarca = brands[idx];
+      const novaMarca = brandsOrdenadas[idx];
       if (novaMarca && novaMarca.id !== brand.id) onSelectBrand(novaMarca);
     };
     api.on('select', onSelect);
     return () => {
       api.off('select', onSelect);
     };
-  }, [api, brands, brand.id, onSelectBrand]);
+  }, [api, brandsOrdenadas, brand.id, onSelectBrand]);
 
   // Quando a marca muda (re-render após onSelectBrand), centraliza o carrossel
   // na nova marca sem animação. Guard por índice evita re-disparar select.
@@ -915,18 +897,18 @@ function ModelosList({
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Boxes} title="Equipamentos" subtitle={brand.name} onBack={onBack} />
+      <Header icon={Boxes} title={tituloCatalogo(domain)} subtitle={brand.name} onBack={onBack} />
 
       {/* Carrossel de marcas: a atual no centro, vizinhas espiando nas laterais.
           Deslizar/tocar numa marca troca a marca ativa (mostra os modelos dela). */}
-      {brands.length > 1 ? (
+      {brandsOrdenadas.length > 1 ? (
         <Carousel
           opts={{ align: 'center', startIndex: brandIndex }}
           setApi={setApi}
           className="-mx-1"
         >
           <CarouselContent>
-            {brands.map((b, i) => {
+            {brandsOrdenadas.map((b, i) => {
               const ativo = i === selectedSnap;
               return (
                 <CarouselItem key={b.id} className="basis-2/3">
@@ -1060,10 +1042,215 @@ function ModelosList({
               domain={domain}
               brandName={brand.name}
               onSelectDetail={() => onSelectDetail(model)}
-              onAbrirCompressor={onAbrirCompressor}
             />
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Controles Remotos — lista global (sem etapa de marca)               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Paleta de cores SATURADAS o suficiente pra contrastar com texto branco.
+ * O badge da marca usa texto branco fixo (pedido do CEO), então todas as cores
+ * aqui são escuras/médias (nada de tons claros). A escolha é determinística por
+ * nome de marca (hash → índice), pra mesma marca cair sempre na mesma cor.
+ */
+const BRAND_BADGE_COLORS = [
+  '#0369a1', // sky-700
+  '#7c3aed', // violet-600
+  '#be123c', // rose-700
+  '#15803d', // green-700
+  '#c2410c', // orange-700
+  '#0e7490', // cyan-700
+  '#9333ea', // purple-600
+  '#1d4ed8', // blue-700
+  '#b45309', // amber-700
+  '#0f766e', // teal-700
+];
+
+/** Hash simples (djb2) do nome normalizado → índice estável na paleta. */
+function brandBadgeColor(name: string): string {
+  const s = norm(name);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) & 0xffffffff;
+  }
+  const idx = Math.abs(h) % BRAND_BADGE_COLORS.length;
+  return BRAND_BADGE_COLORS[idx];
+}
+
+/**
+ * Lista GLOBAL de controles remotos: pula a etapa de marca e mostra TODOS os
+ * controles do domínio numa lista única. Cada card traz um badge saturado com a
+ * marca (texto branco). Busca filtra por nome do controle e por marca.
+ */
+function RemotesList({
+  onSelectDetail,
+}: {
+  onSelectDetail: (model: EquipmentModel) => void;
+}) {
+  const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
+
+  const [termoRaw, setTermoRaw] = useState('');
+  const [termo, setTermo] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
+    return () => clearTimeout(id);
+  }, [termoRaw]);
+
+  const q = norm(termo);
+
+  // Filtra por nome do controle OU nome da marca; ordena por marca, depois nome.
+  const visiveis = useMemo(() => {
+    const filtrados = models.filter((m) => {
+      if (q.length === 0) return true;
+      const brandName = m.brand?.name ?? '';
+      return norm(m.name).includes(q) || norm(brandName).includes(q);
+    });
+    return [...filtrados].sort((a, b) => {
+      const ba = a.brand?.name ?? '';
+      const bb = b.brand?.name ?? '';
+      const cmp = ba.localeCompare(bb, 'pt-BR');
+      if (cmp !== 0) return cmp;
+      return a.name.localeCompare(b.name, 'pt-BR');
+    });
+  }, [models, q]);
+
+  const semResultado = !isLoading && models.length > 0 && visiveis.length === 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight md:text-xl">
+            {tituloCatalogo('controle_remoto')}
+          </h2>
+          <p className="text-sm text-muted-foreground md:text-base">
+            Consulte os controles remotos do catálogo.
+          </p>
+        </div>
+        {models.length > 0 && (
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
+            {models.length} controles
+          </span>
+        )}
+      </div>
+
+      {/* Busca global por nome do controle ou marca */}
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Buscar por marca ou controle"
+          value={termoRaw}
+          onChange={(e) => setTermoRaw(e.target.value)}
+          className="h-14 pl-10 text-lg"
+        />
+      </div>
+
+      {isLoading ? (
+        <LoadingBlock />
+      ) : models.length === 0 ? (
+        <EmptyState
+          title="Catálogo em atualização"
+          message="Os controles remotos para consulta estão sendo cadastrados. Volte em breve."
+        />
+      ) : semResultado ? (
+        <EmptyState
+          title="Nenhum controle encontrado"
+          message={`Não localizamos nada para "${termo}". Tente outra marca ou controle.`}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {visiveis.map((model) => (
+            <RemoteCard
+              key={model.id}
+              model={model}
+              brandName={model.brand?.name ?? 'Marca'}
+              onSelectDetail={() => onSelectDetail(model)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Card de um controle remoto na lista global: foto + nome + badge de marca. */
+function RemoteCard({
+  model,
+  brandName,
+  onSelectDetail,
+}: {
+  model: EquipmentModel;
+  brandName: string;
+  onSelectDetail: () => void;
+}) {
+  const temFoto = Boolean(model.image_url);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const badgeColor = brandBadgeColor(brandName);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      {/* TOPO — foto do controle (full width, object-contain) */}
+      {temFoto ? (
+        <button
+          type="button"
+          onClick={() => setViewerOpen(true)}
+          aria-label={`Ampliar foto de ${model.name}`}
+          className="flex h-44 w-full cursor-pointer items-center justify-center bg-white p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        >
+          <img
+            src={model.image_url!}
+            alt={model.name}
+            className="h-full w-full object-contain"
+            loading="lazy"
+          />
+        </button>
+      ) : (
+        <div className="flex h-44 w-full flex-col items-center justify-center gap-1 bg-white">
+          <PackageSearch className="h-12 w-12 text-neutral-300" />
+          <span className="text-xs text-neutral-400">Sem foto</span>
+        </div>
+      )}
+
+      <div className="p-4">
+        <p className="text-center text-base font-semibold leading-snug text-foreground">
+          {model.name}
+        </p>
+        {/* Badge de marca: fundo saturado + texto branco (pedido do CEO). */}
+        <div className="mt-2 flex justify-center">
+          <span
+            className="rounded-md px-2.5 py-0.5 text-xs font-semibold text-white"
+            style={{ backgroundColor: badgeColor }}
+          >
+            {brandName}
+          </span>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onSelectDetail}
+          className="mt-4 w-full"
+        >
+          <Settings2 className="h-4 w-4" />
+          Ver detalhes técnicos
+        </Button>
+      </div>
+
+      {temFoto && (
+        <ImagePreviewModal
+          src={model.image_url!}
+          alt={model.name}
+          open={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+        />
       )}
     </div>
   );
@@ -1079,7 +1266,7 @@ function detailAction(domain: EquipmentDomain): { label: string; icon: typeof Al
     case 'compressor':
       return { label: 'Ficha técnica', icon: Cpu };
     case 'controle_remoto':
-      return { label: 'Como configurar', icon: Settings2 };
+      return { label: 'Ver detalhes técnicos', icon: Settings2 };
     default:
       // ar_condicionado e linha_branca → códigos de erro.
       return { label: 'Códigos de erro', icon: AlertCircle };
@@ -1091,14 +1278,11 @@ function ModelCard({
   domain,
   brandName,
   onSelectDetail,
-  onAbrirCompressor,
 }: {
   model: EquipmentModel;
   domain: EquipmentDomain;
   brandName: string;
   onSelectDetail: () => void;
-  /** Abre o compressor típico (cross-ref) a partir do id mapeado no modelo. */
-  onAbrirCompressor: (compressorModelId: string) => void;
 }) {
   const categoria = model.category?.name ?? null;
   const btu = extrairBtu(model.name);
@@ -1112,11 +1296,6 @@ function ModelCard({
   const mostraBtu = domain === 'ar_condicionado' || domain === 'compressor';
   const mostraGas = domain === 'ar_condicionado' || domain === 'compressor';
 
-  // Cross-ref: máquinas (AC/linha branca) podem ter um compressor típico mapeado.
-  const compressorTipicoId =
-    (domain === 'ar_condicionado' || domain === 'linha_branca') && model.compressor_model_id
-      ? model.compressor_model_id
-      : null;
   // AC e Linha Branca baixam manual; Compressor baixa "Datasheet" (mesma URL).
   const segundoBotao: 'manual' | 'datasheet' | null =
     domain === 'compressor' ? 'datasheet' : domain === 'controle_remoto' ? null : 'manual';
@@ -1251,20 +1430,6 @@ function ModelCard({
               </div>
             ))}
         </div>
-
-        {/* Cross-ref: compressor TÍPICO desta capacidade (não o exato).
-            Só aparece em máquinas (AC/linha branca) com mapeamento. */}
-        {compressorTipicoId && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onAbrirCompressor(compressorTipicoId)}
-            className="mt-2 w-full"
-          >
-            <CompressorGlyph className="h-4 w-4" />
-            Compressor
-          </Button>
-        )}
       </div>
 
       {temFoto && (

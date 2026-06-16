@@ -46,15 +46,9 @@ async function baixarDatasheet(url: string, nome: string) {
 export function CompressorFicha({
   model,
   onBack,
-  typical = false,
 }: {
   model: EquipmentModel;
   onBack: () => void;
-  /**
-   * True quando aberta por cross-reference de uma máquina (AC/linha branca):
-   * deixa explícito que é o compressor TÍPICO daquela capacidade, não o exato.
-   */
-  typical?: boolean;
 }) {
   const { data: spec, isLoading } = useCompressorSpec(model.id);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -91,18 +85,12 @@ export function CompressorFicha({
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Cpu} title="Ficha Técnica" subtitle={tituloTopo} onBack={onBack} />
-
-      {/* Aviso de cross-ref: compressor típico, não o exato. */}
-      {typical && (
-        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
-          <p className="text-sm font-semibold text-foreground">Compressor típico desta capacidade</p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Referência pela faixa de capacidade (BTU). Pode não ser o compressor exato deste
-            equipamento — confirme a etiqueta antes de comprar a peça.
-          </p>
-        </div>
-      )}
+      <Header
+        icon={Cpu}
+        eyebrow="Ficha Técnica"
+        title={tituloTopo}
+        onBack={onBack}
+      />
 
       {/* Foto em destaque */}
       {temFoto ? (
@@ -201,24 +189,32 @@ export function CompressorFicha({
 function Header({
   icon: Icon,
   title,
-  subtitle,
+  eyebrow,
   onBack,
 }: {
   icon: typeof Cpu;
   title: string;
-  subtitle?: string;
+  /** Rótulo pequeno acima do título (ex: "Ficha Técnica"). */
+  eyebrow?: string;
   onBack: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-start gap-3">
       <Button variant="ghost" size="icon" className="shrink-0" onClick={onBack}>
         <ArrowLeft className="h-5 w-5" />
       </Button>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Icon className="h-6 w-6 shrink-0 text-foreground/70" />
+      <div className="flex min-w-0 flex-1 items-start gap-2">
+        <Icon className="mt-0.5 h-6 w-6 shrink-0 text-foreground/70" />
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold tracking-tight lg:text-2xl">{title}</h1>
-          {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+          {eyebrow && (
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {eyebrow}
+            </p>
+          )}
+          {/* Nome do modelo em destaque (título da página, alto contraste). */}
+          <h1 className="text-lg font-semibold leading-snug tracking-tight text-foreground lg:text-2xl">
+            {title}
+          </h1>
         </div>
       </div>
     </div>
