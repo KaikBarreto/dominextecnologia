@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { usePublicRating } from '@/hooks/useServiceRatings';
+import { usePublicRating, isAlreadyRatedError } from '@/hooks/useServiceRatings';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 
@@ -76,6 +76,12 @@ export default function ServiceRating() {
       });
       setSubmitted(true);
     } catch (err: any) {
+      // 2ª resposta concorrente: cai no estado "obrigado", não em erro.
+      if (isAlreadyRatedError(err)) {
+        toast({ title: 'Esta avaliação já foi enviada. Obrigado!' });
+        setSubmitted(true);
+        return;
+      }
       toast({ variant: 'destructive', title: 'Erro ao enviar avaliação', description: getErrorMessage(err) });
     } finally {
       setSubmitting(false);

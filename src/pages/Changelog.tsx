@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.23',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Pesquisa de satisfação no acompanhamento da OS',
+        description: 'Agora, quando uma ordem de serviço é concluída, o próprio link de acompanhamento que o cliente já tem passa a exibir uma avaliação rápida: ele dá uma nota de 0 a 10 com um toque e, se quiser, avalia qualidade, pontualidade e profissionalismo e deixa um comentário. Você define o texto da pergunta, escolhe se as estrelas são obrigatórias e decide se cada ordem de serviço gera a pesquisa ao ser finalizada — tudo nas Configurações de NPS.',
+        category: 'recurso',
+      },
+      {
+        title: 'Painel de NPS com ranking de técnicos',
+        description: 'A aba NPS e Satisfação ficou mais completa: além das notas e gráficos, você acompanha o ranking dos técnicos (com média de nota e taxa de resposta), um feed de feedbacks que dá para filtrar por promotores, neutros e detratores, e um espaço com os clientes insatisfeitos que precisam de um retorno.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.22',
     date: '16 de junho de 2026',
     type: 'patch',

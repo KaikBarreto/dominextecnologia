@@ -3701,6 +3701,36 @@ export type Database = {
         }
         Relationships: []
       }
+      nps_settings: {
+        Row: {
+          company_id: string
+          created_at: string
+          generate_on_finish: boolean
+          id: string
+          question: string
+          require_stars: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          generate_on_finish?: boolean
+          id?: string
+          question?: string
+          require_stars?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          generate_on_finish?: boolean
+          id?: string
+          question?: string
+          require_stars?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       os_config: {
         Row: {
           created_at: string
@@ -5110,6 +5140,7 @@ export type Database = {
           entry_type: string
           equipment_id: string | null
           form_template_id: string | null
+          generate_nps_survey: boolean | null
           id: string
           labor_hours: number | null
           labor_value: number | null
@@ -5162,6 +5193,7 @@ export type Database = {
           entry_type?: string
           equipment_id?: string | null
           form_template_id?: string | null
+          generate_nps_survey?: boolean | null
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
@@ -5214,6 +5246,7 @@ export type Database = {
           entry_type?: string
           equipment_id?: string | null
           form_template_id?: string | null
+          generate_nps_survey?: boolean | null
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
@@ -6389,6 +6422,33 @@ export type Database = {
           is_active: boolean
         }[]
       }
+      get_nps_open_detractors: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          comment: string | null
+          customer_name: string | null
+          nps_score: number
+          order_number: number
+          os_id: string
+          rated_at: string
+          rated_by_name: string | null
+          technician_id: string | null
+          technician_name: string | null
+        }[]
+      }
+      get_nps_technician_ranking: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          avatar_url: string | null
+          full_name: string | null
+          media_estrelas: number
+          nps_medio: number
+          os_concluidas: number
+          respostas: number
+          taxa_resposta: number
+          user_id: string
+        }[]
+      }
       get_portal_data: { Args: { p_token: string }; Returns: Json }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
@@ -6549,6 +6609,18 @@ export type Database = {
       seed_company_catalog: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      submit_public_os_rating: {
+        Args: {
+          p_comment?: string | null
+          p_name?: string | null
+          p_nps: number
+          p_os_id: string
+          p_professionalism?: number | null
+          p_punctuality?: number | null
+          p_quality?: number | null
+        }
+        Returns: Json
       }
     }
     Enums: {

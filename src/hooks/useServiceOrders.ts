@@ -27,6 +27,8 @@ export interface ServiceOrderInput {
   form_template_id?: string;
   require_tech_signature?: boolean;
   require_client_signature?: boolean;
+  /** null = herda o padrão da empresa (nps_settings.generate_on_finish). */
+  generate_nps_survey?: boolean | null;
   equipment_items?: ServiceOrderEquipmentItem[];
   assignee_user_ids?: string[];
   assignee_team_ids?: string[];

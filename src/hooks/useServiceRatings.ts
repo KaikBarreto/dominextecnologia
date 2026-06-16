@@ -15,12 +15,75 @@ export interface ServiceRating {
   rated_at: string | null;
   token: string;
   created_at: string;
+  /** Técnico responsável pela OS avaliada (resolvido via profiles.user_id). */
+  technician_id: string | null;
+  technician_name: string | null;
   service_order?: {
     id: string;
     order_number: number;
     scheduled_date: string | null;
+    technician_id: string | null;
     customer: { id: string; name: string } | null;
   };
+}
+
+// Shape do campo `rating` devolvido por get_public_os (SEM token).
+export interface PublicOsRating {
+  is_concluded: boolean;
+  already_rated: boolean;
+  rated_at: string | null;
+  nps_score: number | null;
+  quality_rating: number | null;
+  punctuality_rating: number | null;
+  professionalism_rating: number | null;
+  comment: string | null;
+  rated_by_name: string | null;
+}
+
+// Config de NPS da empresa que get_public_os devolve junto da OS pública.
+export interface PublicNpsConfig {
+  question: string;
+  require_stars: boolean;
+  generate_on_finish: boolean;
+}
+
+export interface SubmitPublicOsRatingInput {
+  nps_score: number;
+  // Estrelas são opcionais quando require_stars=false — enviar null (não 0)
+  // pras categorias que o cliente não tocou.
+  quality_rating: number | null;
+  punctuality_rating: number | null;
+  professionalism_rating: number | null;
+  comment?: string;
+  rated_by_name?: string;
+}
+
+/**
+ * Canal único de gravação de avaliação pública (anon ou autenticado).
+ * Grava via RPC SECURITY DEFINER `submit_public_os_rating` — nunca por
+ * update/insert direto em service_ratings (escrita anônima direta foi removida).
+ * Lança o erro do supabase pra quem chama tratar (check/unique/range).
+ */
+export async function submitPublicOsRating(
+  osId: string,
+  input: SubmitPublicOsRatingInput,
+  client: typeof supabase = supabase,
+) {
+  const { error } = await client.rpc('submit_public_os_rating', {
+    p_os_id: osId,
+    p_nps: input.nps_score,
+    p_quality: input.quality_rating ?? null,
+    p_punctuality: input.punctuality_rating ?? null,
+    p_professionalism: input.professionalism_rating ?? null,
+    p_comment: input.comment ?? null,
+    p_name: input.rated_by_name ?? null,
+  });
+  if (error) throw error;
+}
+
+/** True quando o erro do RPC indica "já avaliado" (unique_violation). */
+export function isAlreadyRatedError(err: any): boolean {
+  return err?.code === '23505' || /already|já avaliad|unique/i.test(err?.message || '');
 }
 
 export type NpsClassification = 'promoter' | 'passive' | 'detractor';
@@ -54,12 +117,44 @@ export function useServiceRatings() {
         .from('service_ratings')
         .select(`
           *,
-          service_order:service_orders(id, order_number, scheduled_date, customer:customers(id, name))
+          service_order:service_orders(id, order_number, scheduled_date, technician_id, customer:customers(id, name))
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as unknown as ServiceRating[];
+
+      const rows = (data ?? []) as unknown as ServiceRating[];
+
+      // technician_id da OS aponta pra auth.users (não há FK embutível pra
+      // profiles), então resolvemos os nomes num segundo passo — mesmo padrão
+      // do useServiceOrders. RLS escopa as duas leituras ao tenant.
+      const techIds = Array.from(
+        new Set(
+          rows
+            .map((r) => r.service_order?.technician_id)
+            .filter((id): id is string => !!id),
+        ),
+      );
+
+      const nameById = new Map<string, string | null>();
+      if (techIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', techIds);
+        (profiles ?? []).forEach((p: { user_id: string; full_name: string | null }) =>
+          nameById.set(p.user_id, p.full_name),
+        );
+      }
+
+      return rows.map((r) => {
+        const techId = r.service_order?.technician_id ?? null;
+        return {
+          ...r,
+          technician_id: techId,
+          technician_name: techId ? nameById.get(techId) ?? null : null,
+        };
+      });
     },
   });
 
@@ -117,23 +212,16 @@ export function usePublicRating(token: string | undefined) {
     },
   });
 
-  const submitRating = async (input: {
-    nps_score: number;
-    quality_rating: number;
-    punctuality_rating: number;
-    professionalism_rating: number;
-    comment?: string;
-    rated_by_name?: string;
-  }) => {
-    const { error } = await supabase
-      .from('service_ratings')
-      .update({
-        ...input,
-        rated_at: new Date().toISOString(),
-      })
-      .eq('token', token!);
-
-    if (error) throw error;
+  // Migrado para o canal único: grava pela RPC `submit_public_os_rating`
+  // usando o id da OS que o RPC do token já devolveu (`service_order.id`).
+  // A escrita anônima direta em service_ratings (.update().eq('token')) foi
+  // removida — essa permissão será fechada no banco.
+  const submitRating = async (input: SubmitPublicOsRatingInput) => {
+    const osId = ratingQuery.data?.service_order?.id;
+    if (!osId) {
+      throw new Error('Não foi possível identificar a ordem de serviço desta avaliação.');
+    }
+    await submitPublicOsRating(osId, input);
   };
 
   return {

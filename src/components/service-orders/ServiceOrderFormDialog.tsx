@@ -27,6 +27,9 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
+import { useNpsSettings } from '@/hooks/useNpsSettings';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { Star } from 'lucide-react';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -89,6 +92,7 @@ export function ServiceOrderFormDialog({
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { teams, teamsWithMembers } = useTeams();
+  const { settings: npsSettings } = useNpsSettings();
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
@@ -101,6 +105,9 @@ export function ServiceOrderFormDialog({
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
+  // Gerar Pesquisa de Satisfação ao finalizar? OS nova herda o padrão da empresa;
+  // OS existente reflete generate_nps_survey (null = herda o padrão).
+  const [generateNpsSurvey, setGenerateNpsSurvey] = useState(true);
   const [customerMode, setCustomerMode] = useState<'existing' | 'adhoc'>('existing');
   const [adhocName, setAdhocName] = useState('');
   const [adhocPhone, setAdhocPhone] = useState('');
@@ -285,6 +292,20 @@ export function ServiceOrderFormDialog({
     }
   }, [open, serviceOrder, computedDate, computedTime]);
 
+  // Seed do toggle "Gerar Pesquisa de Satisfação?" — separado para reagir ao
+  // carregamento assíncrono do padrão da empresa sem clobberar os demais campos.
+  // OS existente: generate_nps_survey se não-null, senão o padrão da empresa.
+  // OS nova: padrão da empresa (generate_on_finish).
+  useEffect(() => {
+    if (!open) return;
+    const existingNps = (serviceOrder as any)?.generate_nps_survey as boolean | null | undefined;
+    setGenerateNpsSurvey(
+      existingNps === null || existingNps === undefined
+        ? npsSettings.generate_on_finish
+        : existingNps,
+    );
+  }, [open, serviceOrder, npsSettings.generate_on_finish]);
+
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const handleCreateSubmit = async () => {
     const data = form.getValues();
@@ -374,6 +395,7 @@ export function ServiceOrderFormDialog({
         form_template_id: formTemplateId || null,
         require_tech_signature: requireTechSignature,
         require_client_signature: requireClientSignature,
+        generate_nps_survey: generateNpsSurvey,
         // Quando criada via "+" de coluna do kanban, defaultStatus respeita aquela coluna.
         status: defaultStatus ?? 'pendente',
         created_by: user?.id,
@@ -432,6 +454,7 @@ export function ServiceOrderFormDialog({
       form_template_id: formTemplateId,
       require_tech_signature: requireTechSignature,
       require_client_signature: requireClientSignature,
+      generate_nps_survey: generateNpsSurvey,
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
       assignee_user_ids: selectedAssigneeUserIds,
       assignee_team_ids: selectedAssigneeTeamIds,
@@ -474,6 +497,7 @@ export function ServiceOrderFormDialog({
         || (data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined)),
       assignee_user_ids: selectedAssigneeUserIds,
       equipment_items: equipItems.length > 0 ? equipItems : undefined,
+      generate_nps_survey: generateNpsSurvey,
     };
   };
 
@@ -952,6 +976,21 @@ export function ServiceOrderFormDialog({
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+
+                {/* Pesquisa de Satisfação (NPS) ao finalizar */}
+                <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
+                  <Label className="cursor-default flex items-center gap-1.5 text-sm">
+                    <Star className="h-4 w-4 text-warning" />
+                    Gerar Pesquisa de Satisfação ao finalizar?
+                  </Label>
+                  <LabeledSwitch
+                    value={generateNpsSurvey ? 'on' : 'off'}
+                    onChange={(v) => setGenerateNpsSurvey(v === 'on')}
+                    off={{ value: 'off', label: 'Não' }}
+                    on={{ value: 'on', label: 'Sim' }}
+                    aria-label="Gerar pesquisa de satisfação ao finalizar a OS"
+                  />
+                </div>
               </div>
             )}
 
@@ -1523,7 +1562,20 @@ export function ServiceOrderFormDialog({
                 )}
               </div>
 
-              {/* Signature toggles removed - use questionnaire signature questions instead */}
+              {/* Pesquisa de Satisfação (NPS) ao finalizar */}
+              <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
+                <Label className="cursor-default flex items-center gap-1.5 text-sm">
+                  <Star className="h-4 w-4 text-warning" />
+                  Gerar Pesquisa de Satisfação ao finalizar?
+                </Label>
+                <LabeledSwitch
+                  value={generateNpsSurvey ? 'on' : 'off'}
+                  onChange={(v) => setGenerateNpsSurvey(v === 'on')}
+                  off={{ value: 'off', label: 'Não' }}
+                  on={{ value: 'on', label: 'Sim' }}
+                  aria-label="Gerar pesquisa de satisfação ao finalizar a OS"
+                />
+              </div>
             </div>
           )}
 

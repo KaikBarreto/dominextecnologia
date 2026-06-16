@@ -42,6 +42,8 @@ import { DynamicFormQuestions, type FormValidationResult } from '@/components/te
 import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
+import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
+import type { PublicOsRating, PublicNpsConfig } from '@/hooks/useServiceRatings';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
@@ -82,6 +84,10 @@ export default function TechnicianOS() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any }) | null>(null);
+  const [rating, setRating] = useState<PublicOsRating | null>(null);
+  // Config de NPS + flag de habilitação vindas de get_public_os (modo cliente).
+  const [surveyEnabled, setSurveyEnabled] = useState(false);
+  const [npsConfig, setNpsConfig] = useState<PublicNpsConfig | null>(null);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
@@ -308,6 +314,15 @@ export default function TechnicianOS() {
 
       // technician profile (full_name, avatar_url)
       setTechnicianProfile(payload.technician || null);
+
+      // rating (NPS/estrelas) — shape SEM token; usado no bloco "carona" de
+      // avaliação que aparece no modo cliente quando a OS está concluída.
+      setRating((payload.rating as PublicOsRating | null) || null);
+
+      // survey_enabled + nps_config (pergunta/estrelas) — controlam o bloco de
+      // avaliação no modo cliente. get_public_os sempre devolve defaults.
+      setSurveyEnabled(payload.survey_enabled === true);
+      setNpsConfig((payload.nps_config as PublicNpsConfig | null) || null);
 
       // company white-label — só na carga inicial (o reset interno causaria
       // flicker do logo a cada poll; o branding não muda durante a OS).
@@ -717,7 +732,13 @@ export default function TechnicianOS() {
             </Badge>
           </div>
         </div>
-        <div className="max-w-2xl mx-auto p-3 sm:p-4">
+        <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-4">
+          {/* Carona da avaliação: só no modo cliente, OS concluída e com a
+              pesquisa habilitada pela empresa (survey_enabled). Ainda sem
+              avaliação → formulário; já avaliada → aviso enxuto de sucesso. */}
+          {forceReadOnly && id && rating && rating.is_concluded && surveyEnabled && (
+            <OSRatingSurvey osId={id} rating={rating} npsConfig={npsConfig} />
+          )}
           <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} />
         </div>
       </div>
@@ -1826,7 +1847,7 @@ export default function TechnicianOS() {
             </Button>
           </div>
           <div className="flex-1 overflow-auto p-3 sm:p-4">
-            <TechnicianTools hideBack />
+            <TechnicianTools />
           </div>
         </div>
       )}
