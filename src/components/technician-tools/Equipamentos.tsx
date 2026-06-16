@@ -36,6 +36,7 @@ import {
 } from '@/hooks/useEquipmentCatalog';
 import { CompressorFicha } from './CompressorFicha';
 import { RemoteConfig } from './RemoteConfig';
+import { CatalogImage } from './CatalogImage';
 import {
   registrarModeloRecente,
   isModeloFavorito,
@@ -713,11 +714,11 @@ function BrandsList({
               )}
             >
               {brand.logo_url ? (
-                <img
+                <CatalogImage
                   src={brand.logo_url}
                   alt={brand.name}
-                  className="max-h-12 max-w-[85%] object-contain"
-                  loading="lazy"
+                  containerClassName="flex h-12 w-28 items-center justify-center"
+                  className="max-h-full max-w-full object-contain"
                 />
               ) : (
                 // Cor escura fixa (não text-foreground) pra ficar legível sobre o
@@ -947,11 +948,11 @@ function ModelosList({
                     )}
                   >
                     {b.logo_url ? (
-                      <img
+                      <CatalogImage
                         src={b.logo_url}
                         alt={b.name}
-                        className="max-h-16 max-w-[80%] object-contain"
-                        loading="lazy"
+                        containerClassName="flex h-16 w-32 items-center justify-center"
+                        className="max-h-full max-w-full object-contain"
                       />
                     ) : (
                       <span className="text-3xl font-semibold text-neutral-800">{b.name}</span>
@@ -966,10 +967,11 @@ function ModelosList({
         /* Marca única: card estático (carrossel não faz sentido). */
         <div className="flex items-center justify-center rounded-2xl border border-border bg-white p-6">
           {brand.logo_url ? (
-            <img
+            <CatalogImage
               src={brand.logo_url}
               alt={brand.name}
-              className="max-h-16 max-w-[60%] object-contain"
+              containerClassName="flex h-16 w-32 items-center justify-center"
+              className="max-h-full max-w-full object-contain"
             />
           ) : (
             <span className="text-3xl font-semibold text-neutral-800">{brand.name}</span>
@@ -1228,11 +1230,11 @@ function RemoteCard({
           aria-label={`Ampliar foto de ${model.name}`}
           className="flex h-44 w-full cursor-pointer items-center justify-center bg-white p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
-          <img
+          <CatalogImage
             src={model.image_url!}
             alt={model.name}
+            containerClassName="h-full w-full"
             className="h-full w-full object-contain"
-            loading="lazy"
           />
         </button>
       ) : (
@@ -1360,11 +1362,11 @@ function ModelCard({
           aria-label={`Ampliar foto de ${model.name}`}
           className="flex h-44 w-full cursor-pointer items-center justify-center bg-white p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
-          <img
+          <CatalogImage
             src={model.image_url!}
             alt={model.name}
+            containerClassName="h-full w-full"
             className="h-full w-full object-contain"
-            loading="lazy"
           />
         </button>
       ) : (

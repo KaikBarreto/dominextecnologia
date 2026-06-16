@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.28',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Catálogo de Equipamentos com carregamento de fotos mais suave',
+        description: 'As fotos de marcas e equipamentos do Catálogo de Equipamentos agora carregam com mais elegância: enquanto a imagem chega, aparece um indicador discreto no lugar dela, e a foto surge com uma transição suave em vez de pular de repente na tela. Uma experiência mais agradável, principalmente em conexões mais lentas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.27',
     date: '16 de junho de 2026',
     type: 'patch',

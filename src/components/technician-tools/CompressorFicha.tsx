@@ -3,6 +3,7 @@ import { ArrowLeft, Cpu, Download, Loader2, PackageSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { CatalogImage } from './CatalogImage';
 import { getRefrigerante } from '@/lib/refrigerantes';
 import { idealForeground } from '@/lib/colorContrast';
 import {
@@ -100,11 +101,11 @@ export function CompressorFicha({
           aria-label={`Ampliar foto de ${model.name}`}
           className="flex h-48 w-full cursor-pointer items-center justify-center rounded-2xl border border-border bg-white p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <img
+          <CatalogImage
             src={model.image_url!}
             alt={model.name}
+            containerClassName="h-full w-full"
             className="h-full w-full object-contain"
-            loading="lazy"
           />
         </button>
       ) : (
