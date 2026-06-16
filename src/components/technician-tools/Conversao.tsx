@@ -122,24 +122,6 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
         <p className="text-sm text-muted-foreground md:text-base">Converta entre unidades de medida.</p>
       </div>
 
-      {/* Atalhos de conversões comuns */}
-      <div className="flex flex-wrap gap-2">
-        {ATALHOS_RAPIDOS.map((a) => (
-          <button
-            key={a.label}
-            type="button"
-            onClick={() => aplicarAtalho(a)}
-            className={cn(
-              'rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all',
-              'hover:border-primary/40 hover:text-foreground active:scale-[0.97]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            {a.label}
-          </button>
-        ))}
-      </div>
-
       {/* Seleção de categoria — chips compactos que quebram linha (flex-wrap) */}
       <div className="flex flex-wrap gap-2">
         {ORDEM.map((cat) => {
@@ -168,7 +150,13 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
         })}
       </div>
 
-      <ConversaoCategoriaView key={viewKey} categoria={categoria} inicial={parInicial} />
+      <ConversaoCategoriaView
+        key={viewKey}
+        categoria={categoria}
+        inicial={parInicial}
+        atalhos={ATALHOS_RAPIDOS}
+        onAtalho={aplicarAtalho}
+      />
     </div>
   );
 }
@@ -176,23 +164,39 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
 function ConversaoCategoriaView({
   categoria,
   inicial,
+  atalhos,
+  onAtalho,
 }: {
   categoria: ConversaoCategoria;
   inicial?: ConversaoInicial;
+  atalhos: AtalhoConversao[];
+  onAtalho: (a: AtalhoConversao) => void;
 }) {
   // Categoria de REFERÊNCIA (não-numérica) — view própria, sem conversor.
+  // O Retrofit não tem card de/para, então NÃO recebe os atalhos.
   if (categoria === 'retrofit') {
     return <RetrofitView />;
   }
-  return <ConversaoNumericaView categoria={categoria} inicial={inicial} />;
+  return (
+    <ConversaoNumericaView
+      categoria={categoria}
+      inicial={inicial}
+      atalhos={atalhos}
+      onAtalho={onAtalho}
+    />
+  );
 }
 
 function ConversaoNumericaView({
   categoria,
   inicial,
+  atalhos,
+  onAtalho,
 }: {
   categoria: ConversaoCategoriaNumerica;
   inicial?: ConversaoInicial;
+  atalhos: AtalhoConversao[];
+  onAtalho: (a: AtalhoConversao) => void;
 }) {
   const { unidades } = CONVERSAO_CATEGORIAS[categoria];
 
@@ -484,6 +488,27 @@ function ConversaoNumericaView({
           }}
           className="h-20 text-3xl text-left"
         />
+      </div>
+
+      {/* Mais usadas — atalhos globais (cross-categoria) no rodapé do card */}
+      <div className="mt-4 border-t border-border pt-3">
+        <p className="mb-2 text-[11px] font-medium text-muted-foreground">Mais usadas</p>
+        <div className="flex flex-wrap gap-2">
+          {atalhos.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              onClick={() => onAtalho(a)}
+              className={cn(
+                'rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all',
+                'hover:border-primary/40 hover:text-foreground active:scale-[0.97]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              )}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
 
