@@ -140,8 +140,8 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
         ))}
       </div>
 
-      {/* Seleção de categoria — cards compactos em grid */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      {/* Seleção de categoria — chips compactos que quebram linha (flex-wrap) */}
+      <div className="flex flex-wrap gap-2">
         {ORDEM.map((cat) => {
           const Icon = CATEGORIA_ICONES[cat];
           const isActive = categoria === cat;
@@ -150,19 +150,19 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
               key={cat}
               type="button"
               onClick={() => escolherCategoria(cat)}
+              aria-pressed={isActive}
+              aria-current={isActive ? 'true' : undefined}
               style={isActive ? { backgroundColor: CATEGORIA_ACCENT[cat] } : undefined}
               className={cn(
-                'flex flex-col items-center justify-center gap-1.5 rounded-lg border p-3 text-center transition-colors md:gap-2.5 md:p-5',
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors active:scale-[0.97]',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
-                  ? 'border-transparent text-white'
-                  : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                  ? 'border-transparent text-white shadow-sm'
+                  : 'border-border bg-muted/40 text-muted-foreground hover:text-foreground',
               )}
             >
-              <Icon className="h-5 w-5 shrink-0 md:h-7 md:w-7" />
-              <span className="text-xs font-medium leading-tight md:text-base">
-                {CATEGORIA_LABEL[cat]}
-              </span>
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="leading-none">{CATEGORIA_LABEL[cat]}</span>
             </button>
           );
         })}
