@@ -1491,8 +1491,8 @@ function CodigosErro({
     <div className="space-y-6 pb-8">
       <Header
         icon={AlertCircle}
-        title="Código de Erro"
-        subtitle={tituloTopo}
+        eyebrow="Códigos de erro"
+        title={tituloTopo}
         onBack={onBack}
         action={
           <button
@@ -1603,6 +1603,7 @@ function Header({
   icon: Icon,
   title,
   subtitle,
+  eyebrow,
   onBack,
   backDesktopOnly,
   action,
@@ -1610,13 +1611,19 @@ function Header({
   icon: typeof Boxes;
   title: string;
   subtitle?: string;
+  /**
+   * Rótulo pequeno acima do título (ex: "Códigos de erro"). Quando presente, o
+   * `title` vira o destaque (nome do modelo em alto contraste), igual à ficha do
+   * compressor. Ignora `subtitle` nesse modo.
+   */
+  eyebrow?: string;
   onBack: () => void;
   backDesktopOnly?: boolean;
   /** Ação opcional alinhada à direita (ex: favoritar). */
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn('flex gap-3', eyebrow ? 'items-start' : 'items-center')}>
       <Button
         variant="ghost"
         size="icon"
@@ -1625,11 +1632,25 @@ function Header({
       >
         <ArrowLeft className="h-5 w-5" />
       </Button>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Icon className="h-6 w-6 text-foreground/70 shrink-0" />
+      <div className={cn('flex min-w-0 flex-1 gap-2', eyebrow ? 'items-start' : 'items-center')}>
+        <Icon className={cn('h-6 w-6 text-foreground/70 shrink-0', eyebrow && 'mt-0.5')} />
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-tight truncate lg:text-2xl">{title}</h1>
-          {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+          {eyebrow ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {eyebrow}
+              </p>
+              {/* Nome do modelo em destaque (título da página, alto contraste). */}
+              <h1 className="text-lg font-semibold leading-snug tracking-tight text-foreground lg:text-2xl">
+                {title}
+              </h1>
+            </>
+          ) : (
+            <>
+              <h1 className="text-lg font-semibold tracking-tight truncate lg:text-2xl">{title}</h1>
+              {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+            </>
+          )}
         </div>
       </div>
       {action}

@@ -1,5 +1,17 @@
 import { useState } from 'react';
-import { ArrowLeft, Loader2, PackageSearch, Settings2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Info,
+  KeyRound,
+  ListChecks,
+  Loader2,
+  LockOpen,
+  PackageSearch,
+  RotateCcw,
+  Settings2,
+  SlidersHorizontal,
+  type LucideIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import {
@@ -26,14 +38,14 @@ export function RemoteConfig({
   const tituloTopo = brandName ? `${model.name} - ${brandName}` : model.name;
   const temFoto = Boolean(model.image_url);
 
-  const sections: { label: string; value: string | null }[] = config
+  const sections: { label: string; value: string | null; icon: LucideIcon }[] = config
     ? [
-        { label: 'Como configurar', value: config.instrucoes },
-        { label: 'Código universal', value: config.codigo_universal },
-        { label: 'Reset', value: config.reset },
-        { label: 'Desbloqueio', value: config.desbloqueio },
-        { label: 'Modos', value: config.modos },
-        { label: 'Observações', value: config.observacoes },
+        { label: 'Como configurar', value: config.instrucoes, icon: ListChecks },
+        { label: 'Código universal', value: config.codigo_universal, icon: KeyRound },
+        { label: 'Reset', value: config.reset, icon: RotateCcw },
+        { label: 'Desbloqueio', value: config.desbloqueio, icon: LockOpen },
+        { label: 'Modos', value: config.modos, icon: SlidersHorizontal },
+        { label: 'Observações', value: config.observacoes, icon: Info },
       ]
     : [];
   const visibleSections = sections.filter((s) => s.value && s.value.trim().length > 0);
@@ -41,7 +53,7 @@ export function RemoteConfig({
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Settings2} title="Detalhes Técnicos" subtitle={tituloTopo} onBack={onBack} />
+      <Header icon={Settings2} eyebrow="Detalhes Técnicos" title={tituloTopo} onBack={onBack} />
 
       {/* Foto em destaque */}
       {temFoto ? (
@@ -74,16 +86,22 @@ export function RemoteConfig({
         />
       ) : (
         <div className="space-y-3">
-          {visibleSections.map((s) => (
-            <div key={s.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {s.label}
-              </p>
-              <div className="mt-1.5">
-                <FormattedText text={s.value!} />
+          {visibleSections.map((s) => {
+            const SectionIcon = s.icon;
+            return (
+              <div key={s.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <SectionIcon className="h-5 w-5 shrink-0 text-primary" />
+                  <h2 className="min-w-0 flex-1 text-base font-bold text-foreground lg:text-lg">
+                    {s.label}
+                  </h2>
+                </div>
+                <div className="mt-2">
+                  <FormattedText text={s.value!} />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -238,24 +256,32 @@ function parseListItem(content: string): { term: string | null; rest: string } {
 function Header({
   icon: Icon,
   title,
-  subtitle,
+  eyebrow,
   onBack,
 }: {
   icon: typeof Settings2;
   title: string;
-  subtitle?: string;
+  /** Rótulo pequeno acima do título (ex: "Detalhes Técnicos"). */
+  eyebrow?: string;
   onBack: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-start gap-3">
       <Button variant="ghost" size="icon" className="shrink-0" onClick={onBack}>
         <ArrowLeft className="h-5 w-5" />
       </Button>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Icon className="h-6 w-6 shrink-0 text-foreground/70" />
+      <div className="flex min-w-0 flex-1 items-start gap-2">
+        <Icon className="mt-0.5 h-6 w-6 shrink-0 text-foreground/70" />
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold tracking-tight lg:text-2xl">{title}</h1>
-          {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+          {eyebrow && (
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {eyebrow}
+            </p>
+          )}
+          {/* Nome do controle em destaque (título da página, alto contraste). */}
+          <h1 className="text-lg font-semibold leading-snug tracking-tight text-foreground lg:text-2xl">
+            {title}
+          </h1>
         </div>
       </div>
     </div>

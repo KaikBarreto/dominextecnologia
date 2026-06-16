@@ -12,9 +12,6 @@ import {
   RefreshCcw,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import { Inicio } from '@/components/technician-tools/Inicio';
@@ -62,18 +59,13 @@ const TOOLS: ToolDef[] = [
   { value: 'ciclo-refrigeracao', label: 'Ciclo de Refrigeração', icon: RefreshCcw },
 ];
 
-interface TechnicianToolsProps {
-  /** Esconde o botão de voltar do header (ex: dentro do overlay da OS, que já tem o próprio "Voltar para OS"). */
-  hideBack?: boolean;
-}
-
 /**
  * "Ferramentas do Técnico" — utilidades de campo 100% client-side / offline.
  * Navegação por abas (estado interno, sem sub-rotas): sidebar vertical no
  * desktop, pills roláveis no mobile. Aba default = Início.
+ * É item-pai do menu (igual Operacional/Gestão), por isso o header não tem voltar.
  */
-export default function TechnicianTools({ hideBack }: TechnicianToolsProps) {
-  const navigate = useNavigate();
+export default function TechnicianTools() {
   const [activeTab, setActiveTab] = useState<ToolTab>('inicio');
   // Alvo pendente de deep-link, consumido pela aba destino na 1ª montagem.
   const [pending, setPending] = useState<ToolNavPayload | null>(null);
@@ -99,19 +91,10 @@ export default function TechnicianTools({ hideBack }: TechnicianToolsProps) {
 
   return (
     <div className="space-y-6 lg:space-y-6">
-      {/* Header */}
+      {/* Header — hub raiz das Ferramentas (item-pai do menu), sem botão de voltar:
+          não há tela "anterior" pra onde retornar. As sub-telas do catálogo têm
+          o próprio voltar interno. */}
       <div className="flex items-center gap-2">
-        {!hideBack && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0 hidden lg:flex"
-            onClick={() => navigate(-1)}
-            aria-label="Voltar"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        )}
         <Wrench className="h-6 w-6 text-foreground/70 shrink-0 lg:h-7 lg:w-7" />
         <h1 className="text-lg font-semibold tracking-tight lg:text-2xl">Ferramentas do Técnico</h1>
       </div>
