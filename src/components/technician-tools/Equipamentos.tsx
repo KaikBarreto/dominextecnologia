@@ -51,6 +51,14 @@ import {
 import { getRefrigerante } from '@/lib/refrigerantes';
 import { idealForeground } from '@/lib/colorContrast';
 
+/**
+ * Marcas mais conhecidas de COMPRESSORES, em ordem de prioridade.
+ * No domínio 'compressor' essas marcas aparecem primeiro na lista (nesta ordem);
+ * as demais seguem a ordenação padrão do catálogo (sort/name) como desempate.
+ * Comparação por nome normalizado (minúsculo, sem acento).
+ */
+const MARCAS_PRIORITARIAS_COMPRESSOR = ['gree', 'embraco', 'lg', 'samsung'];
+
 /** Normaliza texto pra busca: minúsculo + sem acento. */
 function norm(s: string | null | undefined): string {
   return (s ?? '')
@@ -147,6 +155,12 @@ type View =
   | { kind: 'models'; brand: EquipmentBrand }
   | { kind: 'errors'; model: EquipmentModel; initialCode?: string; brand?: EquipmentBrand }
   | { kind: 'compressor'; model: EquipmentModel; brand?: EquipmentBrand }
+  | {
+      kind: 'compressor-xref';
+      model: EquipmentModel;
+      /** Para onde o "voltar" volta (a tela de origem do cross-ref). */
+      back: View;
+    }
   | { kind: 'remote'; model: EquipmentModel; brand?: EquipmentBrand };
 
 /**
@@ -197,6 +211,20 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
   const [domain, setDomain] = useState<EquipmentDomain>('ar_condicionado');
   const [view, setView] = useState<View>({ kind: 'brands' });
 
+  // Cross-reference "Compressor típico": id do compressor a abrir + view de origem
+  // (pra onde o voltar retorna). Resolvido por hook AQUI no topo (nunca dentro do
+  // card), e a View do compressor abre quando o modelo chega.
+  const [compressorXref, setCompressorXref] = useState<{ id: string; back: View } | null>(null);
+  const { data: compressorXrefModel, isLoading: loadingXref } = useEquipmentModel(
+    compressorXref?.id,
+  );
+  useEffect(() => {
+    if (compressorXref && compressorXrefModel) {
+      setView({ kind: 'compressor-xref', model: compressorXrefModel, back: compressorXref.back });
+      setCompressorXref(null);
+    }
+  }, [compressorXref, compressorXrefModel]);
+
   // Trocar de domínio reseta a navegação interna pra lista de marcas daquele domínio.
   const onChangeDomain = (d: EquipmentDomain) => {
     setDomain(d);
@@ -219,6 +247,15 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
     );
   }
 
+  // Enquanto resolve o compressor típico (cross-ref), mostra loading.
+  if (compressorXref && loadingXref) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   // Detalhe abre direto pelo componente do domínio do modelo (a partir da lista).
   // Cada tela tem seu próprio header com voltar; o seletor de domínio some.
   if (view.kind === 'models') {
@@ -229,6 +266,9 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
         onBack={() => setView({ kind: 'brands' })}
         onSelectBrand={(b) => setView({ kind: 'models', brand: b })}
         onSelectDetail={(model) => setView({ kind: detailKind(domain), model, brand: view.brand })}
+        onAbrirCompressor={(id) =>
+          setCompressorXref({ id, back: { kind: 'models', brand: view.brand } })
+        }
       />
     );
   }
@@ -258,6 +298,11 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
     );
   }
 
+  if (view.kind === 'compressor-xref') {
+    const back = view.back;
+    return <CompressorFicha model={view.model} typical onBack={() => setView(back)} />;
+  }
+
   if (view.kind === 'remote') {
     const originBrand = view.brand;
     return (
@@ -278,6 +323,7 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
         onSelectBrand={(brand) => setView({ kind: 'models', brand })}
         onSelectModelDetail={(model) => setView({ kind: detailKind(domain), model })}
         onSelectModelErrors={(model, initialCode) => setView({ kind: 'errors', model, initialCode })}
+        onAbrirCompressor={(id) => setCompressorXref({ id, back: { kind: 'brands' } })}
       />
     </div>
   );
@@ -317,14 +363,34 @@ function BrandsList({
   onSelectBrand,
   onSelectModelDetail,
   onSelectModelErrors,
+  onAbrirCompressor,
 }: {
   domain: EquipmentDomain;
   onSelectBrand: (brand: EquipmentBrand) => void;
   /** Ação primária do card (erros / ficha / configurar, conforme o domínio). */
   onSelectModelDetail: (model: EquipmentModel) => void;
   onSelectModelErrors: (model: EquipmentModel, initialCode?: string) => void;
+  /** Abre o compressor típico (cross-ref) a partir do id mapeado no modelo. */
+  onAbrirCompressor: (compressorModelId: string) => void;
 }) {
   const { data: brands = [], isLoading } = useEquipmentBrands(domain);
+
+  // No domínio Compressores, as marcas mais conhecidas vêm primeiro (ordem do
+  // array); o resto preserva a ordenação que veio do hook (sort/name) como
+  // desempate. Nos demais domínios mantém a ordem original do hook.
+  const brandsOrdenadas = useMemo(() => {
+    if (domain !== 'compressor') return brands;
+    const prioridade = (b: EquipmentBrand) => {
+      const idx = MARCAS_PRIORITARIAS_COMPRESSOR.indexOf(norm(b.name));
+      return idx === -1 ? MARCAS_PRIORITARIAS_COMPRESSOR.length : idx;
+    };
+    // Sort estável: itens com mesma prioridade mantêm a ordem original.
+    return brands
+      .map((b, i) => ({ b, i }))
+      .sort((a, c) => prioridade(a.b) - prioridade(c.b) || a.i - c.i)
+      .map((x) => x.b);
+  }, [brands, domain]);
+
   const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand(domain);
   const { data: allErrorCodes = [], isLoading: loadingCodes } = useAllErrorCodesWithModel();
 
@@ -578,6 +644,7 @@ function BrandsList({
                       domain={domain}
                       brandName={model.brand?.name ?? 'Marca'}
                       onSelectDetail={() => onSelectModelDetail(model)}
+                      onAbrirCompressor={onAbrirCompressor}
                     />
                   ))}
                 </div>
@@ -618,6 +685,7 @@ function BrandsList({
                   domain={domain}
                   brandName={model.brand?.name ?? 'Marca'}
                   onSelectDetail={() => onSelectModelDetail(model)}
+                  onAbrirCompressor={onAbrirCompressor}
                 />
               ))}
             </div>
@@ -632,7 +700,7 @@ function BrandsList({
         />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          {brands.map((brand) => (
+          {brandsOrdenadas.map((brand) => (
             <button
               key={brand.id}
               type="button"
@@ -733,12 +801,15 @@ function ModelosList({
   onBack,
   onSelectBrand,
   onSelectDetail,
+  onAbrirCompressor,
 }: {
   brand: EquipmentBrand;
   domain: EquipmentDomain;
   onBack: () => void;
   onSelectBrand: (brand: EquipmentBrand) => void;
   onSelectDetail: (model: EquipmentModel) => void;
+  /** Abre o compressor típico (cross-ref) a partir do id mapeado no modelo. */
+  onAbrirCompressor: (compressorModelId: string) => void;
 }) {
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
@@ -989,6 +1060,7 @@ function ModelosList({
               domain={domain}
               brandName={brand.name}
               onSelectDetail={() => onSelectDetail(model)}
+              onAbrirCompressor={onAbrirCompressor}
             />
           ))}
         </div>
@@ -1019,11 +1091,14 @@ function ModelCard({
   domain,
   brandName,
   onSelectDetail,
+  onAbrirCompressor,
 }: {
   model: EquipmentModel;
   domain: EquipmentDomain;
   brandName: string;
   onSelectDetail: () => void;
+  /** Abre o compressor típico (cross-ref) a partir do id mapeado no modelo. */
+  onAbrirCompressor: (compressorModelId: string) => void;
 }) {
   const categoria = model.category?.name ?? null;
   const btu = extrairBtu(model.name);
@@ -1032,8 +1107,16 @@ function ModelCard({
   const temFoto = Boolean(model.image_url);
 
   // Quais badges/segundo botão o domínio mostra.
-  const mostraBtu = domain === 'ar_condicionado';
+  // BTU: AC sempre; compressor só quando o nome traz BTU (herméticos não têm — sem
+  // placeholder, o `&& btu` já cuida disso).
+  const mostraBtu = domain === 'ar_condicionado' || domain === 'compressor';
   const mostraGas = domain === 'ar_condicionado' || domain === 'compressor';
+
+  // Cross-ref: máquinas (AC/linha branca) podem ter um compressor típico mapeado.
+  const compressorTipicoId =
+    (domain === 'ar_condicionado' || domain === 'linha_branca') && model.compressor_model_id
+      ? model.compressor_model_id
+      : null;
   // AC e Linha Branca baixam manual; Compressor baixa "Datasheet" (mesma URL).
   const segundoBotao: 'manual' | 'datasheet' | null =
     domain === 'compressor' ? 'datasheet' : domain === 'controle_remoto' ? null : 'manual';
@@ -1168,6 +1251,20 @@ function ModelCard({
               </div>
             ))}
         </div>
+
+        {/* Cross-ref: compressor TÍPICO desta capacidade (não o exato).
+            Só aparece em máquinas (AC/linha branca) com mapeamento. */}
+        {compressorTipicoId && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAbrirCompressor(compressorTipicoId)}
+            className="mt-2 w-full"
+          >
+            <CompressorGlyph className="h-4 w-4" />
+            Compressor
+          </Button>
+        )}
       </div>
 
       {temFoto && (

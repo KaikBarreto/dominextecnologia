@@ -46,6 +46,12 @@ export interface EquipmentModel {
   refrigerant: string | null;
   /** Domínio do catálogo a que o modelo pertence. */
   domain: string;
+  /**
+   * FK self-ref para o compressor TÍPICO desta máquina (AC/linha branca),
+   * ligado por capacidade/BTU. É referência, não o compressor exato. Null quando
+   * não mapeado.
+   */
+  compressor_model_id?: string | null;
   created_at: string;
   /** Hidratado nas queries que fazem join com a marca. */
   brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
@@ -127,7 +133,7 @@ export function useEquipmentModelsByBrand(
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, compressor_model_id, created_at, category:equipment_model_categories(id, name)',
         )
         .eq('brand_id', brandId as string)
         .eq('domain', domain)
@@ -147,7 +153,7 @@ export function useEquipmentModel(modelId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('id', modelId as string)
         .maybeSingle();
@@ -193,7 +199,7 @@ export function useAllModelsWithBrand(domain: string = 'ar_condicionado') {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('domain', domain)
         .order('name', { ascending: true });

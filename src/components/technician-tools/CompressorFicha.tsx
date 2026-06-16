@@ -46,9 +46,15 @@ async function baixarDatasheet(url: string, nome: string) {
 export function CompressorFicha({
   model,
   onBack,
+  typical = false,
 }: {
   model: EquipmentModel;
   onBack: () => void;
+  /**
+   * True quando aberta por cross-reference de uma máquina (AC/linha branca):
+   * deixa explícito que é o compressor TÍPICO daquela capacidade, não o exato.
+   */
+  typical?: boolean;
 }) {
   const { data: spec, isLoading } = useCompressorSpec(model.id);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -86,6 +92,17 @@ export function CompressorFicha({
   return (
     <div className="space-y-6 pb-8">
       <Header icon={Cpu} title="Ficha Técnica" subtitle={tituloTopo} onBack={onBack} />
+
+      {/* Aviso de cross-ref: compressor típico, não o exato. */}
+      {typical && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm font-semibold text-foreground">Compressor típico desta capacidade</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            Referência pela faixa de capacidade (BTU). Pode não ser o compressor exato deste
+            equipamento — confirme a etiqueta antes de comprar a peça.
+          </p>
+        </div>
+      )}
 
       {/* Foto em destaque */}
       {temFoto ? (
