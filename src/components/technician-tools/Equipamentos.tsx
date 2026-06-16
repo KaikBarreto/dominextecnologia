@@ -1584,11 +1584,10 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
               </span>
             </div>
           )}
-          {mesEhEstimativa && (
-            <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
-              Estimativa em potência nominal; inverter consome menos.
-            </p>
-          )}
+          <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
+            Estimativa com base em dados públicos da internet.
+            {mesEhEstimativa && ' Calculada pela potência nominal; inverter consome menos.'}
+          </p>
         </div>
       )}
     </div>
