@@ -995,12 +995,12 @@ export type Database = {
           equivalencias: string | null
           frequencia: string | null
           hp: string | null
-          lra: number | null
+          lra: string | null
           model_id: string
           observacoes: string | null
           oleo: string | null
           rele_protetor: string | null
-          rla: number | null
+          rla: string | null
           tensao: string | null
         }
         Insert: {
@@ -1014,12 +1014,12 @@ export type Database = {
           equivalencias?: string | null
           frequencia?: string | null
           hp?: string | null
-          lra?: number | null
+          lra?: string | null
           model_id: string
           observacoes?: string | null
           oleo?: string | null
           rele_protetor?: string | null
-          rla?: number | null
+          rla?: string | null
           tensao?: string | null
         }
         Update: {
@@ -1033,12 +1033,12 @@ export type Database = {
           equivalencias?: string | null
           frequencia?: string | null
           hp?: string | null
-          lra?: number | null
+          lra?: string | null
           model_id?: string
           observacoes?: string | null
           oleo?: string | null
           rele_protetor?: string | null
-          rla?: number | null
+          rla?: string | null
           tensao?: string | null
         }
         Relationships: [
