@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.32',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Consumo de energia mais coerente e que responde ao uso',
+        description: 'No Catálogo de Equipamentos, o consumo por hora e por mês agora andam sempre juntos e respondem às horas de uso por dia: ao mudar a tarifa ou as horas no botão Ajustar de um equipamento, todos os equipamentos abertos recalculam na hora. As logos das marcas também ficaram padronizadas, com tamanho uniforme.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.31',
     date: '16 de junho de 2026',
     type: 'patch',

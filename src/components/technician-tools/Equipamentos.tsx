@@ -805,8 +805,11 @@ function BrandsList({
                 <CatalogImage
                   src={brand.logo_url}
                   alt={brand.name}
-                  containerClassName="flex h-12 w-28 items-center justify-center"
-                  className="max-h-full max-w-full object-contain"
+                  // Caixa de tamanho UNIFORME pra todas as logos da grade ficarem
+                  // visualmente parecidas (mesma altura/largura máxima), maiores que
+                  // antes. object-contain mantém a proporção sem distorcer.
+                  containerClassName="flex h-16 w-full items-center justify-center"
+                  className="max-h-14 max-w-[72%] object-contain"
                 />
               ) : (
                 // Cor escura fixa (não text-foreground) pra ficar legível sobre o
@@ -1054,8 +1057,10 @@ function ModelosList({
                       <CatalogImage
                         src={b.logo_url}
                         alt={b.name}
-                        containerClassName="flex h-16 w-32 items-center justify-center"
-                        className="max-h-full max-w-full object-contain"
+                        // Mesmo padrão uniforme da grade de marcas (BrandsList):
+                        // logos visualmente parecidas em tamanho, sem distorcer.
+                        containerClassName="flex h-16 w-full items-center justify-center"
+                        className="max-h-14 max-w-[72%] object-contain"
                       />
                     ) : (
                       <span className="text-3xl font-semibold text-neutral-800">{b.name}</span>
@@ -1073,8 +1078,8 @@ function ModelosList({
             <CatalogImage
               src={brand.logo_url}
               alt={brand.name}
-              containerClassName="flex h-16 w-32 items-center justify-center"
-              className="max-h-full max-w-full object-contain"
+              containerClassName="flex h-16 w-full items-center justify-center"
+              className="max-h-14 max-w-[72%] object-contain"
             />
           ) : (
             <span className="text-3xl font-semibold text-neutral-800">{brand.name}</span>
@@ -1410,6 +1415,8 @@ function RemoteCard({
  */
 const ENERGIA_CONFIG_KEY = 'catalogo-energia-config';
 const ENERGIA_DEFAULTS = { tarifa: 0.9, horasDia: 8 } as const;
+/** Evento disparado no window quando a config de energia muda (sync entre cards). */
+const ENERGIA_CONFIG_EVENT = 'energia-config-change';
 
 interface EnergiaConfig {
   /** R$ por kWh. */
@@ -1443,14 +1450,36 @@ function salvarEnergiaConfig(cfg: EnergiaConfig): void {
   } catch {
     /* localStorage cheio/indisponível — silencioso, é só conveniência. */
   }
+  // Avisa os outros cards montados pra recalcularem na hora (sem reabrir a tela).
+  try {
+    window.dispatchEvent(new CustomEvent(ENERGIA_CONFIG_EVENT));
+  } catch {
+    /* ambiente sem window — ignora. */
+  }
 }
 
-/** Hook simples de config de energia (estado + persistência otimista). */
+/**
+ * Hook de config de energia REATIVO e COMPARTILHADO entre todos os cards montados.
+ * Ao aplicar tarifa/horas em qualquer card, dispara `energia-config-change` no
+ * window; os demais cards ouvem esse evento (e o `storage` cross-tab) e re-leem o
+ * localStorage, refletindo a mudança imediatamente. Defaults decididos aqui.
+ */
 function useEnergiaConfig(): [EnergiaConfig, (next: EnergiaConfig) => void] {
   const [cfg, setCfg] = useState<EnergiaConfig>(() => lerEnergiaConfig());
+
+  useEffect(() => {
+    const reler = () => setCfg(lerEnergiaConfig());
+    window.addEventListener(ENERGIA_CONFIG_EVENT, reler);
+    window.addEventListener('storage', reler);
+    return () => {
+      window.removeEventListener(ENERGIA_CONFIG_EVENT, reler);
+      window.removeEventListener('storage', reler);
+    };
+  }, []);
+
   const update = (next: EnergiaConfig) => {
     setCfg(next);
-    salvarEnergiaConfig(next);
+    salvarEnergiaConfig(next); // dispara o evento → demais cards re-leem
   };
   return [cfg, update];
 }
@@ -1468,11 +1497,17 @@ function kwh(v: number): string {
 /**
  * Bloco "Consumo de energia" do card de detalhe (só AC e linha branca).
  *
- * - Por hora: precisa de `potencia_w` → kWh/h = W/1000; gasto/h = kWh/h × tarifa.
- * - Por mês: usa `consumo_kwh_mes` oficial quando existe (rótulo neutro); senão
- *   estima por potência (W/1000 × horas/dia × 30) com aviso de cautela; gasto/mês
- *   = kWh/mês × tarifa.
+ * Hora e mês são SEMPRE coerentes entre si: mês = hora × horasDia × 30.
+ *
+ * - Com `consumo_kwh_mes` OFICIAL: ele é a verdade do mês. A hora vira o consumo
+ *   MÉDIO por hora de uso → kWh/h = mês ÷ (horasDia × 30). Rótulo do mês sem
+ *   "(estimado)" (é oficial), mas a nota de estimativa continua. Mexer nas horas
+ *   muda a hora exibida (faz sentido: mesma energia mensal espalhada por mais/menos horas).
+ * - Sem oficial, com `potencia_w`: kWh/h = W/1000 (potência nominal) e
+ *   mês = hora × horasDia × 30 (estimado). Rótulo "(estimado · X h/dia)".
  * - Sem nenhum dado → "Consumo não informado". Nunca inventa número.
+ *
+ * gasto/h = kWh/h × tarifa; gasto/mês = kWh/mês × tarifa.
  */
 function ConsumoEnergia({ model }: { model: EquipmentModel }) {
   const [cfg, setCfg] = useEnergiaConfig();
@@ -1486,13 +1521,24 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
 
   const temDado = potencia != null || oficialMes != null;
 
-  const kwhHora = potencia != null ? potencia / 1000 : null;
-  const gastoHora = kwhHora != null ? kwhHora * cfg.tarifa : null;
+  // Horas mensais de uso (base da relação hora ↔ mês). Sempre > 0 (config validada).
+  const horasMes = cfg.horasDia * 30;
 
-  // Mês: oficial tem prioridade; senão estima por potência.
-  const mesEstimado = potencia != null ? (potencia / 1000) * cfg.horasDia * 30 : null;
-  const kwhMes = oficialMes != null ? oficialMes : mesEstimado;
-  const mesEhEstimativa = oficialMes == null && mesEstimado != null;
+  // Consumo por hora de OPERAÇÃO = base fixa do equipamento; o mês escala com as
+  // horas/dia (mês = hora × horasDia × 30) — as horas SEMPRE mexem no mês.
+  // - Oficial (Procel): ancorado ao consumo mensal em ENERGIA_DEFAULTS.horasDia (8h/dia);
+  //   por-hora = oficial ÷ (8 × 30). A 8h/dia o mês bate o oficial; a 12h, ×1,5; a 24h, ×3.
+  // - Sem oficial: por-hora = potência nominal (W/1000); inverter consome menos que isso.
+  let kwhHora: number | null = null;
+  if (oficialMes != null) {
+    kwhHora = oficialMes / (ENERGIA_DEFAULTS.horasDia * 30);
+  } else if (potencia != null) {
+    kwhHora = potencia / 1000;
+  }
+  const kwhMes = kwhHora != null ? kwhHora * horasMes : null;
+  const baseEhPotencia = oficialMes == null && kwhMes != null;
+
+  const gastoHora = kwhHora != null ? kwhHora * cfg.tarifa : null;
   const gastoMes = kwhMes != null ? kwhMes * cfg.tarifa : null;
 
   function commitConfig() {
@@ -1575,8 +1621,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0 text-muted-foreground">
                 Por mês
-                {mesEhEstimativa &&
-                  ` (estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia)`}
+                {` (estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia)`}
               </span>
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhMes)}
@@ -1588,7 +1633,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           )}
           <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
             Estimativa com base em dados públicos da internet.
-            {mesEhEstimativa && ' Calculada pela potência nominal; inverter consome menos.'}
+            {baseEhPotencia && ' Calculada pela potência nominal; consulte o manual.'}
           </p>
         </div>
       )}

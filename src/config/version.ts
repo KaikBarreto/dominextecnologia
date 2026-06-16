@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.31";
+export const APP_VERSION = "1.12.32";
 
-export const VERSION_NOTES = "O Catálogo de Equipamentos ganhou filtro por gás refrigerante na seção de ar-condicionado, e a aba Retrofit de Gás (na Conversão) ficou mais fácil de usar: agora você escolhe o gás atual numa chave e vê só as opções de troca dele, em cartões mais limpos.";
+export const VERSION_NOTES = "O consumo de energia no Catálogo ficou mais coerente: o valor por hora e por mês andam juntos e respondem às horas de uso por dia — ao ajustar a tarifa ou as horas em um equipamento, todos os outros recalculam na hora. As logos das marcas também foram padronizadas.";
