@@ -341,20 +341,32 @@ export function OSRatingSurvey({
       onOpenChange={onOpenChange}
       title="Como foi seu atendimento?"
       footer={
-        <Button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="h-12 w-full text-base"
-          size="lg"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
-            </>
-          ) : (
-            'Enviar avaliação'
-          )}
-        </Button>
+        <div className="flex w-full gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+            className="h-12 text-base"
+            size="lg"
+          >
+            Fechar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="h-12 flex-1 text-base"
+            size="lg"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
+              </>
+            ) : (
+              'Enviar avaliação'
+            )}
+          </Button>
+        </div>
       }
     >
       <div className="space-y-6">
