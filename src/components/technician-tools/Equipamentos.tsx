@@ -1644,7 +1644,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
         <div className="mt-2 space-y-1.5 text-sm">
           {kwhHora != null && (
             <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 text-muted-foreground">Por hora</span>
+              <span className="min-w-0 font-medium text-foreground">Por hora</span>
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhHora)}/h
                 {gastoHora != null && (
@@ -1655,9 +1655,9 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           )}
           {kwhMes != null && (
             <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 text-muted-foreground">
+              <span className="min-w-0 font-medium text-foreground">
                 Por mês
-                <span className="block text-[11px] leading-tight text-muted-foreground/80">
+                <span className="block text-[11px] font-normal leading-tight text-muted-foreground">
                   {continuo
                     ? '24 h/dia'
                     : `estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia`}
