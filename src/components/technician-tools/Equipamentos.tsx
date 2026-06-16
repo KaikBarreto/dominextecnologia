@@ -27,6 +27,7 @@ import {
   useEquipmentModel,
   useEquipmentModelsByBrand,
   useEquipmentErrorCodes,
+  useModelIdsWithErrorCodes,
   useAllModelsWithBrand,
   useAllErrorCodesWithModel,
   type EquipmentBrand,
@@ -376,6 +377,9 @@ function BrandsList({
 
   const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand(domain);
   const { data: allErrorCodes = [], isLoading: loadingCodes } = useAllErrorCodesWithModel();
+  // IDs com código de erro — usado só na linha branca pra esconder a ação
+  // "Códigos de erro" em modelos sem códigos.
+  const { data: modelIdsWithCodes } = useModelIdsWithErrorCodes(domain);
 
   // A busca por código de erro só faz sentido nos domínios que têm códigos
   // (AC e linha branca). Nos demais, só busca de marca/equipamento.
@@ -626,6 +630,7 @@ function BrandsList({
                       model={model}
                       domain={domain}
                       brandName={model.brand?.name ?? 'Marca'}
+                      hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
                       onSelectDetail={() => onSelectModelDetail(model)}
                     />
                   ))}
@@ -666,6 +671,7 @@ function BrandsList({
                   model={model}
                   domain={domain}
                   brandName={model.brand?.name ?? 'Marca'}
+                  hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
                   onSelectDetail={() => onSelectModelDetail(model)}
                 />
               ))}
@@ -791,6 +797,9 @@ function ModelosList({
 }) {
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
+  // IDs com código de erro — usado só na linha branca pra esconder a ação
+  // "Códigos de erro" em modelos sem códigos.
+  const { data: modelIdsWithCodes } = useModelIdsWithErrorCodes(domain);
 
   // Mesma ordenação do grid de marcas (BrandsList) — no compressor, marcas
   // conhecidas primeiro. O carrossel inteiro (ordem, índice, snap) usa essa lista.
@@ -1041,6 +1050,7 @@ function ModelosList({
               model={model}
               domain={domain}
               brandName={brand.name}
+              hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
               onSelectDetail={() => onSelectDetail(model)}
             />
           ))}
@@ -1278,11 +1288,18 @@ function ModelCard({
   domain,
   brandName,
   onSelectDetail,
+  hasErrorCodes,
 }: {
   model: EquipmentModel;
   domain: EquipmentDomain;
   brandName: string;
   onSelectDetail: () => void;
+  /**
+   * Se este modelo tem ≥1 código de erro cadastrado. Só consultado no domínio
+   * 'linha_branca': geladeira/lavadora sem códigos não mostra a ação "Códigos de
+   * erro" (abriria uma tela vazia). Nos outros domínios é ignorado.
+   */
+  hasErrorCodes?: boolean;
 }) {
   const categoria = model.category?.name ?? null;
   const btu = extrairBtu(model.name);
@@ -1299,6 +1316,11 @@ function ModelCard({
   // AC e Linha Branca baixam manual; Compressor baixa "Datasheet" (mesma URL).
   const segundoBotao: 'manual' | 'datasheet' | null =
     domain === 'compressor' ? 'datasheet' : domain === 'controle_remoto' ? null : 'manual';
+
+  // Ação primária "Códigos de erro": na linha branca, só quando o modelo tem
+  // códigos cadastrados (geladeira/lavadora sem códigos não vira beco sem saída).
+  // Demais domínios mantêm o comportamento atual (ação sempre presente).
+  const mostraDetalhe = domain === 'linha_branca' ? hasErrorCodes === true : true;
 
   const detalhe = detailAction(domain);
   const DetalheIcon = detalhe.icon;
@@ -1379,12 +1401,19 @@ function ModelCard({
         )}
 
         {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark).
-            Controle remoto tem só 1 ação (ocupa a largura cheia). */}
-        <div className={cn('mt-4 grid gap-2', segundoBotao ? 'grid-cols-2' : 'grid-cols-1')}>
-          <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
-            <DetalheIcon className="h-4 w-4" />
-            {detalhe.label}
-          </Button>
+            Controle remoto e linha branca sem códigos têm só 1 ação (largura cheia). */}
+        <div
+          className={cn(
+            'mt-4 grid gap-2',
+            mostraDetalhe && segundoBotao ? 'grid-cols-2' : 'grid-cols-1',
+          )}
+        >
+          {mostraDetalhe && (
+            <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
+              <DetalheIcon className="h-4 w-4" />
+              {detalhe.label}
+            </Button>
+          )}
 
           {segundoBotao === 'manual' &&
             (temManual ? (

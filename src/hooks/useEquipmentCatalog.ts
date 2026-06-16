@@ -309,6 +309,40 @@ export function useRemoteConfig(modelId: string | null | undefined) {
   });
 }
 
+/**
+ * Conjunto de IDs de modelos (de um domínio) que têm ≥1 código de erro.
+ * Usado pelos cards pra decidir se mostram a ação "Códigos de erro": nem todo
+ * modelo de linha branca tem códigos cadastrados (geladeira simples, tanquinho),
+ * e abrir uma tela vazia seria um beco sem saída.
+ *
+ * Faz 2 queries enxutas (só ids): modelos do domínio + códigos cujo model_id
+ * cai nesse conjunto. Catálogo é pequeno; sem paginação.
+ */
+export function useModelIdsWithErrorCodes(domain: string = 'ar_condicionado') {
+  return useQuery({
+    queryKey: ['equipment-catalog', 'model-ids-with-codes', domain],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data: modelRows, error: modelErr } = await supabase
+        .from('equipment_models')
+        .select('id')
+        .eq('domain', domain);
+      if (modelErr) throw modelErr;
+
+      const modelIds = (modelRows ?? []).map((r) => r.id);
+      if (modelIds.length === 0) return new Set<string>();
+
+      const { data: codeRows, error: codeErr } = await supabase
+        .from('equipment_error_codes')
+        .select('model_id')
+        .in('model_id', modelIds);
+      if (codeErr) throw codeErr;
+
+      return new Set<string>((codeRows ?? []).map((r) => r.model_id));
+    },
+  });
+}
+
 /** Todos os códigos de erro de um modelo (o filtro por code é client-side). */
 export function useEquipmentErrorCodes(modelId: string | null | undefined) {
   return useQuery({
