@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -1532,7 +1533,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
   const [cfg, setCfg] = useEnergiaConfig();
   const [open, setOpen] = useState(false);
   const [tarifaStr, setTarifaStr] = useState(() => String(cfg.tarifa).replace('.', ','));
-  const [horasStr, setHorasStr] = useState(() => String(cfg.horasDia).replace('.', ','));
+  const [horasNum, setHorasNum] = useState<number>(() => cfg.horasDia);
 
   // Defensivo: selects de busca por código não trazem as colunas → tratar como ausente.
   const potencia = typeof model.potencia_w === 'number' ? model.potencia_w : null;
@@ -1570,10 +1571,10 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
 
   function commitConfig() {
     const t = Number(tarifaStr.replace(',', '.'));
-    const h = Number(horasStr.replace(',', '.'));
+    const h = horasNum;
     setCfg({
       tarifa: Number.isFinite(t) && t > 0 ? t : ENERGIA_DEFAULTS.tarifa,
-      horasDia: Number.isFinite(h) && h > 0 && h <= 24 ? h : ENERGIA_DEFAULTS.horasDia,
+      horasDia: Number.isFinite(h) && h >= 0 && h <= 24 ? h : ENERGIA_DEFAULTS.horasDia,
     });
     setOpen(false);
   }
@@ -1591,7 +1592,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
             // Ao abrir, sincroniza os inputs com o estado atual.
             if (o) {
               setTarifaStr(String(cfg.tarifa).replace('.', ','));
-              setHorasStr(String(cfg.horasDia).replace('.', ','));
+              setHorasNum(cfg.horasDia);
             }
             setOpen(o);
           }}
@@ -1613,13 +1614,21 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
                 placeholder="0,90"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Horas de uso por dia</label>
-              <Input
-                inputMode="decimal"
-                value={horasStr}
-                onChange={(e) => setHorasStr(e.target.value)}
-                placeholder="8"
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-muted-foreground">Horas de uso por dia</label>
+                <span className="text-sm font-semibold tabular-nums text-foreground">
+                  {horasNum} h
+                </span>
+              </div>
+              <Slider
+                min={0}
+                max={24}
+                step={1}
+                value={[horasNum]}
+                onValueChange={(v) => setHorasNum(v[0])}
+                className="py-1.5"
+                aria-label="Horas de uso por dia"
               />
             </div>
             <Button size="sm" className="w-full" onClick={commitConfig}>
