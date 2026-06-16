@@ -9,8 +9,6 @@ import {
   RefreshCcw,
   BookOpen,
   ChevronRight,
-  Star,
-  Package,
   Search,
   Ruler,
 } from 'lucide-react';
@@ -27,12 +25,6 @@ import { cn } from '@/lib/utils';
 import { GLOSSARIO } from '@/lib/glossario';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { GLOSSARIO_ELETRICA } from '@/lib/glossarioEletrica';
-import { CONVERSAO_CATEGORIAS } from '@/lib/conversoes';
-import {
-  useToolHistory,
-  type ConversaoRecente,
-  type ModeloRecente,
-} from '@/lib/technicianToolsHistory';
 import type { ToolNavPayload } from '@/pages/TechnicianTools';
 
 /** Ids das abas — devem bater com os de TechnicianTools.tsx. */
@@ -45,13 +37,6 @@ export type ToolNavId =
   | 'superaquecimento'
   | 'regua-gases'
   | 'ciclo-refrigeracao';
-
-/** Rótulo de unidade (label PT-BR curto) a partir do code, dentro da categoria. */
-function rotuloUnidade(item: ConversaoRecente): { de: string; para: string } {
-  const unidades = CONVERSAO_CATEGORIAS[item.categoria]?.unidades ?? [];
-  const lbl = (code: string) => unidades.find((u) => u.code === code)?.label ?? code;
-  return { de: lbl(item.de), para: lbl(item.para) };
-}
 
 interface AtalhoFerramenta {
   id: ToolNavId;
@@ -174,8 +159,6 @@ function semAcento(s: string): string {
 }
 
 export function Inicio({ onNavigate }: InicioProps) {
-  const { favoritosModelos, favoritosConversao } = useToolHistory();
-
   const [buscaGlossario, setBuscaGlossario] = useState('');
   const secoesFiltradas = useMemo(() => {
     const q = semAcento(buscaGlossario);
@@ -187,17 +170,6 @@ export function Inicio({ onNavigate }: InicioProps) {
     })).filter((s) => s.termos.length > 0);
   }, [buscaGlossario]);
   const semResultado = secoesFiltradas.length === 0;
-
-  const irParaConversao = (item: ConversaoRecente) =>
-    onNavigate('conversao', {
-      tab: 'conversao',
-      inicial: { categoria: item.categoria, de: item.de, para: item.para },
-    });
-
-  const irParaModelo = (item: ModeloRecente) =>
-    onNavigate('equipamentos', { tab: 'equipamentos', modeloInicialId: item.modelId });
-
-  const temFavoritos = favoritosModelos.length > 0 || favoritosConversao.length > 0;
 
   return (
     <div className="space-y-8">
@@ -259,28 +231,6 @@ export function Inicio({ onNavigate }: InicioProps) {
           ))}
         </div>
       </section>
-
-      {/* Favoritos (antes de Recentes; oculto se vazio) */}
-      {temFavoritos && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Star className="h-5 w-5 shrink-0 text-warning" />
-            <h2 className="text-base font-semibold md:text-xl">Favoritos</h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {favoritosModelos.map((m) => (
-              <ModeloChip key={m.modelId} item={m} onClick={() => irParaModelo(m)} />
-            ))}
-            {favoritosConversao.map((c) => (
-              <ConversaoChip
-                key={`${c.categoria}:${c.de}:${c.para}`}
-                item={c}
-                onClick={() => irParaConversao(c)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Termos Técnicos Explicados */}
       <section className="space-y-3">
@@ -352,45 +302,5 @@ export function Inicio({ onNavigate }: InicioProps) {
         )}
       </section>
     </div>
-  );
-}
-
-/** Chip de um par de conversão (recente ou favorito). */
-function ConversaoChip({ item, onClick }: { item: ConversaoRecente; onClick: () => void }) {
-  const { de, para } = rotuloUnidade(item);
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium transition-all',
-        'hover:border-primary/40 hover:bg-muted active:scale-[0.97]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-      )}
-    >
-      <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <span className="text-foreground">{de}</span>
-      <span className="text-muted-foreground">→</span>
-      <span className="text-foreground">{para}</span>
-    </button>
-  );
-}
-
-/** Chip de um modelo de equipamento (recente ou favorito). */
-function ModeloChip({ item, onClick }: { item: ModeloRecente; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium transition-all',
-        'hover:border-primary/40 hover:bg-muted active:scale-[0.97]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-      )}
-    >
-      <Package className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate text-muted-foreground">{item.brandName}</span>
-      <span className="truncate text-foreground">{item.modelName}</span>
-    </button>
   );
 }

@@ -510,6 +510,34 @@ function ConversaoNumericaView({
           ))}
         </div>
       </div>
+
+      {/* Favoritas — conversões marcadas com estrela, globais (cross-categoria) */}
+      {favoritosConversao.length > 0 && (
+        <div className="mt-4 border-t border-border pt-3">
+          <p className="mb-2 text-[11px] font-medium text-muted-foreground">Favoritas</p>
+          <div className="flex flex-wrap gap-2">
+            {favoritosConversao.map((fav) => {
+              const label = `${fav.de} → ${fav.para}`;
+              return (
+                <button
+                  key={`${fav.categoria}-${fav.de}-${fav.para}`}
+                  type="button"
+                  onClick={() =>
+                    onAtalho({ label, categoria: fav.categoria, de: fav.de, para: fav.para })
+                  }
+                  className={cn(
+                    'rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all',
+                    'hover:border-primary/40 hover:text-foreground active:scale-[0.97]',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
 
       {mostrarAvisoHpBtu && (
