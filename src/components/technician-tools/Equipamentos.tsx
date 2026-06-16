@@ -53,6 +53,7 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel';
 import { getRefrigerante } from '@/lib/refrigerantes';
+import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
 
 /**
@@ -1604,11 +1605,14 @@ function ModelCard({
               (() => {
                 const cor = getRefrigerante(model.refrigerant)?.cor ?? '#6b7280';
                 return (
-                  <span
-                    className="rounded-md px-2 py-0.5 text-xs font-semibold"
-                    style={{ backgroundColor: cor, color: idealForeground(cor) }}
-                  >
-                    {model.refrigerant}
+                  <span className="inline-flex items-center gap-1">
+                    <span
+                      className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                      style={{ backgroundColor: cor, color: idealForeground(cor) }}
+                    >
+                      {model.refrigerant}
+                    </span>
+                    <RefrigeranteInflamavel refrigId={model.refrigerant} />
                   </span>
                 );
               })()}

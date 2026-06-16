@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.30',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso de gás inflamável nas Ferramentas do Técnico',
+        description: 'Em todas as telas que mostram o gás refrigerante (Régua de Gases, Superaquecimento, Catálogo de Equipamentos, ficha de compressor e Retrofit de Gás), os gases inflamáveis passam a exibir um ícone de fogo ao lado do nome: vermelho para os altamente inflamáveis (como o R-290) e âmbar para os levemente inflamáveis (como o R-32). Toque no ícone para ver o aviso. Os gases não inflamáveis continuam sem marcação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.29',
     date: '16 de junho de 2026',
     type: 'patch',

@@ -558,9 +558,16 @@ function RetrofitView() {
                     <BolinhaGas cor={op.cor} />
                     <span className="text-sm font-semibold text-foreground">{op.gasNovo}</span>
                     {op.inflamavel && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
-                        <Flame className="h-3 w-3" />
-                        Inflamável
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          op.inflamavel === 'alta'
+                            ? 'bg-red-500/10 text-red-500'
+                            : 'bg-amber-500/10 text-amber-500',
+                        )}
+                      >
+                        <Flame className="h-3 w-3" strokeWidth={2.5} />
+                        {op.inflamavel === 'alta' ? 'Inflamável (A3)' : 'Inflamável (A2L)'}
                       </span>
                     )}
                   </div>

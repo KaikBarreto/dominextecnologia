@@ -23,12 +23,29 @@ export interface PontoSaturacao {
   psi: number;
 }
 
+/**
+ * Classe de segurança ASHRAE 34 quanto à INFLAMABILIDADE (só o eixo de chama).
+ * - 'A1'  = não inflamável (sem ícone na UI).
+ * - 'A2L' = levemente inflamável → fogo ÂMBAR na UI.
+ * - 'A3'  = altamente inflamável → fogo VERMELHO na UI.
+ * (A2 puro não existe no catálogo atual; entra como 'leve' se vier no futuro.)
+ */
+export type ClasseInflamabilidade = 'A1' | 'A2L' | 'A3';
+
+/** Nível de inflamabilidade derivado da classe ASHRAE, para a UI. */
+export type NivelInflamabilidade = 'nao' | 'leve' | 'alta';
+
 /** Definição de um refrigerante: nome de exibição + curva(s). */
 export interface Refrigerante {
   id: string;
   nome: string;
   /** Cor de referência do cilindro (hex), só visual. */
   cor: string;
+  /**
+   * Classe de inflamabilidade ASHRAE 34. Fonte única para o ícone de chama
+   * exibido ao lado do gás (vermelho A3 / âmbar A2L / nada para A1).
+   */
+  inflamabilidade: ClasseInflamabilidade;
   /** true se tem glide (duas curvas bubble/dew). */
   temGlide: boolean;
   /** Curva única (refrigerantes sem glide). */
@@ -209,20 +226,37 @@ const R404A_DEW: PontoSaturacao[] = [
 
 /** Catálogo de refrigerantes suportados (ordem de exibição). */
 export const REFRIGERANTES: Refrigerante[] = [
-  { id: 'R-410A', nome: 'R-410A', cor: '#EC6FAA', temGlide: false, unica: R410A },
-  { id: 'R-22', nome: 'R-22', cor: '#7AC74F', temGlide: false, unica: R22 },
-  { id: 'R-32', nome: 'R-32', cor: '#EF4444', temGlide: false, unica: R32 },
-  { id: 'R-134a', nome: 'R-134a', cor: '#56B4E9', temGlide: false, unica: R134A },
-  { id: 'R-290', nome: 'R-290 (Propano)', cor: '#EF4444', temGlide: false, unica: R290 },
+  { id: 'R-410A', nome: 'R-410A', cor: '#EC6FAA', inflamabilidade: 'A1', temGlide: false, unica: R410A },
+  { id: 'R-22', nome: 'R-22', cor: '#7AC74F', inflamabilidade: 'A1', temGlide: false, unica: R22 },
+  { id: 'R-32', nome: 'R-32', cor: '#EF4444', inflamabilidade: 'A2L', temGlide: false, unica: R32 },
+  { id: 'R-134a', nome: 'R-134a', cor: '#56B4E9', inflamabilidade: 'A1', temGlide: false, unica: R134A },
+  { id: 'R-290', nome: 'R-290 (Propano)', cor: '#EF4444', inflamabilidade: 'A3', temGlide: false, unica: R290 },
   {
     id: 'R-404A',
     nome: 'R-404A',
     cor: '#F97316',
+    inflamabilidade: 'A1',
     temGlide: true,
     bubble: R404A_BUBBLE,
     dew: R404A_DEW,
   },
 ];
+
+/** Mapeia a classe ASHRAE para o nível de inflamabilidade usado na UI. */
+export function nivelInflamabilidade(classe: ClasseInflamabilidade): NivelInflamabilidade {
+  if (classe === 'A3') return 'alta';
+  if (classe === 'A2L') return 'leve';
+  return 'nao';
+}
+
+/** Inflamabilidade (nível + classe) de um refrigerante pelo id; default não inflamável. */
+export function getInflamabilidade(
+  refrigId: string,
+): { nivel: NivelInflamabilidade; classe: ClasseInflamabilidade } {
+  const refrig = getRefrigerante(refrigId);
+  const classe = refrig?.inflamabilidade ?? 'A1';
+  return { nivel: nivelInflamabilidade(classe), classe };
+}
 
 /** Faixas-alvo de referência (°C). */
 export const FAIXA_SH = { min: 4, max: 8 } as const; // típico TXV

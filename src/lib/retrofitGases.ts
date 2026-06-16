@@ -21,6 +21,13 @@
 /** Natureza da substituição — separa retrofit real de "equipamento novo". */
 export type TipoSubstituicao = 'drop-in' | 'equipamento-novo';
 
+/**
+ * Nível de inflamabilidade do gás substituto (espelha a régua de refrigerantes).
+ * - 'leve' = levemente inflamável (ASHRAE A2L, ex.: R-32) → fogo âmbar.
+ * - 'alta' = altamente inflamável (ASHRAE A3, ex.: R-290) → fogo vermelho.
+ */
+export type NivelInflamavelRetrofit = 'leve' | 'alta';
+
 /** Uma opção de substituição para um gás de saída. */
 export interface OpcaoRetrofit {
   /** id do gás novo no catálogo de REFRIGERANTES (quando existir), p/ cor. */
@@ -39,8 +46,11 @@ export interface OpcaoRetrofit {
   pressao: string;
   /** Cuidados de campo — bullets curtos, PT-BR. */
   cuidados: string[];
-  /** true se o gás é inflamável (A3) — destaque vermelho na UI. */
-  inflamavel?: boolean;
+  /**
+   * Nível de inflamabilidade do gás novo, quando aplicável (gera o ícone de
+   * chama: âmbar p/ 'leve' A2L, vermelho p/ 'alta' A3). Ausente = não inflamável.
+   */
+  inflamavel?: NivelInflamavelRetrofit;
 }
 
 /** Um gás de saída e suas opções de substituição. */
@@ -133,7 +143,7 @@ export const RETROFIT_GASES: GasSaida[] = [
           'Levemente inflamável (A2L) — seguir norma e limite de carga do fabricante.',
           'Carregar pela fase líquida.',
         ],
-        inflamavel: true,
+        inflamavel: 'leve',
       },
       {
         refrigeranteId: 'R-290',
@@ -149,7 +159,7 @@ export const RETROFIT_GASES: GasSaida[] = [
           'Só em equipamento projetado e certificado para propano.',
           'Cuidado com fontes de ignição na intervenção.',
         ],
-        inflamavel: true,
+        inflamavel: 'alta',
       },
     ],
   },
@@ -215,7 +225,7 @@ export const RETROFIT_GASES: GasSaida[] = [
           'Só em equipamento projetado e certificado para propano.',
           'Cuidado com fontes de ignição na intervenção.',
         ],
-        inflamavel: true,
+        inflamavel: 'alta',
       },
     ],
   },

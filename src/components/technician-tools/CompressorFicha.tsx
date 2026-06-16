@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { CatalogImage } from './CatalogImage';
 import { getRefrigerante } from '@/lib/refrigerantes';
+import { RefrigeranteInflamavel } from './RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
 import {
   useCompressorSpec,
@@ -132,11 +133,14 @@ export function CompressorFicha({
                 {(() => {
                   const cor = getRefrigerante(gas)?.cor ?? '#6b7280';
                   return (
-                    <span
-                      className="rounded-md px-2 py-0.5 text-xs font-semibold"
-                      style={{ backgroundColor: cor, color: idealForeground(cor) }}
-                    >
-                      {gas}
+                    <span className="inline-flex items-center gap-1">
+                      <span
+                        className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                        style={{ backgroundColor: cor, color: idealForeground(cor) }}
+                      >
+                        {gas}
+                      </span>
+                      <RefrigeranteInflamavel refrigId={gas} />
                     </span>
                   );
                 })()}

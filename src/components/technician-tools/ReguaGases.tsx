@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
 import { cn } from '@/lib/utils';
 import {
   REFRIGERANTES,
@@ -261,7 +262,8 @@ function ReguaUnificada({
                       className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/25"
                       style={{ backgroundColor: r.cor }}
                     />
-                    {r.nome}
+                    <span className="min-w-0 truncate">{r.nome}</span>
+                    <RefrigeranteInflamavel refrigId={r.id} />
                   </span>
                 </SelectItem>
               ))}
