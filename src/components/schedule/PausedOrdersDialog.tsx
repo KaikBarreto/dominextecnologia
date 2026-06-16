@@ -78,7 +78,7 @@ export function PausedOrdersDialog({ open, onOpenChange, onViewDetails, onResume
           </div>
         </div>
 
-        <ScrollArea className="flex-1 max-h-[60vh]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-4 space-y-3">
             {isLoading && (
               <>
