@@ -535,7 +535,7 @@ function RetrofitView() {
       {/* Card de entrada — seletor do gás atual no topo (padrão do app) */}
       <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center justify-between gap-3">
-          <Label className="shrink-0 text-sm font-medium text-muted-foreground">Gás atual:</Label>
+          <Label className="shrink-0 text-base font-semibold text-foreground">Gás atual:</Label>
           <LabeledSwitch
             value={gasSel}
             onChange={setGasSel}
@@ -576,7 +576,7 @@ function RetrofitView() {
       </div>
 
       {/* Opções de substituição do gás selecionado */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {gas.opcoes.map((op) => {
           const isDropIn = op.tipo === 'drop-in';
           // Classe ASHRAE para o ícone de fogo compartilhado.
@@ -590,7 +590,7 @@ function RetrofitView() {
               {/* Header: cor + nome do gás novo + fogo de inflamabilidade */}
               <div className="flex items-center gap-2">
                 <BolinhaGas cor={op.cor} />
-                <span className="text-base font-semibold text-foreground">{op.gasNovo}</span>
+                <span className="text-lg font-bold text-foreground">{op.gasNovo}</span>
                 {classeInflamavel && (
                   <RefrigeranteInflamavel classe={classeInflamavel} size={16} />
                 )}
@@ -601,8 +601,8 @@ function RetrofitView() {
                 className={cn(
                   'mt-2 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium',
                   isDropIn
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-amber-500 text-white',
                 )}
               >
                 {op.tipoLabel}
