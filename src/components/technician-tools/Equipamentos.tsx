@@ -1415,6 +1415,25 @@ function RemoteCard({
  */
 const ENERGIA_CONFIG_KEY = 'catalogo-energia-config';
 const ENERGIA_DEFAULTS = { tarifa: 0.9, horasDia: 8 } as const;
+
+/**
+ * Equipamentos que rodam em regime CONTÍNUO (24h/dia), sem liga/desliga manual:
+ * geladeira, freezer, frigobar, expositor, adega, cervejeira, conservador etc.
+ * Para esses, o slider de "horas de uso por dia" NÃO faz sentido — eles operam o
+ * dia inteiro, então o consumo mensal é sempre o mês cheio a 24h/dia.
+ *
+ * Detecta por categoria (`category.name`) + nome do modelo. AC (domínio
+ * ar_condicionado) liga/desliga e NUNCA é contínuo, então é excluído de cara.
+ * Lavadora/lava e seca não é contínuo (e fica sem consumo de qualquer forma).
+ * Se `category` não vier no caminho (selects de busca por código não trazem o
+ * join), o detector cai só no `model.name` — degrada bem.
+ */
+function rodaContinuo(model: EquipmentModel): boolean {
+  // AC liga/desliga — nunca contínuo, independente do nome.
+  if (model.domain === 'ar_condicionado') return false;
+  const alvo = `${model.category?.name ?? ''} ${model.name ?? ''}`.toLowerCase();
+  return /gelad|refriger|freezer|frigobar|expositor|adega|cervejeira|conservador/.test(alvo);
+}
 /** Evento disparado no window quando a config de energia muda (sync entre cards). */
 const ENERGIA_CONFIG_EVENT = 'energia-config-change';
 
@@ -1521,17 +1540,25 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
 
   const temDado = potencia != null || oficialMes != null;
 
+  // Geladeira/freezer rodam contínuo (24h/dia): o slider de horas não se aplica.
+  // Pra esses, o "por mês" é sempre o mês cheio a 24h e a hora é ancorada em 24h.
+  const continuo = rodaContinuo(model);
+  const horasDiaUso = continuo ? 24 : cfg.horasDia;
+  const ancoraHoras = continuo ? 24 : ENERGIA_DEFAULTS.horasDia;
+
   // Horas mensais de uso (base da relação hora ↔ mês). Sempre > 0 (config validada).
-  const horasMes = cfg.horasDia * 30;
+  const horasMes = horasDiaUso * 30;
 
   // Consumo por hora de OPERAÇÃO = base fixa do equipamento; o mês escala com as
-  // horas/dia (mês = hora × horasDia × 30) — as horas SEMPRE mexem no mês.
-  // - Oficial (Procel): ancorado ao consumo mensal em ENERGIA_DEFAULTS.horasDia (8h/dia);
+  // horas/dia (mês = hora × horasDiaUso × 30).
+  // - Contínuo (geladeira): horasDiaUso e ancoraHoras = 24 → mês = oficial (mês
+  //   cheio 24h), hora = oficial ÷ (24 × 30); o slider NÃO afeta.
+  // - AC/outros liga-desliga: ancorado em ENERGIA_DEFAULTS.horasDia (8h/dia);
   //   por-hora = oficial ÷ (8 × 30). A 8h/dia o mês bate o oficial; a 12h, ×1,5; a 24h, ×3.
   // - Sem oficial: por-hora = potência nominal (W/1000); inverter consome menos que isso.
   let kwhHora: number | null = null;
   if (oficialMes != null) {
-    kwhHora = oficialMes / (ENERGIA_DEFAULTS.horasDia * 30);
+    kwhHora = oficialMes / (ancoraHoras * 30);
   } else if (potencia != null) {
     kwhHora = potencia / 1000;
   }
@@ -1621,7 +1648,9 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0 text-muted-foreground">
                 Por mês
-                {` (estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia)`}
+                {continuo
+                  ? ' (24 h/dia)'
+                  : ` (estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia)`}
               </span>
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhMes)}
