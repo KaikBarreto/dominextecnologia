@@ -16,10 +16,17 @@ export function domiflixToast({
   description,
   duration = 2800,
 }: DomiflixToastOptions) {
-  const accent = variant === "error" ? "#E50914" : variant === "removed" ? "#6d6d6e" : "#e50914";
+  const accent =
+    variant === "error" ? "#E50914" : variant === "removed" ? "#6d6d6e" : "#E50914";
 
   const Icon =
-    variant === "added" ? Check : variant === "removed" ? X : variant === "error" ? AlertTriangle : Bookmark;
+    variant === "added"
+      ? Check
+      : variant === "removed"
+      ? X
+      : variant === "error"
+      ? AlertTriangle
+      : Bookmark;
 
   toast.custom(
     (id) => (
@@ -32,11 +39,14 @@ export function domiflixToast({
         <div
           className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center ml-2"
           style={{
-            backgroundColor: variant === "added" ? "rgba(229,9,20,0.18)" : "rgba(255,255,255,0.08)",
-            color: variant === "added" ? "#e50914" : variant === "error" ? "#E50914" : "#fff",
+            backgroundColor:
+              variant === "added"
+                ? "rgba(229,9,20,0.18)"
+                : "rgba(255,255,255,0.08)",
+            color: variant === "added" || variant === "error" ? "#E50914" : "#fff",
           }}
         >
-          <Icon className="w-4 h-4" strokeWidth={2.5} />
+          <Icon className="w-4.5 h-4.5" strokeWidth={2.5} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold leading-tight">{message}</div>

@@ -126,6 +126,80 @@ export function useDomiflixTitleBySlug(slug: string | undefined) {
   });
 }
 
+/**
+ * Dado o título atual, retorna o **primeiro episódio do próximo título** dentro
+ * da MESMA seção (ordenado por `domiflix_section_titles.order_index`).
+ *
+ * Caso de uso: quando o usuário termina o último episódio de um módulo na
+ * seção "Tutoriais", a tela de assistir oferece como "próximo" o primeiro
+ * episódio do módulo seguinte da mesma seção. Retorna `null` se o título não
+ * pertence a nenhuma seção, é o último da seção, ou o próximo módulo está
+ * vazio.
+ */
+export function useNextTitleFirstEpisode(currentTitleId: string | undefined) {
+  return useQuery({
+    queryKey: ["domiflix-next-title-first-ep", currentTitleId],
+    enabled: !!currentTitleId,
+    queryFn: async (): Promise<{
+      nextTitleId: string;
+      nextTitleSlug: string;
+      firstEpisode: DomiflixEpisode;
+    } | null> => {
+      if (!currentTitleId) return null;
+
+      // 1) Seção que contém o título (se estiver em mais de uma, pega a de menor order_index)
+      const { data: links, error } = await supabase
+        .from("domiflix_section_titles")
+        .select("section_id, order_index")
+        .eq("title_id", currentTitleId)
+        .order("order_index", { ascending: true })
+        .limit(1);
+      if (error) throw error;
+      const link = (links ?? [])[0] as unknown as
+        | { section_id: string; order_index: number }
+        | undefined;
+      if (!link) return null;
+
+      // 2) Próximo título da mesma seção
+      const { data: nextLinks, error: e2 } = await supabase
+        .from("domiflix_section_titles")
+        .select("title_id")
+        .eq("section_id", link.section_id)
+        .gt("order_index", link.order_index)
+        .order("order_index", { ascending: true })
+        .limit(1);
+      if (e2) throw e2;
+      const nextLink = (nextLinks ?? [])[0] as unknown as { title_id: string } | undefined;
+      if (!nextLink) return null;
+
+      // 3) Slug + primeiro episódio do próximo título
+      const { data: nextTitle, error: e3 } = await supabase
+        .from("domiflix_titles")
+        .select("id, title")
+        .eq("id", nextLink.title_id)
+        .maybeSingle();
+      if (e3) throw e3;
+      if (!nextTitle) return null;
+
+      const { data: episodes, error: e4 } = await supabase
+        .from("domiflix_episodes")
+        .select("*")
+        .eq("title_id", nextLink.title_id)
+        .order("order_index", { ascending: true })
+        .limit(1);
+      if (e4) throw e4;
+      const firstEp = (episodes ?? [])[0] as unknown as DomiflixEpisode | undefined;
+      if (!firstEp) return null;
+
+      return {
+        nextTitleId: nextLink.title_id,
+        nextTitleSlug: slugify((nextTitle as { id: string; title: string }).title),
+        firstEpisode: firstEp,
+      };
+    },
+  });
+}
+
 export function useDomiflixTitle(id: string | undefined) {
   return useQuery({
     queryKey: ["domiflix-title", id],

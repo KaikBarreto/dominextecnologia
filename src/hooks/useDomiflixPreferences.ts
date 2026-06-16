@@ -39,6 +39,30 @@ export function useUpdatePlaybackSpeed() {
         .upsert({ user_id: user.id, playback_speed }, { onConflict: "user_id" });
       if (error) throw error;
     },
+    onMutate: async (playback_speed) => {
+      await queryClient.cancelQueries({ queryKey: ["domiflix-user-preferences"] });
+      const previous = queryClient.getQueryData<DomiflixUserPreferences | null>([
+        "domiflix-user-preferences",
+      ]);
+      queryClient.setQueryData<DomiflixUserPreferences | null>(
+        ["domiflix-user-preferences"],
+        (curr) =>
+          curr
+            ? { ...curr, playback_speed }
+            : ({
+                user_id: "",
+                playback_speed,
+                domiflix_avatar_url: null,
+                updated_at: new Date().toISOString(),
+              } as DomiflixUserPreferences)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) {
+        queryClient.setQueryData(["domiflix-user-preferences"], ctx.previous);
+      }
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["domiflix-user-preferences"] });
     },

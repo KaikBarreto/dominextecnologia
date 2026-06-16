@@ -7,6 +7,7 @@ import {
 } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
+import domiflixLogo from "@/assets/logo-white-horizontal.png";
 
 interface DomiflixHeroProps {
   title: DomiflixTitle | null;
@@ -30,7 +31,24 @@ export function DomiflixHero({ title, continueWatchingTitle, watchlist, progress
   }, [displayTitle?.id]);
 
   if (!displayTitle) {
-    return <div className="relative w-full min-h-[360px] bg-gradient-to-b from-[#1a1a1a] to-[#141414]" style={{ height: 'min(60vw, 62vh)' }} />;
+    // Placeholder de boas-vindas: aparece quando não há "continuar assistindo"
+    // nem título destaque (primeiro acesso). Fundo escuro com logo Domiflix centralizado.
+    return (
+      <div
+        className="relative w-full min-h-[420px] sm:min-h-[360px] overflow-hidden bg-gradient-to-br from-[#0d0d0d] via-[#141414] to-[#1c1c1c]"
+        style={{ height: "min(60vw, 62vh)" }}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(229,9,20,0.12),transparent_65%)]" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <img
+            src={domiflixLogo}
+            alt="Domiflix"
+            className="w-[55%] max-w-[420px] opacity-95 drop-shadow-[0_4px_24px_rgba(229,9,20,0.40)]"
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent" />
+      </div>
+    );
   }
 
   const isInWatchlist = watchlist.some((w) => w.title_id === displayTitle.id);

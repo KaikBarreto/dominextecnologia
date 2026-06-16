@@ -452,6 +452,8 @@ const AppRoutes = () => (
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />
+      <Route path="/tutoriais/:titleId" element={<Navigate to="/domiflix" replace />} />
+      <Route path="/tutorials" element={<Navigate to="/domiflix" replace />} />
     </Route>
 
     {/* Domiflix — fullscreen layout próprio */}
@@ -468,9 +470,18 @@ const AppRoutes = () => (
       <Route path="/domiflix/minha-lista" element={<DomiflixMinhaLista />} />
       <Route path="/domiflix/perfil" element={<DomiflixAvatarPicker />} />
       <Route path="/domiflix/:titleSlug" element={<DomiflixTitle />} />
-      <Route path="/domiflix/assistir/:titleSlug/:episodeNumber" element={<DomiflixWatch />} />
-      <Route path="/domiflix/assistir/:titleSlug/:episodeNumber/:startSeconds" element={<DomiflixWatch />} />
     </Route>
+
+    {/* Domiflix Player — rota dedicada tela cheia, sem layout (sem navbar /
+        bottom nav / footer) para imersão total no vídeo. */}
+    <Route
+      path="/domiflix/assistir/:titleSlug/:episodeNumber"
+      element={<ProtectedRoute><DomiflixWatch /></ProtectedRoute>}
+    />
+    <Route
+      path="/domiflix/assistir/:titleSlug/:episodeNumber/:startSeconds"
+      element={<ProtectedRoute><DomiflixWatch /></ProtectedRoute>}
+    />
 
     {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}
     <Route path="/:osId" element={<OSRedirect />} />

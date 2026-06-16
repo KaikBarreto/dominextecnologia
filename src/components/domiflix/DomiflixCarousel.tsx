@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DomiflixTitle, DomiflixProgress, DomiflixWatchlistItem, DomiflixEpisode } from "@/hooks/useDomiflix";
 import { DomiflixCard } from "./DomiflixCard";
 import { cn } from "@/lib/utils";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 interface DomiflixCarouselProps {
   label: string;
@@ -11,28 +12,60 @@ interface DomiflixCarouselProps {
   progress: DomiflixProgress[];
   watchlist: DomiflixWatchlistItem[];
   episodeCounts?: Record<string, number>;
+  /** "poster" = vertical cards (default), "continue" = horizontal banner cards */
   variant?: "poster" | "continue";
+  /** URL to navigate when clicking "Explorar todos" */
   exploreUrl?: string;
+  /** All episodes by title_id — for continue watching direct navigation */
   episodesByTitle?: Record<string, DomiflixEpisode[]>;
+  /** Map episodeId → season/episode info */
   episodeSeasonMap?: Record<string, { seasonNumber: number; episodeInSeason: number }>;
+  /** Mostra "XX% concluído" + barra de progresso da seção (default false) */
+  showProgress?: boolean;
 }
 
 export function DomiflixCarousel({
-  label, titles, progress, watchlist, episodeCounts = {}, variant = "poster",
-  exploreUrl, episodesByTitle = {}, episodeSeasonMap = {},
+  label,
+  titles,
+  progress,
+  watchlist,
+  episodeCounts = {},
+  variant = "poster",
+  exploreUrl,
+  episodesByTitle = {},
+  episodeSeasonMap = {},
+  showProgress = false,
 }: DomiflixCarouselProps) {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(true);
   const [labelVisible, setLabelVisible] = useState(false);
+  const revealRef = useScrollReveal<HTMLDivElement>();
 
   if (titles.length === 0) return null;
+
+  // Progresso da seção: total de episódios completados / total de episódios dos títulos da seção
+  const sectionTotalEpisodes = showProgress
+    ? titles.reduce((sum, t) => sum + (episodeCounts[t.id] ?? 0), 0)
+    : 0;
+  const sectionWatchedEpisodes = showProgress
+    ? (() => {
+        const titleIdSet = new Set(titles.map((t) => t.id));
+        return progress.filter((p) => titleIdSet.has(p.title_id) && p.completed).length;
+      })()
+    : 0;
+  const sectionPct =
+    showProgress && sectionTotalEpisodes > 0
+      ? Math.round((sectionWatchedEpisodes / sectionTotalEpisodes) * 100)
+      : 0;
+  const renderSectionProgress = showProgress && sectionTotalEpisodes > 0;
 
   function scroll(dir: "left" | "right") {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir === "left" ? -el.clientWidth * 0.8 : el.clientWidth * 0.8, behavior: "smooth" });
+    const amount = el.clientWidth * 0.8;
+    el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
   }
 
   function handleScroll() {
@@ -44,12 +77,19 @@ export function DomiflixCarousel({
 
   return (
     <div
-      className="mb-5 group/row"
+      ref={revealRef}
+      className="mb-5 group/row scroll-reveal"
       onMouseEnter={() => setLabelVisible(true)}
       onMouseLeave={() => setLabelVisible(false)}
     >
+      {/* Label da linha */}
       <div className="flex items-center gap-2 mb-1 px-4 md:px-12">
         <h2 className="text-white text-base md:text-[1.1rem] font-bold">{label}</h2>
+        {renderSectionProgress && (
+          <span className="text-xs md:text-sm text-white/60">
+            {sectionPct}% concluído
+          </span>
+        )}
         {exploreUrl && (
           <button
             onClick={() => navigate(exploreUrl)}
@@ -64,12 +104,27 @@ export function DomiflixCarousel({
         )}
       </div>
 
+      {/* Barra de progresso da seção */}
+      {renderSectionProgress && (
+        <div className="px-4 md:px-12 mb-3">
+          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-[#E50914] rounded-full transition-all duration-500"
+              style={{ width: `${sectionPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Track com arrows */}
       <div className="relative">
         <button
           onClick={() => scroll("left")}
           aria-label="Anterior"
           className={cn(
-            "absolute left-0 top-0 bottom-0 z-10 w-10 md:w-14 flex items-center justify-center bg-gradient-to-r from-black/90 to-transparent text-white opacity-0 group-hover/row:opacity-100 transition-opacity duration-200",
+            "absolute left-0 top-0 bottom-0 z-10 w-10 md:w-14 flex items-center justify-center",
+            "bg-gradient-to-r from-black/90 to-transparent",
+            "text-white opacity-0 group-hover/row:opacity-100 transition-opacity duration-200",
             showLeft ? "pointer-events-auto" : "pointer-events-none invisible"
           )}
         >
@@ -101,7 +156,9 @@ export function DomiflixCarousel({
           onClick={() => scroll("right")}
           aria-label="Próximo"
           className={cn(
-            "absolute right-0 top-0 bottom-0 z-10 w-10 md:w-14 flex items-center justify-center bg-gradient-to-l from-black/90 to-transparent text-white opacity-0 group-hover/row:opacity-100 transition-opacity duration-200",
+            "absolute right-0 top-0 bottom-0 z-10 w-10 md:w-14 flex items-center justify-center",
+            "bg-gradient-to-l from-black/90 to-transparent",
+            "text-white opacity-0 group-hover/row:opacity-100 transition-opacity duration-200",
             showRight ? "pointer-events-auto" : "pointer-events-none invisible"
           )}
         >

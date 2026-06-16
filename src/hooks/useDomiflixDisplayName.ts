@@ -62,7 +62,12 @@ export function useDomiflixDisplayName() {
       const { error } = await supabase
         .from("domiflix_user_preferences" as any)
         .upsert({ user_id: user.id, domiflix_display_name: trimmed }, { onConflict: "user_id" });
-      if (!error) queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      if (!error) {
+        queryClient.setQueryData(QUERY_KEY, (curr: any) =>
+          curr ? { ...curr, domiflix_display_name: trimmed } : curr
+        );
+        queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      }
     },
     [user?.id, queryClient]
   );

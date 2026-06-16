@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 // ── Image catalogue ───────────────────────────────────────────────
 
-const PADRAO_NAMES = [
+const PADRÃO_NAMES = [
   "angryman", "blue", "chicken", "dark blue",
   "fluffyblue", "fluffygrey", "fluffyred", "fluffyyellow",
   "green", "panda", "pink", "purple", "red", "yellow", "zombi",
@@ -31,25 +31,32 @@ interface AvatarSection {
 const SECTIONS: AvatarSection[] = [
   {
     label: "Os Clássicos",
-    images: PADRAO_NAMES.map((n) => ({ url: padrao(n), name: n })),
+    images: PADRÃO_NAMES.map((n) => ({ url: padrao(n), name: n })),
   },
   {
     label: "Personagens — Parte 1",
-    images: Array.from({ length: 50 }, (_, i) => ({
+    images: Array.from({ length: 85 }, (_, i) => ({
       url: outras(i + 1),
       name: `Personagem ${i + 1}`,
     })),
   },
   {
     label: "Personagens — Parte 2",
-    images: Array.from({ length: 50 }, (_, i) => ({
-      url: outras(i + 51),
-      name: `Personagem ${i + 51}`,
+    images: Array.from({ length: 85 }, (_, i) => ({
+      url: outras(i + 86),
+      name: `Personagem ${i + 86}`,
+    })),
+  },
+  {
+    label: "Personagens — Parte 3",
+    images: Array.from({ length: 85 }, (_, i) => ({
+      url: outras(i + 171),
+      name: `Personagem ${i + 171}`,
     })),
   },
 ];
 
-// ── Avatar item ──────────────────────────────────────────────────
+// ── Avatar image with loading state ──────────────────────────────
 
 function AvatarItem({
   url,
@@ -78,10 +85,12 @@ function AvatarItem({
           : "ring-0 hover:ring-2 hover:ring-white/60 hover:scale-105",
       )}
     >
+      {/* Shimmer while loading */}
       {!loaded && !error && (
         <div className="absolute inset-0 bg-[#2a2a2a] animate-pulse rounded-md" />
       )}
 
+      {/* Fallback on error */}
       {error && (
         <div className="absolute inset-0 bg-[#2a2a2a] rounded-md flex items-center justify-center">
           <span className="text-white/20 text-[9px]">{name.slice(0, 2)}</span>
@@ -118,25 +127,27 @@ export default function DomiflixAvatarPicker() {
   const navigate = useNavigate();
   const { avatarUrl, setAvatar } = useDomiflixAvatar();
   const { displayName, setDisplayName } = useDomiflixDisplayName();
-  const { profile } = useAuth();
+  const { user } = useAuth();
 
   const [selected, setSelected] = useState<string | null>(avatarUrl);
-  const systemFirstName = profile?.full_name?.split(" ")[0] ?? "Perfil";
-  const currentName = displayName ?? profile?.full_name ?? "";
+  const systemFirstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "Perfil";
+  const currentName = displayName ?? user?.user_metadata?.full_name ?? "";
   const [nameDraft, setNameDraft] = useState<string>(currentName);
   const [editingName, setEditingName] = useState(false);
 
+  // Sync selected if DB response arrives after mount
   useEffect(() => {
     if (avatarUrl && !selected) setSelected(avatarUrl);
   }, [avatarUrl]);
 
+  // Sync nameDraft when display name resolves from DB
   useEffect(() => {
     if (!editingName) {
-      setNameDraft(displayName ?? profile?.full_name ?? "");
+      setNameDraft(displayName ?? user?.user_metadata?.full_name ?? "");
     }
-  }, [displayName, profile?.full_name, editingName]);
+  }, [displayName, user?.user_metadata?.full_name, editingName]);
 
-  const headerName = (displayName?.trim() || profile?.full_name?.split(" ")[0]) ?? "Perfil";
+  const headerName = (displayName?.trim() || user?.user_metadata?.full_name?.split(" ")[0]) ?? "Perfil";
 
   function handleSelect(url: string) {
     setSelected(url);
@@ -150,8 +161,8 @@ export default function DomiflixAvatarPicker() {
   }
 
   return (
-    <div className="domiflix-root min-h-screen bg-[#141414] text-white">
-      {/* Header */}
+    <div className="domiflix-app min-h-screen bg-[#141414] text-white">
+      {/* ── Header ─────────────────────────────────────────────── */}
       <div className="sticky top-0 z-20 bg-[#141414]/90 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 md:px-16 h-16 flex items-center justify-between gap-4">
           <button
@@ -175,12 +186,12 @@ export default function DomiflixAvatarPicker() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Page content ───────────────────────────────────────── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-8 md:px-16 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold mb-1">Editar Perfil</h1>
         <p className="text-white/50 text-sm mb-8">Personalize seu perfil dentro do Domiflix.</p>
 
-        {/* Display name editor */}
+        {/* ── Display name editor ───────────────────────────── */}
         <section className="mb-10 rounded-lg border border-white/10 bg-white/[0.03] p-5 sm:p-6">
           <h2 className="text-base sm:text-lg font-semibold text-white/90 mb-1">Nome de exibição</h2>
           <p className="text-white/50 text-xs mb-4 flex items-start gap-1.5">
@@ -201,7 +212,7 @@ export default function DomiflixAvatarPicker() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSaveName();
                   if (e.key === "Escape") {
-                    setNameDraft(displayName ?? profile?.full_name ?? "");
+                    setNameDraft(displayName ?? user?.user_metadata?.full_name ?? "");
                     setEditingName(false);
                   }
                 }}
@@ -215,7 +226,7 @@ export default function DomiflixAvatarPicker() {
                 </button>
                 <button
                   onClick={() => {
-                    setNameDraft(displayName ?? profile?.full_name ?? "");
+                    setNameDraft(displayName ?? user?.user_metadata?.full_name ?? "");
                     setEditingName(false);
                   }}
                   className="flex-1 sm:flex-none bg-white/5 hover:bg-white/10 text-white/80 text-sm font-medium px-4 py-2 rounded transition-colors"
@@ -235,7 +246,7 @@ export default function DomiflixAvatarPicker() {
           )}
         </section>
 
-        {/* Avatar disclaimer */}
+        {/* ── Avatar picker disclaimer ──────────────────────── */}
         <p className="text-white/50 text-xs mb-6 flex items-start gap-1.5">
           <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-white/40" />
           <span>O ícone escolhido é exclusivo do Domiflix e não substituirá sua foto no sistema.</span>

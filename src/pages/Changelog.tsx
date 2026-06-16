@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.27',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Domiflix com visual renovado e navegação mais fácil no celular',
+        description: 'A Domiflix ganhou um acabamento mais bonito e ficou mais fácil de usar no celular: agora tem uma barra de navegação na parte de baixo da tela e um menu rápido para chegar nos vídeos com menos toques. As capas dos conteúdos, o player de vídeo, a tela de detalhes e a página de perfil também foram atualizados para uma experiência mais agradável.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.26',
     date: '16 de junho de 2026',
     type: 'patch',

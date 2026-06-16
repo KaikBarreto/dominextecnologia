@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ArrowLeft, Search, X, Menu, Play, ChevronRight } from "lucide-react";
+import { ArrowLeft, Search, X, Play, ChevronRight } from "lucide-react";
 import logoWhite from "@/assets/logo-white-horizontal.png";
 import { cn } from "@/lib/utils";
 import { useDomiflixTitles, useDomiflixAllEpisodes } from "@/hooks/useDomiflix";
@@ -11,6 +11,9 @@ import { useDomiflixAvatar } from "@/hooks/useDomiflixAvatar";
 import { useDomiflixDisplayName } from "@/hooks/useDomiflixDisplayName";
 import { DomiflixFooter } from "./DomiflixFooter";
 import { playDomiflixIntro } from "@/lib/domiflixIntroSound";
+import { DomiflixMobileBottomNav } from "./DomiflixMobileBottomNav";
+import { DomiflixMoreMenuDrawer } from "./DomiflixMoreMenuDrawer";
+import { captureDomiflixOrigin } from "./domiflixReturn";
 
 const introPlayedKeys = new Set<string>();
 
@@ -62,6 +65,15 @@ export function DomiflixLayout() {
     const t = requestAnimationFrame(() => setHeaderMounted(true));
     return () => cancelAnimationFrame(t);
   }, []);
+
+  // Captura durável da origem de entrada na Domiflix. Os pontos de entrada
+  // (topbar/sidebar/command palette/more menu) passam `state.from`. Como o
+  // Layout envolve TODAS as rotas /domiflix, gravamos a origem assim que o
+  // usuário entra; navegação interna (state nulo) não sobrescreve — ver
+  // captureDomiflixOrigin (só grava `from` externo à Domiflix).
+  useEffect(() => {
+    captureDomiflixOrigin((location.state as { from?: string } | null)?.from);
+  }, [location.state]);
 
   // Play Domiflix intro only on the first Domiflix entry of the day for the
   // authenticated user.
@@ -149,10 +161,14 @@ export function DomiflixLayout() {
     }
   }
 
-  const isHomePage = location.pathname === "/domiflix";
-
   // Mark "Módulos" / "Lives" filters as active when on /domiflix?tipo=...
   const tipoParam = searchParams.get("tipo");
+
+  // Home REAL = só /domiflix sem filtro (com filtro `?tipo=...` não tem
+  // DomiflixHero por trás, então o gradient transparente do header não tem
+  // onde se misturar e fica aparecendo o fundo embaixo).
+  const isHomePage = location.pathname === "/domiflix" && !tipoParam;
+
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       "relative text-sm font-normal transition-colors py-1.5",
@@ -161,6 +177,7 @@ export function DomiflixLayout() {
         : "text-white/[.85] hover:text-white",
     );
 
+  // Custom evaluator for the filter NavLinks (they all share /domiflix path).
   const tipoLinkClass = (expected: string | null) =>
     cn(
       "relative text-sm font-normal transition-colors py-1.5",
@@ -180,6 +197,7 @@ export function DomiflixLayout() {
           scrolled || !isHomePage
             ? "bg-[#141414] shadow-[0_8px_20px_-4px_rgba(0,0,0,0.7)]"
             : "bg-gradient-to-b from-black/95 via-black/70 to-transparent",
+          // Entrance animation
           headerMounted
             ? "translate-y-0 opacity-100"
             : "-translate-y-full opacity-0"
@@ -187,16 +205,7 @@ export function DomiflixLayout() {
         style={{ transition: "transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background-color 0.5s" }}
       >
         <div className="flex items-center justify-between px-4 md:px-12 h-[56px] md:h-[68px]">
-          {/* Mobile: hamburger */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-white/85 hover:text-white transition-colors p-1.5 -ml-1.5"
-            aria-label="Menu"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-
-          {/* Mobile: logo centered */}
+          {/* ── Mobile: logo centered (absolutely positioned to be perfectly centered) ── */}
           <NavLink
             to="/domiflix"
             className="md:hidden absolute left-1/2 -translate-x-1/2 block h-9 w-[112px]"
@@ -216,7 +225,7 @@ export function DomiflixLayout() {
             />
           </NavLink>
 
-          {/* Desktop: Logo + nav links */}
+          {/* ── Desktop: Logo + nav links (esquerda) ── */}
           <div className="hidden md:flex items-center gap-4 md:gap-8">
             <NavLink to="/domiflix" className="block w-[120px] h-10 shrink-0">
               {!logoLoaded && (
@@ -259,8 +268,9 @@ export function DomiflixLayout() {
             </div>
           </div>
 
-          {/* Direita: search + voltar + avatar */}
+          {/* Direita: ícones + botão voltar */}
           <div className="flex items-center gap-2 md:gap-3">
+            {/* Search - desktop only (mobile usa link no menu hamburger) */}
             <div className="hidden md:flex items-center relative"
               ref={dropdownRef}
               onMouseEnter={() => {
@@ -283,9 +293,13 @@ export function DomiflixLayout() {
               >
                 <button
                   onClick={() => {
-                    if (navSearchOpen && navSearchQuery) setNavSearchQuery("");
+                    if (navSearchOpen && navSearchQuery) {
+                      setNavSearchQuery("");
+                    }
                     setNavSearchOpen(!navSearchOpen);
-                    if (!navSearchOpen) setTimeout(() => searchInputRef.current?.focus(), 100);
+                    if (!navSearchOpen) {
+                      setTimeout(() => searchInputRef.current?.focus(), 100);
+                    }
                   }}
                   className="text-white/80 hover:text-white transition-colors p-1.5"
                 >
@@ -359,7 +373,9 @@ export function DomiflixLayout() {
                               <div className="flex-1 min-w-0">
                                 <p className="text-white text-sm font-medium line-clamp-1">{title.title}</p>
                                 {title.description && (
-                                  <p className="text-white/45 text-xs line-clamp-1">{title.description}</p>
+                                  <p className="text-white/45 text-xs line-clamp-1">
+                                    {title.description}
+                                  </p>
                                 )}
                               </div>
                               {eps.length > 0 && (
@@ -414,7 +430,7 @@ export function DomiflixLayout() {
               )}
             </div>
 
-            {/* Voltar ao sistema (desktop) */}
+            {/* Voltar ao sistema (desktop only) */}
             <button
               onClick={handleBackToSystem}
               className="hidden md:flex items-center gap-2 text-sm font-medium text-white/85 hover:text-white bg-white/5 hover:bg-[#e50914] border border-white/15 hover:border-[#e50914] transition-all duration-300 rounded px-4 py-1.5"
@@ -423,18 +439,13 @@ export function DomiflixLayout() {
               Voltar ao sistema
             </button>
 
-            {/* Saudação + avatar */}
+            {/* Avatar + primeiro nome à direita (clicável → /domiflix/perfil) */}
             {user && (
               <button
                 onClick={() => navigate("/domiflix/perfil")}
                 className="flex items-center gap-2.5 ml-1 group"
                 title="Editar perfil Domiflix"
               >
-                {firstName && (
-                  <span className="hidden sm:block text-sm font-normal text-white/85 select-none group-hover:text-white transition-colors">
-                    Olá, <span className="text-white font-medium">{firstName}</span>!
-                  </span>
-                )}
                 {domiflixAvatarUrl ? (
                   <img
                     src={domiflixAvatarUrl}
@@ -449,157 +460,44 @@ export function DomiflixLayout() {
                     </AvatarFallback>
                   </Avatar>
                 )}
+                {firstName && (
+                  <span className="text-sm font-medium text-white/85 select-none group-hover:text-white transition-colors max-w-[120px] truncate">
+                    {firstName}
+                  </span>
+                )}
               </button>
             )}
           </div>
         </div>
 
-        {/* Mobile drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-[60]">
-            <div
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <div
-              className="absolute left-0 top-0 bottom-0 w-[82%] max-w-[320px] bg-[#141414] border-r border-white/10 shadow-2xl flex flex-col"
-              style={{ animation: "slideInLeft 0.3s cubic-bezier(0.16,1,0.3,1)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-4 h-[56px] border-b border-white/10">
-                <img src={logoWhite} alt="Domiflix" className="h-7 object-contain" />
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-white/70 hover:text-white p-1.5"
-                  aria-label="Fechar"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="px-4 pt-4">
-                <div className="flex items-center gap-2 bg-[#1a1a1a] border border-white/20 rounded px-3 h-10">
-                  <Search className="w-4 h-4 text-white/50 shrink-0" />
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="Buscar títulos..."
-                    value={navSearchQuery}
-                    onChange={(e) => setNavSearchQuery(e.target.value)}
-                    className="bg-transparent text-white text-sm placeholder-white/30 outline-none flex-1 h-full"
-                  />
-                  {navSearchQuery && (
-                    <button
-                      onClick={() => setNavSearchQuery("")}
-                      className="text-white/50 hover:text-white"
-                      aria-label="Limpar"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {navSearchQuery.trim().length >= 2 && (
-                <div className="px-4 pt-2 max-h-[40vh] overflow-y-auto">
-                  {navSearchResults.length === 0 ? (
-                    <p className="text-white/40 text-xs py-3 text-center">
-                      Nenhum resultado para "{navSearchQuery}"
-                    </p>
-                  ) : (
-                    <div className="space-y-1">
-                      {navSearchResults.map((title) => (
-                        <button
-                          key={title.id}
-                          onClick={() => {
-                            navigate(`/domiflix/${slugify(title.title)}`);
-                            setMobileMenuOpen(false);
-                            setNavSearchQuery("");
-                          }}
-                          className="w-full flex items-center gap-2 p-2 rounded hover:bg-white/[0.06] text-left"
-                        >
-                          <div className="w-12 h-7 rounded overflow-hidden bg-[#252525] shrink-0">
-                            {(title.banner_url || title.thumbnail_url) && (
-                              <img
-                                src={title.banner_url || title.thumbnail_url}
-                                alt={title.title}
-                                className="w-full h-full object-cover"
-                              />
-                            )}
-                          </div>
-                          <span className="text-white text-xs font-medium line-clamp-1 flex-1">
-                            {title.title}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <nav className="flex flex-col px-2 pt-4 gap-0.5">
-                <NavLink
-                  to="/domiflix"
-                  end
-                  className={({ isActive }) =>
-                    cn(
-                      "px-4 py-3 rounded text-base font-medium transition-colors",
-                      isActive && !tipoParam ? "bg-white/[0.08] text-white" : "text-white/75 hover:bg-white/[0.05] hover:text-white"
-                    )
-                  }
-                >
-                  Início
-                </NavLink>
-                <NavLink
-                  to="/domiflix?tipo=modulos"
-                  className={cn(
-                    "px-4 py-3 rounded text-base font-medium transition-colors",
-                    tipoParam === "modulos" ? "bg-white/[0.08] text-white" : "text-white/75 hover:bg-white/[0.05] hover:text-white"
-                  )}
-                >
-                  Módulos
-                </NavLink>
-                <NavLink
-                  to="/domiflix?tipo=lives"
-                  className={cn(
-                    "px-4 py-3 rounded text-base font-medium transition-colors",
-                    tipoParam === "lives" ? "bg-white/[0.08] text-white" : "text-white/75 hover:bg-white/[0.05] hover:text-white"
-                  )}
-                >
-                  Lives
-                </NavLink>
-                <NavLink
-                  to="/domiflix/minha-lista"
-                  className={({ isActive }) =>
-                    cn(
-                      "px-4 py-3 rounded text-base font-medium transition-colors",
-                      isActive ? "bg-white/[0.08] text-white" : "text-white/75 hover:bg-white/[0.05] hover:text-white"
-                    )
-                  }
-                >
-                  Minha Lista
-                </NavLink>
-              </nav>
-
-              <div className="mt-auto p-4 border-t border-white/10">
-                <button
-                  onClick={handleBackToSystem}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-medium text-white bg-[#e50914] hover:bg-[#c11118] transition-colors rounded px-4 py-2.5"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Voltar ao sistema
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
 
-      <div key={location.pathname} className="domiflix-page-enter">
+      {/* Mobile menu drawer — BOTTOM SHEET (sobe de baixo, estilo MoreMenuDrawer
+          do sistema principal). Substituiu o antigo drawer lateral (slideInLeft).
+          Compartilha o state `mobileMenuOpen` com o "Menu" do
+          `DomiflixMobileBottomNav`. */}
+      <DomiflixMoreMenuDrawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
+
+      {/* Conteúdo das páginas
+          pb-28 no mobile: garante que último item visível não fica coberto pelo
+          DomiflixMobileBottomNav (renderizado abaixo, lg:hidden). Desktop não precisa. */}
+      <div key={location.pathname} className="domiflix-page-enter pb-28 lg:pb-0">
         <Outlet />
       </div>
 
+      {/* Footer — oculto no picker de avatar */}
       {location.pathname !== "/domiflix/perfil" && <DomiflixFooter />}
+
+      {/* Bottom navigation próprio da Domiflix — mobile only (lg:hidden interno).
+          Substitui o MobileBottomNav global (verde Dominex, itens do sistema
+          principal) por um nav com identidade Domiflix (preto + vermelho #e50914).
+          Layout: Módulos | Lives | (●)Início | Minha Lista | Menu — o botão
+          "Início" central é destacado (círculo vermelho elevado, estilo "+"
+          do MobileBottomNav global) e "Menu" abre o drawer hambúrguer Domiflix
+          (mesmo `mobileMenuOpen` do header — compat preservada).
+          NÃO é renderizado no player (/domiflix/assistir/...) porque essa rota
+          fica fora do DomiflixLayout (é standalone, tela cheia). */}
+      <DomiflixMobileBottomNav onOpenDrawer={() => setMobileMenuOpen(true)} />
     </div>
   );
 }

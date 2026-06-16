@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Check, Gauge, Lock, List, Subtitles, SkipForward } from "lucide-react";
+import { ArrowLeft, ChevronDown, Check, Lock, Clock } from "lucide-react";
 
 import {
   useDomiflixTitleBySlug,
   useDomiflixTitle,
   useDomiflixProgress,
   useMarkEpisodeWatched,
+  useNextTitleFirstEpisode,
   DomiflixEpisode,
   DomiflixProgress,
   DomiflixTitleFull,
@@ -19,6 +20,7 @@ import {
 } from "@/hooks/useDomiflixPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { getDriveStreamUrl } from "@/lib/drive";
+import { getYouTubeThumbnail } from "@/lib/youtube";
 import {
   PlayIcon,
   PauseIcon,
@@ -35,8 +37,11 @@ import {
 } from "@/components/domiflix/PlayerIcons";
 
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import domiflixLogo from "@/assets/logo-white-horizontal.png";
 import { playDomiflixIntro, stopDomiflixIntro } from "@/lib/domiflixIntroSound";
+
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // ─── YouTube IFrame API ──────────────────────────────────────────────────────
 
@@ -111,6 +116,7 @@ export default function DomiflixWatchPage() {
   const markWatched = useMarkEpisodeWatched();
   const markedRef = useRef(false);
 
+  // All episodes flat
   const allEpisodes: DomiflixEpisode[] = useMemo(() => {
     if (!titleData) return [];
     return titleData.type === "series"
@@ -121,7 +127,16 @@ export default function DomiflixWatchPage() {
   const epNum = parseInt(episodeNumber ?? "1", 10);
   const episodeIndex = Math.max(0, epNum - 1);
   const episode = allEpisodes[episodeIndex];
-  const nextEpisode = allEpisodes[episodeIndex + 1];
+  const nextEpisodeSameTitle = allEpisodes[episodeIndex + 1];
+
+  // Quando estamos no último episódio do módulo atual, buscamos o primeiro
+  // episódio do próximo módulo dentro da mesma seção (ex: Tutoriais).
+  const isLastInTitle = !nextEpisodeSameTitle;
+  const { data: nextSection } = useNextTitleFirstEpisode(
+    isLastInTitle ? resolvedTitleId ?? undefined : undefined
+  );
+  const crossSectionNextEpisode = isLastInTitle ? nextSection?.firstEpisode : undefined;
+  const nextEpisode = nextEpisodeSameTitle ?? crossSectionNextEpisode;
 
   const seasonInfo =
     titleData?.type === "series" && episode
@@ -132,11 +147,13 @@ export default function DomiflixWatchPage() {
       ? seasonInfo.episodes.findIndex((e) => e.id === episode.id) + 1
       : epNum;
 
+  // Progress refs
   const progressSecondsRef = useRef(0);
   const durationSecondsRef = useRef(0);
   const userIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
 
+  // Cache auth data once and keep token fresh for keepalive saves
   useEffect(() => {
     let active = true;
 
@@ -182,6 +199,7 @@ export default function DomiflixWatchPage() {
     };
   }, [episode?.id, resolvedTitleId]);
 
+  // Synchronous-ish save using fetch keepalive (works on unload/navigation)
   const saveProgressKeepalive = useCallback(() => {
     const payload = buildProgressPayload();
     const accessToken = accessTokenRef.current;
@@ -194,7 +212,7 @@ export default function DomiflixWatchPage() {
       fetch(url, {
         method: "POST",
         headers: {
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_PUBLISHABLE_KEY,
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
           Prefer: "resolution=merge-duplicates",
@@ -207,6 +225,7 @@ export default function DomiflixWatchPage() {
     }
   }, [buildProgressPayload]);
 
+  // Async save (used on periodic interval — better auth handling)
   const saveProgressAsync = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     userIdRef.current = data.session?.user.id ?? null;
@@ -216,13 +235,14 @@ export default function DomiflixWatchPage() {
     if (!payload) return;
 
     const { error } = await supabase
-      .from("domiflix_user_progress")
+      .from("domiflix_user_progress" as any)
       .upsert(payload, { onConflict: "user_id,episode_id" });
 
     if (error) throw error;
     queryClient.invalidateQueries({ queryKey: ["domiflix-progress"] });
   }, [buildProgressPayload, queryClient]);
 
+  // Mark on entry
   useEffect(() => {
     if (!markedRef.current && episode?.video_id && resolvedTitleId) {
       markedRef.current = true;
@@ -237,6 +257,7 @@ export default function DomiflixWatchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episode?.id, resolvedTitleId]);
 
+  // Periodic save every 20s
   useEffect(() => {
     const interval = setInterval(() => {
       saveProgressAsync().catch(() => {});
@@ -244,6 +265,7 @@ export default function DomiflixWatchPage() {
     return () => clearInterval(interval);
   }, [saveProgressAsync]);
 
+  // Save on tab close / navigation away (using keepalive)
   useEffect(() => {
     const onHide = () => saveProgressKeepalive();
     const onVisibilityChange = () => {
@@ -260,12 +282,14 @@ export default function DomiflixWatchPage() {
     };
   }, [saveProgressKeepalive]);
 
+  // Save on unmount (keepalive — survives navigation)
   useEffect(() => {
     return () => {
       saveProgressKeepalive();
     };
   }, [saveProgressKeepalive]);
 
+  // Reset mark ref on episode change
   useEffect(() => {
     markedRef.current = false;
   }, [episodeIndex]);
@@ -283,6 +307,7 @@ export default function DomiflixWatchPage() {
     }
   }, [navigate, saveProgressAsync, saveProgressKeepalive, titleSlug]);
 
+  // Resolve resume-second for any given episode based on saved progress
   const resumeSecondsFor = useCallback(
     (epId: string) => {
       const found = progress.find((p) => p.episode_id === epId);
@@ -303,11 +328,26 @@ export default function DomiflixWatchPage() {
       saveProgressKeepalive();
     }
     if (!nextEpisode || !titleSlug) return;
-    const startAt = resumeSecondsFor(nextEpisode.id);
-    const path = `/domiflix/assistir/${titleSlug}/${epNum + 1}${startAt > 0 ? `/${startAt}` : ""}`;
-    navigate(path, { replace: true });
+
+    // Caso 1: próximo episódio é do mesmo título
+    if (nextEpisodeSameTitle) {
+      const startAt = resumeSecondsFor(nextEpisodeSameTitle.id);
+      const path = `/domiflix/assistir/${titleSlug}/${epNum + 1}${startAt > 0 ? `/${startAt}` : ""}`;
+      navigate(path, { replace: true });
+      return;
+    }
+
+    // Caso 2: próximo é o primeiro episódio do próximo módulo na mesma seção
+    if (crossSectionNextEpisode && nextSection?.nextTitleSlug) {
+      const startAt = resumeSecondsFor(crossSectionNextEpisode.id);
+      const path = `/domiflix/assistir/${nextSection.nextTitleSlug}/1${startAt > 0 ? `/${startAt}` : ""}`;
+      navigate(path, { replace: true });
+    }
   }, [
     nextEpisode,
+    nextEpisodeSameTitle,
+    crossSectionNextEpisode,
+    nextSection,
     titleSlug,
     epNum,
     navigate,
@@ -316,6 +356,8 @@ export default function DomiflixWatchPage() {
     saveProgressKeepalive,
   ]);
 
+  // Called when current video ends. If there's a next episode, go to it.
+  // Otherwise, return to the Domiflix home screen.
   const handleVideoEnded = useCallback(async () => {
     if (nextEpisode) {
       await goToNextEpisode();
@@ -348,17 +390,8 @@ export default function DomiflixWatchPage() {
 
   if (!episode) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center text-white/50">
-        <div className="text-center">
-          <div className="w-10 h-10 border-[3px] border-[#E50914] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm mb-4">Carregando...</p>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-xs text-white/30 hover:text-white underline"
-          >
-            Voltar
-          </button>
-        </div>
+      <div className="domiflix-player-root fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center gap-7">
+        <div className="domiflix-spinner" />
       </div>
     );
   }
@@ -374,7 +407,7 @@ export default function DomiflixWatchPage() {
   const startSec = startSeconds ? Math.max(0, parseInt(startSeconds, 10) || 0) : 0;
 
   return (
-    <div className="domiflix-player-root fixed inset-0 z-[100] bg-black">
+    <div className="domiflix-player-root fixed inset-0 z-[100] bg-black flex items-center justify-center">
       {episode.video_id ? (
         <NetflixPlayer
           videoId={episode.video_id}
@@ -411,11 +444,21 @@ export default function DomiflixWatchPage() {
           onSelectEpisode={navigateToEpisode}
         />
       ) : (
-        <div className="flex flex-col items-center justify-center h-full text-white/50 gap-4">
-          <p className="text-lg">Vídeo não disponível</p>
+        <div className="flex flex-col items-center justify-center h-full gap-6 px-6 text-center">
+          <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+            <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-white/60" />
+          </div>
+          <div className="space-y-2 max-w-md">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-white">
+              Essa aula ainda não está disponível
+            </h2>
+            <p className="text-sm sm:text-base text-white/60">
+              Estamos finalizando a gravação. Em breve ela ficará disponível pra você assistir aqui.
+            </p>
+          </div>
           <button
             onClick={handleBack}
-            className="text-sm text-white/40 hover:text-white underline"
+            className="mt-2 inline-flex h-14 min-w-[200px] items-center justify-center rounded-md bg-red-600 px-8 text-base font-semibold text-white shadow-lg transition-colors hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
           >
             Voltar
           </button>
@@ -471,6 +514,7 @@ function NetflixPlayer({
   currentEpisodeId,
   onSelectEpisode,
 }: NetflixPlayerProps) {
+  const isMobile = useIsMobile();
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
   const videoElRef = useRef<HTMLVideoElement>(null);
@@ -493,11 +537,23 @@ function NetflixPlayer({
   const [hudLocked, setHudLocked] = useState(false);
   const [seeking, setSeeking] = useState(false);
 
+  // YouTube bot wall detection — alguns usuários recebem "Faça login pra
+  // confirmar que não é um robô" dentro do iframe. Não tem como bypassar
+  // do lado do cliente; o objetivo aqui é só detectar e mostrar UI amigável.
+  const [ytBlocked, setYtBlocked] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const playStartedRef = useRef(false);
+
+  // Reset transient playback state whenever the episode/video changes,
+  // so the progress bar instantly snaps back to 0 instead of carrying
+  // over the previous episode's value while the new video loads.
   useEffect(() => {
     setReady(false);
     setCurrentTime(0);
     setDuration(0);
     setSeeking(false);
+    setYtBlocked(false);
+    playStartedRef.current = false;
   }, [videoId]);
 
   const [introPlaying, setIntroPlaying] = useState(true);
@@ -509,6 +565,7 @@ function NetflixPlayer({
   const [showStillWatching, setShowStillWatching] = useState(false);
   const stillWatchingTimer = useRef<ReturnType<typeof setTimeout>>();
 
+  // Hover preview state
   const [hoverPct, setHoverPct] = useState<number | null>(null);
   const [hoverTime, setHoverTime] = useState(0);
   const [previewReady, setPreviewReady] = useState(false);
@@ -517,6 +574,7 @@ function NetflixPlayer({
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
   const volumeTimer = useRef<ReturnType<typeof setTimeout>>();
 
+  // Stable refs
   const playingRef = useRef(playing);
   playingRef.current = playing;
   const currentTimeRef = useRef(currentTime);
@@ -529,6 +587,10 @@ function NetflixPlayer({
   const isYouTube = videoType === "youtube";
   const isDrive = videoType === "drive";
 
+  // ── Intro sound effect ──
+  // Plays the Domiflix intro before the video starts, while keeping the
+  // player paused/muted under a black overlay. Restarts on every videoId
+  // change (i.e. each new episode / live).
   useEffect(() => {
     setIntroPlaying(true);
     let cancelled = false;
@@ -541,7 +603,11 @@ function NetflixPlayer({
     };
   }, [videoId]);
 
+  // While the intro is playing, force the underlying video to be paused
+  // and muted. When it ends, resume + unmute.
   useEffect(() => {
+    let botWallWatchdog: ReturnType<typeof setTimeout> | undefined;
+
     if (isYouTube) {
       const yt = ytPlayerRef.current;
       if (!yt || !ready) return;
@@ -552,6 +618,15 @@ function NetflixPlayer({
         } else {
           yt.unMute?.();
           yt.playVideo?.();
+          // Watchdog do bot wall: o YouTube renderiza a tela "Faça login pra
+          // confirmar que não é robô" DENTRO do iframe — onReady chega
+          // normalmente, mas o player nunca entra em PLAYING. Se em 7s o
+          // playStartedRef não virou true, assume bloqueado.
+          botWallWatchdog = setTimeout(() => {
+            if (!playStartedRef.current && !ytBlocked) {
+              setYtBlocked(true);
+            }
+          }, 7000);
         }
       } catch {
         // ignore
@@ -567,8 +642,13 @@ function NetflixPlayer({
         v.play().catch(() => {});
       }
     }
-  }, [introPlaying, ready, isYouTube]);
 
+    return () => {
+      if (botWallWatchdog) clearTimeout(botWallWatchdog);
+    };
+  }, [introPlaying, ready, isYouTube, ytBlocked]);
+
+  // Apply playback speed (and re-apply when player or speed changes)
   useEffect(() => {
     if (isYouTube) {
       try {
@@ -581,6 +661,7 @@ function NetflixPlayer({
     }
   }, [playbackSpeed, isYouTube, ready]);
 
+  // ── Controls (work for both YT and Drive) ──
   const togglePlay = useCallback(() => {
     if (isYouTube) {
       if (!ytPlayerRef.current) return;
@@ -664,6 +745,13 @@ function NetflixPlayer({
     else (el as HTMLElement).requestFullscreen();
   }, []);
 
+  // Auto-enter fullscreen + lock STRICTLY landscape on mobile (Netflix-style)
+  // Estratégia em camadas:
+  //   1. Fullscreen API → screen.orientation.lock('landscape')  [Android Chrome/Firefox]
+  //   2. CSS rotation fallback (.domiflix-force-landscape)        [iOS Safari, browsers sem lock]
+  // O player NUNCA deve aparecer em portrait — se o lock JS falhar, o CSS rotaciona
+  // visualmente. Erros do lock são logados via console.warn (não toast) pra não
+  // poluir UX em devices incompatíveis. Ver "Limitações conhecidas" no commit.
   useEffect(() => {
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
       || window.matchMedia("(max-width: 1024px)").matches;
@@ -676,48 +764,93 @@ function NetflixPlayer({
       if (root) root.classList.toggle("domiflix-force-landscape", portrait);
     };
 
-    const tryEnter = () => {
-      if (!root || document.fullscreenElement) {
+    const tryLockOrientation = () => {
+      const orientation = (screen as any).orientation;
+      if (orientation?.lock) {
+        orientation.lock("landscape").catch((err: any) => {
+          // Browser não suporta lock fora de fullscreen (ex: Safari iOS),
+          // ou já está locked em outra direção. Fallback CSS toma conta.
+          console.warn("[Domiflix] orientation.lock('landscape') falhou:", err?.message ?? err);
+          applyCssFallback();
+        });
+      } else {
+        // Screen Orientation API ausente (iOS Safari < 16.4 etc).
         applyCssFallback();
+      }
+    };
+
+    const tryEnter = () => {
+      if (!root) return;
+      if (document.fullscreenElement) {
+        // Já em fullscreen — só tenta o lock e aplica fallback se precisar.
+        tryLockOrientation();
         return;
       }
       const req = root.requestFullscreen?.();
       if (req && typeof req.then === "function") {
         req
-          .then(() => {
-            const orientation = (screen as any).orientation;
-            if (orientation?.lock) {
-              orientation.lock("landscape").catch(() => applyCssFallback());
-            } else {
-              applyCssFallback();
-            }
-          })
-          .catch(() => applyCssFallback());
+          .then(() => tryLockOrientation())
+          .catch((err: any) => {
+            console.warn("[Domiflix] requestFullscreen falhou:", err?.message ?? err);
+            applyCssFallback();
+          });
       } else {
+        // requestFullscreen não disponível — só CSS fallback.
         applyCssFallback();
       }
     };
 
+    // Tenta imediatamente + em qualquer interação (necessário em browsers
+    // que exigem user gesture pra fullscreen/lock).
     const timer = setTimeout(tryEnter, 300);
     const onInteract = () => { tryEnter(); };
     window.addEventListener("touchstart", onInteract, { once: true, passive: true });
     window.addEventListener("click", onInteract, { once: true });
 
+    // Reage ao usuário rotacionar de fato o device — se voltar pra portrait,
+    // re-aplica fallback CSS pra forçar visualmente landscape.
     const mql = window.matchMedia("(orientation: portrait)");
     const onOrient = () => {
       if (root && !document.fullscreenElement) applyCssFallback();
     };
     mql.addEventListener?.("change", onOrient);
 
+    // orientationchange (legado, ainda dispara em alguns devices Android).
+    const onLegacyOrient = () => {
+      if (root && !document.fullscreenElement) applyCssFallback();
+    };
+    window.addEventListener("orientationchange", onLegacyOrient);
+
+    // Quando a aba volta a ficar visível, alguns browsers liberam o lock —
+    // re-tenta pra manter a experiência consistente.
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && root) {
+        if (document.fullscreenElement) {
+          tryLockOrientation();
+        } else {
+          applyCssFallback();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener("touchstart", onInteract);
       window.removeEventListener("click", onInteract);
+      window.removeEventListener("orientationchange", onLegacyOrient);
+      document.removeEventListener("visibilitychange", onVisibility);
       mql.removeEventListener?.("change", onOrient);
       if (root) root.classList.remove("domiflix-force-landscape");
+      // Libera o lock ao sair do player.
+      const orientation = (screen as any).orientation;
+      if (orientation?.unlock) {
+        try { orientation.unlock(); } catch { /* noop */ }
+      }
     };
   }, []);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -752,6 +885,7 @@ function NetflixPlayer({
     return () => document.removeEventListener("keydown", handler);
   }, [togglePlay, skip, toggleMute, toggleFullscreen]);
 
+  // ── Create YouTube player ──
   useEffect(() => {
     if (!isYouTube) return;
     let destroyed = false;
@@ -769,6 +903,8 @@ function NetflixPlayer({
         width: "100%",
         height: "100%",
         videoId,
+        // Use privacy-enhanced domain — fewer suggestions, no tracking
+        // cookies and minimal YouTube branding overlays.
         host: "https://www.youtube-nocookie.com",
         playerVars: {
           autoplay: 1,
@@ -801,12 +937,32 @@ function NetflixPlayer({
             } catch {
               // ignore
             }
+            // No mobile, autoplay:1 é ignorado — chamar playVideo() diretamente
+            // dentro do onReady (contexto do IFrame API) é o único jeito confiável
+            // de iniciar o vídeo sem exigir segundo toque do usuário.
+            try {
+              e.target.playVideo();
+            } catch {
+              // ignore
+            }
             setPlaying(true);
           },
           onStateChange: (e: any) => {
             if (destroyed) return;
-            setPlaying(e.data === window.YT.PlayerState.PLAYING);
+            const isPlaying = e.data === window.YT.PlayerState.PLAYING;
+            setPlaying(isPlaying);
+            // Sinal real de "vídeo começou a tocar" — usado pelo watchdog
+            // que detecta bot wall (onReady chega normalmente mas PLAYING não).
+            if (isPlaying) playStartedRef.current = true;
             if (e.data === window.YT.PlayerState.ENDED) onEndedRef.current?.();
+          },
+          onError: (e: any) => {
+            if (destroyed) return;
+            // 2 = parâmetro inválido (bug nosso, ignorar)
+            // 5/100/101/150 = erro HTML5, vídeo removido/privado, embed bloqueado
+            if (e?.data === 5 || e?.data === 100 || e?.data === 101 || e?.data === 150) {
+              setYtBlocked(true);
+            }
           },
         },
       });
@@ -821,8 +977,9 @@ function NetflixPlayer({
       cancelAnimationFrame(tickRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId, isYouTube]);
+  }, [videoId, isYouTube, retryNonce]);
 
+  // ── Drive HTML5 video init ──
   useEffect(() => {
     if (!isDrive) return;
     const v = videoElRef.current;
@@ -854,6 +1011,7 @@ function NetflixPlayer({
     };
   }, [isDrive, startSeconds]);
 
+  // Time tick
   const onProgressRef = useRef(onProgressUpdate);
   onProgressRef.current = onProgressUpdate;
 
@@ -887,6 +1045,10 @@ function NetflixPlayer({
     };
   }, [ready, seeking, isYouTube]);
 
+  // Auto-hide HUD após 3s parado quando o vídeo está tocando (Netflix-like).
+  // Quando pausado, controles ficam sempre visíveis (não agenda esconder).
+  // Cursor também some junto via `cursor-none` no container raiz.
+  // "Still watching" overlay continua aparecendo após 5s de pausa sem interação.
   const resetHideTimer = useCallback(() => {
     if (hudLocked) {
       setShowHud(false);
@@ -896,8 +1058,9 @@ function NetflixPlayer({
     setShowHud(true);
     clearTimeout(hideTimer.current);
     if (playingRef.current && !showEpisodes) {
-      hideTimer.current = setTimeout(() => setShowHud(false), 3500);
+      hideTimer.current = setTimeout(() => setShowHud(false), 3000);
     }
+    // Reset "still watching" overlay on any user interaction
     setShowStillWatching(false);
     clearTimeout(stillWatchingTimer.current);
     if (!playingRef.current) {
@@ -913,10 +1076,12 @@ function NetflixPlayer({
     };
   }, [playing, resetHideTimer]);
 
+  // Fullscreen listener
   useEffect(() => {
     const handler = () => {
       const fs = !!document.fullscreenElement;
       setIsFullscreen(fs);
+      // Lock landscape on mobile while in fullscreen (Netflix-style)
       const orientation = (screen as any).orientation;
       if (fs && orientation?.lock) {
         orientation.lock("landscape").catch(() => {
@@ -930,6 +1095,7 @@ function NetflixPlayer({
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
+  // Show "Next Episode" preview when within last 20s
   useEffect(() => {
     if (!duration) {
       setShowNextPreview(false);
@@ -939,6 +1105,7 @@ function NetflixPlayer({
     setShowNextPreview(remaining > 0 && remaining <= 10);
   }, [currentTime, duration]);
 
+  // ── Frame preview (Drive only) ──
   const driveStreamUrl = isDrive ? getDriveStreamUrl(videoId) : "";
 
   useEffect(() => {
@@ -950,6 +1117,7 @@ function NetflixPlayer({
     return () => pv.removeEventListener("loadedmetadata", onMeta);
   }, [isDrive]);
 
+  // Debounced preview seek + canvas draw
   useEffect(() => {
     if (!isDrive || hoverPct === null || !previewReady) return;
     if (previewSeekTimer.current) cancelAnimationFrame(previewSeekTimer.current);
@@ -980,17 +1148,47 @@ function NetflixPlayer({
 
   return (
     <div
-      className="relative w-full h-full bg-black select-none overflow-hidden"
+      // aspect-video (16:9) ocupando o máximo do viewport sem cropar.
+      // Em viewports portrait → letterbox top/bottom; em ultrawide → pillarbox laterais.
+      // O container pai (`domiflix-player-root`) já é flex/center com fundo preto.
+      className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw] aspect-video bg-black select-none overflow-hidden"
       style={{ cursor: showHud ? "default" : "none" }}
       onMouseMove={resetHideTimer}
-      onTouchStart={resetHideTimer}
+      onTouchStart={() => {
+        // Em mobile NÃO chamamos resetHideTimer no touchstart — deixamos o
+        // onClick decidir entre "mostrar" ou "esconder" o HUD. Se chamássemos
+        // aqui, o HUD seria sempre forçado a aparecer antes do click rodar
+        // a lógica de toggle, e ficava impossível esconder.
+        if (!isMobile) resetHideTimer();
+      }}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest(".player-controls")) return;
-        if ((e.target as HTMLElement).closest(".episodes-overlay")) return;
+        const target = e.target as HTMLElement;
+        if (target.closest(".player-controls")) return;
+        if (target.closest(".episodes-overlay")) return;
+
+        // Em mobile (Netflix-style): tap em área vazia só mostra/esconde
+        // os controles. Play/pause SÓ no botão central (cluster mobile).
+        // Em desktop mantemos o atalho clássico de "click anywhere = toggle play".
+        if (isMobile) {
+          if (showHud) {
+            // Esconde imediatamente — comportamento Netflix/YouTube mobile.
+            setShowHud(false);
+            clearTimeout(hideTimer.current);
+          } else {
+            resetHideTimer();
+          }
+          return;
+        }
         togglePlay();
       }}
     >
-      {/* YouTube iframe */}
+      {/* ── YouTube iframe ──
+          O container já é `aspect-video` no NetflixPlayer raiz, então o
+          iframe respeita 16:9 sem cropar.
+          Mantemos um scale leve (1.05) só pra disfarçar o resíduo de UI
+          do YouTube (título no topo / "ver no YouTube") — em vez do antigo
+          1.16 que cortava ~16% do conteúdo. Esse 5% é praticamente
+          imperceptível e ainda esconde os elementos residuais. */}
       {isYouTube && (
         <>
           <div className="absolute inset-0 overflow-hidden bg-black">
@@ -1000,23 +1198,79 @@ function NetflixPlayer({
                 "absolute inset-0 pointer-events-none domiflix-yt-cover transition-opacity duration-300",
                 ready ? "opacity-100" : "opacity-0"
               )}
-              style={{ transform: "scale(1.16)", transformOrigin: "center center" }}
+              style={{ transform: "scale(1.05)", transformOrigin: "center center" }}
             />
           </div>
           <div className="absolute inset-0 z-[5] bg-black pointer-events-none transition-opacity duration-300" style={{ opacity: ready ? 0 : 1 }} />
+
+          {ytBlocked && (
+            <div className="absolute inset-0 z-[30] flex items-center justify-center bg-black/95 px-6">
+              <div className="max-w-md text-center text-white">
+                <div className="mb-4 text-4xl">⚠️</div>
+                <h2 className="mb-2 text-xl font-semibold">
+                  Vídeo bloqueado pelo YouTube
+                </h2>
+                <p className="mb-6 text-sm text-white/70">
+                  O YouTube está pedindo login pra confirmar que você não é um robô.
+                  Isso acontece em alguns navegadores e provedores de internet — não é
+                  problema do app. Você pode assistir direto no YouTube ou tentar
+                  recarregar.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                  <button
+                    onClick={() =>
+                      window.open(
+                        `https://www.youtube.com/watch?v=${videoId}`,
+                        "_blank",
+                        "noopener,noreferrer"
+                      )
+                    }
+                    className="rounded bg-[#E50914] px-5 py-2 font-medium text-white hover:bg-[#f6121d]"
+                  >
+                    Assistir no YouTube
+                  </button>
+                  <button
+                    onClick={() => {
+                      setYtBlocked(false);
+                      playStartedRef.current = false;
+                      setRetryNonce((n) => n + 1);
+                    }}
+                    className="rounded border border-white/30 px-5 py-2 font-medium text-white hover:bg-white/10"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      {/* Drive HTML5 video */}
+      {/* ── Drive HTML5 video ──
+          Notes for fast streaming:
+          - `preload="auto"` tells the browser to start fetching bytes
+            immediately (the `usercontent.google.com` host honours HTTP
+            Range requests, so the video can begin playing before the
+            full file is downloaded).
+          - We do NOT set `crossOrigin` on the main element: that would
+            force a CORS preflight on every range request and slow the
+            initial buffering. The hidden preview <video> below keeps
+            CORS so it can be drawn into a canvas for thumbnails. */}
       {isDrive && (
         <>
           <video
             ref={videoElRef}
             src={driveStreamUrl}
-            className="absolute inset-0 w-full h-full object-cover"
+            // object-contain (não cover): mantém aspect ratio real do vídeo
+            // sem cropar — letterbox/pillarbox dentro do container 16:9.
+            className="absolute inset-0 w-full h-full object-contain"
             playsInline
             preload="auto"
           />
+          {/* Hidden preview video for frame thumbnails.
+              `preload="metadata"` avoids downloading the full file in
+              parallel with the main player — bytes are only fetched
+              on-demand when the user hovers the progress bar. */}
           <video
             ref={previewVideoRef}
             src={driveStreamUrl}
@@ -1035,8 +1289,14 @@ function NetflixPlayer({
         </div>
       )}
 
-      {/* Intro overlay */}
+      {/* Intro overlay — black screen with Domiflix logo while the
+          intro sound effect plays. Fades out smoothly when the intro
+          ends, revealing the video with a clean fade-in.
+          The `key={videoId}` forces a full remount on every episode
+          change so the CSS animation restarts cleanly even when the
+          previous overlay was still mid-transition. */}
       <div
+        key={videoId}
         className={cn(
           "absolute inset-0 z-[40] bg-black flex items-center justify-center pointer-events-none transition-opacity duration-700 ease-out",
           introPlaying ? "opacity-100" : "opacity-0"
@@ -1062,13 +1322,14 @@ function NetflixPlayer({
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
       </div>
 
-      {/* HUD: Back button + episode title (top) */}
+      {/* ── HUD: Back button + episode title (top-left, inline) ── */}
       <div
         className={cn(
           "player-controls absolute top-0 left-0 right-0 z-20 px-3 pt-2 pb-3 md:px-6 md:pt-3 md:pb-4 transition-all duration-500",
           showHud ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none"
         )}
       >
+        {/* Mobile: back left, title centered (bold name + light sub) */}
         <div className="md:hidden relative flex items-center h-9">
           <button
             onClick={onBack}
@@ -1088,6 +1349,7 @@ function NetflixPlayer({
           </div>
         </div>
 
+        {/* Desktop: original layout */}
         <div className="hidden md:flex items-center gap-4">
           <button
             onClick={onBack}
@@ -1120,7 +1382,7 @@ function NetflixPlayer({
         </div>
       </div>
 
-      {/* Episodes overlay */}
+      {/* ── Episodes overlay (Netflix-style, above bottom bar) ── */}
       {titleData && titleData.type === "series" && onSelectEpisode && (
         <EpisodesOverlay
           open={showEpisodes && showHud}
@@ -1136,7 +1398,7 @@ function NetflixPlayer({
         />
       )}
 
-      {/* "Você está assistindo" overlay */}
+      {/* ── "Você está assistindo" overlay (after 5s paused without interaction) ── */}
       {showStillWatching && !playing && (
         <div
           className="absolute inset-0 z-30 animate-fade-in"
@@ -1148,6 +1410,7 @@ function NetflixPlayer({
             togglePlay();
           }}
         >
+          {/* Fundo preto cobrindo toda a tela */}
           <div className="absolute inset-0 pointer-events-none bg-black/80" />
           <div className="relative h-full">
             <div className="absolute top-1/2 left-8 sm:left-12 md:left-20 right-6 sm:right-auto -translate-y-1/2 max-w-[640px] text-white">
@@ -1186,9 +1449,10 @@ function NetflixPlayer({
         </div>
       )}
 
-      {/* End-of-episode action buttons (last 10s) */}
+      {/* ── End-of-episode action buttons (last 10s) ── */}
       {showNextPreview && (() => {
         const remaining = Math.max(0, duration - currentTime);
+        // 0 at 10s remaining → 1 at 0s remaining (fill left→right)
         const fillPct = Math.max(0, Math.min(1, (10 - remaining) / 10)) * 100;
         return (
           <div
@@ -1198,6 +1462,7 @@ function NetflixPlayer({
               "opacity-100 translate-y-0 pointer-events-auto"
             )}
           >
+            {/* Voltar para o início */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1208,6 +1473,7 @@ function NetflixPlayer({
               Voltar para o início
             </button>
 
+            {/* Próximo episódio com preenchimento esquerda → direita */}
             {nextEpisode && onEnded && (
               <button
                 onClick={(e) => {
@@ -1216,11 +1482,14 @@ function NetflixPlayer({
                 }}
                 className="relative overflow-hidden rounded-sm border border-white/30 text-sm font-semibold"
               >
+                {/* Camada de fundo (cinza claro) */}
                 <span className="absolute inset-0 bg-white/30" />
+                {/* Camada de preenchimento (branca) */}
                 <span
                   className="absolute inset-y-0 left-0 bg-white transition-[width] duration-200 ease-linear"
                   style={{ width: `${fillPct}%` }}
                 />
+                {/* Conteúdo */}
                 <span className="relative flex items-center gap-2 px-5 py-2.5 text-black">
                   <PlayIcon className="w-4 h-4" />
                   Próximo episódio
@@ -1231,7 +1500,7 @@ function NetflixPlayer({
         );
       })()}
 
-      {/* HUD Bottom */}
+      {/* ── HUD Bottom ── */}
       <div
         className={cn(
           "player-controls absolute bottom-0 left-0 right-0 z-20 transition-all duration-500",
@@ -1270,20 +1539,22 @@ function NetflixPlayer({
             >
               <div
                 className="absolute inset-y-0 left-0 bg-[#E50914] rounded-full"
-                style={{
-                  width: `${playbackProgress}%`,
-                  transition: seeking ? "none" : "width 150ms linear",
-                }}
+                  style={{
+                    width: `${playbackProgress}%`,
+                    transition: seeking ? "none" : "width 150ms linear",
+                  }}
               />
+              {/* Scrubber dot — always visible, grows on hover */}
               <div
                 className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 group-hover:w-4 group-hover:h-4 bg-[#E50914] rounded-full shadow-[0_0_8px_rgba(229,9,20,0.6)]"
-                style={{
-                  left: `${playbackProgress}%`,
-                  marginLeft: "-7px",
-                  transition: seeking ? "none" : "left 150ms linear, width 150ms, height 150ms",
-                }}
+                  style={{
+                    left: `${playbackProgress}%`,
+                    marginLeft: "-7px",
+                    transition: seeking ? "none" : "left 150ms linear, width 150ms, height 150ms",
+                  }}
               />
 
+              {/* Hover preview tooltip */}
               {hoverPct !== null && duration > 0 && (
                 <div
                   className="absolute bottom-full mb-2 -translate-x-1/2 pointer-events-none"
@@ -1317,14 +1588,19 @@ function NetflixPlayer({
           </div>
         </div>
 
-        {/* Desktop controls row */}
+        {/* Controls row */}
         <div className="hidden md:flex items-center justify-between px-4 md:px-10 pb-4 md:pb-6 pt-2">
+          {/* Left controls */}
           <div className="flex items-center gap-1 md:gap-3">
             <button
               onClick={togglePlay}
               className="text-white hover:scale-110 transition-transform p-1"
             >
-              {playing ? <PauseIcon className="w-7 h-7 md:w-8 md:h-8" /> : <PlayIcon className="w-7 h-7 md:w-8 md:h-8" />}
+              {playing ? (
+                <PauseIcon className="w-7 h-7 md:w-8 md:h-8" />
+              ) : (
+                <PlayIcon className="w-7 h-7 md:w-8 md:h-8" />
+              )}
             </button>
 
             <button
@@ -1410,8 +1686,13 @@ function NetflixPlayer({
 
           {/* Right controls */}
           <div className="flex items-center gap-1 md:gap-3">
+            {/* Next episode button with hover preview */}
             {nextEpisode && onPlayNext && (
-              <NextEpisodeButton nextEpisode={nextEpisode} onPlayNext={onPlayNext} />
+              <NextEpisodeButton
+                nextEpisode={nextEpisode}
+                onPlayNext={onPlayNext}
+                titleData={titleData}
+              />
             )}
 
             {titleData && titleData.type === "series" && onSelectEpisode && (
@@ -1431,6 +1712,7 @@ function NetflixPlayer({
               </button>
             )}
 
+            {/* Playback speed */}
             {onChangePlaybackSpeed && (
               <SpeedButton
                 speed={playbackSpeed}
@@ -1456,16 +1738,21 @@ function NetflixPlayer({
           </div>
         </div>
 
-        {/* Mobile bottom controls row */}
-        <div className="md:hidden flex items-center justify-center gap-8 sm:gap-10 pt-2 pb-3 text-white">
+        {/* ── Mobile bottom controls row (Netflix-style) ── */}
+        {/* `pointer-events-auto` força a barra a receber toque mesmo se outro
+            overlay (ex: cluster central de play/pause) estiver na frente em
+            stacking order. Sem isso, em alguns devices o toque "vazava" pro
+            overlay de baixo e os botões viravam inertes no celular. */}
+        <div className="md:hidden flex items-center justify-center gap-8 sm:gap-10 pt-2 pb-3 text-white relative z-10 pointer-events-auto">
           {onChangePlaybackSpeed && (
             <button
+              onPointerDown={(e) => { e.stopPropagation(); }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowEpisodes(false);
                 setShowSpeed((v) => !v);
               }}
-              className="flex flex-col items-center gap-0.5"
+              className="flex flex-col items-center gap-0.5 pointer-events-auto"
             >
               <SpeedIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Velocidade ({playbackSpeed}x)</span>
@@ -1474,13 +1761,14 @@ function NetflixPlayer({
 
           {titleData && titleData.type === "series" && onSelectEpisode && (
             <button
+              onPointerDown={(e) => { e.stopPropagation(); }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowSpeed(false);
                 setShowEpisodes((v) => !v);
               }}
               className={cn(
-                "flex flex-col items-center gap-0.5",
+                "flex flex-col items-center gap-0.5 pointer-events-auto",
                 showEpisodes && "text-[#E50914]"
               )}
             >
@@ -1491,11 +1779,12 @@ function NetflixPlayer({
 
           {nextEpisode && onPlayNext && (
             <button
+              onPointerDown={(e) => { e.stopPropagation(); }}
               onClick={(e) => {
                 e.stopPropagation();
                 onPlayNext();
               }}
-              className="flex flex-col items-center gap-0.5"
+              className="flex flex-col items-center gap-0.5 pointer-events-auto"
             >
               <NextEpisodeIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Próx. episódio</span>
@@ -1504,7 +1793,7 @@ function NetflixPlayer({
         </div>
       </div>
 
-      {/* Mobile center cluster: skip/play/skip */}
+      {/* ── Mobile center cluster: skip-back / play-pause / skip-forward ── */}
       {ready && showHud && !showEpisodes && (
         <div className="player-controls md:hidden absolute inset-0 z-20 flex items-center justify-center gap-10 pointer-events-none">
           <button
@@ -1521,7 +1810,11 @@ function NetflixPlayer({
             className="pointer-events-auto w-16 h-16 flex items-center justify-center text-white"
             aria-label={playing ? "Pausar" : "Reproduzir"}
           >
-            {playing ? <PauseIcon className="w-12 h-12" /> : <PlayIcon className="w-12 h-12 ml-1" />}
+            {playing ? (
+              <PauseIcon className="w-12 h-12" />
+            ) : (
+              <PlayIcon className="w-12 h-12 ml-1" />
+            )}
           </button>
           <button
             onPointerDown={(e) => { e.stopPropagation(); }}
@@ -1557,7 +1850,7 @@ function NetflixPlayer({
   );
 }
 
-// ─── Episodes Overlay ────────────────────────────────────────────────────────
+// ─── Episodes Overlay (Netflix-style, sits above bottom bar) ─────────────────
 function EpisodesOverlay({
   open,
   onClose,
@@ -1581,6 +1874,7 @@ function EpisodesOverlay({
     [progress]
   );
 
+  // Track open state per season — current season open by default
   const initialOpen = useMemo(() => {
     const set = new Set<string>();
     const currentSeason = seasons.find((s) =>
@@ -1602,6 +1896,7 @@ function EpisodesOverlay({
     setExpandedEpisodeId(currentEpisodeId ?? null);
   }, [initialOpen, currentEpisodeId, open]);
 
+  // Auto-scroll to current episode when overlay opens
   useEffect(() => {
     if (open && currentRowRef.current) {
       setTimeout(() => {
@@ -1692,6 +1987,8 @@ function EpisodesOverlay({
                       const isExpanded = expandedEpisodeId === ep.id;
                       const displayEpisodeNumber = ep.episode_number ?? eIdx + 1;
                       const episodeProgressPct = getEpisodeProgressPct(ep.id);
+                      const hasCustomTitle =
+                        !!ep.title && !/^episode\s+\d+$/i.test(ep.title) && !/^epis[oó]dio\s+\d+$/i.test(ep.title);
 
                       return (
                         <div
@@ -1737,15 +2034,24 @@ function EpisodesOverlay({
                                 onClick={() => onSelectEpisode(ep)}
                                 className="shrink-0 group"
                               >
-                                {ep.thumbnail_url ? (
-                                  <img
-                                    src={ep.thumbnail_url}
-                                    alt={ep.title}
-                                    className="w-44 h-24 object-cover rounded group-hover:opacity-80 transition-opacity"
-                                  />
-                                ) : (
-                                  <div className="w-44 h-24 bg-white/10 rounded" />
-                                )}
+                                {(() => {
+                                  const titleFallback = titleData?.banner_url || titleData?.thumbnail_url || null;
+                                  const thumbSrc = ep.thumbnail_url
+                                    ? ep.thumbnail_url
+                                    : ep.video_type === "youtube" && ep.video_id
+                                      ? getYouTubeThumbnail(ep.video_id)
+                                      : titleFallback;
+                                  return thumbSrc ? (
+                                    <img
+                                      src={thumbSrc}
+                                      alt={ep.title}
+                                      loading="lazy"
+                                      className="w-44 h-24 object-cover rounded group-hover:opacity-80 transition-opacity"
+                                    />
+                                  ) : (
+                                    <div className="w-44 h-24 bg-white/10 rounded" />
+                                  );
+                                })()}
                               </button>
                               <div className="flex-1 min-w-0">
                                 <p className="text-white text-sm font-medium mb-1">
@@ -1776,13 +2082,15 @@ function EpisodesOverlay({
   );
 }
 
-// ─── Next Episode Button ─────────────────────────────────────────────────────
+// ─── Next Episode Button (with hover preview card) ───────────────────────────
 function NextEpisodeButton({
   nextEpisode,
   onPlayNext,
+  titleData,
 }: {
   nextEpisode: DomiflixEpisode;
   onPlayNext: () => void;
+  titleData?: DomiflixTitleFull | null;
 }) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -1826,15 +2134,19 @@ function NextEpisodeButton({
           }}
           className="w-full text-left flex gap-3 p-3 hover:bg-white/5 transition-colors"
         >
-          {nextEpisode.thumbnail_url ? (
-            <img
-              src={nextEpisode.thumbnail_url}
-              alt={nextEpisode.title}
-              className="w-32 h-20 object-cover rounded shrink-0"
-            />
-          ) : (
-            <div className="w-32 h-20 bg-white/10 rounded shrink-0" />
-          )}
+          {(() => {
+            const titleFallback = titleData?.banner_url || titleData?.thumbnail_url || null;
+            const src = nextEpisode.thumbnail_url || titleFallback;
+            return src ? (
+              <img
+                src={src}
+                alt={nextEpisode.title}
+                className="w-32 h-20 object-cover rounded shrink-0"
+              />
+            ) : (
+              <div className="w-32 h-20 bg-white/10 rounded shrink-0" />
+            );
+          })()}
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-bold mb-1 truncate">
               {nextEpisode.episode_number ?? ""}
@@ -1867,6 +2179,7 @@ function SpeedButton({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Click-outside to close
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -1874,6 +2187,7 @@ function SpeedButton({
         onOpenChange(false);
       }
     };
+    // Defer attaching to avoid immediate close on the same click that opens it
     const id = setTimeout(() => {
       document.addEventListener("mousedown", handleClickOutside);
     }, 0);
@@ -1901,6 +2215,7 @@ function SpeedButton({
 
       <div
         className={cn(
+          // Same vertical offset as the episodes overlay so it sits above the progress bar
           "absolute bottom-[calc(100%+72px)] right-0 w-[480px] max-w-[80vw]",
           "bg-[#181818] rounded-md border border-white/10 shadow-2xl",
           "transition-all duration-200",
@@ -1910,11 +2225,17 @@ function SpeedButton({
         <div className="px-7 pt-5 pb-2">
           <p className="text-white font-bold text-sm">Velocidade</p>
         </div>
+        {/* Speed selector — grid layout keeps every dot inside its own
+            column so labels never overflow the panel. The line spans
+            from the centre of the 1st column to the centre of the last
+            (10% → 90% of the rail width) and stays vertically aligned
+            with the dots because both share the same fixed-height row. */}
         <div className="px-6 pt-6 pb-10">
           <div
             className="grid items-center"
             style={{ gridTemplateColumns: `repeat(${PLAYBACK_SPEEDS.length}, minmax(0, 1fr))` }}
           >
+            {/* Rail line — full row, behind the dots, vertically centered */}
             <div className="col-span-full row-start-1 relative h-10 pointer-events-none">
               <div
                 className="absolute top-1/2 -translate-y-1/2 h-[2px] bg-white/30 rounded-full"
@@ -1922,6 +2243,7 @@ function SpeedButton({
               />
             </div>
 
+            {/* Dots — each in its own grid cell, perfectly centered */}
             {PLAYBACK_SPEEDS.map((s, i) => {
               const active = Math.abs(s - speed) < 0.01;
               return (

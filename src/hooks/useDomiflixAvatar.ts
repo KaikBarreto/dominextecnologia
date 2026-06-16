@@ -61,6 +61,9 @@ export function useDomiflixAvatar() {
         .from("domiflix_user_preferences" as any)
         .upsert({ user_id: user.id, domiflix_avatar_url: url }, { onConflict: "user_id" });
       if (!error) {
+        queryClient.setQueryData(QUERY_KEY, (curr: any) =>
+          curr ? { ...curr, domiflix_avatar_url: url } : curr
+        );
         queryClient.invalidateQueries({ queryKey: QUERY_KEY });
       }
     },
@@ -75,6 +78,9 @@ export function useDomiflixAvatar() {
     await supabase
       .from("domiflix_user_preferences" as any)
       .upsert({ user_id: user.id, domiflix_avatar_url: null }, { onConflict: "user_id" });
+    queryClient.setQueryData(QUERY_KEY, (curr: any) =>
+      curr ? { ...curr, domiflix_avatar_url: null } : curr
+    );
     queryClient.invalidateQueries({ queryKey: QUERY_KEY });
   }, [user?.id, queryClient]);
 
