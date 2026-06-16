@@ -59,7 +59,6 @@ export const TermsOfServiceWrapper = ({ children }: { children: React.ReactNode 
       '/reset-password',
       '/checkout',
       '/os-tecnico',
-      '/avaliacao',
       '/orcamento',
       '/proposta',
       '/portal',

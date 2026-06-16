@@ -88,7 +88,6 @@ import TechnicianTools from "./pages/TechnicianTools";
 // o bundle do /login fica livre de inicializar dois GoTrueClient na mesma aba.
 const TechnicianOS = React.lazy(() => import("./pages/TechnicianOS"));
 import NotFound from "./pages/NotFound";
-import ServiceRating from "./pages/ServiceRating";
 import Changelog from "./pages/Changelog";
 // Tutorials removed — replaced by Domiflix
 import Employees from "./pages/Employees";
@@ -374,8 +373,6 @@ const AppRoutes = () => (
     
     {/* Technician OS - Public route with OS ID */}
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />
-    {/* Public rating page */}
-    <Route path="/avaliacao/:token" element={<ServiceRating />} />
     {/* Public quote page */}
     <Route path="/orcamento/:token" element={<QuotePublic />} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />

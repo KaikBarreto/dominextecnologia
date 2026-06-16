@@ -18,7 +18,6 @@ const PUBLIC_PATHS_EXACT = new Set([
 ]);
 
 const PUBLIC_PATH_PREFIXES = [
-  '/avaliacao/',
   '/orcamento/',
   '/proposta/',
   '/portal/',

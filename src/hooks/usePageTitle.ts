@@ -57,7 +57,6 @@ export const usePageTitle = () => {
       else if (pathname.startsWith("/questionarios/")) title = "Checklist";
       else if (pathname.startsWith("/admin/empresas/")) title = "Admin | Empresa";
       else if (pathname.startsWith("/os-tecnico/")) title = "OS Técnico";
-      else if (pathname.startsWith("/avaliacao/")) title = "Avaliação";
       else if (pathname.startsWith("/orcamento/")) title = "Orçamento";
       else if (pathname.startsWith("/proposta/")) title = "Proposta";
       else if (pathname.startsWith("/portal/")) title = "Portal do Cliente";

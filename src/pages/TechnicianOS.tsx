@@ -43,6 +43,7 @@ import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
+import { RateServiceAffordance } from '@/components/technician/RateServiceAffordance';
 import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hooks/useServiceRatings';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
@@ -90,6 +91,13 @@ export default function TechnicianOS() {
   const [npsConfig, setNpsConfig] = useState<PublicNpsConfig | null>(null);
   // Critérios de estrela dinâmicos (ativos da empresa) vindos de get_public_os.
   const [npsCriteria, setNpsCriteria] = useState<PublicNpsCriterion[]>([]);
+  // Estado CONTROLADO do drawer de avaliação (a página detém o open pra poder
+  // reabrir via affordance). `ratingSurveyOpen` começa null = "ainda não
+  // decidido"; resolvido na 1ª render do bloco concluída pra abrir sozinho
+  // quando aplicável sem reabrir após o cliente fechar.
+  const [ratingSurveyOpen, setRatingSurveyOpen] = useState<boolean | null>(null);
+  // Vira true quando o cliente envia (ou já tinha avaliado): esconde affordance.
+  const [ratingDone, setRatingDone] = useState(false);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
@@ -735,12 +743,43 @@ export default function TechnicianOS() {
             </Badge>
           </div>
         </div>
-        <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-4">
+        <div
+          className="max-w-2xl mx-auto p-3 sm:p-4 space-y-4"
+          // Folga inferior pro rodapé fixo (mobile) / FAB (desktop) de avaliar
+          // não cobrir o fim do relatório quando o affordance está visível.
+          style={
+            !ratingDone && rating && !rating.already_rated
+              ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)' }
+              : undefined
+          }
+        >
           {/* Carona da avaliação: só no modo cliente, OS concluída e com a
               pesquisa habilitada pela empresa (survey_enabled). Ainda sem
-              avaliação → formulário; já avaliada → aviso enxuto de sucesso. */}
+              avaliação → formulário; já avaliada → aviso enxuto de sucesso.
+              Estado do drawer controlado aqui pra o affordance reabrir. */}
           {forceReadOnly && id && rating && rating.is_concluded && surveyEnabled && (
-            <OSRatingSurvey osId={id} rating={rating} npsConfig={npsConfig} criteria={npsCriteria} />
+            <>
+              <OSRatingSurvey
+                osId={id}
+                rating={rating}
+                npsConfig={npsConfig}
+                criteria={npsCriteria}
+                // 1ª render: abre sozinho quando ainda não avaliado.
+                open={ratingSurveyOpen ?? rating.already_rated !== true}
+                onOpenChange={setRatingSurveyOpen}
+                onRated={() => {
+                  setRatingDone(true);
+                  setRatingSurveyOpen(false);
+                }}
+              />
+              {/* Affordance de reabrir: só quando há avaliação pendente E o
+                  drawer está fechado. Some se já avaliado ou drawer aberto. */}
+              {!ratingDone &&
+                !rating.already_rated &&
+                ratingSurveyOpen === false && (
+                  <RateServiceAffordance onClick={() => setRatingSurveyOpen(true)} />
+                )}
+            </>
           )}
           <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} />
         </div>

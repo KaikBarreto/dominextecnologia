@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -32,30 +33,41 @@ function bandOf(n: number): NpsBand {
   return 'promoter';
 }
 
+/**
+ * `tone` = cor do texto/ícone grande (carinha + número) sobre fundo claro.
+ * `cardBg` = fundo SATURADO do banner contextual; `cardStyle` é usado só na
+ * faixa âmbar, onde o token `--warning` (38 92% 50%) é claro demais pra texto
+ * branco — descemos a luminância pra garantir contraste (texto branco legível).
+ */
 const BAND_META: Record<
   NpsBand,
-  { label: string; icon: typeof Smile; tone: string; bg: string; ring: string }
+  {
+    label: string;
+    icon: typeof Smile;
+    tone: string;
+    cardBg: string;
+    cardStyle?: React.CSSProperties;
+  }
 > = {
   detractor: {
     label: 'Vamos melhorar — obrigado por avisar',
     icon: Frown,
     tone: 'text-destructive',
-    bg: 'bg-destructive/10',
-    ring: 'ring-destructive/40',
+    cardBg: 'bg-destructive',
   },
   passive: {
     label: 'Bom! O que faltou pra ser excelente?',
     icon: Meh,
     tone: 'text-warning',
-    bg: 'bg-warning/10',
-    ring: 'ring-warning/40',
+    // Âmbar escurecido (mesma matiz do --warning, luminância menor) p/ texto branco.
+    cardBg: '',
+    cardStyle: { backgroundColor: 'hsl(38 92% 36%)' },
   },
   promoter: {
     label: 'Que ótimo! Ficamos muito felizes',
     icon: Smile,
     tone: 'text-success',
-    bg: 'bg-success/10',
-    ring: 'ring-success/40',
+    cardBg: 'bg-success',
   },
 };
 
@@ -107,9 +119,13 @@ function StarRow({
 }
 
 /**
- * Escala NPS 0–10 remodelada: carinha grande que reage à faixa + barra
- * segmentada conectada com gradiente vermelho→âmbar→verde. Cada segmento é
- * tocável (área de toque confortável no mobile). Mantém o NPS (0–10).
+ * Escala NPS 0–10 remodelada: carinha grande que reage à faixa EM TEMPO REAL +
+ * SLIDER arrastável (0–10, passo 1) com track em gradiente vermelho→âmbar→verde.
+ *
+ * Importante: a nota só "existe" depois da 1ª interação (`value !== null`).
+ * O primitivo Slider exige um número, então quando ainda não tocado controlamos
+ * com um valor neutro (5) só visual e marcamos a nota como definida apenas no
+ * `onValueChange`. Assim não enviamos nota fantasma.
  */
 function NpsScale({
   value,
@@ -121,10 +137,12 @@ function NpsScale({
   const band = value !== null ? bandOf(value) : null;
   const meta = band ? BAND_META[band] : null;
   const FaceIcon = meta?.icon ?? Meh;
+  // Posição visual do thumb: nota real ou centro neutro enquanto não tocado.
+  const sliderValue = value ?? 5;
 
   return (
     <div className="space-y-4">
-      {/* Carinha grande + nota */}
+      {/* Carinha grande + nota (reage ao arrastar) */}
       <div className="flex flex-col items-center gap-1.5">
         <FaceIcon
           className={cn(
@@ -143,52 +161,28 @@ function NpsScale({
         </span>
       </div>
 
-      {/* Barra segmentada conectada (0–10) com gradiente por faixa */}
-      <div
-        className="flex gap-0.5 rounded-full bg-muted/50 p-0.5"
-        role="radiogroup"
-        aria-label="Nota de 0 a 10"
-      >
-        {Array.from({ length: 11 }, (_, n) => {
-          const nBand = bandOf(n);
-          const selected = value === n;
-          const fillBg =
-            nBand === 'detractor'
-              ? 'bg-destructive'
-              : nBand === 'passive'
-                ? 'bg-warning'
-                : 'bg-success';
-          const fillFg =
-            nBand === 'detractor'
-              ? 'text-destructive-foreground'
-              : nBand === 'passive'
-                ? 'text-warning-foreground'
-                : 'text-success-foreground';
-          const restTint =
-            nBand === 'detractor'
-              ? 'text-destructive'
-              : nBand === 'passive'
-                ? 'text-warning'
-                : 'text-success';
-          return (
-            <button
-              key={n}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              aria-label={`Nota ${n} de 10`}
-              onClick={() => onChange(n)}
-              className={cn(
-                'flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                selected
-                  ? cn(fillBg, fillFg, 'scale-105 shadow-md')
-                  : cn('bg-transparent hover:bg-background/60', restTint, 'opacity-70'),
-              )}
-            >
-              {n}
-            </button>
-          );
-        })}
+      {/* Slider arrastável (0–10) com track em gradiente por faixa */}
+      <div className="py-1">
+        <Slider
+          min={0}
+          max={10}
+          step={1}
+          value={[sliderValue]}
+          onValueChange={(v) => onChange(v[0])}
+          aria-label="Nota de 0 a 10"
+          aria-valuetext={value !== null ? `Nota ${value} de 10` : 'Arraste para escolher a nota'}
+          className={cn(
+            // Track (.bg-secondary) mais alto + gradiente das faixas; Range
+            // (.bg-primary) some, o gradiente do track já comunica a faixa.
+            '[&_.bg-secondary]:h-3',
+            "[&_.bg-secondary]:bg-[linear-gradient(to_right,hsl(var(--destructive))_0%,hsl(var(--destructive))_55%,hsl(38_92%_50%)_64%,hsl(38_92%_50%)_78%,hsl(var(--success))_88%,hsl(var(--success))_100%)]",
+            '[&_.bg-primary]:bg-transparent',
+            // Thumb maior pra toque confortável no mobile.
+            '[&_[role=slider]]:h-7 [&_[role=slider]]:w-7 [&_[role=slider]]:border-[3px] [&_[role=slider]]:border-foreground [&_[role=slider]]:bg-background [&_[role=slider]]:shadow-md',
+            // Antes do 1º toque o thumb fica esmaecido (nota ainda não definida).
+            value === null && '[&_[role=slider]]:opacity-50',
+          )}
+        />
       </div>
 
       {/* Rótulos das pontas */}
@@ -197,15 +191,14 @@ function NpsScale({
         <span>Muito provável</span>
       </div>
 
-      {/* Mensagem contextual da faixa */}
+      {/* Mensagem contextual da faixa — banner SATURADO com texto branco */}
       {meta && (
         <p
           className={cn(
-            'rounded-lg px-3 py-2 text-center text-sm font-medium ring-1 animate-in fade-in duration-200',
-            meta.bg,
-            meta.tone,
-            meta.ring,
+            'rounded-lg px-3 py-2.5 text-center text-sm font-semibold text-white shadow-sm animate-in fade-in duration-200',
+            meta.cardBg,
           )}
+          style={meta.cardStyle}
         >
           {meta.label}
         </p>
@@ -221,6 +214,14 @@ interface OSRatingSurveyProps {
   npsConfig?: PublicNpsConfig | null;
   /** Critérios de estrela ATIVOS da empresa (dinâmicos), já ordenados. */
   criteria?: PublicNpsCriterion[];
+  /** Estado CONTROLADO do drawer — a página detém o open p/ poder reabrir. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /**
+   * Callback após envio bem-sucedido (ou detecção de "já avaliado"), pra a
+   * página esconder o affordance de reabrir.
+   */
+  onRated?: () => void;
 }
 
 const DEFAULT_QUESTION = 'De 0 a 10, o quão satisfeito(a) você ficou com o nosso serviço?';
@@ -234,15 +235,21 @@ const DEFAULT_QUESTION = 'De 0 a 10, o quão satisfeito(a) você ficou com o nos
  * Escala NPS 0–10 remodelada (carinha + barra segmentada com gradiente) e
  * critérios de estrela DINÂMICOS vindos de get_public_os.nps_criteria.
  */
-export function OSRatingSurvey({ osId, rating, npsConfig, criteria }: OSRatingSurveyProps) {
+export function OSRatingSurvey({
+  osId,
+  rating,
+  npsConfig,
+  criteria,
+  open,
+  onOpenChange,
+  onRated,
+}: OSRatingSurveyProps) {
   const { toast } = useToast();
   const requireStars = npsConfig?.require_stars === true;
   const question = npsConfig?.question?.trim() || DEFAULT_QUESTION;
   const dynamicCriteria = criteria ?? [];
 
   const [thanked, setThanked] = useState(rating.already_rated === true);
-  // Abre sozinho quando ainda não avaliado. Se já avaliado, fica fechado.
-  const [open, setOpen] = useState(rating.already_rated !== true);
   const [submitting, setSubmitting] = useState(false);
 
   const [npsScore, setNpsScore] = useState<number | null>(null);
@@ -255,7 +262,8 @@ export function OSRatingSurvey({ osId, rating, npsConfig, criteria }: OSRatingSu
   useEffect(() => {
     if (rating.already_rated === true) {
       setThanked(true);
-      setOpen(false);
+      onOpenChange(false);
+      onRated?.();
     }
   }, [rating.already_rated]);
 
@@ -290,7 +298,8 @@ export function OSRatingSurvey({ osId, rating, npsConfig, criteria }: OSRatingSu
         supabaseAnon,
       );
       setThanked(true);
-      setOpen(false);
+      onOpenChange(false);
+      onRated?.();
       toast({ title: 'Avaliação enviada' });
       // Relatório da OS (renderizado abaixo do drawer) fica em foco.
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -298,7 +307,8 @@ export function OSRatingSurvey({ osId, rating, npsConfig, criteria }: OSRatingSu
       if (isAlreadyRatedError(err)) {
         toast({ title: 'Esta avaliação já foi enviada. Obrigado!' });
         setThanked(true);
-        setOpen(false);
+        onOpenChange(false);
+        onRated?.();
         return;
       }
       toast({
@@ -328,7 +338,7 @@ export function OSRatingSurvey({ osId, rating, npsConfig, criteria }: OSRatingSu
   return (
     <ResponsiveModal
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={onOpenChange}
       title="Como foi seu atendimento?"
       footer={
         <Button

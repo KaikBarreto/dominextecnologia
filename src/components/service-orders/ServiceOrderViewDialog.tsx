@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,6 @@ import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
-import { useServiceRatings } from '@/hooks/useServiceRatings';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
@@ -84,7 +83,6 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const { toast } = useToast();
-  const { createRatingToken } = useServiceRatings();
   const isCompact = useIsCompact();
   const { isPmoc: isPmocOrder } = useIsPmocOrder(serviceOrderId);
 
@@ -455,22 +453,6 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             }
           });
         }
-        if (serviceOrder.status === 'concluida') {
-          actions.push({
-            key: 'rating-link',
-            icon: Star,
-            label: 'Avaliação',
-            onClick: async () => {
-              const result = await createRatingToken.mutateAsync(serviceOrder.id);
-              if (result?.token) {
-                const url = `${window.location.origin}/avaliacao/${result.token}`;
-                await navigator.clipboard.writeText(url);
-                toast({ title: 'Link de avaliação copiado!' });
-              }
-            }
-          });
-        }
-
         // Tema claro: fundo branco + ícone saturado + borda sutil colorida.
         // Tema escuro: fundo dessaturado colorido (pattern original).
         const toneClasses: Record<ActionTone, string> = {

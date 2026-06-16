@@ -1,8 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
-import { useToast } from '@/hooks/use-toast';
-import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface ServiceRating {
   id: string;
@@ -116,9 +114,6 @@ export function calculateNps(ratings: { nps_score: number | null }[]) {
 }
 
 export function useServiceRatings() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
   const ratingsQuery = useQuery({
     queryKey: ['service-ratings'],
     queryFn: async () => {
@@ -167,76 +162,8 @@ export function useServiceRatings() {
     },
   });
 
-  const createRatingToken = useMutation({
-    mutationFn: async (serviceOrderId: string) => {
-      const { data, error } = await supabase
-        .from('service_ratings')
-        .insert({ service_order_id: serviceOrderId })
-        .select()
-        .single();
-
-      if (error) {
-        // Already exists — fetch existing
-        if (error.code === '23505') {
-          const { data: existing } = await supabase
-            .from('service_ratings')
-            .select('*')
-            .eq('service_order_id', serviceOrderId)
-            .single();
-          return existing;
-        }
-        throw error;
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
-    },
-    onError: (error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar avaliação', description: getErrorMessage(error) });
-    },
-  });
-
   return {
     ratings: ratingsQuery.data ?? [],
     isLoading: ratingsQuery.isLoading,
-    createRatingToken,
-  };
-}
-
-// Hook for public rating page (no auth)
-export function usePublicRating(token: string | undefined) {
-  const ratingQuery = useQuery({
-    queryKey: ['public-rating', token],
-    enabled: !!token,
-    queryFn: async () => {
-      // RPC SECURITY DEFINER valida o token e já devolve a linha de avaliação +
-      // a OS relacionada (id, order_number, scheduled_date, customer{id,name}).
-      // Sem leitura anon direta de service_orders.
-      const { data, error } = await supabase
-        .rpc('get_rating_with_os_by_token', { p_token: token! });
-      if (error) throw error;
-      if (!data) throw new Error('Avaliação não encontrada');
-      return data as unknown as ServiceRating;
-    },
-  });
-
-  // Migrado para o canal único: grava pela RPC `submit_public_os_rating`
-  // usando o id da OS que o RPC do token já devolveu (`service_order.id`).
-  // A escrita anônima direta em service_ratings (.update().eq('token')) foi
-  // removida — essa permissão será fechada no banco.
-  const submitRating = async (input: SubmitPublicOsRatingInput) => {
-    const osId = ratingQuery.data?.service_order?.id;
-    if (!osId) {
-      throw new Error('Não foi possível identificar a ordem de serviço desta avaliação.');
-    }
-    await submitPublicOsRating(osId, input);
-  };
-
-  return {
-    rating: ratingQuery.data,
-    isLoading: ratingQuery.isLoading,
-    error: ratingQuery.error,
-    submitRating,
   };
 }
