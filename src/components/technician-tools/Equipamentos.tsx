@@ -1574,7 +1574,9 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           {kwhMes != null && (
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-muted-foreground">
-                Por mês{mesEhEstimativa ? ' (estimado)' : ''}
+                Por mês
+                {mesEhEstimativa &&
+                  ` (estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia)`}
               </span>
               <span className="font-medium text-foreground">
                 {kwh(kwhMes)}
