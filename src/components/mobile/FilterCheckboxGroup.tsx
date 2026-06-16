@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ export interface FilterCheckboxOption {
   label: string;
   /** Cor de acento opcional (renderiza bolinha colorida à esquerda) */
   color?: string;
+  /** Nó opcional renderizado depois do rótulo (ex.: ícone de inflamabilidade do gás). */
+  suffix?: ReactNode;
 }
 
 interface FilterCheckboxGroupProps {
@@ -181,7 +183,9 @@ export function FilterCheckboxGroup({
                     style={{ backgroundColor: opt.color }}
                   />
                 )}
-                <span className="text-sm flex-1 truncate">{opt.label}</span>
+                <span className="text-sm truncate">{opt.label}</span>
+                {opt.suffix && <span className="flex shrink-0 items-center">{opt.suffix}</span>}
+                <span className="flex-1" />
               </button>
             );
           })

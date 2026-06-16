@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.31',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Filtro por gás no Catálogo de Ar-Condicionado',
+        description: 'A seção de ar-condicionado do Catálogo de Equipamentos agora tem um filtro por gás refrigerante: marque um ou mais gases para ver só os modelos que usam aquele fluido. Cada gás aparece com a sua cor e, quando é inflamável, com o ícone de fogo. Sem nada marcado, a lista mostra todos os modelos.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aba Retrofit de Gás mais fácil de usar',
+        description: 'A aba Retrofit de Gás (na ferramenta de Conversão) foi reorganizada: você escolhe o gás atual em uma chave (R-22 ou R-404A) e vê apenas as opções de troca daquele gás, em cartões mais limpos, com o que pode ser trocado no próprio equipamento, o tipo de óleo, o comportamento de pressão e os cuidados.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.30',
     date: '16 de junho de 2026',
     type: 'patch',

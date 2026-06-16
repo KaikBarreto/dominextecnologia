@@ -77,7 +77,8 @@ export function RefrigeranteInflamavel(props: RefrigeranteInflamavelProps) {
           <Flame
             className={cn('shrink-0', corClasse)}
             style={{ width: size, height: size }}
-            strokeWidth={2.5}
+            fill="currentColor"
+            strokeWidth={2}
             aria-hidden
           />
         </button>
@@ -91,7 +92,8 @@ export function RefrigeranteInflamavel(props: RefrigeranteInflamavelProps) {
           <Flame
             className={cn('mt-0.5 shrink-0', corClasse)}
             style={{ width: 16, height: 16 }}
-            strokeWidth={2.5}
+            fill="currentColor"
+            strokeWidth={2}
             aria-hidden
           />
           <div className="min-w-0">

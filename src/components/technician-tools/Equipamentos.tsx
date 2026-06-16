@@ -52,7 +52,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from '@/components/ui/carousel';
-import { getRefrigerante } from '@/lib/refrigerantes';
+import { getRefrigerante, REFRIGERANTES } from '@/lib/refrigerantes';
 import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
 
@@ -145,6 +145,61 @@ function ordenarPorBtu<T extends { name: string }>(modelos: T[]): T[] {
       return a.i - b.i;
     })
     .map((x) => x.m);
+}
+
+/** Valor usado como "gás não definido" no filtro de refrigerante (sentinela). */
+const GAS_SEM_DEFINIR = '__sem_gas__';
+
+/**
+ * Deriva as opções do filtro de gás refrigerante a partir de uma lista de modelos.
+ * - Gases distintos presentes em `refrigerant` (string não-vazia), ordenados pela
+ *   ordem canônica do catálogo REFRIGERANTES (gases conhecidos primeiro) e, como
+ *   desempate, alfabético — ordenação estável independente dos dados.
+ * - Cada opção carrega a cor do gás (bolinha) e o id pra resolver a chama (régua).
+ * - Se algum modelo está sem gás definido, adiciona a opção "Sem gás definido" no fim.
+ * Só faz sentido no domínio ar_condicionado.
+ */
+function gasOptionsFromModels(
+  models: { refrigerant?: string | null }[],
+): { value: string; label: string; color?: string; refrigId?: string }[] {
+  const gases = new Set<string>();
+  let temSemGas = false;
+  for (const m of models) {
+    const g = (m.refrigerant ?? '').trim();
+    if (g) gases.add(g);
+    else temSemGas = true;
+  }
+
+  const ordemCanonica = REFRIGERANTES.map((r) => r.id);
+  const prioridade = (g: string) => {
+    const idx = ordemCanonica.indexOf(g);
+    return idx === -1 ? ordemCanonica.length : idx;
+  };
+
+  const opcoes = Array.from(gases)
+    .sort((a, b) => prioridade(a) - prioridade(b) || a.localeCompare(b, 'pt-BR'))
+    .map((g) => {
+      const refrig = getRefrigerante(g);
+      return {
+        value: g,
+        label: refrig?.nome ?? g,
+        color: refrig?.cor,
+        refrigId: refrig ? g : undefined,
+      };
+    });
+
+  if (temSemGas) {
+    opcoes.push({ value: GAS_SEM_DEFINIR, label: 'Sem gás definido', color: undefined, refrigId: undefined });
+  }
+  return opcoes;
+}
+
+/** Predicado do filtro de gás: vazio = todos; senão casa o `refrigerant` do modelo. */
+function modeloCasaGas(model: { refrigerant?: string | null }, selectedGases: string[]): boolean {
+  if (selectedGases.length === 0) return true;
+  const g = (model.refrigerant ?? '').trim();
+  if (!g) return selectedGases.includes(GAS_SEM_DEFINIR);
+  return selectedGases.includes(g);
 }
 
 /** Remove caracteres inválidos de nome de arquivo e colapsa espaços. */
@@ -418,6 +473,13 @@ function BrandsList({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  // Filtro de gás refrigerante: só no domínio ar_condicionado.
+  const [selectedGases, setSelectedGases] = useState<string[]>([]);
+  const gasFilterEnabled = domain === 'ar_condicionado';
+  // Trocar de domínio limpa a seleção de gás (filtro não existe fora do AC).
+  useEffect(() => {
+    if (!gasFilterEnabled) setSelectedGases([]);
+  }, [gasFilterEnabled]);
 
   const q = norm(termo);
   const searching = q.length > 0;
@@ -446,7 +508,14 @@ function BrandsList({
       .map((name) => ({ value: name, label: name }));
   }, [allModels]);
 
-  const activeFilterCount = selectedBtus.length + selectedTypes.length;
+  // Opções de Gás refrigerante (só no ar_condicionado), derivadas dos modelos.
+  const gasOptions = useMemo(
+    () => (gasFilterEnabled ? gasOptionsFromModels(allModels) : []),
+    [allModels, gasFilterEnabled],
+  );
+
+  const activeFilterCount =
+    selectedBtus.length + selectedTypes.length + (gasFilterEnabled ? selectedGases.length : 0);
   const filtering = !searching && activeFilterCount > 0;
 
   // Modelos que casam com os filtros ativos (todas as marcas).
@@ -455,14 +524,16 @@ function BrandsList({
     const matched = allModels.filter(
       (m) =>
         (selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)))) &&
-        (selectedTypes.length === 0 || selectedTypes.includes(m.category?.name ?? '')),
+        (selectedTypes.length === 0 || selectedTypes.includes(m.category?.name ?? '')) &&
+        (!gasFilterEnabled || modeloCasaGas(m, selectedGases)),
     );
     return ordenarPorBtu(matched);
-  }, [allModels, filtering, selectedBtus, selectedTypes]);
+  }, [allModels, filtering, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
 
   const limparFiltros = () => {
     setSelectedBtus([]);
     setSelectedTypes([]);
+    setSelectedGases([]);
   };
 
   // Modelos que casam por nome do modelo, código do modelo OU nome da marca.
@@ -623,6 +694,20 @@ function BrandsList({
             onChange={setSelectedTypes}
             emptyLabel="Todos"
           />
+          {gasFilterEnabled && gasOptions.length > 0 && (
+            <FilterCheckboxGroup
+              label="Gás refrigerante"
+              options={gasOptions.map((o) => ({
+                value: o.value,
+                label: o.label,
+                color: o.color,
+                suffix: o.refrigId ? <RefrigeranteInflamavel refrigId={o.refrigId} size={14} /> : null,
+              }))}
+              selected={selectedGases}
+              onChange={setSelectedGases}
+              emptyLabel="Todos"
+            />
+          )}
         </div>
       </ResponsiveModal>
 
@@ -868,6 +953,12 @@ function ModelosList({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  // Filtro de gás refrigerante: só no domínio ar_condicionado.
+  const [selectedGases, setSelectedGases] = useState<string[]>([]);
+  const gasFilterEnabled = domain === 'ar_condicionado';
+  useEffect(() => {
+    if (!gasFilterEnabled) setSelectedGases([]);
+  }, [gasFilterEnabled]);
 
   const q = norm(termo);
 
@@ -895,10 +986,18 @@ function ModelosList({
       .map((name) => ({ value: name, label: name }));
   }, [models]);
 
-  const activeFilterCount = selectedBtus.length + selectedTypes.length;
+  // Opções de Gás refrigerante (só no ar_condicionado), derivadas desta marca.
+  const gasOptions = useMemo(
+    () => (gasFilterEnabled ? gasOptionsFromModels(models) : []),
+    [models, gasFilterEnabled],
+  );
+
+  const activeFilterCount =
+    selectedBtus.length + selectedTypes.length + (gasFilterEnabled ? selectedGases.length : 0);
   const limparFiltros = () => {
     setSelectedBtus([]);
     setSelectedTypes([]);
+    setSelectedGases([]);
   };
 
   // Lista final: busca + filtros (vazio = todos), ordenada por BTU crescente.
@@ -913,10 +1012,11 @@ function ModelosList({
         selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)));
       const tipoOk =
         selectedTypes.length === 0 || selectedTypes.includes(m.category?.name ?? '');
-      return buscaOk && btuOk && tipoOk;
+      const gasOk = !gasFilterEnabled || modeloCasaGas(m, selectedGases);
+      return buscaOk && btuOk && tipoOk && gasOk;
     });
     return ordenarPorBtu(filtrados);
-  }, [models, q, selectedBtus, selectedTypes]);
+  }, [models, q, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
 
   const semResultado =
     !isLoading && models.length > 0 && modelosVisiveis.length === 0;
@@ -1045,6 +1145,20 @@ function ModelosList({
             onChange={setSelectedTypes}
             emptyLabel="Todos"
           />
+          {gasFilterEnabled && gasOptions.length > 0 && (
+            <FilterCheckboxGroup
+              label="Gás refrigerante"
+              options={gasOptions.map((o) => ({
+                value: o.value,
+                label: o.label,
+                color: o.color,
+                suffix: o.refrigId ? <RefrigeranteInflamavel refrigId={o.refrigId} size={14} /> : null,
+              }))}
+              selected={selectedGases}
+              onChange={setSelectedGases}
+              emptyLabel="Todos"
+            />
+          )}
         </div>
       </ResponsiveModal>
 
