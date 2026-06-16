@@ -1882,7 +1882,10 @@ export default function TechnicianOS() {
           (abas), então não precisa mais de router dedicado. */}
       {toolsOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-background">
-          <div className="flex items-center gap-2 border-b border-border bg-background px-3 py-2 shrink-0">
+          <div
+            className="flex items-center gap-2 border-b border-border bg-background px-3 pb-2 shrink-0"
+            style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+          >
             <Button variant="ghost" size="sm" onClick={() => setToolsOpen(false)} className="gap-1.5">
               <ArrowLeft className="h-4 w-4" />
               Voltar para OS
