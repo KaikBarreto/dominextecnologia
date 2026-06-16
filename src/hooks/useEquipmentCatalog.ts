@@ -222,20 +222,28 @@ export interface EquipmentErrorCodeWithModel extends EquipmentErrorCode {
 }
 
 /**
- * TODOS os códigos de erro do catálogo com o modelo + marca hidratados.
+ * Códigos de erro de UM domínio (AC, linha branca…) com modelo + marca hidratados.
  * Usado pela busca global client-side (agrupamento por `code`).
+ *
+ * IMPORTANTE: filtra por `equipment_models.domain` via embed `!inner`. Sem isso a
+ * query trazia TODOS os ~1.5k códigos do catálogo de uma vez e o PostgREST cortava
+ * silenciosamente em ~1000 linhas (ordenadas por `code`) — derrubando boa parte dos
+ * códigos de linha branca da busca. Escopando por domínio, cada conjunto fica bem
+ * menor (linha branca ~100) e nada some. `.limit(5000)` é folga extra de segurança.
  */
-export function useAllErrorCodesWithModel() {
+export function useAllErrorCodesWithModel(domain: string = 'ar_condicionado') {
   return useQuery({
-    queryKey: ['equipment-catalog', 'all-error-codes'],
+    queryKey: ['equipment-catalog', 'all-error-codes', domain],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('equipment_error_codes')
         .select(
-          'id, model_id, code, title, description, diagnosis, solution, component, created_at, model:equipment_models(id, name, code, image_url, manual_url, refrigerant, brand_id, brand:equipment_brands(id, name, logo_url))',
+          'id, model_id, code, title, description, diagnosis, solution, component, created_at, model:equipment_models!inner(id, name, code, image_url, manual_url, refrigerant, brand_id, domain, brand:equipment_brands(id, name, logo_url))',
         )
-        .order('code', { ascending: true });
+        .eq('model.domain', domain)
+        .order('code', { ascending: true })
+        .limit(5000);
       if (error) throw error;
       return (data ?? []) as EquipmentErrorCodeWithModel[];
     },

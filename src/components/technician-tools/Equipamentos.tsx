@@ -60,6 +60,9 @@ import { idealForeground } from '@/lib/colorContrast';
  */
 const MARCAS_PRIORITARIAS_COMPRESSOR = ['gree', 'embraco', 'lg', 'samsung'];
 
+/** Marcas que vêm primeiro no domínio 'linha_branca' (mesma lógica do compressor). */
+const MARCAS_PRIORITARIAS_LINHA_BRANCA = ['brastemp', 'consul', 'electrolux', 'lg', 'samsung'];
+
 /** Normaliza texto pra busca: minúsculo + sem acento. */
 function norm(s: string | null | undefined): string {
   return (s ?? '')
@@ -70,16 +73,23 @@ function norm(s: string | null | undefined): string {
 
 /**
  * Ordena as marcas de um domínio para exibição (grid e carrossel).
- * No domínio 'compressor' as marcas mais conhecidas vêm primeiro, na ordem de
- * MARCAS_PRIORITARIAS_COMPRESSOR; as demais preservam a ordem que veio do hook
- * (sort/name) como desempate. Nos outros domínios, ordem inalterada.
+ * Nos domínios 'compressor' e 'linha_branca' as marcas mais conhecidas vêm
+ * primeiro, na ordem de MARCAS_PRIORITARIAS_COMPRESSOR / MARCAS_PRIORITARIAS_LINHA_BRANCA;
+ * as demais preservam a ordem que veio do hook (sort/name) como desempate.
+ * Nos outros domínios, ordem inalterada.
  * Sort estável: itens com mesma prioridade mantêm a ordem original.
  */
 function ordenarMarcas(brands: EquipmentBrand[], domain: EquipmentDomain): EquipmentBrand[] {
-  if (domain !== 'compressor') return brands;
+  const prioritarias =
+    domain === 'compressor'
+      ? MARCAS_PRIORITARIAS_COMPRESSOR
+      : domain === 'linha_branca'
+        ? MARCAS_PRIORITARIAS_LINHA_BRANCA
+        : null;
+  if (!prioritarias) return brands;
   const prioridade = (b: EquipmentBrand) => {
-    const idx = MARCAS_PRIORITARIAS_COMPRESSOR.indexOf(norm(b.name));
-    return idx === -1 ? MARCAS_PRIORITARIAS_COMPRESSOR.length : idx;
+    const idx = prioritarias.indexOf(norm(b.name));
+    return idx === -1 ? prioritarias.length : idx;
   };
   return brands
     .map((b, i) => ({ b, i }))
@@ -376,7 +386,10 @@ function BrandsList({
   const brandsOrdenadas = useMemo(() => ordenarMarcas(brands, domain), [brands, domain]);
 
   const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand(domain);
-  const { data: allErrorCodes = [], isLoading: loadingCodes } = useAllErrorCodesWithModel();
+  // Códigos de erro escopados ao domínio ativo (AC, linha branca…). Antes a busca
+  // puxava o catálogo inteiro e o PostgREST truncava em ~1000 linhas, sumindo com
+  // os códigos de linha branca; escopar por domínio resolve e espelha o AC.
+  const { data: allErrorCodes = [], isLoading: loadingCodes } = useAllErrorCodesWithModel(domain);
   // IDs com código de erro — usado só na linha branca pra esconder a ação
   // "Códigos de erro" em modelos sem códigos.
   const { data: modelIdsWithCodes } = useModelIdsWithErrorCodes(domain);
