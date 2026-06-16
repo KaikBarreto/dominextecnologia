@@ -785,7 +785,7 @@ export default function EquipmentDetail() {
           onClick={() => setQrExpanded(false)}
         >
           <button
-            className="absolute top-4 right-4 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+            className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
             onClick={() => setQrExpanded(false)}
             aria-label="Fechar"
           >

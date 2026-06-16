@@ -68,7 +68,7 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
     >
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 flex items-center gap-2 z-50">
         {hasGallery && (
           <span className="text-white/70 text-sm mr-2">
             {currentIndex + 1} / {images.length}

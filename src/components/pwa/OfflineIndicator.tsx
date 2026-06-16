@@ -54,7 +54,7 @@ export function OfflineIndicator() {
   if (isPublicPath(pathname)) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-center gap-2 bg-destructive px-4 py-2 text-destructive-foreground text-xs">
+    <div className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-center gap-2 bg-destructive px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-destructive-foreground text-xs">
       <WifiOff className="h-3.5 w-3.5" />
       <span>Você está offline — alterações serão sincronizadas quando reconectar</span>
     </div>
