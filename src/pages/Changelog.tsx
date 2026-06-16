@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.26',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Linha Branca com mais modelos e busca por código de erro',
+        description: 'Adicionamos várias geladeiras e lavadoras das marcas mais conhecidas (Brastemp, Consul, Electrolux, LG e Samsung) à Linha Branca do Catálogo de Equipamentos, e as marcas mais populares agora aparecem primeiro na lista. Também corrigimos a busca por código de erro na Linha Branca: digite o código e veja na hora o significado e o modelo correspondente, como já acontece no Ar Condicionado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.25',
     date: '16 de junho de 2026',
     type: 'patch',
