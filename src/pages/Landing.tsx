@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import HeroSection from '@/components/landing/HeroSection';
 import LogosSection from '@/components/landing/LogosSection';
@@ -15,6 +15,18 @@ import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { captureUtmParams } from '@/lib/whatsapp';
 
+// A landing é página pública e NUNCA deve herdar o white-label do tenant logado.
+// O white-label seta essas vars no :root (index.html boot + useWhiteLabel); aqui
+// redefinimos na raiz da landing pra restaurar o brand Dominex em toda a subárvore.
+const DOMINEX_BRAND_VARS = {
+  '--primary': '160 100% 39%',
+  '--ring': '160 100% 39%',
+  '--sidebar-primary': '160 100% 39%',
+  '--sidebar-accent': '160 100% 39%',
+  '--sidebar-ring': '160 100% 39%',
+  '--gradient-brand': 'linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%)',
+} as CSSProperties;
+
 export default function Landing() {
   useEffect(() => {
     // Persiste os utm_* em sessionStorage pro CTA de WhatsApp incluir a origem.
@@ -24,7 +36,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[hsl(0,0%,4%)]">
+    <div className="min-h-screen bg-[hsl(0,0%,4%)]" style={DOMINEX_BRAND_VARS}>
       <LandingNavbar />
       <HeroSection />
       <LogosSection />
