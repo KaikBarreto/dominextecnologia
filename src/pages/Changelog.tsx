@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.22',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Catálogo de Equipamentos com Compressores e Controles Remotos',
+        description: 'O Catálogo de Equipamentos, nas Ferramentas do Técnico, cresceu. Além dos aparelhos de ar-condicionado, agora tem uma seção de Compressores — com ficha técnica completa (gás, capacidade, tensão, capacitores e mais) — e uma seção de Controles Remotos, com os detalhes técnicos de cada um: como configurar, como destravar, códigos para controle universal, explicação dos modos e símbolos e dicas para quando o controle não responde. Cada item com foto para facilitar a identificação.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.21',
     date: '15 de junho de 2026',
     type: 'patch',
