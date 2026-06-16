@@ -453,6 +453,15 @@ html {
   color: white !important;
 }
 
+/* ─── Leaflet — isola o stacking context do mapa ──────────────────────────
+   Os panes/controls do Leaflet usam z-index 400–1000 GLOBAL e não criam
+   stacking context próprio, então vazam por cima de modais (Radix Dialog usa
+   z-50). `isolation: isolate` prende todo esse z-index dentro do container,
+   fazendo o mapa inteiro ficar abaixo de qualquer overlay/modal. */
+.leaflet-container {
+  isolation: isolate;
+}
+
 /* ─── Domiflix — Animações de entrada e spinner (paridade EcoFlix) ────────── */
 @keyframes domiflix-page-enter {
   from { opacity: 0; transform: translateY(10px); }
