@@ -23,6 +23,7 @@ import { SubscriptionHistoryTab } from '@/components/admin/SubscriptionHistoryTa
 import { CompanyPaymentsTab } from '@/components/admin/CompanyPaymentsTab';
 import { cn } from '@/lib/utils';
 import { cpfCnpjMask } from '@/utils/masks';
+import { AdminNfseTierControl } from '@/components/admin/AdminNfseTierControl';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -332,6 +333,10 @@ export default function AdminCompanyDetail() {
                 <p className="font-semibold text-lg">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(company.ltv || 0)}
                 </p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Nível NFS-e</span>
+                <AdminNfseTierControl companyId={id!} currentTier={company.nfse_tier ?? 1} />
               </div>
             </div>
             <div className="border-t pt-3 mt-3">

@@ -22,6 +22,13 @@ export interface FisqalEdgeResult<T = Record<string, unknown>> {
   message: string | null;
   /** true quando a integração ainda não foi ativada (503 fisqal_unconfigured). */
   unconfigured: boolean;
+  /**
+   * Corpo completo do erro, preservado pra consumidores que precisam de campos
+   * extras além de `error`/`message`. Ex: o bloqueio de cota de NFS-e (402
+   * `nfse_quota_exceeded`) traz `used`, `limit`, `tier` e `next_tier` aqui —
+   * a UI lê esses campos pra montar o modal de upgrade. `null` no caminho feliz.
+   */
+  errorBody: Record<string, unknown> | null;
 }
 
 async function readBody(resp: Response | undefined): Promise<Record<string, unknown> | null> {
@@ -56,6 +63,7 @@ export async function invokeFisqal<T = Record<string, unknown>>(
       errorCode,
       message: unconfigured ? UNCONFIGURED_MESSAGE : message,
       unconfigured,
+      errorBody: parsed,
     };
   }
 
@@ -70,8 +78,9 @@ export async function invokeFisqal<T = Record<string, unknown>>(
       errorCode,
       message: unconfigured ? UNCONFIGURED_MESSAGE : ((payload.message as string) ?? 'Falha na integração fiscal.'),
       unconfigured,
+      errorBody: payload,
     };
   }
 
-  return { ok: true, data: payload as T, errorCode: null, message: (payload.message as string) ?? null, unconfigured: false };
+  return { ok: true, data: payload as T, errorCode: null, message: (payload.message as string) ?? null, unconfigured: false, errorBody: null };
 }

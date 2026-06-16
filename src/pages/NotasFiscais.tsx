@@ -25,8 +25,10 @@ import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useUserCompany } from '@/hooks/useUserCompany';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
+import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { formatBRL } from '@/utils/currency';
 import { FISCAL_SCREEN_PERMISSION } from '@/pages/FiscalSettings';
 import {
@@ -51,6 +53,7 @@ export default function NotasFiscais() {
   const navigate = useNavigate();
   const { hasScreenAccess } = useAuth();
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
+  const { companyId } = useUserCompany();
   const { emissions, isLoading } = useNfse();
   const { customers } = useCustomers();
 
@@ -173,6 +176,9 @@ export default function NotasFiscais() {
           </>
         }
       />
+
+      {/* Medidor de consumo mensal de NFS-e */}
+      <NfseQuotaBadge companyId={companyId} />
 
       {/* Busca universal + filtro */}
       <div className="flex items-center gap-2">

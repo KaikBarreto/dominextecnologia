@@ -155,6 +155,50 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ---- Gate de cota mensal por nível (tier). Roda DEPOIS da idempotência
+    // (reemissão de nota existente NÃO consome cota) e ANTES de chamar a Fisqal.
+    // O `error: "nfse_quota_exceeded"` é o contrato que o front checa — não mudar.
+    {
+      const { data: quota, error: quotaErr } = await supabase.rpc(
+        "nfse_can_emit",
+        { p_company_id: companyId },
+      );
+      if (quotaErr) {
+        console.error("[fisqal-emit-nfse] nfse_can_emit error", {
+          company_id: companyId.slice(0, 8) + "...",
+          message: quotaErr.message,
+        });
+        return jsonResponse(
+          {
+            error: "quota_check_failed",
+            message:
+              "Não foi possível verificar o limite de emissões. Tente novamente em instantes.",
+          },
+          500,
+        );
+      }
+      if (quota && quota.allowed === false) {
+        const nextTier = quota.next_tier ?? null;
+        const upsell = nextTier
+          ? ` Faça upgrade para o ${nextTier.name} e emita até ${
+            nextTier.limit == null ? "ilimitadas" : nextTier.limit
+          } notas por mês.`
+          : "";
+        return jsonResponse(
+          {
+            error: "nfse_quota_exceeded",
+            message:
+              `Você atingiu o limite de ${quota.limit} notas fiscais deste mês no seu nível atual.${upsell}`,
+            used: quota.used,
+            limit: quota.limit,
+            tier: quota.tier,
+            next_tier: nextTier,
+          },
+          402,
+        );
+      }
+    }
+
     // ---- Carrega tomador (cliente) + config fiscal do prestador (sem service_orders).
     const [{ data: customer }, { data: fiscal }] = await Promise.all([
       supabase

@@ -14,6 +14,7 @@ import { formatBRL } from '@/utils/currency';
 import { PriceAmount } from '@/components/ui/PriceAmount';
 import { CancelSubscriptionModal } from '@/components/billing/CancelSubscriptionModal';
 import { ModulesManagementCard } from '@/components/billing/ModulesManagementCard';
+import { NfseTierCard } from '@/components/billing/NfseTierCard';
 import { PaymentHistoryList } from '@/components/billing/PaymentHistoryList';
 import { useSubscriptionPaymentHistory } from '@/hooks/useSubscriptionPaymentHistory';
 
@@ -249,6 +250,11 @@ export default function Billing() {
           focusUsers={deepLink.addUsers}
           onAutoOpenConsumed={clearDeepLinkParams}
         />
+      )}
+
+      {/* Nível de Notas Fiscais (NFS-e) — só quando a empresa tem o módulo. */}
+      {!isTesting && (
+        <NfseTierCard companyId={company.id} hasNfeModule={hasModule('nfe')} />
       )}
 
       {/* Active Modules */}

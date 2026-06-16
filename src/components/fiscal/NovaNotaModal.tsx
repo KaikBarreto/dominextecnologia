@@ -11,6 +11,11 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse } from '@/hooks/useNfse';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
+import { useUserCompany } from '@/hooks/useUserCompany';
+import {
+  NfseQuotaBlockModal,
+  type NfseQuotaBlockInfo,
+} from '@/components/fiscal/NfseQuotaBlockModal';
 
 interface NovaNotaModalProps {
   open: boolean;
@@ -31,11 +36,16 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
   const { customers } = useCustomers();
   const { settings } = useFiscalSettings();
   const { emitNfse, isEmitting } = useNfse();
+  const { companyId } = useUserCompany();
 
   const [customerId, setCustomerId] = useState('');
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState(''); // string crua
   const [codigoServico, setCodigoServico] = useState('');
+
+  // Bloqueio de cota (HTTP 402 nfse_quota_exceeded): abre o modal de upgrade.
+  const [blockInfo, setBlockInfo] = useState<NfseQuotaBlockInfo | null>(null);
+  const [blockOpen, setBlockOpen] = useState(false);
 
   // Reseta ao abrir; pré-preenche o código de serviço com o default da empresa.
   useEffect(() => {
@@ -68,6 +78,52 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
     valorNum != null &&
     !isEmitting;
 
+  /**
+   * Emite com os valores já validados. Trata o bloqueio de cota (402) abrindo o
+   * modal de upgrade em vez do toast genérico. Reutilizada na reexecução
+   * automática pós-upgrade.
+   */
+  const runEmit = async (v: number) => {
+    const res = await emitNfse({
+      customerId,
+      descricao: descricao.trim(),
+      valorServico: v,
+      codigoServico: codigoServico.trim() || undefined,
+    });
+
+    if (!res.ok) {
+      // Cota estourada: o servidor recusou (402). Abre o modal de upgrade com os
+      // campos preservados pelo invokeFisqal (errorBody).
+      if (res.errorCode === 'nfse_quota_exceeded') {
+        const b = res.errorBody ?? {};
+        const nt = b.next_tier as Record<string, unknown> | null | undefined;
+        setBlockInfo({
+          used: typeof b.used === 'number' ? b.used : 0,
+          limit: typeof b.limit === 'number' ? b.limit : 0,
+          tier: typeof b.tier === 'number' ? b.tier : 1,
+          nextTier: nt
+            ? {
+                tier: Number(nt.tier),
+                name: String(nt.name ?? `Nível ${nt.tier}`),
+                limit: nt.limit == null ? null : Number(nt.limit),
+                price: Number(nt.price ?? 0),
+              }
+            : null,
+        });
+        setBlockOpen(true);
+        return;
+      }
+      // 503 (não ativada), 422 (dados faltando) e demais erros já vêm com
+      // mensagem PT-BR pronta do helper invokeFisqal.
+      toast.error(res.message ?? 'Não foi possível emitir a nota fiscal.');
+      return;
+    }
+
+    toast.success(res.message ?? 'Nota fiscal enviada para emissão.');
+    onOpenChange(false);
+    onEmitted?.();
+  };
+
   const handleSubmit = async () => {
     if (!customerId) {
       toast.error('Selecione o cliente.');
@@ -86,27 +142,18 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
       toast.error('Informe um valor de serviço válido.');
       return;
     }
+    await runEmit(v);
+  };
 
-    const res = await emitNfse({
-      customerId,
-      descricao: descricao.trim(),
-      valorServico: v,
-      codigoServico: codigoServico.trim() || undefined,
-    });
-
-    if (!res.ok) {
-      // 503 (não ativada), 422 (dados faltando) e demais erros já vêm com
-      // mensagem PT-BR pronta do helper invokeFisqal.
-      toast.error(res.message ?? 'Não foi possível emitir a nota fiscal.');
-      return;
-    }
-
-    toast.success(res.message ?? 'Nota fiscal enviada para emissão.');
-    onOpenChange(false);
-    onEmitted?.();
+  // Pós-upgrade: reexecuta a emissão que o usuário já tinha preenchido.
+  const handleUpgraded = async () => {
+    const v = num(valor);
+    if (v == null) return; // dados ainda válidos no form; nada a refazer.
+    await runEmit(v);
   };
 
   return (
+    <>
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
@@ -183,5 +230,14 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
         </div>
       </div>
     </ResponsiveModal>
+
+    <NfseQuotaBlockModal
+      open={blockOpen}
+      onOpenChange={setBlockOpen}
+      info={blockInfo}
+      companyId={companyId}
+      onUpgraded={handleUpgraded}
+    />
+    </>
   );
 }

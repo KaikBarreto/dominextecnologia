@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.21',
+    date: '15 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Níveis no módulo de Notas Fiscais',
+        description: 'O módulo de Notas Fiscais agora trabalha com níveis, cada um com uma quantidade de notas fiscais por mês. Na tela de Notas Fiscais você acompanha quantas já emitiu no mês. Se atingir o limite do seu nível, dá para subir de nível na hora, com um clique — e a nota que você estava emitindo é concluída automaticamente, sem precisar digitar tudo de novo. Quem precisa de volume ilimitado também tem um nível para isso.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.20',
     date: '15 de junho de 2026',
     type: 'patch',

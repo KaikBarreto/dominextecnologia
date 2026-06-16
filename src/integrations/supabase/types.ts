@@ -454,6 +454,7 @@ export type Database = {
           max_users: number | null
           name: string
           neighborhood: string | null
+          nfse_tier: number
           notes: string | null
           origin: string | null
           payment_lock_bypass: boolean
@@ -501,6 +502,7 @@ export type Database = {
           max_users?: number | null
           name: string
           neighborhood?: string | null
+          nfse_tier?: number
           notes?: string | null
           origin?: string | null
           payment_lock_bypass?: boolean
@@ -548,6 +550,7 @@ export type Database = {
           max_users?: number | null
           name?: string
           neighborhood?: string | null
+          nfse_tier?: number
           notes?: string | null
           origin?: string | null
           payment_lock_bypass?: boolean
@@ -3671,6 +3674,33 @@ export type Database = {
           },
         ]
       }
+      nfse_tiers: {
+        Row: {
+          created_at: string
+          monthly_limit: number | null
+          name: string
+          price: number
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          monthly_limit?: number | null
+          name: string
+          price: number
+          tier: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          monthly_limit?: number | null
+          name?: string
+          price?: number
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       os_config: {
         Row: {
           created_at: string
@@ -6452,6 +6482,14 @@ export type Database = {
       next_equipment_identifier: {
         Args: { p_company_id: string }
         Returns: string
+      }
+      nfse_can_emit: {
+        Args: { p_company_id: string }
+        Returns: Json
+      }
+      nfse_month_usage: {
+        Args: { p_company_id: string }
+        Returns: number
       }
       nth_business_day: {
         Args: {

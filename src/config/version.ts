@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.20";
+export const APP_VERSION = "1.12.21";
 
-export const VERSION_NOTES = "A Visão Geral do Financeiro agora mostra um gráfico de distribuição do seu saldo entre as contas, com o valor de cada conta destacado em cores.";
+export const VERSION_NOTES = "O módulo de Notas Fiscais agora trabalha com níveis: você acompanha quantas notas já emitiu no mês e, ao atingir o limite, pode subir de nível na hora com um clique e concluir a nota sem perder o que preencheu.";
