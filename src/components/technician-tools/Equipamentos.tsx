@@ -1561,9 +1561,9 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
       ) : (
         <div className="mt-2 space-y-1.5 text-sm">
           {kwhHora != null && (
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-muted-foreground">Por hora</span>
-              <span className="font-medium text-foreground">
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0 text-muted-foreground">Por hora</span>
+              <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhHora)}/h
                 {gastoHora != null && (
                   <span className="ml-1 text-muted-foreground">· {brl(gastoHora)}</span>
@@ -1572,13 +1572,13 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
             </div>
           )}
           {kwhMes != null && (
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-muted-foreground">
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0 text-muted-foreground">
                 Por mês
                 {mesEhEstimativa &&
                   ` (estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia)`}
               </span>
-              <span className="font-medium text-foreground">
+              <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhMes)}
                 {gastoMes != null && (
                   <span className="ml-1 text-muted-foreground">· {brl(gastoMes)}</span>
@@ -1747,17 +1747,17 @@ function ModelCard({
         <div
           className={cn(
             'mt-4 grid gap-2',
-            segundoBotao ? 'grid-cols-2' : 'grid-cols-1',
+            segundoBotao ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
           )}
         >
           {codigosIndisponiveis ? (
-            <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
+            <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
               Códigos de Erro Indisponíveis
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
-              <DetalheIcon className="h-4 w-4" />
-              {detalhe.label}
+              <DetalheIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{detalhe.label}</span>
             </Button>
           )}
 
@@ -1774,11 +1774,11 @@ function ModelCard({
                 }
                 className="w-full"
               >
-                <Download className="h-4 w-4" />
-                Baixar manual
+                <Download className="h-4 w-4 shrink-0" />
+                <span className="truncate">Baixar manual</span>
               </Button>
             ) : (
-              <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
+              <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
                 Manual Indisponível
               </div>
             ))}
@@ -1796,11 +1796,11 @@ function ModelCard({
                 }
                 className="w-full"
               >
-                <FileText className="h-4 w-4" />
-                Datasheet
+                <FileText className="h-4 w-4 shrink-0" />
+                <span className="truncate">Datasheet</span>
               </Button>
             ) : (
-              <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
+              <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
                 Datasheet Indisponível
               </div>
             ))}
