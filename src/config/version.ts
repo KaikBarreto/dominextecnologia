@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.24";
+export const APP_VERSION = "1.12.25";
 
-export const VERSION_NOTES = "A pesquisa de satisfação ficou mais sua e mais agradável: agora você define os próprios critérios de estrela (criar, renomear, reordenar e remover) nas Configurações de NPS. Para o cliente, a avaliação abre sozinha ao acessar o link e a nota de 0 a 10 ganhou um visual amigável, com uma carinha que reage e uma régua colorida.";
+export const VERSION_NOTES = "O Catálogo de Equipamentos ganhou a Linha Branca: geladeiras e lavadoras das marcas mais comuns, cada uma com foto, manual para baixar e a tabela de códigos de erro com o significado de cada um — para diagnosticar mais rápido em campo.";

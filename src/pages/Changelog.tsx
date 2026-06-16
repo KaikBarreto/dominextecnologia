@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.25',
+    date: '16 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Catálogo de Equipamentos agora com Linha Branca',
+        description: 'O Catálogo de Equipamentos, nas Ferramentas do Técnico, ganhou a seção de Linha Branca: geladeiras, lavadoras e lava e seca das marcas mais comuns. Cada equipamento traz foto, manual para baixar e a tabela de códigos de erro com o significado de cada código — para diagnosticar mais rápido. Quando um modelo não tem códigos publicados pelo fabricante, o catálogo deixa isso claro em vez de abrir uma lista vazia.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.24',
     date: '16 de junho de 2026',
     type: 'patch',

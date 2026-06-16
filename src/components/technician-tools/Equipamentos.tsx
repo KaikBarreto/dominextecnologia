@@ -1295,9 +1295,10 @@ function ModelCard({
   brandName: string;
   onSelectDetail: () => void;
   /**
-   * Se este modelo tem ≥1 código de erro cadastrado. Só consultado no domínio
-   * 'linha_branca': geladeira/lavadora sem códigos não mostra a ação "Códigos de
-   * erro" (abriria uma tela vazia). Nos outros domínios é ignorado.
+   * Se este modelo tem ≥1 código de erro cadastrado. Consultado nos domínios de
+   * códigos de erro (ar_condicionado e linha_branca): quando false, a ação primária
+   * vira um estado desabilitado "Códigos de Erro Indisponíveis" (espelha o
+   * "Manual Indisponível"). Nos outros domínios é ignorado.
    */
   hasErrorCodes?: boolean;
 }) {
@@ -1317,10 +1318,11 @@ function ModelCard({
   const segundoBotao: 'manual' | 'datasheet' | null =
     domain === 'compressor' ? 'datasheet' : domain === 'controle_remoto' ? null : 'manual';
 
-  // Ação primária "Códigos de erro": na linha branca, só quando o modelo tem
-  // códigos cadastrados (geladeira/lavadora sem códigos não vira beco sem saída).
-  // Demais domínios mantêm o comportamento atual (ação sempre presente).
-  const mostraDetalhe = domain === 'linha_branca' ? hasErrorCodes === true : true;
+  // Domínios cuja ação primária é "Códigos de erro" (ar_condicionado e linha_branca).
+  // Quando o modelo não tem códigos cadastrados, a ação não some: vira um estado
+  // desabilitado "Códigos de Erro Indisponíveis", simétrico ao "Manual Indisponível".
+  const isErrorsDomain = detailKind(domain) === 'errors';
+  const codigosIndisponiveis = isErrorsDomain && hasErrorCodes !== true;
 
   const detalhe = detailAction(domain);
   const DetalheIcon = detalhe.icon;
@@ -1401,14 +1403,19 @@ function ModelCard({
         )}
 
         {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark).
-            Controle remoto e linha branca sem códigos têm só 1 ação (largura cheia). */}
+            Controle remoto tem só 1 ação (largura cheia); os demais têm 2 botões
+            sempre, cada um no seu estado (ativo ou "Indisponível"). */}
         <div
           className={cn(
             'mt-4 grid gap-2',
-            mostraDetalhe && segundoBotao ? 'grid-cols-2' : 'grid-cols-1',
+            segundoBotao ? 'grid-cols-2' : 'grid-cols-1',
           )}
         >
-          {mostraDetalhe && (
+          {codigosIndisponiveis ? (
+            <div className="flex items-center justify-center rounded-md bg-destructive px-2 py-2 text-xs font-semibold text-white">
+              Códigos de Erro Indisponíveis
+            </div>
+          ) : (
             <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
               <DetalheIcon className="h-4 w-4" />
               {detalhe.label}
