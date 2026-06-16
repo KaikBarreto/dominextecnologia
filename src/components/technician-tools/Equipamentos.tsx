@@ -1657,9 +1657,11 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0 text-muted-foreground">
                 Por mês
-                {continuo
-                  ? ' (24 h/dia)'
-                  : ` (estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia)`}
+                <span className="block text-[11px] leading-tight text-muted-foreground/80">
+                  {continuo
+                    ? '24 h/dia'
+                    : `estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia`}
+                </span>
               </span>
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhMes)}
