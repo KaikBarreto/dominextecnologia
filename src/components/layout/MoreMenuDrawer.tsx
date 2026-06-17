@@ -50,6 +50,7 @@ import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
+import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -240,7 +241,7 @@ function MoreMenuHeader() {
 function MoreMenuList({ onClose }: { onClose: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { hasScreenAccess, hasAdminScreenAccess, isAdminUser, roles } = useAuth();
+  const { user, hasScreenAccess, hasAdminScreenAccess, isAdminUser, roles } = useAuth();
   const { hasModule } = useCompanyModules();
   const { settings } = useCompanySettings();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
@@ -261,9 +262,14 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
     });
   };
 
-  const filteredAdminMenu = isSuperAdmin
+  const filteredAdminMenu = (isSuperAdmin
     ? adminMenuItems
-    : adminMenuItems.filter((item) => !item.masterOnly && item.screenKey && hasAdminScreenAccess(item.screenKey));
+    : adminMenuItems.filter((item) => !item.masterOnly && item.screenKey && hasAdminScreenAccess(item.screenKey))
+  )
+    // Gate temporário do Domiflix admin: restrito ao e-mail allowlistado
+    // (defesa de UI; segurança real é RLS + guard de rota em App.tsx).
+    // Aplicado por `path` pra independer de screenKey/masterOnly.
+    .filter((item) => item.path !== '/admin/domiflix' || podeAcessarDomiflixAdmin(user?.email));
 
   const visibleItems = isAdminUser
     ? filteredAdminMenu

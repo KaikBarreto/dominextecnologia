@@ -61,6 +61,7 @@ import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
+import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -228,9 +229,14 @@ export function SidebarMenuContent() {
     });
   };
 
-  const filteredAdminMenu = isSuperAdmin
+  const filteredAdminMenu = (isSuperAdmin
     ? adminMenuItems
-    : adminMenuItems.filter(item => !item.masterOnly && item.screenKey && hasAdminScreenAccess(item.screenKey));
+    : adminMenuItems.filter(item => !item.masterOnly && item.screenKey && hasAdminScreenAccess(item.screenKey))
+  )
+    // Gate temporário do Domiflix admin: restrito ao e-mail allowlistado
+    // (defesa de UI; segurança real é RLS + guard de rota em App.tsx).
+    // Aplicado por `path` pra independer de screenKey/masterOnly.
+    .filter(item => item.path !== '/admin/domiflix' || podeAcessarDomiflixAdmin(user?.email));
 
   // Home do painel admin = Empresas (alinhado ao destino pós-login); cai no
   // primeiro item acessível se o usuário não tiver acesso a Empresas.
