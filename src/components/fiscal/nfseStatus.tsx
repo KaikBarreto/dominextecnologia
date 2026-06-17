@@ -67,6 +67,32 @@ const FALLBACK: StatusMeta = {
   iconClass: 'text-muted-foreground',
 };
 
+/**
+ * Status TERMINAIS: a nota chegou a um desfecho e NÃO deve mais ser pollada.
+ * Inclui as duas grafias (PT-BR canônica do banco + variantes EN da Fisqal),
+ * pra o polling parar mesmo que o status venha cru da integração.
+ */
+const TERMINAL_STATUSES = new Set<string>([
+  'autorizada',
+  'authorized',
+  'rejeitada',
+  'rejected',
+  'falhou',
+  'failed',
+  'cancelada',
+  'cancelled',
+  'canceled',
+]);
+
+/**
+ * `true` quando o status é final (para o polling). Qualquer outro valor —
+ * pendente, processando, validated, signed, queued, sent, etc. — é tratado
+ * como NÃO-terminal e segue em polling até estourar o timeout.
+ */
+export function isNfseTerminal(status: NfseStatus): boolean {
+  return TERMINAL_STATUSES.has(String(status).toLowerCase());
+}
+
 export function getNfseStatusMeta(status: NfseStatus): StatusMeta {
   return STATUS_META[status] ?? FALLBACK;
 }

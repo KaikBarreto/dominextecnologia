@@ -33,13 +33,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useNfse, type NfseEmission } from '@/hooks/useNfse';
+import { useNfse, useNfseListPolling, type NfseEmission } from '@/hooks/useNfse';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { formatBRL } from '@/utils/currency';
 import { FISCAL_SCREEN_PERMISSION } from '@/components/fiscal/fiscalPermissions';
 import {
   NfseStatusBadge,
   NFSE_STATUS_FILTER_OPTIONS,
+  isNfseTerminal,
 } from '@/components/fiscal/nfseStatus';
 import { NovaNotaModal } from '@/components/fiscal/NovaNotaModal';
 import {
@@ -115,6 +116,23 @@ export default function NotasFiscais() {
       return statusFilter.length === 0 || statusFilter.includes(e.status);
     });
   }, [emissions, search, statusFilter, customerName]);
+
+  // Notas NÃO-terminais → polling automático em lote enquanto a tela está
+  // aberta. Capado pra não pollar lista gigante (as recentes ficam no topo).
+  const pendingIds = useMemo(
+    () =>
+      emissions
+        .filter((e) => !isNfseTerminal(e.status))
+        .slice(0, 10)
+        .map((e) => e.id),
+    [emissions],
+  );
+  useNfseListPolling(pendingIds);
+
+  // Pós-emissão: abre o detalhe da nota recém-criada já em polling automático.
+  const handleEmitted = (created?: NfseEmission | null) => {
+    if (created) openDetail(created);
+  };
 
   // ---- Gate duplo (módulo `nfe` + permissão de tela) ----
   if (!modulesLoading && (!hasModule('nfe') || !hasScreenAccess(FISCAL_SCREEN_PERMISSION))) {
@@ -335,7 +353,7 @@ export default function NotasFiscais() {
         </TabsContent>
       </Tabs>
 
-      <NovaNotaModal open={novaOpen} onOpenChange={setNovaOpen} />
+      <NovaNotaModal open={novaOpen} onOpenChange={setNovaOpen} onEmitted={handleEmitted} />
       <NfseDetailModal
         emission={selected}
         open={detailOpen}

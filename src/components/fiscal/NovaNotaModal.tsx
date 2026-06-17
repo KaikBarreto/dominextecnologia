@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useNfse } from '@/hooks/useNfse';
+import { useNfse, type NfseEmission } from '@/hooks/useNfse';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import {
@@ -21,8 +21,12 @@ import {
 interface NovaNotaModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Chamado após emissão bem-sucedida (a lista já é invalidada pelo hook). */
-  onEmitted?: () => void;
+  /**
+   * Chamado após emissão bem-sucedida (a lista já é invalidada pelo hook).
+   * Recebe a emissão recém-criada (quando a edge a devolve) pra o pai poder
+   * abrir o detalhe e iniciar o polling automático de status.
+   */
+  onEmitted?: (emission?: NfseEmission | null) => void;
 }
 
 /** String crua → number (sem prender "0" à esquerda). null se vazio/ inválido. */
@@ -122,7 +126,10 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
 
     toast.success(res.message ?? 'Nota fiscal enviada para emissão.');
     onOpenChange(false);
-    onEmitted?.();
+    // A edge devolve a emissão recém-criada em `data.emission`; repassa pro pai
+    // abrir o detalhe e ligar o polling automático até virar terminal.
+    const created = (res.data?.emission as NfseEmission | undefined) ?? null;
+    onEmitted?.(created);
   };
 
   const handleSubmit = async () => {

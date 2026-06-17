@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   RefreshCw,
@@ -24,8 +24,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { formatBRL } from '@/utils/currency';
-import { useNfse, useNfseEvents, type NfseEmission } from '@/hooks/useNfse';
-import { NfseStatusBadge } from './nfseStatus';
+import {
+  useNfse,
+  useNfseEvents,
+  useNfseStatusPolling,
+  type NfseEmission,
+} from '@/hooks/useNfse';
+import { NfseStatusBadge, isNfseTerminal } from './nfseStatus';
 
 /** Ação que pode ser auto-disparada ao abrir (vinda do menu da linha/card). */
 export type NfseDetailAction = 'refresh' | 'cancel' | 'pdf' | 'xml';
@@ -53,8 +58,24 @@ function eventMessage(payload: unknown): string | null {
   return typeof candidate === 'string' && candidate.trim() ? candidate : null;
 }
 
-export function NfseDetailModal({ emission, open, onOpenChange, initialAction }: NfseDetailModalProps) {
-  const { refreshStatus, isRefreshingStatus, cancel, isCancelling } = useNfse();
+export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, initialAction }: NfseDetailModalProps) {
+  const { emissions, refreshStatus, isRefreshingStatus, cancel, isCancelling } = useNfse();
+
+  // O `emissionProp` é um snapshot do momento em que a lista abriu o modal.
+  // Re-derivamos do dataset fresco (invalidado pelo polling) pra o detalhe
+  // refletir status/PDF/XML que chegarem enquanto o modal está aberto.
+  const emission = useMemo(
+    () => emissions.find((e) => e.id === emissionProp?.id) ?? emissionProp,
+    [emissions, emissionProp],
+  );
+
+  // Polling automático: só enquanto o modal está aberto e a nota é NÃO-terminal.
+  const terminal = emission ? isNfseTerminal(emission.status) : true;
+  const { isPolling, timedOut } = useNfseStatusPolling(
+    emission?.id ?? null,
+    open && !!emission && !terminal,
+  );
+
   const { data: events = [], isLoading: eventsLoading } = useNfseEvents(
     open ? emission?.id ?? null : null,
   );
@@ -149,15 +170,23 @@ export function NfseDetailModal({ emission, open, onOpenChange, initialAction }:
         <div className="space-y-5 py-1">
           {/* Status + atualizar */}
           <div className="flex items-center justify-between gap-2">
-            <NfseStatusBadge status={emission.status} />
+            <div className="flex items-center gap-2">
+              <NfseStatusBadge status={emission.status} />
+              {isPolling && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Processando…
+                </span>
+              )}
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
-              disabled={isRefreshingStatus}
+              disabled={isRefreshingStatus || isPolling}
               className="gap-2"
             >
-              {isRefreshingStatus ? (
+              {isRefreshingStatus || isPolling ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
@@ -165,6 +194,17 @@ export function NfseDetailModal({ emission, open, onOpenChange, initialAction }:
               Atualizar status
             </Button>
           </div>
+
+          {timedOut && (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshingStatus}
+              className="w-full rounded-lg border border-amber-300/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-left text-xs text-amber-700 dark:text-amber-300"
+            >
+              Ainda em processamento — toque para atualizar.
+            </button>
+          )}
 
           {/* Dados */}
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
