@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
+import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import logoWhiteHorizontal from '@/assets/logo-white-horizontal.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -49,12 +50,16 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 export function AdminSidebarNav() {
-  const { profile, signOut, hasAdminScreenAccess } = useAuth();
+  const { profile, signOut, hasAdminScreenAccess, user } = useAuth();
   const navigate = useNavigate();
 
-  const visibleMenuItems = ADMIN_MENU_ITEMS.filter(
-    (item) => !item.screenKey || hasAdminScreenAccess(item.screenKey),
-  );
+  const visibleMenuItems = ADMIN_MENU_ITEMS.filter((item) => {
+    if (item.screenKey && !hasAdminScreenAccess(item.screenKey)) return false;
+    // TODO temporário: curadoria Domiflix só aparece para o e-mail allowlistado
+    // (esconde de master/outros admins). Defesa de UI (UX), não de dados — ver adminDomiflixAccess.ts.
+    if (item.screenKey === 'admin_domiflix' && !podeAcessarDomiflixAdmin(user?.email)) return false;
+    return true;
+  });
 
   const initials = profile?.full_name
     ?.split(' ')

@@ -11,6 +11,7 @@ import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
+import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
 import { getErrorMessage } from "@/utils/errorMessages";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -292,6 +293,13 @@ function AdminScreenRoute({ screenKey, children }: { screenKey: string; children
   // Espera permissions/roles carregarem antes de decidir redirect (evita flicker e race)
   if (user && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
   if (!hasAdminScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
+
+  // TODO temporário: curadoria Domiflix restrita a um e-mail enquanto o conteúdo é montado.
+  // Esconde inclusive de master/admins com a permissão. Defesa de UI/rota (UX), NÃO de dados —
+  // a segurança real do conteúdo é o RLS das tabelas domiflix_*.
+  if (screenKey === 'admin_domiflix' && !podeAcessarDomiflixAdmin(user?.email)) {
+    return <Navigate to={defaultRoute} replace />;
+  }
 
   return <>{children}</>;
 }
