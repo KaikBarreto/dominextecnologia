@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDomiflixAvatar } from "@/hooks/useDomiflixAvatar";
 import { useDomiflixDisplayName } from "@/hooks/useDomiflixDisplayName";
 import { useDomiflixAllEpisodes, useDomiflixTitles } from "@/hooks/useDomiflix";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { slugify } from "@/lib/slugify";
 
 interface DomiflixMoreMenuDrawerProps {
@@ -193,6 +193,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                   />
                 ) : (
                   <Avatar className="h-11 w-11 rounded-md border border-white/20 group-hover:border-white transition-all">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={fullName || "Perfil"} className="object-cover" />
                     <AvatarFallback className="bg-[#e50914] text-white text-sm font-semibold rounded-md">
                       {initials}
                     </AvatarFallback>
