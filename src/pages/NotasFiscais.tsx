@@ -13,13 +13,15 @@ import {
   FileCode,
   Ban,
   History,
+  LayoutDashboard,
 } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import {
   Sheet,
   SheetContent,
@@ -33,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useNfse, useNfseListPolling, type NfseEmission } from '@/hooks/useNfse';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { formatBRL } from '@/utils/currency';
@@ -67,6 +70,12 @@ export default function NotasFiscais() {
   const { companyId } = useUserCompany();
   const { emissions, isLoading } = useNfse();
   const { customers } = useCustomers();
+  const { settings, isLoading: settingsLoading } = useFiscalSettings();
+
+  // "Config fiscal incompleta": `pode_emitir` é o sinal autoritativo do backend
+  // (vira true só depois do onboarding Fisqal — empresa + certificado prontos).
+  // Enquanto false, a empresa não consegue emitir, então guiamos pra config.
+  const fiscalConfigured = settings.pode_emitir;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<'visao-geral' | 'nfse'>('visao-geral');
@@ -247,22 +256,64 @@ export default function NotasFiscais() {
     </Sheet>
   );
 
+  // Botão de acesso à config fiscal — rótulo "Configurações fiscais" (ícone + texto).
+  // No mobile vira só ícone pra não estourar o header compacto; o rótulo continua
+  // acessível via aria-label e nos estados vazios.
+  const configButton = (
+    <Button
+      variant="outline"
+      className="gap-2"
+      aria-label="Configurações fiscais"
+      onClick={() => setSettingsOpen(true)}
+    >
+      <Settings className="h-4 w-4" />
+      <span className="hidden sm:inline">Configurações fiscais</span>
+    </Button>
+  );
+
+  // Sub-navegação Visão Geral / NFS-e: sidebar lateral no desktop + pills no
+  // mobile, reusando o MESMO componente do Relatório Financeiro
+  // (SettingsSidebarLayout). Sem pill-dentro-de-pill.
+  const navTabs: SettingsTab[] = [
+    { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
+    { value: 'nfse', label: 'NFS-e', icon: FileText },
+  ];
+
+  // Estado vazio guiado: config incompleta → manda configurar; config OK sem
+  // notas → manda emitir. Vale pras duas abas.
+  const renderGuidedEmpty = () => {
+    if (!fiscalConfigured) {
+      return (
+        <EmptyState
+          icon={<Settings className="h-10 w-10" />}
+          title="Configure seus dados fiscais"
+          description="Configure seus dados fiscais para começar a emitir notas."
+          action={{ label: 'Configurações fiscais', onClick: () => setSettingsOpen(true) }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={<FileText className="h-10 w-10" />}
+        title="Nenhuma nota emitida ainda"
+        description="Emita sua primeira NFS-e para acompanhá-la aqui."
+        action={{ label: 'Nova Nota', onClick: () => setNovaOpen(true) }}
+      />
+    );
+  };
+
+  const anyLoading = isLoading || settingsLoading;
+  const showGuidedEmpty = !anyLoading && (!fiscalConfigured || emissions.length === 0);
+
   return (
     <div className="container max-w-4xl py-4 space-y-5">
-      <PageHeader
+      <MobilePageHeader
         title="Notas Fiscais"
         subtitle="Emita e acompanhe suas NFS-e."
         icon={FileText}
         actions={
           <>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Configurações fiscais"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
+            {configButton}
             <Button onClick={() => setNovaOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" /> Nova Nota
             </Button>
@@ -273,85 +324,80 @@ export default function NotasFiscais() {
       {/* Medidor de consumo mensal de NFS-e */}
       <NfseQuotaBadge companyId={companyId} />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'visao-geral' | 'nfse')}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
-          <TabsTrigger value="nfse">NFS-e</TabsTrigger>
-        </TabsList>
-
-        {/* ---- Visão Geral: agrega, não repete a listagem ---- */}
-        <TabsContent value="visao-geral" className="mt-5">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
-            </div>
-          ) : (
+      {anyLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        </div>
+      ) : showGuidedEmpty ? (
+        // Sem config OU sem nenhuma nota: estado guiado único (sem sub-nav, pois
+        // não há o que navegar ainda).
+        renderGuidedEmpty()
+      ) : (
+        <SettingsSidebarLayout
+          tabs={navTabs}
+          activeTab={tab}
+          onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse')}
+        >
+          {tab === 'visao-geral' ? (
+            /* ---- Visão Geral: agrega, não repete a listagem ---- */
             <NfseVisaoGeral
               emissions={emissions}
               customerName={customerName}
               onOpenDetail={(e) => openDetail(e)}
             />
-          )}
-        </TabsContent>
-
-        {/* ---- NFS-e: listagem + ações por nota ---- */}
-        <TabsContent value="nfse" className="mt-5 space-y-5">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por número, cliente, descrição, chave..."
-                className="pl-9"
-              />
-            </div>
-            {filterButton}
-          </div>
-
-          {search.trim() && statusFilter.length > 0 && (
-            <p className="text-[11px] text-muted-foreground italic">
-              Buscando em todas as notas — o filtro de status fica suspenso enquanto há busca.
-            </p>
-          )}
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>
-                {emissions.length === 0
-                  ? 'Nenhuma nota fiscal emitida ainda. Clique em "Nova Nota" para começar.'
-                  : 'Nenhuma nota encontrada com esses filtros.'}
-              </p>
-            </div>
           ) : (
-            <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
-              {filtered.map((e) => (
-                <MobileListItem
-                  key={e.id}
-                  onClick={() => openDetail(e)}
-                  leading={<FileText className="h-5 w-5 text-muted-foreground" />}
-                  title={
-                    e.numero_nfse ? `Nota nº ${e.numero_nfse}` : customerName(e.customer_id)
-                  }
-                  subtitle={
-                    <span>
-                      {customerName(e.customer_id)} · {formatDate(e.created_at)}
-                      {e.valor_servico != null ? ` · ${formatBRL(e.valor_servico)}` : ''}
-                    </span>
-                  }
-                  trailing={<NfseStatusBadge status={e.status} />}
-                  actions={buildActions(e)}
-                />
-              ))}
+            /* ---- NFS-e: listagem + ações por nota ---- */
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar por número, cliente, descrição, chave..."
+                    className="pl-9"
+                  />
+                </div>
+                {filterButton}
+              </div>
+
+              {search.trim() && statusFilter.length > 0 && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Buscando em todas as notas — o filtro de status fica suspenso enquanto há busca.
+                </p>
+              )}
+
+              {filtered.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                  <p>Nenhuma nota encontrada com esses filtros.</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
+                  {filtered.map((e) => (
+                    <MobileListItem
+                      key={e.id}
+                      onClick={() => openDetail(e)}
+                      leading={<FileText className="h-5 w-5 text-muted-foreground" />}
+                      title={
+                        e.numero_nfse ? `Nota nº ${e.numero_nfse}` : customerName(e.customer_id)
+                      }
+                      subtitle={
+                        <span>
+                          {customerName(e.customer_id)} · {formatDate(e.created_at)}
+                          {e.valor_servico != null ? ` · ${formatBRL(e.valor_servico)}` : ''}
+                        </span>
+                      }
+                      trailing={<NfseStatusBadge status={e.status} />}
+                      actions={buildActions(e)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </SettingsSidebarLayout>
+      )}
 
       <NovaNotaModal open={novaOpen} onOpenChange={setNovaOpen} onEmitted={handleEmitted} />
       <NfseDetailModal
