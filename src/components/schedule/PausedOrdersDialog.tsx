@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ServiceOrder } from '@/types/database';
 import { usePausedOrders } from '@/hooks/usePausedOrders';
@@ -78,7 +77,10 @@ export function PausedOrdersDialog({ open, onOpenChange, onViewDetails, onResume
           </div>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0">
+        {/* Scroll NATIVO (não Radix ScrollArea): dentro do drawer mobile (vaul) o
+            scroller custom do Radix não rola; overflow-y-auto nativo funciona nos
+            dois modos (drawer mobile e dialog desktop com max-h + flex). */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="px-6 py-4 space-y-3">
             {isLoading && (
               <>
@@ -180,7 +182,7 @@ export function PausedOrdersDialog({ open, onOpenChange, onViewDetails, onResume
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
