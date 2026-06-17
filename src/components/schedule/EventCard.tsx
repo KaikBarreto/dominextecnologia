@@ -164,6 +164,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         <span className={cn('font-medium shrink-0', isDone && 'line-through')}>
           {order.scheduled_time?.slice(0, 5) || '--:--'}
         </span>
+        {!isTask && (order as any).order_number != null && (
+          <span className={cn('shrink-0 opacity-70 font-medium', isDone && 'line-through')}>
+            #{(order as any).order_number}
+          </span>
+        )}
         <span className={cn('truncate flex-1', isDone && 'line-through')}>
           {isTask ? (taskTitle || 'Tarefa') : (order.customer?.name || 'Cliente')}
         </span>
@@ -208,6 +213,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           <span className={cn('font-semibold text-sm', isDone && 'line-through')}>
             {order.scheduled_time?.slice(0, 5) || '--:--'}
           </span>
+          {!isTask && (order as any).order_number != null && (
+            <span className={cn('text-xs font-medium', bgColor ? 'text-white/70' : 'text-muted-foreground', isDone && 'line-through')}>
+              #{(order as any).order_number}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 flex-wrap justify-end">
           {isResumedDisplay && (
