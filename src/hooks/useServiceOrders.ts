@@ -29,6 +29,15 @@ export interface ServiceOrderInput {
   require_client_signature?: boolean;
   /** null = herda o padrão da empresa (nps_settings.generate_on_finish). */
   generate_nps_survey?: boolean | null;
+  // Endereço de serviço próprio da OS (opcional). Null = usa o do cliente.
+  service_address?: string | null;
+  service_address_number?: string | null;
+  service_neighborhood?: string | null;
+  service_city?: string | null;
+  service_state?: string | null;
+  service_zip_code?: string | null;
+  service_latitude?: number | null;
+  service_longitude?: number | null;
   equipment_items?: ServiceOrderEquipmentItem[];
   assignee_user_ids?: string[];
   assignee_team_ids?: string[];

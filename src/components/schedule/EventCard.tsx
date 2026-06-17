@@ -1,4 +1,4 @@
-import { MapPin, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckSquare, CheckCircle2, Play } from 'lucide-react';
+import { MapPin, MapPinned, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckSquare, CheckCircle2, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
@@ -243,10 +243,14 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           <span className="truncate">{order.customer?.name || 'Cliente'}</span>
         </div>
       )}
-      {!isTask && order.customer?.city && (
+      {!isTask && ((order as any).service_city || order.customer?.city) && (
         <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
-          <MapPin className="h-3 w-3 shrink-0" />
-          <span className="truncate">{order.customer.city}</span>
+          {(order as any).service_city ? (
+            <MapPinned className={cn('h-3 w-3 shrink-0', bgColor ? '' : 'text-primary')} />
+          ) : (
+            <MapPin className="h-3 w-3 shrink-0" />
+          )}
+          <span className="truncate">{(order as any).service_city || order.customer?.city}</span>
         </div>
       )}
       {isTask && order.description && (

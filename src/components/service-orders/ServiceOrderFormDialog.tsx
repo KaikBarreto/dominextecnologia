@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus, MapPin, Repeat, AlertTriangle } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus, MapPin, Repeat, AlertTriangle, MapPinned } from 'lucide-react';
+import { geocodeAddress, buildServiceAddress } from '@/utils/geolocation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -118,6 +119,14 @@ export function ServiceOrderFormDialog({
   const [adhocNeighborhood, setAdhocNeighborhood] = useState('');
   const [selectedAssigneeUserIds, setSelectedAssigneeUserIds] = useState<string[]>([]);
   const [selectedAssigneeTeamIds, setSelectedAssigneeTeamIds] = useState<string[]>([]);
+  // Endereço de serviço próprio da OS (diferente do cliente). Alavanca + campos estruturados.
+  const [useServiceAddress, setUseServiceAddress] = useState(false);
+  const [svcCep, setSvcCep] = useState('');
+  const [svcAddress, setSvcAddress] = useState('');
+  const [svcNumber, setSvcNumber] = useState('');
+  const [svcNeighborhood, setSvcNeighborhood] = useState('');
+  const [svcCity, setSvcCity] = useState('');
+  const [svcState, setSvcState] = useState('');
   const { equipment } = useEquipment(selectedCustomerId);
   const { toast: editToast } = useToast();
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
@@ -251,6 +260,20 @@ export function ServiceOrderFormDialog({
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
+      // Endereço de serviço: edição reflete o estado salvo; criação começa vazio.
+      const so = serviceOrder as any;
+      const hasSvc = !!(so?.service_address || so?.service_city || so?.service_zip_code);
+      setUseServiceAddress(hasSvc);
+      const formatCep = (raw?: string | null) => {
+        const c = (raw || '').replace(/\D/g, '');
+        return c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c;
+      };
+      setSvcCep(formatCep(so?.service_zip_code));
+      setSvcAddress(so?.service_address ?? '');
+      setSvcNumber(so?.service_address_number ?? '');
+      setSvcNeighborhood(so?.service_neighborhood ?? '');
+      setSvcCity(so?.service_city ?? '');
+      setSvcState(so?.service_state ?? '');
       const existingAssigneeIds = (serviceOrder as any)?._assignee_user_ids as string[] | undefined;
       if (existingAssigneeIds && existingAssigneeIds.length > 0) {
         setSelectedAssigneeUserIds(existingAssigneeIds);
@@ -306,9 +329,47 @@ export function ServiceOrderFormDialog({
     );
   }, [open, serviceOrder, npsSettings.generate_on_finish]);
 
+  // Monta os campos service_* da OS. Quando a alavanca está ligada, geocoda o
+  // endereço (não-bloqueante: falhou o geocode, salva os textos com coords null
+  // → o mapa cai no fallback por endereço). Desligada → tudo null.
+  const buildServiceAddressPayload = async () => {
+    if (!useServiceAddress) {
+      return {
+        service_address: null,
+        service_address_number: null,
+        service_neighborhood: null,
+        service_city: null,
+        service_state: null,
+        service_zip_code: null,
+        service_latitude: null,
+        service_longitude: null,
+      };
+    }
+    const cep = svcCep.replace(/\D/g, '') || null;
+    const base = {
+      service_address: svcAddress.trim() || null,
+      service_address_number: svcNumber.trim() || null,
+      service_neighborhood: svcNeighborhood.trim() || null,
+      service_city: svcCity.trim() || null,
+      service_state: svcState.trim() || null,
+      service_zip_code: cep,
+    };
+    const fullAddress = buildServiceAddress(base);
+    let coords: { lat: number; lng: number } | null = null;
+    if (fullAddress) {
+      try { coords = await geocodeAddress(fullAddress); } catch { coords = null; }
+    }
+    return {
+      ...base,
+      service_latitude: coords?.lat ?? null,
+      service_longitude: coords?.lng ?? null,
+    };
+  };
+
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const handleCreateSubmit = async () => {
     const data = form.getValues();
+    const serviceAddressPayload = await buildServiceAddressPayload();
 
     // If adhoc customer, auto-create first
     let customerId = data.customer_id;
@@ -404,6 +465,7 @@ export function ServiceOrderFormDialog({
         recurrence_end_date: recurrenceEndDate,
         recurrence_group_id: groupId,
         company_id,
+        ...serviceAddressPayload,
       } as any, ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']));
 
       const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
@@ -458,6 +520,7 @@ export function ServiceOrderFormDialog({
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
       assignee_user_ids: selectedAssigneeUserIds,
       assignee_team_ids: selectedAssigneeTeamIds,
+      ...serviceAddressPayload,
       // Status pré-preenchido pela coluna do kanban (se aplicável).
       // Sem defaultStatus, omitimos pra o backend usar o default do schema.
       ...(defaultStatus ? { status: defaultStatus } : {}),
@@ -468,9 +531,10 @@ export function ServiceOrderFormDialog({
     onOpenChange(false);
   };
 
-  const buildEditPayload = (data: ServiceOrderFormData) => {
+  const buildEditPayload = async (data: ServiceOrderFormData) => {
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
+    const serviceAddressPayload = await buildServiceAddressPayload();
     const equipItems = [
       ...selectedEquipmentIds.flatMap(eqId => {
         const templates = equipmentTemplateMap[eqId] || [];
@@ -498,6 +562,7 @@ export function ServiceOrderFormDialog({
       assignee_user_ids: selectedAssigneeUserIds,
       equipment_items: equipItems.length > 0 ? equipItems : undefined,
       generate_nps_survey: generateNpsSurvey,
+      ...serviceAddressPayload,
     };
   };
 
@@ -520,7 +585,7 @@ export function ServiceOrderFormDialog({
       return;
     }
 
-    const cleanedData = buildEditPayload(data);
+    const cleanedData = await buildEditPayload(data);
     await onSubmit(cleanedData);
     form.reset();
     onOpenChange(false);
@@ -529,8 +594,8 @@ export function ServiceOrderFormDialog({
   const handleContractDateChoice = async (applyToFuture: boolean) => {
     if (!pendingEditData || !serviceOrder) return;
     setContractDateDialogOpen(false);
-    
-    const cleanedData = buildEditPayload(pendingEditData);
+
+    const cleanedData = await buildEditPayload(pendingEditData);
     await onSubmit(cleanedData);
 
     if (applyToFuture) {
@@ -578,7 +643,7 @@ export function ServiceOrderFormDialog({
     if (!pendingEditData || !serviceOrder) return;
     setRecurrenceEditDialogOpen(false);
 
-    const cleanedData = buildEditPayload(pendingEditData);
+    const cleanedData = await buildEditPayload(pendingEditData);
     await onSubmit(cleanedData);
 
     if (applyToAll) {
@@ -659,6 +724,83 @@ export function ServiceOrderFormDialog({
   const customerOptions = useMemo(() =>
     customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
     [customers]
+  );
+
+  // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
+  // da OS. Alavanca ligada revela campos estruturados (mesmo padrão do avulso).
+  const serviceAddressSection = (
+    <div className="rounded-lg border p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <Label className="cursor-default flex items-center gap-1.5 text-sm">
+          <MapPinned className="h-4 w-4 text-primary" />
+          Endereço de serviço (diferente do cliente)
+        </Label>
+        <LabeledSwitch
+          value={useServiceAddress ? 'on' : 'off'}
+          onChange={(v) => setUseServiceAddress(v === 'on')}
+          off={{ value: 'off', label: 'Não' }}
+          on={{ value: 'on', label: 'Sim' }}
+          aria-label="Usar endereço de serviço diferente do cliente"
+        />
+      </div>
+      {useServiceAddress && (
+        <div className="space-y-3 pt-1">
+          <p className="text-xs text-muted-foreground">
+            O atendimento será feito neste endereço (filial, obra, evento). Quando vazio, usa o endereço do cliente.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>CEP</Label>
+              <CepLookup
+                value={svcCep}
+                onChange={setSvcCep}
+                onAddressFound={(addr) => {
+                  setSvcAddress(addr.logradouro);
+                  setSvcNeighborhood(addr.bairro);
+                  setSvcCity(addr.cidade);
+                  setSvcState(addr.estado);
+                }}
+              />
+            </div>
+            <div>
+              <Label>Número</Label>
+              <Input value={svcNumber} onChange={e => setSvcNumber(e.target.value)} placeholder="Número" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Endereço</Label>
+              <AddressAutocomplete
+                value={svcAddress}
+                onChange={setSvcAddress}
+                onAddressSelected={(addr) => {
+                  setSvcAddress(addr.logradouro);
+                  setSvcNeighborhood(addr.bairro);
+                  setSvcCity(addr.cidade);
+                  setSvcState(addr.estado);
+                  if (addr.cep) {
+                    const c = addr.cep.replace(/\D/g, '');
+                    setSvcCep(c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c);
+                  }
+                }}
+                placeholder="Rua, Avenida..."
+              />
+            </div>
+            <div>
+              <Label>Bairro</Label>
+              <Input value={svcNeighborhood} onChange={e => setSvcNeighborhood(e.target.value)} placeholder="Bairro" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>UF / Cidade</Label>
+              <StateCitySelector
+                selectedState={svcState}
+                selectedCity={svcCity}
+                onStateChange={setSvcState}
+                onCityChange={setSvcCity}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 
   // Edit mode: same multi-step form as create
@@ -976,6 +1118,9 @@ export function ServiceOrderFormDialog({
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+
+                {/* Endereço de serviço (diferente do cliente) */}
+                {serviceAddressSection}
 
                 {/* Pesquisa de Satisfação (NPS) ao finalizar */}
                 <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
@@ -1561,6 +1706,9 @@ export function ServiceOrderFormDialog({
                   </div>
                 )}
               </div>
+
+              {/* Endereço de serviço (diferente do cliente) */}
+              {serviceAddressSection}
 
               {/* Pesquisa de Satisfação (NPS) ao finalizar */}
               <div className="rounded-lg border p-3 flex items-center justify-between gap-3">

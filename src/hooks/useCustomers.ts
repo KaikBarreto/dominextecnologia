@@ -27,6 +27,9 @@ export interface CustomerInput {
   inscricao_municipal?: string;
   street_number?: string;
   ibge_municipality_code?: string;
+  // Coordenadas geocodificadas no cadastro/edição (mapa de rota instantâneo).
+  latitude?: number;
+  longitude?: number;
 }
 
 export function useCustomers() {

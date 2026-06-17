@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.34',
+    date: '17 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Endereço de serviço diferente do cadastro do cliente',
+        description: 'Ao criar ou editar uma ordem de serviço, você agora pode informar um endereço de serviço próprio para aquele atendimento — útil quando o cliente é cadastrado em um endereço (a matriz, por exemplo) mas o serviço acontece em outro local, como uma filial, obra ou evento. Quando preenchido, o mapa da rota, o endereço exibido e os atalhos do Waze e do Google Maps passam a usar o endereço do atendimento; quando não, continuam usando o endereço do cliente, como antes.',
+        category: 'recurso',
+      },
+      {
+        title: 'Mapa da rota mais rápido',
+        description: 'O endereço dos clientes passou a ser localizado e guardado, então o mapa da rota até o cliente abre na hora, sem precisar recalcular a localização a cada vez.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção ao abrir ordens de serviço',
+        description: 'Corrigimos um problema que, em alguns casos, impedia abrir uma ordem de serviço (a tela mostrava "Erro ao carregar"). Agora as OS abrem normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.12.33',
     date: '17 de junho de 2026',
     type: 'patch',

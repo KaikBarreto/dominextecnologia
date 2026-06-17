@@ -5251,7 +5251,15 @@ export type Database = {
           resumed_at: string | null
           scheduled_date: string | null
           scheduled_time: string | null
+          service_address: string | null
+          service_address_number: string | null
+          service_city: string | null
+          service_latitude: number | null
+          service_longitude: number | null
+          service_neighborhood: string | null
+          service_state: string | null
           service_type_id: string | null
+          service_zip_code: string | null
           snapshot_data: Json | null
           solution: string | null
           started_at: string | null
@@ -5304,7 +5312,15 @@ export type Database = {
           resumed_at?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          service_address?: string | null
+          service_address_number?: string | null
+          service_city?: string | null
+          service_latitude?: number | null
+          service_longitude?: number | null
+          service_neighborhood?: string | null
+          service_state?: string | null
           service_type_id?: string | null
+          service_zip_code?: string | null
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null
@@ -5357,7 +5373,15 @@ export type Database = {
           resumed_at?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          service_address?: string | null
+          service_address_number?: string | null
+          service_city?: string | null
+          service_latitude?: number | null
+          service_longitude?: number | null
+          service_neighborhood?: string | null
+          service_state?: string | null
           service_type_id?: string | null
+          service_zip_code?: string | null
           snapshot_data?: Json | null
           solution?: string | null
           started_at?: string | null

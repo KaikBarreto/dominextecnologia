@@ -47,6 +47,78 @@ export function buildCustomerAddress(customer: any): string {
 }
 
 /**
+ * Monta o endereço de serviço próprio da OS (campos service_*).
+ * Retorna '' quando a OS não tem endereço de serviço preenchido.
+ */
+export function buildServiceAddress(order: any): string {
+  const street = [order?.service_address, order?.service_address_number]
+    .filter(Boolean)
+    .join(', ');
+  return [
+    street,
+    order?.service_neighborhood,
+    order?.service_city,
+    order?.service_state,
+    order?.service_zip_code,
+  ].filter(Boolean).join(', ');
+}
+
+export interface ResolvedOsDestination {
+  /** Coordenadas já salvas (OS de serviço → cliente). Null quando só há endereço pra geocodar. */
+  coords: { lat: number; lng: number } | null;
+  /** Endereço textual da fonte resolvida (serve pro fallback de geocode e pros links Maps/Waze). */
+  address: string;
+  /** De onde veio o destino: endereço de serviço da OS ou endereço do cliente. */
+  source: 'os' | 'customer';
+}
+
+/**
+ * Resolve o destino de navegação de uma OS com a prioridade:
+ *   1. coordenada de serviço da OS (service_latitude/longitude)
+ *   2. endereço de serviço da OS (buildServiceAddress → geocode no consumidor)
+ *   3. coordenada do cliente (customer.latitude/longitude)
+ *   4. endereço do cliente (buildCustomerAddress → geocode no consumidor)
+ *
+ * Síncrono: devolve as coords já salvas quando existem e o endereço da fonte
+ * de maior prioridade que tiver dados. O geocode de fallback fica a cargo do
+ * consumidor (ex: RouteToCustomerMap), usando `address`.
+ *
+ * `customer` pode ser passado à parte (o objeto da OS nem sempre traz o cliente
+ * embutido); por padrão usa order.customer.
+ */
+export function resolveOsDestination(
+  order: any,
+  customer?: any,
+): ResolvedOsDestination {
+  const cust = customer ?? order?.customer ?? null;
+
+  const sLat = order?.service_latitude != null ? Number(order.service_latitude) : null;
+  const sLng = order?.service_longitude != null ? Number(order.service_longitude) : null;
+  const hasServiceCoords = sLat != null && sLng != null && Number.isFinite(sLat) && Number.isFinite(sLng);
+  const serviceAddress = buildServiceAddress(order);
+  const hasServiceAddress = !!serviceAddress;
+
+  // Endereço de serviço da OS tem prioridade total (coord ou texto).
+  if (hasServiceCoords || hasServiceAddress) {
+    return {
+      coords: hasServiceCoords ? { lat: sLat as number, lng: sLng as number } : null,
+      address: serviceAddress,
+      source: 'os',
+    };
+  }
+
+  const cLat = cust?.latitude != null ? Number(cust.latitude) : null;
+  const cLng = cust?.longitude != null ? Number(cust.longitude) : null;
+  const hasCustomerCoords = cLat != null && cLng != null && Number.isFinite(cLat) && Number.isFinite(cLng);
+
+  return {
+    coords: hasCustomerCoords ? { lat: cLat as number, lng: cLng as number } : null,
+    address: cust ? buildCustomerAddress(cust) : '',
+    source: 'customer',
+  };
+}
+
+/**
  * Geocode an address using Nominatim (OpenStreetMap).
  * Caches result — call once per customer, then store lat/lng.
  */

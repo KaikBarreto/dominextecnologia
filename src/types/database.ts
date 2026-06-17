@@ -123,6 +123,17 @@ export interface ServiceOrder {
   // que só pode ser setado em OS de contrato is_pmoc=true.
   pmoc_conformity_status?: 'conforme' | 'parcial' | 'nao_conforme' | null;
   pmoc_conformity_notes?: string | null;
+  // Endereço de serviço próprio da OS (opcional). Quando preenchido, sobrepõe
+  // o endereço do cliente no mapa de rota, na exibição e nos links Maps/Waze.
+  // Vazio = usa o endereço do cliente.
+  service_address?: string | null;
+  service_address_number?: string | null;
+  service_neighborhood?: string | null;
+  service_city?: string | null;
+  service_state?: string | null;
+  service_zip_code?: string | null;
+  service_latitude?: number | null;
+  service_longitude?: number | null;
   // Relations
   customer?: Customer;
   equipment?: Equipment;

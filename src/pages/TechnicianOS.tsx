@@ -52,7 +52,7 @@ import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { RouteToCustomerMap } from '@/components/schedule/RouteToCustomerMap';
-import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress, haversineDistance } from '@/utils/geolocation';
+import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress, haversineDistance, resolveOsDestination } from '@/utils/geolocation';
 import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1463,21 +1463,26 @@ export default function TechnicianOS() {
     }
   };
 
-  // Atalhos de navegação até o cliente (a_caminho). Coords do cliente quando
-  // disponíveis; senão cai no fallback por endereço de cada app.
-  const customerAddress = buildCustomerAddress(serviceOrder.customer);
-  const custLat = serviceOrder.customer?.latitude != null ? Number(serviceOrder.customer.latitude) : null;
-  const custLng = serviceOrder.customer?.longitude != null ? Number(serviceOrder.customer.longitude) : null;
-  const hasCustomerCoords = !!custLat && !!custLng && Number.isFinite(custLat) && Number.isFinite(custLng);
+  // Atalhos de navegação até o destino (a_caminho). Prioridade: endereço de
+  // serviço da OS (coord salva → endereço de serviço) → cliente (coord → endereço).
+  const osDestination = resolveOsDestination(serviceOrder, serviceOrder.customer);
+  const isServiceAddress = osDestination.source === 'os';
+  const destAddress = osDestination.address;
+  const destLat = osDestination.coords?.lat ?? null;
+  const destLng = osDestination.coords?.lng ?? null;
+  const hasCustomerCoords = destLat != null && destLng != null && Number.isFinite(destLat) && Number.isFinite(destLng);
+  // Mantido pra compat com referências antigas no JSX abaixo.
+  const custLat = destLat;
+  const custLng = destLng;
 
   const openWaze = () => {
     const url = hasCustomerCoords
-      ? buildWazeUrl(custLat as number, custLng as number)
-      : customerAddress
-      ? `https://waze.com/ul?q=${encodeURIComponent(customerAddress)}&navigate=yes`
+      ? buildWazeUrl(destLat as number, destLng as number)
+      : destAddress
+      ? `https://waze.com/ul?q=${encodeURIComponent(destAddress)}&navigate=yes`
       : null;
     if (!url) {
-      toast({ variant: 'destructive', title: 'Sem endereço do cliente para abrir a navegação.' });
+      toast({ variant: 'destructive', title: 'Sem endereço para abrir a navegação.' });
       return;
     }
     window.open(url, '_blank', 'noopener');
@@ -1485,15 +1490,15 @@ export default function TechnicianOS() {
 
   const openGoogleMaps = () => {
     let url: string | null = null;
-    if (techOrigin && customerAddress) {
-      url = buildGoogleMapsDirectionsUrl(techOrigin.lat, techOrigin.lng, customerAddress);
-    } else if (customerAddress) {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(customerAddress)}`;
+    if (techOrigin && destAddress) {
+      url = buildGoogleMapsDirectionsUrl(techOrigin.lat, techOrigin.lng, destAddress);
+    } else if (destAddress) {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destAddress)}`;
     } else if (hasCustomerCoords) {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${custLat},${custLng}`;
+      url = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`;
     }
     if (!url) {
-      toast({ variant: 'destructive', title: 'Sem endereço do cliente para abrir a navegação.' });
+      toast({ variant: 'destructive', title: 'Sem endereço para abrir a navegação.' });
       return;
     }
     window.open(url, '_blank', 'noopener');
@@ -1556,6 +1561,7 @@ export default function TechnicianOS() {
                   origin={techOrigin}
                   customerCoords={hasCustomerCoords ? { lat: custLat as number, lng: custLng as number } : null}
                   customer={serviceOrder.customer}
+                  destAddress={destAddress}
                 />
                 {(techOrigin || hasCustomerCoords) && (
                   <button
@@ -1626,6 +1632,7 @@ export default function TechnicianOS() {
                 origin={techOrigin}
                 customerCoords={hasCustomerCoords ? { lat: custLat as number, lng: custLng as number } : null}
                 customer={serviceOrder.customer}
+                destAddress={destAddress}
                 fullHeight
               />
             </div>
@@ -1770,6 +1777,21 @@ export default function TechnicianOS() {
                   {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
                 </span>
               </p>
+            )}
+            {isServiceAddress && destAddress && (
+              <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 p-2.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                  <MapPinned className="h-3.5 w-3.5 shrink-0" />
+                  Endereço deste serviço
+                </div>
+                <p className="text-sm text-foreground flex items-start gap-1.5 mt-1">
+                  <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+                  <span className="break-words">{destAddress}</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  O atendimento é neste local, diferente do endereço cadastrado do cliente.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

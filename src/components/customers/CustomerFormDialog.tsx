@@ -24,6 +24,7 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { Customer, CustomerType } from '@/types/database';
@@ -64,7 +65,7 @@ interface CustomerFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
-  onSubmit: (data: CustomerFormData & { street_number?: string }) => Promise<void>;
+  onSubmit: (data: CustomerFormData & { street_number?: string; latitude?: number; longitude?: number }) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -75,6 +76,9 @@ export function CustomerFormDialog({
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Coordenadas capturadas ao escolher uma sugestão do autocomplete de endereço.
+  // Se ficar null no save, tentamos geocodificar o endereço digitado (best-effort).
+  const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
   const { activeOrigins } = useCustomerOrigins();
 
@@ -99,6 +103,12 @@ export function CustomerFormDialog({
       setActiveTab('contato');
       setPhotoFile(null);
       setPhotoPreview((customer as any)?.photo_url || null);
+      // Pré-carrega coords já salvas no cliente (edição); novo cliente começa sem coords.
+      const lat = (customer as any)?.latitude;
+      const lng = (customer as any)?.longitude;
+      setPickedCoords(
+        typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null,
+      );
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied when user accepts via DraftResumeDialog
       } else {
@@ -143,11 +153,28 @@ export function CustomerFormDialog({
       if (photoFile) {
         photo_url = await uploadPhoto();
       }
+
+      // Coordenadas do cliente: usa o que foi escolhido no autocomplete; senão,
+      // tenta geocodificar o endereço digitado (best-effort, nunca trava o cadastro).
+      let coords = pickedCoords;
+      if (!coords) {
+        const addressStr = buildCustomerAddress({
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          zip_code: data.zip_code,
+        });
+        if (addressStr) {
+          coords = await geocodeAddress(addressStr); // retorna null em falha/timeout
+        }
+      }
+
       const cleanedData = {
         ...data,
         birth_date: data.birth_date || undefined,
         // Espelha o número do endereço na coluna fiscal usada pela emissão de NFS-e.
         street_number: data.address_number || undefined,
+        ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
         ...(photo_url ? { photo_url } : {}),
       };
       await onSubmit(cleanedData);
@@ -373,8 +400,16 @@ export function CustomerFormDialog({
                     <FormControl>
                       <AddressAutocomplete
                         value={field.value || ''}
-                        onChange={field.onChange}
+                        onChange={(v) => {
+                          // Digitação manual invalida a coord da sugestão anterior;
+                          // o save re-geocodifica o endereço final.
+                          setPickedCoords(null);
+                          field.onChange(v);
+                        }}
                         onAddressSelected={(addr) => {
+                          if (typeof addr.lat === 'number' && typeof addr.lng === 'number') {
+                            setPickedCoords({ lat: addr.lat, lng: addr.lng });
+                          }
                           if (addr.logradouro) form.setValue('address', addr.logradouro);
                           if (addr.numero) form.setValue('address_number', addr.numero);
                           if (addr.bairro) form.setValue('neighborhood', addr.bairro);

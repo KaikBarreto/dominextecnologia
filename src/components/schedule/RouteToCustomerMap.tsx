@@ -19,6 +19,12 @@ interface RouteToCustomerMapProps {
   customerCoords: { lat: number; lng: number } | null;
   /** Usado pra geocodificar quando `customerCoords` é null. */
   customer?: CustomerLike | null;
+  /**
+   * Endereço já resolvido pela prioridade do destino (serviço da OS > cliente).
+   * Quando informado, tem prioridade sobre o endereço do `customer` no geocode
+   * de fallback. Usado pra mapa apontar pro endereço de serviço da OS.
+   */
+  destAddress?: string | null;
   className?: string;
   /** Quando true, o mapa preenche o container (h-full) em vez do preview slim de 260px. */
   fullHeight?: boolean;
@@ -34,7 +40,7 @@ interface RouteToCustomerMapProps {
  * Se nem origem nem destino resolverem, renderiza null (o caller mostra só
  * os botões de navegação por endereço — degradação elegante).
  */
-export function RouteToCustomerMap({ origin, customerCoords, customer, className, fullHeight }: RouteToCustomerMapProps) {
+export function RouteToCustomerMap({ origin, customerCoords, customer, destAddress, className, fullHeight }: RouteToCustomerMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const techMarkerRef = useRef<any>(null);
@@ -61,7 +67,8 @@ export function RouteToCustomerMap({ origin, customerCoords, customer, className
         if (!cancelled) setDestCoords({ lat, lng });
         return;
       }
-      const addr = customer ? buildCustomerAddress(customer) : '';
+      // Endereço de serviço já resolvido tem prioridade sobre o do cliente.
+      const addr = destAddress || (customer ? buildCustomerAddress(customer) : '');
       if (!addr) return;
       const coords = await geocodeAddress(addr);
       if (coords && !cancelled) setDestCoords(coords);
@@ -69,7 +76,7 @@ export function RouteToCustomerMap({ origin, customerCoords, customer, className
 
     resolveDest();
     return () => { cancelled = true; };
-  }, [customerCoords, customer?.latitude, customer?.longitude, customer?.address, customer?.city, customer?.state]);
+  }, [customerCoords, customer?.latitude, customer?.longitude, customer?.address, customer?.city, customer?.state, destAddress]);
 
   // Calcula a rota quando há os dois pontos
   useEffect(() => {

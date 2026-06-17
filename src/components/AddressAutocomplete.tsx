@@ -10,6 +10,9 @@ interface AddressResult {
   estado: string;
   cep: string;
   display: string;
+  /** Coordenadas da sugestão escolhida (vêm direto do Nominatim, sem chamada extra). */
+  lat?: number;
+  lng?: number;
 }
 
 interface AddressAutocompleteProps {
@@ -22,6 +25,8 @@ interface AddressAutocompleteProps {
 
 interface NominatimResult {
   display_name: string;
+  lat?: string;
+  lon?: string;
   address: {
     road?: string;
     house_number?: string;
@@ -95,6 +100,8 @@ export function AddressAutocomplete({
           estado: stateToUF(r.address.state || ''),
           cep: (r.address.postcode || '').replace('-', '').slice(0, 8),
           display: r.display_name,
+          lat: r.lat ? parseFloat(r.lat) : undefined,
+          lng: r.lon ? parseFloat(r.lon) : undefined,
         }));
       setSuggestions(results);
       setShowDropdown(results.length > 0);
