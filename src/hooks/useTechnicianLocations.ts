@@ -36,11 +36,24 @@ async function fetchCompanyIdForCurrentUser(): Promise<string | null> {
 /**
  * Hook to send periodic geolocation updates while a technician is working on an OS.
  * Starts tracking on mount (if enabled), stops on unmount.
+ *
+ * `onPosition` (opcional) é chamado em TODO tick do GPS (sem o throttle de envio),
+ * pra que a UI possa acompanhar a posição ao vivo (ex: rota até o cliente) reusando
+ * o MESMO watchPosition — sem abrir um segundo watcher e dobrar consumo de bateria.
  */
-export function useGeoTracking(serviceOrderId: string | undefined, enabled: boolean) {
+export function useGeoTracking(
+  serviceOrderId: string | undefined,
+  enabled: boolean,
+  onPosition?: (lat: number, lng: number) => void,
+) {
   const watchIdRef = useRef<number | null>(null);
   const lastSentRef = useRef<number>(0);
   const INTERVAL_MS = 30_000; // 30 seconds
+
+  // Mantém o callback em ref pra não re-subscrever o watcher quando a identidade
+  // do onPosition muda a cada render.
+  const onPositionRef = useRef(onPosition);
+  onPositionRef.current = onPosition;
 
   const sendLocation = useCallback(async (lat: number, lng: number, eventType: string) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -69,13 +82,18 @@ export function useGeoTracking(serviceOrderId: string | undefined, enabled: bool
 
     // Send initial location immediately
     navigator.geolocation.getCurrentPosition(
-      (pos) => sendLocation(pos.coords.latitude, pos.coords.longitude, 'tracking'),
+      (pos) => {
+        onPositionRef.current?.(pos.coords.latitude, pos.coords.longitude);
+        sendLocation(pos.coords.latitude, pos.coords.longitude, 'tracking');
+      },
       () => {},
       { enableHighAccuracy: true }
     );
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
+        // Posição ao vivo a cada tick (o consumidor aplica seu próprio throttle).
+        onPositionRef.current?.(position.coords.latitude, position.coords.longitude);
         const now = Date.now();
         if (now - lastSentRef.current < INTERVAL_MS) return;
         lastSentRef.current = now;
@@ -89,6 +107,7 @@ export function useGeoTracking(serviceOrderId: string | undefined, enabled: bool
     const fallbackInterval = setInterval(() => {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          onPositionRef.current?.(pos.coords.latitude, pos.coords.longitude);
           const now = Date.now();
           if (now - lastSentRef.current < INTERVAL_MS) return;
           lastSentRef.current = now;

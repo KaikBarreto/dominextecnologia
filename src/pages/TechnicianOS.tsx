@@ -52,7 +52,7 @@ import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { RouteToCustomerMap } from '@/components/schedule/RouteToCustomerMap';
-import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress } from '@/utils/geolocation';
+import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress, haversineDistance } from '@/utils/geolocation';
 import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -138,6 +138,10 @@ export default function TechnicianOS() {
   // Origem (posição atual do técnico) pro mapa de rota até o cliente no a_caminho.
   // null = ainda não resolvida ou GPS indisponível (mapa degrada, botões seguem).
   const [techOrigin, setTechOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  // Throttle do techOrigin ao vivo: guarda a última origem usada e quando ela foi
+  // aplicada, pra só recomputar a rota OSRM quando o técnico se moveu de verdade.
+  const lastOriginRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastOriginAtRef = useRef<number>(0);
 
   // Overlay fullscreen das Ferramentas do Técnico (atalho a partir do FAB).
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
@@ -568,17 +572,58 @@ export default function TechnicianOS() {
 
   // Periodic geo tracking while OS is em_andamento or a_caminho
   const isTracking = (serviceOrder?.status === 'em_andamento' || serviceOrder?.status === 'a_caminho' || serviceOrder?.status === 'pausada') && isAuthenticated === true;
-  useGeoTracking(id, isTracking);
 
-  // Resolve a posição atual do técnico (origem) só quando a OS está "a caminho",
-  // pra desenhar a rota até o cliente. Falha de GPS/permissão não bloqueia nada:
+  // Status atual em ref pra o callback de posição (estável) saber se ainda estamos
+  // em "a_caminho" sem virar dependência que re-subscreve o watcher.
+  const aCaminhoRef = useRef(false);
+  aCaminhoRef.current = serviceOrder?.status === 'a_caminho';
+
+  // A cada tick do GPS (reusa o MESMO watchPosition do tracking), atualiza a origem
+  // da rota só quando o técnico andou ~50m OU passaram >=15s desde a última origem.
+  // Esse throttle é o que evita recomputar a rota OSRM a cada leitura do GPS.
+  const MIN_MOVE_KM = 0.05; // ~50 metros
+  const MIN_INTERVAL_MS = 15_000; // 15 segundos
+  const handleLivePosition = useCallback((lat: number, lng: number) => {
+    if (!aCaminhoRef.current) return;
+    const now = Date.now();
+    const last = lastOriginRef.current;
+    if (last) {
+      const movedKm = haversineDistance(last.lat, last.lng, lat, lng);
+      if (movedKm < MIN_MOVE_KM && now - lastOriginAtRef.current < MIN_INTERVAL_MS) {
+        return; // não mexeu o suficiente nem passou tempo bastante
+      }
+    }
+    lastOriginRef.current = { lat, lng };
+    lastOriginAtRef.current = now;
+    setTechOrigin({ lat, lng });
+  }, []);
+
+  // Reusa o watcher de tracking pra alimentar a origem ao vivo (sem 2º GPS watch).
+  useGeoTracking(id, isTracking, handleLivePosition);
+
+  // Seed inicial da origem ao entrar em "a_caminho" (o watchPosition do tracking
+  // pode levar alguns segundos pro 1º tick). Falha de GPS/permissão não bloqueia:
   // o mapa degrada e os botões de navegação seguem funcionando por endereço.
+  // Ao SAIR do a_caminho, zera a origem e o estado de throttle.
   useEffect(() => {
-    if (serviceOrder?.status !== 'a_caminho' || isAuthenticated !== true) return;
+    if (serviceOrder?.status !== 'a_caminho' || isAuthenticated !== true) {
+      lastOriginRef.current = null;
+      lastOriginAtRef.current = 0;
+      setTechOrigin(null);
+      return;
+    }
     let cancelled = false;
     getCurrentLocation()
-      .then((loc) => { if (!cancelled) setTechOrigin(loc); })
-      .catch(() => { if (!cancelled) setTechOrigin(null); });
+      .then((loc) => {
+        if (cancelled) return;
+        // Só semeia se o watcher ao vivo ainda não tiver dado o 1º tick.
+        if (!lastOriginRef.current) {
+          lastOriginRef.current = loc;
+          lastOriginAtRef.current = Date.now();
+          setTechOrigin(loc);
+        }
+      })
+      .catch(() => { /* GPS negado/indisponível: mapa some, sem flood de toast */ });
     return () => { cancelled = true; };
     // getCurrentLocation é estável (sem deps externas relevantes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
