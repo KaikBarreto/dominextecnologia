@@ -116,3 +116,36 @@ export const asaas = {
 export function assertAsaasConfigured(): void {
   getApiKey();
 }
+
+/** Antecipação de recebível (subconjunto dos campos do AnticipationGetResponseDTO). */
+export interface AsaasAnticipation {
+  id: string;
+  /** pay_* da cobrança antecipada (null em antecipação de parcelamento). */
+  payment: string | null;
+  /** ins_* do parcelamento antecipado (null em antecipação de cobrança avulsa). */
+  installment: string | null;
+  /** PENDING | DENIED | CREDITED | DEBITED | CANCELLED | OVERDUE | SCHEDULED */
+  status: string;
+  /** Taxa de antecipação cobrada pelo Asaas (R$). FONTE DA VERDADE do custo extra. */
+  fee: number;
+  /** Valor líquido creditado (totalValue − fee). */
+  netValue: number;
+  /** Valor total da cobrança antecipada. */
+  totalValue: number;
+  value: number;
+}
+
+/**
+ * Lista as antecipações de uma cobrança específica (pay_*). FONTE ROBUSTA da taxa
+ * de antecipação: re-consulta o Asaas em vez de confiar no payload do webhook (cujo
+ * formato/wrapper não é garantido). Retorna [] se a cobrança não tem antecipação.
+ */
+export async function listAnticipationsByPayment(
+  paymentId: string,
+): Promise<AsaasAnticipation[]> {
+  const res = await asaas.get<{ data?: AsaasAnticipation[] }>(
+    "/anticipations",
+    buildQuery({ payment: paymentId, limit: 100 }),
+  );
+  return Array.isArray(res?.data) ? res.data : [];
+}

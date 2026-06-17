@@ -27,6 +27,7 @@
 //  - PAYMENT_CREATED                                    → linka pay_* à subscription_payments
 //  - PAYMENT_OVERDUE                                    → desativa só 1ª venda sem pagamento (ver nota past_due)
 //  - PAYMENT_REFUNDED / PAYMENT_CHARGEBACK_*            → registra estorno + alerta admin
+//  - RECEIVABLE_ANTICIPATION_* (CREDITED/DEBITED)       → taxa de antecipação como despesa SEPARADA (re-consulta o fee real)
 //
 // Downgrade agendado: na renovação confirmada (gated pelo mutex), se companies tem
 //  pending_plan_code, aplicamos plano/ciclo/max_users/módulos alvo e limpamos pending_*.
@@ -41,6 +42,10 @@
 //  - Vencimento via RPC compute_next_expiration (BRT-aware no banco), NÃO helper TS.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  AsaasConfigError,
+  listAnticipationsByPayment,
+} from "../_shared/asaas-client.ts";
 
 // CORS permissivo: a Asaas chama server-to-server (sem Origin), então NÃO usamos
 // o allowlist de origem do _shared/cors.ts aqui. asaas-access-token liberado no header.
@@ -719,6 +724,99 @@ async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void
   }
 }
 
+/**
+ * Lança a TAXA DE ANTECIPAÇÃO Asaas como despesa SEPARADA (category=asaas_anticipation_fee),
+ * distinta da tarifa comum (asaas_fee). Disparado pelos eventos RECEIVABLE_ANTICIPATION_*.
+ *
+ * FONTE DA VERDADE: re-consulta a API (GET /anticipations?payment=pay_*) pra obter o `fee`
+ * REAL — NÃO confiamos no payload do webhook (formato/wrapper não garantido pela doc).
+ * Isso elimina o timing frágil: a taxa de antecipação só existe num 2º momento (após o
+ * PAYMENT_RECEIVED), e o fee correto vive no objeto da antecipação, não no payment.
+ *
+ * Idempotência: asaas_transaction_id = `${pay_*}_anticipation_fee` (UNIQUE parcial).
+ * 23505 = já existe = ok. ESTA CHAVE é a MESMA usada pelo lançamento retroativo manual,
+ * então se a automação chegar depois ela bate em 23505 e NÃO duplica.
+ *
+ * Só lança quando a antecipação está efetivamente concretizada (status CREDITED/DEBITED):
+ * PENDING/SCHEDULED ainda não cobraram a taxa; DENIED/CANCELLED nunca cobram.
+ */
+async function recordAnticipationFee(
+  supabase: any,
+  paymentId: string,
+  anticipationStatus: string,
+): Promise<{ recorded: boolean; reason?: string; fee?: number }> {
+  // Só vale a pena lançar quando a antecipação saiu do limbo. Em CREDITED a taxa já
+  // foi descontada do líquido creditado; DEBITED idem (caso de débito posterior).
+  const concretized = anticipationStatus === "CREDITED" || anticipationStatus === "DEBITED";
+  if (!concretized) {
+    return { recorded: false, reason: `status ${anticipationStatus} (sem cobrança ainda)` };
+  }
+
+  // Re-consulta o Asaas pra pegar o fee REAL da antecipação dessa cobrança.
+  let anticipations;
+  try {
+    anticipations = await listAnticipationsByPayment(paymentId);
+  } catch (e) {
+    if (e instanceof AsaasConfigError) {
+      console.error(`[anticipation] Asaas não configurado — não foi possível ler o fee de ${paymentId}.`);
+      return { recorded: false, reason: "asaas não configurado" };
+    }
+    console.error(`[anticipation] falha ao consultar antecipações de ${paymentId}:`, (e as Error).message);
+    return { recorded: false, reason: "consulta à Asaas falhou" };
+  }
+
+  // Soma os fees das antecipações concretizadas dessa cobrança (normalmente 1).
+  const relevant = anticipations.filter(
+    (a) => a.status === "CREDITED" || a.status === "DEBITED",
+  );
+  const totalFee =
+    Math.round(relevant.reduce((acc, a) => acc + Number(a.fee || 0), 0) * 100) / 100;
+
+  if (totalFee <= 0) {
+    return { recorded: false, reason: "fee de antecipação zero ou ausente" };
+  }
+
+  // Resolve a company pela cobrança (mesma empresa do pagamento antecipado).
+  const { data: payRow } = await supabase
+    .from("subscription_payments")
+    .select("company_id, billing_type")
+    .eq("asaas_payment_id", paymentId)
+    .maybeSingle();
+
+  const companyId: string | null = payRow?.company_id ?? null;
+  let companyName = "empresa não identificada";
+  if (companyId) {
+    const { data: comp } = await supabase
+      .from("companies")
+      .select("name")
+      .eq("id", companyId)
+      .maybeSingle();
+    companyName = comp?.name ?? companyName;
+  }
+  const billingType = (payRow?.billing_type || "PIX").toString().toUpperCase();
+
+  const antFeeTxId = `${paymentId}_anticipation_fee`;
+  const { error: feeErr } = await supabase.from("admin_financial_transactions").insert({
+    type: "expense",
+    category: "asaas_anticipation_fee",
+    amount: totalFee,
+    description: `Taxa de Antecipação Asaas - ${companyName} (${billingType})`,
+    reference_id: companyId,
+    reference_type: "asaas_anticipation_fee",
+    asaas_transaction_id: antFeeTxId,
+    transaction_date: new Date().toISOString(),
+  });
+  if (feeErr && feeErr.code !== "23505") {
+    console.error(`[anticipation] insert taxa de antecipação falhou (${antFeeTxId}):`, feeErr.message);
+    return { recorded: false, reason: "insert falhou" };
+  }
+  console.log(
+    `[anticipation] taxa de antecipação R$ ${totalFee.toFixed(2)} lançada p/ ${companyName} (${antFeeTxId})` +
+      (feeErr?.code === "23505" ? " [já existia — idempotente]" : ""),
+  );
+  return { recorded: true, fee: totalFee };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -807,6 +905,34 @@ Deno.serve(async (req) => {
           `(dinheiro vem nos PAYMENT_RECEIVED/CONFIRMED com pay_* real)`,
       );
       return json({ received: true, authorization_confirmed: true, matched: !!companyByAuth });
+    }
+
+    // ==========================================================
+    // ANTECIPAÇÃO DE RECEBÍVEL — taxa de antecipação como despesa SEPARADA
+    // ----------------------------------------------------------
+    // O Asaas tem uma FILA DE WEBHOOK PRÓPRIA pra antecipações ("Receivable
+    // anticipation events"), que precisa estar HABILITADA na conta. Eventos:
+    // RECEIVABLE_ANTICIPATION_{PENDING,SCHEDULED,CREDITED,DEBITED,DENIED,CANCELLED,OVERDUE}.
+    //
+    // A taxa de antecipação NÃO chega no PAYMENT_RECEIVED (o netValue de lá só reflete
+    // a tarifa comum). Ela é cobrada num 2º momento, aqui. Para não depender do formato
+    // do payload (wrapper não documentado), re-consultamos a API pelo pay_* e pegamos o
+    // `fee` REAL. Lançamento idempotente por `${pay_*}_anticipation_fee`.
+    // ==========================================================
+    if (event.startsWith("RECEIVABLE_ANTICIPATION_")) {
+      const ant = body.anticipation || body.receivableAnticipation || body.payment || {};
+      const antStatus = String(ant.status || event.replace("RECEIVABLE_ANTICIPATION_", "") || "").toUpperCase();
+      // O pay_* da cobrança antecipada (antecipação de parcelamento não tem payment → ignoramos).
+      const antPaymentId: string | null =
+        (typeof ant.payment === "string" && ant.payment) ? ant.payment : null;
+
+      if (!antPaymentId) {
+        console.log(`[anticipation] ${event} sem pay_* (provável antecipação de parcelamento) — ack sem lançamento.`);
+        return json({ received: true, anticipation: true, skipped: "sem payment" });
+      }
+
+      const result = await recordAnticipationFee(supabase, antPaymentId, antStatus);
+      return json({ received: true, anticipation: true, ...result });
     }
 
     // ==========================================================
