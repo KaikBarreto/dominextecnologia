@@ -6535,6 +6535,20 @@ export type Database = {
         Returns: number
       }
       generate_pmoc_token: { Args: never; Returns: string }
+      get_company_health_scores: {
+        Args: never
+        Returns: {
+          company_id: string
+          company_name: string
+          subscription_status: string
+          subscription_plan: string
+          last_activity_at: string
+          events_7d: number
+          events_14d: number
+          events_30d: number
+          health_status: string
+        }[]
+      }
       get_nps_criteria_averages: {
         Args: { p_end: string; p_start: string }
         Returns: {

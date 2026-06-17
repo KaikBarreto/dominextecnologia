@@ -107,6 +107,7 @@ const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPorta
 
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
+import AdminHealthScore from "./pages/admin/AdminHealthScore";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminFinancial from "./pages/admin/AdminFinancial";
 import AdminCRM from "./pages/admin/AdminCRM";
@@ -452,6 +453,7 @@ const AppRoutes = () => (
       <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />
       <Route path="/admin/empresas" element={<AdminScreenRoute screenKey="admin_empresas"><AdminCompanies /></AdminScreenRoute>} />
       <Route path="/admin/empresas/:id" element={<AdminScreenRoute screenKey="admin_empresas"><AdminCompanyDetail /></AdminScreenRoute>} />
+      <Route path="/admin/health-score" element={<AdminScreenRoute screenKey="admin_health_score"><AdminHealthScore /></AdminScreenRoute>} />
       <Route path="/admin/financeiro" element={<AdminScreenRoute screenKey="admin_financeiro"><AdminFinancial /></AdminScreenRoute>} />
       <Route path="/admin/crm" element={<AdminScreenRoute screenKey="admin_crm"><AdminCRM /></AdminScreenRoute>} />
       <Route path="/admin/vendedores" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespeople /></AdminScreenRoute>} />

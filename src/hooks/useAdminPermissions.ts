@@ -6,6 +6,7 @@ export const ADMIN_SCREEN_PERMISSIONS = [
   { key: 'admin_dashboard', label: 'Dashboard' },
   { key: 'admin_crm', label: 'CRM/Tarefas' },
   { key: 'admin_empresas', label: 'Empresas' },
+  { key: 'admin_health_score', label: 'Health Score' },
   { key: 'admin_vendedores', label: 'Vendedores' },
   { key: 'admin_financeiro', label: 'Financeiro' },
   { key: 'admin_domiflix', label: 'Domiflix' },

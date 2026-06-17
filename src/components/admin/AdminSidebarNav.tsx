@@ -14,6 +14,7 @@ import {
   Target,
   Briefcase,
   Clapperboard,
+  HeartPulse,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ const ADMIN_MENU_ITEMS: {
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, screenKey: 'admin_dashboard' },
   { label: 'CRM/Tarefas', path: '/admin/crm', icon: Target, screenKey: 'admin_crm' },
   { label: 'Empresas', path: '/admin/empresas', icon: Building2, screenKey: 'admin_empresas' },
+  { label: 'Health Score', path: '/admin/health-score', icon: HeartPulse, screenKey: 'admin_health_score' },
   { label: 'Vendedores', path: '/admin/vendedores', icon: Briefcase, screenKey: 'admin_vendedores' },
   { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet, screenKey: 'admin_financeiro' },
   { label: 'Domiflix', path: '/admin/domiflix', icon: Clapperboard, screenKey: 'admin_domiflix' },
