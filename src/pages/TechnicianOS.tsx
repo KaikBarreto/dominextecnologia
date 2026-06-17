@@ -24,6 +24,9 @@ import {
   ShieldCheck,
   Pause,
   Lock,
+  Map as MapIcon,
+  Maximize2,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +51,8 @@ import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hook
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
+import { RouteToCustomerMap } from '@/components/schedule/RouteToCustomerMap';
+import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress } from '@/utils/geolocation';
 import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -130,10 +135,14 @@ export default function TechnicianOS() {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  // Origem (posição atual do técnico) pro mapa de rota até o cliente no a_caminho.
+  // null = ainda não resolvida ou GPS indisponível (mapa degrada, botões seguem).
+  const [techOrigin, setTechOrigin] = useState<{ lat: number; lng: number } | null>(null);
 
   // Overlay fullscreen das Ferramentas do Técnico (atalho a partir do FAB).
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [routeFullscreen, setRouteFullscreen] = useState(false);
   // Copia o link público de acompanhamento e mostra toast (link gerado já copia no ato).
   const handleCopyTrackingLink = async () => {
     if (!id) return;
@@ -147,6 +156,13 @@ export default function TechnicianOS() {
       toast({ variant: 'destructive', title: 'Não foi possível copiar o link', description: getErrorMessage(error) });
     }
   };
+  // Fecha o mapa em tela cheia com Esc.
+  useEffect(() => {
+    if (!routeFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setRouteFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [routeFullscreen]);
   // "Ferramentas do Técnico" é exclusiva do segmento Refrigeração e Climatização.
   // Enquanto settings carrega (undefined/null), showTools é false → atalho oculto.
   const { settings } = useCompanySettings();
@@ -355,7 +371,7 @@ export default function TechnicianOS() {
         .from('service_orders')
         .select(`
           *,
-          customer:customers(id, name, phone, address, city, state, document, photo_url),
+          customer:customers(id, name, phone, address, city, state, document, photo_url, latitude, longitude),
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name),
           service_type:service_types(id, name, color)
@@ -553,6 +569,20 @@ export default function TechnicianOS() {
   // Periodic geo tracking while OS is em_andamento or a_caminho
   const isTracking = (serviceOrder?.status === 'em_andamento' || serviceOrder?.status === 'a_caminho' || serviceOrder?.status === 'pausada') && isAuthenticated === true;
   useGeoTracking(id, isTracking);
+
+  // Resolve a posição atual do técnico (origem) só quando a OS está "a caminho",
+  // pra desenhar a rota até o cliente. Falha de GPS/permissão não bloqueia nada:
+  // o mapa degrada e os botões de navegação seguem funcionando por endereço.
+  useEffect(() => {
+    if (serviceOrder?.status !== 'a_caminho' || isAuthenticated !== true) return;
+    let cancelled = false;
+    getCurrentLocation()
+      .then((loc) => { if (!cancelled) setTechOrigin(loc); })
+      .catch(() => { if (!cancelled) setTechOrigin(null); });
+    return () => { cancelled = true; };
+    // getCurrentLocation é estável (sem deps externas relevantes)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceOrder?.status, isAuthenticated]);
 
   const handleCheckIn = async () => {
     try {
@@ -1388,6 +1418,42 @@ export default function TechnicianOS() {
     }
   };
 
+  // Atalhos de navegação até o cliente (a_caminho). Coords do cliente quando
+  // disponíveis; senão cai no fallback por endereço de cada app.
+  const customerAddress = buildCustomerAddress(serviceOrder.customer);
+  const custLat = serviceOrder.customer?.latitude != null ? Number(serviceOrder.customer.latitude) : null;
+  const custLng = serviceOrder.customer?.longitude != null ? Number(serviceOrder.customer.longitude) : null;
+  const hasCustomerCoords = !!custLat && !!custLng && Number.isFinite(custLat) && Number.isFinite(custLng);
+
+  const openWaze = () => {
+    const url = hasCustomerCoords
+      ? buildWazeUrl(custLat as number, custLng as number)
+      : customerAddress
+      ? `https://waze.com/ul?q=${encodeURIComponent(customerAddress)}&navigate=yes`
+      : null;
+    if (!url) {
+      toast({ variant: 'destructive', title: 'Sem endereço do cliente para abrir a navegação.' });
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+  };
+
+  const openGoogleMaps = () => {
+    let url: string | null = null;
+    if (techOrigin && customerAddress) {
+      url = buildGoogleMapsDirectionsUrl(techOrigin.lat, techOrigin.lng, customerAddress);
+    } else if (customerAddress) {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(customerAddress)}`;
+    } else if (hasCustomerCoords) {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${custLat},${custLng}`;
+    }
+    if (!url) {
+      toast({ variant: 'destructive', title: 'Sem endereço do cliente para abrir a navegação.' });
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -1431,6 +1497,121 @@ export default function TechnicianOS() {
       </div>
 
       <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        {/* Rota até o cliente — só quando "a caminho" */}
+        {isACaminho && (
+          <Card className="border-indigo-200 overflow-hidden">
+            <div className="bg-indigo-50 border-b border-indigo-100 px-3 py-2 flex items-center gap-2 text-sm font-medium text-indigo-700">
+              <MapPinned className="h-4 w-4 shrink-0" />
+              Rota até o cliente
+            </div>
+            <CardContent className="p-0">
+              {/* Mapa: some com elegância se nem origem nem destino resolverem */}
+              <div className="relative">
+                <RouteToCustomerMap
+                  origin={techOrigin}
+                  customerCoords={hasCustomerCoords ? { lat: custLat as number, lng: custLng as number } : null}
+                  customer={serviceOrder.customer}
+                />
+                {(techOrigin || hasCustomerCoords) && (
+                  <button
+                    type="button"
+                    onClick={() => setRouteFullscreen(true)}
+                    aria-label="Ampliar mapa"
+                    className="absolute bottom-3 right-3 z-[400] flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2 text-sm font-medium text-indigo-700 shadow-md active:scale-95 transition"
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                    Ampliar
+                  </button>
+                )}
+              </div>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  onClick={openWaze}
+                >
+                  <Navigation className="h-4 w-4 mr-2" />
+                  Waze
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  onClick={openGoogleMaps}
+                >
+                  <MapIcon className="h-4 w-4 mr-2" />
+                  Google Maps
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Mapa da rota em tela cheia — preview maior, navegação segue no Waze/Google */}
+        {isACaminho && routeFullscreen && (
+          <div
+            className="fixed inset-0 z-[3000] bg-background flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mapa da rota em tela cheia"
+          >
+            {/* Topo: respeita o status bar do iPhone */}
+            <div
+              className="flex items-center justify-between gap-2 px-3 pb-2 bg-indigo-600 text-white shrink-0"
+              style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <MapPinned className="h-4 w-4 shrink-0" />
+                <span className="text-sm font-medium truncate">Rota até o cliente</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRouteFullscreen(false)}
+                aria-label="Fechar mapa"
+                className="flex items-center justify-center h-9 w-9 rounded-full bg-white/20 active:scale-95 transition shrink-0"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Mapa preenche o espaço disponível */}
+            <div className="flex-1 min-h-0">
+              <RouteToCustomerMap
+                origin={techOrigin}
+                customerCoords={hasCustomerCoords ? { lat: custLat as number, lng: custLng as number } : null}
+                customer={serviceOrder.customer}
+                fullHeight
+              />
+            </div>
+
+            {/* Botões de navegação — respeita a barra inferior do iPhone */}
+            <div
+              className="grid grid-cols-2 gap-2 px-3 pt-3 bg-background border-t shrink-0"
+              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+            >
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                onClick={openWaze}
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Waze
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                onClick={openGoogleMaps}
+              >
+                <MapIcon className="h-4 w-4 mr-2" />
+                Google Maps
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Step 1: En Route or Check-in */}
         {(isPending || isACaminho) && (
           <Card className="border-primary/30">

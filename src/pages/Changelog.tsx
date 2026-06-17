@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.33',
+    date: '17 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Rota até o cliente ao iniciar o deslocamento',
+        description: 'Ao marcar que está a caminho em uma ordem de serviço, o técnico agora vê o mapa da rota até o endereço do cliente — com um botão para abrir em tela cheia — e atalhos para abrir a navegação direto no Waze ou no Google Maps. (O mapa do app é uma prévia do trajeto; a navegação guiada por voz é feita pelo Waze/Google Maps.)',
+        category: 'recurso',
+      },
+      {
+        title: 'Melhorias de uso no celular e no Catálogo',
+        description: 'A lista de OS Pausadas agora rola normalmente no celular; telas deixaram de ficar cobertas pela barra de status do iPhone; e, no Catálogo de Equipamentos, o consumo de energia ganhou ajuste de horas de uso por dia (com geladeiras consideradas em uso contínuo) e leitura mais clara.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.32',
     date: '16 de junho de 2026',
     type: 'patch',

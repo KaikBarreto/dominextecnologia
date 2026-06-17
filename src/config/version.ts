@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.32";
+export const APP_VERSION = "1.12.33";
 
-export const VERSION_NOTES = "O consumo de energia no Catálogo ficou mais coerente: o valor por hora e por mês andam juntos e respondem às horas de uso por dia — ao ajustar a tarifa ou as horas em um equipamento, todos os outros recalculam na hora. As logos das marcas também foram padronizadas.";
+export const VERSION_NOTES = "Ao marcar que está a caminho em uma ordem de serviço, o técnico agora vê o mapa da rota até o cliente (com opção de abrir em tela cheia) e botões para abrir a navegação direto no Waze ou no Google Maps. Também trouxemos melhorias de uso no celular (rolagem das OS Pausadas, telas no iPhone) e no Catálogo de Equipamentos.";
