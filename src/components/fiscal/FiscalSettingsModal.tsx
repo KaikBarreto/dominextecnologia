@@ -36,11 +36,14 @@ import {
   type FiscalAmbiente,
   type FiscalSettingsEditable,
 } from '@/hooks/useFiscalSettings';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { invokeFisqal } from '@/utils/fisqalEdge';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
+import { CepLookup } from '@/components/CepLookup';
+import { StateCitySelector } from '@/components/StateCitySelector';
 
 /** Seções internas do modal de configuração fiscal. */
-export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos' | 'cobertura';
+export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos';
 
 interface FiscalSettingsModalProps {
   open: boolean;
@@ -51,14 +54,14 @@ interface FiscalSettingsModalProps {
 
 /**
  * Ordem do onboarding segue a doc da Fisqal (§5): registrar a EMPRESA primeiro
- * (precisa dos dados) → subir o CERTIFICADO A1 (precisa do companyId já criado)
- * → impostos → ativação/cobertura. O `step` numera a sequência guiada.
+ * (precisa dos dados — incluindo status e cobertura, que vivem aqui agora) →
+ * subir o CERTIFICADO A1 (precisa do companyId já criado) → impostos. O `step`
+ * numera a sequência guiada.
  */
 const SECTIONS: { value: FiscalSettingsSection; label: string; icon: LucideIcon; step: number }[] = [
   { value: 'empresa', label: 'Empresa', icon: Building2, step: 1 },
   { value: 'certificado', label: 'Certificado A1', icon: Shield, step: 2 },
   { value: 'impostos', label: 'Impostos', icon: Info, step: 3 },
-  { value: 'cobertura', label: 'Ativação', icon: MapPin, step: 4 },
 ];
 
 const REGIMES = [
@@ -79,6 +82,17 @@ interface FiscalForm {
   iss_aliquota: string;
   municipio_ibge: string;
   fiscal_ambiente: FiscalAmbiente;
+  // Identidade/endereço da empresa — salvos em company_settings (espelhados
+  // pra `companies` por trigger server-side; a edge de registro lê de lá).
+  razao_social: string;
+  cnpj: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
 }
 
 const EMPTY_FORM: FiscalForm = {
@@ -92,6 +106,15 @@ const EMPTY_FORM: FiscalForm = {
   municipio_ibge: '',
   // Default Produção: o cliente final emite nota de verdade. Homologação é opt-in.
   fiscal_ambiente: 'producao',
+  razao_social: '',
+  cnpj: '',
+  cep: '',
+  logradouro: '',
+  numero: '',
+  complemento: '',
+  bairro: '',
+  cidade: '',
+  uf: '',
 };
 
 /** Converte string crua → number ou null (sem prender 0). */
@@ -119,9 +142,15 @@ function daysUntil(iso: string | null): number | null {
 
 export function FiscalSettingsModal({ open, onOpenChange, initialSection }: FiscalSettingsModalProps) {
   const { settings, isLoading, save, isSaving, invalidate } = useFiscalSettings();
+  const {
+    settings: companySettings,
+    isLoading: isLoadingCompany,
+    updateSettings,
+  } = useCompanySettings();
   const [section, setSection] = useState<FiscalSettingsSection>(initialSection ?? 'empresa');
   const [form, setForm] = useState<FiscalForm>(EMPTY_FORM);
   const hydrated = useRef(false);
+  const companyHydrated = useRef(false);
 
   // Certificado
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +174,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   useEffect(() => {
     if (!isLoading && !hydrated.current) {
       hydrated.current = true;
-      setForm({
+      setForm((p) => ({
+        ...p,
         regime_tributario: settings.regime_tributario || 'simples_nacional',
         inscricao_municipal: settings.inscricao_municipal || '',
         inscricao_estadual: settings.inscricao_estadual || '',
@@ -157,10 +187,30 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         // Empresa já registrada → respeita o ambiente salvo. Setup novo (sem
         // companyId Fisqal) → assume Produção (default do time).
         fiscal_ambiente: settings.fisqal_company_id ? settings.fiscal_ambiente : 'producao',
-      });
+      }));
     }
   }, [isLoading, settings]);
 
+  // Hidrata os campos de identidade/endereço (company_settings) 1x.
+  useEffect(() => {
+    if (!isLoadingCompany && companySettings && !companyHydrated.current) {
+      companyHydrated.current = true;
+      setForm((p) => ({
+        ...p,
+        razao_social: companySettings.name || '',
+        cnpj: companySettings.document || '',
+        cep: companySettings.zip_code || '',
+        logradouro: companySettings.address || '',
+        numero: companySettings.address_number || '',
+        complemento: companySettings.complement || '',
+        bairro: companySettings.neighborhood || '',
+        cidade: companySettings.city || '',
+        uf: companySettings.state || '',
+      }));
+    }
+  }, [isLoadingCompany, companySettings]);
+
+  // Salva impostos / ambiente (company_fiscal_settings via useFiscalSettings).
   const handleSave = async () => {
     const payload: Partial<FiscalSettingsEditable> = {
       regime_tributario: form.regime_tributario || null,
@@ -179,6 +229,67 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Não foi possível salvar as configurações fiscais.');
     }
+  };
+
+  /**
+   * Salva os dados da EMPRESA: identidade/endereço em company_settings (espelha
+   * pra `companies`, de onde a edge de registro lê) e os campos fiscais próprios
+   * (IM/IE/IBGE/ambiente) em company_fiscal_settings. São tabelas diferentes —
+   * por isso dois writes em paralelo.
+   */
+  const handleSaveCompany = async () => {
+    const fiscalPayload: Partial<FiscalSettingsEditable> = {
+      regime_tributario: form.regime_tributario || null,
+      inscricao_municipal: form.inscricao_municipal.trim() || null,
+      inscricao_estadual: form.inscricao_estadual.trim() || null,
+      municipio_ibge: form.municipio_ibge.trim() || null,
+      fiscal_ambiente: form.fiscal_ambiente,
+    };
+    try {
+      await Promise.all([
+        updateSettings.mutateAsync({
+          name: form.razao_social.trim(),
+          document: form.cnpj.replace(/\D/g, '') || null,
+          zip_code: form.cep.replace(/\D/g, '') || null,
+          address: form.logradouro.trim() || null,
+          address_number: form.numero.trim() || null,
+          complement: form.complemento.trim() || null,
+          neighborhood: form.bairro.trim() || null,
+          city: form.cidade.trim() || null,
+          state: form.uf || null,
+        }),
+        save(fiscalPayload),
+      ]);
+      toast.success('Dados da empresa salvos.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Não foi possível salvar os dados da empresa.');
+    }
+  };
+
+  /**
+   * CEP → preenche endereço + código IBGE.
+   * O `cep-lookup` está ganhando o campo `ibge` em paralelo; lemos de forma
+   * tolerante (`ibge` | `codigo_ibge`). Se não vier, o usuário resolve o IBGE
+   * escolhendo a cidade no StateCitySelector (fallback city→IBGE).
+   */
+  const handleAddressFound = (data: {
+    logradouro?: string;
+    bairro?: string;
+    cidade?: string;
+    estado?: string;
+    uf?: string;
+    ibge?: string | number;
+    codigo_ibge?: string | number;
+  }) => {
+    const ibge = data.ibge ?? data.codigo_ibge;
+    setForm((p) => ({
+      ...p,
+      logradouro: data.logradouro || p.logradouro,
+      bairro: data.bairro || p.bairro,
+      cidade: data.cidade || p.cidade,
+      uf: data.uf || data.estado || p.uf,
+      municipio_ibge: ibge != null && String(ibge).trim() ? String(ibge).trim() : p.municipio_ibge,
+    }));
   };
 
   const handleCertSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -291,15 +402,14 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
           {/* Navegação por passos (estilo EcoSistema): grade de abas com nº do
               passo, ícone e indicador de estado (cadeado quando bloqueado /
               check quando concluído). Mobile-first: rótulo encolhe pro ícone. */}
-          <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-muted/50 p-1">
+          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-muted/50 p-1">
             {SECTIONS.map((s) => {
               const Icon = s.icon;
               const active = section === s.value;
               const locked = s.value === 'certificado' && !isRegistered;
               const done =
                 (s.value === 'empresa' && isRegistered) ||
-                (s.value === 'certificado' && hasCertificate) ||
-                (s.value === 'cobertura' && settings.pode_emitir);
+                (s.value === 'certificado' && hasCertificate);
               return (
                 <button
                   key={s.value}
@@ -341,7 +451,27 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
           {/* ---- Seção: Empresa ---- */}
           {section === 'empresa' && (
             <div className="space-y-4">
+              {/* Identidade da empresa — razão social/nome e CNPJ vão pra
+                  company_settings (espelham pra `companies`, de onde a edge de
+                  registro lê). */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Razão social / Nome</Label>
+                  <Input
+                    placeholder="Nome da empresa"
+                    value={form.razao_social}
+                    onChange={(e) => setForm((p) => ({ ...p, razao_social: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>CNPJ</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="00.000.000/0000-00"
+                    value={form.cnpj}
+                    onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label>Regime tributário</Label>
                   <Select
@@ -374,13 +504,75 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     onChange={(e) => setForm((p) => ({ ...p, inscricao_estadual: e.target.value }))}
                   />
                 </div>
+              </div>
+
+              {/* Endereço fiscal — CEP preenche logradouro/bairro/cidade/UF +
+                  código IBGE do município (sem campo manual de IBGE). */}
+              <div className="space-y-3 rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Endereço fiscal</p>
+                </div>
                 <div className="space-y-2">
-                  <Label>Código IBGE do município</Label>
-                  <Input
-                    inputMode="numeric"
-                    placeholder="7 dígitos (ex: 3550308)"
-                    value={form.municipio_ibge}
-                    onChange={(e) => setForm((p) => ({ ...p, municipio_ibge: e.target.value }))}
+                  <Label>CEP</Label>
+                  <CepLookup
+                    value={form.cep}
+                    onChange={(cep) => setForm((p) => ({ ...p, cep }))}
+                    onAddressFound={handleAddressFound}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Preenche endereço, cidade e o código do município automaticamente.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="space-y-2 sm:col-span-3">
+                    <Label>Logradouro</Label>
+                    <Input
+                      value={form.logradouro}
+                      onChange={(e) => setForm((p) => ({ ...p, logradouro: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Número</Label>
+                    <Input
+                      value={form.numero}
+                      onChange={(e) => setForm((p) => ({ ...p, numero: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Complemento</Label>
+                    <Input
+                      value={form.complemento}
+                      onChange={(e) => setForm((p) => ({ ...p, complemento: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bairro</Label>
+                    <Input
+                      value={form.bairro}
+                      onChange={(e) => setForm((p) => ({ ...p, bairro: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                {/* Cidade/UF: o seletor entrega o código IBGE do município, que
+                    é o fallback caso o CEP ainda não traga `ibge`. */}
+                <div className="space-y-2">
+                  <Label>Cidade / UF</Label>
+                  <StateCitySelector
+                    selectedState={form.uf}
+                    selectedCity={form.cidade}
+                    onStateChange={(uf) =>
+                      setForm((p) => ({ ...p, uf, cidade: '', municipio_ibge: '' }))
+                    }
+                    onCityChange={(cidade, ibge) =>
+                      setForm((p) => ({
+                        ...p,
+                        cidade,
+                        municipio_ibge: ibge?.trim() ? ibge.trim() : p.municipio_ibge,
+                      }))
+                    }
                   />
                 </div>
               </div>
@@ -405,13 +597,47 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 />
               </div>
 
-              <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              <Button
+                onClick={handleSaveCompany}
+                disabled={isSaving || updateSettings.isPending}
+                className="w-full sm:w-auto"
+              >
+                {isSaving || updateSettings.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
                 Salvar dados da empresa
               </Button>
 
-              {/* Passo 1: registrar a empresa na Fisqal (precede o certificado).
-                  Edge fisqal-register-company; só depois o certificado é liberado. */}
+              {/* Status do onboarding (realocado da antiga aba "Ativação"). */}
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                <p className="text-sm font-medium">Status da emissão</p>
+                <div className="flex items-center gap-2 text-xs">
+                  {isRegistered ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+                  )}
+                  <span className="text-muted-foreground">
+                    Empresa: {isRegistered ? 'registrada' : 'não registrada'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {hasCertificate ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+                  )}
+                  <span className="text-muted-foreground">
+                    Certificado: {hasCertificate ? 'enviado' : 'pendente'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Registrar empresa na Fisqal (precede o certificado).
+                  Edge fisqal-register-company; só depois o certificado é liberado.
+                  Botão ÚNICO — não duplicar. */}
               <div className="flex flex-col gap-2 rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -432,6 +658,45 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 >
                   {registering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Building2 className="h-4 w-4 mr-2" />}
                   {isRegistered ? 'Atualizar registro da empresa' : 'Registrar empresa'}
+                </Button>
+              </div>
+
+              {/* Cobertura do município (realocado da antiga aba "Ativação"). */}
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Cobertura do município</p>
+                  <p className="text-xs text-muted-foreground">
+                    Confere se o seu município já emite NFS-e pela integração.
+                  </p>
+                </div>
+                {coverageResult && (
+                  <Alert
+                    className={
+                      coverageResult.pode
+                        ? 'border-success/40 bg-success/10'
+                        : 'border-destructive/40 bg-destructive/10'
+                    }
+                  >
+                    {coverageResult.pode ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4" />
+                    )}
+                    <AlertDescription className="text-xs">
+                      {coverageResult.pode
+                        ? `${coverageResult.municipio ?? 'Seu município'} já permite emissão de NFS-e.`
+                        : `${coverageResult.municipio ?? 'Seu município'} ainda não permite emissão de NFS-e.`}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handleCheckCoverage}
+                  disabled={checkingCoverage}
+                  className="w-full sm:w-auto"
+                >
+                  {checkingCoverage ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}
+                  Verificar cobertura
                 </Button>
               </div>
 
@@ -624,73 +889,6 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             </div>
           )}
 
-          {/* ---- Seção: Ativação (status + cobertura) ---- */}
-          {section === 'cobertura' && (
-            <div className="space-y-4">
-              {/* Resumo do progresso do onboarding (registro feito no passo 1). */}
-              <div className="flex flex-col gap-2 rounded-lg border p-3">
-                <p className="text-sm font-medium">Status da emissão</p>
-                <div className="flex items-center gap-2 text-xs">
-                  {isRegistered ? (
-                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-warning shrink-0" />
-                  )}
-                  <span className="text-muted-foreground">
-                    Empresa: {isRegistered ? 'registrada' : 'não registrada (passo 1)'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  {hasCertificate ? (
-                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-warning shrink-0" />
-                  )}
-                  <span className="text-muted-foreground">
-                    Certificado: {hasCertificate ? 'enviado' : 'pendente (passo 2)'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 rounded-lg border p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Cobertura do município</p>
-                  <p className="text-xs text-muted-foreground">
-                    Confere se o seu município já emite NFS-e pela integração.
-                  </p>
-                </div>
-                {coverageResult && (
-                  <Alert
-                    className={
-                      coverageResult.pode
-                        ? 'border-success/40 bg-success/10'
-                        : 'border-destructive/40 bg-destructive/10'
-                    }
-                  >
-                    {coverageResult.pode ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4" />
-                    )}
-                    <AlertDescription className="text-xs">
-                      {coverageResult.pode
-                        ? `${coverageResult.municipio ?? 'Seu município'} já permite emissão de NFS-e.`
-                        : `${coverageResult.municipio ?? 'Seu município'} ainda não permite emissão de NFS-e.`}
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={handleCheckCoverage}
-                  disabled={checkingCoverage}
-                  className="w-full sm:w-auto"
-                >
-                  {checkingCoverage ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}
-                  Verificar cobertura
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </ResponsiveModal>

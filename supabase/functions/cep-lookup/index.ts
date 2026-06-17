@@ -61,6 +61,8 @@ Deno.serve(async (req) => {
       bairro: String(viaCepData.bairro || '').slice(0, 100),
       cidade: String(viaCepData.localidade || '').slice(0, 100),
       estado: String(viaCepData.uf || '').slice(0, 2),
+      // Código IBGE do município (7 dígitos) — necessário pra emissão fiscal (NFS-e)
+      ibge: String(viaCepData.ibge || '').replace(/\D/g, '').slice(0, 7),
     }), {
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
