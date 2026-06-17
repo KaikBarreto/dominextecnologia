@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import domiflixLogoDark from "@/assets/logo-black-horizontal.png";
-import domiflixLogoLight from "@/assets/logo-white-horizontal.png";
+import domiflixLogoDark from "@/assets/domiflix-logo-horizontal-preto.png";
+import domiflixLogoLight from "@/assets/domiflix-logo-horizontal.png";
 import { typography } from "@/lib/typography";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

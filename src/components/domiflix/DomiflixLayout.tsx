@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, Search, X, Play, ChevronRight } from "lucide-react";
-import logoWhite from "@/assets/logo-white-horizontal.png";
+import logoWhite from "@/assets/domiflix-logo-horizontal.png";
 import { cn } from "@/lib/utils";
 import { useDomiflixTitles, useDomiflixAllEpisodes } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";

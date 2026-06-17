@@ -7,7 +7,7 @@ import {
 } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
-import domiflixLogo from "@/assets/logo-white-horizontal.png";
+import domiflixLogo from "@/assets/domiflix-logo-horizontal.png";
 
 interface DomiflixHeroProps {
   title: DomiflixTitle | null;

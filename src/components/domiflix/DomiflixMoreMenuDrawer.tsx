@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-import logoWhite from "@/assets/logo-white-horizontal.png";
+import logoWhite from "@/assets/domiflix-logo-horizontal.png";
 import { APP_VERSION } from "@/config/version";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDomiflixAvatar } from "@/hooks/useDomiflixAvatar";

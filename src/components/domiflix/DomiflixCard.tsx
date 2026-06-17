@@ -4,7 +4,7 @@ import { Play } from "lucide-react";
 import { DomiflixTitle, DomiflixProgress, DomiflixWatchlistItem, DomiflixEpisode } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
-import domiflixLogo from "@/assets/logo-white-horizontal.png";
+import domiflixLogo from "@/assets/domiflix-logo-horizontal-branco.png";
 
 interface DomiflixCardProps {
   title: DomiflixTitle;

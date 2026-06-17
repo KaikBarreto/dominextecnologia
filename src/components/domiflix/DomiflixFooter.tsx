@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import logoWhite from "@/assets/logo-white-horizontal.png";
+import logoWhite from "@/assets/domiflix-logo-horizontal.png";
 import { SystemFooter } from "@/components/layout/SystemFooter";
 
 // Redes sociais — adicionar novos perfis aqui (label + href + Icon).

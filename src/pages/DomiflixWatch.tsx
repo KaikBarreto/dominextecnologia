@@ -38,7 +38,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import domiflixLogo from "@/assets/logo-white-horizontal.png";
+import domiflixLogo from "@/assets/domiflix-logo-horizontal.png";
 import { playDomiflixIntro, stopDomiflixIntro } from "@/lib/domiflixIntroSound";
 
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
