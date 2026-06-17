@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { MapPin, Navigation, Clock, ExternalLink, User, LogIn, LogOut } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { TrackingEventListItem } from '@/components/tracking/TrackingEventListItem';
+import { useUserCompany } from '@/hooks/useUserCompany';
 
 interface LocationRecord {
   id: string;
@@ -50,6 +51,7 @@ export default function TechnicianTracking() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const { companyId } = useUserCompany();
 
   useEffect(() => {
     supabase.from('profiles').select('user_id, full_name').then(({ data }) => {
@@ -57,28 +59,69 @@ export default function TechnicianTracking() {
     });
   }, []);
 
+  // Carga do histórico do dia selecionado para os técnicos escolhidos.
+  // `showSpinner=false` é usado no refresh silencioso do realtime (não pisca a tela).
+  const fetchLocations = useCallback(
+    async (showSpinner = true) => {
+      if (selectedUserIds.length === 0 || !selectedDate) {
+        setLocations([]);
+        return;
+      }
+      if (showSpinner) setLoading(true);
+
+      const startOfDay = `${selectedDate}T00:00:00.000Z`;
+      const endOfDay = `${selectedDate}T23:59:59.999Z`;
+
+      const { data } = await supabase
+        .from('technician_locations' as any)
+        .select('*')
+        .in('user_id', selectedUserIds)
+        .gte('created_at', startOfDay)
+        .lte('created_at', endOfDay)
+        .order('created_at', { ascending: false });
+
+      setLocations((data as LocationRecord[]) || []);
+      if (showSpinner) setLoading(false);
+    },
+    [selectedUserIds, selectedDate],
+  );
+
   useEffect(() => {
-    if (selectedUserIds.length === 0 || !selectedDate) {
-      setLocations([]);
-      return;
-    }
-    setLoading(true);
+    fetchLocations(true);
+  }, [fetchLocations]);
 
-    const startOfDay = `${selectedDate}T00:00:00.000Z`;
-    const endOfDay = `${selectedDate}T23:59:59.999Z`;
+  // Realtime — quando o dia selecionado é hoje, novos pontos GPS dos técnicos
+  // escolhidos atualizam a lista/timeline sozinhos (refresh silencioso). Para
+  // datas passadas não há inserts novos, então nem assinamos. 1 canal por
+  // instância, cleanup com removeChannel.
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  useEffect(() => {
+    if (!companyId || selectedUserIds.length === 0 || selectedDate !== todayStr) return;
 
-    supabase
-      .from('technician_locations' as any)
-      .select('*')
-      .in('user_id', selectedUserIds)
-      .gte('created_at', startOfDay)
-      .lte('created_at', endOfDay)
-      .order('created_at', { ascending: false })
-      .then(({ data }: { data: any[] | null }) => {
-        setLocations((data as LocationRecord[]) || []);
-        setLoading(false);
-      });
-  }, [selectedUserIds, selectedDate]);
+    const selected = new Set(selectedUserIds);
+    const channel = supabase
+      .channel(`tracking-locations-${companyId}-${selectedDate}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'technician_locations',
+          filter: `company_id=eq.${companyId}`,
+        },
+        (payload) => {
+          const userId = (payload.new as any)?.user_id;
+          if (userId && selected.has(userId)) {
+            fetchLocations(false);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [companyId, selectedUserIds, selectedDate, todayStr, fetchLocations]);
 
   const sortedAsc = useMemo(
     () => [...locations].sort(

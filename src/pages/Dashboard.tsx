@@ -20,6 +20,7 @@ import { DashboardStatusSummary } from '@/components/dashboard/DashboardStatusSu
 import { DashboardTopTechnicians, type TechnicianPerf } from '@/components/dashboard/DashboardTopTechnicians';
 import { DashboardOSByType } from '@/components/dashboard/DashboardOSByType';
 import { DashboardLiveMap } from '@/components/dashboard/DashboardLiveMap';
+import { useLiveTechnicianLocations } from '@/hooks/useLiveTechnicianLocations';
 import { DateRangeFilter, useDateRangeFilter, type DateRange } from '@/components/ui/DateRangeFilter';
 
 function getGreeting() {
@@ -43,6 +44,9 @@ function formatCurrency(value: number) {
 export default function Dashboard() {
   const { profile } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
+  // Posições GPS AO VIVO dos técnicos (carga inicial + canal realtime, compartilhado
+  // com o Mapa ao Vivo). Substitui o antigo posicionamento no endereço do cliente.
+  const { technicians: liveLocations } = useLiveTechnicianLocations();
   const isMobile = useIsMobile();
 
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
@@ -261,19 +265,23 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value);
   }, [filteredOS, stats?.serviceTypes]);
 
-  // Technicians in field for live map
+  // Technicians in field for live map.
+  // Escopo: técnicos com OS em_andamento/a_caminho hoje (igual antes). Mas a
+  // POSIÇÃO agora é o GPS AO VIVO do técnico (liveLocations), não o endereço do
+  // cliente. Se o técnico ativo ainda não tem ponto GPS, ele não é plotado
+  // (sem inventar coordenada) — entra assim que o 1º ponto chegar via realtime.
   const techsInField = useMemo(() => {
     if (!stats?.allOS || !stats.profiles) return [];
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const profileMap = new Map(stats.profiles.map((p: any) => [p.user_id, p]));
+    const liveByUser = new Map(liveLocations.map((l) => [l.user_id, l]));
     const seen = new Set<string>();
 
     return (stats.allOS as any[])
       .filter(os =>
         (os.status === 'em_andamento' || os.status === 'a_caminho') &&
         os.technician_id &&
-        os.scheduled_date === todayStr &&
-        os.customer?.lat && os.customer?.lng
+        os.scheduled_date === todayStr
       )
       .filter(os => {
         if (seen.has(os.technician_id)) return false;
@@ -281,16 +289,19 @@ export default function Dashboard() {
         return true;
       })
       .map(os => {
+        const live = liveByUser.get(os.technician_id);
+        if (!live) return null; // sem GPS ao vivo ainda → não plota
         const profile = profileMap.get(os.technician_id);
         return {
-          name: (profile as any)?.full_name || 'Técnico',
+          name: (profile as any)?.full_name || live.full_name || 'Técnico',
           avatarUrl: (profile as any)?.avatar_url,
-          lat: Number(os.customer.lat),
-          lng: Number(os.customer.lng),
+          lat: live.lat,
+          lng: live.lng,
           customerName: os.customer?.name || '',
         };
-      });
-  }, [stats?.allOS, stats?.profiles]);
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+  }, [stats?.allOS, stats?.profiles, liveLocations]);
 
   const firstName = profile?.full_name?.split(' ')[0] || 'Usuário';
 

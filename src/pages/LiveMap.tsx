@@ -10,26 +10,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useUserCompany } from '@/hooks/useUserCompany';
+import { useLiveTechnicianLocations, type LiveTechMarker, type LiveTrackingPoint } from '@/hooks/useLiveTechnicianLocations';
 import type { OSRMRoute } from '@/utils/geolocation';
 import 'leaflet/dist/leaflet.css';
 
-interface TechMarker {
-  user_id: string;
-  full_name: string;
-  lat: number;
-  lng: number;
-  event_type: string;
-  service_order_id: string | null;
-  updated_at: string;
-}
-
-interface TrackingPoint {
-  lat: number;
-  lng: number;
-  event_type: string;
-  created_at: string;
-}
+type TechMarker = LiveTechMarker;
+type TrackingPoint = LiveTrackingPoint;
 
 interface RouteInfo {
   route: OSRMRoute;
@@ -115,14 +101,12 @@ export default function LiveMap() {
   const baseMarkerRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
   const labelsLayerRef = useRef<any>(null);
-  const [technicians, setTechnicians] = useState<TechMarker[]>([]);
-  const [trails, setTrails] = useState<Map<string, TrackingPoint[]>>(new Map());
+  // Posições GPS ao vivo vêm do hook compartilhado (carga inicial + canal realtime).
+  const { technicians, trails, refetch: fetchLatestLocations } = useLiveTechnicianLocations();
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
-  const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
-  const { companyId } = useUserCompany();
   const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const fetchRoutesForTechs = useCallback(async (techs: TechMarker[]) => {
@@ -181,63 +165,11 @@ export default function LiveMap() {
     setRoutes(newRoutes);
   }, []);
 
-  const fetchLatestLocations = useCallback(async () => {
-    const { data: profiles } = await supabase.from('profiles').select('user_id, full_name');
-    const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.full_name]));
-
-    const twoHoursAgo = new Date(Date.now() - 7200_000).toISOString();
-    const { data: locations }: { data: any[] | null } = await supabase
-      .from('technician_locations' as any)
-      .select('*')
-      .gte('created_at', twoHoursAgo)
-      .order('created_at', { ascending: false })
-      .limit(1000);
-
-    if (!locations) {
-      setTechnicians([]);
-      setTrails(new Map());
-      setRoutes(new Map());
-      setLoading(false);
-      return;
-    }
-
-    const latestByUser = new Map<string, any>();
-    const trailsByUser = new Map<string, TrackingPoint[]>();
-
-    for (const loc of locations) {
-      if (!latestByUser.has(loc.user_id)) {
-        latestByUser.set(loc.user_id, loc);
-      }
-      if (!trailsByUser.has(loc.user_id)) {
-        trailsByUser.set(loc.user_id, []);
-      }
-      trailsByUser.get(loc.user_id)!.push({
-        lat: loc.lat,
-        lng: loc.lng,
-        event_type: loc.event_type,
-        created_at: loc.created_at,
-      });
-    }
-
-    trailsByUser.forEach((pts) => pts.reverse());
-
-    const markers: TechMarker[] = Array.from(latestByUser.values()).map((loc: any) => ({
-      user_id: loc.user_id,
-      full_name: profileMap.get(loc.user_id) || 'Técnico',
-      lat: loc.lat,
-      lng: loc.lng,
-      event_type: loc.event_type,
-      service_order_id: loc.service_order_id,
-      updated_at: loc.created_at,
-    }));
-
-    setTechnicians(markers);
-    setTrails(trailsByUser);
-    setLoading(false);
-
-    // Fetch routes for en_route technicians
-    await fetchRoutesForTechs(markers);
-  }, [fetchRoutesForTechs]);
+  // Recalcula as rotas até o cliente sempre que o conjunto de técnicos ao vivo muda
+  // (o hook compartilhado já cuida da carga inicial + realtime das posições).
+  useEffect(() => {
+    fetchRoutesForTechs(technicians);
+  }, [technicians, fetchRoutesForTechs]);
 
   // Troca dark/light dos tiles: observa a classe `dark` no <html> (o app
   // controla o tema na mão, sem next-themes) e refaz as duas camadas de tile.
@@ -317,7 +249,7 @@ export default function LiveMap() {
       // força recálculo após a animação de entrada / layout assentar (fix mapa vazio no mobile)
       requestAnimationFrame(() => requestAnimationFrame(() => map.invalidateSize()));
       setTimeout(() => map.invalidateSize(), 300);
-      await fetchLatestLocations();
+      // As posições vêm do hook compartilhado (carga inicial + realtime).
     };
 
     initMap().catch(() => {});
@@ -481,28 +413,6 @@ export default function LiveMap() {
 
     updateMarkers();
   }, [technicians, trails, routes, companyCoords, companySettings]);
-
-  // Realtime subscription — filtro de tenant (v1.9.26 fix de auditoria)
-  // RLS protege o fetch, mas o filtro server-side no canal evita receber
-  // inserts de technician_locations de outras companies.
-  useEffect(() => {
-    if (!companyId) return;
-    const channel = supabase
-      .channel(`live-map-locations-${companyId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'technician_locations',
-          filter: `company_id=eq.${companyId}`,
-        },
-        () => fetchLatestLocations()
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchLatestLocations, companyId]);
 
   return (
     <div className="space-y-4">
