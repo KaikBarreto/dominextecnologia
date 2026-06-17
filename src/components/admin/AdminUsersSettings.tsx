@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
@@ -372,7 +371,7 @@ function PermissionsPicker({ selected, onToggle }: { selected: string[]; onToggl
     <div className="space-y-3">
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Telas</p>
-        <ScrollArea className="max-h-44">
+        <div className="max-h-44 overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {ADMIN_SCREEN_PERMISSIONS.map((p) => (
               <label key={p.key} className="flex items-center gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50">
@@ -381,7 +380,7 @@ function PermissionsPicker({ selected, onToggle }: { selected: string[]; onToggl
               </label>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </div>
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Funções</p>

@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -315,7 +314,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
             </div>
 
             {/* Interactions Timeline */}
-            <ScrollArea className="flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {loadingInteractions ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
@@ -372,7 +371,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                   ))}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

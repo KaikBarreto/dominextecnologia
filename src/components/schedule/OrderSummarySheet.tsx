@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Clock, MapPin, User, Wrench, Phone, Mail, FileText, ExternalLink, Building2, Link2, Check, RotateCcw, Pause, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -94,7 +93,7 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
   ].filter(Boolean).join(', ');
 
   return (
-    <ScrollArea className="h-full">
+    <div className="h-full overflow-y-auto min-h-0">
       <div className="space-y-4 p-1 pr-2 overflow-hidden max-w-full">
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -293,7 +292,7 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
           </button>
         )}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 

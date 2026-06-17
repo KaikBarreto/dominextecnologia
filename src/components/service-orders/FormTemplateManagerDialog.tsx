@@ -19,7 +19,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -338,7 +337,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
         </div>
 
         {/* Templates */}
-        <ScrollArea className="flex-1">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-2 space-y-1">
             {templates.map((template) => (
               <div
@@ -370,7 +369,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
               </p>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Template Details */}
@@ -452,7 +451,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
             </div>
 
             {/* Questions List */}
-            <ScrollArea className="flex-1 p-4">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
               <div className="space-y-2">
                 {selectedTemplate.questions
                   ?.sort((a, b) => a.position - b.position)
@@ -467,7 +466,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                     </div>
                   ))}
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Add Question Form */}
             <div className="p-4 border-t space-y-3">

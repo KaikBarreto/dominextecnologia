@@ -9,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, MessageCircle, Pencil, Trash2, Trophy, X, CheckCircle2 } from 'lucide-react';
 import { phoneMask } from '@/utils/masks';
 import { useAdminLeadInteractions, useAdminCrmStages, useAdminLeads, ADMIN_INTERACTION_TYPES, type AdminLead } from '@/hooks/useAdminCrm';
@@ -200,7 +199,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
   return (
     <>
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Lead" footer={leadFooter}>
-        <ScrollArea className="max-h-[70vh]">
+        <div className="max-h-[70vh] overflow-y-auto">
           <div className="space-y-4 pr-2">
             {/* Atalho rápido de contato */}
             {whatsappLink && (
@@ -381,7 +380,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </ResponsiveModal>
 
       <AdminLeadFormDialog
