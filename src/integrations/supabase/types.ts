@@ -1654,7 +1654,9 @@ export type Database = {
           inscricao_municipal: string | null
           is_deleted: boolean
           lat: number | null
+          latitude: number | null
           lng: number | null
+          longitude: number | null
           name: string
           neighborhood: string | null
           notes: string | null
@@ -1684,7 +1686,9 @@ export type Database = {
           inscricao_municipal?: string | null
           is_deleted?: boolean
           lat?: number | null
+          latitude?: number | null
           lng?: number | null
+          longitude?: number | null
           name: string
           neighborhood?: string | null
           notes?: string | null
@@ -1714,7 +1718,9 @@ export type Database = {
           inscricao_municipal?: string | null
           is_deleted?: boolean
           lat?: number | null
+          latitude?: number | null
           lng?: number | null
+          longitude?: number | null
           name?: string
           neighborhood?: string | null
           notes?: string | null
