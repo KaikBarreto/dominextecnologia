@@ -85,9 +85,9 @@ function AvatarItem({
           : "ring-0 hover:ring-2 hover:ring-white/60 hover:scale-105",
       )}
     >
-      {/* Shimmer while loading */}
+      {/* Shimmer enquanto carrega — suave e sutil */}
       {!loaded && !error && (
-        <div className="absolute inset-0 bg-[#2a2a2a] animate-pulse rounded-md" />
+        <div className="absolute inset-0 rounded-md bg-gradient-to-br from-white/[0.07] to-white/[0.02] animate-pulse [animation-duration:2.2s]" />
       )}
 
       {/* Fallback on error */}
@@ -105,7 +105,7 @@ function AvatarItem({
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
         className={cn(
-          "w-full h-full object-cover rounded-md transition-opacity duration-200",
+          "w-full h-full object-cover rounded-md transition-opacity duration-500 ease-out",
           loaded ? "opacity-100" : "opacity-0",
         )}
       />
