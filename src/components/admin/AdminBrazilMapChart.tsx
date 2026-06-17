@@ -5,6 +5,8 @@ import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { StateMapView } from '@/components/admin/map/StateMapView';
 
 interface Props {
   companies: Array<{ state?: string | null; city?: string | null; subscription_status?: string | null }>;
@@ -58,6 +60,7 @@ function getColorForCount(count: number, maxCount: number = 20): string {
 }
 
 export function AdminBrazilMapChart({ companies }: Props) {
+  const isMobile = useIsMobile();
   const [hoveredState, setHoveredState] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{ name: string; count: number } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -275,12 +278,8 @@ export function AdminBrazilMapChart({ companies }: Props) {
                       </div>
                     </ScrollArea>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                      <div className="text-center space-y-2">
-                        <MapIcon className="h-12 w-12 mx-auto opacity-30" />
-                        <p>Visualização de mapa do estado em breve.</p>
-                        <p className="text-xs">Use a aba List para ver as cidades.</p>
-                      </div>
+                    <div className="flex-1 min-h-0">
+                      <StateMapView stateCode={selectedState} cityDistribution={cityDistribution} />
                     </div>
                   )}
                 </motion.div>
@@ -340,7 +339,18 @@ export function AdminBrazilMapChart({ companies }: Props) {
                         if (count === 0) return null;
                         return (
                           <Marker key={code} coordinates={pos}>
-                            <text textAnchor="middle" y={3} style={{ fontSize: 9, fontWeight: 'bold', fill: '#1e293b', pointerEvents: 'none' }}>
+                            <text
+                              textAnchor="middle"
+                              y={3}
+                              style={{
+                                fontFamily: 'system-ui, sans-serif',
+                                fontSize: isMobile ? 7 : 9,
+                                fontWeight: 600,
+                                fill: '#1e293b',
+                                pointerEvents: 'none',
+                                textShadow: '0 0 2px white, 0 0 2px white, 0 0 2px white',
+                              }}
+                            >
                               {code}
                             </text>
                           </Marker>
