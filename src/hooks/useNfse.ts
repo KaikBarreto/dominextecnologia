@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { invokeFisqal, type FisqalEdgeResult } from '@/utils/fisqalEdge';
+import type { Tables } from '@/integrations/supabase/types';
 
 /**
  * Fronteira do Supabase para o módulo Notas Fiscais (NFS-e via Fisqal),
@@ -13,9 +14,7 @@ import { invokeFisqal, type FisqalEdgeResult } from '@/utils/fisqalEdge';
  *   `fisqal-cancel-nfse`) normalizadas pelo helper `invokeFisqal`, que já trata
  *   o 503 `fisqal_unconfigured` ("Integração fiscal ainda não ativada").
  *
- * As tabelas `nfse_emissions`/`nfse_events` ainda não estão no types.ts gerado,
- * então usamos `as any` no `.from(...)` (padrão já adotado em outras telas com
- * tabela nova). Quando os types forem regenerados, basta remover os casts.
+ * Tipos vêm do schema gerado (`Tables<'nfse_emissions'>` / `'nfse_events'`).
  */
 
 export type NfseStatus =
@@ -27,39 +26,13 @@ export type NfseStatus =
   | 'falhou'
   | string;
 
-export interface NfseEmission {
-  id: string;
-  company_id: string;
-  customer_id: string | null;
-  financial_transaction_id: string | null;
+/** Linha de `nfse_emissions` com `status` estreitado pro union de exibição. */
+export type NfseEmission = Omit<Tables<'nfse_emissions'>, 'status'> & {
   status: NfseStatus;
-  fisqal_dps_id: string | null;
-  fisqal_fiscal_request_id: string | null;
-  numero_nfse: string | null;
-  chave_acesso: string | null;
-  protocolo: string | null;
-  pdf_url: string | null;
-  xml_url: string | null;
-  valor_servico: number | null;
-  valor_iss: number | null;
-  descricao_servico: string | null;
-  idempotency_key: string | null;
-  error_message: string | null;
-  emitida_em: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
+};
 
-export interface NfseEvent {
-  id: string;
-  emission_id: string;
-  company_id: string | null;
-  event_type: string | null;
-  status: string | null;
-  message: string | null;
-  payload: Record<string, unknown> | null;
-  created_at: string | null;
-}
+/** Linha de `nfse_events` (histórico de uma emissão). */
+export type NfseEvent = Tables<'nfse_events'>;
 
 export interface EmitNfseInput {
   customerId: string;
@@ -82,11 +55,11 @@ export function useNfse() {
     queryKey: listKey,
     enabled: !!companyId,
     queryFn: async (): Promise<NfseEmission[]> => {
-      const { data, error } = await (supabase
-        .from('nfse_emissions' as any)
+      const { data, error } = await supabase
+        .from('nfse_emissions')
         .select(EMISSION_COLS)
         .eq('company_id', companyId!)
-        .order('created_at', { ascending: false }) as any);
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as NfseEmission[];
     },
@@ -160,11 +133,11 @@ export function useNfseEvents(emissionId: string | null) {
     queryKey: ['nfse-events', emissionId],
     enabled: !!emissionId,
     queryFn: async (): Promise<NfseEvent[]> => {
-      const { data, error } = await (supabase
-        .from('nfse_events' as any)
-        .select('id, emission_id, company_id, event_type, status, message, payload, created_at')
-        .eq('emission_id', emissionId!)
-        .order('created_at', { ascending: false }) as any);
+      const { data, error } = await supabase
+        .from('nfse_events')
+        .select('id, nfse_emission_id, company_id, event_type, status, payload, created_at')
+        .eq('nfse_emission_id', emissionId!)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as NfseEvent[];
     },

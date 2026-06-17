@@ -81,10 +81,16 @@ function friendlyFiscalMessage(code: string | undefined, fallback: string): stri
 
 interface EmitBody {
   customerId?: string;
-  servico?: { descricao?: string; codigoServico?: string };
+  servico?: { descricao?: string; codigoServico?: string; codigoNbs?: string };
   valores?: { valorServico?: number | string };
   dataCompetencia?: string;
   idempotencyKey?: string;
+}
+
+/** Zero-pad à esquerda até `len` (corta à direita se exceder). */
+function padLeft(v: string, len: number): string {
+  const digits = v.replace(/\D/g, "");
+  return digits.padStart(len, "0").slice(-len);
 }
 
 Deno.serve(async (req) => {
@@ -199,24 +205,31 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---- Carrega tomador (cliente) + config fiscal do prestador (sem service_orders).
-    const [{ data: customer }, { data: fiscal }] = await Promise.all([
-      supabase
-        .from("customers")
-        .select(
-          "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code",
-        )
-        .eq("id", customerId)
-        .eq("company_id", companyId)
-        .maybeSingle(),
-      supabase
-        .from("company_fiscal_settings")
-        .select(
-          "fisqal_company_id, codigo_servico_default, item_lc116, iss_aliquota, serie_dps, ultimo_numero_dps, municipio_ibge, pode_emitir, fiscal_ambiente, inscricao_municipal",
-        )
-        .eq("company_id", companyId)
-        .maybeSingle(),
-    ]);
+    // ---- Carrega tomador (cliente) + config fiscal do prestador + CNPJ da empresa
+    // (sem service_orders). O CNPJ do PRESTADOR mora em companies.cnpj.
+    const [{ data: customer }, { data: fiscal }, { data: companyRow }] = await Promise
+      .all([
+        supabase
+          .from("customers")
+          .select(
+            "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code",
+          )
+          .eq("id", customerId)
+          .eq("company_id", companyId)
+          .maybeSingle(),
+        supabase
+          .from("company_fiscal_settings")
+          .select(
+            "fisqal_company_id, codigo_servico_default, item_lc116, iss_aliquota, serie_dps, ultimo_numero_dps, municipio_ibge, pode_emitir, fiscal_ambiente, inscricao_municipal, codigo_nbs_default",
+          )
+          .eq("company_id", companyId)
+          .maybeSingle(),
+        supabase
+          .from("companies")
+          .select("cnpj")
+          .eq("id", companyId)
+          .maybeSingle(),
+      ]);
 
     if (!customer) {
       return jsonResponse(
@@ -260,9 +273,29 @@ Deno.serve(async (req) => {
       missing.push("Código IBGE do município");
     }
 
+    // CNPJ do PRESTADOR (só dígitos) — obrigatório na DPS nacional.
+    const cnpjPrestador = onlyDigits(companyRow?.cnpj);
+    if (!cnpjPrestador) {
+      missing.push("CNPJ da empresa (prestador)");
+    }
+
     const tomadorDocumento = onlyDigits(customer?.document);
     if (!tomadorDocumento) {
       missing.push("CPF/CNPJ do cliente");
+    }
+
+    // Código NBS do serviço: do body OU o padrão da empresa. Obrigatório (servico.required).
+    const codigoNbs = clean(body?.servico?.codigoNbs) ||
+      clean(fiscal.codigo_nbs_default);
+    if (!codigoNbs) {
+      return jsonResponse(
+        {
+          error: "missing_nbs",
+          message:
+            "Configure o código NBS do serviço nas configurações fiscais antes de emitir.",
+        },
+        422,
+      );
     }
 
     if (missing.length > 0) {
@@ -283,12 +316,56 @@ Deno.serve(async (req) => {
     const discriminacao =
       clean(body?.servico?.descricao) || "Prestação de serviços técnicos.";
 
+    // ---- numeroDps: obtido da RPC atômica SÓ AGORA (após TODAS as validações e a
+    // checagem de idempotência lá em cima). Reuso de emissão existente já retornou
+    // antes deste ponto → não consome número de DPS.
+    const codigoMunicipioEmissor = clean(fiscal.municipio_ibge);
+    const tipoInscricaoPrestador = "2"; // 2 = CNPJ do prestador
+    const serieDps = clean(fiscal.serie_dps) || "1"; // obrigatório: nunca undefined
+
+    const { data: numeroDpsRaw, error: numeroErr } = await supabase.rpc(
+      "fisqal_next_dps_number",
+      { p_company_id: companyId },
+    );
+    if (numeroErr || numeroDpsRaw == null) {
+      console.error("[fisqal-emit-nfse] fisqal_next_dps_number error", {
+        company_id: companyId.slice(0, 8) + "...",
+        message: numeroErr?.message ?? "null",
+      });
+      return jsonResponse(
+        {
+          error: "dps_number_failed",
+          message:
+            "Não foi possível gerar o número da nota. Tente novamente em instantes.",
+        },
+        500,
+      );
+    }
+    const numeroDps = String(numeroDpsRaw);
+
+    // ---- idDps: layout nacional da DPS.
+    // "DPS" + codigoMunicipioEmissor(7) + tipoInscricaoPrestador(1) +
+    // inscricaoFederalPrestador zero-padded em 14 + serieDps zero-padded em 5 +
+    // numeroDps zero-padded em 15.
+    // TODO(homologação): confirmar o formato EXATO do idDps com a Fisqal/SEFIN —
+    // o exemplo da doc (§8.1) é placeholder e o tamanho final deve ser validado
+    // em ambiente de homologação antes de emitir em produção.
+    const idDps = "DPS" +
+      padLeft(codigoMunicipioEmissor, 7) +
+      tipoInscricaoPrestador +
+      padLeft(cnpjPrestador, 14) +
+      padLeft(serieDps, 5) +
+      padLeft(numeroDps, 15);
+
     // ---- Monta o CreateNfseDpsDto (§8.1).
     const payload: Record<string, unknown> = {
       companyId: clean(fiscal.fisqal_company_id),
-      serieDps: clean(fiscal.serie_dps) || undefined,
-      codigoMunicipioEmissor: clean(fiscal.municipio_ibge),
-      tipoInscricaoPrestador: "2", // CNPJ do prestador
+      idDps,
+      serieDps,
+      numeroDps,
+      codigoMunicipioEmissor,
+      tipoInscricaoPrestador, // "2" = CNPJ
+      inscricaoFederalPrestador: cnpjPrestador, // CNPJ do prestador, só dígitos
       dataCompetencia, // YYYY-MM-DD
       tomador: {
         tipoInscricao: tomadorTipoInscricao,
@@ -298,7 +375,8 @@ Deno.serve(async (req) => {
       },
       servico: {
         codigoServico,
-        municipioIncidencia: clean(fiscal.municipio_ibge),
+        codigoNbs,
+        municipioIncidencia: codigoMunicipioEmissor,
         discriminacao,
       },
       valores: {

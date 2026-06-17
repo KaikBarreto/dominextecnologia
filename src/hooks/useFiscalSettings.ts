@@ -25,6 +25,7 @@ export interface FiscalSettings {
   inscricao_municipal: string | null;
   inscricao_estadual: string | null;
   codigo_servico_default: string | null;
+  codigo_nbs_default: string | null;
   item_lc116: string | null;
   iss_aliquota: number | null;
   municipio_ibge: string | null;
@@ -43,6 +44,7 @@ export type FiscalSettingsEditable = Pick<
   | 'inscricao_municipal'
   | 'inscricao_estadual'
   | 'codigo_servico_default'
+  | 'codigo_nbs_default'
   | 'item_lc116'
   | 'iss_aliquota'
   | 'municipio_ibge'
@@ -54,6 +56,7 @@ const EMPTY: FiscalSettings = {
   inscricao_municipal: null,
   inscricao_estadual: null,
   codigo_servico_default: null,
+  codigo_nbs_default: null,
   item_lc116: null,
   iss_aliquota: null,
   municipio_ibge: null,
@@ -65,7 +68,7 @@ const EMPTY: FiscalSettings = {
 };
 
 const SELECT_COLS =
-  'regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, fisqal_company_id, fisqal_certificate_id, certificate_expires_at, pode_emitir';
+  'regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, codigo_nbs_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, fisqal_company_id, fisqal_certificate_id, certificate_expires_at, pode_emitir';
 
 export function useFiscalSettings() {
   const { companyId } = useUserCompany();

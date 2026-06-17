@@ -107,6 +107,12 @@ verify_jwt = false
 [functions.fisqal-webhook]
 verify_jwt = false
 
+# fisqal-tax-codes: busca catálogos fiscais (códigos de tributação cTribNac/LC116
+# e NBS) via Fisqal. Leitura de catálogo (sem escrita). Mesmo gate de tenant
+# (Authorization Bearer + módulo 'nfe' + can_manage_system).
+[functions.fisqal-tax-codes]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)

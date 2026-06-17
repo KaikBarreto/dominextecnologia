@@ -82,7 +82,8 @@ Deno.serve(async (req) => {
 
     // ---- Razão social: companies não tem coluna razao_social; usamos `name`.
     const razaoSocial = clean(company.name);
-    const cnpj = clean(company.cnpj);
+    // Fisqal espera o CNPJ só com dígitos (sem máscara: 12345678000199).
+    const cnpj = clean(company.cnpj).replace(/\D/g, "");
     const inscricaoMunicipal = clean(fiscal?.inscricao_municipal);
     const inscricaoEstadual = clean(fiscal?.inscricao_estadual);
     const codigoMunicipio = clean(fiscal?.municipio_ibge);

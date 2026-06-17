@@ -51,7 +51,9 @@ export class FisqalApiError extends Error {
 }
 
 function getApiKey(): string {
-  const key = Deno.env.get("FISQAL_API_KEY");
+  // Tolerante a maiúsculas/minúsculas: Deno.env.get é case-sensitive e o secret
+  // pode ter sido salvo como `fisqal_api_key`. Nunca logar/imprimir o valor.
+  const key = Deno.env.get("FISQAL_API_KEY") ?? Deno.env.get("fisqal_api_key");
   if (!key || !key.trim()) {
     throw new FisqalConfigError(
       "Integração fiscal (Fisqal) não configurada.",

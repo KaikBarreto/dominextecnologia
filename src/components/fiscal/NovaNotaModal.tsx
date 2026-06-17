@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse } from '@/hooks/useNfse';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
@@ -218,13 +219,14 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
           </div>
           <div className="space-y-2">
             <Label>Código de serviço (opcional)</Label>
-            <Input
-              placeholder="Ex: 1401"
+            <TaxCodeCombobox
+              type="servico"
               value={codigoServico}
-              onChange={(e) => setCodigoServico(e.target.value)}
+              onSelect={(codigo) => setCodigoServico(codigo)}
+              placeholder="Buscar por código ou descrição..."
             />
             <p className="text-[11px] text-muted-foreground">
-              Padrão da empresa preenchido automaticamente. Em breve teremos busca por descrição.
+              Padrão da empresa preenchido automaticamente. Busque por código ou descrição.
             </p>
           </div>
         </div>

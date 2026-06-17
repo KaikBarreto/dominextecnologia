@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   FileText,
   Plus,
@@ -8,12 +8,18 @@ import {
   Shield,
   Loader2,
   SlidersHorizontal,
+  Eye,
+  RefreshCw,
+  FileCode,
+  Ban,
+  History,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Sheet,
   SheetContent,
@@ -21,7 +27,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { MobileListItem } from '@/components/mobile/MobileListItem';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -30,13 +36,18 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { formatBRL } from '@/utils/currency';
-import { FISCAL_SCREEN_PERMISSION } from '@/pages/FiscalSettings';
+import { FISCAL_SCREEN_PERMISSION } from '@/components/fiscal/fiscalPermissions';
 import {
   NfseStatusBadge,
   NFSE_STATUS_FILTER_OPTIONS,
 } from '@/components/fiscal/nfseStatus';
 import { NovaNotaModal } from '@/components/fiscal/NovaNotaModal';
-import { NfseDetailModal } from '@/components/fiscal/NfseDetailModal';
+import {
+  NfseDetailModal,
+  type NfseDetailAction,
+} from '@/components/fiscal/NfseDetailModal';
+import { NfseVisaoGeral } from '@/components/fiscal/NfseVisaoGeral';
+import { FiscalSettingsModal } from '@/components/fiscal/FiscalSettingsModal';
 
 /** Normaliza string pra busca (ignora acento/caixa). */
 const normalize = (s: string) =>
@@ -50,19 +61,33 @@ function formatDate(iso: string | null): string {
 }
 
 export default function NotasFiscais() {
-  const navigate = useNavigate();
   const { hasScreenAccess } = useAuth();
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { companyId } = useUserCompany();
   const { emissions, isLoading } = useNfse();
   const { customers } = useCustomers();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState<'visao-geral' | 'nfse'>('visao-geral');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [novaOpen, setNovaOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selected, setSelected] = useState<NfseEmission | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailAction, setDetailAction] = useState<NfseDetailAction | null>(null);
+
+  // Deep-link `?config=1` (rota legada /notas-fiscais/configuracoes) abre o modal
+  // de configuração fiscal e limpa o param pra não re-disparar em re-renders.
+  useEffect(() => {
+    if (searchParams.get('config') === '1') {
+      setSettingsOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('config');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const customerName = useMemo(() => {
     const map = new Map<string, string>();
@@ -87,7 +112,6 @@ export default function NotasFiscais() {
         );
         return haystack.includes(q);
       }
-      // Sem busca: aplica filtro de status (vazio = tudo).
       return statusFilter.length === 0 || statusFilter.includes(e.status);
     });
   }, [emissions, search, statusFilter, customerName]);
@@ -106,9 +130,60 @@ export default function NotasFiscais() {
     );
   }
 
-  const openDetail = (e: NfseEmission) => {
+  const openDetail = (e: NfseEmission, action: NfseDetailAction | null = null) => {
     setSelected(e);
+    setDetailAction(action);
     setDetailOpen(true);
+  };
+
+  /** Monta as ações por nota (menu ⋮ + swipe). */
+  const buildActions = (e: NfseEmission): ItemAction[] => {
+    const actions: ItemAction[] = [
+      {
+        key: 'view',
+        label: 'Ver detalhe',
+        icon: <Eye className="h-4 w-4" />,
+        onClick: () => openDetail(e),
+      },
+      {
+        key: 'refresh',
+        label: 'Atualizar status',
+        icon: <RefreshCw className="h-4 w-4" />,
+        onClick: () => openDetail(e, 'refresh'),
+      },
+    ];
+    if (e.pdf_url) {
+      actions.push({
+        key: 'pdf',
+        label: 'Baixar PDF',
+        icon: <FileText className="h-4 w-4" />,
+        onClick: () => openDetail(e, 'pdf'),
+      });
+    }
+    if (e.xml_url) {
+      actions.push({
+        key: 'xml',
+        label: 'Baixar XML',
+        icon: <FileCode className="h-4 w-4" />,
+        onClick: () => openDetail(e, 'xml'),
+      });
+    }
+    actions.push({
+      key: 'history',
+      label: 'Histórico',
+      icon: <History className="h-4 w-4" />,
+      onClick: () => openDetail(e),
+    });
+    if (e.status === 'autorizada') {
+      actions.push({
+        key: 'cancel',
+        label: 'Cancelar',
+        icon: <Ban className="h-4 w-4" />,
+        variant: 'destructive',
+        onClick: () => openDetail(e, 'cancel'),
+      });
+    }
+    return actions;
   };
 
   const filterButton = (
@@ -166,7 +241,7 @@ export default function NotasFiscais() {
               variant="outline"
               size="icon"
               aria-label="Configurações fiscais"
-              onClick={() => navigate('/notas-fiscais/configuracoes')}
+              onClick={() => setSettingsOpen(true)}
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -180,66 +255,94 @@ export default function NotasFiscais() {
       {/* Medidor de consumo mensal de NFS-e */}
       <NfseQuotaBadge companyId={companyId} />
 
-      {/* Busca universal + filtro */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por número, cliente, descrição, chave..."
-            className="pl-9"
-          />
-        </div>
-        {filterButton}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'visao-geral' | 'nfse')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
+          <TabsTrigger value="nfse">NFS-e</TabsTrigger>
+        </TabsList>
 
-      {search.trim() && statusFilter.length > 0 && (
-        <p className="text-[11px] text-muted-foreground italic">
-          Buscando em todas as notas — o filtro de status fica suspenso enquanto há busca.
-        </p>
-      )}
-
-      {/* Lista */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-7 w-7 animate-spin text-primary" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p>
-            {emissions.length === 0
-              ? 'Nenhuma nota fiscal emitida ainda. Clique em "Nova Nota" para começar.'
-              : 'Nenhuma nota encontrada com esses filtros.'}
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
-          {filtered.map((e) => (
-            <MobileListItem
-              key={e.id}
-              onClick={() => openDetail(e)}
-              leading={<FileText className="h-5 w-5 text-muted-foreground" />}
-              title={
-                <span className="flex items-center gap-2">
-                  {e.numero_nfse ? `Nota nº ${e.numero_nfse}` : customerName(e.customer_id)}
-                </span>
-              }
-              subtitle={
-                <span>
-                  {customerName(e.customer_id)} · {formatDate(e.created_at)}
-                  {e.valor_servico != null ? ` · ${formatBRL(e.valor_servico)}` : ''}
-                </span>
-              }
-              trailing={<NfseStatusBadge status={e.status} />}
+        {/* ---- Visão Geral: agrega, não repete a listagem ---- */}
+        <TabsContent value="visao-geral" className="mt-5">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            </div>
+          ) : (
+            <NfseVisaoGeral
+              emissions={emissions}
+              customerName={customerName}
+              onOpenDetail={(e) => openDetail(e)}
             />
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
+
+        {/* ---- NFS-e: listagem + ações por nota ---- */}
+        <TabsContent value="nfse" className="mt-5 space-y-5">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por número, cliente, descrição, chave..."
+                className="pl-9"
+              />
+            </div>
+            {filterButton}
+          </div>
+
+          {search.trim() && statusFilter.length > 0 && (
+            <p className="text-[11px] text-muted-foreground italic">
+              Buscando em todas as notas — o filtro de status fica suspenso enquanto há busca.
+            </p>
+          )}
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p>
+                {emissions.length === 0
+                  ? 'Nenhuma nota fiscal emitida ainda. Clique em "Nova Nota" para começar.'
+                  : 'Nenhuma nota encontrada com esses filtros.'}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
+              {filtered.map((e) => (
+                <MobileListItem
+                  key={e.id}
+                  onClick={() => openDetail(e)}
+                  leading={<FileText className="h-5 w-5 text-muted-foreground" />}
+                  title={
+                    e.numero_nfse ? `Nota nº ${e.numero_nfse}` : customerName(e.customer_id)
+                  }
+                  subtitle={
+                    <span>
+                      {customerName(e.customer_id)} · {formatDate(e.created_at)}
+                      {e.valor_servico != null ? ` · ${formatBRL(e.valor_servico)}` : ''}
+                    </span>
+                  }
+                  trailing={<NfseStatusBadge status={e.status} />}
+                  actions={buildActions(e)}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <NovaNotaModal open={novaOpen} onOpenChange={setNovaOpen} />
-      <NfseDetailModal emission={selected} open={detailOpen} onOpenChange={setDetailOpen} />
+      <NfseDetailModal
+        emission={selected}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        initialAction={detailAction}
+      />
+      <FiscalSettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

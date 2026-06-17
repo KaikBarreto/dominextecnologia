@@ -615,6 +615,7 @@ export type Database = {
       company_fiscal_settings: {
         Row: {
           certificate_expires_at: string | null
+          codigo_nbs_default: string | null
           codigo_servico_default: string | null
           company_id: string
           created_at: string | null
@@ -635,6 +636,7 @@ export type Database = {
         }
         Insert: {
           certificate_expires_at?: string | null
+          codigo_nbs_default?: string | null
           codigo_servico_default?: string | null
           company_id: string
           created_at?: string | null
@@ -655,6 +657,7 @@ export type Database = {
         }
         Update: {
           certificate_expires_at?: string | null
+          codigo_nbs_default?: string | null
           codigo_servico_default?: string | null
           company_id?: string
           created_at?: string | null
@@ -6529,6 +6532,10 @@ export type Database = {
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
         Returns: undefined
+      }
+      fisqal_next_dps_number: {
+        Args: { p_company_id: string }
+        Returns: number
       }
       generate_payroll_for_employee: {
         Args: { p_employee_id: string; p_lookahead_days?: number }

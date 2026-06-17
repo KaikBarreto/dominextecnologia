@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
  * "Integração fiscal ainda não ativada".
  */
 
-const UNCONFIGURED_MESSAGE = 'Integração fiscal ainda não ativada. Tente novamente em breve.';
+const UNCONFIGURED_MESSAGE = 'Emissão de notas ainda não ativada. Tente novamente em breve.';
 
 export interface FisqalEdgeResult<T = Record<string, unknown>> {
   ok: boolean;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   RefreshCw,
@@ -27,10 +27,15 @@ import { formatBRL } from '@/utils/currency';
 import { useNfse, useNfseEvents, type NfseEmission } from '@/hooks/useNfse';
 import { NfseStatusBadge } from './nfseStatus';
 
+/** Ação que pode ser auto-disparada ao abrir (vinda do menu da linha/card). */
+export type NfseDetailAction = 'refresh' | 'cancel' | 'pdf' | 'xml';
+
 interface NfseDetailModalProps {
   emission: NfseEmission | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Dispara automaticamente uma ação ao abrir (deep-link do menu da lista). */
+  initialAction?: NfseDetailAction | null;
 }
 
 function formatDateTime(iso: string | null): string {
@@ -40,7 +45,15 @@ function formatDateTime(iso: string | null): string {
   return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
-export function NfseDetailModal({ emission, open, onOpenChange }: NfseDetailModalProps) {
+/** Extrai uma mensagem legível do payload do evento (PT-BR), se houver. */
+function eventMessage(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const p = payload as Record<string, unknown>;
+  const candidate = p.message ?? p.mensagem ?? p.motivo ?? p.descricao;
+  return typeof candidate === 'string' && candidate.trim() ? candidate : null;
+}
+
+export function NfseDetailModal({ emission, open, onOpenChange, initialAction }: NfseDetailModalProps) {
   const { refreshStatus, isRefreshingStatus, cancel, isCancelling } = useNfse();
   const { data: events = [], isLoading: eventsLoading } = useNfseEvents(
     open ? emission?.id ?? null : null,
@@ -51,11 +64,10 @@ export function NfseDetailModal({ emission, open, onOpenChange }: NfseDetailModa
   // Viewer dedicado: NUNCA abre PDF/XML em nova aba.
   const [viewer, setViewer] = useState<{ url: string; kind: 'pdf' | 'xml' } | null>(null);
 
-  if (!emission) return null;
-
-  const canCancel = emission.status === 'autorizada';
+  const [didInitial, setDidInitial] = useState(false);
 
   const handleRefresh = async () => {
+    if (!emission) return;
     const res = await refreshStatus(emission.id);
     if (!res.ok) {
       toast.error(res.message ?? 'Não foi possível atualizar o status.');
@@ -63,6 +75,31 @@ export function NfseDetailModal({ emission, open, onOpenChange }: NfseDetailModa
     }
     toast.success(res.message ?? 'Status atualizado.');
   };
+
+  // Deep-link de ação vinda do menu da lista: ao abrir, dispara a ação 1x.
+  useEffect(() => {
+    if (!open) {
+      setDidInitial(false);
+      setViewer(null);
+      return;
+    }
+    if (didInitial || !initialAction || !emission) return;
+    setDidInitial(true);
+    if (initialAction === 'cancel' && emission.status === 'autorizada') {
+      setConfirmCancelOpen(true);
+    } else if (initialAction === 'pdf' && emission.pdf_url) {
+      setViewer({ url: emission.pdf_url, kind: 'pdf' });
+    } else if (initialAction === 'xml' && emission.xml_url) {
+      setViewer({ url: emission.xml_url, kind: 'xml' });
+    } else if (initialAction === 'refresh') {
+      void handleRefresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialAction, emission, didInitial]);
+
+  if (!emission) return null;
+
+  const canCancel = emission.status === 'autorizada';
 
   const handleConfirmCancel = async () => {
     const res = await cancel({ emissionId: emission.id, motivo: cancelMotivo.trim() || undefined });
@@ -196,15 +233,18 @@ export function NfseDetailModal({ emission, open, onOpenChange }: NfseDetailModa
               <p className="text-xs text-muted-foreground">Nenhum evento registrado ainda.</p>
             ) : (
               <ul className="space-y-2">
-                {events.map((ev) => (
-                  <li key={ev.id} className="rounded-lg border bg-muted/30 p-2.5 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{ev.event_type || ev.status || 'Evento'}</span>
-                      <span className="text-muted-foreground shrink-0">{formatDateTime(ev.created_at)}</span>
-                    </div>
-                    {ev.message && <p className="mt-1 text-muted-foreground">{ev.message}</p>}
-                  </li>
-                ))}
+                {events.map((ev) => {
+                  const message = eventMessage(ev.payload);
+                  return (
+                    <li key={ev.id} className="rounded-lg border bg-muted/30 p-2.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{ev.event_type || ev.status || 'Evento'}</span>
+                        <span className="text-muted-foreground shrink-0">{formatDateTime(ev.created_at)}</span>
+                      </div>
+                      {message && <p className="mt-1 text-muted-foreground">{message}</p>}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

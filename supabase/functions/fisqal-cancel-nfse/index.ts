@@ -7,7 +7,7 @@
 //   - Carrega a emissão (escopo defensivo por company_id).
 //   - Idempotente: se já 'cancelada'/'cancelled', devolve o estado atual (200).
 //   - Só cancela nota AUTORIZADA ('authorized'/'autorizada') → senão 422 PT-BR.
-//   - POST /v1/nfse/{fisqal_dps_id}/cancel (passa `motivo` quando informado, §8).
+//   - POST /v1/nfse/{fisqal_dps_id}/cancel (envia `motivoCancelamento`, §8).
 //   - Atualiza status (cancelamento_pendente → cancelada conforme resposta) e
 //     insere nfse_events. Escritas via service_role (filtradas por company_id).
 // =============================================================================
@@ -77,7 +77,24 @@ Deno.serve(async (req) => {
         400,
       );
     }
-    const motivo = clean(body?.motivo);
+    // `motivoCancelamento` é OBRIGATÓRIO na Fisqal (minLength 15, maxLength 255).
+    // Default ≥15 chars quando ausente; valida/trunca quando informado.
+    const DEFAULT_MOTIVO = "Cancelamento solicitado pelo emitente"; // 37 chars
+    let motivo = clean(body?.motivo);
+    if (!motivo) {
+      motivo = DEFAULT_MOTIVO;
+    } else if (motivo.length < 15) {
+      return jsonResponse(
+        {
+          error: "motivo_too_short",
+          message:
+            "Descreva o motivo do cancelamento com mais detalhes (mínimo de 15 caracteres).",
+        },
+        422,
+      );
+    } else if (motivo.length > 255) {
+      motivo = motivo.slice(0, 255);
+    }
 
     // ---- Localiza a emissão (filtro defensivo por company_id).
     const { data: emission } = await supabase
@@ -129,9 +146,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- Cancela na Fisqal (§8). Envia `motivo` quando informado (campo opcional
-    //      na doc — reconferir nome exato no OpenAPI ao vivo).
-    const cancelBody: Record<string, unknown> = motivo ? { motivo } : {};
+    // ---- Cancela na Fisqal (§8). CancelNfseDto exige `motivoCancelamento`
+    //      (string obrigatória, 15-255 chars) — confirmado no OpenAPI ao vivo.
+    const cancelBody: Record<string, unknown> = { motivoCancelamento: motivo };
     const result = await fisqal.post<Record<string, any>>(
       `/v1/nfse/${dpsId}/cancel`,
       cancelBody,
