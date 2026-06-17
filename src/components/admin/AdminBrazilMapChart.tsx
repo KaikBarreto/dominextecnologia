@@ -67,7 +67,7 @@ export function AdminBrazilMapChart({ companies }: Props) {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [zoomTarget, setZoomTarget] = useState<string | null>(null); // animating zoom-in
   const [zoomOutFrom, setZoomOutFrom] = useState<string | null>(null); // animating zoom-out
-  const [drillView, setDrillView] = useState<'list' | 'map'>('list');
+  const [drillView, setDrillView] = useState<'list' | 'map'>('map');
 
   const activeCompanies = useMemo(
     () => companies.filter((c) => c.subscription_status === 'active' || c.subscription_status === 'testing'),
@@ -101,7 +101,6 @@ export function AdminBrazilMapChart({ companies }: Props) {
   );
 
   const totalMapped = useMemo(() => Object.values(stateDistribution).reduce((a, b) => a + b, 0), [stateDistribution]);
-  const maxCount = useMemo(() => Math.max(...Object.values(stateDistribution), 1), [stateDistribution]);
 
   const topStates = useMemo(
     () => Object.entries(stateDistribution).sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -116,7 +115,7 @@ export function AdminBrazilMapChart({ companies }: Props) {
     setZoomTarget(code);
     setTimeout(() => {
       setSelectedState(code);
-      setDrillView('list');
+      setDrillView('map');
       setZoomTarget(null);
     }, 450);
   };
@@ -309,7 +308,7 @@ export function AdminBrazilMapChart({ companies }: Props) {
                             const name = geo.properties.name;
                             const code = STATE_ID_TO_CODE[name];
                             const count = code ? stateDistribution[code] || 0 : 0;
-                            const fill = getColorForCount(count, maxCount);
+                            const fill = getColorForCount(count);
                             return (
                               <Geography
                                 key={geo.rsmKey}
@@ -341,12 +340,11 @@ export function AdminBrazilMapChart({ companies }: Props) {
                           <Marker key={code} coordinates={pos}>
                             <text
                               textAnchor="middle"
-                              y={3}
                               style={{
                                 fontFamily: 'system-ui, sans-serif',
                                 fontSize: isMobile ? 7 : 9,
                                 fontWeight: 600,
-                                fill: '#1e293b',
+                                fill: '#1E293B',
                                 pointerEvents: 'none',
                                 textShadow: '0 0 2px white, 0 0 2px white, 0 0 2px white',
                               }}
