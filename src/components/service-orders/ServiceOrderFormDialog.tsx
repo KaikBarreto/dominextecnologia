@@ -48,6 +48,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
+import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -808,6 +809,9 @@ export function ServiceOrderFormDialog({
     return (
       <>
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS">
+        {isPmocOrder && (
+          <PmocComplianceBadge variant="ribbon" withTooltip className="mb-4" />
+        )}
         {/* Step indicators */}
         <div className="flex flex-col items-center mb-6">
           <div className="flex items-center justify-center gap-2">

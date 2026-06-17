@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.36',
+    date: '17 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Selo da Lei do PMOC nas ordens de serviço',
+        description: 'As ordens de serviço que fazem parte de um contrato de PMOC agora exibem o selo de conformidade com a Lei Federal 13.589/2018. Ele aparece tanto na hora de preencher ou abrir a ordem quanto no link público que o cliente recebe, deixando claro para todos que aquele atendimento faz parte de um plano de manutenção em conformidade com a lei. Ordens que não pertencem a um contrato de PMOC continuam sem o selo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.35',
     date: '17 de junho de 2026',
     type: 'patch',

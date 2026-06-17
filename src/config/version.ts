@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.35";
+export const APP_VERSION = "1.12.36";
 
-export const VERSION_NOTES = "Os lembretes de cobrança de contrato que aparecem na agenda agora podem ser concluídos: quem cuida das cobranças pode marcar um lembrete como resolvido (e reabrir se precisar), sem mexer no financeiro — a parcela continua em Contas a Receber, como antes. O lembrete fica na agenda marcado como concluído, em vez de só poder ser excluído.";
+export const VERSION_NOTES = "As ordens de serviço que fazem parte de um contrato de PMOC agora exibem o selo de conformidade com a Lei Federal 13.589/2018 — na hora de preencher ou abrir a ordem e também no link público que o cliente recebe. Fica claro para todos que aquele atendimento faz parte de um plano de manutenção em conformidade com a lei. Ordens que não são de contrato PMOC continuam sem o selo.";

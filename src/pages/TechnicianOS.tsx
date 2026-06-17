@@ -49,6 +49,7 @@ import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { RateServiceAffordance } from '@/components/technician/RateServiceAffordance';
 import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hooks/useServiceRatings';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
+import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { RouteToCustomerMap } from '@/components/schedule/RouteToCustomerMap';
@@ -96,6 +97,12 @@ export default function TechnicianOS() {
   const [npsConfig, setNpsConfig] = useState<PublicNpsConfig | null>(null);
   // Critérios de estrela dinâmicos (ativos da empresa) vindos de get_public_os.
   const [npsCriteria, setNpsCriteria] = useState<PublicNpsCriterion[]>([]);
+  // Contrato da OS no modo público (vem de get_public_os). No modo autenticado
+  // o `useIsPmocOrder` resolve isso; no anônimo a RLS bloqueia o hook, então
+  // derivamos o selo PMOC daqui: { id, name, is_pmoc, pmoc_legal_compliance_text }.
+  const [publicContract, setPublicContract] = useState<
+    { id: string; name: string; is_pmoc?: boolean | null; pmoc_legal_compliance_text?: string | null } | null
+  >(null);
   // Estado CONTROLADO do drawer de avaliação (a página detém o open pra poder
   // reabrir via affordance). `ratingSurveyOpen` começa null = "ainda não
   // decidido"; resolvido na 1ª render do bloco concluída pra abrir sozinho
@@ -323,6 +330,10 @@ export default function TechnicianOS() {
         service_type: payload.service_type || null,
       };
       setServiceOrder(so as any);
+      // Contrato (pra selo de conformidade PMOC no modo público). Backend
+      // adiciona is_pmoc + pmoc_legal_compliance_text ao objeto contract.
+      // `payload` já é `any`, então o acesso não introduz novo cast.
+      setPublicContract(payload.contract || null);
       setCheckInTime(so.check_in_time ?? null);
       setCheckOutTime(so.check_out_time ?? null);
       setCheckInLocation((so.check_in_location as any) ?? null);
@@ -766,6 +777,12 @@ export default function TechnicianOS() {
     }
   };
 
+  // Selo de conformidade PMOC (Lei Federal 13.589/2018). No modo cliente (anon)
+  // o hook `useIsPmocOrder` não passa na RLS, então derivamos do payload público.
+  const isPublicMode = forceReadOnly;
+  const isPmocPublic = publicContract?.is_pmoc === true;
+  const showPmocSeal = isPublicMode ? isPmocPublic : isPmocOrder;
+
   if (loading || isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-background p-4 space-y-4">
@@ -828,6 +845,9 @@ export default function TechnicianOS() {
               : undefined
           }
         >
+          {showPmocSeal && (
+            <PmocComplianceBadge variant="ribbon" withTooltip />
+          )}
           {/* Carona da avaliação: só no modo cliente, OS concluída e com a
               pesquisa habilitada pela empresa (survey_enabled). Ainda sem
               avaliação → formulário; já avaliada → aviso enxuto de sucesso.
@@ -857,6 +877,9 @@ export default function TechnicianOS() {
             </>
           )}
           <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} />
+          {isPublicMode && isPmocPublic && (
+            <PmocComplianceBadge variant="footer" className="pt-2" />
+          )}
         </div>
       </div>
     );
@@ -902,6 +925,9 @@ export default function TechnicianOS() {
         </div>
 
         <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+          {showPmocSeal && (
+            <PmocComplianceBadge variant="ribbon" withTooltip />
+          )}
           {/* Realtime indicator */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
             <Eye className="h-4 w-4 text-primary shrink-0" />
@@ -1414,6 +1440,10 @@ export default function TechnicianOS() {
               </CardContent>
             </Card>
           )}
+
+          {isPublicMode && isPmocPublic && (
+            <PmocComplianceBadge variant="footer" className="pt-2" />
+          )}
         </div>
 
         {/* Photo preview modal */}
@@ -1547,6 +1577,9 @@ export default function TechnicianOS() {
       </div>
 
       <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        {showPmocSeal && (
+          <PmocComplianceBadge variant="ribbon" withTooltip />
+        )}
         {/* Rota até o cliente — só quando "a caminho" */}
         {isACaminho && (
           <Card className="border-indigo-200 overflow-hidden">
