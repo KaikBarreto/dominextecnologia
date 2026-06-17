@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText,
   Plus,
@@ -65,6 +67,7 @@ function formatDate(iso: string | null): string {
 }
 
 export default function NotasFiscais() {
+  const isMobile = useIsMobile();
   const { hasScreenAccess } = useAuth();
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { companyId } = useUserCompany();
@@ -306,7 +309,7 @@ export default function NotasFiscais() {
   const showGuidedEmpty = !anyLoading && (!fiscalConfigured || emissions.length === 0);
 
   return (
-    <div className="container max-w-4xl py-4 space-y-5">
+    <div className={cn('space-y-6', isMobile && 'pb-24 space-y-4')}>
       <MobilePageHeader
         title="Notas Fiscais"
         subtitle="Emita e acompanhe suas NFS-e."

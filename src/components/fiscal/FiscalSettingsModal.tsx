@@ -19,7 +19,8 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { Lock, ArrowRight } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -48,11 +49,16 @@ interface FiscalSettingsModalProps {
   initialSection?: FiscalSettingsSection;
 }
 
-const SECTIONS: { value: FiscalSettingsSection; label: string; icon: LucideIcon }[] = [
-  { value: 'empresa', label: 'Empresa', icon: Building2 },
-  { value: 'impostos', label: 'Impostos', icon: Info },
-  { value: 'certificado', label: 'Certificado A1', icon: Shield },
-  { value: 'cobertura', label: 'Ativação', icon: MapPin },
+/**
+ * Ordem do onboarding segue a doc da Fisqal (§5): registrar a EMPRESA primeiro
+ * (precisa dos dados) → subir o CERTIFICADO A1 (precisa do companyId já criado)
+ * → impostos → ativação/cobertura. O `step` numera a sequência guiada.
+ */
+const SECTIONS: { value: FiscalSettingsSection; label: string; icon: LucideIcon; step: number }[] = [
+  { value: 'empresa', label: 'Empresa', icon: Building2, step: 1 },
+  { value: 'certificado', label: 'Certificado A1', icon: Shield, step: 2 },
+  { value: 'impostos', label: 'Impostos', icon: Info, step: 3 },
+  { value: 'cobertura', label: 'Ativação', icon: MapPin, step: 4 },
 ];
 
 const REGIMES = [
@@ -84,7 +90,8 @@ const EMPTY_FORM: FiscalForm = {
   item_lc116: '',
   iss_aliquota: '',
   municipio_ibge: '',
-  fiscal_ambiente: 'homologacao',
+  // Default Produção: o cliente final emite nota de verdade. Homologação é opt-in.
+  fiscal_ambiente: 'producao',
 };
 
 /** Converte string crua → number ou null (sem prender 0). */
@@ -147,7 +154,9 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         item_lc116: settings.item_lc116 || '',
         iss_aliquota: settings.iss_aliquota != null ? String(settings.iss_aliquota) : '',
         municipio_ibge: settings.municipio_ibge || '',
-        fiscal_ambiente: settings.fiscal_ambiente,
+        // Empresa já registrada → respeita o ambiente salvo. Setup novo (sem
+        // companyId Fisqal) → assume Produção (default do time).
+        fiscal_ambiente: settings.fisqal_company_id ? settings.fiscal_ambiente : 'producao',
       });
     }
   }, [isLoading, settings]);
@@ -279,29 +288,55 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             )}
           </div>
 
-          {/* Pills de seção (rolável no mobile) */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          {/* Navegação por passos (estilo EcoSistema): grade de abas com nº do
+              passo, ícone e indicador de estado (cadeado quando bloqueado /
+              check quando concluído). Mobile-first: rótulo encolhe pro ícone. */}
+          <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-muted/50 p-1">
             {SECTIONS.map((s) => {
               const Icon = s.icon;
               const active = section === s.value;
+              const locked = s.value === 'certificado' && !isRegistered;
+              const done =
+                (s.value === 'empresa' && isRegistered) ||
+                (s.value === 'certificado' && hasCertificate) ||
+                (s.value === 'cobertura' && settings.pode_emitir);
               return (
                 <button
                   key={s.value}
                   type="button"
                   onClick={() => setSection(s.value)}
                   className={cn(
-                    'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                    'relative flex flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] font-medium transition-colors',
                     active
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted',
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  {s.label}
+                  <span className="flex items-center gap-1">
+                    <Icon className="h-4 w-4" />
+                    {locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                    {done && !locked && <CheckCircle2 className="h-3 w-3 text-success" />}
+                  </span>
+                  <span className="truncate max-w-full">
+                    <span className="opacity-60 mr-0.5">{s.step}.</span>
+                    {s.label}
+                  </span>
                 </button>
               );
             })}
           </div>
+
+          {/* Dica do passo atual — reforça a ordem empresa → certificado. */}
+          {(section === 'empresa' || section === 'certificado') && (
+            <Alert className="border-primary/20 bg-muted/40">
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                {section === 'empresa'
+                  ? 'Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado.'
+                  : 'Passo 2 de 2: com a empresa já registrada, envie o certificado A1 (.pfx/.p12).'}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* ---- Seção: Empresa ---- */}
           {section === 'empresa' && (
@@ -350,21 +385,23 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 </div>
               </div>
 
-              {/* Ambiente */}
-              <div className="flex items-center justify-between rounded-lg border p-3">
+              {/* Ambiente de emissão — alavanca on/off com rótulo dos dois lados */}
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
                 <div>
-                  <p className="text-sm font-medium">Ambiente de produção</p>
+                  <p className="text-sm font-medium">Ambiente de emissão de NFS-e</p>
                   <p className="text-xs text-muted-foreground">
                     {form.fiscal_ambiente === 'producao'
-                      ? 'As notas serão emitidas de verdade (produção).'
-                      : 'Modo homologação: notas de teste, sem valor fiscal.'}
+                      ? 'Produção: as notas valem de verdade (têm efeito fiscal).'
+                      : 'Homologação: notas de teste, sem valor fiscal.'}
                   </p>
                 </div>
-                <Switch
-                  checked={form.fiscal_ambiente === 'producao'}
-                  onCheckedChange={(checked) =>
-                    setForm((p) => ({ ...p, fiscal_ambiente: checked ? 'producao' : 'homologacao' }))
-                  }
+                <LabeledSwitch
+                  value={form.fiscal_ambiente}
+                  onChange={(v) => setForm((p) => ({ ...p, fiscal_ambiente: v }))}
+                  off={{ value: 'homologacao', label: 'Homologação' }}
+                  on={{ value: 'producao', label: 'Produção' }}
+                  size="default"
+                  aria-label="Ambiente de emissão de NFS-e"
                 />
               </div>
 
@@ -372,6 +409,37 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Salvar dados da empresa
               </Button>
+
+              {/* Passo 1: registrar a empresa na Fisqal (precede o certificado).
+                  Edge fisqal-register-company; só depois o certificado é liberado. */}
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Registrar empresa para emissão</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {isRegistered
+                        ? 'Empresa registrada — já pode subir o certificado.'
+                        : 'Salve os dados acima e registre a empresa antes do certificado.'}
+                    </p>
+                  </div>
+                  {isRegistered && <CheckCircle2 className="h-5 w-5 text-success shrink-0" />}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleRegisterCompany}
+                  disabled={registering}
+                  className="w-full sm:w-auto"
+                >
+                  {registering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Building2 className="h-4 w-4 mr-2" />}
+                  {isRegistered ? 'Atualizar registro da empresa' : 'Registrar empresa'}
+                </Button>
+              </div>
+
+              {isRegistered && (
+                <Button onClick={() => setSection('certificado')} className="w-full sm:w-auto">
+                  Próximo: enviar certificado <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
             </div>
           )}
 
@@ -443,7 +511,15 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 <Alert className="border-warning/40 bg-warning/10">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Ative a emissão de notas (aba Ativação) antes de enviar o certificado.
+                    Registre a empresa antes de subir o certificado. Volte ao passo{' '}
+                    <button
+                      type="button"
+                      onClick={() => setSection('empresa')}
+                      className="font-semibold underline underline-offset-2"
+                    >
+                      1. Empresa
+                    </button>{' '}
+                    e registre a empresa primeiro.
                   </AlertDescription>
                 </Alert>
               )}
@@ -488,6 +564,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={!isRegistered}
                   className="w-full justify-start"
                 >
                   <Upload className="h-4 w-4 mr-2" />
@@ -513,6 +590,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     onChange={(e) => setCertPassword(e.target.value)}
                     placeholder="Senha do arquivo .pfx/.p12"
                     autoComplete="off"
+                    disabled={!isRegistered}
                     className="pr-10"
                   />
                   <Button
@@ -533,7 +611,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
 
               <Button
                 onClick={handleUploadCertificate}
-                disabled={uploadingCert || !certFile || !certPassword.trim()}
+                disabled={!isRegistered || uploadingCert || !certFile || !certPassword.trim()}
                 className="w-full sm:w-auto"
               >
                 {uploadingCert ? (
@@ -546,28 +624,32 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             </div>
           )}
 
-          {/* ---- Seção: Ativação (registro + cobertura) ---- */}
+          {/* ---- Seção: Ativação (status + cobertura) ---- */}
           {section === 'cobertura' && (
             <div className="space-y-4">
+              {/* Resumo do progresso do onboarding (registro feito no passo 1). */}
               <div className="flex flex-col gap-2 rounded-lg border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Ativar emissão de notas</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {isRegistered ? 'Emissão de notas ativada.' : 'Emissão ainda não ativada.'}
-                    </p>
-                  </div>
-                  {isRegistered && <CheckCircle2 className="h-5 w-5 text-success shrink-0" />}
+                <p className="text-sm font-medium">Status da emissão</p>
+                <div className="flex items-center gap-2 text-xs">
+                  {isRegistered ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+                  )}
+                  <span className="text-muted-foreground">
+                    Empresa: {isRegistered ? 'registrada' : 'não registrada (passo 1)'}
+                  </span>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={handleRegisterCompany}
-                  disabled={registering}
-                  className="w-full sm:w-auto"
-                >
-                  {registering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Building2 className="h-4 w-4 mr-2" />}
-                  {isRegistered ? 'Atualizar ativação' : 'Ativar emissão de notas'}
-                </Button>
+                <div className="flex items-center gap-2 text-xs">
+                  {hasCertificate ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+                  )}
+                  <span className="text-muted-foreground">
+                    Certificado: {hasCertificate ? 'enviado' : 'pendente (passo 2)'}
+                  </span>
+                </div>
               </div>
 
               <div className="flex flex-col gap-2 rounded-lg border p-3">
