@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.35',
+    date: '17 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Concluir cobranças direto na agenda',
+        description: 'Os lembretes de cobrança dos contratos que aparecem na agenda (como "A Receber: Mensalidade") agora têm o botão "Concluir Cobrança". Assim, quem cuida das cobranças pode marcar um lembrete como resolvido — e reabrir, se precisar — sem precisar excluí-lo. O lembrete continua na agenda, agora marcado como concluído, igual a uma tarefa finalizada. Importante: concluir o lembrete não dá baixa no financeiro; a parcela continua normalmente em Contas a Receber.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.34',
     date: '17 de junho de 2026',
     type: 'patch',

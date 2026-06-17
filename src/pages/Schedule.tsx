@@ -409,6 +409,26 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
+  const handleResolveBillingReminder = async (order: any) => {
+    const realId = order?._realFinancialId;
+    if (!realId) return;
+    const { error } = await supabase.rpc('resolve_billing_reminder', { p_transaction_id: realId });
+    if (error) { toast({ title: error.message || 'Não foi possível concluir a cobrança', variant: 'destructive' }); return; }
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    toast({ title: 'Cobrança concluída', description: 'A parcela continua em Contas a Receber.' });
+    setSummaryOrder(null);
+  };
+
+  const handleReopenBillingReminder = async (order: any) => {
+    const realId = order?._realFinancialId;
+    if (!realId) return;
+    const { error } = await supabase.rpc('unresolve_billing_reminder', { p_transaction_id: realId });
+    if (error) { toast({ title: error.message || 'Não foi possível reabrir a cobrança', variant: 'destructive' }); return; }
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    toast({ title: 'Cobrança reaberta' });
+    setSummaryOrder(null);
+  };
+
   const handlePauseFromSummary = (id: string) => {
     updateServiceOrder.mutate({ id, status: 'pausada' as any });
     setSummaryOrder(null);
@@ -912,8 +932,8 @@ export default function Schedule() {
               onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
               onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
               onDeleteFinancialGroup={(summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
-              onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
-              onReopen={(summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
+              onFinalize={(summaryOrder as any)._isFinancialEvent ? () => handleResolveBillingReminder(summaryOrder) : handleFinalizeFromSummary}
+              onReopen={(summaryOrder as any)._isFinancialEvent ? () => handleReopenBillingReminder(summaryOrder) : (!canReopenOS ? undefined : handleReopenFromSummary)}
               onPause={(summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
               onResume={(summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
             />
@@ -1043,8 +1063,8 @@ export default function Schedule() {
             onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
             onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
             onDeleteFinancialGroup={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
-            onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
-            onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
+            onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleResolveBillingReminder(summaryOrder) : handleFinalizeFromSummary}
+            onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleReopenBillingReminder(summaryOrder) : (!canReopenOS ? undefined : handleReopenFromSummary)}
             onPause={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
             onResume={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
           />

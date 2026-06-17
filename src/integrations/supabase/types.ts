@@ -2869,6 +2869,8 @@ export type Database = {
           account_id: string | null
           amount: number
           amount_received: number
+          billing_reminder_resolved_at: string | null
+          billing_reminder_resolved_by: string | null
           cancelled_at: string | null
           cancelled_reason: string | null
           category: string | null
@@ -2903,6 +2905,8 @@ export type Database = {
           account_id?: string | null
           amount: number
           amount_received?: number
+          billing_reminder_resolved_at?: string | null
+          billing_reminder_resolved_by?: string | null
           cancelled_at?: string | null
           cancelled_reason?: string | null
           category?: string | null
@@ -2937,6 +2941,8 @@ export type Database = {
           account_id?: string | null
           amount?: number
           amount_received?: number
+          billing_reminder_resolved_at?: string | null
+          billing_reminder_resolved_by?: string | null
           cancelled_at?: string | null
           cancelled_reason?: string | null
           category?: string | null
@@ -6544,6 +6550,10 @@ export type Database = {
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       can_bootstrap_admin: { Args: never; Returns: boolean }
+      can_manage_billing_reminder: {
+        Args: { p_transaction_id: string; p_user_id: string }
+        Returns: boolean
+      }
       can_manage_contracts: { Args: { _user_id: string }; Returns: boolean }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
@@ -6793,6 +6803,10 @@ export type Database = {
         Args: { p_audit_id: string; p_company_id: string; p_step: string }
         Returns: Json
       }
+      resolve_billing_reminder: {
+        Args: { p_transaction_id: string }
+        Returns: undefined
+      }
       seed_company_catalog: {
         Args: { p_company_id: string }
         Returns: undefined
@@ -6806,6 +6820,10 @@ export type Database = {
           p_os_id: string
         }
         Returns: Json
+      }
+      unresolve_billing_reminder: {
+        Args: { p_transaction_id: string }
+        Returns: undefined
       }
     }
     Enums: {

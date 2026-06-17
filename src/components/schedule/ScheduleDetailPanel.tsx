@@ -337,7 +337,7 @@ function OrderDetail({
               onClick={() => setShowFinalizeConfirm(true)}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Finalizar Tarefa
+              {isFinancialEvent ? 'Concluir Cobrança' : 'Finalizar Tarefa'}
             </Button>
           )}
           {isTask && onReopen && order.status === 'concluida' && (
@@ -347,7 +347,7 @@ function OrderDetail({
               onClick={() => setShowReopenConfirm(true)}
             >
               <RotateCcw className="h-4 w-4 mr-2" />
-              Reabrir Tarefa
+              {isFinancialEvent ? 'Reabrir Cobrança' : 'Reabrir Tarefa'}
             </Button>
           )}
           {!isTask && onFinalize && order.status !== 'concluida' && (
@@ -496,9 +496,11 @@ function OrderDetail({
           <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>{isTask ? 'Finalizar Tarefa?' : `Finalizar OS #${order.order_number}?`}</AlertDialogTitle>
+                <AlertDialogTitle>{isFinancialEvent ? 'Concluir cobrança?' : isTask ? 'Finalizar Tarefa?' : `Finalizar OS #${order.order_number}?`}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {isTask
+                  {isFinancialEvent
+                    ? 'O lembrete sairá da agenda como concluído. A parcela continua em Contas a Receber — não dá baixa no financeiro.'
+                    : isTask
                     ? 'A tarefa será marcada como concluída.'
                     : 'A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.'}
                 </AlertDialogDescription>
@@ -522,9 +524,11 @@ function OrderDetail({
           <AlertDialog open={showReopenConfirm} onOpenChange={setShowReopenConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>{isTask ? 'Reabrir Tarefa?' : `Reabrir OS #${order.order_number}?`}</AlertDialogTitle>
+                <AlertDialogTitle>{isFinancialEvent ? 'Reabrir cobrança?' : isTask ? 'Reabrir Tarefa?' : `Reabrir OS #${order.order_number}?`}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {isTask
+                  {isFinancialEvent
+                    ? 'O lembrete voltará a aparecer como pendente na agenda. O financeiro não é alterado.'
+                    : isTask
                     ? 'A tarefa será reaberta e voltará ao status pendente.'
                     : 'A ordem de serviço será reaberta e voltará ao status "Em andamento", permitindo edição dos campos preenchidos.'}
                 </AlertDialogDescription>

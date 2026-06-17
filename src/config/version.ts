@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.34";
+export const APP_VERSION = "1.12.35";
 
-export const VERSION_NOTES = "Agora dá para informar um endereço de serviço diferente do cadastro do cliente em uma ordem de serviço — útil quando o atendimento é em outro local, como uma filial, obra ou evento. Quando preenchido, o mapa da rota e os atalhos do Waze e do Google Maps passam a usar esse endereço. O mapa também ficou mais rápido, e corrigimos um problema que impedia abrir algumas ordens de serviço.";
+export const VERSION_NOTES = "Os lembretes de cobrança de contrato que aparecem na agenda agora podem ser concluídos: quem cuida das cobranças pode marcar um lembrete como resolvido (e reabrir se precisar), sem mexer no financeiro — a parcela continua em Contas a Receber, como antes. O lembrete fica na agenda marcado como concluído, em vez de só poder ser excluído.";

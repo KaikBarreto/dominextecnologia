@@ -69,7 +69,7 @@ export function useFinancialScheduleEvents() {
           os_type: 'visita_tecnica',
           entry_type: 'tarefa',
           task_title: `${isReceivable ? 'A Receber' : 'A Pagar'}: ${t.description} — ${amount}`,
-          status: 'pendente',
+          status: (t as any).billing_reminder_resolved_at ? 'concluida' : 'pendente',
           scheduled_date: t.due_date!,
           scheduled_time: '08:00',
           description: `${isReceivable ? 'A Receber' : 'A Pagar'}: ${t.description} — ${amount}`,
