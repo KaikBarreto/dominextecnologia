@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Check, ChevronsUpDown, Loader2, Search } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, RefreshCw, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,7 +8,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -52,7 +51,25 @@ const MIN_CHARS: Record<TaxCodeComboboxProps['type'], number> = {
 
 const DEBOUNCE_MS = 300;
 
-async function fetchTaxCodes(
+/**
+ * Máscara display-only do código de serviço (cTribNac): agrupa os 6 dígitos em
+ * pares — `071002` → `07.10.02`. Só formata quando são exatamente 6 dígitos;
+ * caso contrário (digitação manual, NBS) devolve o valor cru. NUNCA usar o
+ * resultado pra gravar/enviar: a Fisqal espera os 6 dígitos sem pontos.
+ */
+function maskServiceCode(codigo: string): string {
+  if (/^\d{6}$/.test(codigo)) {
+    return `${codigo.slice(0, 2)}.${codigo.slice(2, 4)}.${codigo.slice(4, 6)}`;
+  }
+  return codigo;
+}
+
+/** Backoff curto entre tentativas — cold-start/propagação do secret resolve em segundos. */
+const RETRY_BACKOFF_MS = [700, 1800];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchTaxCodesOnce(
   type: 'servico' | 'nbs',
   q: string,
 ): Promise<{ items: TaxCodeItem[]; ok: boolean }> {
@@ -70,6 +87,22 @@ async function fetchTaxCodes(
   }
 }
 
+/**
+ * Busca com auto-retry (1–2x com backoff curto) antes de desistir. Cold-start ou
+ * propagação do secret tipicamente resolve na 2ª/3ª tentativa em poucos segundos.
+ */
+async function fetchTaxCodes(
+  type: 'servico' | 'nbs',
+  q: string,
+): Promise<{ items: TaxCodeItem[]; ok: boolean }> {
+  let res = await fetchTaxCodesOnce(type, q);
+  for (let i = 0; !res.ok && i < RETRY_BACKOFF_MS.length; i++) {
+    await sleep(RETRY_BACKOFF_MS[i]);
+    res = await fetchTaxCodesOnce(type, q);
+  }
+  return res;
+}
+
 export function TaxCodeCombobox({
   type,
   value,
@@ -82,6 +115,8 @@ export function TaxCodeCombobox({
   const [items, setItems] = React.useState<TaxCodeItem[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
+  /** Token que força o efeito do NBS a refazer a busca atual ao tocar "Tentar novamente". */
+  const [retryToken, setRetryToken] = React.useState(0);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Cache do dataset completo de `servico` (busca-tudo-1x). */
   const servicoCacheRef = React.useRef<TaxCodeItem[] | null>(null);
@@ -124,6 +159,7 @@ export function TaxCodeCombobox({
       return;
     }
     setLoading(true);
+    setFailed(false);
     debounceRef.current = setTimeout(async () => {
       const res = await fetchTaxCodes('nbs', q);
       setLoading(false);
@@ -133,13 +169,30 @@ export function TaxCodeCombobox({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, type, minChars]);
+  }, [query, type, minChars, retryToken]);
+
+  /**
+   * Reexecuta a busca atual a pedido do usuário ("Tentar novamente").
+   *  - servico: recarrega o catálogo (limpa o cache pra forçar nova chamada);
+   *  - nbs: bumpa o token, fazendo o efeito refazer a query atual.
+   */
+  const handleRetry = React.useCallback(() => {
+    setFailed(false);
+    if (type === 'servico') {
+      servicoCacheRef.current = null;
+      void loadServico();
+    } else {
+      setRetryToken((t) => t + 1);
+    }
+  }, [type, loadServico]);
 
   // Filtro client-side do catálogo de `servico`.
   const filtered = React.useMemo(() => {
     if (type !== 'servico') return items;
     const q = query.trim().toLowerCase();
-    if (!q) return items.slice(0, 100);
+    // Sem teto de 100: a lista (~337) é capada só por segurança em 400 e a
+    // rolagem interna (max-h + overflow-y) dá conta de navegar tudo.
+    if (!q) return items.slice(0, 400);
     return items
       .filter(
         (it) =>
@@ -147,7 +200,7 @@ export function TaxCodeCombobox({
           it.descricao.toLowerCase().includes(q) ||
           (it.itemLc116 ?? '').toLowerCase().includes(q),
       )
-      .slice(0, 100);
+      .slice(0, 400);
   }, [items, query, type]);
 
   const handlePick = (it: TaxCodeItem) => {
@@ -175,24 +228,33 @@ export function TaxCodeCombobox({
           disabled={disabled}
           className={cn('w-full justify-between font-normal', !value && 'text-muted-foreground')}
         >
-          <span className="truncate">{value || 'Selecione o código...'}</span>
+          <span className="truncate">
+            {value
+              ? type === 'servico'
+                ? maskServiceCode(value)
+                : value
+              : 'Selecione o código...'}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
+        className="w-[--radix-popover-trigger-width] overflow-hidden p-0"
         align="start"
+        side="bottom"
+        sideOffset={4}
+        avoidCollisions={false}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command shouldFilter={false}>
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-            <Input
+          <div className="flex items-center gap-2 border-b px-3">
+            <Search className="h-4 w-4 shrink-0 opacity-50" />
+            <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={placeholder}
-              className="h-10 border-0 px-0 shadow-none focus-visible:ring-0"
               autoComplete="off"
+              className="h-11 w-full bg-transparent py-2 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
             />
           </div>
           <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain touch-pan-y">
@@ -210,16 +272,30 @@ export function TaxCodeCombobox({
               )}
 
               {!loading && failed && (
-                <button
-                  type="button"
-                  onClick={handleManual}
-                  className="block w-full px-3 py-6 text-center text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Não foi possível buscar agora.
-                  {query.trim()
-                    ? ` Toque para usar o código "${query.trim()}" digitado.`
-                    : ' Tente novamente em instantes.'}
-                </button>
+                <div className="flex flex-col items-center gap-3 px-3 py-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Não foi possível buscar os códigos agora.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    className="gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Tentar novamente
+                  </Button>
+                  {query.trim() && (
+                    <button
+                      type="button"
+                      onClick={handleManual}
+                      className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    >
+                      Ou usar o código "{query.trim()}" digitado
+                    </button>
+                  )}
+                </div>
               )}
 
               {!loading &&
@@ -238,7 +314,9 @@ export function TaxCodeCombobox({
                       )}
                     />
                     <div className="min-w-0">
-                      <span className="block truncate font-medium">{it.codigo}</span>
+                      <span className="block truncate font-medium">
+                        {type === 'servico' ? maskServiceCode(it.codigo) : it.codigo}
+                      </span>
                       <span className="block text-xs text-muted-foreground line-clamp-2">
                         {it.descricao}
                         {it.itemLc116 ? ` (${it.itemLc116})` : ''}

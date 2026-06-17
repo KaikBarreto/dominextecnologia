@@ -13,6 +13,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 import {
   NfseQuotaBlockModal,
   type NfseQuotaBlockInfo,
@@ -42,30 +43,66 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
   const { settings } = useFiscalSettings();
   const { emitNfse, isEmitting } = useNfse();
   const { companyId } = useUserCompany();
+  const { serviceTypes } = useServiceTypes();
 
   const [customerId, setCustomerId] = useState('');
+  const [serviceTypeId, setServiceTypeId] = useState('');
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState(''); // string crua
   const [codigoServico, setCodigoServico] = useState('');
+  const [codigoNbs, setCodigoNbs] = useState('');
+  const [issAliquota, setIssAliquota] = useState(''); // string crua (%)
 
   // Bloqueio de cota (HTTP 402 nfse_quota_exceeded): abre o modal de upgrade.
   const [blockInfo, setBlockInfo] = useState<NfseQuotaBlockInfo | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
 
-  // Reseta ao abrir; pré-preenche o código de serviço com o default da empresa.
+  // Reseta ao abrir; pré-preenche os campos fiscais com o default da empresa.
   useEffect(() => {
     if (open) {
       setCustomerId('');
+      setServiceTypeId('');
       setDescricao('');
       setValor('');
       setCodigoServico(settings.codigo_servico_default || '');
+      setCodigoNbs(settings.codigo_nbs_default || '');
+      setIssAliquota('');
     }
-  }, [open, settings.codigo_servico_default]);
+  }, [open, settings.codigo_servico_default, settings.codigo_nbs_default]);
 
   const customerOptions = useMemo(
     () => (customers ?? []).map((c) => ({ value: c.id, label: c.name })),
     [customers],
   );
+
+  // Só tipos ativos no seletor da nota.
+  const serviceTypeOptions = useMemo(
+    () =>
+      (serviceTypes ?? [])
+        .filter((s) => s.is_active)
+        .map((s) => ({ value: s.id, label: s.name })),
+    [serviceTypes],
+  );
+
+  /**
+   * Ao escolher um tipo de serviço, pré-preenche os campos fiscais a partir das
+   * colunas do catálogo (cada um segue editável depois). Default da empresa é
+   * usado como fallback quando o tipo não tem o campo configurado.
+   */
+  const handleServiceTypeChange = (id: string) => {
+    setServiceTypeId(id);
+    const st = (serviceTypes ?? []).find((s) => s.id === id);
+    if (!st) return;
+    setCodigoServico(st.codigo_servico || settings.codigo_servico_default || '');
+    setCodigoNbs(st.codigo_nbs || settings.codigo_nbs_default || '');
+    setIssAliquota(
+      st.iss_aliquota != null
+        ? String(st.iss_aliquota).replace('.', ',')
+        : '',
+    );
+    // Pré-preenche a descrição com o nome do serviço só se ainda estiver vazia.
+    setDescricao((prev) => (prev.trim() ? prev : st.name));
+  };
 
   const selectedCustomer = useMemo(
     () => (customers ?? []).find((c) => c.id === customerId) ?? null,
@@ -89,11 +126,16 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
    * automática pós-upgrade.
    */
   const runEmit = async (v: number) => {
+    // Valores fiscais resolvidos: o que estiver nos campos (serviço escolhido ou
+    // override manual). Se vazios, NÃO enviamos — a edge cai no default da empresa.
+    const issNum = num(issAliquota);
     const res = await emitNfse({
       customerId,
       descricao: descricao.trim(),
       valorServico: v,
       codigoServico: codigoServico.trim() || undefined,
+      codigoNbs: codigoNbs.trim() || undefined,
+      aliquotaIss: issNum ?? undefined,
     });
 
     if (!res.ok) {
@@ -204,6 +246,24 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
           )}
         </div>
 
+        {serviceTypeOptions.length > 0 && (
+          <div className="space-y-2">
+            <Label>Tipo de serviço (opcional)</Label>
+            <SearchableSelect
+              options={serviceTypeOptions}
+              value={serviceTypeId}
+              onValueChange={handleServiceTypeChange}
+              placeholder="Selecione um tipo de serviço"
+              searchPlaceholder="Buscar tipo de serviço..."
+              emptyMessage="Nenhum tipo de serviço encontrado."
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Preenche código de serviço, NBS e ISS automaticamente. Você pode
+              ajustar cada campo abaixo.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label>Descrição do serviço</Label>
           <Textarea
@@ -219,21 +279,54 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
             <Label>Valor do serviço (R$)</Label>
             <Input
               inputMode="decimal"
-              placeholder="Ex: 350,00"
+              placeholder="350,00"
               value={valor}
               onChange={(e) => setValor(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label>Código de serviço (opcional)</Label>
+            <Label>
+              Alíquota de ISS (%)
+              <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+            </Label>
+            <Input
+              inputMode="decimal"
+              placeholder="5,00"
+              value={issAliquota}
+              onChange={(e) => setIssAliquota(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Classificação fiscal: códigos do serviço. Pré-preenchidos pelo tipo de
+            serviço ou pelo padrão da empresa — editáveis. */}
+        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
+          <p className="text-sm font-medium">Classificação fiscal</p>
+          <div className="space-y-2">
+            <Label className="text-sm">
+              Código de serviço (cTribNac)
+              <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+            </Label>
             <TaxCodeCombobox
               type="servico"
               value={codigoServico}
               onSelect={(codigo) => setCodigoServico(codigo)}
               placeholder="Buscar por código ou descrição..."
             />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">
+              Código NBS
+              <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+            </Label>
+            <TaxCodeCombobox
+              type="nbs"
+              value={codigoNbs}
+              onSelect={(codigo) => setCodigoNbs(codigo)}
+              placeholder="Buscar por código ou descrição..."
+            />
             <p className="text-[11px] text-muted-foreground">
-              Padrão da empresa preenchido automaticamente. Busque por código ou descrição.
+              Nomenclatura Brasileira de Serviços. Digite ao menos 2 caracteres pra buscar.
             </p>
           </div>
         </div>

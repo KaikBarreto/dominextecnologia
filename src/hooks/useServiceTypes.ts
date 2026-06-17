@@ -11,6 +11,11 @@ export interface ServiceType {
   is_active: boolean;
   requires_equipment: boolean;
   number_prefix: string | null;
+  // Campos fiscais (NFS-e por tipo de serviço) — opcionais por tenant.
+  codigo_servico: string | null;
+  codigo_nbs: string | null;
+  iss_aliquota: number | null;
+  item_lc116: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +27,11 @@ export interface ServiceTypeInput {
   is_active?: boolean;
   requires_equipment?: boolean;
   number_prefix?: string;
+  // Campos fiscais (NFS-e por tipo de serviço) — opcionais.
+  codigo_servico?: string | null;
+  codigo_nbs?: string | null;
+  iss_aliquota?: number | null;
+  item_lc116?: string | null;
 }
 
 export function useServiceTypes() {

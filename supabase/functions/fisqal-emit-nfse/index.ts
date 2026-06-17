@@ -5,8 +5,10 @@
 //
 // Fluxo:
 //   - Auth de tenant via fiscal-auth.ts.
-//   - Body: { customerId, servico: { descricao, codigoServico? },
-//             valores: { valorServico }, dataCompetencia?, idempotencyKey? }.
+//   - Body: { customerId, servico: { descricao, codigoServico?, codigoNbs? },
+//             valores: { valorServico, aliquotaIss? }, dataCompetencia?, idempotencyKey? }.
+//     Overrides por nota (codigoServico/codigoNbs/aliquotaIss) têm precedência
+//     sobre os defaults da empresa em company_fiscal_settings.
 //   - Carrega customers (tomador) + company_fiscal_settings (prestador).
 //     NÃO lê service_orders — emissão é independente da Ordem de Serviço.
 //   - Valida (422 PT-BR) antes de chamar a Fisqal.
@@ -82,9 +84,21 @@ function friendlyFiscalMessage(code: string | undefined, fallback: string): stri
 interface EmitBody {
   customerId?: string;
   servico?: { descricao?: string; codigoServico?: string; codigoNbs?: string };
-  valores?: { valorServico?: number | string };
+  // aliquotaIss: override da alíquota de ISS por nota (em %, ex.: 5 = 5%).
+  // Mora em `valores` por ser um parâmetro de cálculo do valor da nota.
+  valores?: { valorServico?: number | string; aliquotaIss?: number | string };
   dataCompetencia?: string;
   idempotencyKey?: string;
+}
+
+/**
+ * Resolve um número de alíquota (%) a partir de um valor cru do body/banco.
+ * Aceita number ou string; rejeita NaN e negativos. Retorna `null` se ausente/ inválido.
+ */
+function parseAliquota(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 /** Zero-pad à esquerda até `len` (corta à direita se exceder). */
@@ -316,6 +330,14 @@ Deno.serve(async (req) => {
     const discriminacao =
       clean(body?.servico?.descricao) || "Prestação de serviços técnicos.";
 
+    // ---- Alíquota de ISS (%): override da nota (valores.aliquotaIss) tem
+    // precedência sobre o default da empresa (company_fiscal_settings.iss_aliquota).
+    const issAliquota = parseAliquota(body?.valores?.aliquotaIss) ??
+      parseAliquota(fiscal.iss_aliquota) ?? 0;
+    const valorIss = issAliquota > 0
+      ? Math.round(valorServico * (issAliquota / 100) * 100) / 100
+      : null;
+
     // ---- numeroDps: obtido da RPC atômica SÓ AGORA (após TODAS as validações e a
     // checagem de idempotência lá em cima). Reuso de emissão existente já retornou
     // antes deste ponto → não consome número de DPS.
@@ -381,14 +403,15 @@ Deno.serve(async (req) => {
       },
       valores: {
         valorServico,
+        // TODO(homologação): a doc §8.1 só documenta `valorServico` em `valores`.
+        // O campo da alíquota de ISS na DPS nacional (provável `aliquota`/`tribIssqn`)
+        // ainda não está confirmado na doc — reconferir no OpenAPI ao vivo
+        // (docs-json) e em homologação. Enviamos `aliquota` de forma otimista
+        // (a Fisqal ignora campos extras); o cálculo de `valor_iss` já usa a
+        // alíquota resolvida localmente, então a nota fica correta de qualquer forma.
+        ...(issAliquota > 0 ? { aliquota: issAliquota } : {}),
       },
     };
-
-    // ---- ISS estimado (informativo local, não vai no payload mínimo).
-    const issAliquota = Number(fiscal.iss_aliquota ?? 0);
-    const valorIss = issAliquota > 0
-      ? Math.round(valorServico * (issAliquota / 100) * 100) / 100
-      : null;
 
     // ---- POST /v1/nfse (§8.1) com Idempotency-Key (§4).
     const created = await fisqal.post<{

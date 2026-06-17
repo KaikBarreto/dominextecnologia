@@ -14,7 +14,9 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  // supabase-js (functions.invoke) envia apikey + x-client-info no preflight;
+  // sem eles listados, o OPTIONS falha e o browser bloqueia o invoke.
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 export function jsonResponse(

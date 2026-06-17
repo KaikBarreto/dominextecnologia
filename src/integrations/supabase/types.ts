@@ -5554,36 +5554,48 @@ export type Database = {
       }
       service_types: {
         Row: {
+          codigo_nbs: string | null
+          codigo_servico: string | null
           color: string
           company_id: string
           created_at: string
           description: string | null
           id: string
           is_active: boolean
+          iss_aliquota: number | null
+          item_lc116: string | null
           name: string
           number_prefix: string | null
           requires_equipment: boolean
           updated_at: string
         }
         Insert: {
+          codigo_nbs?: string | null
+          codigo_servico?: string | null
           color?: string
           company_id: string
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          iss_aliquota?: number | null
+          item_lc116?: string | null
           name: string
           number_prefix?: string | null
           requires_equipment?: boolean
           updated_at?: string
         }
         Update: {
+          codigo_nbs?: string | null
+          codigo_servico?: string | null
           color?: string
           company_id?: string
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          iss_aliquota?: number | null
+          item_lc116?: string | null
           name?: string
           number_prefix?: string | null
           requires_equipment?: boolean

@@ -24,6 +24,15 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+
+/** Converte string crua de input numérico em number (padrão do time anti-"0" preso). */
+const num = (s: string, fallback = 0): number => {
+  if (s == null || s.trim() === '') return fallback;
+  const n = Number(s.replace(',', '.'));
+  return Number.isFinite(n) ? n : fallback;
+};
 
 interface ServiceTypeForm {
   name: string;
@@ -32,6 +41,11 @@ interface ServiceTypeForm {
   is_active: boolean;
   requires_equipment: boolean;
   number_prefix: string;
+  // Fiscal (NFS-e) — opcionais. iss_aliquota fica como string crua no form.
+  codigo_servico: string;
+  codigo_nbs: string;
+  iss_aliquota: string;
+  item_lc116: string;
 }
 
 const defaultForm: ServiceTypeForm = {
@@ -41,10 +55,16 @@ const defaultForm: ServiceTypeForm = {
   is_active: true,
   requires_equipment: true,
   number_prefix: '',
+  codigo_servico: '',
+  codigo_nbs: '',
+  iss_aliquota: '',
+  item_lc116: '',
 };
 
 export function ServiceTypesPanel() {
   const { serviceTypes, isLoading, createServiceType, updateServiceType, deleteServiceType } = useServiceTypes();
+  const { hasModule } = useCompanyModules();
+  const showFiscal = hasModule('nfe');
   const isMobile = useIsMobile();
   const { sortedItems: sortedTypes, sortConfig: stSortConfig, handleSort: handleStSort } = useTableSort(serviceTypes);
   const [formOpen, setFormOpen] = useState(false);
@@ -68,15 +88,28 @@ export function ServiceTypesPanel() {
       is_active: st.is_active,
       requires_equipment: st.requires_equipment ?? true,
       number_prefix: (st as any).number_prefix || '',
+      codigo_servico: (st as any).codigo_servico || '',
+      codigo_nbs: (st as any).codigo_nbs || '',
+      iss_aliquota: (st as any).iss_aliquota != null ? String((st as any).iss_aliquota) : '',
+      item_lc116: (st as any).item_lc116 || '',
     });
     setFormOpen(true);
   };
 
   const handleSave = async () => {
+    const { iss_aliquota, codigo_servico, codigo_nbs, item_lc116, ...rest } = form;
+    const payload = {
+      ...rest,
+      // Fiscal: campos opcionais — string vazia vira null pra não poluir o cadastro.
+      codigo_servico: codigo_servico.trim() || null,
+      codigo_nbs: codigo_nbs.trim() || null,
+      item_lc116: item_lc116.trim() || null,
+      iss_aliquota: iss_aliquota.trim() === '' ? null : num(iss_aliquota, 0),
+    };
     if (editingId) {
-      await updateServiceType.mutateAsync({ id: editingId, ...form });
+      await updateServiceType.mutateAsync({ id: editingId, ...payload });
     } else {
-      await createServiceType.mutateAsync(form);
+      await createServiceType.mutateAsync(payload);
     }
     setFormOpen(false);
   };
@@ -327,6 +360,83 @@ export function ServiceTypesPanel() {
             />
             <Label>Ativo</Label>
           </div>
+
+          {/* -------------------------------------------------------------------
+           * Fiscal (NFS-e): classificação tributária por tipo de serviço.
+           * Só aparece pra empresas com o módulo `nfe`. Todos os campos são
+           * opcionais — o tipo de serviço salva normalmente sem eles.
+           * ------------------------------------------------------------------- */}
+          {showFiscal && (
+            <div className="space-y-5 rounded-lg border bg-muted/30 p-4">
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold">Fiscal (NFS-e)</p>
+                <p className="text-xs text-muted-foreground">
+                  Classificação tributária usada ao emitir nota fiscal de serviço.
+                  Todos os campos são opcionais.
+                </p>
+              </div>
+
+              {/* Grupo 1: classificação do serviço (código nacional + item da LC 116). */}
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Código de serviço (cTribNac)</Label>
+                  <TaxCodeCombobox
+                    type="servico"
+                    value={form.codigo_servico}
+                    onSelect={(codigo, item) =>
+                      setForm((f) => ({
+                        ...f,
+                        codigo_servico: codigo,
+                        // Auto-preenche o item LC 116 quando o código traz a referência.
+                        item_lc116: item?.itemLc116 ? String(item.itemLc116) : f.item_lc116,
+                      }))
+                    }
+                    placeholder="Buscar por código ou descrição..."
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Código nacional do serviço. O item da LC 116 é preenchido automaticamente.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Item da LC 116</Label>
+                  <Input
+                    value={form.item_lc116}
+                    onChange={(e) => setForm({ ...form, item_lc116: e.target.value })}
+                    placeholder="14.01"
+                  />
+                </div>
+              </div>
+
+              {/* Grupo 2: NBS. */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Código NBS</Label>
+                <TaxCodeCombobox
+                  type="nbs"
+                  value={form.codigo_nbs}
+                  onSelect={(codigo) => setForm((f) => ({ ...f, codigo_nbs: codigo }))}
+                  placeholder="Buscar por código ou descrição..."
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Nomenclatura Brasileira de Serviços. Digite ao menos 2 caracteres pra buscar.
+                </p>
+              </div>
+
+              {/* Grupo 3: tributação (ISS). */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Alíquota de ISS (%)</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.iss_aliquota}
+                  onChange={(e) => setForm({ ...form, iss_aliquota: e.target.value })}
+                  placeholder="5"
+                  className="sm:max-w-[160px]"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={!form.name.trim()}>

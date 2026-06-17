@@ -41,6 +41,10 @@ export interface EmitNfseInput {
   descricao: string;
   valorServico: number;
   codigoServico?: string;
+  /** NBS resolvido (do tipo de serviço ou override manual). */
+  codigoNbs?: string;
+  /** Alíquota de ISS resolvida (% — do tipo de serviço ou override manual). */
+  aliquotaIss?: number;
   dataCompetencia?: string;
   idempotencyKey?: string;
 }
@@ -77,8 +81,12 @@ export function useNfse() {
         servico: {
           descricao: input.descricao,
           ...(input.codigoServico ? { codigoServico: input.codigoServico } : {}),
+          ...(input.codigoNbs ? { codigoNbs: input.codigoNbs } : {}),
         },
-        valores: { valorServico: input.valorServico },
+        valores: {
+          valorServico: input.valorServico,
+          ...(input.aliquotaIss != null ? { aliquotaIss: input.aliquotaIss } : {}),
+        },
         ...(input.dataCompetencia ? { dataCompetencia: input.dataCompetencia } : {}),
         ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
       });
