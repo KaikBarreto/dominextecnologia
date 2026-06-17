@@ -30,6 +30,7 @@ import {
   Moon,
   HelpCircle,
   Clapperboard,
+  HeartPulse,
   Video,
   Crown,
 } from 'lucide-react';
@@ -128,6 +129,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
+  { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
 
