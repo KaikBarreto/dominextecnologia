@@ -551,8 +551,10 @@ Deno.serve(async (req) => {
     // Onda Validade (2026-06): bump pra cert_v3 — linha "Validade deste
     // documento" no template + 3 chaves `documento.*` no variableContext.
     // Emissão/vencimento mudam por dia → cache gira diariamente (esperado).
+    // Remoção do selo (2026-06): bump pra cert_v4 — o selo "Conforme Lei
+    // 13.589/2018" saiu do rodapé do Certificado.
     const hashInput = JSON.stringify({
-      v: "cert_v3",
+      v: "cert_v4",
       tenant: {
         name: tenantName,
         cnpj,

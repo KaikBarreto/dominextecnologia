@@ -13,7 +13,7 @@
 //   Seção 5 — Plano de manutenção: ITEM / DESCRIÇÃO / PERIODICIDADE agrupado por
 //             componente (FILTROS DE AR, BANDEJAS, ...), com matriz de 12 meses
 //             (M=todo mês, T a cada 3, S a cada 6, A no 12; E não entra).
-//   (Opcional) Resumo de execução: visitas concluídas + conformidade.
+//   (Removida) Seção 6 "Registro de Execução" — dado dinâmico congelava no PDF.
 //
 // Auto-paginação: helper `ensureSpace` abre nova página e redesenha o
 // cabeçalho compacto quando o conteúdo não cabe.
@@ -131,13 +131,6 @@ export interface PlanilhaActivity {
   freq_months: number | null; // caso genérico (não-PMOC)
 }
 
-export interface PlanilhaExecutionSummary {
-  total: number;
-  concluidas: number;
-  conformes: number;
-  nao_conformes: number;
-}
-
 export interface PlanilhaData {
   tenant: {
     name: string;
@@ -186,7 +179,6 @@ export interface PlanilhaData {
    */
   ambientes: PlanilhaAmbienteBlock[];
   activities: PlanilhaActivity[];
-  execution: PlanilhaExecutionSummary | null;
   generated_at_extenso: string;
   /**
    * Quando true (tenant white-label), o rodapé Dominex NÃO é desenhado em
@@ -354,7 +346,7 @@ function drawCompactHeader(ctx: Ctx): void {
     font: helvBold,
     color: COLORS.black,
   });
-  page.drawText("PMOC - Plano de Manutencao, Operacao e Controle", {
+  page.drawText("PMOC - Plano de Manutenção, Operação e Controle", {
     x: textX,
     y: topY - 19,
     size: 7,
@@ -378,7 +370,7 @@ function drawMainTitle(ctx: Ctx): void {
   const { page, data, helv, helvBold } = ctx;
   const topY = A4_H - 56;
 
-  const t1 = "PMOC - PLANO DE MANUTENCAO, OPERACAO E CONTROLE";
+  const t1 = "PMOC - PLANO DE MANUTENÇÃO, OPERAÇÃO E CONTROLE";
   const t1Size = 15;
   const t1W = helvBold.widthOfTextAtSize(t1, t1Size);
   page.drawText(t1, {
@@ -522,7 +514,7 @@ export async function drawPlanilha(
   ctx.cursorY -= 8;
 
   // ---- Seção 1 — Identificação do ambiente climatizado (UNIDADE) -----------
-  drawSectionTitle(ctx, "1", "Identificacao do Ambiente ou Conjunto de Ambientes");
+  drawSectionTitle(ctx, "1", "Identificação do Ambiente ou Conjunto de Ambientes");
   const u = data.unidade;
   // Linha cheia: Unidade / Local.
   drawLabeledRow(ctx, [
@@ -550,7 +542,7 @@ export async function drawPlanilha(
   ctx.cursorY -= 12;
 
   // ---- Seção 2 — Proprietário / Locatário ----------------------------------
-  drawSectionTitle(ctx, "2", "Identificacao do Proprietario, Locatario ou Preposto");
+  drawSectionTitle(ctx, "2", "Identificação do Proprietário, Locatário ou Preposto");
   drawLabeledRow(ctx, [
     { label: "NOME / RAZÃO SOCIAL", value: orDash(data.customer.name), frac: 0.62 },
     { label: "CPF / CNPJ", value: orDash(data.customer.document), frac: 0.38 },
@@ -563,7 +555,7 @@ export async function drawPlanilha(
   ctx.cursorY -= 12;
 
   // ---- Seção 3 — Responsável Técnico ---------------------------------------
-  drawSectionTitle(ctx, "3", "Identificacao do Responsavel Tecnico");
+  drawSectionTitle(ctx, "3", "Identificação do Responsável Técnico");
   drawLabeledRow(ctx, [
     { label: "NOME", value: orDash(data.rt.nome), frac: 0.62 },
     { label: "CFT / CREA", value: orDash(data.rt.cft_crea), frac: 0.38 },
@@ -575,7 +567,7 @@ export async function drawPlanilha(
   ctx.cursorY -= 12;
 
   // ---- Seção 4 — Relação dos ambientes climatizados ------------------------
-  drawSectionTitle(ctx, "4", "Relacao dos Ambientes Climatizados");
+  drawSectionTitle(ctx, "4", "Relação dos Ambientes Climatizados");
   const ambientes = data.ambientes ?? [];
   if (ambientes.length === 0) {
     ensureSpace(ctx, 18);
@@ -608,15 +600,12 @@ export async function drawPlanilha(
   ctx.cursorY -= 10;
 
   // ---- Seção 5 — Plano de manutenção + matriz 12 meses ---------------------
-  drawSectionTitle(ctx, "5", "Plano de Manutencao (Periodicidade Programada)");
+  drawSectionTitle(ctx, "5", "Plano de Manutenção (Periodicidade Programada)");
   drawPlanTable(ctx);
 
-  // ---- (Opcional) Resumo de execução ---------------------------------------
-  if (data.execution && data.execution.total > 0) {
-    ctx.cursorY -= 10;
-    drawSectionTitle(ctx, "6", "Registro de Execucao");
-    drawExecutionSummary(ctx);
-  }
+  // Seção 6 "Registro de Execução" removida (2026-06): dado dinâmico (visitas/
+  // conformidade) congelava no PDF baixado. A planilha termina na legenda do
+  // plano + "Documento gerado em …".
 
   // Data de geração (sem selo regulatório no PDF).
   drawGeneratedAt(ctx);
@@ -1073,47 +1062,6 @@ function drawPlanTable(ctx: Ctx): void {
     color: COLORS.gray,
   });
   ctx.cursorY -= 8;
-}
-
-// -- Seção 6: resumo de execução ---------------------------------------------
-function drawExecutionSummary(ctx: Ctx): void {
-  const { helv, helvBold, data } = ctx;
-  const e = data.execution!;
-  const cards = [
-    { label: "Visitas concluídas", value: `${e.concluidas} de ${e.total}` },
-    { label: "Atividades conformes", value: String(e.conformes) },
-    { label: "Não conformidades", value: String(e.nao_conformes) },
-  ];
-  ensureSpace(ctx, 44);
-  const cardW = (CONTENT_W - 2 * 10) / 3;
-  let x = MARGIN_X;
-  for (const c of cards) {
-    ctx.page.drawRectangle({
-      x,
-      y: ctx.cursorY - 40,
-      width: cardW,
-      height: 40,
-      color: COLORS.rowAlt,
-      borderColor: COLORS.border,
-      borderWidth: 0.6,
-    });
-    ctx.page.drawText(c.value, {
-      x: x + 8,
-      y: ctx.cursorY - 22,
-      size: 14,
-      font: helvBold,
-      color: COLORS.accent,
-    });
-    ctx.page.drawText(safe(c.label), {
-      x: x + 8,
-      y: ctx.cursorY - 34,
-      size: 7.5,
-      font: helv,
-      color: COLORS.gray,
-    });
-    x += cardW + 10;
-  }
-  ctx.cursorY -= 48;
 }
 
 // -- Data de geração (rodapé textual, sem selo regulatório) ------------------

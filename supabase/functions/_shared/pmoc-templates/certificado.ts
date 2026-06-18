@@ -2,8 +2,7 @@
 // pmoc-templates/certificado.ts — Certificado de Conformidade.
 // =============================================================================
 // Página 3 do dossiê. HTML rich (default ou customizado pelo gestor) +
-// bloco de assinatura do RT (Onda E) + selo "Conforme Lei 13.589/2018" no
-// rodapé absoluto.
+// bloco de assinatura do RT (Onda E).
 //
 // Pipeline (Onda H — v1.9.x):
 //   1. raw HTML (do banco ou default) — pode conter <span data-pmoc-var="...">
@@ -14,7 +13,7 @@
 // Ver `termo-rt.ts` pra explicação da ordem (sanitizer strippa data-pmoc-var).
 // =============================================================================
 
-import { PDFDocument, PDFPage, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
+import { PDFDocument, PDFPage } from "https://esm.sh/pdf-lib@1.17.1";
 import { TemplateContext } from "./context.ts";
 import { sanitizeHtml } from "./html-sanitizer.ts";
 import { renderHtmlToPdf, A4_W, A4_H, MARGIN_Y, MARGIN_X, CONTENT_W } from "./html-renderer.ts";
@@ -24,9 +23,6 @@ import {
 } from "./signature-embed.ts";
 import { PmocVariableContext, substituteVariables } from "./variables.ts";
 import { drawDominexFooter } from "./footer.ts";
-import { drawComplianceSeal } from "./assets/draw-compliance-seal.ts";
-
-const BLACK = rgb(0, 0, 0);
 
 /**
  * Template padrão do Certificado de Conformidade com spans `data-pmoc-var`
@@ -92,15 +88,11 @@ export async function drawCertificadoPage(
     newPage: () => pdf.addPage([A4_W, A4_H]),
   });
 
-  // -- Onda E: bloco de assinatura do RT (acima do selo no rodapé).
-  //    Reservamos espaço pro selo "Conforme Lei" + (se aplicável) o footer
-  //    Dominex novo (~72pt). Onda I (v1.9.x): bump pra 90pt quando há footer.
+  // -- Onda E: bloco de assinatura do RT (acima do rodapé).
+  //    Reservamos espaço pro footer Dominex (~72pt) quando não é white-label.
   const isWhiteLabel = ctx.empresa.white_label_enabled === true;
-  // Onda (selo PNG): o selo gráfico (~55pt) + texto + linha decorativa empilham
-  // ACIMA do "Conforme Lei…", então reservamos mais espaço pra não colidir com
-  // o bloco de assinatura. Antes: 60 (WL) / 90 (footer).
-  const SEAL_RESERVED = isWhiteLabel ? 130 : 160;
-  const SPACE_NEEDED = SIGNATURE_BLOCK_HEIGHT + 20 + SEAL_RESERVED;
+  const FOOTER_RESERVED = isWhiteLabel ? 40 : 80;
+  const SPACE_NEEDED = SIGNATURE_BLOCK_HEIGHT + 20 + FOOTER_RESERVED;
 
   let sigPage = result.page;
   let sigTopY = result.cursorY - 16;
@@ -127,44 +119,7 @@ export async function drawCertificadoPage(
     },
   );
 
-  // Desenha o selo "Conforme Lei 13.589/2018" no rodapé da MESMA página onde
-  // está o bloco de assinatura (último frame da renderização).
   const finalPage = sigPage;
-  const helvBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-
-  const sealText = "Conforme Lei Federal 13.589/2018";
-  const sealSize = 11;
-  const sealW = helvBold.widthOfTextAtSize(sealText, sealSize);
-  // Onda I (v1.9.x): quando há footer Dominex, sobe o selo pra não colidir
-  //                  com o logo. White-label mantém posição antiga (sem footer).
-  const sealY = isWhiteLabel ? MARGIN_Y / 2 + 10 : MARGIN_Y + 20;
-
-  finalPage.drawText(sealText, {
-    x: (A4_W - sealW) / 2,
-    y: sealY,
-    size: sealSize,
-    font: helvBold,
-    color: BLACK,
-  });
-
-  // Selo PNG de conformidade — centralizado e LOGO ACIMA do texto da lei.
-  // (~8pt de respiro entre o topo do texto e a base do selo.)
-  const sealTopOfText = sealY + sealSize;
-  const sealImgH = await drawComplianceSeal(pdf, finalPage, {
-    centerX: A4_W / 2,
-    baselineY: sealTopOfText + 8,
-    width: 64,
-  });
-
-  // Linha decorativa pequena acima do selo PNG.
-  const decorW = 80;
-  const decorY = sealTopOfText + 8 + sealImgH + 8;
-  finalPage.drawLine({
-    start: { x: (A4_W - decorW) / 2, y: decorY },
-    end: { x: (A4_W - decorW) / 2 + decorW, y: decorY },
-    thickness: 0.5,
-    color: BLACK,
-  });
 
   // -- Onda I (v1.9.x): rodapé Dominex centralizado (logo + URL).
   //    SÓ aparece quando NÃO é white-label — substitui o antigo

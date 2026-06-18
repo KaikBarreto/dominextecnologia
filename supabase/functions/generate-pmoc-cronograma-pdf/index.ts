@@ -367,8 +367,10 @@ Deno.serve(async (req) => {
     //    hash, mesmo que o cronograma não desenhe assinatura — coerência: "se
     //    o RT muda a assinatura, TODOS os PDFs do contrato regeneram", lei do
     //    CEO).
+    //    Remoção do selo (2026-06): bump pra cronograma_v4 — o selo "Conforme
+    //    Lei 13.589/2018" saiu do rodapé do Cronograma.
     const hashInput = JSON.stringify({
-      v: "cronograma_v3",
+      v: "cronograma_v4",
       tenant: tenantName,
       customer: customer?.name ?? "",
       window: { start: startIso, end: endIso },

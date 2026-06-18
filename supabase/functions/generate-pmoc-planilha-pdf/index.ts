@@ -483,28 +483,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ---- Resumo de execução (opcional): visitas concluídas + conformidade.
-    const { data: orders } = await supabase
-      .from("service_orders")
-      .select("id, status")
-      .eq("contract_id", contract.id)
-      .eq("company_id", contract.company_id);
-    const totalVisitas = (orders ?? []).length;
-    const concluidas = (orders ?? []).filter((o) => o.status === "concluida").length;
-
-    let conformes = 0;
-    let naoConformes = 0;
-    if (totalVisitas > 0) {
-      const { data: acts } = await supabase
-        .from("service_order_activities")
-        .select("conformity_status")
-        .eq("company_id", contract.company_id)
-        .in("service_order_id", (orders ?? []).map((o) => o.id));
-      for (const a of acts ?? []) {
-        if (a.conformity_status === "conforme") conformes++;
-        else if (a.conformity_status === "nao_conforme") naoConformes++;
-      }
-    }
+    // Seção "Registro de Execução" removida (2026-06): dado dinâmico (visitas/
+    // conformidade) congelava no PDF baixado e ficava desatualizado. A planilha
+    // termina na legenda do plano + "Documento gerado em …".
 
     // ---- Seção 4: ambientes climatizados (1→N), cada um com seus equipamentos.
     //      Modelo do cliente repete a relação por unidade.
@@ -647,10 +628,6 @@ Deno.serve(async (req) => {
         ),
       },
       activities,
-      execution:
-        totalVisitas > 0
-          ? { total: totalVisitas, concluidas, conformes, nao_conformes: naoConformes }
-          : null,
       generated_at_extenso: dateToExtenso(new Date()),
       // Rodapé Dominex (linha + logo + dominex.app) em toda página — oculto em
       // white-label (mesmo critério do Dossiê).
@@ -670,7 +647,11 @@ Deno.serve(async (req) => {
       // planilha_v6: layout fiel ao modelo do cliente (título centralizado
       // preto-no-branco, seções 1–4 em tabelas com borda, seção 5 com larguras
       // fixas/quebra de linha, componentes humanizados, sem selo no PDF).
-      v: "planilha_v6",
+      // planilha_v7: títulos das seções e do cabeçalho agora COM acento PT-BR
+      // (Identificação, Manutenção, Operação, Responsável Técnico etc.).
+      // planilha_v8: removida a Seção 6 "Registro de Execução" (dado dinâmico
+      // que congelava no PDF) e removida a linha separadora do rodapé Dominex.
+      v: "planilha_v8",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
@@ -679,7 +660,6 @@ Deno.serve(async (req) => {
       contract: planilhaData.contract,
       ambientes,
       activities,
-      execution: planilhaData.execution,
     });
     const contentHash = await sha256Hex(hashInput);
 

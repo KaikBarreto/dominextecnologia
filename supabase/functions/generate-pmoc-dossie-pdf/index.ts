@@ -693,13 +693,13 @@ Deno.serve(async (req) => {
       status: o.status,
     }));
 
-    // ---- 7.7 (Planilha PMOC — Fase 4) Equipamentos + plano de manutenção +
-    //          resumo de execução. A Planilha vira páginas finais do Dossiê.
+    // ---- 7.7 (Planilha PMOC — Fase 4) Equipamentos + plano de manutenção.
+    //          A Planilha vira páginas finais do Dossiê. (Resumo de execução
+    //          removido — dado dinâmico que congelava no PDF.)
     const [
       { data: environments },
       { data: contractItems },
       { data: planActivities },
-      { data: allOrders },
     ] = await Promise.all([
       // Ambientes climatizados do contrato (1→N). Ordem do cadastro.
       supabase
@@ -722,11 +722,6 @@ Deno.serve(async (req) => {
           .eq("contract_id", contract.id)
           .eq("company_id", contract.company_id)
           .order("sort_order", { ascending: true }),
-        supabase
-          .from("service_orders")
-          .select("id, status")
-          .eq("contract_id", contract.id)
-          .eq("company_id", contract.company_id),
       ]);
 
     type ContractItemRow = {
@@ -777,21 +772,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const planilhaTotalVisitas = (allOrders ?? []).length;
-    const planilhaConcluidas = (allOrders ?? []).filter((o) => o.status === "concluida").length;
-    let planilhaConformes = 0;
-    let planilhaNaoConformes = 0;
-    if (planilhaTotalVisitas > 0) {
-      const { data: soaRows } = await supabase
-        .from("service_order_activities")
-        .select("conformity_status")
-        .eq("company_id", contract.company_id)
-        .in("service_order_id", (allOrders ?? []).map((o) => o.id));
-      for (const a of soaRows ?? []) {
-        if (a.conformity_status === "conforme") planilhaConformes++;
-        else if (a.conformity_status === "nao_conforme") planilhaNaoConformes++;
-      }
-    }
+    // Seção "Registro de Execução" da Planilha removida (2026-06): dado dinâmico
+    // (visitas/conformidade) congelava no PDF baixado e ficava desatualizado.
 
     // ---- Seção 4 da Planilha: ambientes climatizados (1→N), cada um com seus
     //      equipamentos (via environment_id). Fallback legado = um ambiente das
@@ -957,8 +939,14 @@ Deno.serve(async (req) => {
     //    embutida foi redesenhada (título centralizado preto-no-branco, seções
     //    1–4 em tabelas com borda, plano com larguras fixas/quebra de linha,
     //    componentes humanizados, sem selo no PDF).
+    //    Sem Seção 6 + sem linha do rodapé (2026-06): bump pra dossie_v19 — a
+    //    Planilha embutida perdeu a Seção "Registro de Execução" (dado dinâmico
+    //    que congelava no PDF) e o rodapé Dominex perdeu a linha separadora.
+    //    Acentos + sem selo (2026-06): bump pra dossie_v18 — Planilha embutida
+    //    com títulos acentuados e remoção do selo "Conforme Lei 13.589/2018"
+    //    das páginas embutidas do Certificado e do Cronograma.
     const hashInput = JSON.stringify({
-      v: "dossie_v17",
+      v: "dossie_v19",
       tenant: {
         name: tenantName,
         cnpj,
@@ -996,17 +984,11 @@ Deno.serve(async (req) => {
           .map((o) => ({ n: o.order_number, d: o.scheduled_date, s: o.status }))
           .sort((a, b) => (a.d ?? "").localeCompare(b.d ?? "")),
       },
-      // Fase 4 — Planilha PMOC embutida: ambientes + plano + execução.
+      // Fase 4 — Planilha PMOC embutida: ambientes + plano.
       planilha: {
         unidade: planilhaUnidade,
         ambientes: planilhaAmbientes,
         activities: planilhaActivities,
-        execution: {
-          total: planilhaTotalVisitas,
-          concluidas: planilhaConcluidas,
-          conformes: planilhaConformes,
-          nao_conformes: planilhaNaoConformes,
-        },
       },
     });
     const contentHash = await sha256Hex(hashInput);
@@ -1147,15 +1129,6 @@ Deno.serve(async (req) => {
       },
       ambientes: planilhaAmbientes,
       activities: planilhaActivities,
-      execution:
-        planilhaTotalVisitas > 0
-          ? {
-              total: planilhaTotalVisitas,
-              concluidas: planilhaConcluidas,
-              conformes: planilhaConformes,
-              nao_conformes: planilhaNaoConformes,
-            }
-          : null,
       generated_at_extenso: dateToExtenso(new Date()),
       // Rodapé Dominex por página da Planilha embutida — oculto em white-label
       // (mesmo `useWhiteLabel` do resto do Dossiê).

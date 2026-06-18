@@ -18,7 +18,6 @@ import { A4_W } from "./html-renderer.ts";
 import { getDominexLogoBytes } from "./dominex-logo.ts";
 
 const MUTED = rgb(0.45, 0.45, 0.45);
-const FOOTER_LINE = rgb(0.82, 0.82, 0.82);
 
 /**
  * Embeda o logo Dominex UMA vez e devolve o PDFImage pra reuso em N páginas.
@@ -53,8 +52,8 @@ export interface DrawDominexFooterLineOptions {
 }
 
 /**
- * Rodapé Dominex por página: uma linha horizontal fina (largura do conteúdo) +
- * logo Dominex pequeno + "dominex.app", tudo centralizado horizontalmente.
+ * Rodapé Dominex por página: logo Dominex pequeno + "dominex.app", centralizados
+ * horizontalmente. (Linha separadora removida — ver nota no corpo da função.)
  *
  * Reusa o `logoImage` pré-embedado (NÃO re-embeda por página). Se `enabled`
  * for false (white-label), é no-op — nada de marca Dominex no documento.
@@ -67,21 +66,18 @@ export function drawDominexFooterLine(
 ): void {
   if (!opts.enabled) return;
 
-  const marginX = opts.marginX;
-  const contentW = A4_W - 2 * marginX;
   const logoTargetW = Math.max(36, Math.min(90, opts.logoWidth ?? 52));
   const bottomMargin = Math.max(14, opts.bottomMargin ?? 24);
 
-  // Empilhamento de baixo pra cima: URL → logo → linha. A linha separadora é
-  // posicionada ACIMA do topo real do logo (calculado pela proporção) pra nunca
-  // cruzá-lo, independente do aspecto do PNG do logo.
+  // Empilhamento de baixo pra cima: URL → logo. Sem linha separadora (removida
+  // por ordem do CEO 2026-06: ficava colada/por cima do logo Dominex). Rodapé
+  // agora é só logo + "dominex.app", centralizados.
   const urlSize = 8;
   const urlText = "dominex.app";
   const urlY = bottomMargin; // baseline do texto
   const logoGap = 6; // respiro entre topo do texto e base do logo
   const logoBaseY = urlY + urlSize + logoGap;
 
-  let logoTopY = logoBaseY; // sem logo, a linha fica logo acima do texto
   if (opts.logoImage) {
     const img = opts.logoImage;
     const ratio = logoTargetW / img.width;
@@ -93,17 +89,7 @@ export function drawDominexFooterLine(
       width: drawW,
       height: drawH,
     });
-    logoTopY = logoBaseY + drawH;
   }
-
-  // Linha horizontal fina, sempre 8pt acima do topo do logo (nunca o corta).
-  const lineY = logoTopY + 8;
-  page.drawLine({
-    start: { x: marginX, y: lineY },
-    end: { x: marginX + contentW, y: lineY },
-    thickness: 0.5,
-    color: FOOTER_LINE,
-  });
 
   // Texto "dominex.app" embaixo do logo, centralizado.
   const urlW = opts.font.widthOfTextAtSize(urlText, urlSize);
