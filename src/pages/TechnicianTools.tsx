@@ -9,6 +9,7 @@ import {
   Home,
   Snowflake,
   Ruler,
+  Replace,
   RefreshCcw,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -22,6 +23,7 @@ import { CalculoCapacitor } from '@/components/technician-tools/CalculoCapacitor
 import { CaboEletrico } from '@/components/technician-tools/CaboEletrico';
 import { Superaquecimento } from '@/components/technician-tools/Superaquecimento';
 import { ReguaGases } from '@/components/technician-tools/ReguaGases';
+import { RetrofitGas } from '@/components/technician-tools/RetrofitGas';
 import { CicloRefrigeracao } from '@/components/technician-tools/CicloRefrigeracao';
 import type { ConversaoCategoria } from '@/lib/conversoes';
 
@@ -34,6 +36,7 @@ type ToolTab =
   | 'cabo-eletrico'
   | 'superaquecimento'
   | 'regua-gases'
+  | 'retrofit-gas'
   | 'ciclo-refrigeracao';
 
 /** Alvo de deep-link ao trocar de aba a partir de Recentes/Favoritos do Início. */
@@ -56,6 +59,7 @@ const TOOLS: ToolDef[] = [
   { value: 'cabo-eletrico', label: 'Cabo Elétrico', icon: Cable },
   { value: 'superaquecimento', label: 'Superaquecimento', icon: Snowflake },
   { value: 'regua-gases', label: 'Régua de Gases', icon: Ruler },
+  { value: 'retrofit-gas', label: 'Retrofit de Gás', icon: Replace },
   { value: 'ciclo-refrigeracao', label: 'Ciclo de Refrigeração', icon: RefreshCcw },
 ];
 
@@ -168,6 +172,7 @@ export default function TechnicianTools() {
             <Superaquecimento onIrParaCiclo={() => switchTab('ciclo-refrigeracao')} />
           )}
           {activeTab === 'regua-gases' && <ReguaGases />}
+          {activeTab === 'retrofit-gas' && <RetrofitGas />}
           {activeTab === 'ciclo-refrigeracao' && <CicloRefrigeracao />}
         </div>
       </div>

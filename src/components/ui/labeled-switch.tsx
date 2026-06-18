@@ -17,6 +17,8 @@ interface LabeledSwitchProps<T extends string> {
   className?: string;
   /** Tamanho dos rótulos. 'default' = text-base, 'lg' = text-lg. */
   size?: "default" | "lg";
+  /** Desabilita a alavanca e os rótulos clicáveis. */
+  disabled?: boolean;
   "aria-label"?: string;
 }
 
@@ -27,18 +29,26 @@ export function LabeledSwitch<T extends string>({
   on,
   className,
   size = "default",
+  disabled = false,
   "aria-label": ariaLabel,
 }: LabeledSwitchProps<T>) {
   const isOn = value === on.value;
   const textSize = size === "lg" ? "text-lg" : "text-base";
   return (
-    <div className={cn("inline-flex items-center gap-2.5", className)}>
+    <div
+      className={cn(
+        "inline-flex items-center gap-2.5",
+        disabled && "opacity-50",
+        className,
+      )}
+    >
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onChange(off.value)}
         className={cn(
           textSize,
-          "font-semibold transition-colors",
+          "font-semibold transition-colors disabled:cursor-not-allowed",
           !isOn ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >
@@ -46,15 +56,17 @@ export function LabeledSwitch<T extends string>({
       </button>
       <Switch
         checked={isOn}
+        disabled={disabled}
         onCheckedChange={(c) => onChange(c ? on.value : off.value)}
         aria-label={ariaLabel}
       />
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onChange(on.value)}
         className={cn(
           textSize,
-          "font-semibold transition-colors",
+          "font-semibold transition-colors disabled:cursor-not-allowed",
           isOn ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >

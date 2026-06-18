@@ -6,6 +6,7 @@ import {
   Zap,
   Cable,
   Snowflake,
+  Replace,
   RefreshCcw,
   BookOpen,
   ChevronRight,
@@ -36,6 +37,7 @@ export type ToolNavId =
   | 'cabo-eletrico'
   | 'superaquecimento'
   | 'regua-gases'
+  | 'retrofit-gas'
   | 'ciclo-refrigeracao';
 
 interface AtalhoFerramenta {
@@ -96,6 +98,13 @@ const ATALHOS: AtalhoFerramenta[] = [
     descricao: 'Pressão de saturação dos gases por temperatura.',
     icon: Ruler,
     accent: 'hsl(262 83% 58%)',
+  },
+  {
+    id: 'retrofit-gas',
+    label: 'Retrofit de Gás',
+    descricao: 'Gases drop-in para trocar o refrigerante.',
+    icon: Replace,
+    accent: 'hsl(173 58% 39%)',
   },
   {
     id: 'ciclo-refrigeracao',

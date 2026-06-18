@@ -18,11 +18,12 @@
 export type ConversaoCategoriaNumerica = 'pressao' | 'temperatura' | 'potencia' | 'comprimento';
 
 /**
- * Todas as categorias da ferramenta de Conversão, incluindo as de REFERÊNCIA
- * (não-numéricas, como `retrofit`, que NÃO entram em `CONVERSAO_CATEGORIAS`
- * nem em `converter()` — são renderizadas com view própria).
+ * Categorias da ferramenta de Conversão. Hoje todas são numéricas (passam por
+ * `converter()`). Alias mantido para o deep-link de `ToolNavPayload` e para os
+ * mapas internos da view; reabra-o como união se voltar a existir categoria de
+ * referência (não-numérica) com view própria.
  */
-export type ConversaoCategoria = ConversaoCategoriaNumerica | 'retrofit';
+export type ConversaoCategoria = ConversaoCategoriaNumerica;
 
 export interface UnidadeDef {
   /** Código interno único da unidade. */

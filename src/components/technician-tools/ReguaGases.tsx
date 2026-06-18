@@ -15,6 +15,7 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteOption } from '@/components/technician-tools/RefrigeranteOption';
 import { cn } from '@/lib/utils';
 import {
+  REFRIGERANTES,
   agruparRefrigerantesEmSecoes,
   tempParaPressao,
   pressaoParaTempSat,
@@ -34,6 +35,11 @@ function num(str: string, def = NaN): number {
 
 const TEMP_MIN = -40;
 const TEMP_MAX = 60;
+
+/** Blends com glide (curvas bubble/dew diferentes), derivados da fonte única. */
+const GASES_COM_GLIDE = REFRIGERANTES.filter((r) => r.temGlide)
+  .map((r) => r.nome)
+  .join(', ');
 
 /** Fórmula escolhida na UI → curva da tabela. */
 type Formula = 'bubble' | 'dew';
@@ -225,8 +231,15 @@ function ReguaUnificada({
     'temp',
   );
 
+  const refrig = getRefrigerante(refrigId);
+
+  // Fórmula efetiva: só gases com glide têm curvas bubble/dew distintas.
+  // Pros demais, travamos em 'dew' (sem poluir o estado persistido, que volta
+  // ao escolher um gás com glide de novo).
+  const formulaEfetiva: Formula = refrig?.temGlide ? formula : 'dew';
+
   // A fórmula define a curva; gases sem glide caem na curva única no helper.
-  const curva: Curva = formula;
+  const curva: Curva = formulaEfetiva;
 
   // Temperatura RESOLVIDA: posiciona a régua e alimenta o cálculo da pressão.
   // Quando a fonte é a pressão, derivamos a temperatura pela inversa.
@@ -299,8 +312,6 @@ function ReguaUnificada({
         ? formatarPressao(pressao, unidade)
         : '';
 
-  const refrig = getRefrigerante(refrigId);
-
   // Gases agrupados pro select (independe da ordem do catálogo).
   const secoes = useMemo(() => agruparRefrigerantesEmSecoes(), []);
 
@@ -319,12 +330,18 @@ function ReguaUnificada({
         <div className="flex flex-col items-center gap-1.5">
           <Label className="text-xs font-semibold text-muted-foreground">Fórmula</Label>
           <LabeledSwitch
-            value={formula}
+            value={formulaEfetiva}
             onChange={setFormula}
             off={{ value: 'dew', label: 'Dew' }}
             on={{ value: 'bubble', label: 'Bubble' }}
+            disabled={!refrig?.temGlide}
             aria-label="Fórmula da curva"
           />
+          {!refrig?.temGlide && (
+            <span className="text-[10px] font-medium text-muted-foreground">
+              curva única (sem glide)
+            </span>
+          )}
         </div>
 
         {/* Gás */}
@@ -458,8 +475,8 @@ export function ReguaGases() {
           <span className="font-semibold text-foreground">Atenção: </span>
           estes valores são sempre uma estimativa de referência e não devem ser usados
           isoladamente. Sempre confira o manual do fabricante do equipamento antes de tomar
-          decisões de carga ou diagnóstico. Só o R-404A tem glide (curvas bubble/dew diferentes);
-          nos demais a curva é única.
+          decisões de carga ou diagnóstico. Os blends com glide ({GASES_COM_GLIDE}) têm curvas
+          bubble/dew diferentes; nos demais a curva é única.
         </p>
       </div>
     </div>

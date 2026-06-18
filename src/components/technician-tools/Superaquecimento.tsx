@@ -231,13 +231,13 @@ interface NotaModeloProps {
 function NotaModelo({ nota, confianca, alvoGenerico }: NotaModeloProps) {
   const rotuloConfianca = ROTULO_CONFIANCA[confianca];
   return (
-    <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
+    <div className="flex gap-2.5 rounded-lg border border-border bg-muted p-3 text-muted-foreground">
       <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
       <div className="space-y-1.5">
         <p className="text-xs leading-relaxed">{nota}</p>
         <div className="flex flex-wrap gap-1.5">
           {alvoGenerico && (
-            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-medium text-white">
               Alvo não publicado — usando referência genérica
             </span>
           )}
@@ -598,7 +598,7 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
       )}
 
       {/* Alerta sutil */}
-      <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
+      <div className="flex gap-2.5 rounded-lg border border-border bg-muted p-3 text-muted-foreground">
         <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
         <p className="text-xs leading-relaxed">
           <span className="font-semibold text-foreground">Atenção: </span>

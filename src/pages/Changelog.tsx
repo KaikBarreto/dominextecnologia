@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.50',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Retrofit de Gás virou ferramenta própria',
+        description: 'O Retrofit de Gás saiu de dentro da Conversão e agora é uma ferramenta separada nas Ferramentas do Técnico, listada logo depois da Régua de Gases. Mesmo conteúdo, mais fácil de encontrar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Régua de Gases: alavanca Dew/Bubble mais clara',
+        description: 'A alavanca de fórmula agora fica travada quando o gás não tem glide — nesses casos Dew e Bubble dão o mesmo resultado, então não fazia diferença alterná-la. A observação sobre quais gases têm glide também foi corrigida.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.12.49',
     date: '18 de junho de 2026',
     type: 'patch',
