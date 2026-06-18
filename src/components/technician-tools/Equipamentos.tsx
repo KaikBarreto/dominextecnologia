@@ -19,6 +19,7 @@ import {
   Stethoscope,
   Wrench,
   Droplet,
+  Flame,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
@@ -1442,6 +1443,17 @@ function RemoteCard({
 const GAS_COR_NEUTRA = '#6b7280';
 
 /**
+ * Inflamabilidade do gás pela classe de segurança ASHRAE (campo `classe_seguranca`).
+ * O 2º caractere da classe indica a inflamabilidade: 1 = não inflamável;
+ * 2L/2/3 = inflamável (baixa/inflamável/alta). Logo, basta a string conter '2' ou '3'
+ * (ex.: A2L, A2, A3, B2L, B3). A1/B1 e classe nula/desconhecida → não inflamável.
+ */
+function gasInflamavel(classeSeguranca: string | null | undefined): boolean {
+  const c = classeSeguranca ?? '';
+  return c.includes('2') || c.includes('3');
+}
+
+/**
  * Lista GLOBAL de fluidos refrigerantes: igual à RemotesList, mas sobre a tabela
  * própria `refrigerant_gases` (não navega por marca). Busca filtra por code/name.
  * Ordem por `sort` (já vem do hook).
@@ -1525,6 +1537,7 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
  */
 function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void }) {
   const cor = gas.cor || GAS_COR_NEUTRA;
+  const inflamavel = gasInflamavel(gas.classe_seguranca);
   return (
     <button
       type="button"
@@ -1541,9 +1554,19 @@ function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void 
         aria-hidden
       />
       <div className="min-w-0 flex-1">
-        <p className="text-base font-bold leading-tight tracking-tight text-foreground">
-          {gas.code}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-base font-bold leading-tight tracking-tight text-foreground">
+            {gas.code}
+          </p>
+          {inflamavel && (
+            <Flame
+              className="h-4 w-4 shrink-0 text-orange-500"
+              fill="currentColor"
+              strokeWidth={2}
+              aria-label="Gás inflamável"
+            />
+          )}
+        </div>
         <p className="mt-0.5 truncate text-sm text-muted-foreground">{gas.name}</p>
         {(gas.tipo || gas.classe_seguranca) && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -1553,7 +1576,15 @@ function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void 
               </span>
             )}
             {gas.classe_seguranca && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                {inflamavel && (
+                  <Flame
+                    className="h-3 w-3 shrink-0 text-orange-500"
+                    fill="currentColor"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                )}
                 {gas.classe_seguranca}
               </span>
             )}

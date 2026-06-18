@@ -1,10 +1,20 @@
-import { ArrowLeft, Download, Droplet } from 'lucide-react';
+import { ArrowLeft, Download, Droplet, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { idealForeground } from '@/lib/colorContrast';
 import type { RefrigerantGas } from '@/hooks/useEquipmentCatalog';
 
 /** Cinza neutro pra gás sem cor cadastrada (régua: gás sempre com bolinha). */
 const COR_NEUTRA = '#6b7280';
+
+/**
+ * Inflamabilidade do gás pela classe de segurança ASHRAE (campo `classe_seguranca`).
+ * O 2º caractere indica a inflamabilidade: 1 = não inflamável; 2L/2/3 = inflamável.
+ * Logo, basta a string conter '2' ou '3' (ex.: A2L, A2, A3, B2L, B3).
+ */
+function gasInflamavel(classeSeguranca: string | null | undefined): boolean {
+  const c = classeSeguranca ?? '';
+  return c.includes('2') || c.includes('3');
+}
 
 /** Remove caracteres inválidos de nome de arquivo e colapsa espaços. */
 function sanitizarNomeArquivo(nome: string): string {
@@ -49,6 +59,7 @@ function num(v: number | null | undefined): string | null {
 export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => void }) {
   const cor = gas.cor || COR_NEUTRA;
   const fg = idealForeground(cor);
+  const inflamavel = gasInflamavel(gas.classe_seguranca);
 
   const rows: { label: string; value: string | null }[] = [
     { label: 'Composição', value: gas.composicao },
@@ -92,7 +103,18 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
           <Droplet className="h-6 w-6" style={{ color: fg }} />
         </span>
         <div className="min-w-0">
-          <p className="text-2xl font-extrabold leading-none tracking-tight">{gas.code}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-2xl font-extrabold leading-none tracking-tight">{gas.code}</p>
+            {inflamavel && (
+              <Flame
+                className="h-6 w-6 shrink-0"
+                style={{ color: fg }}
+                fill="currentColor"
+                strokeWidth={2}
+                aria-label="Gás inflamável"
+              />
+            )}
+          </div>
           <p className="mt-1 truncate text-sm font-medium opacity-90">{gas.name}</p>
         </div>
       </div>
@@ -104,8 +126,14 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
             {visibleRows.map((r) => (
               <li key={r.label} className="flex items-start justify-between gap-3 px-4 py-3">
                 <span className="shrink-0 text-sm font-medium text-muted-foreground">{r.label}</span>
-                <span className="min-w-0 text-right text-sm font-semibold text-foreground">
+                <span className="flex min-w-0 items-center justify-end gap-2 text-right text-sm font-semibold text-foreground">
                   {r.value}
+                  {r.label === 'Classe de segurança' && inflamavel && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-orange-600 dark:text-orange-400">
+                      <Flame className="h-3 w-3 shrink-0" fill="currentColor" strokeWidth={2} aria-hidden />
+                      Inflamável
+                    </span>
+                  )}
                 </span>
               </li>
             ))}
