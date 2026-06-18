@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.45',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criação de contrato mais clara, passo a passo',
+        description: 'Ao montar um contrato PMOC, o Responsável Técnico e o endereço da unidade agora ficam em uma etapa só deles — a primeira tela ficou mais enxuta e fácil de preencher, na ordem certa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastre o equipamento na hora, dentro do ambiente',
+        description: 'Ao definir os ambientes de um contrato, dá pra cadastrar um equipamento novo do cliente sem sair da tela — ele já entra vinculado àquele ambiente. Antes era preciso cadastrar o equipamento à parte primeiro.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.44',
     date: '18 de junho de 2026',
     type: 'patch',

@@ -18,6 +18,8 @@ import { useFormDraft } from '@/hooks/useFormDraft';
 import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
@@ -63,6 +65,7 @@ const STEPS_COMMON = [
 ];
 const STEPS_PMOC = [
   { key: 'info', label: 'Informações' },
+  { key: 'unit', label: 'Unidade & RT' },
   { key: 'frequency', label: 'Frequência' },
   { key: 'items', label: 'Ambientes' },
   { key: 'review', label: 'Revisão' },
@@ -341,11 +344,40 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Em modo edição, guarda a chamada que ficou esperando confirmação do "desligar PMOC".
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
-  const { equipment } = useEquipment(customerId || undefined);
+  const { equipment, createEquipment } = useEquipment(customerId || undefined);
+  const { categories: equipmentCategories } = useEquipmentCategories();
   const activeEquipment = equipment.filter(eq => eq.status === 'active');
 
-  // Etapa 3 muda de cara conforme o contrato: PMOC = "Ambientes"; comum = "Itens".
+  // Quick-create de equipamento dentro de um ambiente (PMOC). Guarda a KEY do
+  // ambiente que disparou o cadastro pra, no sucesso, marcar o novo equipamento
+  // exatamente naquele ambiente.
+  const [showQuickEquip, setShowQuickEquip] = useState(false);
+  const [quickEquipEnvKey, setQuickEquipEnvKey] = useState<string | null>(null);
+
+  // Abre o EquipmentFormDialog travado no cliente do contrato, lembrando o ambiente.
+  const openQuickEquip = (envKey: string) => {
+    setQuickEquipEnvKey(envKey);
+    setShowQuickEquip(true);
+  };
+
+  // Cliente do contrato como lista de 1 — trava a seleção no EquipmentFormDialog.
+  const contractCustomerAsList = useMemo(
+    () => customers.filter(c => c.id === customerId),
+    [customers, customerId],
+  );
+
+  // Wizard dinâmico: PMOC tem 5 etapas (info → unit → frequency → items → review);
+  // comum tem 4 (info → frequency → items → review). O conteúdo é renderizado pela
+  // KEY do step atual (nunca por índice numérico) pra não dar drift quando o PMOC
+  // liga/desliga.
   const STEPS = isPmoc ? STEPS_PMOC : STEPS_COMMON;
+  const currentStepKey = STEPS[step]?.key ?? 'info';
+
+  // Ligar/desligar PMOC muda a contagem de etapas (4 ↔ 5). Se o índice atual
+  // estourar o novo array, recua pra última etapa válida (evita tela em branco).
+  useEffect(() => {
+    if (step > STEPS.length - 1) setStep(STEPS.length - 1);
+  }, [STEPS.length, step]);
 
   // Rascunho (só em CRIAÇÃO). Persiste os campos das etapas em sessionStorage e,
   // ao reabrir com rascunho salvo, oferece o DraftResumeDialog. Espelha o padrão
@@ -799,12 +831,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   }));
 
   const canNext = () => {
-    if (step === 0) {
-      // PMOC sem RT é permitido (warning toast no submit). Bloqueio só pra nome + cliente.
-      return !!customerId && !!name;
+    switch (currentStepKey) {
+      case 'info':
+        // Bloqueio só pra nome + cliente. PMOC sem RT é permitido (warning no submit).
+        return !!customerId && !!name;
+      case 'unit':
+        // Unidade & RT são opcionais (RT pode vir depois; unidade pré-preenche do cliente).
+        return true;
+      case 'frequency':
+        return freqValue > 0 && !!startDate;
+      case 'items':
+      case 'review':
+      default:
+        return true;
     }
-    if (step === 1) return freqValue > 0 && !!startDate;
-    return true;
   };
 
   // Aplica de fato a edição (chamado direto ou após confirmar o recálculo).
@@ -1019,10 +1059,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const progressPercent = ((step + 1) / STEPS.length) * 100;
   const clientName = customers.find(c => c.id === customerId)?.name || '-';
 
-  // Bloco PMOC (toggle + RT + caracterização do ambiente). Definido como JSX
-  // pra ser posicionado no TOPO da etapa Informações (logo após o Cliente).
-  const pmocSection = (
-    <div className="rounded-lg border p-3 space-y-3">
+  // Toggle PMOC — fica no TOPO da etapa Informações (logo após o Cliente). É onde
+  // se decide se o contrato é PMOC. Os detalhes (RT, unidade, badge legal) migraram
+  // pra etapa dedicada "Unidade & RT".
+  const pmocToggleSection = (
+    <div className="rounded-lg border p-3">
       <div className="flex items-start gap-3">
         <Switch
           checked={isPmoc}
@@ -1033,7 +1074,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               return;
             }
             setIsPmoc(v);
-            if (!v) setResponsibleTechnicianId('');
+            if (!v) {
+              setResponsibleTechnicianId('');
+              // Tipo de Serviço não se aplica a PMOC; ao desligar, mantém o que houver.
+            } else {
+              // Ligar PMOC: o Tipo de Serviço some (quem manda é o plano/catálogo da
+              // norma). Limpa pra não enviar valor obsoleto no submit.
+              setServiceTypeId('');
+            }
           }}
         />
         <div className="flex-1 min-w-0">
@@ -1047,9 +1095,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           </p>
         </div>
       </div>
+    </div>
+  );
 
-      {isPmoc && (
-        <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+  // Bloco da etapa "Unidade & RT" (só PMOC): Responsável Técnico, Identificação da
+  // Unidade (Seção 1) e o badge/alerta legal. Migrado da etapa Informações pra
+  // desafogá-la.
+  const pmocUnitSection = (
+    <div className="space-y-4">
+        <div className="space-y-3">
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <Label className="m-0">Responsável Técnico (RT)</Label>
@@ -1228,7 +1282,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               etapa "Ambientes", onde cada ambiente tem seus próprios dados e
               equipamentos. */}
         </div>
-      )}
     </div>
   );
 
@@ -1264,8 +1317,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
         {/* Content */}
         <div className="flex-1 mt-4 space-y-4">
-          {/* STEP 1: Info */}
-          {step === 0 && (
+          {/* STEP: Informações */}
+          {currentStepKey === 'info' && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Nome do Contrato *</Label>
@@ -1298,9 +1351,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               </div>
 
               {/* PMOC (Onda A v1.9.0) — toggle no TOPO da etapa, logo após o Cliente.
-                  Quando ligado, mostra RT, badge legal, alerta e a caracterização
-                  do ambiente (Seção 4 da Planilha PMOC). */}
-              {pmocSection}
+                  Os detalhes (RT, unidade, badge legal) ficam na etapa "Unidade & RT". */}
+              {pmocToggleSection}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -1330,18 +1382,22 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     usersLabel="Usuários"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Tipo de Serviço</Label>
-                  <Select value={serviceTypeId || 'none'} onValueChange={v => setServiceTypeId(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {serviceTypes.filter(t => t.is_active).map(st => (
-                        <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Tipo de Serviço não se aplica a PMOC — quem manda nas atividades
+                    é o plano/catálogo da norma. Some quando o contrato é PMOC. */}
+                {!isPmoc && (
+                  <div className="space-y-2">
+                    <Label>Tipo de Serviço</Label>
+                    <Select value={serviceTypeId || 'none'} onValueChange={v => setServiceTypeId(v === 'none' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {serviceTypes.filter(t => t.is_active).map(st => (
+                          <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {/* Checklist Padrão só faz sentido em contrato SEM plano de
                     serviços. Com plano, o checklist vem das atividades por
                     equipamento — exibir o select duplicaria o checklist na OS.
@@ -1376,8 +1432,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
-          {/* STEP 2: Frequency */}
-          {step === 1 && (
+          {/* STEP: Unidade & RT (só PMOC) — RT, Identificação da Unidade e badge legal. */}
+          {currentStepKey === 'unit' && pmocUnitSection}
+
+          {/* STEP: Frequência */}
+          {currentStepKey === 'frequency' && (
             <div className="space-y-4">
               {/* Com plano de serviços, o motor SEMPRE gera 1 visita/mês agrupando
                   o que vence — a cadência única (tipo/atalhos/intervalo) fica
@@ -1661,8 +1720,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
-          {/* STEP 3: Ambientes (PMOC) ou Itens (comum) */}
-          {step === 2 && isPmoc && (
+          {/* STEP: Ambientes (PMOC) ou Itens (comum) */}
+          {currentStepKey === 'items' && isPmoc && (
             <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <p className="text-sm text-muted-foreground">
@@ -1804,6 +1863,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               })}
                             </div>
                           )}
+                          {/* Quick-create de equipamento: sempre disponível (inclusive sem
+                              equipamentos). Abre o EquipmentFormDialog travado no cliente;
+                              no sucesso, o novo equipamento entra marcado neste ambiente. */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            disabled={!customerId}
+                            onClick={() => openQuickEquip(env.key)}
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1.5" /> Cadastrar equipamento
+                          </Button>
                         </div>
                       </div>
                     );
@@ -1822,7 +1894,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
-          {step === 2 && !isPmoc && (
+          {currentStepKey === 'items' && !isPmoc && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Selecione os equipamentos do cliente e/ou adicione itens manuais que farão parte deste contrato.
@@ -1927,8 +1999,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
-          {/* STEP 4: Review */}
-          {step === 3 && (
+          {/* STEP: Revisão */}
+          {currentStepKey === 'review' && (
             <div className="space-y-4 rounded-lg border p-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <CalendarCheck className="h-5 w-5 text-primary" />
@@ -2078,6 +2150,34 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       onCreated={(rt) => {
         setResponsibleTechnicianId(rt.id);
         setShowQuickCreateRT(false);
+      }}
+    />
+
+    {/* Quick-create de equipamento dentro de um ambiente (PMOC). Reaproveita o
+        EquipmentFormDialog (mesma fiação do EquipmentPanel), mas trava o cliente
+        no cliente do contrato. No sucesso, marca o novo equipamento no ambiente
+        que disparou o cadastro. */}
+    <EquipmentFormDialog
+      open={showQuickEquip}
+      onOpenChange={(v) => { setShowQuickEquip(v); if (!v) setQuickEquipEnvKey(null); }}
+      customers={contractCustomerAsList}
+      categories={equipmentCategories}
+      isLoading={createEquipment.isPending}
+      equipmentCount={equipment.length}
+      onSubmit={async (data) => {
+        const created = await createEquipment.mutateAsync({ ...data, customer_id: customerId } as any);
+        const newId = (created as any)?.id as string | undefined;
+        if (newId && quickEquipEnvKey) {
+          // Marca o novo equipamento no ambiente que abriu o cadastro. A lista do
+          // cliente recarrega sozinha via react-query (invalidate no hook).
+          setEnvironments(prev => prev.map(e =>
+            e.key === quickEquipEnvKey && !e.equipment_ids.includes(newId)
+              ? { ...e, equipment_ids: [...e.equipment_ids, newId] }
+              : e,
+          ));
+        }
+        setShowQuickEquip(false);
+        setQuickEquipEnvKey(null);
       }}
     />
 
