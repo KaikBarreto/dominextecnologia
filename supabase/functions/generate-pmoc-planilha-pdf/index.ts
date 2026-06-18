@@ -226,6 +226,13 @@ Deno.serve(async (req) => {
           "start_date",
           "frequency_type",
           "frequency_value",
+          // Seção 4 — caracterização do ambiente climatizado (modelo do cliente).
+          "pmoc_tipo_atividade",
+          "pmoc_identificacao_ambiente",
+          "pmoc_area_climatizada_m2",
+          "pmoc_ocupantes_fixos",
+          "pmoc_ocupantes_flutuantes",
+          "pmoc_carga_termica_tr",
         ].join(","),
       )
       .eq("id", contractId)
@@ -474,6 +481,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Seção 4: caracterização do ambiente climatizado (modelo do cliente).
+    //      Vem das colunas pmoc_* do contrato; ausente vira null (→ "—" no PDF).
+    const c = contract as Record<string, unknown>;
+    const numOrNull = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const strOrNull = (v: unknown): string | null => {
+      const s = (v ?? "").toString().trim();
+      return s.length > 0 ? s : null;
+    };
+    const ambiente = {
+      tipo_atividade: strOrNull(c.pmoc_tipo_atividade),
+      identificacao: strOrNull(c.pmoc_identificacao_ambiente),
+      area_m2: numOrNull(c.pmoc_area_climatizada_m2),
+      ocupantes_fixos: numOrNull(c.pmoc_ocupantes_fixos),
+      ocupantes_flutuantes: numOrNull(c.pmoc_ocupantes_flutuantes),
+      carga_termica_tr: numOrNull(c.pmoc_carga_termica_tr),
+    };
+
     const planilhaData: PlanilhaData = {
       tenant: { name: tenantName, cnpj, logoImage: null },
       customer: {
@@ -483,6 +511,7 @@ Deno.serve(async (req) => {
         city: customer.city ?? null,
         state: customer.state ?? null,
       },
+      ambiente,
       rt: {
         nome: rt.full_name ?? "",
         modalidade: rt.modality ?? "Técnico em Refrigeração",
@@ -513,12 +542,15 @@ Deno.serve(async (req) => {
     //   oculto em white-label. O flag `white_label` entra no hash pra o cache
     //   invalidar e regenerar com/sem rodapé conforme o tenant.
     const hashInput = JSON.stringify({
-      v: "planilha_v2",
+      // planilha_v3: Seção 4 agora inclui a caracterização do ambiente
+      // climatizado (tipo de atividade, identificação, área, ocupantes, TR).
+      v: "planilha_v3",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
       rt: planilhaData.rt,
       contract: planilhaData.contract,
+      ambiente,
       equipments,
       activities,
       execution: planilhaData.execution,

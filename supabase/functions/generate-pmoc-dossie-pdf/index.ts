@@ -262,6 +262,13 @@ Deno.serve(async (req) => {
           // Link + QR do Portal PMOC na capa (preenchido pela trigger
           // ensure_pmoc_token quando is_pmoc=true).
           "public_pmoc_token",
+          // Seção 4 da Planilha embutida — caracterização do ambiente climatizado.
+          "pmoc_tipo_atividade",
+          "pmoc_identificacao_ambiente",
+          "pmoc_area_climatizada_m2",
+          "pmoc_ocupantes_fixos",
+          "pmoc_ocupantes_flutuantes",
+          "pmoc_carga_termica_tr",
         ].join(","),
       )
       .eq("id", contractId)
@@ -762,6 +769,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Seção 4 da Planilha: caracterização do ambiente climatizado.
+    //      Vem das colunas pmoc_* do contrato; ausente → null (→ "—" no PDF).
+    const cRow = contract as Record<string, unknown>;
+    const ambNum = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const ambStr = (v: unknown): string | null => {
+      const s = (v ?? "").toString().trim();
+      return s.length > 0 ? s : null;
+    };
+    const planilhaAmbiente = {
+      tipo_atividade: ambStr(cRow.pmoc_tipo_atividade),
+      identificacao: ambStr(cRow.pmoc_identificacao_ambiente),
+      area_m2: ambNum(cRow.pmoc_area_climatizada_m2),
+      ocupantes_fixos: ambNum(cRow.pmoc_ocupantes_fixos),
+      ocupantes_flutuantes: ambNum(cRow.pmoc_ocupantes_flutuantes),
+      carga_termica_tr: ambNum(cRow.pmoc_carga_termica_tr),
+    };
+
     // ---- 8. content_hash dos campos dinâmicos
     //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
     //    Onda H: bump pra dossie_v3 (variableContext entra — campos novos do
@@ -803,8 +831,13 @@ Deno.serve(async (req) => {
     //    dominex.app) em toda página, oculto em white-label. O white_label já
     //    está no hash (tenant.white_label), mas o bump força regen dos PDFs
     //    cacheados sem o rodapé novo.
+    //    Ambiente climatizado (2026-06): bump pra dossie_v14 — a Seção 4 da
+    //    Planilha embutida ganhou a caracterização do ambiente (tipo de
+    //    atividade, identificação, área, ocupantes fixos/flutuantes e carga
+    //    térmica TR), vinda das colunas pmoc_* do contrato. Entram no hash pra
+    //    o cache invalidar quando o gestor preencher/editar esses campos.
     const hashInput = JSON.stringify({
-      v: "dossie_v13",
+      v: "dossie_v14",
       tenant: {
         name: tenantName,
         cnpj,
@@ -844,6 +877,7 @@ Deno.serve(async (req) => {
       },
       // Fase 4 — Planilha PMOC embutida: equipamentos + plano + execução.
       planilha: {
+        ambiente: planilhaAmbiente,
         equipments: planilhaEquipments,
         activities: planilhaActivities,
         execution: {
@@ -989,6 +1023,7 @@ Deno.serve(async (req) => {
           (contract.frequency_type ?? null) as string | null,
         ),
       },
+      ambiente: planilhaAmbiente,
       equipments: planilhaEquipments,
       activities: planilhaActivities,
       execution:

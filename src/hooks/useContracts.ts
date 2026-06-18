@@ -550,6 +550,14 @@ export function useContracts() {
       responsible_technician_id?: string | null;
       pmoc_legal_compliance_text?: string | null;
       next_pmoc_generation_date?: string | null;
+      // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado
+      // (modelo do cliente). Opcionais; só fazem sentido em contrato PMOC.
+      pmoc_tipo_atividade?: string | null;
+      pmoc_identificacao_ambiente?: string | null;
+      pmoc_area_climatizada_m2?: number | null;
+      pmoc_ocupantes_fixos?: number | null;
+      pmoc_ocupantes_flutuantes?: number | null;
+      pmoc_carga_termica_tr?: number | null;
       items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
       // Plano de serviços com frequência por linha (Fase 1 — frequências por
       // serviço). Quando vazio, o contrato cai no comportamento de frequência
@@ -608,6 +616,14 @@ export function useContracts() {
             ? (input.pmoc_legal_compliance_text ?? 'Conforme Lei Federal 13.589/2018')
             : null,
           next_pmoc_generation_date: input.is_pmoc ? nextPmocGenerationDate : null,
+          // Caracterização do ambiente climatizado (Seção 4 da Planilha PMOC).
+          // Só grava quando PMOC; contrato comum zera os campos.
+          pmoc_tipo_atividade: input.is_pmoc ? (input.pmoc_tipo_atividade ?? null) : null,
+          pmoc_identificacao_ambiente: input.is_pmoc ? (input.pmoc_identificacao_ambiente ?? null) : null,
+          pmoc_area_climatizada_m2: input.is_pmoc ? (input.pmoc_area_climatizada_m2 ?? null) : null,
+          pmoc_ocupantes_fixos: input.is_pmoc ? (input.pmoc_ocupantes_fixos ?? null) : null,
+          pmoc_ocupantes_flutuantes: input.is_pmoc ? (input.pmoc_ocupantes_flutuantes ?? null) : null,
+          pmoc_carga_termica_tr: input.is_pmoc ? (input.pmoc_carga_termica_tr ?? null) : null,
           created_by: user?.id || null,
         } as any,
         ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'responsible_technician_id']
@@ -895,6 +911,13 @@ export function useContracts() {
       responsible_technician_id?: string | null;
       pmoc_legal_compliance_text?: string | null;
       next_pmoc_generation_date?: string | null;
+      // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado.
+      pmoc_tipo_atividade?: string | null;
+      pmoc_identificacao_ambiente?: string | null;
+      pmoc_area_climatizada_m2?: number | null;
+      pmoc_ocupantes_fixos?: number | null;
+      pmoc_ocupantes_flutuantes?: number | null;
+      pmoc_carga_termica_tr?: number | null;
     }) => {
       const { id, assignee_user_ids, plan_activities, items, ...rest } = input;
 
@@ -919,6 +942,13 @@ export function useContracts() {
       if (input.is_pmoc === false) {
         payload.responsible_technician_id = null;
         payload.next_pmoc_generation_date = null;
+        // Sem PMOC, a caracterização do ambiente climatizado não se aplica.
+        payload.pmoc_tipo_atividade = null;
+        payload.pmoc_identificacao_ambiente = null;
+        payload.pmoc_area_climatizada_m2 = null;
+        payload.pmoc_ocupantes_fixos = null;
+        payload.pmoc_ocupantes_flutuantes = null;
+        payload.pmoc_carga_termica_tr = null;
       }
       const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
       if (updErr) throw updErr;

@@ -96,6 +96,18 @@ export interface PlanilhaEquipment {
   serial_number: string | null;
 }
 
+// Seção 4 do modelo do cliente — caracterização do ambiente climatizado
+// (tipo de atividade, identificação, área, ocupantes e carga térmica). Vem das
+// colunas pmoc_* do contrato; campo ausente vira "—" na renderização.
+export interface PlanilhaAmbiente {
+  tipo_atividade: string | null;
+  identificacao: string | null;
+  area_m2: number | null;
+  ocupantes_fixos: number | null;
+  ocupantes_flutuantes: number | null;
+  carga_termica_tr: number | null;
+}
+
 export interface PlanilhaActivity {
   section: string | null;
   component: string | null;
@@ -134,6 +146,7 @@ export interface PlanilhaData {
     start_date_extenso: string;
     frequency_label: string;
   };
+  ambiente: PlanilhaAmbiente | null;
   equipments: PlanilhaEquipment[];
   activities: PlanilhaActivity[];
   execution: PlanilhaExecutionSummary | null;
@@ -154,6 +167,19 @@ function safe(raw: string | null | undefined): string {
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/•/g, "-");
+}
+
+// Número no padrão BR (vírgula decimal), sem casas inúteis. null/undefined → "—".
+function fmtNum(n: number | null | undefined): string {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  const s = Number.isInteger(n) ? String(n) : String(n);
+  return s.replace(".", ",");
+}
+
+// Texto livre vazio vira travessão.
+function orDash(s: string | null | undefined): string {
+  const t = (s ?? "").trim();
+  return t.length > 0 ? t : "—";
 }
 
 function sectionLabel(key: string | null): string {
@@ -399,8 +425,10 @@ export async function drawPlanilha(
   drawField(ctx, "CFT / CREA:", data.rt.cft_crea ?? "");
   ctx.cursorY -= 6;
 
-  // ---- Seção 4 — Relação dos equipamentos climatizados ---------------------
-  drawSectionTitle(ctx, "4.", "Relação dos Equipamentos Climatizados");
+  // ---- Seção 4 — Relação dos ambientes climatizados ------------------------
+  // Caracterização do ambiente (modelo do cliente) + relação dos equipamentos.
+  drawSectionTitle(ctx, "4.", "Relação dos Ambientes Climatizados");
+  drawAmbienteBlock(ctx);
   drawEquipmentTable(ctx);
   ctx.cursorY -= 6;
 
@@ -419,7 +447,33 @@ export async function drawPlanilha(
   await drawFooterSeal(ctx);
 }
 
-// -- Seção 4: tabela de equipamentos -----------------------------------------
+// -- Seção 4 (parte A): caracterização do ambiente climatizado ---------------
+// Espelha o modelo do cliente: tipo de atividade, identificação, área (m²),
+// ocupantes (fixos/flutuantes) e carga térmica (TR). Campo ausente vira "—".
+function drawAmbienteBlock(ctx: Ctx): void {
+  const a = ctx.data.ambiente;
+  drawField(ctx, "Tipo de atividade:", orDash(a?.tipo_atividade));
+  drawField(ctx, "Identificação do ambiente:", orDash(a?.identificacao));
+  drawField(
+    ctx,
+    "Área climatizada (m²):",
+    a?.area_m2 != null ? fmtNum(a.area_m2) : "—",
+  );
+  drawField(
+    ctx,
+    "Nº de ocupantes:",
+    `Fixos: ${a?.ocupantes_fixos != null ? fmtNum(a.ocupantes_fixos) : "—"}   ` +
+      `Flutuantes: ${a?.ocupantes_flutuantes != null ? fmtNum(a.ocupantes_flutuantes) : "—"}`,
+  );
+  drawField(
+    ctx,
+    "Carga térmica (TR):",
+    a?.carga_termica_tr != null ? fmtNum(a.carga_termica_tr) : "—",
+  );
+  ctx.cursorY -= 4;
+}
+
+// -- Seção 4 (parte B): tabela de equipamentos -------------------------------
 function drawEquipmentTable(ctx: Ctx): void {
   const { helv, helvBold } = ctx;
   const cols = [

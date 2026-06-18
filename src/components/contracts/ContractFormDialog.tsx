@@ -176,6 +176,23 @@ function planRowToFreqCode(row: { freq_code: string | null; freq_months: number 
   }
 }
 
+// Parse de input numérico no padrão BR (vírgula decimal) → number | null.
+// String vazia/só espaço → null. Valor inválido → null (não trava o submit).
+function parseDecimalBR(raw: string): number | null {
+  const t = (raw ?? '').trim().replace(',', '.');
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Parse de inteiro (ocupantes). Vazio → null; inválido → null.
+function parseIntOrNull(raw: string): number | null {
+  const t = (raw ?? '').trim();
+  if (!t) return null;
+  const n = parseInt(t, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { createContract, updateContract } = useContracts();
   // Plano de serviços já persistido (só carrega em edição). Hook é a fronteira
@@ -253,6 +270,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [showPmocOffConfirm, setShowPmocOffConfirm] = useState(false);
   // Quick-create RT (Onda UI-1.2): botão "+" abre dialog nested.
   const [showQuickCreateRT, setShowQuickCreateRT] = useState(false);
+  // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado (modelo do
+  // cliente). Strings cruas; números enviados parseados no submit. Só aparecem
+  // quando o contrato é PMOC.
+  const [pmocTipoAtividade, setPmocTipoAtividade] = useState('');
+  const [pmocIdentificacaoAmbiente, setPmocIdentificacaoAmbiente] = useState('');
+  const [pmocAreaClimatizada, setPmocAreaClimatizada] = useState('');
+  const [pmocOcupantesFixos, setPmocOcupantesFixos] = useState('');
+  const [pmocOcupantesFlutuantes, setPmocOcupantesFlutuantes] = useState('');
+  const [pmocCargaTermicaTr, setPmocCargaTermicaTr] = useState('');
   // Em modo edição, guarda a chamada que ficou esperando confirmação do "desligar PMOC".
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
@@ -315,6 +341,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setIsPmoc(editIsPmoc);
       setResponsibleTechnicianId(editContract.responsible_technician_id || '');
       initialIsPmocRef.value = editIsPmoc;
+      // Caracterização do ambiente climatizado (Seção 4). Número nulo → string vazia.
+      const numToStr = (v: any) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
+      setPmocTipoAtividade(editContract.pmoc_tipo_atividade || '');
+      setPmocIdentificacaoAmbiente(editContract.pmoc_identificacao_ambiente || '');
+      setPmocAreaClimatizada(numToStr(editContract.pmoc_area_climatizada_m2));
+      setPmocOcupantesFixos(numToStr(editContract.pmoc_ocupantes_fixos));
+      setPmocOcupantesFlutuantes(numToStr(editContract.pmoc_ocupantes_flutuantes));
+      setPmocCargaTermicaTr(numToStr(editContract.pmoc_carga_termica_tr));
     } else {
       setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]);
       setBillingUserIds([]); setBillingTeamIds([]); setServiceTypeId('');
@@ -326,6 +360,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setIsPmoc(false);
       setResponsibleTechnicianId('');
       initialIsPmocRef.value = false;
+      setPmocTipoAtividade(''); setPmocIdentificacaoAmbiente(''); setPmocAreaClimatizada('');
+      setPmocOcupantesFixos(''); setPmocOcupantesFlutuantes(''); setPmocCargaTermicaTr('');
     }
   }, [open, editContract]);
 
@@ -521,6 +557,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // PMOC (Onda A)
       is_pmoc: isPmoc,
       responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
+      // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado.
+      pmoc_tipo_atividade: isPmoc ? (pmocTipoAtividade.trim() || null) : null,
+      pmoc_identificacao_ambiente: isPmoc ? (pmocIdentificacaoAmbiente.trim() || null) : null,
+      pmoc_area_climatizada_m2: isPmoc ? parseDecimalBR(pmocAreaClimatizada) : null,
+      pmoc_ocupantes_fixos: isPmoc ? parseIntOrNull(pmocOcupantesFixos) : null,
+      pmoc_ocupantes_flutuantes: isPmoc ? parseIntOrNull(pmocOcupantesFlutuantes) : null,
+      pmoc_carga_termica_tr: isPmoc ? parseDecimalBR(pmocCargaTermicaTr) : null,
     });
   };
 
@@ -616,6 +659,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           // PMOC (Onda A). RT vai vazio quando o usuário ainda não escolheu.
           is_pmoc: isPmoc,
           responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
+          // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado.
+          pmoc_tipo_atividade: isPmoc ? (pmocTipoAtividade.trim() || null) : null,
+          pmoc_identificacao_ambiente: isPmoc ? (pmocIdentificacaoAmbiente.trim() || null) : null,
+          pmoc_area_climatizada_m2: isPmoc ? parseDecimalBR(pmocAreaClimatizada) : null,
+          pmoc_ocupantes_fixos: isPmoc ? parseIntOrNull(pmocOcupantesFixos) : null,
+          pmoc_ocupantes_flutuantes: isPmoc ? parseIntOrNull(pmocOcupantesFlutuantes) : null,
+          pmoc_carga_termica_tr: isPmoc ? parseDecimalBR(pmocCargaTermicaTr) : null,
           items: selectedItems.map(i => ({
             equipment_id: i.equipment_id || null,
             item_name: i.item_name,
@@ -913,6 +963,79 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         as OSs imediatamente, igual a um contrato comum.
                       </AlertDescription>
                     </Alert>
+
+                    {/* Seção 4 da Planilha PMOC — caracterização do ambiente
+                        climatizado (modelo do cliente). Só aparece em PMOC. */}
+                    <div className="rounded-lg border p-3 space-y-3">
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                          Ambiente climatizado (Planilha PMOC)
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Caracterização do ambiente para a Seção 4 da Planilha PMOC. Opcional —
+                          campos em branco aparecem como "—" no documento.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Tipo de atividade</Label>
+                          <Input
+                            value={pmocTipoAtividade}
+                            onChange={e => setPmocTipoAtividade(e.target.value)}
+                            placeholder="Ex: Escritório administrativo"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Identificação do ambiente</Label>
+                          <Input
+                            value={pmocIdentificacaoAmbiente}
+                            onChange={e => setPmocIdentificacaoAmbiente(e.target.value)}
+                            placeholder="Ex: 2º andar — Sala 201"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Área climatizada (m²)</Label>
+                          <Input
+                            inputMode="decimal"
+                            value={pmocAreaClimatizada}
+                            onChange={e => setPmocAreaClimatizada(e.target.value)}
+                            placeholder="Ex: 120,5"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Carga térmica (TR)</Label>
+                          <Input
+                            inputMode="decimal"
+                            value={pmocCargaTermicaTr}
+                            onChange={e => setPmocCargaTermicaTr(e.target.value)}
+                            placeholder="Ex: 5,0"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Pode ser calculada na ferramenta de Carga Térmica do técnico. Aqui é só registro.
+                          </p>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Nº de ocupantes fixos</Label>
+                          <Input
+                            inputMode="numeric"
+                            value={pmocOcupantesFixos}
+                            onChange={e => setPmocOcupantesFixos(e.target.value)}
+                            placeholder="Ex: 12"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                          <Input
+                            inputMode="numeric"
+                            value={pmocOcupantesFlutuantes}
+                            onChange={e => setPmocOcupantesFlutuantes(e.target.value)}
+                            placeholder="Ex: 30"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

@@ -1231,7 +1231,13 @@ export type Database = {
           name: string
           next_pmoc_generation_date: string | null
           notes: string | null
+          pmoc_area_climatizada_m2: number | null
+          pmoc_carga_termica_tr: number | null
+          pmoc_identificacao_ambiente: string | null
           pmoc_legal_compliance_text: string | null
+          pmoc_ocupantes_fixos: number | null
+          pmoc_ocupantes_flutuantes: number | null
+          pmoc_tipo_atividade: string | null
           portal_documents_released: boolean
           portal_is_public: boolean
           public_pmoc_token: string | null
@@ -1260,7 +1266,13 @@ export type Database = {
           name: string
           next_pmoc_generation_date?: string | null
           notes?: string | null
+          pmoc_area_climatizada_m2?: number | null
+          pmoc_carga_termica_tr?: number | null
+          pmoc_identificacao_ambiente?: string | null
           pmoc_legal_compliance_text?: string | null
+          pmoc_ocupantes_fixos?: number | null
+          pmoc_ocupantes_flutuantes?: number | null
+          pmoc_tipo_atividade?: string | null
           portal_documents_released?: boolean
           portal_is_public?: boolean
           public_pmoc_token?: string | null
@@ -1289,7 +1301,13 @@ export type Database = {
           name?: string
           next_pmoc_generation_date?: string | null
           notes?: string | null
+          pmoc_area_climatizada_m2?: number | null
+          pmoc_carga_termica_tr?: number | null
+          pmoc_identificacao_ambiente?: string | null
           pmoc_legal_compliance_text?: string | null
+          pmoc_ocupantes_fixos?: number | null
+          pmoc_ocupantes_flutuantes?: number | null
+          pmoc_tipo_atividade?: string | null
           portal_documents_released?: boolean
           portal_is_public?: boolean
           public_pmoc_token?: string | null
