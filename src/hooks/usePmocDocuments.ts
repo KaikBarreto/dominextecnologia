@@ -11,7 +11,12 @@ import { supabase } from '@/integrations/supabase/client';
  * Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.1 / §5.3
  */
 
-export type PmocDocumentType = 'dossie_pmoc' | 'cronograma_anual' | 'termo_rt' | 'certificado';
+export type PmocDocumentType =
+  | 'dossie_pmoc'
+  | 'cronograma_anual'
+  | 'termo_rt'
+  | 'certificado'
+  | 'planilha';
 
 /**
  * Status da assinatura embarcada no PDF (Onda E — v1.9.x).
@@ -100,7 +105,13 @@ export function usePmocDocuments(contractId: string | null | undefined) {
       if (!existing || doc.version > existing.version) acc[doc.doc_type] = doc;
       return acc;
     },
-    { dossie_pmoc: undefined, cronograma_anual: undefined, termo_rt: undefined, certificado: undefined },
+    {
+      dossie_pmoc: undefined,
+      cronograma_anual: undefined,
+      termo_rt: undefined,
+      certificado: undefined,
+      planilha: undefined,
+    },
   );
 
   return {

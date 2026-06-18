@@ -49,6 +49,8 @@ import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { RateServiceAffordance } from '@/components/technician/RateServiceAffordance';
 import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hooks/useServiceRatings';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
+import { useOsActivityChecklist } from '@/hooks/useOsActivityChecklist';
+import { VisitChecklistPanel } from '@/components/technician/VisitChecklistPanel';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
@@ -136,6 +138,15 @@ export default function TechnicianOS() {
   // Só aparece quando a OS é PMOC (`useIsPmocOrder`). Notas são obrigatórias
   // se status é 'parcial' ou 'nao_conforme'.
   const { isPmoc: isPmocOrder } = useIsPmocOrder(id);
+  // Checklist da visita (snapshot do plano PMOC/manutenção). Só preenche quando
+  // a OS foi gerada por contrato com plano; OS avulsa volta vazia (RLS anon
+  // também devolve vazio no modo cliente → painel não aparece).
+  const {
+    groups: checklistGroups,
+    hasActivities: hasChecklist,
+    saveActivity: saveChecklistActivity,
+    rollup: checklistRollup,
+  } = useOsActivityChecklist(isAuthenticated === true ? id : undefined);
   type PmocConformity = 'conforme' | 'parcial' | 'nao_conforme';
   const [conformityStatus, setConformityStatus] = useState<PmocConformity | ''>('');
   const [conformityNotes, setConformityNotes] = useState<string>('');
@@ -508,6 +519,28 @@ export default function TechnicianOS() {
     return () => { db.removeChannel(channel); };
   }, [id, isAuthenticated, fetchServiceOrder, fetchTechnicianProfile]);
 
+  // Reflete o rollup de conformidade do checklist da visita na OS em tempo real,
+  // conforme o técnico marca conforme/não-conforme. Idempotente: só grava quando
+  // o rollup difere do que já está em service_orders.pmoc_conformity_status.
+  // Não roda se a OS já foi concluída (status final não se reabre por aqui).
+  useEffect(() => {
+    if (isAuthenticated !== true || !id || !hasChecklist || !checklistRollup) return;
+    if (serviceOrder?.status === 'concluida' || serviceOrder?.status === 'cancelada') return;
+    if ((serviceOrder as any)?.pmoc_conformity_status === checklistRollup) return;
+    supabase
+      .from('service_orders')
+      .update({ pmoc_conformity_status: checklistRollup })
+      .eq('id', id)
+      .then(({ error }) => {
+        if (!error) {
+          setServiceOrder((prev) =>
+            prev ? ({ ...prev, pmoc_conformity_status: checklistRollup } as any) : prev
+          );
+        }
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isAuthenticated, hasChecklist, checklistRollup, serviceOrder?.status, (serviceOrder as any)?.pmoc_conformity_status]);
+
   const fetchPhotos = async () => {
     try {
       const { data, error } = await db
@@ -733,6 +766,14 @@ export default function TechnicianOS() {
       if (isPmocOrder && conformityStatus) {
         updateData.pmoc_conformity_status = conformityStatus;
         updateData.pmoc_conformity_notes = conformityNotes.trim() || null;
+      }
+
+      // Rollup automático do checklist da visita: se a OS carrega atividades do
+      // plano e o técnico não classificou manualmente, deriva o status de
+      // conformidade da OS a partir das respostas (não-conforme se alguma
+      // atividade for não-conforme; conforme se todas conformes; senão parcial).
+      if (hasChecklist && checklistRollup && !updateData.pmoc_conformity_status) {
+        updateData.pmoc_conformity_status = checklistRollup;
       }
 
       const { error } = await supabase
@@ -1955,6 +1996,16 @@ export default function TechnicianOS() {
               </Accordion>
             </CardContent>
           </Card>
+        )}
+
+        {/* Checklist da visita (PMOC/manutenção) — só quando a OS tem atividades
+            do plano (gerada por contrato). OS avulsa não renderiza nada aqui. */}
+        {isCheckedIn && hasChecklist && (
+          <VisitChecklistPanel
+            groups={checklistGroups}
+            readOnly={isPaused}
+            onSave={saveChecklistActivity}
+          />
         )}
 
         {/* Fallback: single questionnaire from OS (legacy / no junction data) */}

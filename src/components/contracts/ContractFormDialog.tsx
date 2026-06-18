@@ -11,7 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
-import { useContracts, generateOccurrences, getFrequencyLabel } from '@/hooks/useContracts';
+import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -21,6 +22,8 @@ import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
+import { usePmocActivityCatalog, type PmocCatalogActivity } from '@/hooks/usePmocActivityCatalog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
 import { autoGeneratePmocDocsV1 } from '@/hooks/useGeneratePmocDocument';
 import { useToast } from '@/hooks/use-toast';
@@ -72,8 +75,112 @@ const QUICK_DAYS = [
   { label: '90 dias', value: 90 },
 ];
 
+// Frequências por serviço (notação da norma PMOC, vale pra qualquer contrato).
+// 'E' (eventual) é registrado mas não entra no cronograma automático.
+const ACTIVITY_FREQ_OPTIONS: { code: FreqCode; label: string }[] = [
+  { code: 'M', label: 'Mensal' },
+  { code: 'T', label: 'Trimestral' },
+  { code: 'S', label: 'Semestral' },
+  { code: 'A', label: 'Anual' },
+  { code: 'E', label: 'Eventual' },
+];
+
+// Seções da norma cujas atividades são de LOCAL (não se repetem por aparelho):
+// casa de máquinas, dutos, torres, bombas, etc. Tudo fora desse conjunto
+// (condicionadores, medições, testes…) é por equipamento por default.
+const LOCAL_SCOPE_SECTIONS = new Set<string>([
+  'casa_maquinas',
+  'dutos',
+  'tomada_ar_exterior',
+  'torres_resfriamento',
+  'bombas_agua',
+  'caixa_expansao',
+  'tratamento_quimico',
+  'quadros_eletricos',
+  'qualidade_ar',
+]);
+
+// Escopo default de uma atividade do catálogo a partir da seção. Atividade sem
+// seção (manual livre) é por equipamento por default.
+function defaultScopeForSection(section: string | null | undefined): boolean {
+  if (section && LOCAL_SCOPE_SECTIONS.has(section)) return false; // local
+  return true; // por equipamento
+}
+
+// Linha do editor de plano (estado de UI). Vira PlanActivityInput no submit.
+// Carrega os metadados do catálogo PMOC (section/component/medição) quando a
+// linha vem do picker; linhas manuais livres só têm description + freq_code.
+interface PlanActivityRow {
+  description: string;
+  freq_code: FreqCode;
+  section?: string | null;
+  component?: string | null;
+  is_measurement?: boolean;
+  unit?: string | null;
+  expected_min?: number | null;
+  expected_max?: number | null;
+  catalog_activity_id?: string | null;
+  // Escopo (Fase 3): true = por equipamento (default), false = geral/local.
+  applies_per_equipment?: boolean;
+}
+
+// Linha do editor → PlanActivityInput (preserva os metadados do catálogo).
+function planRowToInput(a: PlanActivityRow): PlanActivityInput {
+  return {
+    description: a.description,
+    freq_code: a.freq_code,
+    section: a.section ?? null,
+    component: a.component ?? null,
+    is_measurement: a.is_measurement ?? false,
+    unit: a.unit ?? null,
+    expected_min: a.expected_min ?? null,
+    expected_max: a.expected_max ?? null,
+    catalog_activity_id: a.catalog_activity_id ?? null,
+    applies_per_equipment: a.applies_per_equipment ?? true,
+  };
+}
+
+// Normaliza o default_freq_code do catálogo (string) pro FreqCode do editor.
+function catalogFreqCode(code: string | null | undefined): FreqCode {
+  if (code && ['M', 'T', 'S', 'A', 'E'].includes(code)) return code as FreqCode;
+  return 'M';
+}
+
+// Atividade do catálogo PMOC → linha editável do plano (ponto de partida).
+function catalogToPlanRow(a: PmocCatalogActivity): PlanActivityRow {
+  return {
+    description: a.description,
+    freq_code: catalogFreqCode(a.default_freq_code),
+    section: a.section,
+    component: a.component,
+    is_measurement: a.is_measurement,
+    unit: a.unit,
+    expected_min: a.expected_min,
+    expected_max: a.expected_max,
+    catalog_activity_id: a.id,
+    // Escopo default vem da seção da norma (aparelho vs. local).
+    applies_per_equipment: defaultScopeForSection(a.section),
+  };
+}
+
+// Mapeia uma linha persistida (freq_code OU freq_months) pro código que o editor
+// suporta (M/T/S/A/E). freq_code ganha; senão deriva de freq_months; default M.
+function planRowToFreqCode(row: { freq_code: string | null; freq_months: number | null }): FreqCode {
+  if (row.freq_code && ['M', 'T', 'S', 'A', 'E'].includes(row.freq_code)) return row.freq_code as FreqCode;
+  switch (row.freq_months) {
+    case 1: return 'M';
+    case 3: return 'T';
+    case 6: return 'S';
+    case 12: return 'A';
+    default: return 'M';
+  }
+}
+
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { createContract, updateContract } = useContracts();
+  // Plano de serviços já persistido (só carrega em edição). Hook é a fronteira
+  // do Supabase — o componente nunca lê contract_plan_activities direto.
+  const { data: existingPlan } = useContractPlanActivities(editContract?.id);
   const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { data: allProfiles } = useProfiles();
@@ -82,6 +189,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { templates } = useFormTemplates();
   // Lista de RTs ativos do tenant — usada quando o contrato é marcado como PMOC.
   const { technicians: responsibleTechnicians, isLoading: rtLoading } = useResponsibleTechnicians({ activeOnly: true });
+  // Catálogo PMOC (149 atividades da norma) — alimenta o picker por seção e a
+  // pré-carga automática do plano padrão (seção condicionadores) num PMOC novo.
+  const { groups: catalogGroups, defaultSectionActivities, isLoading: catalogLoading } = usePmocActivityCatalog();
   const { toast } = useToast();
 
   const isEditing = !!editContract;
@@ -108,6 +218,27 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [horizonMonths, setHorizonMonths] = useState(12);
 
+  // Step 2 — Plano de serviços com frequência por linha (Fase 1). Quando há ao
+  // menos um serviço, o motor de visitas agrupadas (1 OS/mês = união do que
+  // vence) assume; vazio = frequência única (legado). Captura mínima funcional;
+  // o redesign visual é outra tarefa.
+  const [planActivities, setPlanActivities] = useState<PlanActivityRow[]>([]);
+  const [newActivityDesc, setNewActivityDesc] = useState('');
+  const [newActivityFreq, setNewActivityFreq] = useState<FreqCode>('M');
+  // Snapshot do plano carregado do banco (modo edição) — base pra detectar se o
+  // plano mudou e o cronograma precisa ser recalculado.
+  const [initialPlanSig, setInitialPlanSig] = useState('');
+  // Confirmação antes de recalcular visitas futuras numa edição de cronograma.
+  const [showRegenConfirm, setShowRegenConfirm] = useState(false);
+  const [regenCount, setRegenCount] = useState(0);
+
+  // Picker do catálogo PMOC (Fase 2). Abre por seção; seleção multi vira linhas
+  // do plano. `pickerSelection` = ids do catálogo marcados no modal aberto.
+  const [showCatalogPicker, setShowCatalogPicker] = useState(false);
+  const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
+  // Guarda contra re-empurrar o plano padrão PMOC mais de uma vez por abertura.
+  const [pmocDefaultSeeded, setPmocDefaultSeeded] = useState(false);
+
   // Step 3
   const [selectedItems, setSelectedItems] = useState<{ equipment_id?: string; item_name: string; item_description?: string; form_template_id?: string }[]>([]);
   const [itemSearch, setItemSearch] = useState('');
@@ -132,6 +263,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (!open) {
       setStep(0);
       setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
+      setShowCatalogPicker(false); setPickerSelection(new Set()); setPmocDefaultSeeded(false);
       return;
     }
 
@@ -166,6 +298,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setFreqValue(editContract.frequency_value || 1);
       setStartDate(editContract.start_date || format(new Date(), 'yyyy-MM-dd'));
       setHorizonMonths(editContract.horizon_months || 12);
+      // Plano de atividades é repopulado por um efeito dedicado quando a query
+      // useContractPlanActivities resolve (carrega async). Aqui só limpamos o
+      // editor de "nova atividade".
+      setNewActivityDesc(''); setNewActivityFreq('M');
       setSelectedItems(
         (editContract.contract_items || []).map((i: any) => ({
           equipment_id: i.equipment_id || undefined,
@@ -184,6 +320,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setBillingUserIds([]); setBillingTeamIds([]); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
+      setPlanActivities([]); setInitialPlanSig(''); setNewActivityDesc(''); setNewActivityFreq('M');
       setSelectedItems([]);
       // Default: contrato comum.
       setIsPmoc(false);
@@ -191,6 +328,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       initialIsPmocRef.value = false;
     }
   }, [open, editContract]);
+
+  // Repopula o editor "Serviços com frequência própria" com o plano persistido
+  // (modo edição). Roda quando a query resolve. Guarda a assinatura inicial pra
+  // detectar mudança de plano no submit.
+  const planSigOf = (rows: { description: string; freq_code: FreqCode; applies_per_equipment?: boolean }[]) =>
+    rows.map(a => `${a.description.trim()}|${a.freq_code}|${a.applies_per_equipment === false ? '0' : '1'}`).join('§');
+
+  useEffect(() => {
+    if (!open || !editContract) return;
+    const rows: PlanActivityRow[] = (existingPlan ?? []).map(r => ({
+      description: r.description,
+      freq_code: planRowToFreqCode(r),
+      section: r.section,
+      component: r.component,
+      is_measurement: r.is_measurement,
+      unit: r.unit,
+      expected_min: r.expected_min,
+      expected_max: r.expected_max,
+      catalog_activity_id: r.catalog_activity_id,
+      applies_per_equipment: r.applies_per_equipment,
+    }));
+    setPlanActivities(rows);
+    setInitialPlanSig(planSigOf(rows));
+  }, [open, editContract, existingPlan]);
 
   const customerOptions = useMemo(() =>
     customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
@@ -202,7 +363,91 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     [startDate, freqType, freqValue, horizonMonths]
   );
 
+  // Atividades do plano com frequência válida pra cronograma (exclui eventuais).
+  const schedulablePlan = useMemo(
+    () => planActivities.filter(a => activityPeriodMonths(a as PlanActivityInput) > 0),
+    [planActivities],
+  );
+  const usePlanEngine = schedulablePlan.length > 0;
+
+  // Quando há plano, a prévia/contagem de OS vem do motor de visitas agrupadas
+  // (1 OS/mês = união do que vence), não da cadência única.
+  const groupedVisits = useMemo(
+    () => usePlanEngine
+      ? generateGroupedVisits(new Date(startDate + 'T00:00:00'), horizonMonths, schedulablePlan as PlanActivityInput[])
+      : [],
+    [usePlanEngine, startDate, horizonMonths, schedulablePlan],
+  );
+
+  // Nº de OS que será gerado (prévia do botão/Revisão).
+  const visitCount = usePlanEngine ? groupedVisits.length : occurrences.length;
+
   const weekendDates = occurrences.filter(d => d.getDay() === 0 || d.getDay() === 6);
+
+  const addPlanActivity = () => {
+    const desc = newActivityDesc.trim();
+    if (!desc) return;
+    setPlanActivities(prev => [...prev, { description: desc, freq_code: newActivityFreq }]);
+    setNewActivityDesc('');
+    setNewActivityFreq('M');
+  };
+
+  // PMOC nasce com o plano padrão da norma (Fase 2). Quando o contrato é marcado
+  // PMOC E o plano está vazio, pré-carrega as atividades da seção universal
+  // (condicionadores — split/AC) com as frequências default. Ponto de partida
+  // editável. Guards:
+  //  - só PMOC, só plano vazio, catálogo já carregado;
+  //  - `pmocDefaultSeeded` impede re-empurrar na mesma abertura (ex: o gestor
+  //    apagar tudo de propósito não deve fazer reaparecer);
+  //  - em edição de PMOC que já tem plano, o plano não está vazio → não duplica.
+  useEffect(() => {
+    if (!open || isEditing) return; // só em contrato novo; edição não re-empurra
+    if (!isPmoc || pmocDefaultSeeded) return;
+    if (catalogLoading || defaultSectionActivities.length === 0) return;
+    if (planActivities.length > 0) return;
+    setPlanActivities(defaultSectionActivities.map(catalogToPlanRow));
+    setPmocDefaultSeeded(true);
+  }, [open, isEditing, isPmoc, pmocDefaultSeeded, catalogLoading, defaultSectionActivities, planActivities.length]);
+
+  // Abre o picker do catálogo já com as linhas vindas do catálogo pré-marcadas
+  // (evita duplicar uma atividade que o gestor já adicionou).
+  const openCatalogPicker = () => {
+    const existingCatalogIds = new Set(
+      planActivities.map(a => a.catalog_activity_id).filter(Boolean) as string[],
+    );
+    setPickerSelection(existingCatalogIds);
+    setShowCatalogPicker(true);
+  };
+
+  const togglePickerActivity = (id: string) => {
+    setPickerSelection(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Confirma o picker: adiciona as atividades novas (que ainda não estão no
+  // plano) como linhas editáveis. Não remove o que o gestor desmarcou aqui —
+  // remoção é pelo botão × da linha (o picker só ADICIONA).
+  const confirmCatalogPicker = () => {
+    const existingCatalogIds = new Set(
+      planActivities.map(a => a.catalog_activity_id).filter(Boolean) as string[],
+    );
+    const toAdd: PlanActivityRow[] = [];
+    for (const group of catalogGroups) {
+      for (const act of group.activities) {
+        if (pickerSelection.has(act.id) && !existingCatalogIds.has(act.id)) {
+          toAdd.push(catalogToPlanRow(act));
+        }
+      }
+    }
+    if (toAdd.length > 0) {
+      setPlanActivities(prev => [...prev, ...toAdd]);
+      toast({ title: `${toAdd.length} serviço(s) adicionado(s) do catálogo PMOC` });
+    }
+    setShowCatalogPicker(false);
+  };
 
   const filteredEquipment = activeEquipment.filter(eq =>
     eq.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
@@ -241,6 +486,61 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     return true;
   };
 
+  // Aplica de fato a edição (chamado direto ou após confirmar o recálculo).
+  // Passa plan_activities (o updateContract substitui o plano e regenera as
+  // visitas futuras quando o cronograma muda) e assignee_user_ids.
+  const doUpdate = async ({ actualTechnicianId, actualTeamId }: { actualTechnicianId: string | null; actualTeamId: string | null }) => {
+    await updateContract.mutateAsync({
+      id: editContract.id,
+      name,
+      customer_id: customerId,
+      technician_id: actualTechnicianId,
+      team_id: actualTeamId,
+      assignee_user_ids: selectedUserIds,
+      service_type_id: serviceTypeId || null,
+      form_template_id: formTemplateId || null,
+      status: isActive ? 'active' : 'paused',
+      notes: notes || null,
+      frequency_type: freqType,
+      frequency_value: freqValue,
+      start_date: startDate,
+      horizon_months: horizonMonths,
+      billing_responsible_ids: billingUserIds,
+      // Plano de serviços com frequência (Fase 1/2). Sempre enviado em edição →
+      // substitui o plano persistido (add/remover/mudar frequência reflete).
+      // Preserva metadados do catálogo PMOC quando a linha veio do picker.
+      plan_activities: planActivities.map(planRowToInput),
+      // Equipamentos/itens (Fase 3). Sempre enviado em edição → o hook aplica
+      // diff (insere novos, apaga removidos); mudança re-expande as visitas.
+      items: selectedItems.map(i => ({
+        equipment_id: i.equipment_id || null,
+        item_name: i.item_name,
+        item_description: i.item_description || null,
+        form_template_id: i.form_template_id || null,
+      })),
+      // PMOC (Onda A)
+      is_pmoc: isPmoc,
+      responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
+    });
+  };
+
+  // Confirma o recálculo das visitas futuras e aplica a edição.
+  const confirmRegenAndUpdate = async () => {
+    setShowRegenConfirm(false);
+    setSubmitting(true);
+    try {
+      const actualTeamId = selectedTeamIds.length > 0 ? selectedTeamIds[0] : null;
+      const actualTechnicianId = !actualTeamId && selectedUserIds.length > 0 ? selectedUserIds[0] : null;
+      await doUpdate({ actualTechnicianId, actualTeamId });
+      onOpenChange(false);
+      if (onCreated) onCreated(editContract.id);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
@@ -260,25 +560,41 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       }
 
       if (isEditing) {
-        await updateContract.mutateAsync({
-          id: editContract.id,
-          name,
-          customer_id: customerId,
-          technician_id: actualTechnicianId,
-          team_id: actualTeamId,
-          service_type_id: serviceTypeId || null,
-          form_template_id: formTemplateId || null,
-          status: isActive ? 'active' : 'paused',
-          notes: notes || null,
-          frequency_type: freqType,
-          frequency_value: freqValue,
-          start_date: startDate,
-          horizon_months: horizonMonths,
-          billing_responsible_ids: billingUserIds,
-          // PMOC (Onda A)
-          is_pmoc: isPmoc,
-          responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
-        });
+        // Mudou algo que afeta o cronograma? (campos de frequência OU o plano)
+        const scheduleFieldsChanged =
+          startDate !== (editContract.start_date || '') ||
+          freqType !== (editContract.frequency_type || 'months') ||
+          freqValue !== (editContract.frequency_value || 1) ||
+          horizonMonths !== (editContract.horizon_months || 12);
+        const currentPlanSig = planSigOf(planActivities);
+        const planChanged = currentPlanSig !== initialPlanSig;
+        // Mudança no conjunto de equipamentos também re-expande as visitas
+        // (mesma chave estável usada no hook: equipment_id ou nome do manual).
+        const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
+          it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
+        const initialItemsSig = ((editContract.contract_items || []) as any[])
+          .map((it) => itemKey(it)).sort().join('§');
+        const currentItemsSig = selectedItems.map((it) => itemKey(it)).sort().join('§');
+        const itemsChanged = initialItemsSig !== currentItemsSig;
+        const scheduleChanged = scheduleFieldsChanged || planChanged || itemsChanged;
+
+        // Quantas OSs futuras não-realizadas seriam refeitas (preview do diálogo).
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const futureRegenerable = ((editContract.service_orders || []) as any[]).filter(
+          (os) =>
+            REGENERABLE_OS_STATUSES.has(os.status ?? '') &&
+            (os.scheduled_date ?? '') >= todayStr,
+        ).length;
+
+        // Cronograma muda E há visitas futuras a refazer → confirma antes.
+        if (isActive && scheduleChanged && futureRegenerable > 0) {
+          setRegenCount(futureRegenerable);
+          setShowRegenConfirm(true);
+          setSubmitting(false);
+          return;
+        }
+
+        await doUpdate({ actualTechnicianId, actualTeamId });
         onOpenChange(false);
         if (onCreated) onCreated(editContract.id);
       } else {
@@ -306,10 +622,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             item_description: i.item_description || null,
             form_template_id: i.form_template_id || null,
           })),
+          // Plano de serviços com frequência (Fase 1/2). Vazio = frequência única.
+          // Preserva metadados do catálogo PMOC quando a linha veio do picker.
+          plan_activities: planActivities.map(planRowToInput),
         });
 
         const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
-        const expectedOsCount = (result as any)?.expectedOsCount ?? occurrences.length;
+        const expectedOsCount = (result as any)?.expectedOsCount ?? visitCount;
         const newContractId = (result as any)?.id as string | undefined;
 
         // Auto-gera a V1 dos documentos PMOC (TRT, Certificado, Cronograma,
@@ -690,6 +1009,115 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   )}
                 </div>
               )}
+
+              {/* Plano de serviços com frequência (Fase 1). Cada serviço pode ter
+                  uma frequência própria; quando há ao menos um serviço com
+                  frequência de cronograma, o sistema gera 1 visita/mês agrupando
+                  tudo que vence — em vez da frequência única acima. */}
+              <div className="rounded-lg border p-3 space-y-3">
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4 text-primary shrink-0" />
+                    Serviços com frequência própria (opcional)
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Adicione serviços com frequências diferentes (ex: filtro mensal, serpentina trimestral).
+                    Quando houver serviços aqui, o sistema gera <strong>1 visita por mês</strong> agrupando tudo que vence,
+                    ignorando a frequência única acima.
+                  </p>
+                  {isPmoc && (
+                    <p className="text-xs text-info mt-1 flex items-start gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      <span>
+                        Pré-carregamos as atividades de Condicionadores de Ar conforme a norma (Lei 13.589/2018).
+                        É um <strong>ponto de partida editável</strong> — ajuste a frequência, remova ou adicione mais do catálogo.
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Picker do catálogo PMOC (Fase 2). Disponível em qualquer
+                    contrato; a auto-carga só acontece no PMOC. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={openCatalogPicker}
+                  disabled={catalogLoading}
+                >
+                  <ShieldCheck className="h-4 w-4 mr-2 text-info" />
+                  {catalogLoading ? 'Carregando catálogo...' : 'Adicionar do catálogo PMOC'}
+                </Button>
+
+                <div className="flex gap-2">
+                  <Input
+                    className="flex-1"
+                    placeholder="Ex: Limpeza de filtros"
+                    value={newActivityDesc}
+                    onChange={e => setNewActivityDesc(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPlanActivity(); } }}
+                  />
+                  <Select value={newActivityFreq} onValueChange={v => setNewActivityFreq(v as FreqCode)}>
+                    <SelectTrigger className="w-[130px] shrink-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ACTIVITY_FREQ_OPTIONS.map(o => (
+                        <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="icon" className="shrink-0 h-10 w-10" onClick={addPlanActivity} disabled={!newActivityDesc.trim()}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {planActivities.length > 0 && (
+                  <div className="space-y-1.5">
+                    {planActivities.map((a, i) => {
+                      const freqLabel = ACTIVITY_FREQ_OPTIONS.find(o => o.code === a.freq_code)?.label ?? a.freq_code;
+                      const perEquip = a.applies_per_equipment !== false;
+                      return (
+                        <div key={i} className="flex flex-col gap-2 rounded border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0 flex items-center gap-2">
+                            <span className="font-medium truncate">{a.description}</span>
+                            <Badge variant={a.freq_code === 'E' ? 'outline' : 'info'} className="shrink-0 text-[10px]">{freqLabel}</Badge>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Escopo da atividade (Fase 3): por equipamento ou geral (local). */}
+                            <button
+                              type="button"
+                              onClick={() => setPlanActivities(prev => prev.map((x, idx) => idx === i ? { ...x, applies_per_equipment: !perEquip } : x))}
+                              className={cn(
+                                'px-2 py-1 rounded-full text-[10px] font-medium border transition-colors whitespace-nowrap',
+                                perEquip
+                                  ? 'bg-info/10 text-info border-info/30'
+                                  : 'bg-muted text-muted-foreground border-border',
+                              )}
+                              title="Alterna entre repetir a atividade por equipamento ou tratá-la como geral (local)"
+                            >
+                              {perEquip ? 'Por equipamento' : 'Geral (local)'}
+                            </button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setPlanActivities(prev => prev.filter((_, idx) => idx !== i))}>
+                              ×
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {usePlanEngine ? (
+                      <div className="flex items-center gap-2 text-xs text-info pt-1">
+                        <Info className="h-3.5 w-3.5 shrink-0" />
+                        {groupedVisits.length} visita(s) serão geradas (1 por mês com serviços a vencer).
+                        Eventuais não entram no cronograma automático.
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-warning pt-1">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        Só há serviços eventuais — nenhuma visita será agendada automaticamente.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -828,11 +1256,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     })()}
                   </span>
                 </div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Frequência</span><span className="font-medium">{getFrequencyLabel(freqType, freqValue)}</span></div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Frequência</span>
+                  <span className="font-medium text-right">
+                    {usePlanEngine ? `Por serviço (${schedulablePlan.length}) — visita mensal agrupada` : getFrequencyLabel(freqType, freqValue)}
+                  </span>
+                </div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Início</span><span className="font-medium">{format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy')}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Horizonte</span><span className="font-medium">{horizonMonths} meses</span></div>
                 {!isEditing && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Ocorrências</span><span className="font-medium">{occurrences.length} datas</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{usePlanEngine ? 'Visitas' : 'Ocorrências'}</span><span className="font-medium">{visitCount} {usePlanEngine ? 'visitas' : 'datas'}</span></div>
                 )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Itens</span><span className="font-medium">{selectedItems.length}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={isActive ? 'success' : 'outline'}>{isActive ? 'Ativo' : 'Pausado'}</Badge></div>
@@ -881,7 +1314,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              {submitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : `Criar Contrato (${occurrences.length} OSs)`}
+              {submitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : `Criar Contrato (${visitCount} OSs)`}
             </Button>
           )}
         </SheetFooter>
@@ -913,6 +1346,128 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         setShowQuickCreateRT(false);
       }}
     />
+
+    {/* Picker do catálogo PMOC (Fase 2). Drawer no mobile, dialog no desktop.
+        Navegação por seção (accordion); cada item é um checkbox com o selo de
+        frequência default da norma. Multi-seleção; ao confirmar vira linha do
+        plano (editável depois). */}
+    <ResponsiveModal
+      open={showCatalogPicker}
+      onOpenChange={setShowCatalogPicker}
+      title="Catálogo de atividades PMOC"
+      footer={
+        <div className="flex flex-row items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">
+            {pickerSelection.size} selecionada(s)
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowCatalogPicker(false)}>Cancelar</Button>
+            <Button onClick={confirmCatalogPicker}>Adicionar ao plano</Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Atividades de manutenção conforme a norma (Lei 13.589/2018). Marque as que se aplicam ao contrato.
+          A frequência vem da norma como ponto de partida e fica editável no plano.
+        </p>
+        {catalogGroups.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            {catalogLoading ? 'Carregando catálogo...' : 'Nenhuma atividade no catálogo.'}
+          </p>
+        ) : (
+          <Accordion type="multiple" defaultValue={[catalogGroups[0]?.section]} className="w-full">
+            {catalogGroups.map(group => {
+              const selectedInGroup = group.activities.filter(a => pickerSelection.has(a.id)).length;
+              return (
+                <AccordionItem key={group.section} value={group.section}>
+                  <AccordionTrigger className="text-sm">
+                    <span className="flex items-center gap-2 text-left">
+                      {group.label}
+                      <Badge variant="outline" className="text-[10px] shrink-0">
+                        {group.activities.length}
+                      </Badge>
+                      {selectedInGroup > 0 && (
+                        <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
+                      )}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-1">
+                      {group.activities.map(act => {
+                        const checked = pickerSelection.has(act.id);
+                        const freqLabel = ACTIVITY_FREQ_OPTIONS.find(o => o.code === catalogFreqCode(act.default_freq_code))?.label
+                          ?? act.default_freq_code;
+                        return (
+                          <label
+                            key={act.id}
+                            className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 rounded border-border shrink-0"
+                              checked={checked}
+                              onChange={() => togglePickerActivity(act.id)}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground">{act.description}</p>
+                              {act.component && (
+                                <p className="text-xs text-muted-foreground truncate">{act.component}</p>
+                              )}
+                            </div>
+                            <Badge
+                              variant={catalogFreqCode(act.default_freq_code) === 'E' ? 'outline' : 'info'}
+                              className="shrink-0 text-[10px]"
+                            >
+                              {freqLabel}
+                            </Badge>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        )}
+      </div>
+    </ResponsiveModal>
+
+    {/* Confirmação antes de recalcular as visitas futuras (edição de cronograma).
+        ResponsiveModal = drawer de baixo no mobile, dialog no desktop. */}
+    <ResponsiveModal
+      open={showRegenConfirm}
+      onOpenChange={(v) => { if (!v) { setShowRegenConfirm(false); setSubmitting(false); } }}
+      title="Recalcular visitas futuras?"
+      footer={
+        <div className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => { setShowRegenConfirm(false); setSubmitting(false); }}>
+            Cancelar
+          </Button>
+          <Button
+            className="bg-warning text-warning-foreground hover:bg-warning/90"
+            onClick={confirmRegenAndUpdate}
+            disabled={submitting}
+          >
+            {submitting ? 'Salvando...' : 'Recalcular visitas'}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <p>
+          Alterar datas, frequência ou os serviços do plano vai recalcular as visitas futuras deste contrato.
+        </p>
+        <p className="text-foreground font-medium">
+          {regenCount} visita(s) futura(s) não realizada(s) serão refeitas.
+        </p>
+        <p>
+          Visitas já realizadas, em andamento ou a caminho são preservadas. Cobranças (financeiro) não são afetadas.
+        </p>
+      </div>
+    </ResponsiveModal>
 
     {/* Confirmação ao desligar PMOC quando já havia RT atribuído. */}
     <AlertDialog open={showPmocOffConfirm} onOpenChange={setShowPmocOffConfirm}>

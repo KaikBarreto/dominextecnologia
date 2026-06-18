@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   Globe,
+  Table2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -54,6 +55,7 @@ import {
   useGenerateCronogramaPdf,
   useGenerateTrtPdf,
   useGenerateCertificadoPdf,
+  useGeneratePlanilhaPdf,
 } from '@/hooks/useGeneratePmocDocument';
 import {
   buildDefaultTermoRtHtml,
@@ -342,6 +344,7 @@ export function PmocContractDocsTab({
   const generateDossie = useGenerateDossiePdf();
   const generateTrt = useGenerateTrtPdf();
   const generateCertificado = useGenerateCertificadoPdf();
+  const generatePlanilha = useGeneratePlanilhaPdf();
 
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
@@ -375,6 +378,7 @@ export function PmocContractDocsTab({
   const latestDossie = latestByType.dossie_pmoc;
   const latestTrt = latestByType.termo_rt;
   const latestCertificado = latestByType.certificado;
+  const latestPlanilha = latestByType.planilha;
 
   // Onda G — diagnóstico de campos faltantes no `templateContext`. Quando
   // algum campo crítico estiver vazio, exibimos banner warning no topo da aba
@@ -427,6 +431,10 @@ export function PmocContractDocsTab({
   };
   const handleGenerateCertificado = async () => {
     await generateCertificado.mutateAsync({ contract_id: contractId });
+    refetch();
+  };
+  const handleGeneratePlanilha = async () => {
+    await generatePlanilha.mutateAsync({ contract_id: contractId });
     refetch();
   };
 
@@ -714,6 +722,58 @@ export function PmocContractDocsTab({
         </CardContent>
       </Card>
 
+      {/* Card 2 — Planilha PMOC (Fase 4)
+          ================================
+          Espelha o modelo do cliente: identificação + RT + relação de
+          equipamentos + plano de manutenção M/T/S/A + matriz de 12 meses +
+          registro de execução. Também vive embutida no Dossiê completo. */}
+      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
+              <Table2 className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 break-words">Planilha PMOC</span>
+              {latestPlanilha && (
+                <Badge variant="secondary" className="ml-2">
+                  v{latestPlanilha.version}
+                </Badge>
+              )}
+            </CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Identificação do ambiente, Responsável Técnico, relação dos equipamentos climatizados e o plano de manutenção com periodicidade (mensal, trimestral, semestral, anual) e mapa dos 12 meses.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Última geração: {formatGeneratedAt(latestPlanilha?.generated_at)}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              Se o contrato ainda não tem plano de atividades, a planilha é gerada com as seções preenchidas e o plano em branco.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {latestPlanilha?.pdf_storage_path && (
+                <DownloadLatestButton doc={latestPlanilha} label="Baixar Planilha PMOC" />
+              )}
+              <Button
+                size="sm"
+                onClick={handleGeneratePlanilha}
+                disabled={generatePlanilha.isPending}
+                className="min-h-11 active:scale-[0.97] transition-transform rounded-xl"
+              >
+                {generatePlanilha.isPending ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-1 h-4 w-4" />
+                )}
+                {latestPlanilha ? 'Gerar nova versão' : 'Gerar Planilha PMOC'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Histórico de versões */}
       <VersionHistory documents={documents} isLoading={isLoadingDocs} />
 
@@ -777,6 +837,7 @@ function DownloadLatestButton({
   const generateCronograma = useGenerateCronogramaPdf();
   const generateTrt = useGenerateTrtPdf();
   const generateCertificado = useGenerateCertificadoPdf();
+  const generatePlanilha = useGeneratePlanilhaPdf();
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
@@ -789,6 +850,8 @@ function DownloadLatestButton({
         result = await generateCronograma.mutateAsync({ contract_id: doc.contract_id });
       } else if (doc.doc_type === 'certificado') {
         result = await generateCertificado.mutateAsync({ contract_id: doc.contract_id });
+      } else if (doc.doc_type === 'planilha') {
+        result = await generatePlanilha.mutateAsync({ contract_id: doc.contract_id });
       } else {
         // termo_rt (Onda E)
         result = await generateTrt.mutateAsync({ contract_id: doc.contract_id });
@@ -850,7 +913,7 @@ function VersionHistory({
       (acc[d.doc_type] ||= []).push(d);
       return acc;
     },
-    { dossie_pmoc: [], cronograma_anual: [], termo_rt: [], certificado: [] },
+    { dossie_pmoc: [], cronograma_anual: [], termo_rt: [], certificado: [], planilha: [] },
   );
 
   return (
@@ -876,6 +939,7 @@ function VersionHistory({
             <TypeBlock title="Termo de Responsabilidade Técnica" docs={byType.termo_rt} />
             <TypeBlock title="Certificado de Conformidade" docs={byType.certificado} />
             <TypeBlock title="Dossiê PMOC" docs={byType.dossie_pmoc} />
+            <TypeBlock title="Planilha PMOC" docs={byType.planilha} />
             <TypeBlock title="Cronograma Anual" docs={byType.cronograma_anual} />
           </CardContent>
         </CollapsibleContent>

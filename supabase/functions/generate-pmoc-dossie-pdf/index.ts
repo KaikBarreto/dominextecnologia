@@ -33,6 +33,12 @@ import {
   CronogramaServiceOrder,
 } from "../_shared/pmoc-templates/cronograma-mes.ts";
 import {
+  drawPlanilha,
+  PlanilhaActivity,
+  PlanilhaData,
+  PlanilhaEquipment,
+} from "../_shared/pmoc-templates/planilha.ts";
+import {
   TemplateContext,
   computeValidUntil,
   dateToExtenso,
@@ -668,6 +674,94 @@ Deno.serve(async (req) => {
       status: o.status,
     }));
 
+    // ---- 7.7 (Planilha PMOC — Fase 4) Equipamentos + plano de manutenção +
+    //          resumo de execução. A Planilha vira páginas finais do Dossiê.
+    const [{ data: contractItems }, { data: planActivities }, { data: allOrders }] =
+      await Promise.all([
+        supabase
+          .from("contract_items")
+          .select(
+            "equipment_id, item_name, sort_order, equipment:equipment(name, brand, model, capacity, location, serial_number)",
+          )
+          .eq("contract_id", contract.id)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("contract_plan_activities")
+          .select("section, component, description, freq_code, freq_months, is_active, sort_order")
+          .eq("contract_id", contract.id)
+          .eq("company_id", contract.company_id)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("service_orders")
+          .select("id, status")
+          .eq("contract_id", contract.id)
+          .eq("company_id", contract.company_id),
+      ]);
+
+    type ContractItemRow = {
+      item_name: string | null;
+      equipment:
+        | {
+            name: string | null;
+            brand: string | null;
+            model: string | null;
+            capacity: string | null;
+            location: string | null;
+            serial_number: string | null;
+          }
+        | null;
+    };
+    const planilhaEquipments: PlanilhaEquipment[] = (
+      (contractItems ?? []) as ContractItemRow[]
+    ).map((ci) => ({
+      name: ci.equipment?.name ?? ci.item_name ?? null,
+      brand: ci.equipment?.brand ?? null,
+      model: ci.equipment?.model ?? null,
+      capacity: ci.equipment?.capacity ?? null,
+      location: ci.equipment?.location ?? null,
+      serial_number: ci.equipment?.serial_number ?? null,
+    }));
+
+    type PlanRow = {
+      section: string | null;
+      component: string | null;
+      description: string | null;
+      freq_code: string | null;
+      freq_months: number | null;
+      is_active: boolean | null;
+    };
+    const planSeen = new Set<string>();
+    const planilhaActivities: PlanilhaActivity[] = [];
+    for (const a of (planActivities ?? []) as PlanRow[]) {
+      if (a.is_active === false) continue;
+      const key = `${a.section ?? ""}|${a.component ?? ""}|${a.description ?? ""}|${a.freq_code ?? ""}|${a.freq_months ?? ""}`;
+      if (planSeen.has(key)) continue;
+      planSeen.add(key);
+      planilhaActivities.push({
+        section: a.section,
+        component: a.component,
+        description: a.description,
+        freq_code: a.freq_code,
+        freq_months: a.freq_months,
+      });
+    }
+
+    const planilhaTotalVisitas = (allOrders ?? []).length;
+    const planilhaConcluidas = (allOrders ?? []).filter((o) => o.status === "concluida").length;
+    let planilhaConformes = 0;
+    let planilhaNaoConformes = 0;
+    if (planilhaTotalVisitas > 0) {
+      const { data: soaRows } = await supabase
+        .from("service_order_activities")
+        .select("conformity_status")
+        .eq("company_id", contract.company_id)
+        .in("service_order_id", (allOrders ?? []).map((o) => o.id));
+      for (const a of soaRows ?? []) {
+        if (a.conformity_status === "conforme") planilhaConformes++;
+        else if (a.conformity_status === "nao_conforme") planilhaNaoConformes++;
+      }
+    }
+
     // ---- 8. content_hash dos campos dinâmicos
     //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
     //    Onda H: bump pra dossie_v3 (variableContext entra — campos novos do
@@ -699,8 +793,13 @@ Deno.serve(async (req) => {
     //    documento" entrou nas páginas embutidas do Termo RT e do Certificado +
     //    3 chaves `documento.*` no variableContext. Emissão/vencimento mudam por
     //    dia → o cache do Dossiê passa a girar diariamente (esperado).
+    //    Fase 4 Planilha PMOC (2026-06): bump pra dossie_v12 — a Planilha PMOC
+    //    (identificação + RT + relação de equipamentos + plano M/T/S/A + matriz
+    //    12 meses + registro de execução) passou a viver no fim do Dossiê. Os
+    //    equipamentos, o plano (atividades+freq) e o resumo de execução entram
+    //    no hash pra o cache invalidar quando qualquer um mudar.
     const hashInput = JSON.stringify({
-      v: "dossie_v11",
+      v: "dossie_v12",
       tenant: {
         name: tenantName,
         cnpj,
@@ -737,6 +836,17 @@ Deno.serve(async (req) => {
         orders: cronogramaOrders
           .map((o) => ({ n: o.order_number, d: o.scheduled_date, s: o.status }))
           .sort((a, b) => (a.d ?? "").localeCompare(b.d ?? "")),
+      },
+      // Fase 4 — Planilha PMOC embutida: equipamentos + plano + execução.
+      planilha: {
+        equipments: planilhaEquipments,
+        activities: planilhaActivities,
+        execution: {
+          total: planilhaTotalVisitas,
+          concluidas: planilhaConcluidas,
+          conformes: planilhaConformes,
+          nao_conformes: planilhaNaoConformes,
+        },
       },
     });
     const contentHash = await sha256Hex(hashInput);
@@ -849,6 +959,45 @@ Deno.serve(async (req) => {
         logoImage: cronogramaLogo,
       });
     }
+
+    // ---- Fase 4: Planilha PMOC ao final do Dossiê. Reusa o logo pré-embedado
+    //      (cronogramaLogo) pra não re-decodificar o raster.
+    const planilhaData: PlanilhaData = {
+      tenant: { name: tenantName, cnpj, logoImage: cronogramaLogo },
+      customer: {
+        name: customer?.name ?? "Unidade",
+        document: customer?.document ?? null,
+        address: customer?.address ?? null,
+        city: customer?.city ?? null,
+        state: customer?.state ?? null,
+      },
+      rt: {
+        nome: rt.full_name ?? "",
+        modalidade: rt.modality ?? "Técnico em Refrigeração",
+        cft_crea: rt.cft_crea ?? null,
+      },
+      contract: {
+        name: contract.name ?? null,
+        start_date_extenso: dateToExtenso(contract.start_date ?? null),
+        frequency_label: frequencyLabelFrom(
+          (contract.frequency_value ?? null) as number | null,
+          (contract.frequency_type ?? null) as string | null,
+        ),
+      },
+      equipments: planilhaEquipments,
+      activities: planilhaActivities,
+      execution:
+        planilhaTotalVisitas > 0
+          ? {
+              total: planilhaTotalVisitas,
+              concluidas: planilhaConcluidas,
+              conformes: planilhaConformes,
+              nao_conformes: planilhaNaoConformes,
+            }
+          : null,
+      generated_at_extenso: dateToExtenso(new Date()),
+    };
+    await drawPlanilha(pdf, planilhaData);
 
     const pdfBytes = await pdf.save();
     const pdfSize = pdfBytes.length;

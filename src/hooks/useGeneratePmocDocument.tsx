@@ -48,7 +48,8 @@ type PmocEdgeFunctionName =
   | 'generate-pmoc-dossie-pdf'
   | 'generate-pmoc-cronograma-pdf'
   | 'generate-pmoc-trt-pdf'
-  | 'generate-pmoc-certificado-pdf';
+  | 'generate-pmoc-certificado-pdf'
+  | 'generate-pmoc-planilha-pdf';
 
 /**
  * Erro tipado lançado pelo `callEdgeFunction`. Carrega o `code` curto vindo da
@@ -303,6 +304,51 @@ export function useGenerateTrtPdf() {
  * disponível; caso contrário, deixa linha em branco e devolve
  * `signature_status: 'pending'` pra UI sinalizar.
  */
+/**
+ * Fase 4 — gera a "Planilha PMOC" standalone (espelha o modelo do cliente:
+ * identificação + RT + relação de equipamentos + plano M/T/S/A + matriz 12
+ * meses + registro de execução). Também vive embutida no Dossiê.
+ */
+export function useGeneratePlanilhaPdf() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ contract_id }: GenerateInput) =>
+      callEdgeFunction('generate-pmoc-planilha-pdf', contract_id),
+    onSuccess: (result, { contract_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['pmoc-documents', contract_id] });
+      toast({
+        title: result.cached ? 'Planilha já estava atualizada' : 'Planilha PMOC gerada!',
+        description: result.cached
+          ? 'Os dados não mudaram desde a última versão. Usando a versão atual.'
+          : `Versão ${result.version} criada com sucesso.`,
+      });
+    },
+    onError: (err: unknown) => {
+      const code = extractErrorCode(err);
+      const msg = getPmocErrorMessage(code, 'Erro ao gerar planilha');
+      toast({
+        variant: 'destructive',
+        title: msg.title,
+        description: msg.description,
+        action: msg.cta
+          ? (
+            <ToastAction
+              altText={msg.cta.label}
+              onClick={() => {
+                window.location.href = msg.cta!.path;
+              }}
+            >
+              {msg.cta.label}
+            </ToastAction>
+          )
+          : undefined,
+      });
+    },
+  });
+}
+
 export function useGenerateCertificadoPdf() {
   const { toast } = useToast();
   const queryClient = useQueryClient();

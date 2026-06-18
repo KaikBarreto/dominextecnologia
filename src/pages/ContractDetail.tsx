@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -26,12 +26,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
+import { ContractEquipmentTab } from '@/components/contracts/ContractEquipmentTab';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
 import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useContractDetail, isActiveContractOS } from '@/hooks/useContractDetail';
 import { useContracts, getFrequencyLabel, type ContractServiceOrder } from '@/hooks/useContracts';
+import { useServiceOrderActivities, freqCodeShortLabel } from '@/hooks/useServiceOrderActivities';
 import { osStatusLabels, type OsStatus } from '@/types/database';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
@@ -97,15 +99,17 @@ export default function ContractDetail() {
   // Aba ativa do contrato. PMOC tem 5 abas; contrato comum tem 3 (Visão Geral
   // + Ocorrências + Financeiro). Default = visão geral. "Ocorrências" e
   // "Financeiro" são abas próprias em TODO contrato (decisão do CEO).
-  const [pmocTab, setPmocTab] = useState<'overview' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
+  const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
 
-  const { createContract, deleteContract, applyFinancialLinksToContractParcels } = useContracts();
+  const { deleteContract, applyFinancialLinksToContractParcels, renewContract } = useContracts();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [showReceivableModal, setShowReceivableModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
+  // Quantos meses estender no clique de "Renovar / Estender" (default 12).
+  const [renewExtraMonths, setRenewExtraMonths] = useState(12);
   const [showEditForm, setShowEditForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
@@ -290,6 +294,15 @@ export default function ContractDetail() {
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
 
+  // Atividades (serviços que cada visita carrega) — só das OSs visíveis na
+  // página atual de ocorrências, pra não buscar o contrato inteiro de uma vez.
+  // Hook próprio (escopo = OSs deste contrato), nunca via query de useContracts.
+  const occVisibleOsIds = useMemo(
+    () => occPagination.paginatedItems.map((os) => os.id),
+    [occPagination.paginatedItems],
+  );
+  const { activitiesByOrderId } = useServiceOrderActivities(occVisibleOsIds);
+
   const { markAsPaid: markTxPaid, deleteTransaction, updateTransaction } = useFinancial();
 
   const handleOpenEditRec = (t: any) => {
@@ -434,44 +447,16 @@ export default function ContractDetail() {
   };
 
   const handleRenewContract = async () => {
-    if (!contract) return;
+    if (!contract || !id) return;
     setIsRenewing(true);
     try {
-      // Nova data de início = dia seguinte à MAIOR scheduled_date das OSs do
-      // contrato (sortedOccurrences já vem ordenado asc → última = maior).
-      const lastOrder = sortedOccurrences[sortedOccurrences.length - 1];
-      const newStartDate = lastOrder?.scheduled_date
-        ? format(addDays(parseISO(lastOrder.scheduled_date), 1), 'yyyy-MM-dd')
-        : format(new Date(), 'yyyy-MM-dd');
-
-      const result = await createContract.mutateAsync({
-        name: contract.name,
-        customer_id: contract.customer_id,
-        technician_id: contract.technician_id || null,
-        team_id: (contract as any).team_id || null,
-        service_type_id: contract.service_type_id || null,
-        form_template_id: contract.form_template_id || null,
-        status: 'active',
-        notes: contract.notes || null,
-        frequency_type: contract.frequency_type,
-        frequency_value: contract.frequency_value,
-        start_date: newStartDate,
-        horizon_months: contract.horizon_months,
-        // PMOC (Onda A): renovação preserva o flag e o RT do contrato original.
-        // Se for PMOC, OSs vão sair via cron diário (não no momento da renovação).
-        is_pmoc: (contract as any).is_pmoc === true,
-        responsible_technician_id: (contract as any).responsible_technician_id || null,
-        items: (contract.contract_items || []).map(i => ({
-          equipment_id: i.equipment_id || null,
-          item_name: i.item_name,
-          item_description: i.item_description || null,
-          form_template_id: i.form_template_id || null,
-        })),
-      });
-      toast({ title: 'Contrato renovado com sucesso!' });
-      if (result) navigate(`/contratos/${(result as any).id}`);
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao renovar', description: getErrorMessage(err) });
+      // Renovação assistida: estende o MESMO contrato e gera só o tail novo de
+      // visitas (datas após a última existente). Não cria contrato novo nem
+      // duplica visitas. O hook centraliza a regra (motor único + idempotência).
+      await renewContract.mutateAsync({ id, extraMonths: renewExtraMonths });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail', id] });
+    } catch {
+      // Toast de erro já exibido pelo hook.
     } finally {
       setIsRenewing(false);
       setShowRenewDialog(false);
@@ -524,6 +509,26 @@ export default function ContractDetail() {
   const statusCfg = STATUS_LABELS[contract.status] || STATUS_LABELS.active;
   const occurrences = sortedOccurrences;
   const items = contract.contract_items || [];
+
+  // "Contrato acabando": ativo e a ÚLTIMA visita (maior scheduled_date) está a
+  // ≤30 dias de hoje OU já passou sem nenhuma visita futura. Sinal discreto pra
+  // o gestor renovar antes de ficar sem agenda. Comparação por data (Brasil),
+  // sem hora, pra não oscilar com fuso.
+  const isEndingSoon = (() => {
+    if (contract.status !== 'active') return false;
+    const lastDated = occurrences
+      .filter(o => !!o.scheduled_date)
+      .map(o => o.scheduled_date as string)
+      .sort()
+      .pop();
+    if (!lastDated) return false;
+    const last = parseLocalDate(lastDated);
+    last.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const in30 = addDays(today, 30);
+    return last <= in30;
+  })();
   const showBillingInSchedule = (contract as any).show_billing_in_schedule !== false;
 
   const totalReceivable = (linkedTransactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
@@ -662,19 +667,40 @@ export default function ContractDetail() {
         const pmocSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
+          { value: 'equipamentos', label: 'Equipamentos', icon: Wrench },
           { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
           { value: 'documentos', label: 'Documentos', icon: FileText },
           { value: 'cronograma', label: 'Cronograma', icon: Calendar },
         ];
 
-        // Abas de contrato comum (3): Visão Geral + Ocorrências + Financeiro.
+        // Abas de contrato comum (4): Visão Geral + Ocorrências + Equipamentos + Financeiro.
         const commonSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
+          { value: 'equipamentos', label: 'Equipamentos', icon: Wrench },
           { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
         ];
 
         const overviewContent = (
+          <div className="space-y-6 min-w-0 w-full">
+          {/* Aviso "Contrato acabando" — discreto, cor warning por token. Atalho
+              direto pro diálogo de renovação. Só quando ativo e ≤30 dias do fim. */}
+          {isEndingSoon && (
+            <button
+              type="button"
+              onClick={() => setShowRenewDialog(true)}
+              className="flex w-full items-center gap-3 rounded-2xl border border-warning/40 bg-warning/10 p-3 text-left transition-colors hover:bg-warning/15 active:scale-[0.99] lg:rounded-lg"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/20 text-warning">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-warning">Contrato acabando</p>
+                <p className="text-xs text-muted-foreground break-words">A última visita está chegando. Toque para renovar e gerar o próximo ciclo.</p>
+              </div>
+              <RefreshCw className="h-4 w-4 shrink-0 text-warning" />
+            </button>
+          )}
           <div className="grid gap-6 lg:grid-cols-3 min-w-0 w-full">
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6 min-w-0 w-full">
@@ -899,7 +925,7 @@ export default function ContractDetail() {
                 </div>
               )}
               <Button variant="outline" className="mt-2 w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(true)}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Renovar Contrato
+                <RefreshCw className="mr-2 h-4 w-4" /> Renovar / Estender
               </Button>
             </CardContent>
           </Card>
@@ -915,6 +941,7 @@ export default function ContractDetail() {
           </Card>
 
         </div>
+          </div>
           </div>
         );
 
@@ -966,6 +993,33 @@ export default function ContractDetail() {
                           </span>
                           <Badge variant="secondary" className="shrink-0 self-start text-xs">OS #{os.order_number}</Badge>
                         </div>
+                        {(() => {
+                          const acts = activitiesByOrderId.get(os.id) ?? [];
+                          if (acts.length === 0) return null;
+                          const shown = acts.slice(0, 4);
+                          const extra = acts.length - shown.length;
+                          return (
+                            <div className="min-w-0 space-y-1.5 border-t pt-2">
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                {acts.length} {acts.length === 1 ? 'serviço' : 'serviços'} nesta visita
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {shown.map((a) => {
+                                  const freq = freqCodeShortLabel(a.freq_code);
+                                  return (
+                                    <Badge key={a.id} variant="secondary" className="max-w-full gap-1 text-[10px] font-normal">
+                                      <span className="truncate">{a.description}</span>
+                                      {freq && <span className="shrink-0 text-primary">· {freq}</span>}
+                                    </Badge>
+                                  );
+                                })}
+                                {extra > 0 && (
+                                  <Badge variant="outline" className="text-[10px] font-normal">+{extra}</Badge>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {isActive && (
                           <div className="flex items-center justify-end gap-1">
                             <Button
@@ -993,6 +1047,7 @@ export default function ContractDetail() {
                         <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>Data</SortableTableHead>
                         <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Dia</SortableTableHead>
                         <SortableTableHead sortKey="order_number" sortConfig={occSortConfig} onSort={handleOccSort}>OS</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Serviços</SortableTableHead>
                         <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>Status</SortableTableHead>
                         <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
                       </TableRow>
@@ -1028,6 +1083,30 @@ export default function ContractDetail() {
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary">OS #{os.order_number}</Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[320px]">
+                              {(() => {
+                                const acts = activitiesByOrderId.get(os.id) ?? [];
+                                if (acts.length === 0) return <span className="text-muted-foreground text-sm">—</span>;
+                                const shown = acts.slice(0, 3);
+                                const extra = acts.length - shown.length;
+                                return (
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    {shown.map((a) => {
+                                      const freq = freqCodeShortLabel(a.freq_code);
+                                      return (
+                                        <Badge key={a.id} variant="secondary" className="max-w-full gap-1 text-[11px] font-normal">
+                                          <span className="truncate">{a.description}</span>
+                                          {freq && <span className="shrink-0 text-primary">· {freq}</span>}
+                                        </Badge>
+                                      );
+                                    })}
+                                    {extra > 0 && (
+                                      <Badge variant="outline" className="text-[11px] font-normal">+{extra}</Badge>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1.5">
@@ -1203,10 +1282,11 @@ export default function ContractDetail() {
           <SettingsSidebarLayout
             tabs={isPmoc ? pmocSidebarTabs : commonSidebarTabs}
             activeTab={pmocTab}
-            onTabChange={(v) => setPmocTab(v as 'overview' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma')}
+            onTabChange={(v) => setPmocTab(v as 'overview' | 'equipamentos' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma')}
           >
             {pmocTab === 'overview' && overviewContent}
             {pmocTab === 'ocorrencias' && occurrencesContent}
+            {pmocTab === 'equipamentos' && <ContractEquipmentTab contract={contract} />}
             {pmocTab === 'financeiro' && financialContent}
             {isPmoc && pmocTab === 'documentos' && id && (
               <PmocContractDocsTab
@@ -1341,10 +1421,15 @@ export default function ContractDetail() {
                 <p className="text-sm">Serão excluídos junto com o contrato:</p>
                 <ul className="text-sm list-disc pl-5 space-y-1">
                   <li>{occurrences.length} ordens de serviço vinculadas</li>
-                  <li>{(linkedTransactions || []).length} transações financeiras (contas a receber)</li>
+                  <li>{(linkedTransactions || []).filter(t => !t.is_paid).length} cobrança(s) em aberto (contas a receber)</li>
                   <li>{items.length} itens do contrato</li>
                   <li>Alertas de cobrança na agenda</li>
                 </ul>
+                {(linkedTransactions || []).filter(t => t.is_paid).length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {(linkedTransactions || []).filter(t => t.is_paid).length} recebimento(s) já realizado(s) serão <strong>preservados no caixa</strong> (mantidos no faturamento, sem vínculo com o contrato).
+                  </p>
+                )}
                 <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
                 <div className="flex items-center gap-2 pt-2">
                   <Checkbox
@@ -1371,33 +1456,45 @@ export default function ContractDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Renew confirmation dialog */}
-      <AlertDialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Renovar contrato</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <p>Será criado um novo contrato com as mesmas configurações:</p>
-                <ul className="text-sm list-disc pl-5 space-y-1">
-                  <li>Cliente: {contract.customers?.name}</li>
-                  <li>Frequência: {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</li>
-                  <li>Horizonte: {contract.horizon_months} meses</li>
-                  <li>{items.length} itens</li>
-                </ul>
-                <p className="text-sm">A data de início será o dia seguinte à última visita (OS) do contrato atual.</p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRenewing}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRenewContract} disabled={isRenewing}>
+      {/* Renew / Estender — estende ESTE contrato e gera o próximo ciclo de
+          visitas (sem criar contrato novo). Mobile = drawer de baixo via
+          ResponsiveModal. Escolha de +6 / +12 meses (default 12). */}
+      <ResponsiveModal open={showRenewDialog} onOpenChange={setShowRenewDialog} title="Renovar / Estender contrato">
+        <div className="space-y-4 p-1">
+          <p className="text-sm text-muted-foreground break-words">
+            Estende este contrato e gera o próximo ciclo de visitas, continuando de onde a última visita parou. As visitas existentes não são alteradas.
+          </p>
+          <div className="space-y-2">
+            <Label>Estender por</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[6, 12].map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  variant={renewExtraMonths === m ? 'default' : 'outline'}
+                  className="min-h-11 active:scale-[0.98] transition-transform rounded-xl"
+                  onClick={() => setRenewExtraMonths(m)}
+                >
+                  +{m} meses
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+            <p>Horizonte atual: <strong>{contract.horizon_months} meses</strong> → novo: <strong>{contract.horizon_months + renewExtraMonths} meses</strong></p>
+            <p>Frequência: {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</p>
+          </div>
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end">
+            <Button variant="outline" className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(false)} disabled={isRenewing}>
+              Cancelar
+            </Button>
+            <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleRenewContract} disabled={isRenewing}>
               {isRenewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-              Renovar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Renovar +{renewExtraMonths} meses
+            </Button>
+          </div>
+        </div>
+      </ResponsiveModal>
 
       {/* Edit contract */}
       <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} editContract={contract} onCreated={(newId) => { if (newId !== id) navigate(`/contratos/${newId}`); else queryClient.invalidateQueries({ queryKey: ['contract-detail'] }); }} />

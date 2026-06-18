@@ -40,6 +40,55 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.44',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Alerta de gás inflamável e mais fotos de compressores',
+        description: 'Na seção Fluidos Refrigerantes, os gases inflamáveis (como R-290, R-32, R-600a e R-1234yf) agora exibem um ícone de fogo na lista e no detalhe, deixando claro o cuidado necessário. Também completamos logos de fabricantes e fotos de mais compressores no catálogo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.12.43',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contratos com serviços de frequências diferentes',
+        description: 'Agora um mesmo contrato pode ter vários serviços com periodicidades diferentes — por exemplo, limpar o filtro todo mês, lavar a serpentina a cada trimestre e verificar o gás uma vez por ano. O sistema monta sozinho o calendário de visitas, juntando numa única visita do mês tudo que vence ali (a visita do 12º mês, por exemplo, já traz o mensal, o trimestral, o semestral e o anual de uma vez). Cada visita nasce com o checklist certo daquele período. Vale para qualquer contrato, não só PMOC.',
+        category: 'recurso',
+      },
+      {
+        title: 'Checklist por equipamento no app do técnico',
+        description: 'Na ordem de serviço da visita, o técnico vê o checklist agrupado por equipamento, com as atividades daquele mês, campos de medição com a faixa esperada (avisa quando o valor sai da faixa) e a marcação de conforme / não conforme. O status de conformidade da ordem se atualiza sozinho.',
+        category: 'recurso',
+      },
+      {
+        title: 'PMOC pela norma + Planilha PMOC em PDF',
+        description: 'Ao marcar um contrato como PMOC, o plano de manutenção já vem preenchido com as atividades e periodicidades previstas na norma (filtros, serpentinas, medições, etc.), tudo editável. E dá para gerar a Planilha PMOC em PDF — com a identificação, o responsável técnico, a relação dos equipamentos e o plano de manutenção por periodicidade ao longo de 12 meses — disponível avulsa e dentro do dossiê.',
+        category: 'recurso',
+      },
+      {
+        title: 'Gestão de contrato mais completa',
+        description: 'Nova aba de Equipamentos no contrato (adicionar e remover aparelhos), botão de Renovar / Estender o contrato com um clique e um aviso quando o contrato está chegando ao fim. Ao editar datas ou frequência, as visitas futuras são recalculadas automaticamente — preservando as que já foram realizadas ou estão em andamento.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Excluir contrato preserva os recebimentos',
+        description: 'Ao excluir um contrato, os pagamentos já recebidos deixam de ser apagados — continuam no seu caixa e nos relatórios. Apenas as cobranças ainda em aberto são removidas.',
+        category: 'correcao',
+      },
+      {
+        title: 'Correções no app e na geração de documentos',
+        description: 'Corrigimos o logo que podia aparecer invisível no topo do app no tema claro (celular) e uma falha que impedia gerar o dossiê PMOC quando a logomarca da empresa era um arquivo muito grande.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.12.42',
     date: '18 de junho de 2026',
     type: 'patch',

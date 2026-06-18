@@ -496,6 +496,24 @@ export default function Contracts() {
                 }
 
                 const isPmocContract = (contract as any).is_pmoc === true;
+                // "Acabando" = ativo e a última visita (maior scheduled_date)
+                // está a ≤30 dias de hoje (ou já passou). Sinal pra renovar.
+                const isEndingSoon = (() => {
+                  if (!isActive) return false;
+                  const lastDated = (contract.service_orders || [])
+                    .map((o) => o.scheduled_date)
+                    .filter((d): d is string => !!d)
+                    .sort()
+                    .pop();
+                  if (!lastDated) return false;
+                  const last = parseISO(lastDated + 'T12:00:00');
+                  last.setHours(0, 0, 0, 0);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const in30 = new Date(today);
+                  in30.setDate(in30.getDate() + 30);
+                  return last <= in30;
+                })();
                 const healthRow = healthByContractId[contract.id];
                 const healthKey: ContractHealthStatus = healthRow?.health_status ?? 'em_dia';
                 const healthCfg = HEALTH_CONFIG[healthKey];
@@ -547,13 +565,24 @@ export default function Contracts() {
                           {contract.customers?.name ? `${contract.customers.name} • ` : ''}
                           {subtitleParts.join(' • ')}
                         </span>
-                        <Badge
-                          variant={healthCfg.variant}
-                          className="self-start text-[10px] px-2 py-0.5 whitespace-nowrap"
-                          title={healthTooltip}
-                        >
-                          {healthCfg.label}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge
+                            variant={healthCfg.variant}
+                            className="self-start text-[10px] px-2 py-0.5 whitespace-nowrap"
+                            title={healthTooltip}
+                          >
+                            {healthCfg.label}
+                          </Badge>
+                          {isEndingSoon && (
+                            <Badge
+                              variant="warning"
+                              className="self-start text-[10px] px-2 py-0.5 whitespace-nowrap"
+                              title="Última visita em ≤30 dias — renovar?"
+                            >
+                              Acabando
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     }
                   />

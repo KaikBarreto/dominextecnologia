@@ -1126,6 +1126,94 @@ export type Database = {
           },
         ]
       }
+      contract_plan_activities: {
+        Row: {
+          applies_per_equipment: boolean
+          catalog_activity_id: string | null
+          company_id: string
+          component: string | null
+          contract_id: string
+          contract_item_id: string | null
+          created_at: string
+          description: string
+          expected_max: number | null
+          expected_min: number | null
+          freq_code: string | null
+          freq_months: number | null
+          id: string
+          is_active: boolean
+          is_measurement: boolean
+          section: string | null
+          sort_order: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          applies_per_equipment?: boolean
+          catalog_activity_id?: string | null
+          company_id: string
+          component?: string | null
+          contract_id: string
+          contract_item_id?: string | null
+          created_at?: string
+          description: string
+          expected_max?: number | null
+          expected_min?: number | null
+          freq_code?: string | null
+          freq_months?: number | null
+          id?: string
+          is_active?: boolean
+          is_measurement?: boolean
+          section?: string | null
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          applies_per_equipment?: boolean
+          catalog_activity_id?: string | null
+          company_id?: string
+          component?: string | null
+          contract_id?: string
+          contract_item_id?: string | null
+          created_at?: string
+          description?: string
+          expected_max?: number | null
+          expected_min?: number | null
+          freq_code?: string | null
+          freq_months?: number | null
+          id?: string
+          is_active?: boolean
+          is_measurement?: boolean
+          section?: string | null
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_plan_activities_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "contract_plan_activities_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_plan_activities_contract_item_id_fkey"
+            columns: ["contract_item_id"]
+            isOneToOne: false
+            referencedRelation: "contract_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           billing_responsible_id: string | null
@@ -2567,6 +2655,7 @@ export type Database = {
           domain: string
           id: string
           image_url: string | null
+          manual_type: string | null
           manual_url: string | null
           name: string
           potencia_w: number | null
@@ -2582,6 +2671,7 @@ export type Database = {
           domain?: string
           id?: string
           image_url?: string | null
+          manual_type?: string | null
           manual_url?: string | null
           name: string
           potencia_w?: number | null
@@ -2597,6 +2687,7 @@ export type Database = {
           domain?: string
           id?: string
           image_url?: string | null
+          manual_type?: string | null
           manual_url?: string | null
           name?: string
           potencia_w?: number | null
@@ -4045,6 +4136,54 @@ export type Database = {
         }
         Relationships: []
       }
+      pmoc_activity_catalog: {
+        Row: {
+          component: string | null
+          created_at: string
+          default_freq_code: string
+          description: string
+          expected_max: number | null
+          expected_min: number | null
+          id: string
+          is_active: boolean
+          is_measurement: boolean
+          section: string
+          sort_order: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          component?: string | null
+          created_at?: string
+          default_freq_code: string
+          description: string
+          expected_max?: number | null
+          expected_min?: number | null
+          id?: string
+          is_active?: boolean
+          is_measurement?: boolean
+          section: string
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          component?: string | null
+          created_at?: string
+          default_freq_code?: string
+          description?: string
+          expected_max?: number | null
+          expected_min?: number | null
+          id?: string
+          is_active?: boolean
+          is_measurement?: boolean
+          section?: string
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pmoc_contract_documents_custom: {
         Row: {
           certificado_content: string | null
@@ -4575,6 +4714,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      refrigerant_gases: {
+        Row: {
+          aplicacao: string | null
+          classe_seguranca: string | null
+          code: string
+          composicao: string | null
+          cor: string | null
+          created_at: string | null
+          ficha_url: string | null
+          glide_k: number | null
+          guia_oficial_url: string | null
+          gwp: number | null
+          id: string
+          name: string | null
+          observacoes: string | null
+          odp: number | null
+          oleo: string | null
+          ponto_ebulicao_c: number | null
+          sort: number | null
+          substitui: string | null
+          tipo: string | null
+        }
+        Insert: {
+          aplicacao?: string | null
+          classe_seguranca?: string | null
+          code: string
+          composicao?: string | null
+          cor?: string | null
+          created_at?: string | null
+          ficha_url?: string | null
+          glide_k?: number | null
+          guia_oficial_url?: string | null
+          gwp?: number | null
+          id?: string
+          name?: string | null
+          observacoes?: string | null
+          odp?: number | null
+          oleo?: string | null
+          ponto_ebulicao_c?: number | null
+          sort?: number | null
+          substitui?: string | null
+          tipo?: string | null
+        }
+        Update: {
+          aplicacao?: string | null
+          classe_seguranca?: string | null
+          code?: string
+          composicao?: string | null
+          cor?: string | null
+          created_at?: string | null
+          ficha_url?: string | null
+          glide_k?: number | null
+          guia_oficial_url?: string | null
+          gwp?: number | null
+          id?: string
+          name?: string | null
+          observacoes?: string | null
+          odp?: number | null
+          oleo?: string | null
+          ponto_ebulicao_c?: number | null
+          sort?: number | null
+          substitui?: string | null
+          tipo?: string | null
+        }
+        Relationships: []
       }
       remote_configs: {
         Row: {
@@ -5137,6 +5342,91 @@ export type Database = {
             columns: ["stock_item_id"]
             isOneToOne: false
             referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_order_activities: {
+        Row: {
+          company_id: string
+          component: string | null
+          conformity_status: string | null
+          created_at: string
+          description: string
+          equipment_id: string | null
+          expected_max: number | null
+          expected_min: number | null
+          freq_code: string | null
+          id: string
+          is_measurement: boolean
+          measured_value: number | null
+          plan_activity_id: string | null
+          section: string | null
+          service_order_id: string
+          sort_order: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          component?: string | null
+          conformity_status?: string | null
+          created_at?: string
+          description: string
+          equipment_id?: string | null
+          expected_max?: number | null
+          expected_min?: number | null
+          freq_code?: string | null
+          id?: string
+          is_measurement?: boolean
+          measured_value?: number | null
+          plan_activity_id?: string | null
+          section?: string | null
+          service_order_id: string
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          component?: string | null
+          conformity_status?: string | null
+          created_at?: string
+          description?: string
+          equipment_id?: string | null
+          expected_max?: number | null
+          expected_min?: number | null
+          freq_code?: string | null
+          id?: string
+          is_measurement?: boolean
+          measured_value?: number | null
+          plan_activity_id?: string | null
+          section?: string | null
+          service_order_id?: string
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_activities_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_activities_plan_activity_id_fkey"
+            columns: ["plan_activity_id"]
+            isOneToOne: false
+            referencedRelation: "contract_plan_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_activities_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
         ]
