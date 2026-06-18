@@ -129,6 +129,28 @@ async function sha256Hex(input: string): Promise<string> {
   return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Reduz um PNG p/ no máx. `maxSide` px de lado mantendo proporção. Só age se a
+// imagem for maior que o limite. Best-effort: qualquer falha devolve os bytes
+// originais (o pior caso vira o comportamento antigo, não um erro). Evita que
+// logos gigantes (raster descomprimido de dezenas de MB por decode) estourem a
+// memória do worker quando embedados várias vezes no Dossiê.
+async function downscalePngIfLarge(
+  bytes: Uint8Array,
+  maxSide: number,
+): Promise<Uint8Array> {
+  try {
+    const { Image } = await import("https://deno.land/x/imagescript@1.2.17/mod.ts");
+    const img = await Image.decode(bytes);
+    const longest = Math.max(img.width, img.height);
+    if (longest <= maxSide) return bytes;
+    const scale = maxSide / longest;
+    img.resize(Math.round(img.width * scale), Math.round(img.height * scale));
+    return await img.encode();
+  } catch {
+    return bytes;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -448,6 +470,18 @@ Deno.serve(async (req) => {
       } catch {
         // sem logo é ok — fallback é texto
       }
+    }
+
+    // ---- Onda Memória (2026-06): downscale defensivo do logo.
+    //   O logo nunca é desenhado acima de ~72pt, mas alguns tenants sobem PNGs
+    //   gigantes (ex.: Glacial = 1898x1898 ≈ 13,7 MB descomprimidos por decode).
+    //   Cada embed no pdf-lib decodifica o raster inteiro; o Dossiê embeda o
+    //   logo na capa + Termo RT + cronograma, e o pico somado estourava a
+    //   memória do worker (WORKER_RESOURCE_LIMIT, sem cair no catch). Reduzimos
+    //   pra no máx. 512px de lado UMA vez aqui — best-effort: se a redução
+    //   falhar, seguimos com os bytes originais.
+    if (logoBytes && logoMime === "image/png") {
+      logoBytes = await downscalePngIfLarge(logoBytes, 512);
     }
 
     // Cidade (do company_settings, fallback do customer)
@@ -784,6 +818,25 @@ Deno.serve(async (req) => {
 
     // ---- Onda L: Cronograma Anual (12 páginas, 1 mês por página) ao final.
     //      Usa o MESMO TemplateContext do dossiê (tenant + customer + contract).
+    //      Onda Memória (2026-06): o logo do tenant é embedado UMA vez aqui e
+    //      reusado nas 12 páginas. Antes cada página chamava embedPng, o que
+    //      decodificava o raster 12x; com logos grandes (ex.: 1898x1898 ≈ 13 MB
+    //      descomprimidos por decode) isso estourava a memória do worker e a
+    //      geração morria com WORKER_RESOURCE_LIMIT (sem cair no catch). Embedar
+    //      uma vez derruba de ~14 decodes pra ~3.
+    let cronogramaLogo: Awaited<ReturnType<typeof pdf.embedPng>> | null = null;
+    if (logoBytes && logoMime) {
+      try {
+        cronogramaLogo =
+          logoMime === "image/png"
+            ? await pdf.embedPng(logoBytes)
+            : await pdf.embedJpg(logoBytes);
+      } catch {
+        // sem logo no cronograma é ok — segue sem ele
+        cronogramaLogo = null;
+      }
+    }
+
     for (let i = 0; i < 12; i++) {
       const month = new Date(
         Date.UTC(startMonth.getUTCFullYear(), startMonth.getUTCMonth() + i, 1),
@@ -793,6 +846,7 @@ Deno.serve(async (req) => {
         ctx,
         month,
         serviceOrders: cronogramaOrders,
+        logoImage: cronogramaLogo,
       });
     }
 

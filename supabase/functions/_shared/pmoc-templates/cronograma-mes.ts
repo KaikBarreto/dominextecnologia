@@ -65,6 +65,14 @@ export interface DrawCronogramaMesParams {
   /** Primeiro dia do mês (UTC). */
   month: Date;
   serviceOrders: CronogramaServiceOrder[];
+  /**
+   * Logo do tenant JÁ embedado no PDF (PDFImage). Quando informado, a página
+   * reusa essa referência em vez de chamar `embedPng`/`embedJpg` de novo.
+   * Crítico p/ logos grandes: re-embedar a cada uma das 12 páginas decodifica o
+   * raster N vezes e estoura a memória do worker (WORKER_RESOURCE_LIMIT). Quando
+   * o Dossiê passa o logo pré-embedado, decodificamos uma vez só.
+   */
+  logoImage?: PDFImage | null;
 }
 
 function statusColor(status: string) {
@@ -88,7 +96,7 @@ function statusColor(status: string) {
 export async function drawCronogramaMesPage(
   params: DrawCronogramaMesParams,
 ): Promise<PDFPage> {
-  const { pdf, ctx, month, serviceOrders } = params;
+  const { pdf, ctx, month, serviceOrders, logoImage } = params;
   const page = pdf.addPage([A4_W, A4_H]);
 
   const helv = await pdf.embedFont(StandardFonts.Helvetica);
@@ -101,8 +109,19 @@ export async function drawCronogramaMesPage(
   // -- Cabeçalho ------------------------------------------------------------
   let cursorY = A4_H - 50;
 
-  // Logo (opcional)
-  if (ctx.empresa.logo_bytes && ctx.empresa.logo_mime) {
+  // Logo (opcional). Preferimos o PDFImage pré-embedado (logoImage) p/ não
+  // re-decodificar o raster a cada página — logos grandes (ex.: 1898x1898)
+  // estouravam a memória do worker quando embedados 12x. Fallback p/ embed
+  // local mantém o template utilizável fora do Dossiê.
+  if (logoImage) {
+    try {
+      const h = 28;
+      const w = (logoImage.width / logoImage.height) * h;
+      page.drawImage(logoImage, { x: 50, y: cursorY - h, width: w, height: h });
+    } catch {
+      // ignora
+    }
+  } else if (ctx.empresa.logo_bytes && ctx.empresa.logo_mime) {
     try {
       let img: PDFImage;
       if (ctx.empresa.logo_mime === "image/png") {
