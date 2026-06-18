@@ -319,6 +319,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // exige seleção de Responsável Técnico (RT). Desligar pede confirmação se já tinha RT.
   const [isPmoc, setIsPmoc] = useState(false);
   const [responsibleTechnicianId, setResponsibleTechnicianId] = useState<string>('');
+  // Identificação da UNIDADE (Seção 1 da Planilha PMOC). 1 contrato = 1 loja/site;
+  // a unidade pode ter endereço PRÓPRIO (≠ do cliente/proprietário). Pré-preenche
+  // do cliente quando vazio; rede com várias lojas edita. Só em contrato PMOC.
+  const [unidadeNome, setUnidadeNome] = useState('');
+  const [unidadeEndereco, setUnidadeEndereco] = useState('');
+  const [unidadeNumero, setUnidadeNumero] = useState('');
+  const [unidadeComplemento, setUnidadeComplemento] = useState('');
+  const [unidadeBairro, setUnidadeBairro] = useState('');
+  const [unidadeCidade, setUnidadeCidade] = useState('');
+  const [unidadeUf, setUnidadeUf] = useState('');
+  const [unidadeCep, setUnidadeCep] = useState('');
   const [showPmocOffConfirm, setShowPmocOffConfirm] = useState(false);
   // Quick-create RT (Onda UI-1.2): botão "+" abre dialog nested.
   const [showQuickCreateRT, setShowQuickCreateRT] = useState(false);
@@ -434,6 +445,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       const editIsPmoc = !!editContract.is_pmoc;
       setIsPmoc(editIsPmoc);
       setResponsibleTechnicianId(editContract.responsible_technician_id || '');
+      // Identificação da unidade (Seção 1) — carrega os valores salvos.
+      setUnidadeNome(editContract.unidade_nome || '');
+      setUnidadeEndereco(editContract.unidade_endereco || '');
+      setUnidadeNumero(editContract.unidade_numero || '');
+      setUnidadeComplemento(editContract.unidade_complemento || '');
+      setUnidadeBairro(editContract.unidade_bairro || '');
+      setUnidadeCidade(editContract.unidade_cidade || '');
+      setUnidadeUf(editContract.unidade_uf || '');
+      setUnidadeCep(editContract.unidade_cep || '');
       initialIsPmocRef.value = editIsPmoc;
       // Ambientes climatizados (multi-ambiente). Reconstrói os cards a partir de
       // contract_environments + agrupa os equipamentos por environment_id (lido
@@ -472,6 +492,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // Default: contrato comum.
       setIsPmoc(false);
       setResponsibleTechnicianId('');
+      // Identificação da unidade — vazia (pré-preenche do cliente via efeito).
+      setUnidadeNome(''); setUnidadeEndereco(''); setUnidadeNumero('');
+      setUnidadeComplemento(''); setUnidadeBairro(''); setUnidadeCidade('');
+      setUnidadeUf(''); setUnidadeCep('');
       initialIsPmocRef.value = false;
     }
   }, [open, editContract]);
@@ -603,6 +627,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     applyStandardPlan(pmocStandardScope);
     setPmocDefaultSeeded(true);
   }, [open, isEditing, isPmoc, pmocStandardOn, pmocStandardScope, pmocDefaultSeeded, catalogLoading, defaultSectionActivities.length, catalogActivities.length]);
+
+  // Pré-preenche a Identificação da Unidade (Seção 1) a partir do CLIENTE
+  // selecionado quando os campos ainda estão vazios. Caso "1 cliente = 1 loja"
+  // funciona sem digitar nada; o usuário pode sobrescrever (rede com várias
+  // lojas). Só auto-preenche o campo que está vazio — nunca apaga edição manual.
+  // Só em PMOC (a Seção 1 só existe nesse caso).
+  useEffect(() => {
+    if (!open || !isPmoc || !customerId) return;
+    const cust = customers.find(c => c.id === customerId) as any;
+    if (!cust) return;
+    setUnidadeNome(prev => prev.trim() ? prev : (cust.name || name || ''));
+    setUnidadeEndereco(prev => prev.trim() ? prev : (cust.address || ''));
+    setUnidadeNumero(prev => prev.trim() ? prev : (cust.address_number || ''));
+    setUnidadeComplemento(prev => prev.trim() ? prev : (cust.complement || ''));
+    setUnidadeBairro(prev => prev.trim() ? prev : (cust.neighborhood || ''));
+    setUnidadeCidade(prev => prev.trim() ? prev : (cust.city || ''));
+    setUnidadeUf(prev => prev.trim() ? prev : (cust.state || ''));
+    setUnidadeCep(prev => prev.trim() ? prev : (cust.zip_code || ''));
+  }, [open, isPmoc, customerId, customers, name]);
 
   // Abre o picker do catálogo já com as linhas vindas do catálogo pré-marcadas
   // (evita duplicar uma atividade que o gestor já adicionou).
@@ -806,6 +849,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // PMOC (Onda A)
       is_pmoc: isPmoc,
       responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
+      // Identificação da unidade (Seção 1 da Planilha). Só grava em PMOC.
+      unidade_nome: isPmoc ? (unidadeNome.trim() || null) : null,
+      unidade_endereco: isPmoc ? (unidadeEndereco.trim() || null) : null,
+      unidade_numero: isPmoc ? (unidadeNumero.trim() || null) : null,
+      unidade_complemento: isPmoc ? (unidadeComplemento.trim() || null) : null,
+      unidade_bairro: isPmoc ? (unidadeBairro.trim() || null) : null,
+      unidade_cidade: isPmoc ? (unidadeCidade.trim() || null) : null,
+      unidade_uf: isPmoc ? (unidadeUf.trim() || null) : null,
+      unidade_cep: isPmoc ? (unidadeCep.trim() || null) : null,
     });
   };
 
@@ -902,6 +954,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           // PMOC (Onda A). RT vai vazio quando o usuário ainda não escolheu.
           is_pmoc: isPmoc,
           responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
+          // Identificação da unidade (Seção 1 da Planilha). Só faz sentido em PMOC.
+          unidade_nome: isPmoc ? (unidadeNome.trim() || null) : null,
+          unidade_endereco: isPmoc ? (unidadeEndereco.trim() || null) : null,
+          unidade_numero: isPmoc ? (unidadeNumero.trim() || null) : null,
+          unidade_complemento: isPmoc ? (unidadeComplemento.trim() || null) : null,
+          unidade_bairro: isPmoc ? (unidadeBairro.trim() || null) : null,
+          unidade_cidade: isPmoc ? (unidadeCidade.trim() || null) : null,
+          unidade_uf: isPmoc ? (unidadeUf.trim() || null) : null,
+          unidade_cep: isPmoc ? (unidadeCep.trim() || null) : null,
           // Itens do contrato: PMOC = derivados dos ambientes; comum = lista flat.
           items: effectiveItems.map((i: any) => ({
             equipment_id: i.equipment_id || null,
@@ -1051,6 +1112,95 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             <p className="text-xs text-muted-foreground">
               Engenheiro ou Técnico com CFT/CREA que supervisiona o PMOC. Pode ser definido depois.
             </p>
+          </div>
+
+          {/* Identificação da Unidade (Seção 1 da Planilha PMOC). 1 contrato =
+              1 unidade (loja/site), que pode ter endereço próprio — diferente do
+              cliente/proprietário. Pré-preenchido do cliente; rede com várias
+              lojas edita aqui. */}
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+            <div>
+              <Label className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-info shrink-0" />
+                Identificação da Unidade
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Endereço do ambiente climatizado deste contrato (a loja/site). Pode
+                ser diferente do endereço do cliente. Pré-preenchido a partir do
+                cliente — ajuste se a unidade tiver endereço próprio.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Nome da unidade / local</Label>
+              <Input
+                value={unidadeNome}
+                onChange={e => setUnidadeNome(e.target.value)}
+                placeholder="Ex: Loja Centro, Galpão 2…"
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+              <div className="space-y-2">
+                <Label className="text-xs">Endereço (logradouro)</Label>
+                <Input
+                  value={unidadeEndereco}
+                  onChange={e => setUnidadeEndereco(e.target.value)}
+                  placeholder="Rua / Avenida"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Número</Label>
+                <Input
+                  value={unidadeNumero}
+                  onChange={e => setUnidadeNumero(e.target.value)}
+                  placeholder="Nº"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Complemento</Label>
+              <Input
+                value={unidadeComplemento}
+                onChange={e => setUnidadeComplemento(e.target.value)}
+                placeholder="Sala, andar, bloco…"
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-xs">Bairro</Label>
+                <Input
+                  value={unidadeBairro}
+                  onChange={e => setUnidadeBairro(e.target.value)}
+                  placeholder="Bairro"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">CEP</Label>
+                <Input
+                  value={unidadeCep}
+                  onChange={e => setUnidadeCep(e.target.value)}
+                  placeholder="00000-000"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_100px]">
+              <div className="space-y-2">
+                <Label className="text-xs">Cidade</Label>
+                <Input
+                  value={unidadeCidade}
+                  onChange={e => setUnidadeCidade(e.target.value)}
+                  placeholder="Cidade"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">UF</Label>
+                <Input
+                  value={unidadeUf}
+                  onChange={e => setUnidadeUf(e.target.value.toUpperCase().slice(0, 2))}
+                  placeholder="UF"
+                  maxLength={2}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">

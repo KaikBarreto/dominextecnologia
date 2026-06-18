@@ -685,6 +685,17 @@ export function useContracts() {
       responsible_technician_id?: string | null;
       pmoc_legal_compliance_text?: string | null;
       next_pmoc_generation_date?: string | null;
+      // Seção 1 da Planilha PMOC — identificação da UNIDADE/local do contrato
+      // (1 contrato = 1 loja/site, endereço pode ser próprio ≠ do cliente).
+      // Opcionais; só fazem sentido em contrato PMOC.
+      unidade_nome?: string | null;
+      unidade_endereco?: string | null;
+      unidade_numero?: string | null;
+      unidade_complemento?: string | null;
+      unidade_bairro?: string | null;
+      unidade_cidade?: string | null;
+      unidade_uf?: string | null;
+      unidade_cep?: string | null;
       // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado
       // (modelo do cliente). Opcionais; só fazem sentido em contrato PMOC.
       pmoc_tipo_atividade?: string | null;
@@ -756,6 +767,16 @@ export function useContracts() {
             ? (input.pmoc_legal_compliance_text ?? 'Conforme Lei Federal 13.589/2018')
             : null,
           next_pmoc_generation_date: input.is_pmoc ? nextPmocGenerationDate : null,
+          // Identificação da UNIDADE (Seção 1 da Planilha). Só grava em PMOC;
+          // contrato comum zera os 8 campos.
+          unidade_nome: input.is_pmoc ? (input.unidade_nome ?? null) : null,
+          unidade_endereco: input.is_pmoc ? (input.unidade_endereco ?? null) : null,
+          unidade_numero: input.is_pmoc ? (input.unidade_numero ?? null) : null,
+          unidade_complemento: input.is_pmoc ? (input.unidade_complemento ?? null) : null,
+          unidade_bairro: input.is_pmoc ? (input.unidade_bairro ?? null) : null,
+          unidade_cidade: input.is_pmoc ? (input.unidade_cidade ?? null) : null,
+          unidade_uf: input.is_pmoc ? (input.unidade_uf ?? null) : null,
+          unidade_cep: input.is_pmoc ? (input.unidade_cep ?? null) : null,
           // Caracterização do ambiente climatizado migrou para contract_environments
           // (multi-ambiente). Os 6 campos pmoc_* únicos viraram legado e ficam null.
           pmoc_tipo_atividade: null,
@@ -1093,6 +1114,15 @@ export function useContracts() {
       responsible_technician_id?: string | null;
       pmoc_legal_compliance_text?: string | null;
       next_pmoc_generation_date?: string | null;
+      // Identificação da UNIDADE (Seção 1 da Planilha). `undefined` = não mexe.
+      unidade_nome?: string | null;
+      unidade_endereco?: string | null;
+      unidade_numero?: string | null;
+      unidade_complemento?: string | null;
+      unidade_bairro?: string | null;
+      unidade_cidade?: string | null;
+      unidade_uf?: string | null;
+      unidade_cep?: string | null;
     }) => {
       const { id, assignee_user_ids, plan_activities, items, environments, ...rest } = input;
 
@@ -1119,6 +1149,15 @@ export function useContracts() {
       if (input.is_pmoc === false) {
         payload.responsible_technician_id = null;
         payload.next_pmoc_generation_date = null;
+        // Desligar PMOC limpa a identificação da unidade (Seção 1).
+        payload.unidade_nome = null;
+        payload.unidade_endereco = null;
+        payload.unidade_numero = null;
+        payload.unidade_complemento = null;
+        payload.unidade_bairro = null;
+        payload.unidade_cidade = null;
+        payload.unidade_uf = null;
+        payload.unidade_cep = null;
       }
       const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
       if (updErr) throw updErr;

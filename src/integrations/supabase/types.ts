@@ -1318,6 +1318,14 @@ export type Database = {
           status: string
           team_id: string | null
           technician_id: string | null
+          unidade_bairro: string | null
+          unidade_cep: string | null
+          unidade_cidade: string | null
+          unidade_complemento: string | null
+          unidade_endereco: string | null
+          unidade_nome: string | null
+          unidade_numero: string | null
+          unidade_uf: string | null
           updated_at: string
         }
         Insert: {
@@ -1353,6 +1361,14 @@ export type Database = {
           status?: string
           team_id?: string | null
           technician_id?: string | null
+          unidade_bairro?: string | null
+          unidade_cep?: string | null
+          unidade_cidade?: string | null
+          unidade_complemento?: string | null
+          unidade_endereco?: string | null
+          unidade_nome?: string | null
+          unidade_numero?: string | null
+          unidade_uf?: string | null
           updated_at?: string
         }
         Update: {
@@ -1388,6 +1404,14 @@ export type Database = {
           status?: string
           team_id?: string | null
           technician_id?: string | null
+          unidade_bairro?: string | null
+          unidade_cep?: string | null
+          unidade_cidade?: string | null
+          unidade_complemento?: string | null
+          unidade_endereco?: string | null
+          unidade_nome?: string | null
+          unidade_numero?: string | null
+          unidade_uf?: string | null
           updated_at?: string
         }
         Relationships: [

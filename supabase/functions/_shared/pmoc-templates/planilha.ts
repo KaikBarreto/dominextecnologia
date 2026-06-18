@@ -145,6 +145,23 @@ export interface PlanilhaData {
     city: string | null;
     state: string | null;
   };
+  /**
+   * Identificação da UNIDADE/local do contrato PMOC (Seção 1). 1 contrato = 1
+   * unidade (loja/site), que pode ter endereço PRÓPRIO (≠ do cliente/proprietário
+   * — ex.: rede com várias lojas). Vem das colunas `unidade_*` de `contracts`.
+   * Campo vazio → a edge passa fallback pro endereço/nome do cliente, então aqui
+   * é tratado como já resolvido (vazio vira "—").
+   */
+  unidade: {
+    nome: string | null;
+    endereco: string | null;
+    numero: string | null;
+    complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+    cep: string | null;
+  };
   rt: {
     nome: string;
     modalidade: string;
@@ -411,16 +428,21 @@ export async function drawPlanilha(
   drawCompactHeader(ctx);
   drawPageFooter(ctx);
 
-  // ---- Seção 1 — Identificação do ambiente / unidade -----------------------
+  // ---- Seção 1 — Identificação da unidade ----------------------------------
+  // 1 contrato = 1 unidade (loja/site). O nome/local e o endereço usam a
+  // identificação da UNIDADE (`unidade_*`), que pode diferir do cliente. A edge
+  // já resolve o fallback pro cliente quando os campos da unidade estão vazios.
   drawSectionTitle(ctx, "1.", "Identificação do Ambiente Climatizado");
-  drawField(ctx, "Unidade / Local:", data.customer.name);
-  const endereco = [
-    data.customer.address,
-    [data.customer.city, data.customer.state].filter(Boolean).join(" - "),
-  ]
-    .filter((s) => s && s.trim())
-    .join(", ");
-  drawField(ctx, "Endereço:", endereco);
+  const u = data.unidade;
+  drawField(ctx, "Unidade / Local:", orDash(u.nome ?? data.customer.name));
+  // Linha 1: logradouro, número, complemento. Linha 2: bairro, cidade-uf, CEP.
+  const ruaNum = [u.endereco, u.numero].filter((s) => s && s.trim()).join(", ");
+  const linha1 = [ruaNum, u.complemento].filter((s) => s && s.trim()).join(" - ");
+  const cidadeUf = [u.cidade, u.uf].filter((s) => s && s.trim()).join(" - ");
+  const cepStr = u.cep && u.cep.trim() ? `CEP ${u.cep.trim()}` : "";
+  const linha2 = [u.bairro, cidadeUf, cepStr].filter((s) => s && s.trim()).join(", ");
+  const endereco = [linha1, linha2].filter((s) => s && s.trim()).join(", ");
+  drawField(ctx, "Endereço:", orDash(endereco));
   drawField(ctx, "Contrato:", data.contract.name ?? "—");
   drawField(ctx, "Início da vigência:", data.contract.start_date_extenso);
   drawField(ctx, "Periodicidade base:", data.contract.frequency_label);

@@ -264,6 +264,16 @@ Deno.serve(async (req) => {
           // Link + QR do Portal PMOC na capa (preenchido pela trigger
           // ensure_pmoc_token quando is_pmoc=true).
           "public_pmoc_token",
+          // Seção 1 da Planilha embutida — identificação da UNIDADE/local
+          // (1 contrato = 1 unidade, endereço pode ser próprio). Vazio → cliente.
+          "unidade_nome",
+          "unidade_endereco",
+          "unidade_numero",
+          "unidade_complemento",
+          "unidade_bairro",
+          "unidade_cidade",
+          "unidade_uf",
+          "unidade_cep",
           // Seção 4 da Planilha embutida — caracterização do ambiente climatizado.
           "pmoc_tipo_atividade",
           "pmoc_identificacao_ambiente",
@@ -852,6 +862,44 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- Seção 1 da Planilha: identificação da UNIDADE (1 contrato = 1 loja).
+    //      Usa os campos `unidade_*` do contrato; sem endereço próprio da
+    //      unidade, cai pro endereço do cliente (proprietário).
+    const cUni = contract as Record<string, unknown>;
+    const uniNome = ambStr(cUni.unidade_nome);
+    const uniEndereco = ambStr(cUni.unidade_endereco);
+    const uniNumero = ambStr(cUni.unidade_numero);
+    const uniComplemento = ambStr(cUni.unidade_complemento);
+    const uniBairro = ambStr(cUni.unidade_bairro);
+    const uniCidade = ambStr(cUni.unidade_cidade);
+    const uniUf = ambStr(cUni.unidade_uf);
+    const uniCep = ambStr(cUni.unidade_cep);
+    const temEnderecoUnidade = !!(
+      uniEndereco || uniNumero || uniComplemento ||
+      uniBairro || uniCidade || uniUf || uniCep
+    );
+    const planilhaUnidade = temEnderecoUnidade
+      ? {
+          nome: uniNome,
+          endereco: uniEndereco,
+          numero: uniNumero,
+          complemento: uniComplemento,
+          bairro: uniBairro,
+          cidade: uniCidade,
+          uf: uniUf,
+          cep: uniCep,
+        }
+      : {
+          nome: uniNome ?? ambStr(customer?.name),
+          endereco: ambStr(customer?.address),
+          numero: null,
+          complemento: null,
+          bairro: null,
+          cidade: ambStr(customer?.city),
+          uf: ambStr(customer?.state),
+          cep: null,
+        };
+
     // ---- 8. content_hash dos campos dinâmicos
     //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
     //    Onda H: bump pra dossie_v3 (variableContext entra — campos novos do
@@ -902,8 +950,11 @@ Deno.serve(async (req) => {
     //    atividade, identificação, área, ocupantes fixos/flutuantes e carga
     //    térmica TR), vinda das colunas pmoc_* do contrato. Entram no hash pra
     //    o cache invalidar quando o gestor preencher/editar esses campos.
+    //    Unidade (2026-06): bump pra dossie_v16 — a Seção 1 da Planilha embutida
+    //    passou a usar a identificação da UNIDADE (`unidade_*` do contrato), com
+    //    fallback pro cliente. Os campos da unidade entram no hash.
     const hashInput = JSON.stringify({
-      v: "dossie_v15",
+      v: "dossie_v16",
       tenant: {
         name: tenantName,
         cnpj,
@@ -943,6 +994,7 @@ Deno.serve(async (req) => {
       },
       // Fase 4 — Planilha PMOC embutida: ambientes + plano + execução.
       planilha: {
+        unidade: planilhaUnidade,
         ambientes: planilhaAmbientes,
         activities: planilhaActivities,
         execution: {
@@ -1075,6 +1127,7 @@ Deno.serve(async (req) => {
         city: customer?.city ?? null,
         state: customer?.state ?? null,
       },
+      unidade: planilhaUnidade,
       rt: {
         nome: rt.full_name ?? "",
         modalidade: rt.modality ?? "Técnico em Refrigeração",

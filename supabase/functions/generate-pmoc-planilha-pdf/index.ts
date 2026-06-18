@@ -228,6 +228,17 @@ Deno.serve(async (req) => {
           "start_date",
           "frequency_type",
           "frequency_value",
+          // Seção 1 — identificação da UNIDADE/local (1 contrato = 1 unidade).
+          // Pode ter endereço próprio (≠ do cliente/proprietário). Vazio → a
+          // Seção 1 cai pro endereço/nome do cliente (fallback abaixo).
+          "unidade_nome",
+          "unidade_endereco",
+          "unidade_numero",
+          "unidade_complemento",
+          "unidade_bairro",
+          "unidade_cidade",
+          "unidade_uf",
+          "unidade_cep",
           // Seção 4 — caracterização do ambiente climatizado (modelo do cliente).
           "pmoc_tipo_atividade",
           "pmoc_identificacao_ambiente",
@@ -570,6 +581,47 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- Seção 1: identificação da UNIDADE (1 contrato = 1 unidade/loja).
+    //      Usa os campos `unidade_*` do contrato; quando NENHUM campo de
+    //      endereço da unidade foi preenchido, cai pro endereço do cliente
+    //      (proprietário) — caso "1 cliente = 1 loja" funciona sem digitar nada.
+    const c2 = contract as Record<string, unknown>;
+    const unidadeNome = strOrNull(c2.unidade_nome);
+    const unidadeEndereco = strOrNull(c2.unidade_endereco);
+    const unidadeNumero = strOrNull(c2.unidade_numero);
+    const unidadeComplemento = strOrNull(c2.unidade_complemento);
+    const unidadeBairro = strOrNull(c2.unidade_bairro);
+    const unidadeCidade = strOrNull(c2.unidade_cidade);
+    const unidadeUf = strOrNull(c2.unidade_uf);
+    const unidadeCep = strOrNull(c2.unidade_cep);
+    const temEnderecoUnidade = !!(
+      unidadeEndereco || unidadeNumero || unidadeComplemento ||
+      unidadeBairro || unidadeCidade || unidadeUf || unidadeCep
+    );
+    const unidade = temEnderecoUnidade
+      ? {
+          nome: unidadeNome,
+          endereco: unidadeEndereco,
+          numero: unidadeNumero,
+          complemento: unidadeComplemento,
+          bairro: unidadeBairro,
+          cidade: unidadeCidade,
+          uf: unidadeUf,
+          cep: unidadeCep,
+        }
+      : {
+          // Fallback: endereço do cliente (proprietário) quando a unidade não
+          // tem endereço próprio cadastrado.
+          nome: unidadeNome ?? strOrNull(customer.name),
+          endereco: strOrNull(customer.address),
+          numero: null,
+          complemento: null,
+          bairro: null,
+          cidade: strOrNull(customer.city),
+          uf: strOrNull(customer.state),
+          cep: null,
+        };
+
     const planilhaData: PlanilhaData = {
       tenant: { name: tenantName, cnpj, logoImage: null },
       customer: {
@@ -579,6 +631,7 @@ Deno.serve(async (req) => {
         city: customer.city ?? null,
         state: customer.state ?? null,
       },
+      unidade,
       ambientes,
       rt: {
         nome: rt.full_name ?? "",
@@ -612,10 +665,13 @@ Deno.serve(async (req) => {
       // planilha_v4: Seção 4 agora é multi-ambiente — UM bloco por
       // contract_environments, cada um com seus equipamentos (via
       // environment_id). Fallback legado = um ambiente das colunas pmoc_*.
-      v: "planilha_v4",
+      // planilha_v5: Seção 1 passa a usar a identificação da UNIDADE
+      // (`unidade_*` do contrato), com fallback pro cliente quando vazia.
+      v: "planilha_v5",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
+      unidade: planilhaData.unidade,
       rt: planilhaData.rt,
       contract: planilhaData.contract,
       ambientes,
