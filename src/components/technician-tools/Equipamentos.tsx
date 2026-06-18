@@ -16,6 +16,8 @@ import {
   Settings2,
   FileText,
   Zap,
+  Stethoscope,
+  Wrench,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
@@ -581,6 +583,9 @@ function BrandsList({
           image_url: m.image_url,
           manual_url: m.manual_url,
           refrigerant: m.refrigerant ?? null,
+          // Busca por código não traz consumo/potência; tela de erros não usa.
+          consumo_kwh_mes: null,
+          potencia_w: null,
           domain,
           created_at: '',
           brand: m.brand ?? null,
@@ -1908,6 +1913,64 @@ function ModelCard({
 /* Tela 3 — códigos de erro do modelo                                  */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Quebra um texto acionável (diagnóstico/solução) em passos curtos.
+ *
+ * O conteúdo novo são 2-4 frases imperativas separadas por ". " (ou "; ").
+ * Quebramos por fim de sentença preservando o ponto final, e só tratamos como
+ * lista de passos quando há 2+ frases — texto de uma frase só vira parágrafo,
+ * pra não poluir com bullet desnecessário. Robusto a texto solto/vazio.
+ */
+function dividirEmPassos(texto: string): string[] {
+  const limpo = texto.trim();
+  if (!limpo) return [];
+  // Divide após . ! ? ou ; seguidos de espaço, mantendo o pontuador na frase.
+  const partes = limpo
+    .split(/(?<=[.!?;])\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  // 1 frase (ou nenhuma divisão real) → mantém como bloco único.
+  return partes.length >= 2 ? partes : [limpo];
+}
+
+/**
+ * Renderiza um texto acionável: vira lista numerada quando há 2+ passos,
+ * senão um parágrafo simples. Cor do texto configurável (diagnóstico x solução).
+ */
+function TextoAcionavel({
+  texto,
+  contador,
+}: {
+  texto: string;
+  /** Cor da bolinha do número (Tailwind class p/ bg). */
+  contador: string;
+}) {
+  const passos = dividirEmPassos(texto);
+  if (passos.length <= 1) {
+    return <p className="mt-1 text-sm leading-relaxed text-foreground/90">{texto.trim()}</p>;
+  }
+  return (
+    <ol className="mt-1.5 space-y-2">
+      {passos.map((passo, i) => (
+        <li key={i} className="flex gap-2.5">
+          <span
+            aria-hidden
+            className={cn(
+              'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white',
+              contador,
+            )}
+          >
+            {i + 1}
+          </span>
+          <span className="min-w-0 flex-1 text-sm leading-relaxed text-foreground/90">
+            {passo}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function CodigosErro({
   model,
   initialCode,
@@ -2022,20 +2085,23 @@ function CodigosErro({
                 <p className="mt-3 text-sm leading-relaxed text-foreground/90">{ec.description}</p>
               )}
 
-              {(ec.diagnosis || ec.solution) && (
+              {ec.diagnosis && (
                 <div className="mt-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Stethoscope className="h-3.5 w-3.5" />
                     Diagnóstico
                   </p>
-                  {ec.diagnosis && (
-                    <p className="mt-0.5 text-sm leading-relaxed text-foreground/90">{ec.diagnosis}</p>
-                  )}
-                  {ec.solution && (
-                    <p className="mt-2 text-sm italic leading-relaxed text-muted-foreground">
-                      <span className="font-semibold not-italic text-foreground">Sugestão: </span>
-                      {ec.solution}
-                    </p>
-                  )}
+                  <TextoAcionavel texto={ec.diagnosis} contador="bg-sky-500" />
+                </div>
+              )}
+
+              {ec.solution && (
+                <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                    <Wrench className="h-3.5 w-3.5" />
+                    Solução
+                  </p>
+                  <TextoAcionavel texto={ec.solution} contador="bg-emerald-600" />
                 </div>
               )}
 
