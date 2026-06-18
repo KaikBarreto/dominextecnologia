@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +13,8 @@ import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -290,6 +291,58 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   const { equipment } = useEquipment(customerId || undefined);
   const activeEquipment = equipment.filter(eq => eq.status === 'active');
+
+  // Rascunho (só em CRIAÇÃO). Persiste os campos das etapas em sessionStorage e,
+  // ao reabrir com rascunho salvo, oferece o DraftResumeDialog. Espelha o padrão
+  // do QuoteFormDialog (useFormDraft + DraftResumeDialog). Itens/plano ficam de
+  // fora pra evitar payload pesado — o que importa é não perder o preenchimento.
+  type ContractDraft = {
+    name: string; customerId: string; serviceTypeId: string; formTemplateId: string;
+    notes: string; isActive: boolean; isPmoc: boolean; responsibleTechnicianId: string;
+    freqType: 'months' | 'days'; freqValue: number; startDate: string; horizonMonths: number;
+    pmocTipoAtividade: string; pmocIdentificacaoAmbiente: string; pmocAreaClimatizada: string;
+    pmocOcupantesFixos: string; pmocOcupantesFlutuantes: string; pmocCargaTermicaTr: string;
+  };
+  const draft = useFormDraft<ContractDraft>({
+    key: 'contract-form',
+    isOpen: open,
+    isEditing,
+    // start/horizonte têm default não-vazio; ignorá-los evita falso "rascunho".
+    ignoreKeys: ['isActive', 'freqType', 'freqValue', 'startDate', 'horizonMonths'],
+  });
+
+  // Persiste a cada mudança (só criação, e não enquanto o prompt de retomar está aberto).
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft({
+        name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc,
+        responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths,
+        pmocTipoAtividade, pmocIdentificacaoAmbiente, pmocAreaClimatizada,
+        pmocOcupantesFixos, pmocOcupantesFlutuantes, pmocCargaTermicaTr,
+      });
+    }
+  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, pmocTipoAtividade, pmocIdentificacaoAmbiente, pmocAreaClimatizada, pmocOcupantesFixos, pmocOcupantesFlutuantes, pmocCargaTermicaTr, open, isEditing, draft.showResumePrompt]);
+
+  const applyContractDraft = (d: ContractDraft) => {
+    setName(d.name || '');
+    setCustomerId(d.customerId || '');
+    setServiceTypeId(d.serviceTypeId || '');
+    setFormTemplateId(d.formTemplateId || '');
+    setNotes(d.notes || '');
+    setIsActive(d.isActive !== false);
+    setIsPmoc(!!d.isPmoc);
+    setResponsibleTechnicianId(d.responsibleTechnicianId || '');
+    setFreqType(d.freqType || 'months');
+    setFreqValue(d.freqValue || 1);
+    setStartDate(d.startDate || format(new Date(), 'yyyy-MM-dd'));
+    setHorizonMonths(d.horizonMonths || 12);
+    setPmocTipoAtividade(d.pmocTipoAtividade || '');
+    setPmocIdentificacaoAmbiente(d.pmocIdentificacaoAmbiente || '');
+    setPmocAreaClimatizada(d.pmocAreaClimatizada || '');
+    setPmocOcupantesFixos(d.pmocOcupantesFixos || '');
+    setPmocOcupantesFlutuantes(d.pmocOcupantesFlutuantes || '');
+    setPmocCargaTermicaTr(d.pmocCargaTermicaTr || '');
+  };
 
   useEffect(() => {
     if (!open) {
@@ -591,7 +644,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       team_id: actualTeamId,
       assignee_user_ids: selectedUserIds,
       service_type_id: serviceTypeId || null,
-      form_template_id: formTemplateId || null,
+      // Com plano de serviços, o checklist vem das atividades por equipamento —
+      // não duplicar com um checklist padrão de contrato.
+      form_template_id: usePlanEngine ? null : (formTemplateId || null),
       status: isActive ? 'active' : 'paused',
       notes: notes || null,
       frequency_type: freqType,
@@ -706,7 +761,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           assignee_user_ids: selectedUserIds,
           billing_responsible_ids: billingUserIds,
           service_type_id: serviceTypeId || null,
-          form_template_id: formTemplateId || null,
+          // Com plano de serviços, o checklist vem das atividades por equipamento.
+          form_template_id: usePlanEngine ? null : (formTemplateId || null),
           status: isActive ? 'active' : 'paused',
           notes: notes || null,
           frequency_type: freqType,
@@ -760,6 +816,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               : `⚠️ Contrato${isPmoc ? ' PMOC' : ''} criado com ${generatedOsCount} de ${expectedOsCount} OSs geradas na agenda`
             : `✅ Contrato${isPmoc ? ' PMOC' : ''} criado com sucesso!`,
         });
+        // Criou com sucesso → descarta o rascunho persistido.
+        draft.clearDraft();
         onOpenChange(false);
         if (onCreated && result) onCreated((result as any).id);
       }
@@ -773,16 +831,205 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const progressPercent = ((step + 1) / STEPS.length) * 100;
   const clientName = customers.find(c => c.id === customerId)?.name || '-';
 
-  return (
-    <>
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-[700px] overflow-y-auto flex flex-col">
-        <SheetHeader>
-          <SheetTitle>{isEditing ? 'Editar Contrato' : 'Novo Contrato'}</SheetTitle>
-        </SheetHeader>
+  // Bloco PMOC (toggle + RT + caracterização do ambiente). Definido como JSX
+  // pra ser posicionado no TOPO da etapa Informações (logo após o Cliente).
+  const pmocSection = (
+    <div className="rounded-lg border p-3 space-y-3">
+      <div className="flex items-start gap-3">
+        <Switch
+          checked={isPmoc}
+          onCheckedChange={(v) => {
+            // Quando desligar e tinha RT, pede confirmação (em edição).
+            if (!v && isEditing && initialIsPmocRef.value && responsibleTechnicianId) {
+              setShowPmocOffConfirm(true);
+              return;
+            }
+            setIsPmoc(v);
+            if (!v) setResponsibleTechnicianId('');
+          }}
+        />
+        <div className="flex-1 min-w-0">
+          <Label className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+            É um contrato PMOC?
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Plano de Manutenção, Operação e Controle. Ative para vincular um Responsável Técnico
+            e gerar OSs com selo de conformidade legal.
+          </p>
+        </div>
+      </div>
 
+      {isPmoc && (
+        <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Label className="m-0">Responsável Técnico (RT)</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="O que é Responsável Técnico?"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs text-xs">
+                  Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o
+                  Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018.
+                  Diferente do Técnico Executor (quem executa as OSs no campo).
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              CFT/CREA — supervisão regulatória do PMOC.
+            </p>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Select
+                  value={responsibleTechnicianId || 'none'}
+                  onValueChange={(v) => setResponsibleTechnicianId(v === 'none' ? '' : v)}
+                  disabled={rtLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={rtLoading ? 'Carregando...' : 'Selecione o RT...'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem RT atribuído —</SelectItem>
+                    {responsibleTechnicians.map((rt) => {
+                      const modality = rt.modality ?? 'Modalidade não informada';
+                      const registry = rt.cft_crea ?? 'sem registro';
+                      return (
+                        <SelectItem key={rt.id} value={rt.id}>
+                          {rt.full_name} — {modality} ({registry})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0 h-10 w-10"
+                onClick={() => setShowQuickCreateRT(true)}
+                aria-label="Cadastrar novo Responsável Técnico"
+                title="Cadastrar novo Responsável Técnico"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Engenheiro ou Técnico com CFT/CREA que supervisiona o PMOC. Pode ser definido depois.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="info" className="gap-1.5">
+              <ShieldCheck className="h-3 w-3" />
+              Conforme Lei Federal 13.589/2018
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              OSs sairão com selo de conformidade.
+            </span>
+          </div>
+
+          <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
+            <ShieldCheck className="h-4 w-4 text-info" />
+            <AlertTitle className="text-sm">O que o PMOC desbloqueia</AlertTitle>
+            <AlertDescription className="text-xs">
+              Contratos PMOC têm acesso ao Termo de Responsabilidade Técnica,
+              Dossiê PMOC, Cronograma anual em PDF, portal público com QR Code
+              e selo "Conforme Lei Federal 13.589/2018" nas OSs. O contrato gera
+              as OSs imediatamente, igual a um contrato comum.
+            </AlertDescription>
+          </Alert>
+
+          {/* Seção 4 da Planilha PMOC — caracterização do ambiente
+              climatizado (modelo do cliente). Só aparece em PMOC. */}
+          <div className="rounded-lg border p-3 space-y-3">
+            <div>
+              <Label className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                Ambiente climatizado (Planilha PMOC)
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Caracterização do ambiente para a Seção 4 da Planilha PMOC. Opcional —
+                campos em branco aparecem como "—" no documento.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo de atividade</Label>
+                <Input
+                  value={pmocTipoAtividade}
+                  onChange={e => setPmocTipoAtividade(e.target.value)}
+                  placeholder="Ex: Escritório administrativo"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Identificação do ambiente</Label>
+                <Input
+                  value={pmocIdentificacaoAmbiente}
+                  onChange={e => setPmocIdentificacaoAmbiente(e.target.value)}
+                  placeholder="Ex: 2º andar — Sala 201"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Área climatizada (m²)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={pmocAreaClimatizada}
+                  onChange={e => setPmocAreaClimatizada(e.target.value)}
+                  placeholder="Ex: 120,5"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Carga térmica (TR)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={pmocCargaTermicaTr}
+                  onChange={e => setPmocCargaTermicaTr(e.target.value)}
+                  placeholder="Ex: 5,0"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Pode ser calculada na ferramenta de Carga Térmica do técnico. Aqui é só registro.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nº de ocupantes fixos</Label>
+                <Input
+                  inputMode="numeric"
+                  value={pmocOcupantesFixos}
+                  onChange={e => setPmocOcupantesFixos(e.target.value)}
+                  placeholder="Ex: 12"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                <Input
+                  inputMode="numeric"
+                  value={pmocOcupantesFlutuantes}
+                  onChange={e => setPmocOcupantesFlutuantes(e.target.value)}
+                  placeholder="Ex: 30"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Conteúdo do wizard (stepper + etapas). Renderizado dentro do ResponsiveModal,
+  // cujo footer recebe a navegação Voltar/Próximo/Criar separadamente.
+  const wizardContent = (
+    <div className="flex flex-col">
         {/* Stepper */}
-        <div className="space-y-3 mt-2">
+        <div className="space-y-3">
           <Progress value={progressPercent} className="h-1.5" />
           <div className="flex items-center gap-1">
             {STEPS.map((s, i) => (
@@ -817,31 +1064,37 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Manutenção Preventiva Mensal — Empresa X" />
                 <p className="text-xs text-muted-foreground">Dê um nome claro que identifique este contrato</p>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                  <Label>Cliente *</Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <SearchableSelect
-                        options={customerOptions}
-                        value={customerId}
-                        onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
-                        placeholder="Selecione o cliente"
-                        searchPlaceholder="Buscar cliente..."
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="shrink-0 h-10 w-10"
-                      onClick={() => setShowQuickCustomer(true)}
-                      title="Cadastrar novo cliente"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                <Label>Cliente *</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={customerOptions}
+                      value={customerId}
+                      onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
+                      placeholder="Selecione o cliente"
+                      searchPlaceholder="Buscar cliente..."
+                    />
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 h-10 w-10"
+                    onClick={() => setShowQuickCustomer(true)}
+                    title="Cadastrar novo cliente"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
+              </div>
+
+              {/* PMOC (Onda A v1.9.0) — toggle no TOPO da etapa, logo após o Cliente.
+                  Quando ligado, mostra RT, badge legal, alerta e a caracterização
+                  do ambiente (Seção 4 da Planilha PMOC). */}
+              {pmocSection}
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <AssigneeMultiSelect
                     technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
@@ -881,19 +1134,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Checklist Padrão</Label>
-                  <Select value={formTemplateId || 'none'} onValueChange={v => setFormTemplateId(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {templates.filter(t => t.is_active).map(t => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Pode ser sobrescrito por item</p>
-                </div>
+                {/* Checklist Padrão só faz sentido em contrato SEM plano de
+                    serviços. Com plano, o checklist vem das atividades por
+                    equipamento — exibir o select duplicaria o checklist na OS.
+                    (usePlanEngine = há atividades agendáveis no plano.) */}
+                {!usePlanEngine && (
+                  <div className="space-y-2">
+                    <Label>Checklist Padrão</Label>
+                    <Select value={formTemplateId || 'none'} onValueChange={v => setFormTemplateId(v === 'none' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {templates.filter(t => t.is_active).map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Pode ser sobrescrito por item</p>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Observações (opcional)</Label>
@@ -906,249 +1165,77 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   <p className="text-xs text-muted-foreground">OSs só serão geradas para contratos ativos</p>
                 </div>
               </div>
-
-              {/* PMOC (Onda A v1.9.0). Toggle + seção condicional com RT, badge legal e alerta. */}
-              <div className="rounded-lg border p-3 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Switch
-                    checked={isPmoc}
-                    onCheckedChange={(v) => {
-                      // Quando desligar e tinha RT, pede confirmação (em edição).
-                      if (!v && isEditing && initialIsPmocRef.value && responsibleTechnicianId) {
-                        setShowPmocOffConfirm(true);
-                        return;
-                      }
-                      setIsPmoc(v);
-                      if (!v) setResponsibleTechnicianId('');
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <Label className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                      É um contrato PMOC?
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Plano de Manutenção, Operação e Controle. Ative para vincular um Responsável Técnico
-                      e gerar OSs com selo de conformidade legal.
-                    </p>
-                  </div>
-                </div>
-
-                {isPmoc && (
-                  <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <Label className="m-0">Responsável Técnico (RT)</Label>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="text-muted-foreground hover:text-foreground transition-colors"
-                              aria-label="O que é Responsável Técnico?"
-                            >
-                              <Info className="h-3.5 w-3.5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-xs text-xs">
-                            Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o
-                            Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018.
-                            Diferente do Técnico Executor (quem executa as OSs no campo).
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <p className="text-xs text-muted-foreground -mt-1">
-                        CFT/CREA — supervisão regulatória do PMOC.
-                      </p>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <Select
-                            value={responsibleTechnicianId || 'none'}
-                            onValueChange={(v) => setResponsibleTechnicianId(v === 'none' ? '' : v)}
-                            disabled={rtLoading}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={rtLoading ? 'Carregando...' : 'Selecione o RT...'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">— Sem RT atribuído —</SelectItem>
-                              {responsibleTechnicians.map((rt) => {
-                                const modality = rt.modality ?? 'Modalidade não informada';
-                                const registry = rt.cft_crea ?? 'sem registro';
-                                return (
-                                  <SelectItem key={rt.id} value={rt.id}>
-                                    {rt.full_name} — {modality} ({registry})
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="shrink-0 h-10 w-10"
-                          onClick={() => setShowQuickCreateRT(true)}
-                          aria-label="Cadastrar novo Responsável Técnico"
-                          title="Cadastrar novo Responsável Técnico"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Engenheiro ou Técnico com CFT/CREA que supervisiona o PMOC. Pode ser definido depois.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="info" className="gap-1.5">
-                        <ShieldCheck className="h-3 w-3" />
-                        Conforme Lei Federal 13.589/2018
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        OSs sairão com selo de conformidade.
-                      </span>
-                    </div>
-
-                    <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
-                      <ShieldCheck className="h-4 w-4 text-info" />
-                      <AlertTitle className="text-sm">O que o PMOC desbloqueia</AlertTitle>
-                      <AlertDescription className="text-xs">
-                        Contratos PMOC têm acesso ao Termo de Responsabilidade Técnica,
-                        Dossiê PMOC, Cronograma anual em PDF, portal público com QR Code
-                        e selo "Conforme Lei Federal 13.589/2018" nas OSs. O contrato gera
-                        as OSs imediatamente, igual a um contrato comum.
-                      </AlertDescription>
-                    </Alert>
-
-                    {/* Seção 4 da Planilha PMOC — caracterização do ambiente
-                        climatizado (modelo do cliente). Só aparece em PMOC. */}
-                    <div className="rounded-lg border p-3 space-y-3">
-                      <div>
-                        <Label className="flex items-center gap-2">
-                          <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                          Ambiente climatizado (Planilha PMOC)
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Caracterização do ambiente para a Seção 4 da Planilha PMOC. Opcional —
-                          campos em branco aparecem como "—" no documento.
-                        </p>
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Tipo de atividade</Label>
-                          <Input
-                            value={pmocTipoAtividade}
-                            onChange={e => setPmocTipoAtividade(e.target.value)}
-                            placeholder="Ex: Escritório administrativo"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Identificação do ambiente</Label>
-                          <Input
-                            value={pmocIdentificacaoAmbiente}
-                            onChange={e => setPmocIdentificacaoAmbiente(e.target.value)}
-                            placeholder="Ex: 2º andar — Sala 201"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Área climatizada (m²)</Label>
-                          <Input
-                            inputMode="decimal"
-                            value={pmocAreaClimatizada}
-                            onChange={e => setPmocAreaClimatizada(e.target.value)}
-                            placeholder="Ex: 120,5"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Carga térmica (TR)</Label>
-                          <Input
-                            inputMode="decimal"
-                            value={pmocCargaTermicaTr}
-                            onChange={e => setPmocCargaTermicaTr(e.target.value)}
-                            placeholder="Ex: 5,0"
-                          />
-                          <p className="text-[11px] text-muted-foreground">
-                            Pode ser calculada na ferramenta de Carga Térmica do técnico. Aqui é só registro.
-                          </p>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Nº de ocupantes fixos</Label>
-                          <Input
-                            inputMode="numeric"
-                            value={pmocOcupantesFixos}
-                            onChange={e => setPmocOcupantesFixos(e.target.value)}
-                            placeholder="Ex: 12"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Nº de ocupantes flutuantes</Label>
-                          <Input
-                            inputMode="numeric"
-                            value={pmocOcupantesFlutuantes}
-                            onChange={e => setPmocOcupantesFlutuantes(e.target.value)}
-                            placeholder="Ex: 30"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
           {/* STEP 2: Frequency */}
           {step === 1 && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tipo de Frequência</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => { setFreqType('months'); setFreqValue(1); }}
-                    className={cn(
-                      'rounded-lg border-2 p-3 text-sm font-medium transition-colors',
-                      freqType === 'months' ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'
-                    )}
-                  >
-                    A cada X meses
-                  </button>
-                  <button
-                    onClick={() => { setFreqType('days'); setFreqValue(7); }}
-                    className={cn(
-                      'rounded-lg border-2 p-3 text-sm font-medium transition-colors',
-                      freqType === 'days' ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'
-                    )}
-                  >
-                    A cada X dias
-                  </button>
-                </div>
-              </div>
+              {/* Com plano de serviços, o motor SEMPRE gera 1 visita/mês agrupando
+                  o que vence — a cadência única (tipo/atalhos/intervalo) fica
+                  irrelevante e é recolhida. Data de Início e Horizonte continuam. */}
+              {usePlanEngine ? (
+                <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
+                  <CalendarCheck className="h-4 w-4 text-info" />
+                  <AlertTitle className="text-sm">Cadência pelo plano de serviços</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    1 visita por mês, agrupando tudo que vence no plano. A frequência única
+                    fica desativada — ajuste as frequências por serviço na seção abaixo.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Tipo de Frequência</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => { setFreqType('months'); setFreqValue(1); }}
+                        className={cn(
+                          'rounded-lg border-2 p-3 text-sm font-medium transition-colors',
+                          freqType === 'months' ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'
+                        )}
+                      >
+                        A cada X meses
+                      </button>
+                      <button
+                        onClick={() => { setFreqType('days'); setFreqValue(7); }}
+                        className={cn(
+                          'rounded-lg border-2 p-3 text-sm font-medium transition-colors',
+                          freqType === 'days' ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'
+                        )}
+                      >
+                        A cada X dias
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Atalhos rápidos</Label>
-                <div className="flex gap-2 flex-wrap">
-                  {(freqType === 'months' ? QUICK_MONTHS : QUICK_DAYS).map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setFreqValue(opt.value)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
-                        freqValue === opt.value ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <Label>Atalhos rápidos</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {(freqType === 'months' ? QUICK_MONTHS : QUICK_DAYS).map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setFreqValue(opt.value)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                            freqValue === opt.value ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>{freqType === 'months' ? 'Intervalo (meses)' : 'Intervalo (dias)'} *</Label>
-                  <Input type="number" min={1} value={freqValue} onChange={e => setFreqValue(Number(e.target.value))} />
-                </div>
+              <div className={cn('grid gap-4', usePlanEngine ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
+                {!usePlanEngine && (
+                  <div className="space-y-2">
+                    <Label>{freqType === 'months' ? 'Intervalo (meses)' : 'Intervalo (dias)'} *</Label>
+                    <Input type="number" min={1} value={freqValue} onChange={e => setFreqValue(Number(e.target.value))} />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Data de Início *</Label>
                   <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
@@ -1156,38 +1243,71 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <div className="space-y-2">
                   <Label>Horizonte (meses)</Label>
                   <Input type="number" min={1} max={60} value={horizonMonths} onChange={e => setHorizonMonths(Number(e.target.value))} />
-                  <p className="text-xs text-muted-foreground">= {occurrences.length} ocorrências</p>
+                  <p className="text-xs text-muted-foreground">
+                    = {visitCount} {usePlanEngine ? 'visita(s)' : 'ocorrências'}
+                  </p>
                 </div>
               </div>
 
-              {occurrences.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label>Prévia das datas ({occurrences.length})</Label>
-                  <div className="rounded-md border max-h-44 overflow-y-auto">
-                    {occurrences.slice(0, 30).map((date, i) => {
-                      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                      return (
-                        <div key={i} className="flex items-center gap-3 px-3 py-2 border-b last:border-0 text-sm">
-                          <span className="text-muted-foreground w-5 text-right font-mono text-xs">{i + 1}</span>
-                          <span className="text-foreground">{format(date, 'dd/MM/yyyy', { locale: ptBR })}</span>
-                          <span className="text-muted-foreground text-xs">{format(date, 'EEEE', { locale: ptBR })}</span>
-                          {isWeekend && <Badge variant="outline" className="text-warning border-warning/30 text-[10px] px-1.5 py-0">Fim de semana</Badge>}
+              {/* Prévia das datas. Com plano, reflete as VISITAS AGRUPADAS
+                  (datas + quantas atividades vencem em cada mês). Sem plano,
+                  a cadência única. */}
+              {usePlanEngine ? (
+                groupedVisits.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label>Prévia das visitas ({groupedVisits.length})</Label>
+                    <div className="rounded-md border max-h-44 overflow-y-auto">
+                      {groupedVisits.slice(0, 30).map((visit, i) => {
+                        const isWeekend = visit.date.getDay() === 0 || visit.date.getDay() === 6;
+                        return (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2 border-b last:border-0 text-sm">
+                            <span className="text-muted-foreground w-5 text-right font-mono text-xs">{i + 1}</span>
+                            <span className="text-foreground">{format(visit.date, 'dd/MM/yyyy', { locale: ptBR })}</span>
+                            <Badge variant="info" className="text-[10px] px-1.5 py-0 shrink-0">
+                              {visit.activityIndexes.length} atividade{visit.activityIndexes.length === 1 ? '' : 's'}
+                            </Badge>
+                            {isWeekend && <Badge variant="outline" className="text-warning border-warning/30 text-[10px] px-1.5 py-0">Fim de semana</Badge>}
+                          </div>
+                        );
+                      })}
+                      {groupedVisits.length > 30 && (
+                        <div className="text-center py-2 text-xs text-muted-foreground">
+                          +{groupedVisits.length - 30} visitas adicionais
                         </div>
-                      );
-                    })}
-                    {occurrences.length > 30 && (
-                      <div className="text-center py-2 text-xs text-muted-foreground">
-                        +{occurrences.length - 30} datas adicionais
+                      )}
+                    </div>
+                  </div>
+                )
+              ) : (
+                occurrences.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label>Prévia das datas ({occurrences.length})</Label>
+                    <div className="rounded-md border max-h-44 overflow-y-auto">
+                      {occurrences.slice(0, 30).map((date, i) => {
+                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                        return (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2 border-b last:border-0 text-sm">
+                            <span className="text-muted-foreground w-5 text-right font-mono text-xs">{i + 1}</span>
+                            <span className="text-foreground">{format(date, 'dd/MM/yyyy', { locale: ptBR })}</span>
+                            <span className="text-muted-foreground text-xs">{format(date, 'EEEE', { locale: ptBR })}</span>
+                            {isWeekend && <Badge variant="outline" className="text-warning border-warning/30 text-[10px] px-1.5 py-0">Fim de semana</Badge>}
+                          </div>
+                        );
+                      })}
+                      {occurrences.length > 30 && (
+                        <div className="text-center py-2 text-xs text-muted-foreground">
+                          +{occurrences.length - 30} datas adicionais
+                        </div>
+                      )}
+                    </div>
+                    {weekendDates.length > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-warning">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        {weekendDates.length} ocorrência(s) caem em fim de semana
                       </div>
                     )}
                   </div>
-                  {weekendDates.length > 0 && (
-                    <div className="flex items-center gap-2 text-xs text-warning">
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                      {weekendDates.length} ocorrência(s) caem em fim de semana
-                    </div>
-                  )}
-                </div>
+                )
               )}
 
               {/* Plano de serviços com frequência (Fase 1). Cada serviço pode ter
@@ -1514,24 +1634,54 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
         </div>
+    </div>
+  );
 
-        {/* Footer navigation */}
-        <SheetFooter className="mt-4 flex flex-row justify-between gap-2 border-t pt-4">
-          <Button variant="outline" onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)} disabled={submitting}>
-            {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Voltar</>}
-          </Button>
-          {step < STEPS.length - 1 ? (
-            <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
-              Próximo <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              {submitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : `Criar Contrato (${visitCount} OSs)`}
-            </Button>
-          )}
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+  // Navegação do wizard — vai pro footer do ResponsiveModal (fixo abaixo do
+  // conteúdo rolável, no desktop e no mobile).
+  const wizardFooter = (
+    <div className="flex flex-row justify-between gap-2">
+      <Button variant="outline" onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)} disabled={submitting}>
+        {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Voltar</>}
+      </Button>
+      {step < STEPS.length - 1 ? (
+        <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
+          Próximo <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      ) : (
+        <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          {submitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : `Criar Contrato (${visitCount} OSs)`}
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+    {/* Container do wizard: modal central no desktop, drawer de baixo no mobile. */}
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEditing ? 'Editar Contrato' : 'Novo Contrato'}
+      className="sm:max-w-[700px]"
+      footer={wizardFooter}
+    >
+      {wizardContent}
+    </ResponsiveModal>
+
+    {/* Rascunho (só criação): oferece retomar o preenchimento interrompido. */}
+    {!isEditing && (
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) applyContractDraft(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+        }}
+      />
+    )}
 
     <CustomerFormDialog
       open={showQuickCustomer}
