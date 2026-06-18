@@ -310,12 +310,23 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
         {logoLoading ? (
           <div className="h-10 w-32 rounded bg-muted animate-pulse" />
         ) : (
-          <img
-            src={logoUrl || (document.documentElement.classList.contains('dark') ? logoGreen : logoDark)}
-            alt="Dominex"
-            className="h-10 w-auto max-h-[44px] cursor-pointer object-contain"
-            onClick={() => navigate(adminTarget)}
-          />
+          <>
+            {/* Tema via CSS (dark:hidden / hidden dark:block): sempre correto e sem
+                depender de re-render. Em tema claro o logo-dark (texto escuro) fica
+                visível; em escuro, o verde (texto branco). logoUrl (white-label) cobre ambos. */}
+            <img
+              src={logoUrl || logoDark}
+              alt="Dominex"
+              className="h-10 w-auto max-h-[44px] cursor-pointer object-contain dark:hidden"
+              onClick={() => navigate(adminTarget)}
+            />
+            <img
+              src={logoUrl || logoGreen}
+              alt="Dominex"
+              className="h-10 w-auto max-h-[44px] cursor-pointer object-contain hidden dark:block"
+              onClick={() => navigate(adminTarget)}
+            />
+          </>
         )}
       </div>
 
