@@ -183,21 +183,21 @@ export function CaboEletrico() {
             </div>
 
             {resultado.correnteEstimada && (
-              <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-700 dark:text-amber-400">
+              <p className="rounded-lg border border-border bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
                 Valor estimado: BTU fora da faixa tabelada. A corrente foi aproximada pelo ponto mais
                 próximo — confira a etiqueta do equipamento.
               </p>
             )}
 
             {resultado.alerta127Alto && (
-              <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-700 dark:text-amber-400">
+              <p className="rounded-lg border border-border bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
                 Evite 127V acima de ~18.000 BTU: a corrente fica alta demais para a rede monofásica.
                 Considere usar 220V.
               </p>
             )}
 
             {resultado.foraDeAlcance && (
-              <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-700 dark:text-amber-400">
+              <p className="rounded-lg border border-border bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
                 Distância muito grande para as seções disponíveis. Mostrando a maior seção (25 mm²)
                 como melhor esforço — valide com um eletricista.
               </p>

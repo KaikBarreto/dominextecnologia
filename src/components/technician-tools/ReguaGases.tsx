@@ -426,7 +426,7 @@ function ReguaUnificada({
           )}
           {/* Aviso de pressão fora da faixa (fonte = pressão) */}
           {pressaoForaFaixa && (
-            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-700 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-300">
+            <div className="mt-2 rounded-md border border-border bg-muted px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
               Pressão fora da faixa da tabela para este gás na unidade{' '}
               <span className="font-semibold">{unidade === 'bar' ? 'bar' : 'psi'}</span>.
               {sugestao && (
