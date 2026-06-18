@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { usePersistedState } from '@/hooks/usePersistedState';
 import {
   CABO,
   TENSOES_CABO,
@@ -28,10 +29,13 @@ function num(s: string, fallback = 0): number {
 
 export function CaboEletrico() {
   // Default: 220v (mais comum em campo) e primeiro BTU disponível dessa tensão.
-  const [tensao, setTensao] = useState<TensaoCaboValue>('220');
-  const [btu, setBtu] = useState<string>('');
-  const [btuPersonalizado, setBtuPersonalizado] = useState<string>('');
-  const [distancia, setDistancia] = useState<string>('');
+  const [tensao, setTensao] = usePersistedState<TensaoCaboValue>('tt:state:cabo-eletrico:tensao', '220');
+  const [btu, setBtu] = usePersistedState<string>('tt:state:cabo-eletrico:btu', '');
+  const [btuPersonalizado, setBtuPersonalizado] = usePersistedState<string>(
+    'tt:state:cabo-eletrico:btuPersonalizado',
+    '',
+  );
+  const [distancia, setDistancia] = usePersistedState<string>('tt:state:cabo-eletrico:distancia', '');
 
   // BTUs disponíveis dependem da tensão escolhida.
   const btusDisponiveis = CABO.BTUS_POR_TENSAO[tensao];
@@ -44,7 +48,7 @@ export function CaboEletrico() {
     if (btu && !isPersonalizado && !btusDisponiveis.includes(num(btu))) {
       setBtu('');
     }
-  }, [tensao, btu, btusDisponiveis, isPersonalizado]);
+  }, [tensao, btu, btusDisponiveis, isPersonalizado, setBtu]);
 
   const resultado = useMemo(() => {
     const b = isPersonalizado ? num(btuPersonalizado) : num(btu);

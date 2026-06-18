@@ -1,10 +1,14 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { usePersistedState } from '@/hooks/usePersistedState';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectSectionLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -14,6 +18,8 @@ import { cn } from '@/lib/utils';
 import {
   REFRIGERANTES,
   tempParaPressao,
+  pressaoParaTempSat,
+  sugerirOutraUnidade,
   formatarPressao,
   getRefrigerante,
   type UnidadePressao,
@@ -29,6 +35,25 @@ function num(str: string, def = NaN): number {
 
 const TEMP_MIN = -40;
 const TEMP_MAX = 60;
+
+/**
+ * Classificação dos gases do select por seção (independe da ordem do catálogo).
+ * "Atuais" fica no topo SEM cabeçalho (padrão do projeto pra default). Qualquer
+ * id do catálogo não listado abaixo cai em "Atuais" (fallback seguro, nunca some).
+ */
+const GASES_LEGADO_IDS = ['R-22', 'R-12', 'R-404A'];
+const GASES_BLEND_IDS = ['R-407C', 'R-422D', 'R-438A', 'R-407A', 'R-448A', 'R-449A'];
+
+/** Resolve as 3 listas de refrigerantes a partir do catálogo, na ordem definida. */
+function agruparRefrigerantes() {
+  const byId = new Map(REFRIGERANTES.map((r) => [r.id, r]));
+  const legado = GASES_LEGADO_IDS.map((id) => byId.get(id)).filter(Boolean) as typeof REFRIGERANTES;
+  const blends = GASES_BLEND_IDS.map((id) => byId.get(id)).filter(Boolean) as typeof REFRIGERANTES;
+  const classificados = new Set([...GASES_LEGADO_IDS, ...GASES_BLEND_IDS]);
+  // "Atuais" = tudo que não é legado nem blend (inclui ids novos não mapeados).
+  const atuais = REFRIGERANTES.filter((r) => !classificados.has(r.id));
+  return { atuais, legado, blends };
+}
 
 /** Fórmula escolhida na UI → curva da tabela. */
 type Formula = 'bubble' | 'dew';
@@ -192,6 +217,22 @@ function ReguaDupla({
   );
 }
 
+/** Item do select de gás com a bolinha de cor + selo de inflamável (padrão do projeto). */
+function RefrigeranteOption({ refrig }: { refrig: (typeof REFRIGERANTES)[number] }) {
+  return (
+    <SelectItem value={refrig.id}>
+      <span className="flex items-center gap-2">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/25"
+          style={{ backgroundColor: refrig.cor }}
+        />
+        <span className="min-w-0 truncate">{refrig.nome}</span>
+        <RefrigeranteInflamavel refrigId={refrig.id} />
+      </span>
+    </SelectItem>
+  );
+}
+
 /**
  * Régua unificada (mobile E desktop): régua de escala dupla (P × °C) +
  * toggles de Fórmula e Unidade + select de Gás (com label) + leituras ao vivo.
@@ -206,23 +247,101 @@ function ReguaUnificada({
   unidade: UnidadePressao;
   setUnidade: (u: UnidadePressao) => void;
 }) {
-  const [tempStr, setTempStr] = useState('5');
-  const [refrigId, setRefrigId] = useState<string>('R-410A');
-  const [formula, setFormula] = useState<Formula>('dew');
-
-  const temp = num(tempStr, 5);
-  const tempClamped = Math.min(TEMP_MAX, Math.max(TEMP_MIN, Number.isFinite(temp) ? temp : 5));
-  const setTemp = useCallback((t: number) => setTempStr(String(t)), []);
+  const [tempStr, setTempStr] = usePersistedState('tt:state:regua-gases:tempStr', '5');
+  const [pressaoStr, setPressaoStr] = usePersistedState('tt:state:regua-gases:pressaoStr', '');
+  const [refrigId, setRefrigId] = usePersistedState<string>(
+    'tt:state:regua-gases:refrigId',
+    'R-410A',
+  );
+  const [formula, setFormula] = usePersistedState<Formula>('tt:state:regua-gases:formula', 'dew');
+  // Qual lado o técnico mexeu por último — é a fonte de verdade do instante.
+  // O outro lado é sempre derivado. Evita loop de recálculo.
+  const [ultimoEditado, setUltimoEditado] = usePersistedState<'temp' | 'pressao'>(
+    'tt:state:regua-gases:ultimoEditado',
+    'temp',
+  );
 
   // A fórmula define a curva; gases sem glide caem na curva única no helper.
   const curva: Curva = formula;
 
-  const pressao = useMemo(
-    () => tempParaPressao(refrigId, tempClamped, unidade, curva),
-    [refrigId, tempClamped, unidade, curva],
+  // Temperatura RESOLVIDA: posiciona a régua e alimenta o cálculo da pressão.
+  // Quando a fonte é a pressão, derivamos a temperatura pela inversa.
+  const pressaoDigitada = num(pressaoStr, NaN);
+  const tempDaPressao = useMemo(
+    () =>
+      ultimoEditado === 'pressao'
+        ? pressaoParaTempSat(refrigId, pressaoDigitada, unidade, curva)
+        : null,
+    [ultimoEditado, refrigId, pressaoDigitada, unidade, curva],
   );
 
+  // Temperatura "crua" conforme a fonte ativa.
+  const tempResolvida =
+    ultimoEditado === 'pressao'
+      ? tempDaPressao // pode ser null se pressão fora da faixa
+      : num(tempStr, 5);
+
+  // Posição da régua: temperatura resolvida, com clamp. Se a fonte é pressão
+  // e ela está fora da faixa (tempResolvida === null), mantém a régua no último
+  // valor numérico válido conhecido (a temperatura digitada como fallback visual).
+  const tempParaRegua = tempResolvida ?? num(tempStr, 5);
+  const tempClamped = Math.min(
+    TEMP_MAX,
+    Math.max(TEMP_MIN, Number.isFinite(tempParaRegua) ? tempParaRegua : 5),
+  );
+
+  // Editar a temperatura (input OU arrasto/teclado da régua) torna a TEMP a fonte.
+  const setTemp = useCallback(
+    (t: number) => {
+      setUltimoEditado('temp');
+      setTempStr(String(t));
+    },
+    [setTempStr, setUltimoEditado],
+  );
+
+  // PRESSÃO exibida: ecoa o que foi digitado quando a fonte é a pressão;
+  // senão, é derivada da temperatura resolvida.
+  const pressao = useMemo(
+    () =>
+      ultimoEditado === 'pressao'
+        ? Number.isFinite(pressaoDigitada)
+          ? pressaoDigitada
+          : null
+        : tempParaPressao(refrigId, tempClamped, unidade, curva),
+    [ultimoEditado, pressaoDigitada, refrigId, tempClamped, unidade, curva],
+  );
+
+  // °C exibida nas leituras: temperatura resolvida (inteira), ou null fora de faixa.
+  const tempExibida =
+    ultimoEditado === 'pressao'
+      ? tempDaPressao !== null
+        ? Math.round(tempDaPressao)
+        : null
+      : tempClamped;
+
+  // Aviso de fora-de-faixa quando a fonte é a pressão e a inversa falhou.
+  const pressaoForaFaixa =
+    ultimoEditado === 'pressao' && Number.isFinite(pressaoDigitada) && tempDaPressao === null;
+  const sugestao = pressaoForaFaixa
+    ? sugerirOutraUnidade(refrigId, pressaoDigitada, unidade, curva)
+    : null;
+
+  // Valor mostrado no input de pressão: o que o técnico digitou tem prioridade
+  // (fonte = pressão); quando a fonte é a temperatura, mostra a pressão derivada.
+  const pressaoInputValue =
+    ultimoEditado === 'pressao'
+      ? pressaoStr
+      : pressao !== null
+        ? formatarPressao(pressao, unidade)
+        : '';
+
   const refrig = getRefrigerante(refrigId);
+
+  // Gases agrupados pro select (independe da ordem do catálogo).
+  const { atuais: gasesAtuais, legado: gasesLegado, blends: gasesBlends } = useMemo(
+    () => agruparRefrigerantes(),
+    [],
+  );
 
   return (
     <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 lg:gap-6">
@@ -255,18 +374,28 @@ function ReguaUnificada({
               <SelectValue placeholder="Gás" />
             </SelectTrigger>
             <SelectContent>
-              {REFRIGERANTES.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/25"
-                      style={{ backgroundColor: r.cor }}
-                    />
-                    <span className="min-w-0 truncate">{r.nome}</span>
-                    <RefrigeranteInflamavel refrigId={r.id} />
-                  </span>
-                </SelectItem>
+              {/* Atuais — no topo, sem cabeçalho (padrão do projeto pra default) */}
+              {gasesAtuais.map((r) => (
+                <RefrigeranteOption key={r.id} refrig={r} />
               ))}
+              {/* Gases Legado (Antigos) */}
+              {gasesLegado.length > 0 && (
+                <SelectGroup>
+                  <SelectSectionLabel>Gases Legado (Antigos)</SelectSectionLabel>
+                  {gasesLegado.map((r) => (
+                    <RefrigeranteOption key={r.id} refrig={r} />
+                  ))}
+                </SelectGroup>
+              )}
+              {/* Substitutos / Blends de retrofit */}
+              {gasesBlends.length > 0 && (
+                <SelectGroup>
+                  <SelectSectionLabel>Substitutos / Blends de retrofit</SelectSectionLabel>
+                  {gasesBlends.map((r) => (
+                    <RefrigeranteOption key={r.id} refrig={r} />
+                  ))}
+                </SelectGroup>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -283,30 +412,68 @@ function ReguaUnificada({
           />
         </div>
 
-        {/* Leituras ao vivo */}
-        <div className="rounded-xl border border-border bg-card p-3 text-center lg:p-4">
+        {/* Leituras ao vivo — ambos editáveis (bidirecional) */}
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+          {/* PRESSÃO — editável */}
           <div className="leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
+            <p className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
               {rotuloUnidade(unidade)}
             </p>
-            {pressao !== null ? (
-              <p className="text-3xl font-bold tabular-nums text-primary lg:text-4xl">
-                {formatarPressao(pressao, unidade)}
-              </p>
-            ) : (
-              <p className="py-1 text-sm text-muted-foreground">fora da faixa</p>
-            )}
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={pressaoInputValue}
+              placeholder="—"
+              aria-label={`Pressão em ${rotuloUnidade(unidade)}`}
+              onChange={(e) => {
+                setUltimoEditado('pressao');
+                setPressaoStr(e.target.value);
+              }}
+              className="mt-0.5 h-auto border-0 bg-transparent p-0 text-center text-3xl font-bold tabular-nums text-primary shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 lg:text-4xl"
+            />
           </div>
+          {/* TEMPERATURA — editável */}
           <div className="mt-2 border-t border-border pt-2 leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
+            <p className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
               °C
             </p>
-            <p className="text-3xl font-bold tabular-nums text-primary lg:text-4xl">{tempClamped}</p>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={ultimoEditado === 'temp' ? tempStr : tempExibida !== null ? String(tempExibida) : ''}
+              placeholder="—"
+              aria-label="Temperatura em graus Celsius"
+              onChange={(e) => {
+                setUltimoEditado('temp');
+                setTempStr(e.target.value);
+              }}
+              className="mt-0.5 h-auto border-0 bg-transparent p-0 text-center text-3xl font-bold tabular-nums text-primary shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 lg:text-4xl"
+            />
           </div>
           {refrig?.temGlide && (
-            <span className="mt-2 inline-block text-[11px] font-medium text-amber-600 dark:text-amber-400 lg:text-xs">
+            <span className="mt-2 block text-center text-[11px] font-medium text-amber-600 dark:text-amber-400 lg:text-xs">
               {formula === 'dew' ? 'vapor (dew)' : 'líquido (bubble)'}
             </span>
+          )}
+          {/* Aviso de pressão fora da faixa (fonte = pressão) */}
+          {pressaoForaFaixa && (
+            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-700 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-300">
+              Pressão fora da faixa da tabela para este gás na unidade{' '}
+              <span className="font-semibold">{unidade === 'bar' ? 'bar' : 'psi'}</span>.
+              {sugestao && (
+                <>
+                  {' '}Parece estar em{' '}
+                  <button
+                    type="button"
+                    onClick={() => setUnidade(sugestao.unidadeSugerida)}
+                    className="font-semibold underline underline-offset-2"
+                  >
+                    {sugestao.unidadeSugerida === 'bar' ? 'bar' : 'psi'}
+                  </button>{' '}
+                  (daria {Math.round(sugestao.tempSat)} °C). Toque para trocar.
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -315,7 +482,10 @@ function ReguaUnificada({
 }
 
 export function ReguaGases() {
-  const [unidade, setUnidade] = useState<UnidadePressao>('psi');
+  const [unidade, setUnidade] = usePersistedState<UnidadePressao>(
+    'tt:state:regua-gases:unidade',
+    'psi',
+  );
 
   return (
     <div className="space-y-4 pb-4">

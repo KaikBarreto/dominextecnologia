@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { AlertTriangle, Info, RefreshCcw } from 'lucide-react';
+import { usePersistedState } from '@/hooks/usePersistedState';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -28,7 +29,6 @@ import {
   calcularSuperaquecimento,
   calcularSubresfriamento,
   classificarFaixa,
-  pressaoParaTempSat,
   sugerirOutraUnidade,
   formatarTemp,
   getRefrigerante,
@@ -283,7 +283,7 @@ function AvisoUnidade({ pressaoBruta, unidade, sugestao, onTrocarUnidade }: Avis
   );
 }
 
-type SubAba = 'sh' | 'sc' | 'pt';
+type SubAba = 'sh' | 'sc';
 
 interface SelecoesCompartilhadasProps {
   refrigId: string;
@@ -292,7 +292,6 @@ interface SelecoesCompartilhadasProps {
   setUnidade: (v: UnidadePressao) => void;
   modeloId: string;
   setModeloId: (v: string) => void;
-  subAba: SubAba;
 }
 
 /** Modelos sem grupo (aparecem no topo do select, sem cabeçalho). */
@@ -310,7 +309,7 @@ const MODELOS_POR_GRUPO = MODELOS_SUPERAQUECIMENTO.reduce(
 
 /**
  * Selects de Fluido Refrigerante + Unidade — estado vive no pai, aparece em toda
- * subaba. O select de Modelo/fabricante só entra em SH e SC.
+ * subaba. O select de Modelo/fabricante entra em SH e SC.
  */
 function SelecoesCompartilhadas({
   refrigId,
@@ -319,49 +318,45 @@ function SelecoesCompartilhadas({
   setUnidade,
   modeloId,
   setModeloId,
-  subAba,
 }: SelecoesCompartilhadasProps) {
-  const mostrarModelo = subAba === 'sh' || subAba === 'sc';
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-      {mostrarModelo && (
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
-          <Select
-            value={modeloId}
-            onValueChange={(v) => {
-              setModeloId(v);
-              const rp = getModeloSuperaquecimento(v)?.refrigPadrao;
-              if (rp) setRefrigId(rp);
-            }}
-          >
-            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-              <SelectValue placeholder="Selecione o modelo/fabricante" />
-            </SelectTrigger>
-            <SelectContent>
-              {MODELOS_SEM_GRUPO.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                </SelectItem>
-              ))}
-              {Object.entries(MODELOS_POR_GRUPO).map(([grupo, modelos]) => (
-                <SelectGroup key={grupo}>
-                  <SelectSectionLabel>{grupo}</SelectSectionLabel>
-                  {modelos.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="pt-1 text-xs text-muted-foreground">
-            O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
-            continua sendo calculado pela física.
-          </p>
-        </div>
-      )}
+      <div className="space-y-1.5">
+        <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
+        <Select
+          value={modeloId}
+          onValueChange={(v) => {
+            setModeloId(v);
+            const rp = getModeloSuperaquecimento(v)?.refrigPadrao;
+            if (rp) setRefrigId(rp);
+          }}
+        >
+          <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+            <SelectValue placeholder="Selecione o modelo/fabricante" />
+          </SelectTrigger>
+          <SelectContent>
+            {MODELOS_SEM_GRUPO.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.label}
+              </SelectItem>
+            ))}
+            {Object.entries(MODELOS_POR_GRUPO).map(([grupo, modelos]) => (
+              <SelectGroup key={grupo}>
+                <SelectSectionLabel>{grupo}</SelectSectionLabel>
+                {modelos.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="pt-1 text-xs text-muted-foreground">
+          O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
+          continua sendo calculado pela física.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
@@ -408,7 +403,6 @@ function SelecoesCompartilhadas({
 const SUBABAS: { key: SubAba; label: string }[] = [
   { key: 'sh', label: 'Superaquecimento (SH)' },
   { key: 'sc', label: 'Subresfriamento (SC)' },
-  { key: 'pt', label: 'Consulta P×T' },
 ];
 
 interface SuperaquecimentoProps {
@@ -418,27 +412,33 @@ interface SuperaquecimentoProps {
 
 export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
   // Compartilhados: padrão R-410A, bar.
-  const [refrigId, setRefrigId] = useState<string>('R-410A');
-  const [unidade, setUnidade] = useState<UnidadePressao>('psi');
+  const [refrigId, setRefrigId] = usePersistedState<string>(
+    'tt:state:superaquecimento:refrigId',
+    'R-410A',
+  );
+  const [unidade, setUnidade] = usePersistedState<UnidadePressao>(
+    'tt:state:superaquecimento:unidade',
+    'psi',
+  );
 
   // Subaba ativa — começa no Superaquecimento (SH).
-  const [subAba, setSubAba] = useState<SubAba>('sh');
+  const [subAba, setSubAba] = usePersistedState<SubAba>('tt:state:superaquecimento:subAba', 'sh');
 
   // Superaquecimento (SH)
-  const [pBaixa, setPBaixa] = useState('');
-  const [tSuccao, setTSuccao] = useState('');
+  const [pBaixa, setPBaixa] = usePersistedState('tt:state:superaquecimento:pBaixa', '');
+  const [tSuccao, setTSuccao] = usePersistedState('tt:state:superaquecimento:tSuccao', '');
 
   // Modelo/fabricante (subaba SH). Por ora NÃO altera o cálculo — só registra a
   // escolha do técnico. Padrão para todos os modelos.
   // TODO: aplicar regra/alvo por fabricante quando a base de dados for fornecida pelo CEO.
-  const [modeloId, setModeloId] = useState<string>(MODELO_PADRAO_ID);
+  const [modeloId, setModeloId] = usePersistedState<string>(
+    'tt:state:superaquecimento:modeloId',
+    MODELO_PADRAO_ID,
+  );
 
   // Subresfriamento (SC)
-  const [pAlta, setPAlta] = useState('');
-  const [tLiquido, setTLiquido] = useState('');
-
-  // Consulta PT
-  const [pConsulta, setPConsulta] = useState('');
+  const [pAlta, setPAlta] = usePersistedState('tt:state:superaquecimento:pAlta', '');
+  const [tLiquido, setTLiquido] = usePersistedState('tt:state:superaquecimento:tLiquido', '');
 
   const refrig = getRefrigerante(refrigId);
 
@@ -466,23 +466,13 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
     [modelo, resultadoSC.delta],
   );
 
-  // Consulta PT: usa a curva de vapor (dew) p/ blends, única p/ os demais.
-  const tempConsulta = useMemo(() => {
-    const p = num(pConsulta);
-    if (!Number.isFinite(p)) return null;
-    const curva = refrig?.temGlide ? 'dew' : 'unica';
-    return pressaoParaTempSat(refrigId, p, unidade, curva);
-  }, [refrigId, pConsulta, unidade, refrig]);
-
   // Detecta "digitou pressão mas saiu da tabela" (pra avisar em vez de pedir input).
   const shForaFaixa = Number.isFinite(num(pBaixa)) && resultadoSH.tempSat === null;
   const scForaFaixa = Number.isFinite(num(pAlta)) && resultadoSC.tempSat === null;
-  const consultaForaFaixa = Number.isFinite(num(pConsulta)) && tempConsulta === null;
 
-  // Curvas usadas em cada cálculo (SH=dew/única, SC=bubble/única, PT=dew/única).
+  // Curvas usadas em cada cálculo (SH=dew/única, SC=bubble/única).
   const curvaSH: Curva = refrig?.temGlide ? 'dew' : 'unica';
   const curvaSC: Curva = refrig?.temGlide ? 'bubble' : 'unica';
-  const curvaPT: Curva = refrig?.temGlide ? 'dew' : 'unica';
 
   // Sugestão de troca de unidade: só quando fora na atual e dentro na outra.
   const sugestaoSH = useMemo(
@@ -492,10 +482,6 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
   const sugestaoSC = useMemo(
     () => sugerirOutraUnidade(refrigId, num(pAlta), unidade, curvaSC),
     [refrigId, pAlta, unidade, curvaSC],
-  );
-  const sugestaoPT = useMemo(
-    () => sugerirOutraUnidade(refrigId, num(pConsulta), unidade, curvaPT),
-    [refrigId, pConsulta, unidade, curvaPT],
   );
 
   return (
@@ -547,7 +533,6 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
         setUnidade={setUnidade}
         modeloId={modeloId}
         setModeloId={setModeloId}
-        subAba={subAba}
       />
 
       {/* Superaquecimento */}
@@ -606,54 +591,6 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
             />
           }
         />
-      )}
-
-      {/* Consulta PT — pressão → temperatura de saturação */}
-      {subAba === 'pt' && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-          <div>
-            <h3 className="text-base font-semibold tracking-tight md:text-lg">Consulta P×T</h3>
-            <p className="text-sm text-muted-foreground">
-              Temperatura de saturação para uma pressão.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">
-              Pressão ({unidade})
-            </Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              placeholder={unidade === 'bar' ? 'Ex: 6,98' : 'Ex: 101'}
-              value={pConsulta}
-              onChange={(e) => setPConsulta(e.target.value)}
-              className="h-14 text-lg"
-            />
-          </div>
-          <div className="rounded-lg border border-border bg-background p-4 text-center">
-            {tempConsulta !== null ? (
-              <p className="text-4xl font-bold leading-none text-primary sm:text-5xl">
-                {formatarTemp(tempConsulta)}
-                <span className="ml-1.5 text-2xl font-semibold sm:text-3xl">°C</span>
-              </p>
-            ) : sugestaoPT ? (
-              <AvisoUnidade
-                pressaoBruta={pConsulta}
-                unidade={unidade}
-                sugestao={sugestaoPT}
-                onTrocarUnidade={setUnidade}
-              />
-            ) : consultaForaFaixa ? (
-              <p className="text-sm text-amber-600 dark:text-amber-400">
-                Pressão fora da faixa da tabela para este refrigerante.
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Informe a pressão para ver a temperatura de saturação.
-              </p>
-            )}
-          </div>
-        </div>
       )}
 
       {/* Alerta sutil */}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { usePersistedState } from '@/hooks/usePersistedState';
 import {
   BTUS_PADRAO,
   TENSOES,
@@ -32,15 +33,21 @@ function num(s: string, fallback = 0): number {
 
 export function CalculoCapacitor() {
   // Modo de cálculo. Default: estimativa por BTU (comportamento atual).
-  const [modo, setModo] = useState<Modo>('btu');
+  const [modo, setModo] = usePersistedState<Modo>('tt:state:capacitor:modo', 'btu');
 
   // Default: primeiro BTU padrão e 220V (mais comum em campo).
-  const [btu, setBtu] = useState<string>(String(BTUS_PADRAO[0] ?? ''));
-  const [btuPersonalizado, setBtuPersonalizado] = useState<string>('');
-  const [tensao, setTensao] = useState<string>('220');
+  const [btu, setBtu] = usePersistedState<string>(
+    'tt:state:capacitor:btu',
+    String(BTUS_PADRAO[0] ?? ''),
+  );
+  const [btuPersonalizado, setBtuPersonalizado] = usePersistedState<string>(
+    'tt:state:capacitor:btuPersonalizado',
+    '',
+  );
+  const [tensao, setTensao] = usePersistedState<string>('tt:state:capacitor:tensao', '220');
 
   // Modo preciso: LRA do compressor (string crua, igual aos demais inputs).
-  const [lra, setLra] = useState<string>('');
+  const [lra, setLra] = usePersistedState<string>('tt:state:capacitor:lra', '');
 
   const isPersonalizado = btu === PERSONALIZADO;
 

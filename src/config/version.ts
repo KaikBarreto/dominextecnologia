@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.36";
+export const APP_VERSION = "1.12.37";
 
-export const VERSION_NOTES = "As ordens de serviço que fazem parte de um contrato de PMOC agora exibem o selo de conformidade com a Lei Federal 13.589/2018 — na hora de preencher ou abrir a ordem e também no link público que o cliente recebe. Fica claro para todos que aquele atendimento faz parte de um plano de manutenção em conformidade com a lei. Ordens que não são de contrato PMOC continuam sem o selo.";
+export const VERSION_NOTES = "Melhorias nas ferramentas do técnico: elas não perdem mais o que você digitou ao trocar de ferramenta e voltar; a Régua de Gases ficou bidirecional (digite a temperatura OU a pressão) e ganhou mais gases organizados em seções; e a ferramenta de troca de gás (retrofit) foi repaginada — escolha o gás antigo e veja os substitutos compatíveis com a pressão de trabalho de cada um.";

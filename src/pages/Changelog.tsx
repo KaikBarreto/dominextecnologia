@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.37',
+    date: '17 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'As ferramentas do técnico não perdem mais o cálculo',
+        description: 'Antes, ao sair de uma ferramenta (como a de Carga Térmica) e voltar, os valores digitados sumiam e o cálculo era perdido. Agora as ferramentas — Carga Térmica, Superaquecimento, Régua de Gases, Capacitor, Cabo Elétrico, Conversão e Ciclo de Refrigeração — guardam o que você preencheu. Ao trocar de ferramenta e voltar, os valores e o resultado continuam lá. O conteúdo fica salvo enquanto o app está aberto.',
+        category: 'correcao',
+      },
+      {
+        title: 'Régua de Gases: digite a temperatura OU a pressão',
+        description: 'Na Régua de Gases, agora você pode digitar tanto a temperatura quanto a pressão. Ao informar a pressão, a temperatura e a régua se ajustam sozinhas (e ao informar a temperatura, a pressão acompanha, como antes). Com isso, a consulta de "pressão para temperatura" — que ficava em uma aba separada no Superaquecimento — passa a viver na própria Régua, de forma mais simples e direta. A aba "Consulta P×T" do Superaquecimento foi removida.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Retrofit de gás repaginado, com pressões de trabalho',
+        description: 'A ferramenta de troca de gás (retrofit), dentro de Conversão, foi reformulada. Agora você escolhe o gás antigo (R-22, R-404A, R-12 ou R-502) e vê na hora quais refrigerantes podem substituí-lo, e — para os gases com dados confirmados — a pressão de trabalho de cada substituto na baixa (evaporação) e na alta (condensação), facilitando a comparação com o manifold. Vários desses gases também entraram na Régua de Gases, agora organizada em seções (Atuais, Gases Legado e Substitutos) para achar mais rápido.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.36',
     date: '17 de junho de 2026',
     type: 'patch',

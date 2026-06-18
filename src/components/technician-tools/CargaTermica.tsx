@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { usePersistedState } from '@/hooks/usePersistedState';
 import { calcularCargaTermica, formatarBtus } from '@/lib/cargaTermica';
 
 /** Converte string crua de input numérico em number, com default seguro. */
@@ -29,15 +30,21 @@ const CAMPOS: CampoNum[] = [
 
 export function CargaTermica() {
   // Estado em string crua — convertido com num() só no cálculo.
-  const [valores, setValores] = useState<Record<string, string>>({
-    altura: '',
-    largura: '',
-    comprimento: '',
-    pessoas: '',
-    eletronicos: '',
-    janelas: '',
-  });
-  const [ensolarado, setEnsolarado] = useState(false);
+  const [valores, setValores] = usePersistedState<Record<string, string>>(
+    'tt:state:carga-termica:valores',
+    {
+      altura: '',
+      largura: '',
+      comprimento: '',
+      pessoas: '',
+      eletronicos: '',
+      janelas: '',
+    },
+  );
+  const [ensolarado, setEnsolarado] = usePersistedState<boolean>(
+    'tt:state:carga-termica:ensolarado',
+    false,
+  );
 
   const setCampo = (id: string, v: string) => setValores((prev) => ({ ...prev, [id]: v }));
 

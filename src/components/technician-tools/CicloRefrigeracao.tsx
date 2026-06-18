@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BookOpen, Image as ImageIcon, Sparkles } from 'lucide-react';
 import {
   Accordion,
@@ -7,6 +6,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
+import { usePersistedState } from '@/hooks/usePersistedState';
 import { useIsDark } from '@/hooks/useIsDark';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
@@ -22,7 +22,10 @@ type CicloView = 'ilustracao' | 'imagem';
  * glossário em accordion específico do ciclo básico.
  */
 export function CicloRefrigeracao() {
-  const [view, setView] = useState<CicloView>('ilustracao');
+  const [view, setView] = usePersistedState<CicloView>(
+    'tt:state:ciclo-refrigeracao:view',
+    'ilustracao',
+  );
   const isDark = useIsDark();
   const isMobile = useIsMobile();
 
