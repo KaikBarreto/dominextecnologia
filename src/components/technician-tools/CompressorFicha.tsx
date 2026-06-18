@@ -1,17 +1,80 @@
-import { useState } from 'react';
-import { ArrowLeft, Cpu, Download, Loader2, PackageSearch } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, Cpu, Download, Flame, Loader2, PackageSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { CatalogImage } from './CatalogImage';
 import { getRefrigerante } from '@/lib/refrigerantes';
-import { RefrigeranteInflamavel } from './RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
 import {
   useCompressorSpec,
+  useRefrigerantGases,
   rotuloManual,
   type EquipmentModel,
 } from '@/hooks/useEquipmentCatalog';
+
+/** Cinza neutro pra gás sem cor cadastrada (régua: nunca inventar cor de gás). */
+const GAS_COR_NEUTRA = '#6b7280';
+
+/**
+ * Inflamabilidade do gás pela classe de segurança ASHRAE (campo `classe_seguranca`).
+ * O 2º caractere indica a inflamabilidade: 1 = não inflamável; 2L/2/3 = inflamável.
+ * Logo basta a string conter '2' ou '3' (A2L, A2, A3, B2L, B3). A1/B1 e nula → não.
+ */
+function gasInflamavel(classeSeguranca: string | null | undefined): boolean {
+  const c = classeSeguranca ?? '';
+  return c.includes('2') || c.includes('3');
+}
+
+/** Um gás extraído da string de `refrigerant` de um compressor. */
+interface GasParseado {
+  /** Código normalizado (ex.: "R-404A"), usado de key. */
+  code: string;
+}
+
+/**
+ * Faz o parse da string de gás de um compressor (ex.:
+ * "R-404A, R-507, R-449A (R-22 legado)") em:
+ * - `gases`: um item por código de gás (forma "R-404A"); e
+ * - `nota`: o texto entre parênteses no fim, vira observação discreta
+ *   (ex.: "(R-22 legado)" → "substitui R-22"), sem virar badge.
+ */
+function parseGases(raw: string): { gases: GasParseado[]; nota: string | null } {
+  // Separa a nota final entre parênteses (ex.: "(R-22 legado)").
+  let nota: string | null = null;
+  const mParen = raw.match(/\(([^)]*)\)\s*$/);
+  let corpo = raw;
+  if (mParen) {
+    const dentro = mParen[1].trim();
+    const codLegado = dentro.match(/R-?\d+[A-Za-z]*/i);
+    nota = codLegado ? `substitui ${normalizarCodigoGas(codLegado[0])}` : dentro;
+    corpo = raw.slice(0, mParen.index).trim();
+  }
+
+  const vistos = new Set<string>();
+  const gases: GasParseado[] = [];
+  for (const parte of corpo.split(',')) {
+    const m = parte.match(/R-?\d+[A-Za-z]*/i);
+    if (!m) continue;
+    const code = normalizarCodigoGas(m[0]);
+    if (vistos.has(code)) continue;
+    vistos.add(code);
+    gases.push({ code });
+  }
+  return { gases, nota };
+}
+
+/** Normaliza "R404A"/"r-404a" → "R-404A" (hífen depois do R, sufixo upper). */
+function normalizarCodigoGas(bruto: string): string {
+  const m = bruto.match(/^R-?(\d+)([A-Za-z]*)$/i);
+  if (!m) return bruto.toUpperCase();
+  return `R-${m[1]}${m[2].toUpperCase()}`;
+}
 
 /** Remove caracteres inválidos de nome de arquivo e colapsa espaços. */
 function sanitizarNomeArquivo(nome: string): string {
@@ -54,7 +117,32 @@ export function CompressorFicha({
   onBack: () => void;
 }) {
   const { data: spec, isLoading } = useCompressorSpec(model.id);
+  const { data: gases = [] } = useRefrigerantGases();
   const [viewerOpen, setViewerOpen] = useState(false);
+
+  // Mapa code(UPPER)→{cor, classe} do catálogo global de gases (preferência),
+  // pra colorir cada badge da lista e saber se é inflamável.
+  const gasInfoMap = useMemo(() => {
+    const map = new Map<string, { cor: string | null; classe: string | null }>();
+    for (const g of gases) {
+      if (!g.code) continue;
+      map.set(g.code.toUpperCase(), { cor: g.cor, classe: g.classe_seguranca });
+    }
+    return map;
+  }, [gases]);
+
+  /** Resolve cor + inflamabilidade de um código de gás (catálogo global → refrigerantes.ts → cinza). */
+  const resolverGas = (code: string) => {
+    const upper = code.toUpperCase();
+    const info = gasInfoMap.get(upper);
+    const refrig = getRefrigerante(code) ?? getRefrigerante(upper);
+    const cor = info?.cor ?? refrig?.cor ?? GAS_COR_NEUTRA;
+    // Inflamável: classe_seguranca do catálogo OU classe ASHRAE de refrigerantes.ts.
+    const inflamavel =
+      gasInflamavel(info?.classe) ||
+      (refrig ? gasInflamavel(refrig.inflamabilidade) : false);
+    return { cor, inflamavel };
+  };
 
   const brandName = model.brand?.name ?? '';
   const tituloTopo = brandName ? `${model.name} - ${brandName}` : model.name;
@@ -82,9 +170,13 @@ export function CompressorFicha({
       ]
     : [];
   const visibleRows = rows.filter((r) => r.value && r.value.trim().length > 0);
-  // Gás vem do próprio modelo (não da ficha).
-  const gas = model.refrigerant?.trim() || null;
-  const semFicha = !isLoading && visibleRows.length === 0 && !gas;
+  // Gás vem do próprio modelo (não da ficha). Pode ser uma lista (câmara fria).
+  const gasRaw = model.refrigerant?.trim() || null;
+  const { gases: gasesParseados, nota: gasNota } = gasRaw
+    ? parseGases(gasRaw)
+    : { gases: [], nota: null };
+  const temGas = gasesParseados.length > 0;
+  const semFicha = !isLoading && visibleRows.length === 0 && !temGas;
 
   return (
     <div className="space-y-6 pb-8">
@@ -128,23 +220,54 @@ export function CompressorFicha({
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <ul className="divide-y divide-border">
-            {gas && (
-              <li className="flex items-center justify-between gap-3 px-4 py-3">
-                <span className="text-sm font-medium text-muted-foreground">Gás</span>
-                {(() => {
-                  const cor = getRefrigerante(gas)?.cor ?? '#6b7280';
-                  return (
-                    <span className="inline-flex items-center gap-1">
-                      <span
-                        className="rounded-md px-2 py-0.5 text-xs font-semibold"
-                        style={{ backgroundColor: cor, color: idealForeground(cor) }}
-                      >
-                        {gas}
-                      </span>
-                      <RefrigeranteInflamavel refrigId={gas} />
-                    </span>
-                  );
-                })()}
+            {temGas && (
+              <li className="flex items-start justify-between gap-3 px-4 py-3">
+                <span className="shrink-0 pt-0.5 text-sm font-medium text-muted-foreground">
+                  Gás
+                </span>
+                <div className="flex min-w-0 flex-col items-end gap-1">
+                  <TooltipProvider delayDuration={150}>
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      {gasesParseados.map(({ code }) => {
+                        const { cor, inflamavel } = resolverGas(code);
+                        const fg = idealForeground(cor);
+                        return (
+                          <span
+                            key={code}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold"
+                            style={{ backgroundColor: cor, color: fg }}
+                          >
+                            {code}
+                            {inflamavel && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    role="img"
+                                    aria-label="Inflamável"
+                                    title="Inflamável"
+                                    className="inline-flex shrink-0"
+                                  >
+                                    <Flame
+                                      className="h-3.5 w-3.5"
+                                      style={{ color: fg }}
+                                      fill="currentColor"
+                                      strokeWidth={2}
+                                      aria-hidden
+                                    />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>Inflamável</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </TooltipProvider>
+                  {gasNota && (
+                    <span className="text-right text-xs text-muted-foreground">{gasNota}</span>
+                  )}
+                </div>
               </li>
             )}
             {visibleRows.map((r) => (

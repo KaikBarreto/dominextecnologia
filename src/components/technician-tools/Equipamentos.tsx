@@ -1960,8 +1960,12 @@ function ModelCard({
   // Viewer dedicado da foto (igual OS) — abre no clique, fecha fora, baixa, mobile/desktop.
   const [viewerOpen, setViewerOpen] = useState(false);
 
-  const temBadges =
-    (mostraBtu && btu) || categoria || (mostraGas && model.refrigerant) || model.code;
+  // Gás vira badge no card só quando é UM gás (sem vírgula). Listas multi-gás
+  // (câmara fria) não contam pro card — vão pra ficha técnica.
+  const mostraGasBadge = Boolean(
+    mostraGas && model.refrigerant && !model.refrigerant.includes(','),
+  );
+  const temBadges = (mostraBtu && btu) || categoria || mostraGasBadge || model.code;
 
   return (
     <div
@@ -2017,7 +2021,10 @@ function ModelCard({
                 Câmara frigorífica
               </span>
             )}
-            {mostraGas &&
+            {/* Gás: só badge quando UM gás só. Compressores de câmara fria têm
+                lista de gases (vírgula) → badge poluiria o card; a lista completa
+                vira badges coloridos na ficha técnica. */}
+            {mostraGasBadge &&
               model.refrigerant &&
               (() => {
                 const cor = getRefrigerante(model.refrigerant)?.cor ?? '#6b7280';
