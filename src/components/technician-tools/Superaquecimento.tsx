@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
-import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
+import { RefrigeranteOption } from '@/components/technician-tools/RefrigeranteOption';
 import { cn } from '@/lib/utils';
 import {
   MODELOS_SUPERAQUECIMENTO,
@@ -23,7 +23,7 @@ import {
   type Faixa,
 } from '@/lib/superaquecimentoModelos';
 import {
-  REFRIGERANTES,
+  agruparRefrigerantesEmSecoes,
   FAIXA_SH,
   FAIXA_SC,
   calcularSuperaquecimento,
@@ -319,6 +319,9 @@ function SelecoesCompartilhadas({
   modeloId,
   setModeloId,
 }: SelecoesCompartilhadasProps) {
+  // Fluidos agrupados nas seções da UI (Atuais / Legado / Blends), igual à Régua.
+  const secoes = useMemo(() => agruparRefrigerantesEmSecoes(), []);
+
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
       <div className="space-y-1.5">
@@ -366,18 +369,19 @@ function SelecoesCompartilhadas({
               <SelectValue placeholder="Fluido refrigerante" />
             </SelectTrigger>
             <SelectContent>
-              {REFRIGERANTES.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/25"
-                      style={{ backgroundColor: r.cor }}
-                    />
-                    <span className="min-w-0 truncate">{r.nome}</span>
-                    <RefrigeranteInflamavel refrigId={r.id} />
-                  </span>
-                </SelectItem>
-              ))}
+              {secoes.map((sec) =>
+                sec.label === null ? (
+                  // Atuais — no topo, sem cabeçalho (padrão do projeto pra default)
+                  sec.refrigerantes.map((r) => <RefrigeranteOption key={r.id} refrig={r} />)
+                ) : (
+                  <SelectGroup key={sec.label}>
+                    <SelectSectionLabel>{sec.label}</SelectSectionLabel>
+                    {sec.refrigerantes.map((r) => (
+                      <RefrigeranteOption key={r.id} refrig={r} />
+                    ))}
+                  </SelectGroup>
+                ),
+              )}
             </SelectContent>
           </Select>
         </div>

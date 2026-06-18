@@ -609,6 +609,42 @@ export const REFRIGERANTES: Refrigerante[] = [
   { id: 'R-12', nome: 'R-12', cor: '#CFD4DA', inflamabilidade: 'A1', temGlide: false, unica: R12 },
 ];
 
+/**
+ * Classificação dos gases do select por seção (fonte única, independe da ordem
+ * do catálogo). "Atuais" fica no topo SEM cabeçalho (padrão do projeto pra
+ * default). Qualquer id do catálogo não listado abaixo cai em "Atuais"
+ * (fallback seguro, nunca some da lista).
+ */
+export const GASES_LEGADO_IDS = ['R-22', 'R-12', 'R-404A'];
+export const GASES_BLEND_IDS = ['R-407C', 'R-422D', 'R-438A', 'R-407A', 'R-448A', 'R-449A'];
+
+/** Uma seção do select de refrigerantes (label null = "Atuais", sem cabeçalho). */
+export interface SecaoRefrigerantes {
+  label: string | null;
+  refrigerantes: Refrigerante[];
+}
+
+/**
+ * Agrupa o catálogo nas seções da UI, na ordem: Atuais (label null), Legado,
+ * Blends. Seções vazias são omitidas. Ids não classificados caem em "Atuais"
+ * (fallback seguro). Fonte única para Régua de Gases e Superaquecimento.
+ */
+export function agruparRefrigerantesEmSecoes(): SecaoRefrigerantes[] {
+  const byId = new Map(REFRIGERANTES.map((r) => [r.id, r]));
+  const legado = GASES_LEGADO_IDS.map((id) => byId.get(id)).filter(Boolean) as Refrigerante[];
+  const blends = GASES_BLEND_IDS.map((id) => byId.get(id)).filter(Boolean) as Refrigerante[];
+  const classificados = new Set([...GASES_LEGADO_IDS, ...GASES_BLEND_IDS]);
+  // "Atuais" = tudo que não é legado nem blend (inclui ids novos não mapeados).
+  const atuais = REFRIGERANTES.filter((r) => !classificados.has(r.id));
+
+  const secoes: SecaoRefrigerantes[] = [
+    { label: null, refrigerantes: atuais },
+    { label: 'Gases Legado (Antigos)', refrigerantes: legado },
+    { label: 'Substitutos / Blends de retrofit', refrigerantes: blends },
+  ];
+  return secoes.filter((s) => s.refrigerantes.length > 0);
+}
+
 /** Mapeia a classe ASHRAE para o nível de inflamabilidade usado na UI. */
 export function nivelInflamabilidade(classe: ClasseInflamabilidade): NivelInflamabilidade {
   if (classe === 'A3') return 'alta';

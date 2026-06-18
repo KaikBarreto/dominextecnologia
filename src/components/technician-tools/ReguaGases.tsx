@@ -7,16 +7,15 @@ import {
   Select,
   SelectContent,
   SelectGroup,
-  SelectItem,
   SelectSectionLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
-import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
+import { RefrigeranteOption } from '@/components/technician-tools/RefrigeranteOption';
 import { cn } from '@/lib/utils';
 import {
-  REFRIGERANTES,
+  agruparRefrigerantesEmSecoes,
   tempParaPressao,
   pressaoParaTempSat,
   sugerirOutraUnidade,
@@ -35,25 +34,6 @@ function num(str: string, def = NaN): number {
 
 const TEMP_MIN = -40;
 const TEMP_MAX = 60;
-
-/**
- * Classificação dos gases do select por seção (independe da ordem do catálogo).
- * "Atuais" fica no topo SEM cabeçalho (padrão do projeto pra default). Qualquer
- * id do catálogo não listado abaixo cai em "Atuais" (fallback seguro, nunca some).
- */
-const GASES_LEGADO_IDS = ['R-22', 'R-12', 'R-404A'];
-const GASES_BLEND_IDS = ['R-407C', 'R-422D', 'R-438A', 'R-407A', 'R-448A', 'R-449A'];
-
-/** Resolve as 3 listas de refrigerantes a partir do catálogo, na ordem definida. */
-function agruparRefrigerantes() {
-  const byId = new Map(REFRIGERANTES.map((r) => [r.id, r]));
-  const legado = GASES_LEGADO_IDS.map((id) => byId.get(id)).filter(Boolean) as typeof REFRIGERANTES;
-  const blends = GASES_BLEND_IDS.map((id) => byId.get(id)).filter(Boolean) as typeof REFRIGERANTES;
-  const classificados = new Set([...GASES_LEGADO_IDS, ...GASES_BLEND_IDS]);
-  // "Atuais" = tudo que não é legado nem blend (inclui ids novos não mapeados).
-  const atuais = REFRIGERANTES.filter((r) => !classificados.has(r.id));
-  return { atuais, legado, blends };
-}
 
 /** Fórmula escolhida na UI → curva da tabela. */
 type Formula = 'bubble' | 'dew';
@@ -217,22 +197,6 @@ function ReguaDupla({
   );
 }
 
-/** Item do select de gás com a bolinha de cor + selo de inflamável (padrão do projeto). */
-function RefrigeranteOption({ refrig }: { refrig: (typeof REFRIGERANTES)[number] }) {
-  return (
-    <SelectItem value={refrig.id}>
-      <span className="flex items-center gap-2">
-        <span
-          className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/25"
-          style={{ backgroundColor: refrig.cor }}
-        />
-        <span className="min-w-0 truncate">{refrig.nome}</span>
-        <RefrigeranteInflamavel refrigId={refrig.id} />
-      </span>
-    </SelectItem>
-  );
-}
-
 /**
  * Régua unificada (mobile E desktop): régua de escala dupla (P × °C) +
  * toggles de Fórmula e Unidade + select de Gás (com label) + leituras ao vivo.
@@ -338,10 +302,7 @@ function ReguaUnificada({
   const refrig = getRefrigerante(refrigId);
 
   // Gases agrupados pro select (independe da ordem do catálogo).
-  const { atuais: gasesAtuais, legado: gasesLegado, blends: gasesBlends } = useMemo(
-    () => agruparRefrigerantes(),
-    [],
-  );
+  const secoes = useMemo(() => agruparRefrigerantesEmSecoes(), []);
 
   return (
     <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 lg:gap-6">
@@ -374,27 +335,18 @@ function ReguaUnificada({
               <SelectValue placeholder="Gás" />
             </SelectTrigger>
             <SelectContent>
-              {/* Atuais — no topo, sem cabeçalho (padrão do projeto pra default) */}
-              {gasesAtuais.map((r) => (
-                <RefrigeranteOption key={r.id} refrig={r} />
-              ))}
-              {/* Gases Legado (Antigos) */}
-              {gasesLegado.length > 0 && (
-                <SelectGroup>
-                  <SelectSectionLabel>Gases Legado (Antigos)</SelectSectionLabel>
-                  {gasesLegado.map((r) => (
-                    <RefrigeranteOption key={r.id} refrig={r} />
-                  ))}
-                </SelectGroup>
-              )}
-              {/* Substitutos / Blends de retrofit */}
-              {gasesBlends.length > 0 && (
-                <SelectGroup>
-                  <SelectSectionLabel>Substitutos / Blends de retrofit</SelectSectionLabel>
-                  {gasesBlends.map((r) => (
-                    <RefrigeranteOption key={r.id} refrig={r} />
-                  ))}
-                </SelectGroup>
+              {secoes.map((sec) =>
+                sec.label === null ? (
+                  // Atuais — no topo, sem cabeçalho (padrão do projeto pra default)
+                  sec.refrigerantes.map((r) => <RefrigeranteOption key={r.id} refrig={r} />)
+                ) : (
+                  <SelectGroup key={sec.label}>
+                    <SelectSectionLabel>{sec.label}</SelectSectionLabel>
+                    {sec.refrigerantes.map((r) => (
+                      <RefrigeranteOption key={r.id} refrig={r} />
+                    ))}
+                  </SelectGroup>
+                ),
               )}
             </SelectContent>
           </Select>

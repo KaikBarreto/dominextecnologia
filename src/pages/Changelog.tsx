@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.39',
+    date: '17 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lista de gás organizada em seções no Superaquecimento',
+        description: 'A lista de fluido refrigerante da ferramenta de Superaquecimento agora vem organizada em seções (Atuais, Gases Legado e Substitutos), do mesmo jeito que já acontece na Régua de Gases. Assim fica mais fácil e rápido encontrar o gás certo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.38',
     date: '17 de junho de 2026',
     type: 'patch',
