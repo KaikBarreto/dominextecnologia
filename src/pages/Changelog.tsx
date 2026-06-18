@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.41',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Manual técnico/de instalação no Catálogo de Equipamentos',
+        description: 'Trocamos o manual da maioria dos ar-condicionados pelo manual técnico/de instalação oficial do fabricante — o documento que o técnico usa em campo, no lugar do manual do usuário. Também adicionamos o manual oficial em geladeiras e lavadoras que estavam sem. Cada item mostra que tipo de manual está disponível.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.40',
     date: '18 de junho de 2026',
     type: 'patch',

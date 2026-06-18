@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.40";
+export const APP_VERSION = "1.12.41";
 
-export const VERSION_NOTES = "No computador, as Ferramentas do Técnico ficaram mais agradáveis de usar: os campos e resultados deixaram de esticar pela tela inteira e agora aparecem numa largura confortável e centralizada, sem aquele espaço vazio. O Catálogo de Equipamentos continua usando a tela toda.";
+export const VERSION_NOTES = "No Catálogo de Equipamentos, os ar-condicionados agora trazem o manual técnico/de instalação (não mais o do usuário) na maioria dos modelos — o documento que o técnico precisa em campo. As geladeiras e lavadoras ganharam o manual oficial onde estava faltando.";
