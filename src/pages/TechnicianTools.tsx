@@ -89,6 +89,11 @@ export default function TechnicianTools() {
       ? pending.modeloInicialId
       : undefined;
 
+  // Início (hub de cards) e Equipamentos (grade do catálogo) precisam de toda a
+  // largura no desktop. As demais ferramentas são formulários/visuais estreitos
+  // e ficam apertados no monitor largo — limitamos a largura e centralizamos.
+  const isFullWidthTool = activeTab === 'inicio' || activeTab === 'equipamentos';
+
   return (
     <div className="space-y-6 lg:space-y-6">
       {/* Header — hub raiz das Ferramentas (item-pai do menu), sem botão de voltar:
@@ -139,8 +144,16 @@ export default function TechnicianTools() {
           })}
         </nav>
 
-        {/* Conteúdo da ferramenta */}
-        <div className="min-w-0 flex-1">
+        {/* Conteúdo da ferramenta — formulários/visuais estreitos ganham max-width
+            centralizado no desktop (mx-auto + max-w-4xl); catálogo e Início ficam
+            em largura total. No mobile o container já é < 896px, então o max-w é
+            inócuo e nada aperta. */}
+        <div
+          className={cn(
+            'min-w-0 flex-1',
+            !isFullWidthTool && 'mx-auto w-full max-w-4xl',
+          )}
+        >
           {activeTab === 'inicio' && <Inicio onNavigate={handleNavigate} />}
           {activeTab === 'equipamentos' && (
             <Equipamentos key={modeloInicialId ?? 'browse'} modeloInicialId={modeloInicialId} />

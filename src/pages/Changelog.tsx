@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.40',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ferramentas do Técnico mais agradáveis no computador',
+        description: 'No computador, os campos e resultados das Ferramentas do Técnico (Carga Térmica, Superaquecimento, Conversão, Capacitor, Cabo Elétrico, Régua de Gases e Ciclo de Refrigeração) deixaram de esticar por toda a largura da tela. Agora aparecem numa largura confortável e centralizada, mais fáceis de ler e preencher. O Catálogo de Equipamentos segue usando a tela inteira, por ser uma grade de itens.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.39',
     date: '17 de junho de 2026',
     type: 'patch',

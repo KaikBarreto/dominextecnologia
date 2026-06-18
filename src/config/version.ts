@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.39";
+export const APP_VERSION = "1.12.40";
 
-export const VERSION_NOTES = "Na ferramenta de Superaquecimento, a lista de fluido refrigerante agora aparece organizada em seções (Atuais, Gases Legado e Substitutos), igual à Régua de Gases — fica mais rápido achar o gás certo.";
+export const VERSION_NOTES = "No computador, as Ferramentas do Técnico ficaram mais agradáveis de usar: os campos e resultados deixaram de esticar pela tela inteira e agora aparecem numa largura confortável e centralizada, sem aquele espaço vazio. O Catálogo de Equipamentos continua usando a tela toda.";
