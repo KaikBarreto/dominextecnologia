@@ -127,7 +127,7 @@ export const MODULE_INFO: Record<string, { name: string; description: string; pr
   basic: {
     name: 'Módulo Básico',
     description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque, Financeiro Básico',
-    price: 200,
+    price: 197,
   },
   contracts: {
     name: 'Gestão de Contratos e PMOC',

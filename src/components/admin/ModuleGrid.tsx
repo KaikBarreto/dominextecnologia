@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { NfseTier } from '@/hooks/useNfseTiers';
 
 /**
  * Grade de módulos do plano Personalizado (painel master Auctus).
@@ -51,12 +52,31 @@ export function withBaseModules(selected: string[]): string[] {
   return Array.from(new Set([...BASE_MODULE_CODES, ...selected]));
 }
 
-/** Soma dos preços dos módulos selecionados (base sempre incluso). */
-export function sumModulesPrice(modules: SubscriptionModule[], selected: string[]): number {
+/**
+ * Soma dos preços dos módulos selecionados (base sempre incluso).
+ *
+ * O módulo de Notas (code `nfe`) tem preço variável por NÍVEL (nfse_tiers).
+ * Quando `nfseTiers`/`nfseTier` são informados, o preço do `nfe` vem do nível
+ * escolhido; senão cai no preço fixo do catálogo (retrocompatível).
+ */
+export function sumModulesPrice(
+  modules: SubscriptionModule[],
+  selected: string[],
+  nfseTiers?: NfseTier[],
+  nfseTier?: number,
+): number {
   const set = new Set(withBaseModules(selected));
-  return modules
-    .filter(m => set.has(m.code))
-    .reduce((acc, m) => acc + (Number(m.price) || 0), 0);
+  let price = 0;
+  for (const m of modules) {
+    if (!set.has(m.code)) continue;
+    if (m.code === 'nfe' && nfseTiers?.length) {
+      const t = nfseTiers.find(x => x.tier === (nfseTier ?? 1));
+      price += t?.price ?? (Number(m.price) || 0);
+    } else {
+      price += Number(m.price) || 0;
+    }
+  }
+  return price;
 }
 
 interface ModuleGridProps {

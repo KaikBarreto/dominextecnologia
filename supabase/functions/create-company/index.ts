@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
       custom_price_months,
       modules,
       custom_price_note,
+      nfse_tier,
     } = body
 
     if (!company_name || !admin_email || !admin_password) {
@@ -114,6 +115,7 @@ Deno.serve(async (req) => {
         custom_price: custom_price ?? null,
         custom_price_permanent: custom_price_permanent ?? true,
         custom_price_months: custom_price_months ?? null,
+        nfse_tier: nfse_tier ?? 1,
       })
       .select('id')
       .single()

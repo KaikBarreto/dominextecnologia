@@ -28,6 +28,7 @@ import { addDays, format } from 'date-fns';
 import { CepLookup } from '@/components/CepLookup';
 import { GenerateLinkModal } from './GenerateLinkModal';
 import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, BASE_MODULE_CODES } from './ModuleGrid';
+import { useNfseTiers } from '@/hooks/useNfseTiers';
 import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
 
 interface Props {
@@ -122,6 +123,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   // Catálogo de módulos (plano Personalizado).
   const { data: allModules = [] } = useSubscriptionModules();
 
+  // Níveis de NFS-e (preço/limite do módulo de Notas, code `nfe`).
+  const { tiers: nfseTiers } = useNfseTiers();
+
   // Garante a opção "Personalizado" no select de planos, sempre por último
   // (existe linha no banco com price 0; se sumir, faz append client-side).
   const plansWithCustom = useMemo(() => {
@@ -155,6 +159,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     use_custom_price: false,
     custom_price_permanent: true,
     custom_price_months: '3',
+    nfse_tier: '1',
   });
 
   const [showGenerateLink, setShowGenerateLink] = useState(false);
@@ -202,6 +207,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         use_custom_price: !!company.custom_price && Number(company.custom_price) > 0,
         custom_price_permanent: company.custom_price_permanent ?? true,
         custom_price_months: company.custom_price_months ? String(company.custom_price_months) : '3',
+        nfse_tier: String(company.nfse_tier ?? 1),
       });
       setAddr(parseAddress(company.address));
     } else {
@@ -213,6 +219,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         notes: '', origin: '', salesperson_id: '', sdr_id: '', segment: '',
         admin_email: '', admin_password: '',
         use_custom_price: false, custom_price_permanent: true, custom_price_months: '3',
+        nfse_tier: '1',
       });
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
     }
@@ -248,7 +255,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (v === 'personalizado') {
       // Preço sugerido = soma dos módulos marcados. max_users continua manual.
       if (!formData.use_custom_price) {
-        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules)));
+        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier))));
       }
       return;
     }
@@ -258,7 +265,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       if (p.price != null && !formData.use_custom_price) updateField('subscription_value', String(p.price));
       if (p.max_users != null) updateField('max_users', String(p.max_users));
     }
-  }, [plans, allModules, selectedModules, updateField, formData.use_custom_price]);
+  }, [plans, allModules, selectedModules, nfseTiers, formData.nfse_tier, updateField, formData.use_custom_price]);
+
+  // ========== Nível de NFS-e -> recalcula preço sugerido ==========
+  const updateNfseTier = useCallback((value: string) => {
+    updateField('nfse_tier', value);
+    if (!formData.use_custom_price) {
+      updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(value))));
+    }
+  }, [allModules, selectedModules, nfseTiers, formData.use_custom_price, updateField]);
 
   // ========== Toggle de módulo (plano Personalizado) ==========
   const handleToggleModule = useCallback((code: string) => {
@@ -267,14 +282,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
       );
       if (!formData.use_custom_price) {
-        updateField('subscription_value', String(sumModulesPrice(allModules, next)));
+        updateField('subscription_value', String(sumModulesPrice(allModules, next, nfseTiers, Number(formData.nfse_tier))));
       }
       return next;
     });
-  }, [allModules, formData.use_custom_price, updateField]);
+  }, [allModules, nfseTiers, formData.nfse_tier, formData.use_custom_price, updateField]);
 
   const isPersonalizado = formData.subscription_plan === 'personalizado';
-  const suggestedModulesPrice = sumModulesPrice(allModules, selectedModules);
+  const suggestedModulesPrice = sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier));
   // Preço de referência exibido nos hints: plano padrão usa o preço do plano;
   // personalizado usa a soma dos módulos marcados.
   const referencePlanPrice = (() => {
@@ -297,7 +312,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         : null;
       const planObj = plans.find((p: any) => p.code === formData.subscription_plan);
       const originalPlanPrice = formData.subscription_plan === 'personalizado'
-        ? sumModulesPrice(allModules, selectedModules)
+        ? sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier))
         : (planObj?.price ?? null);
       const modulesPayload = formData.subscription_plan === 'personalizado'
         ? withBaseModules(selectedModules)
@@ -349,6 +364,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           custom_price: customPriceVal,
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
           custom_price_months: customPriceMonthsVal,
+          nfse_tier: parseInt(formData.nfse_tier) || 1,
         }).eq('id', company.id);
         if (error) throw error;
 
@@ -413,6 +429,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             original_plan_price: originalPlanPrice,
             modules: modulesPayload,
             custom_price_note: customPriceNote,
+            nfse_tier: parseInt(formData.nfse_tier) || 1,
           },
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
@@ -666,6 +683,28 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   selected={selectedModules}
                   onToggle={handleToggleModule}
                 />
+              </div>
+            )}
+
+            {/* Nível de Notas (NFS-e): só quando o módulo `nfe` está marcado */}
+            {selectedModules.includes('nfe') && (
+              <div className="space-y-2 p-3 border border-primary/40 rounded-lg">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <FileText className="h-4 w-4" />Nível de Notas Fiscais
+                </Label>
+                <Select value={formData.nfse_tier} onValueChange={updateNfseTier}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o nível" /></SelectTrigger>
+                  <SelectContent>
+                    {nfseTiers.map((t) => (
+                      <SelectItem key={t.tier} value={String(t.tier)}>
+                        Nível {t.tier} — {t.monthlyLimit === null ? 'ilimitado' : `${t.monthlyLimit.toLocaleString('pt-BR')} notas/mês`} — R$ {t.price}/mês
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Define o limite mensal de notas e o valor cobrado pelo módulo.
+                </p>
               </div>
             )}
 
