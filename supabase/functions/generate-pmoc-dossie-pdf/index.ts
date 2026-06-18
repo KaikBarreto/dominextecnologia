@@ -953,8 +953,12 @@ Deno.serve(async (req) => {
     //    Unidade (2026-06): bump pra dossie_v16 — a Seção 1 da Planilha embutida
     //    passou a usar a identificação da UNIDADE (`unidade_*` do contrato), com
     //    fallback pro cliente. Os campos da unidade entram no hash.
+    //    Layout fiel ao modelo (2026-06): bump pra dossie_v17 — a Planilha
+    //    embutida foi redesenhada (título centralizado preto-no-branco, seções
+    //    1–4 em tabelas com borda, plano com larguras fixas/quebra de linha,
+    //    componentes humanizados, sem selo no PDF).
     const hashInput = JSON.stringify({
-      v: "dossie_v16",
+      v: "dossie_v17",
       tenant: {
         name: tenantName,
         cnpj,

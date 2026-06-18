@@ -667,7 +667,10 @@ Deno.serve(async (req) => {
       // environment_id). Fallback legado = um ambiente das colunas pmoc_*.
       // planilha_v5: Seção 1 passa a usar a identificação da UNIDADE
       // (`unidade_*` do contrato), com fallback pro cliente quando vazia.
-      v: "planilha_v5",
+      // planilha_v6: layout fiel ao modelo do cliente (título centralizado
+      // preto-no-branco, seções 1–4 em tabelas com borda, seção 5 com larguras
+      // fixas/quebra de linha, componentes humanizados, sem selo no PDF).
+      v: "planilha_v6",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,

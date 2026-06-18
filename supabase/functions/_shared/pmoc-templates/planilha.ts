@@ -1,16 +1,18 @@
 // =============================================================================
 // pmoc-templates/planilha.ts — "Planilha PMOC" (espelha o modelo do cliente).
 // =============================================================================
-// Estrutura espelhando o `public/MODELO DE PMOC.pdf`, com estética melhor:
-//   Seção 1 — Identificação do ambiente (cliente/unidade).
-//   Seção 2 — Proprietário / locatário.
-//   Seção 3 — Responsável Técnico (nome / CFT-CREA / modalidade).
-//   Seção 4 — Relação dos equipamentos climatizados (tipo, marca, modelo,
-//             capacidade, local — campos ausentes ficam em branco).
-//   Seção 5 — Plano de manutenção: atividades agrupadas por seção/componente,
-//             cada uma com periodicidade M/T/S/A/E + matriz de 12 meses
-//             (mesma regra do motor: M=todo mês, T a cada 3, S a cada 6,
-//             A no 12; E não entra no cronograma automático).
+// Layout fiel ao `public/MODELO DE PMOC.pdf`:
+//   Título centralizado preto-sobre-branco:
+//     "PMOC - PLANO DE MANUTENÇÃO, OPERAÇÃO E CONTROLE"
+//     "SISTEMAS DE AR CONDICIONADO – <empresa>"
+//   Seção 1 — Identificação do ambiente (unidade/local) — tabela com borda.
+//   Seção 2 — Proprietário / locatário — tabela com borda.
+//   Seção 3 — Responsável Técnico (nome / CFT-CREA / modalidade) — tabela.
+//   Seção 4 — Relação dos ambientes climatizados — tabela (tipo, ocupantes,
+//             identificação, área, carga térmica) + equipamentos por ambiente.
+//   Seção 5 — Plano de manutenção: ITEM / DESCRIÇÃO / PERIODICIDADE agrupado por
+//             componente (FILTROS DE AR, BANDEJAS, ...), com matriz de 12 meses
+//             (M=todo mês, T a cada 3, S a cada 6, A no 12; E não entra).
 //   (Opcional) Resumo de execução: visitas concluídas + conformidade.
 //
 // Auto-paginação: helper `ensureSpace` abre nova página e redesenha o
@@ -28,7 +30,6 @@ import {
   StandardFonts,
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
-import { drawComplianceSeal } from "./assets/draw-compliance-seal.ts";
 import { drawDominexFooterLine, embedDominexFooterLogo } from "./footer.ts";
 
 // Faixa inferior reservada pro rodapé Dominex (linha + logo + URL). O conteúdo
@@ -44,11 +45,12 @@ const CONTENT_W = A4_W - 2 * MARGIN_X;
 const COLORS = {
   black: rgb(0.1, 0.1, 0.1),
   gray: rgb(0.42, 0.42, 0.42),
-  lightGray: rgb(0.95, 0.95, 0.95),
-  rowAlt: rgb(0.975, 0.975, 0.975),
-  border: rgb(0.82, 0.82, 0.82),
-  headerBg: rgb(0.12, 0.16, 0.23), // slate-800 (igual identidade)
-  headerText: rgb(1, 1, 1),
+  lightGray: rgb(0.93, 0.93, 0.93),
+  rowAlt: rgb(0.972, 0.972, 0.972),
+  border: rgb(0.55, 0.55, 0.55),
+  cellLabelBg: rgb(0.95, 0.95, 0.95),
+  headerBg: rgb(0.86, 0.86, 0.86), // cabeçalho de tabela cinza (estilo modelo)
+  headerText: rgb(0.1, 0.1, 0.1),
   accent: rgb(0.12, 0.16, 0.23),
   mark: rgb(0.18, 0.62, 0.31), // verde — mês marcado na matriz
   white: rgb(1, 1, 1),
@@ -75,14 +77,18 @@ const SECTION_LABELS: Record<string, string> = {
   caixa_expansao: "Caixa de Expansão / Reposição",
   tratamento_quimico: "Tratamento Físico-Químico da Água",
   qualidade_ar: "Qualidade do Ar Interior",
-};
-
-const FREQ_LABELS: Record<string, string> = {
-  M: "Mensal",
-  T: "Trimestral",
-  S: "Semestral",
-  A: "Anual",
-  E: "Eventual",
+  // Componentes do modelo PMOC (Lei 13.589/2018).
+  filtros_ar: "Filtros de Ar",
+  bandejas: "Bandejas",
+  evaporadores: "Evaporadores",
+  serpentinas: "Serpentinas",
+  gabinetes: "Gabinetes",
+  condensadores: "Condensadores",
+  ventiladores: "Ventiladores",
+  motores_eletricos: "Motores Elétricos",
+  compressores: "Compressores",
+  circuito_refrigerante: "Circuito Refrigerante",
+  circuito_eletrico: "Circuito Elétrico",
 };
 
 const FREQ_MONTHS: Record<string, number> = { M: 1, T: 3, S: 6, A: 12 };
@@ -215,7 +221,15 @@ function orDash(s: string | null | undefined): string {
 
 function sectionLabel(key: string | null): string {
   if (!key) return "Outros";
-  return SECTION_LABELS[key] ?? key.replace(/_/g, " ");
+  return SECTION_LABELS[key] ?? humanize(key);
+}
+
+// "circuito_refrigerante" -> "Circuito refrigerante" (texto humano, sem
+// underscore técnico). Capitaliza só a 1ª letra.
+function humanize(key: string): string {
+  const s = key.replace(/_/g, " ").trim().toLowerCase();
+  if (!s) return "";
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // Meses em que uma atividade cai, na janela de 12 meses (0-based).
@@ -240,23 +254,45 @@ function monthsHit(freqCode: string | null, freqMonths: number | null): boolean[
   return hit;
 }
 
-// Quebra texto em linhas que cabem em `maxW` na fonte/tamanho dados.
+// Quebra texto em linhas que cabem em `maxW` na fonte/tamanho dados. Quebra
+// também PALAVRA longa que não cabe sozinha (evita overflow pra coluna vizinha).
 function wrapText(font: PDFFont, text: string, size: number, maxW: number): string[] {
   const words = safe(text).split(/\s+/).filter(Boolean);
   if (words.length === 0) return [""];
   const lines: string[] = [];
   let cur = "";
+  const pushBrokenWord = (word: string) => {
+    // Palavra maior que a célula: quebra por caractere.
+    let chunk = "";
+    for (const ch of word) {
+      const tryChunk = chunk + ch;
+      if (font.widthOfTextAtSize(tryChunk, size) > maxW && chunk) {
+        lines.push(chunk);
+        chunk = ch;
+      } else {
+        chunk = tryChunk;
+      }
+    }
+    cur = chunk;
+  };
   for (const w of words) {
     const tryLine = cur ? `${cur} ${w}` : w;
-    if (font.widthOfTextAtSize(tryLine, size) > maxW && cur) {
-      lines.push(cur);
-      cur = w;
+    if (font.widthOfTextAtSize(tryLine, size) > maxW) {
+      if (cur) {
+        lines.push(cur);
+        cur = "";
+      }
+      if (font.widthOfTextAtSize(w, size) > maxW) {
+        pushBrokenWord(w);
+      } else {
+        cur = w;
+      }
     } else {
       cur = tryLine;
     }
   }
   if (cur) lines.push(cur);
-  return lines;
+  return lines.length ? lines : [""];
 }
 
 interface Ctx {
@@ -287,60 +323,88 @@ function newPage(ctx: Ctx): void {
   drawPageFooter(ctx);
 }
 
-// Cabeçalho compacto reusado no topo de cada página da planilha.
+// Cabeçalho compacto reusado no topo de cada página (a partir da 2ª). Discreto,
+// preto-sobre-branco com linha fina embaixo (sem faixa escura — estilo modelo).
 function drawCompactHeader(ctx: Ctx): void {
   const { page, data, helv, helvBold } = ctx;
-  const headerH = 46;
-  page.drawRectangle({
-    x: 0,
-    y: A4_H - headerH,
-    width: A4_W,
-    height: headerH,
-    color: COLORS.headerBg,
-  });
+  const topY = A4_H - 28;
 
   let textX = MARGIN_X;
   if (data.tenant.logoImage) {
     try {
       const img = data.tenant.logoImage;
-      const h = 28;
+      const h = 22;
       const w = (img.width / img.height) * h;
-      // fundo branco sutil atrás do logo
-      page.drawRectangle({
-        x: MARGIN_X - 3,
-        y: A4_H - headerH / 2 - h / 2 - 3,
-        width: w + 6,
-        height: h + 6,
-        color: COLORS.white,
-      });
       page.drawImage(img, {
         x: MARGIN_X,
-        y: A4_H - headerH / 2 - h / 2,
+        y: topY - h + 4,
         width: w,
         height: h,
       });
-      textX = MARGIN_X + w + 12;
+      textX = MARGIN_X + w + 10;
     } catch {
       // ignora
     }
   }
 
-  page.drawText(safe(data.tenant.name).slice(0, 48), {
+  page.drawText(safe(data.tenant.name).slice(0, 60), {
     x: textX,
-    y: A4_H - 21,
-    size: 12,
+    y: topY - 8,
+    size: 10,
     font: helvBold,
-    color: COLORS.headerText,
+    color: COLORS.black,
   });
-  page.drawText("Planilha PMOC - Plano de Manutencao, Operacao e Controle", {
+  page.drawText("PMOC - Plano de Manutencao, Operacao e Controle", {
     x: textX,
-    y: A4_H - 34,
-    size: 8,
+    y: topY - 19,
+    size: 7,
     font: helv,
-    color: rgb(0.78, 0.82, 0.88),
+    color: COLORS.gray,
   });
 
-  ctx.cursorY = A4_H - headerH - 24;
+  // Linha fina separadora.
+  page.drawLine({
+    start: { x: MARGIN_X, y: topY - 26 },
+    end: { x: MARGIN_X + CONTENT_W, y: topY - 26 },
+    thickness: 0.5,
+    color: COLORS.border,
+  });
+
+  ctx.cursorY = topY - 40;
+}
+
+// Título principal (só na 1ª página): centralizado, preto sobre branco.
+function drawMainTitle(ctx: Ctx): void {
+  const { page, data, helv, helvBold } = ctx;
+  const topY = A4_H - 56;
+
+  const t1 = "PMOC - PLANO DE MANUTENCAO, OPERACAO E CONTROLE";
+  const t1Size = 15;
+  const t1W = helvBold.widthOfTextAtSize(t1, t1Size);
+  page.drawText(t1, {
+    x: (A4_W - t1W) / 2,
+    y: topY,
+    size: t1Size,
+    font: helvBold,
+    color: COLORS.black,
+  });
+
+  const empresa = safe(data.tenant.name).toUpperCase();
+  const t2 = `SISTEMAS DE AR CONDICIONADO - ${empresa}`;
+  let t2Size = 10;
+  while (t2Size > 7 && helvBold.widthOfTextAtSize(t2, t2Size) > CONTENT_W) {
+    t2Size -= 0.5;
+  }
+  const t2W = helvBold.widthOfTextAtSize(t2, t2Size);
+  page.drawText(t2, {
+    x: (A4_W - t2W) / 2,
+    y: topY - 16,
+    size: t2Size,
+    font: helvBold,
+    color: COLORS.black,
+  });
+
+  ctx.cursorY = topY - 40;
 }
 
 function ensureSpace(ctx: Ctx, needed: number): void {
@@ -349,60 +413,88 @@ function ensureSpace(ctx: Ctx, needed: number): void {
   }
 }
 
-// Título de seção numerada (faixa cinza com número + título).
+// Título de seção numerada (estilo modelo: número + título em negrito, sem
+// faixa colorida — texto preto com underline implícito pela própria tabela).
 function drawSectionTitle(ctx: Ctx, num: string, title: string): void {
-  ensureSpace(ctx, 34);
+  ensureSpace(ctx, 26);
   const { page, helvBold } = ctx;
-  const barH = 20;
-  page.drawRectangle({
+  page.drawText(`${num} - ${safe(title)}`, {
     x: MARGIN_X,
-    y: ctx.cursorY - barH,
-    width: CONTENT_W,
-    height: barH,
-    color: COLORS.lightGray,
-  });
-  page.drawRectangle({
-    x: MARGIN_X,
-    y: ctx.cursorY - barH,
-    width: 3,
-    height: barH,
-    color: COLORS.accent,
-  });
-  page.drawText(`${num}  ${safe(title)}`, {
-    x: MARGIN_X + 10,
-    y: ctx.cursorY - barH + 6,
-    size: 10.5,
+    y: ctx.cursorY - 11,
+    size: 10,
     font: helvBold,
     color: COLORS.black,
   });
-  ctx.cursorY -= barH + 8;
+  ctx.cursorY -= 18;
 }
 
-// Linha label: valor (pra seções 1-3).
-function drawField(ctx: Ctx, label: string, value: string): void {
-  ensureSpace(ctx, 16);
+// ---------------------------------------------------------------------------
+// Primitivos de tabela com borda (estilo do modelo do cliente).
+// ---------------------------------------------------------------------------
+
+// Desenha uma célula: retângulo com borda, opcionalmente fundo (rótulo) e
+// label (negrito pequeno em cima) + valor embaixo. Retorna nada (altura fixa).
+function drawCell(
+  ctx: Ctx,
+  x: number,
+  y: number, // topo da célula
+  w: number,
+  h: number,
+  opts: { label?: string; value?: string; bg?: ReturnType<typeof rgb> },
+): void {
   const { page, helv, helvBold } = ctx;
-  const labelW = 130;
-  page.drawText(safe(label), {
-    x: MARGIN_X + 6,
-    y: ctx.cursorY - 10,
-    size: 9,
-    font: helvBold,
-    color: COLORS.gray,
+  if (opts.bg) {
+    page.drawRectangle({ x, y: y - h, width: w, height: h, color: opts.bg });
+  }
+  page.drawRectangle({
+    x,
+    y: y - h,
+    width: w,
+    height: h,
+    borderColor: COLORS.border,
+    borderWidth: 0.6,
   });
-  const valLines = wrapText(helv, value || "—", 9, CONTENT_W - labelW - 12);
-  let vy = ctx.cursorY - 10;
-  for (const ln of valLines) {
-    page.drawText(ln, {
-      x: MARGIN_X + labelW,
-      y: vy,
-      size: 9,
+  let cy = y - 10;
+  if (opts.label) {
+    page.drawText(safe(opts.label), {
+      x: x + 4,
+      y: cy,
+      size: 6.8,
+      font: helvBold,
+      color: COLORS.gray,
+    });
+    cy -= 11;
+  }
+  if (opts.value !== undefined) {
+    let txt = safe(opts.value);
+    while (txt.length > 1 && helv.widthOfTextAtSize(txt, 8.5) > w - 8) {
+      txt = txt.slice(0, -2) + "…";
+    }
+    page.drawText(txt, {
+      x: x + 4,
+      y: cy,
+      size: 8.5,
       font: helv,
       color: COLORS.black,
     });
-    vy -= 12;
   }
-  ctx.cursorY -= Math.max(16, valLines.length * 12 + 4);
+}
+
+// Uma linha de células rotuladas (label em cima, valor embaixo). cells: array de
+// {label,value,frac}. frac soma 1 (proporção da largura). Altura padrão 26pt.
+function drawLabeledRow(
+  ctx: Ctx,
+  cells: { label: string; value: string; frac: number }[],
+  rowH = 26,
+): void {
+  ensureSpace(ctx, rowH);
+  let x = MARGIN_X;
+  for (const c of cells) {
+    const w = CONTENT_W * c.frac;
+    drawCell(ctx, x, ctx.cursorY, w, rowH, { label: c.label, value: c.value });
+    x += w;
+  }
+  ctx.cursorY -= rowH;
 }
 
 export async function drawPlanilha(
@@ -425,51 +517,70 @@ export async function drawPlanilha(
     data,
     dominexLogo,
   };
-  drawCompactHeader(ctx);
+  drawMainTitle(ctx);
   drawPageFooter(ctx);
+  ctx.cursorY -= 8;
 
-  // ---- Seção 1 — Identificação da unidade ----------------------------------
-  // 1 contrato = 1 unidade (loja/site). O nome/local e o endereço usam a
-  // identificação da UNIDADE (`unidade_*`), que pode diferir do cliente. A edge
-  // já resolve o fallback pro cliente quando os campos da unidade estão vazios.
-  drawSectionTitle(ctx, "1.", "Identificação do Ambiente Climatizado");
+  // ---- Seção 1 — Identificação do ambiente climatizado (UNIDADE) -----------
+  drawSectionTitle(ctx, "1", "Identificacao do Ambiente ou Conjunto de Ambientes");
   const u = data.unidade;
-  drawField(ctx, "Unidade / Local:", orDash(u.nome ?? data.customer.name));
-  // Linha 1: logradouro, número, complemento. Linha 2: bairro, cidade-uf, CEP.
-  const ruaNum = [u.endereco, u.numero].filter((s) => s && s.trim()).join(", ");
-  const linha1 = [ruaNum, u.complemento].filter((s) => s && s.trim()).join(" - ");
-  const cidadeUf = [u.cidade, u.uf].filter((s) => s && s.trim()).join(" - ");
-  const cepStr = u.cep && u.cep.trim() ? `CEP ${u.cep.trim()}` : "";
-  const linha2 = [u.bairro, cidadeUf, cepStr].filter((s) => s && s.trim()).join(", ");
-  const endereco = [linha1, linha2].filter((s) => s && s.trim()).join(", ");
-  drawField(ctx, "Endereço:", orDash(endereco));
-  drawField(ctx, "Contrato:", data.contract.name ?? "—");
-  drawField(ctx, "Início da vigência:", data.contract.start_date_extenso);
-  drawField(ctx, "Periodicidade base:", data.contract.frequency_label);
-  ctx.cursorY -= 6;
+  // Linha cheia: Unidade / Local.
+  drawLabeledRow(ctx, [
+    { label: "UNIDADE / LOCAL", value: orDash(u.nome ?? data.customer.name), frac: 1 },
+  ]);
+  // Endereço + Nº.
+  const ruaNum = orDash(u.endereco);
+  drawLabeledRow(ctx, [
+    { label: "ENDEREÇO COMPLETO", value: ruaNum, frac: 0.82 },
+    { label: "Nº", value: orDash(u.numero), frac: 0.18 },
+  ]);
+  // Complemento / Bairro / Cidade / UF.
+  drawLabeledRow(ctx, [
+    { label: "COMPLEMENTO", value: orDash(u.complemento), frac: 0.28 },
+    { label: "BAIRRO", value: orDash(u.bairro), frac: 0.28 },
+    { label: "CIDADE", value: orDash(u.cidade), frac: 0.30 },
+    { label: "UF", value: orDash(u.uf), frac: 0.14 },
+  ]);
+  // CEP / Contrato / Início vigência.
+  drawLabeledRow(ctx, [
+    { label: "CEP", value: orDash(u.cep), frac: 0.22 },
+    { label: "CONTRATO", value: orDash(data.contract.name), frac: 0.45 },
+    { label: "INÍCIO DA VIGÊNCIA", value: data.contract.start_date_extenso, frac: 0.33 },
+  ]);
+  ctx.cursorY -= 12;
 
   // ---- Seção 2 — Proprietário / Locatário ----------------------------------
-  drawSectionTitle(ctx, "2.", "Proprietário / Locatário do Ambiente");
-  drawField(ctx, "Nome / Razão social:", data.customer.name);
-  drawField(ctx, "Documento (CPF/CNPJ):", data.customer.document ?? "");
-  ctx.cursorY -= 6;
+  drawSectionTitle(ctx, "2", "Identificacao do Proprietario, Locatario ou Preposto");
+  drawLabeledRow(ctx, [
+    { label: "NOME / RAZÃO SOCIAL", value: orDash(data.customer.name), frac: 0.62 },
+    { label: "CPF / CNPJ", value: orDash(data.customer.document), frac: 0.38 },
+  ]);
+  drawLabeledRow(ctx, [
+    { label: "ENDEREÇO COMPLETO", value: orDash(data.customer.address), frac: 0.62 },
+    { label: "CIDADE", value: orDash(data.customer.city), frac: 0.26 },
+    { label: "UF", value: orDash(data.customer.state), frac: 0.12 },
+  ]);
+  ctx.cursorY -= 12;
 
   // ---- Seção 3 — Responsável Técnico ---------------------------------------
-  drawSectionTitle(ctx, "3.", "Responsável Técnico (RT)");
-  drawField(ctx, "Nome:", data.rt.nome);
-  drawField(ctx, "Modalidade:", data.rt.modalidade);
-  drawField(ctx, "CFT / CREA:", data.rt.cft_crea ?? "");
-  ctx.cursorY -= 6;
+  drawSectionTitle(ctx, "3", "Identificacao do Responsavel Tecnico");
+  drawLabeledRow(ctx, [
+    { label: "NOME", value: orDash(data.rt.nome), frac: 0.62 },
+    { label: "CFT / CREA", value: orDash(data.rt.cft_crea), frac: 0.38 },
+  ]);
+  drawLabeledRow(ctx, [
+    { label: "MODALIDADE", value: orDash(data.rt.modalidade), frac: 0.62 },
+    { label: "PERIODICIDADE BASE", value: orDash(data.contract.frequency_label), frac: 0.38 },
+  ]);
+  ctx.cursorY -= 12;
 
   // ---- Seção 4 — Relação dos ambientes climatizados ------------------------
-  // UM bloco por ambiente (igual o modelo do cliente): caracterização do
-  // ambiente + a tabela dos equipamentos DAQUELE ambiente. Auto-pagina.
-  drawSectionTitle(ctx, "4.", "Relação dos Ambientes Climatizados");
+  drawSectionTitle(ctx, "4", "Relacao dos Ambientes Climatizados");
   const ambientes = data.ambientes ?? [];
   if (ambientes.length === 0) {
     ensureSpace(ctx, 18);
     ctx.page.drawText("Nenhum ambiente climatizado cadastrado no contrato.", {
-      x: MARGIN_X + 6,
+      x: MARGIN_X,
       y: ctx.cursorY - 11,
       size: 9,
       font: helv,
@@ -477,86 +588,154 @@ export async function drawPlanilha(
     });
     ctx.cursorY -= 18;
   } else {
+    // Cabeçalho da tabela de caracterização (estilo modelo).
+    drawAmbientesHeader(ctx);
     ambientes.forEach((bloco, i) => {
-      // Sub-cabeçalho da unidade (Ambiente 1 — Identificação) quando há >1.
-      if (ambientes.length > 1) {
-        drawAmbienteSubheader(ctx, i + 1, bloco.ambiente);
-      }
-      drawAmbienteBlock(ctx, bloco.ambiente);
+      drawAmbienteRow(ctx, bloco.ambiente, i);
+    });
+    ctx.cursorY -= 6;
+    // Equipamentos por ambiente (logo abaixo da relação).
+    ambientes.forEach((bloco, i) => {
+      const ident = orDash(bloco.ambiente.identificacao);
+      const subTitle = ambientes.length > 1
+        ? `Equipamentos - ${ident !== "—" ? ident : `Ambiente ${i + 1}`}`
+        : "Relação de Equipamentos";
+      drawEquipSubtitle(ctx, subTitle);
       drawEquipmentTable(ctx, bloco.equipments);
-      if (i < ambientes.length - 1) ctx.cursorY -= 10;
+      ctx.cursorY -= 4;
     });
   }
-  ctx.cursorY -= 6;
+  ctx.cursorY -= 10;
 
   // ---- Seção 5 — Plano de manutenção + matriz 12 meses ---------------------
-  drawSectionTitle(ctx, "5.", "Plano de Manutenção (Periodicidade)");
+  drawSectionTitle(ctx, "5", "Plano de Manutencao (Periodicidade Programada)");
   drawPlanTable(ctx);
 
   // ---- (Opcional) Resumo de execução ---------------------------------------
   if (data.execution && data.execution.total > 0) {
-    ctx.cursorY -= 6;
-    drawSectionTitle(ctx, "6.", "Registro de Execução");
+    ctx.cursorY -= 10;
+    drawSectionTitle(ctx, "6", "Registro de Execucao");
     drawExecutionSummary(ctx);
   }
 
-  // Rodapé/selo na última página.
-  await drawFooterSeal(ctx);
+  // Data de geração (sem selo regulatório no PDF).
+  drawGeneratedAt(ctx);
 }
 
-// -- Seção 4: sub-cabeçalho da unidade (quando há mais de um ambiente) --------
-// Faixa fina identificando "Ambiente N — <identificação>", pra separar
-// visualmente cada unidade (modelo do cliente repete a relação por unidade).
-function drawAmbienteSubheader(
-  ctx: Ctx,
-  num: number,
-  a: PlanilhaAmbiente,
-): void {
-  ensureSpace(ctx, 18);
+// -- Seção 4: cabeçalho da tabela de caracterização dos ambientes ------------
+function drawAmbientesHeader(ctx: Ctx): void {
+  const rowH = 24;
+  ensureSpace(ctx, rowH);
   const { page, helvBold } = ctx;
-  const barH = 15;
-  page.drawRectangle({
+  const cols = [
+    { label: "TIPO DE ATIVIDADE", frac: 0.24 },
+    { label: "OCUP. FIXOS", frac: 0.12 },
+    { label: "OCUP. FLUT.", frac: 0.12 },
+    { label: "IDENTIFICAÇÃO", frac: 0.26 },
+    { label: "ÁREA (m²)", frac: 0.14 },
+    { label: "CARGA (TR)", frac: 0.12 },
+  ];
+  let x = MARGIN_X;
+  for (const c of cols) {
+    const w = CONTENT_W * c.frac;
+    page.drawRectangle({
+      x,
+      y: ctx.cursorY - rowH,
+      width: w,
+      height: rowH,
+      color: COLORS.headerBg,
+      borderColor: COLORS.border,
+      borderWidth: 0.6,
+    });
+    // label centralizado (até 2 linhas)
+    const lines = wrapText(helvBold, c.label, 7, w - 6);
+    let ly = ctx.cursorY - (rowH - lines.length * 8) / 2 - 7;
+    for (const ln of lines) {
+      const lw = helvBold.widthOfTextAtSize(ln, 7);
+      page.drawText(ln, {
+        x: x + (w - lw) / 2,
+        y: ly,
+        size: 7,
+        font: helvBold,
+        color: COLORS.headerText,
+      });
+      ly -= 8;
+    }
+    x += w;
+  }
+  ctx.cursorY -= rowH;
+}
+
+// -- Seção 4: uma linha da tabela de caracterização --------------------------
+function drawAmbienteRow(ctx: Ctx, a: PlanilhaAmbiente, idx: number): void {
+  const { helv } = ctx;
+  const cols = [
+    { value: orDash(a.tipo_atividade), frac: 0.24 },
+    { value: a.ocupantes_fixos != null ? fmtNum(a.ocupantes_fixos) : "—", frac: 0.12 },
+    { value: a.ocupantes_flutuantes != null ? fmtNum(a.ocupantes_flutuantes) : "—", frac: 0.12 },
+    { value: orDash(a.identificacao), frac: 0.26 },
+    { value: a.area_m2 != null ? `${fmtNum(a.area_m2)} m²` : "—", frac: 0.14 },
+    { value: a.carga_termica_tr != null ? `${fmtNum(a.carga_termica_tr)} TR` : "—", frac: 0.12 },
+  ];
+  // altura por wrap da maior coluna textual
+  const maxLines = Math.max(
+    ...cols.map((c) => wrapText(helv, c.value, 8, CONTENT_W * c.frac - 8).length),
+  );
+  const rowH = Math.max(20, maxLines * 9 + 8);
+  if (ctx.cursorY - rowH < FOOTER_RESERVED_H) {
+    newPage(ctx);
+    drawAmbientesHeader(ctx);
+  }
+  const { page } = ctx;
+  let x = MARGIN_X;
+  for (const c of cols) {
+    const w = CONTENT_W * c.frac;
+    if (idx % 2 === 1) {
+      page.drawRectangle({
+        x,
+        y: ctx.cursorY - rowH,
+        width: w,
+        height: rowH,
+        color: COLORS.rowAlt,
+      });
+    }
+    page.drawRectangle({
+      x,
+      y: ctx.cursorY - rowH,
+      width: w,
+      height: rowH,
+      borderColor: COLORS.border,
+      borderWidth: 0.6,
+    });
+    const lines = wrapText(helv, c.value, 8, w - 8);
+    let ly = ctx.cursorY - 10;
+    for (const ln of lines) {
+      const lw = helv.widthOfTextAtSize(ln, 8);
+      page.drawText(ln, {
+        x: x + (w - lw) / 2,
+        y: ly,
+        size: 8,
+        font: helv,
+        color: COLORS.black,
+      });
+      ly -= 9;
+    }
+    x += w;
+  }
+  ctx.cursorY -= rowH;
+}
+
+// -- Seção 4: subtítulo da relação de equipamentos ---------------------------
+function drawEquipSubtitle(ctx: Ctx, title: string): void {
+  ensureSpace(ctx, 16);
+  ctx.page.drawText(safe(title), {
     x: MARGIN_X,
-    y: ctx.cursorY - barH,
-    width: CONTENT_W,
-    height: barH,
-    color: COLORS.lightGray,
-  });
-  const ident = orDash(a.identificacao);
-  const label = ident !== "—" ? `Ambiente ${num} — ${ident}` : `Ambiente ${num}`;
-  page.drawText(safe(label), {
-    x: MARGIN_X + 6,
-    y: ctx.cursorY - barH + 4,
+    y: ctx.cursorY - 10,
     size: 8.5,
-    font: helvBold,
+    font: ctx.helvBold,
     color: COLORS.accent,
   });
-  ctx.cursorY -= barH + 4;
-}
-
-// -- Seção 4 (parte A): caracterização do ambiente climatizado ---------------
-// Espelha o modelo do cliente: tipo de atividade, identificação, área (m²),
-// ocupantes (fixos/flutuantes) e carga térmica (TR). Campo ausente vira "—".
-function drawAmbienteBlock(ctx: Ctx, a: PlanilhaAmbiente | null): void {
-  drawField(ctx, "Tipo de atividade:", orDash(a?.tipo_atividade));
-  drawField(ctx, "Identificação do ambiente:", orDash(a?.identificacao));
-  drawField(
-    ctx,
-    "Área climatizada (m²):",
-    a?.area_m2 != null ? fmtNum(a.area_m2) : "—",
-  );
-  drawField(
-    ctx,
-    "Nº de ocupantes:",
-    `Fixos: ${a?.ocupantes_fixos != null ? fmtNum(a.ocupantes_fixos) : "—"}   ` +
-      `Flutuantes: ${a?.ocupantes_flutuantes != null ? fmtNum(a.ocupantes_flutuantes) : "—"}`,
-  );
-  drawField(
-    ctx,
-    "Carga térmica (TR):",
-    a?.carga_termica_tr != null ? fmtNum(a.carga_termica_tr) : "—",
-  );
-  ctx.cursorY -= 4;
+  ctx.cursorY -= 15;
 }
 
 // -- Seção 4 (parte B): tabela de equipamentos do ambiente -------------------
@@ -574,20 +753,22 @@ function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
   const drawHeaderRow = () => {
     ensureSpace(ctx, rowH + 4);
     const { page } = ctx;
-    page.drawRectangle({
-      x: MARGIN_X,
-      y: ctx.cursorY - rowH,
-      width: CONTENT_W,
-      height: rowH,
-      color: COLORS.headerBg,
-    });
     let x = MARGIN_X;
     for (const c of cols) {
       const cw = CONTENT_W * c.w;
+      page.drawRectangle({
+        x,
+        y: ctx.cursorY - rowH,
+        width: cw,
+        height: rowH,
+        color: COLORS.headerBg,
+        borderColor: COLORS.border,
+        borderWidth: 0.6,
+      });
       page.drawText(c.label, {
         x: x + 4,
         y: ctx.cursorY - rowH + 5,
-        size: 8,
+        size: 7.5,
         font: helvBold,
         color: COLORS.headerText,
       });
@@ -597,15 +778,15 @@ function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
   };
 
   if (equipments.length === 0) {
-    ensureSpace(ctx, 18);
+    ensureSpace(ctx, 16);
     ctx.page.drawText("Nenhum equipamento vinculado a este ambiente.", {
-      x: MARGIN_X + 6,
-      y: ctx.cursorY - 11,
-      size: 9,
+      x: MARGIN_X,
+      y: ctx.cursorY - 10,
+      size: 8,
       font: helv,
       color: COLORS.gray,
     });
-    ctx.cursorY -= 18;
+    ctx.cursorY -= 16;
     return;
   }
 
@@ -617,15 +798,6 @@ function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
       drawHeaderRow();
     }
     const { page } = ctx;
-    if (idx % 2 === 1) {
-      page.drawRectangle({
-        x: MARGIN_X,
-        y: ctx.cursorY - rowH,
-        width: CONTENT_W,
-        height: rowH,
-        color: COLORS.rowAlt,
-      });
-    }
     const values: Record<string, string> = {
       name: eq.name ?? "—",
       brand: eq.brand ?? "",
@@ -636,8 +808,24 @@ function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
     let x = MARGIN_X;
     for (const c of cols) {
       const cw = CONTENT_W * c.w;
+      if (idx % 2 === 1) {
+        page.drawRectangle({
+          x,
+          y: ctx.cursorY - rowH,
+          width: cw,
+          height: rowH,
+          color: COLORS.rowAlt,
+        });
+      }
+      page.drawRectangle({
+        x,
+        y: ctx.cursorY - rowH,
+        width: cw,
+        height: rowH,
+        borderColor: COLORS.border,
+        borderWidth: 0.6,
+      });
       const raw = values[c.key] ?? "";
-      // trunca pra caber na coluna
       let txt = safe(raw);
       while (txt.length > 1 && helv.widthOfTextAtSize(txt, 8) > cw - 8) {
         txt = txt.slice(0, -2) + "…";
@@ -654,16 +842,12 @@ function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
     ctx.cursorY -= rowH;
     idx++;
   }
-  // borda inferior
-  ctx.page.drawLine({
-    start: { x: MARGIN_X, y: ctx.cursorY },
-    end: { x: MARGIN_X + CONTENT_W, y: ctx.cursorY },
-    thickness: 0.5,
-    color: COLORS.border,
-  });
 }
 
 // -- Seção 5: plano de manutenção com matriz de 12 meses ---------------------
+// Layout `table-layout: fixed`: larguras explícitas por coluna. ITEM | DESCRIÇÃO
+// | FREQ | J F M A M J J A S O N D. A célula de DESCRIÇÃO quebra linha (wrap +
+// quebra de palavra longa) e NUNCA invade a coluna de freq/meses.
 function drawPlanTable(ctx: Ctx): void {
   const { helv, helvBold } = ctx;
 
@@ -671,55 +855,74 @@ function drawPlanTable(ctx: Ctx): void {
     ensureSpace(ctx, 30);
     ctx.page.drawText(
       "Nenhuma atividade de manutenção cadastrada no plano deste contrato.",
-      { x: MARGIN_X + 6, y: ctx.cursorY - 11, size: 9, font: helv, color: COLORS.gray },
+      { x: MARGIN_X, y: ctx.cursorY - 11, size: 9, font: helv, color: COLORS.gray },
     );
     ctx.cursorY -= 14;
     ctx.page.drawText(
       "Cadastre as atividades e periodicidades no plano do contrato para que a planilha seja preenchida.",
-      { x: MARGIN_X + 6, y: ctx.cursorY - 11, size: 8, font: helv, color: COLORS.gray },
+      { x: MARGIN_X, y: ctx.cursorY - 11, size: 8, font: helv, color: COLORS.gray },
     );
     ctx.cursorY -= 20;
     return;
   }
 
-  // Layout de colunas: descrição (larga) + freq + 12 colunas de mês.
-  const descW = CONTENT_W * 0.42;
-  const freqW = CONTENT_W * 0.10;
-  const matrixW = CONTENT_W - descW - freqW;
+  // -- Larguras FIXAS das colunas (somam CONTENT_W). ----
+  const itemW = 26; // "Nº" do item
+  const freqW = 30; // sigla M/T/S/A/E
+  const matrixW = 12 * 13; // 12 meses × 13pt
+  const descW = CONTENT_W - itemW - freqW - matrixW; // resto pra descrição
   const monthW = matrixW / 12;
-  const rowH = 15;
+  // Offsets das colunas.
+  const itemX = MARGIN_X;
+  const descX = itemX + itemW;
+  const freqX = descX + descW;
+  const matrixX = freqX + freqW;
+  const padCell = 4;
 
+  // Cabeçalho da matriz (cinza, estilo modelo).
   const drawMatrixHeader = () => {
+    const rowH = 16;
     ensureSpace(ctx, rowH + 4);
     const { page } = ctx;
-    page.drawRectangle({
-      x: MARGIN_X,
-      y: ctx.cursorY - rowH,
-      width: CONTENT_W,
-      height: rowH,
-      color: COLORS.headerBg,
-    });
-    page.drawText("Atividade", {
-      x: MARGIN_X + 4,
-      y: ctx.cursorY - rowH + 4,
-      size: 7.5,
-      font: helvBold,
-      color: COLORS.headerText,
-    });
-    page.drawText("Freq.", {
-      x: MARGIN_X + descW + 4,
-      y: ctx.cursorY - rowH + 4,
-      size: 7.5,
-      font: helvBold,
-      color: COLORS.headerText,
-    });
+    // fundo cinza completo + bordas por coluna
+    const drawHdrCell = (x: number, w: number, label: string, center = false) => {
+      page.drawRectangle({
+        x,
+        y: ctx.cursorY - rowH,
+        width: w,
+        height: rowH,
+        color: COLORS.headerBg,
+        borderColor: COLORS.border,
+        borderWidth: 0.6,
+      });
+      const lw = helvBold.widthOfTextAtSize(label, 7);
+      page.drawText(label, {
+        x: center ? x + (w - lw) / 2 : x + padCell,
+        y: ctx.cursorY - rowH + 5,
+        size: 7,
+        font: helvBold,
+        color: COLORS.headerText,
+      });
+    };
+    drawHdrCell(itemX, itemW, "ITEM", true);
+    drawHdrCell(descX, descW, "DESCRIÇÃO DO SERVIÇO");
+    drawHdrCell(freqX, freqW, "FREQ", true);
     for (let m = 0; m < 12; m++) {
-      const mx = MARGIN_X + descW + freqW + m * monthW;
+      const mx = matrixX + m * monthW;
       const lbl = MESES_ABBR[m].slice(0, 1);
+      page.drawRectangle({
+        x: mx,
+        y: ctx.cursorY - rowH,
+        width: monthW,
+        height: rowH,
+        color: COLORS.headerBg,
+        borderColor: COLORS.border,
+        borderWidth: 0.6,
+      });
       const lw = helvBold.widthOfTextAtSize(lbl, 6.5);
       page.drawText(lbl, {
         x: mx + (monthW - lw) / 2,
-        y: ctx.cursorY - rowH + 4,
+        y: ctx.cursorY - rowH + 5,
         size: 6.5,
         font: helvBold,
         color: COLORS.headerText,
@@ -728,7 +931,7 @@ function drawPlanTable(ctx: Ctx): void {
     ctx.cursorY -= rowH;
   };
 
-  // Agrupa por seção.
+  // Agrupa por seção/componente.
   const bySection = new Map<string, PlanilhaActivity[]>();
   for (const a of ctx.data.activities) {
     const key = a.section ?? "outros";
@@ -738,103 +941,130 @@ function drawPlanTable(ctx: Ctx): void {
   }
 
   drawMatrixHeader();
+  let itemNum = 0;
   let rowIdx = 0;
   for (const [section, acts] of bySection) {
-    // Sub-cabeçalho da seção.
-    if (ctx.cursorY - (rowH + 14) < FOOTER_RESERVED_H) {
+    // Sub-cabeçalho do componente (em maiúsculas, faixa cinza clara — full width).
+    const groupH = 14;
+    if (ctx.cursorY - (groupH + 16) < FOOTER_RESERVED_H) {
       newPage(ctx);
       drawMatrixHeader();
     }
-    const { page } = ctx;
-    page.drawRectangle({
-      x: MARGIN_X,
-      y: ctx.cursorY - 13,
-      width: CONTENT_W,
-      height: 13,
-      color: COLORS.lightGray,
-    });
-    page.drawText(safe(sectionLabel(section)).toUpperCase(), {
-      x: MARGIN_X + 4,
-      y: ctx.cursorY - 10,
-      size: 7.5,
-      font: helvBold,
-      color: COLORS.accent,
-    });
-    ctx.cursorY -= 13;
+    {
+      const { page } = ctx;
+      page.drawRectangle({
+        x: MARGIN_X,
+        y: ctx.cursorY - groupH,
+        width: CONTENT_W,
+        height: groupH,
+        color: COLORS.lightGray,
+        borderColor: COLORS.border,
+        borderWidth: 0.6,
+      });
+      page.drawText(safe(sectionLabel(section)).toUpperCase(), {
+        x: MARGIN_X + padCell,
+        y: ctx.cursorY - groupH + 4,
+        size: 7.5,
+        font: helvBold,
+        color: COLORS.accent,
+      });
+      ctx.cursorY -= groupH;
+    }
 
     for (const a of acts) {
-      const descLines = wrapText(helv, a.description ?? "", 7.5, descW - 18);
-      const thisRowH = Math.max(rowH, descLines.length * 9 + 6);
+      itemNum++;
+      // Componente humanizado como prefixo SÓ quando difere do grupo (raro). O
+      // grupo já é o componente; aqui mostramos só a descrição limpa.
+      const descText = safe(a.description ?? "");
+      const descLines = wrapText(helv, descText, 7.5, descW - 2 * padCell);
+      const thisRowH = Math.max(15, descLines.length * 9 + 6);
       if (ctx.cursorY - thisRowH < FOOTER_RESERVED_H) {
         newPage(ctx);
         drawMatrixHeader();
       }
       const p = ctx.page;
-      if (rowIdx % 2 === 1) {
+      // Fundo zebra (todas as colunas).
+      const drawRowCellBorder = (x: number, w: number) => {
+        if (rowIdx % 2 === 1) {
+          p.drawRectangle({
+            x,
+            y: ctx.cursorY - thisRowH,
+            width: w,
+            height: thisRowH,
+            color: COLORS.rowAlt,
+          });
+        }
         p.drawRectangle({
-          x: MARGIN_X,
+          x,
           y: ctx.cursorY - thisRowH,
-          width: CONTENT_W,
+          width: w,
           height: thisRowH,
-          color: COLORS.rowAlt,
+          borderColor: COLORS.border,
+          borderWidth: 0.6,
         });
-      }
-      // componente (prefixo) + descrição
-      const comp = a.component ? `${safe(a.component)}: ` : "";
+      };
+      // ITEM
+      drawRowCellBorder(itemX, itemW);
+      const itemLbl = String(itemNum);
+      const ilw = helv.widthOfTextAtSize(itemLbl, 7.5);
+      p.drawText(itemLbl, {
+        x: itemX + (itemW - ilw) / 2,
+        y: ctx.cursorY - thisRowH / 2 - 3,
+        size: 7.5,
+        font: helv,
+        color: COLORS.black,
+      });
+      // DESCRIÇÃO (multi-linha, dentro da célula)
+      drawRowCellBorder(descX, descW);
       let ly = ctx.cursorY - 10;
-      let first = true;
       for (const ln of descLines) {
-        const text = first && comp ? comp + ln : ln;
-        p.drawText(text, {
-          x: MARGIN_X + 6,
+        p.drawText(ln, {
+          x: descX + padCell,
           y: ly,
           size: 7.5,
-          font: first && comp ? helvBold : helv,
+          font: helv,
           color: COLORS.black,
         });
         ly -= 9;
-        first = false;
       }
-      // freq label curto
-      const fcode = a.freq_code ?? (a.freq_months ? `${a.freq_months}m` : "—");
+      // FREQ
+      drawRowCellBorder(freqX, freqW);
       const fLabel = a.freq_code
         ? a.freq_code
         : a.freq_months
           ? `${a.freq_months}m`
           : "—";
+      const flw = helvBold.widthOfTextAtSize(fLabel, 7.5);
       p.drawText(fLabel, {
-        x: MARGIN_X + descW + 6,
-        y: ctx.cursorY - 10,
+        x: freqX + (freqW - flw) / 2,
+        y: ctx.cursorY - thisRowH / 2 - 3,
         size: 7.5,
         font: helvBold,
         color: COLORS.accent,
       });
-      // matriz de meses
+      // Matriz de meses (bordas + bolinha verde quando o mês cai).
       const hits = monthsHit(a.freq_code, a.freq_months);
       for (let m = 0; m < 12; m++) {
+        const mx = matrixX + m * monthW;
+        drawRowCellBorder(mx, monthW);
         if (hits[m]) {
-          const mx = MARGIN_X + descW + freqW + m * monthW;
-          const cx = mx + monthW / 2;
-          const cy = ctx.cursorY - thisRowH / 2;
-          p.drawCircle({ x: cx, y: cy, size: 2.4, color: COLORS.mark });
+          p.drawCircle({
+            x: mx + monthW / 2,
+            y: ctx.cursorY - thisRowH / 2,
+            size: 2.2,
+            color: COLORS.mark,
+          });
         }
       }
       ctx.cursorY -= thisRowH;
       rowIdx++;
     }
   }
-  // borda inferior
-  ctx.page.drawLine({
-    start: { x: MARGIN_X, y: ctx.cursorY },
-    end: { x: MARGIN_X + CONTENT_W, y: ctx.cursorY },
-    thickness: 0.5,
-    color: COLORS.border,
-  });
 
   // Legenda de periodicidade.
-  ctx.cursorY -= 14;
+  ctx.cursorY -= 12;
   ensureSpace(ctx, 14);
-  const legend = "M = Mensal   T = Trimestral   S = Semestral   A = Anual   E = Eventual   (bolinha verde = mês previsto)";
+  const legend = "M=Mensal  T=Trimestral  S=Semestral  A=Anual  E=Eventual   (bolinha verde = mes previsto)";
   ctx.page.drawText(legend, {
     x: MARGIN_X,
     y: ctx.cursorY,
@@ -865,7 +1095,7 @@ function drawExecutionSummary(ctx: Ctx): void {
       height: 40,
       color: COLORS.rowAlt,
       borderColor: COLORS.border,
-      borderWidth: 0.5,
+      borderWidth: 0.6,
     });
     ctx.page.drawText(c.value, {
       x: x + 8,
@@ -886,45 +1116,18 @@ function drawExecutionSummary(ctx: Ctx): void {
   ctx.cursorY -= 48;
 }
 
-// -- Selo regulatório (última página, ACIMA do rodapé Dominex) ----------------
-// O selo de conformidade + a linha da Lei ficam logo acima da faixa reservada
-// pro rodapé Dominex (FOOTER_RESERVED_H) pra não colidir com ele. Ancorado em
-// Y absoluto a partir do topo dessa faixa.
-async function drawFooterSeal(ctx: Ctx): Promise<void> {
-  const { pdf, helv, helvBold, data } = ctx;
-  // Garante que ainda há espaço acima da faixa do rodapé pro bloco do selo.
-  ensureSpace(ctx, 80);
-
-  const sealText = "Conforme Lei Federal 13.589/2018";
-  const sealSize = 9;
-  const sealW = helvBold.widthOfTextAtSize(sealText, sealSize);
-  const sealTextX = MARGIN_X + (CONTENT_W - sealW) / 2;
-
-  // Base do bloco logo acima da faixa reservada do rodapé Dominex.
-  const baseY = FOOTER_RESERVED_H + 8;
-
+// -- Data de geração (rodapé textual, sem selo regulatório) ------------------
+function drawGeneratedAt(ctx: Ctx): void {
+  const { helv, data } = ctx;
+  ensureSpace(ctx, 18);
   ctx.page.drawText(
     `Documento gerado em ${safe(data.generated_at_extenso)}.`,
     {
       x: MARGIN_X,
-      y: baseY + 18,
+      y: FOOTER_RESERVED_H + 8,
       size: 7.5,
       font: helv,
       color: COLORS.gray,
     },
   );
-  ctx.page.drawText(sealText, {
-    x: sealTextX,
-    y: baseY,
-    size: sealSize,
-    font: helvBold,
-    color: COLORS.black,
-  });
-
-  // Selo PNG de conformidade centralizado, logo acima do texto da lei.
-  await drawComplianceSeal(pdf, ctx.page, {
-    centerX: A4_W / 2,
-    baselineY: baseY + sealSize + 6,
-    width: 50,
-  });
 }
