@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.50";
+export const APP_VERSION = "1.12.51";
 
-export const VERSION_NOTES = "O Retrofit de Gás agora é uma ferramenta separada nas Ferramentas do Técnico, mais fácil de achar. E na Régua de Gases, a alavanca Dew/Bubble fica travada nos gases sem glide (onde ela não muda nada), com a observação sobre quais gases têm glide corrigida.";
+export const VERSION_NOTES = "As ferramentas de Cabo Elétrico e Cálculo de Capacitor agora mostram uma foto do componente recomendado (disjuntor / capacitor) com as especificações ao lado. E no celular, a barra de ferramentas agora rola sozinha para centralizar a ferramenta aberta.";

@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePersistedState } from '@/hooks/usePersistedState';
+import { SpecPhotoCard, type Spec } from './SpecPhotoCard';
 import {
   CABO,
   TENSOES_CABO,
@@ -141,23 +142,27 @@ export function CaboEletrico() {
       </div>
 
       {/* Resultado ao vivo — card de destaque */}
-      <div className="rounded-lg border border-border bg-background p-5">
+      <div className="mx-auto max-w-4xl rounded-lg border border-border bg-background p-5">
         {resultado ? (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
+            <div className="min-w-0 flex-1 space-y-4">
             <div className="text-center">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 É recomendado utilizar
               </p>
               <p className="mt-2 text-xl font-semibold leading-snug sm:text-2xl">
                 Cabo elétrico:{' '}
-                <span className="text-primary">{formatarCaboNumero(resultado.secaoMM2)} mm²</span>
+                <span className="whitespace-nowrap text-primary">
+                  {formatarCaboNumero(resultado.secaoMM2)} mm²
+                </span>
                 <span className="mx-1.5 text-muted-foreground">·</span>
                 Disjuntor:{' '}
-                <span className="text-primary">
+                <span className="whitespace-nowrap text-primary">
                   {resultado.tipo} Din C{resultado.disjuntorA}
                 </span>
                 <span className="mx-1.5 text-muted-foreground">·</span>
-                Tensão do AC: <span className="text-primary">{resultado.tensao}v</span>
+                Tensão do AC:{' '}
+                <span className="whitespace-nowrap text-primary">{resultado.tensao}v</span>
               </p>
             </div>
 
@@ -202,6 +207,32 @@ export function CaboEletrico() {
                 como melhor esforço — valide com um eletricista.
               </p>
             )}
+            </div>
+
+            <SpecPhotoCard
+              className="lg:order-first lg:w-[22rem] lg:shrink-0"
+              titulo="Disjuntor recomendado"
+              fotoSrc={
+                resultado.tipo === 'Bipolar'
+                  ? '/images/disjuntores/din-bipolar.png'
+                  : '/images/disjuntores/din-monopolar.png'
+              }
+              fotoAlt={`Disjuntor ${resultado.tipo}`}
+              fallbackIcon={Zap}
+              specs={
+                [
+                  { label: 'Tipo', value: resultado.tipo },
+                  { label: 'Curva', value: 'C' },
+                  { label: 'Corrente (In)', value: `${resultado.disjuntorA} A` },
+                  {
+                    label: 'Polos',
+                    value: `${resultado.tipo === 'Bipolar' ? 2 : 1} (${resultado.tipo})`,
+                  },
+                  { label: 'Tensão', value: `${tensao}V` },
+                  { label: 'Padrão', value: 'NBR NM 60898' },
+                ] satisfies Spec[]
+              }
+            />
           </div>
         ) : (
           <p className="text-center text-sm text-muted-foreground">

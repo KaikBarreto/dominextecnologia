@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CircuitBoard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
+import { SpecPhotoCard, type Spec } from './SpecPhotoCard';
 import {
   BTUS_PADRAO,
   TENSOES,
@@ -159,40 +160,57 @@ export function CalculoCapacitor() {
 
       {/* Resultado ao vivo — card fixo no fim do conteúdo */}
       {modo === 'btu' ? (
-        <div className="rounded-lg border border-border bg-background p-5">
+        <div className="mx-auto max-w-4xl rounded-lg border border-border bg-background p-5">
           {resultado ? (
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Capacitor recomendado
-                </p>
-                <p className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
-                  Use o capacitor de{' '}
-                  <span className="text-primary">{formatarNumero(resultado.capacitorUF)} µF</span>{' '}
-                  à 380/440v
-                </p>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
+              <div className="min-w-0 flex-1 space-y-4">
+                <div className="text-center">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Capacitor recomendado
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
+                    Use o capacitor de{' '}
+                    <span className="text-primary">{formatarNumero(resultado.capacitorUF)} µF</span>{' '}
+                    à 380/440v
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Amper
+                    </p>
+                    <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
+                      {formatarNumero(resultado.amper)}
+                      <span className="ml-1 text-base font-semibold sm:text-lg">A</span>
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Potência
+                    </p>
+                    <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
+                      {formatarNumero(resultado.potenciaWatts)}
+                      <span className="ml-1 text-base font-semibold sm:text-lg">watts</span>
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Amper
-                  </p>
-                  <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
-                    {formatarNumero(resultado.amper)}
-                    <span className="ml-1 text-base font-semibold sm:text-lg">A</span>
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Potência
-                  </p>
-                  <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
-                    {formatarNumero(resultado.potenciaWatts)}
-                    <span className="ml-1 text-base font-semibold sm:text-lg">watts</span>
-                  </p>
-                </div>
-              </div>
+              <SpecPhotoCard
+                className="lg:order-first lg:w-[22rem] lg:shrink-0"
+                titulo="Capacitor recomendado"
+                fotoSrc="/images/capacitores/capacitor.png"
+                fotoAlt="Capacitor permanente"
+                fallbackIcon={CircuitBoard}
+                specs={
+                  [
+                    { label: 'Capacitância', value: `${formatarNumero(resultado.capacitorUF)} µF` },
+                    { label: 'Tensão', value: '380/440 VAC' },
+                    { label: 'Tipo', value: 'Permanente (regime)' },
+                  ] satisfies Spec[]
+                }
+              />
             </div>
           ) : (
             <p className="text-center text-sm text-muted-foreground">
@@ -201,19 +219,36 @@ export function CalculoCapacitor() {
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-border bg-background p-5">
+        <div className="mx-auto max-w-4xl rounded-lg border border-border bg-background p-5">
           {capacitorLRA !== null ? (
-            <div className="space-y-2 text-center">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Capacitor recomendado
-              </p>
-              <p className="text-2xl font-semibold leading-tight sm:text-3xl">
-                Use o capacitor de{' '}
-                <span className="text-primary">{formatarNumero(capacitorLRA)} µF</span> à 380/440v
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Calculado a partir de LRA {formatarNumero(lraNum)} A.
-              </p>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
+              <div className="min-w-0 flex-1 space-y-2 text-center">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Capacitor recomendado
+                </p>
+                <p className="text-2xl font-semibold leading-tight sm:text-3xl">
+                  Use o capacitor de{' '}
+                  <span className="text-primary">{formatarNumero(capacitorLRA)} µF</span> à 380/440v
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Calculado a partir de LRA {formatarNumero(lraNum)} A.
+                </p>
+              </div>
+
+              <SpecPhotoCard
+                className="lg:order-first lg:w-[22rem] lg:shrink-0"
+                titulo="Capacitor recomendado"
+                fotoSrc="/images/capacitores/capacitor.png"
+                fotoAlt="Capacitor permanente"
+                fallbackIcon={CircuitBoard}
+                specs={
+                  [
+                    { label: 'Capacitância', value: `${formatarNumero(capacitorLRA)} µF` },
+                    { label: 'Tensão', value: '380/440 VAC' },
+                    { label: 'Tipo', value: 'Permanente (regime)' },
+                  ] satisfies Spec[]
+                }
+              />
             </div>
           ) : (
             <p className="text-center text-sm text-muted-foreground">

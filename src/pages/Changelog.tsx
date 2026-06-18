@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.51',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Foto do disjuntor e do capacitor recomendado',
+        description: 'Nas ferramentas Cabo Elétrico e Cálculo de Capacitor, agora aparece uma foto do componente recomendado (disjuntor ou capacitor) junto com as especificações — tipo, corrente/capacitância, tensão e padrão. Fica mais fácil reconhecer a peça certa na hora da compra.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Barra de ferramentas centraliza no celular',
+        description: 'Ao abrir uma ferramenta do técnico pelo celular, a barra de navegação agora rola sozinha para deixar a ferramenta atual à vista, em vez de ficar presa no começo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.12.50',
     date: '18 de junho de 2026',
     type: 'patch',

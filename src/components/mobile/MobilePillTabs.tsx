@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { hexToRgbTriplet, idealForeground } from '@/lib/colorContrast';
 
@@ -28,6 +28,13 @@ interface MobilePillTabsProps {
  * Pills snap-x com gradient fade nas bordas. Visual app nativo.
  */
 export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: MobilePillTabsProps) {
+  // Centraliza a pill ativa na vista ao trocar de aba (ex: entrar numa ferramenta
+  // pelo carrossel do Início) — senão o carrossel fica preso no começo.
+  const activeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeTab]);
+
   return (
     <div className={cn('relative -mx-3', className)}>
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-background to-transparent" />
@@ -54,6 +61,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: Mobi
           return (
             <button
               key={tab.value}
+              ref={isActive ? activeRef : undefined}
               type="button"
               onClick={() => onTabChange(tab.value)}
               style={accentStyle}
