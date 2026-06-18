@@ -400,7 +400,7 @@ export default function Auth() {
           {/* Logo flutuante sobre o veil */}
           <div className="flex-1 flex flex-col items-center justify-end px-6 pb-10 pt-[max(env(safe-area-inset-top),2rem)]">
             <img src={logoWhite} alt="Dominex" className="h-14 w-auto" onError={() => {}} />
-            <p className="text-white/80 text-xs mt-2 tracking-wider">Sistema de Gestão de Equipes Externas</p>
+            <p className="text-white/80 text-xs mt-2 tracking-wider">Domine a execução do seu negócio.</p>
           </div>
 
           {/* Bottom sheet com o form */}
@@ -565,7 +565,7 @@ export default function Auth() {
       <div className="w-full max-w-md relative z-10">
         <div className="mb-8 flex flex-col items-center">
           <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" onError={() => {}} />
-          <p className="text-white/80 text-sm">Sistema de Gestão de Equipes Externas</p>
+          <p className="text-white/80 text-sm">Domine a execução do seu negócio.</p>
         </div>
 
         <Card className="border-0 bg-black/60 backdrop-blur-md shadow-2xl">

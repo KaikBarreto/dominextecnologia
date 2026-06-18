@@ -245,7 +245,7 @@ export default function Registration() {
         {/* Logo — desktop fica no topo, mobile fica flutuando sobre o veil */}
         <div className="flex flex-col items-center px-6 pt-[max(env(safe-area-inset-top),2rem)] pb-6 sm:p-0 sm:mb-8">
           <img src={logoWhite} alt="Dominex" className="h-14 w-auto mb-2" />
-          <p className="text-white/80 text-xs sm:text-sm tracking-wider sm:tracking-normal">Sistema de Gestão de Equipes Externas</p>
+          <p className="text-white/80 text-xs sm:text-sm tracking-wider sm:tracking-normal">Domine a execução do seu negócio.</p>
         </div>
 
         <Card className="border-0 border-t border-white/10 sm:border sm:border-white/15 bg-black/30 sm:bg-black/40 backdrop-blur-2xl sm:backdrop-blur-xl shadow-2xl rounded-t-[28px] sm:rounded-xl flex-1 sm:flex-initial animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:fade-in duration-500 ease-out">
