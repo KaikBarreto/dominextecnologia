@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.49',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Navegue entre marcas com setas no Catálogo',
+        description: 'No Catálogo de Equipamentos, a faixa de marcas ganhou setas para os lados — dá pra passar de uma marca para a outra com um toque, sem precisar arrastar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.48',
     date: '18 de junho de 2026',
     type: 'patch',

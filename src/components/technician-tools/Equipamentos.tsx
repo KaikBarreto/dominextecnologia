@@ -60,6 +60,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
   type CarouselApi,
 } from '@/components/ui/carousel';
 import { getRefrigerante, REFRIGERANTES } from '@/lib/refrigerantes';
@@ -1103,6 +1105,16 @@ function ModelosList({
               );
             })}
           </CarouselContent>
+          {/* Setas pra navegar entre marcas (anterior/próxima). Sobrepõem as
+              laterais; auto-desabilitam na primeira/última marca. */}
+          <CarouselPrevious
+            aria-label="Marca anterior"
+            className="left-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
+          />
+          <CarouselNext
+            aria-label="Próxima marca"
+            className="right-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
+          />
         </Carousel>
       ) : (
         /* Marca única: card estático (carrossel não faz sentido). */
