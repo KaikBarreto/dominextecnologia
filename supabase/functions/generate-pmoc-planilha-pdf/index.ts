@@ -25,6 +25,8 @@ import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 import {
   drawPlanilha,
   PlanilhaActivity,
+  PlanilhaAmbiente,
+  PlanilhaAmbienteBlock,
   PlanilhaData,
   PlanilhaEquipment,
 } from "../_shared/pmoc-templates/planilha.ts";
@@ -281,11 +283,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 5. Dependências: customer, company_settings, RT, equipamentos, plano
+    // ---- 5. Dependências: customer, company_settings, RT, ambientes,
+    //      equipamentos, plano
     const [
       { data: customer },
       { data: companySettings },
       { data: rt },
+      { data: environments },
       { data: contractItems },
       { data: planActivities },
     ] = await Promise.all([
@@ -306,11 +310,20 @@ Deno.serve(async (req) => {
             .eq("id", contract.responsible_technician_id)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
+      // Ambientes climatizados do contrato (1→N). Ordem do cadastro.
+      supabase
+        .from("contract_environments")
+        .select(
+          "id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, sort_order",
+        )
+        .eq("contract_id", contract.id)
+        .order("sort_order", { ascending: true }),
       // Equipamentos do contrato (relação climatizada). Join no equipment.
+      // environment_id liga cada equipamento ao seu ambiente.
       supabase
         .from("contract_items")
         .select(
-          "id, equipment_id, item_name, sort_order, equipment:equipment(name, brand, model, capacity, location, serial_number)",
+          "id, environment_id, equipment_id, item_name, sort_order, equipment:equipment(name, brand, model, capacity, location, serial_number)",
         )
         .eq("contract_id", contract.id)
         .order("sort_order", { ascending: true }),
@@ -407,7 +420,9 @@ Deno.serve(async (req) => {
     }
 
     // ---- Equipamentos (relação climatizada). item_name é fallback do nome.
+    //      environment_id liga cada equipamento ao seu ambiente.
     type ContractItemRow = {
+      environment_id: string | null;
       equipment_id: string | null;
       item_name: string | null;
       equipment:
@@ -421,16 +436,15 @@ Deno.serve(async (req) => {
           }
         | null;
     };
-    const equipments: PlanilhaEquipment[] = ((contractItems ?? []) as ContractItemRow[]).map(
-      (ci) => ({
-        name: ci.equipment?.name ?? ci.item_name ?? null,
-        brand: ci.equipment?.brand ?? null,
-        model: ci.equipment?.model ?? null,
-        capacity: ci.equipment?.capacity ?? null,
-        location: ci.equipment?.location ?? null,
-        serial_number: ci.equipment?.serial_number ?? null,
-      }),
-    );
+    const itemRows = (contractItems ?? []) as ContractItemRow[];
+    const toEquip = (ci: ContractItemRow): PlanilhaEquipment => ({
+      name: ci.equipment?.name ?? ci.item_name ?? null,
+      brand: ci.equipment?.brand ?? null,
+      model: ci.equipment?.model ?? null,
+      capacity: ci.equipment?.capacity ?? null,
+      location: ci.equipment?.location ?? null,
+      serial_number: ci.equipment?.serial_number ?? null,
+    });
 
     // ---- Plano (atividades ativas). Dedup por (section|component|description|
     //      freq) pra não repetir a mesma atividade expandida por equipamento.
@@ -481,9 +495,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---- Seção 4: caracterização do ambiente climatizado (modelo do cliente).
-    //      Vem das colunas pmoc_* do contrato; ausente vira null (→ "—" no PDF).
-    const c = contract as Record<string, unknown>;
+    // ---- Seção 4: ambientes climatizados (1→N), cada um com seus equipamentos.
+    //      Modelo do cliente repete a relação por unidade.
     const numOrNull = (v: unknown): number | null => {
       if (v === null || v === undefined || v === "") return null;
       const n = Number(v);
@@ -493,14 +506,69 @@ Deno.serve(async (req) => {
       const s = (v ?? "").toString().trim();
       return s.length > 0 ? s : null;
     };
-    const ambiente = {
-      tipo_atividade: strOrNull(c.pmoc_tipo_atividade),
-      identificacao: strOrNull(c.pmoc_identificacao_ambiente),
-      area_m2: numOrNull(c.pmoc_area_climatizada_m2),
-      ocupantes_fixos: numOrNull(c.pmoc_ocupantes_fixos),
-      ocupantes_flutuantes: numOrNull(c.pmoc_ocupantes_flutuantes),
-      carga_termica_tr: numOrNull(c.pmoc_carga_termica_tr),
+
+    type EnvRow = {
+      id: string;
+      identificacao: string | null;
+      tipo_atividade: string | null;
+      area_climatizada_m2: number | null;
+      ocupantes_fixos: number | null;
+      ocupantes_flutuantes: number | null;
+      carga_termica_tr: number | null;
     };
+    const envRows = (environments ?? []) as EnvRow[];
+
+    const ambientes: PlanilhaAmbienteBlock[] = [];
+    if (envRows.length > 0) {
+      // Caminho novo: 1 bloco por contract_environments, com seus equipamentos
+      // (via environment_id). Equipamentos órfãos (sem environment_id) entram
+      // num bloco "Geral" no fim, pra não sumirem da planilha.
+      for (const env of envRows) {
+        const amb: PlanilhaAmbiente = {
+          tipo_atividade: strOrNull(env.tipo_atividade),
+          identificacao: strOrNull(env.identificacao),
+          area_m2: numOrNull(env.area_climatizada_m2),
+          ocupantes_fixos: numOrNull(env.ocupantes_fixos),
+          ocupantes_flutuantes: numOrNull(env.ocupantes_flutuantes),
+          carga_termica_tr: numOrNull(env.carga_termica_tr),
+        };
+        ambientes.push({
+          ambiente: amb,
+          equipments: itemRows
+            .filter((ci) => ci.environment_id === env.id)
+            .map(toEquip),
+        });
+      }
+      const orphans = itemRows.filter((ci) => !ci.environment_id);
+      if (orphans.length > 0) {
+        ambientes.push({
+          ambiente: {
+            tipo_atividade: null,
+            identificacao: "Geral",
+            area_m2: null,
+            ocupantes_fixos: null,
+            ocupantes_flutuantes: null,
+            carga_termica_tr: null,
+          },
+          equipments: orphans.map(toEquip),
+        });
+      }
+    } else {
+      // Fallback legado: um único ambiente vindo das colunas pmoc_* do
+      // contrato, com TODOS os equipamentos (incl. sem environment_id).
+      const c = contract as Record<string, unknown>;
+      ambientes.push({
+        ambiente: {
+          tipo_atividade: strOrNull(c.pmoc_tipo_atividade),
+          identificacao: strOrNull(c.pmoc_identificacao_ambiente),
+          area_m2: numOrNull(c.pmoc_area_climatizada_m2),
+          ocupantes_fixos: numOrNull(c.pmoc_ocupantes_fixos),
+          ocupantes_flutuantes: numOrNull(c.pmoc_ocupantes_flutuantes),
+          carga_termica_tr: numOrNull(c.pmoc_carga_termica_tr),
+        },
+        equipments: itemRows.map(toEquip),
+      });
+    }
 
     const planilhaData: PlanilhaData = {
       tenant: { name: tenantName, cnpj, logoImage: null },
@@ -511,7 +579,7 @@ Deno.serve(async (req) => {
         city: customer.city ?? null,
         state: customer.state ?? null,
       },
-      ambiente,
+      ambientes,
       rt: {
         nome: rt.full_name ?? "",
         modalidade: rt.modality ?? "Técnico em Refrigeração",
@@ -525,7 +593,6 @@ Deno.serve(async (req) => {
           (contract.frequency_type ?? null) as string | null,
         ),
       },
-      equipments,
       activities,
       execution:
         totalVisitas > 0
@@ -542,16 +609,16 @@ Deno.serve(async (req) => {
     //   oculto em white-label. O flag `white_label` entra no hash pra o cache
     //   invalidar e regenerar com/sem rodapé conforme o tenant.
     const hashInput = JSON.stringify({
-      // planilha_v3: Seção 4 agora inclui a caracterização do ambiente
-      // climatizado (tipo de atividade, identificação, área, ocupantes, TR).
-      v: "planilha_v3",
+      // planilha_v4: Seção 4 agora é multi-ambiente — UM bloco por
+      // contract_environments, cada um com seus equipamentos (via
+      // environment_id). Fallback legado = um ambiente das colunas pmoc_*.
+      v: "planilha_v4",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
       rt: planilhaData.rt,
       contract: planilhaData.contract,
-      ambiente,
-      equipments,
+      ambientes,
       activities,
       execution: planilhaData.execution,
     });
@@ -687,7 +754,8 @@ Deno.serve(async (req) => {
     console.log("[generate-pmoc-planilha-pdf] generated", {
       contract_id: maskUuid(contract.id),
       version: nextVersion,
-      equipments: equipments.length,
+      ambientes: ambientes.length,
+      equipments: itemRows.length,
       activities: activities.length,
       pdf_size_bytes: pdfBytes.length,
       duration_ms: Date.now() - t0,

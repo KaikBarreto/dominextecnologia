@@ -98,7 +98,8 @@ export interface PlanilhaEquipment {
 
 // Seção 4 do modelo do cliente — caracterização do ambiente climatizado
 // (tipo de atividade, identificação, área, ocupantes e carga térmica). Vem das
-// colunas pmoc_* do contrato; campo ausente vira "—" na renderização.
+// linhas de `contract_environments` (1 contrato → N ambientes); no legado, de
+// um único ambiente das colunas pmoc_* do contrato. Campo ausente vira "—".
 export interface PlanilhaAmbiente {
   tipo_atividade: string | null;
   identificacao: string | null;
@@ -106,6 +107,14 @@ export interface PlanilhaAmbiente {
   ocupantes_fixos: number | null;
   ocupantes_flutuantes: number | null;
   carga_termica_tr: number | null;
+}
+
+// Um ambiente climatizado COM seus próprios equipamentos. O modelo do cliente
+// repete a relação (caracterização + equipamentos) por unidade; aqui cada bloco
+// é uma unidade. `equipments` são só os equipamentos daquele ambiente.
+export interface PlanilhaAmbienteBlock {
+  ambiente: PlanilhaAmbiente;
+  equipments: PlanilhaEquipment[];
 }
 
 export interface PlanilhaActivity {
@@ -146,8 +155,13 @@ export interface PlanilhaData {
     start_date_extenso: string;
     frequency_label: string;
   };
-  ambiente: PlanilhaAmbiente | null;
-  equipments: PlanilhaEquipment[];
+  /**
+   * Ambientes climatizados do contrato (1→N), cada um com seus equipamentos.
+   * Renderiza UM bloco por ambiente (igual o modelo do cliente). Quando o
+   * contrato não tem ambientes cadastrados, a edge passa um único bloco vindo
+   * das colunas pmoc_* legadas (com todos os equipamentos sem environment_id).
+   */
+  ambientes: PlanilhaAmbienteBlock[];
   activities: PlanilhaActivity[];
   execution: PlanilhaExecutionSummary | null;
   generated_at_extenso: string;
@@ -426,10 +440,31 @@ export async function drawPlanilha(
   ctx.cursorY -= 6;
 
   // ---- Seção 4 — Relação dos ambientes climatizados ------------------------
-  // Caracterização do ambiente (modelo do cliente) + relação dos equipamentos.
+  // UM bloco por ambiente (igual o modelo do cliente): caracterização do
+  // ambiente + a tabela dos equipamentos DAQUELE ambiente. Auto-pagina.
   drawSectionTitle(ctx, "4.", "Relação dos Ambientes Climatizados");
-  drawAmbienteBlock(ctx);
-  drawEquipmentTable(ctx);
+  const ambientes = data.ambientes ?? [];
+  if (ambientes.length === 0) {
+    ensureSpace(ctx, 18);
+    ctx.page.drawText("Nenhum ambiente climatizado cadastrado no contrato.", {
+      x: MARGIN_X + 6,
+      y: ctx.cursorY - 11,
+      size: 9,
+      font: helv,
+      color: COLORS.gray,
+    });
+    ctx.cursorY -= 18;
+  } else {
+    ambientes.forEach((bloco, i) => {
+      // Sub-cabeçalho da unidade (Ambiente 1 — Identificação) quando há >1.
+      if (ambientes.length > 1) {
+        drawAmbienteSubheader(ctx, i + 1, bloco.ambiente);
+      }
+      drawAmbienteBlock(ctx, bloco.ambiente);
+      drawEquipmentTable(ctx, bloco.equipments);
+      if (i < ambientes.length - 1) ctx.cursorY -= 10;
+    });
+  }
   ctx.cursorY -= 6;
 
   // ---- Seção 5 — Plano de manutenção + matriz 12 meses ---------------------
@@ -447,11 +482,40 @@ export async function drawPlanilha(
   await drawFooterSeal(ctx);
 }
 
+// -- Seção 4: sub-cabeçalho da unidade (quando há mais de um ambiente) --------
+// Faixa fina identificando "Ambiente N — <identificação>", pra separar
+// visualmente cada unidade (modelo do cliente repete a relação por unidade).
+function drawAmbienteSubheader(
+  ctx: Ctx,
+  num: number,
+  a: PlanilhaAmbiente,
+): void {
+  ensureSpace(ctx, 18);
+  const { page, helvBold } = ctx;
+  const barH = 15;
+  page.drawRectangle({
+    x: MARGIN_X,
+    y: ctx.cursorY - barH,
+    width: CONTENT_W,
+    height: barH,
+    color: COLORS.lightGray,
+  });
+  const ident = orDash(a.identificacao);
+  const label = ident !== "—" ? `Ambiente ${num} — ${ident}` : `Ambiente ${num}`;
+  page.drawText(safe(label), {
+    x: MARGIN_X + 6,
+    y: ctx.cursorY - barH + 4,
+    size: 8.5,
+    font: helvBold,
+    color: COLORS.accent,
+  });
+  ctx.cursorY -= barH + 4;
+}
+
 // -- Seção 4 (parte A): caracterização do ambiente climatizado ---------------
 // Espelha o modelo do cliente: tipo de atividade, identificação, área (m²),
 // ocupantes (fixos/flutuantes) e carga térmica (TR). Campo ausente vira "—".
-function drawAmbienteBlock(ctx: Ctx): void {
-  const a = ctx.data.ambiente;
+function drawAmbienteBlock(ctx: Ctx, a: PlanilhaAmbiente | null): void {
   drawField(ctx, "Tipo de atividade:", orDash(a?.tipo_atividade));
   drawField(ctx, "Identificação do ambiente:", orDash(a?.identificacao));
   drawField(
@@ -473,8 +537,8 @@ function drawAmbienteBlock(ctx: Ctx): void {
   ctx.cursorY -= 4;
 }
 
-// -- Seção 4 (parte B): tabela de equipamentos -------------------------------
-function drawEquipmentTable(ctx: Ctx): void {
+// -- Seção 4 (parte B): tabela de equipamentos do ambiente -------------------
+function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
   const { helv, helvBold } = ctx;
   const cols = [
     { key: "name", label: "Equipamento", w: 0.30 },
@@ -510,9 +574,9 @@ function drawEquipmentTable(ctx: Ctx): void {
     ctx.cursorY -= rowH;
   };
 
-  if (ctx.data.equipments.length === 0) {
+  if (equipments.length === 0) {
     ensureSpace(ctx, 18);
-    ctx.page.drawText("Nenhum equipamento vinculado ao contrato.", {
+    ctx.page.drawText("Nenhum equipamento vinculado a este ambiente.", {
       x: MARGIN_X + 6,
       y: ctx.cursorY - 11,
       size: 9,
@@ -525,7 +589,7 @@ function drawEquipmentTable(ctx: Ctx): void {
 
   drawHeaderRow();
   let idx = 0;
-  for (const eq of ctx.data.equipments) {
+  for (const eq of equipments) {
     if (ctx.cursorY - rowH < FOOTER_RESERVED_H) {
       newPage(ctx);
       drawHeaderRow();

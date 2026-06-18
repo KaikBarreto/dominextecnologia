@@ -32,7 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -53,10 +53,18 @@ interface ContractFormDialogProps {
   defaultCustomerId?: string;
 }
 
-const STEPS = [
+// Labels da etapa 3 são contextuais: contrato PMOC organiza por AMBIENTES;
+// contrato comum mantém a lista FLAT de equipamentos/itens.
+const STEPS_COMMON = [
   { key: 'info', label: 'Informações' },
   { key: 'frequency', label: 'Frequência' },
   { key: 'items', label: 'Itens' },
+  { key: 'review', label: 'Revisão' },
+];
+const STEPS_PMOC = [
+  { key: 'info', label: 'Informações' },
+  { key: 'frequency', label: 'Frequência' },
+  { key: 'items', label: 'Ambientes' },
   { key: 'review', label: 'Revisão' },
 ];
 
@@ -195,6 +203,41 @@ function parseIntOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Número persistido → string BR pra input (null → vazio; ponto → vírgula).
+function numToStrBR(v: number | null | undefined): string {
+  return v === null || v === undefined ? '' : String(v).replace('.', ',');
+}
+
+// Ambiente climatizado no estado da UI (etapa 3, PMOC). Strings cruas nos campos
+// numéricos; `equipment_ids` aponta pros equipamentos do cliente. `id` presente
+// só quando o ambiente já está persistido (edição). `key` é estável pra React.
+interface EnvRow {
+  id?: string;
+  key: string;
+  identificacao: string;
+  tipo_atividade: string;
+  area_climatizada_m2: string;
+  ocupantes_fixos: string;
+  ocupantes_flutuantes: string;
+  carga_termica_tr: string;
+  equipment_ids: string[];
+}
+
+let envKeySeq = 0;
+function newEnvRow(): EnvRow {
+  envKeySeq += 1;
+  return {
+    key: `env-${Date.now()}-${envKeySeq}`,
+    identificacao: '',
+    tipo_atividade: '',
+    area_climatizada_m2: '',
+    ocupantes_fixos: '',
+    ocupantes_flutuantes: '',
+    carga_termica_tr: '',
+    equipment_ids: [],
+  };
+}
+
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { createContract, updateContract } = useContracts();
   // Plano de serviços já persistido (só carrega em edição). Hook é a fronteira
@@ -216,6 +259,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const isEditing = !!editContract;
 
   const [step, setStep] = useState(0);
+  // PMOC organiza a etapa 3 por ambientes; comum mantém a lista flat. (isPmoc é
+  // declarado mais abaixo; STEPS é derivado num useMemo após isPmoc existir.)
   const [submitting, setSubmitting] = useState(false);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
 
@@ -277,20 +322,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [showPmocOffConfirm, setShowPmocOffConfirm] = useState(false);
   // Quick-create RT (Onda UI-1.2): botão "+" abre dialog nested.
   const [showQuickCreateRT, setShowQuickCreateRT] = useState(false);
-  // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado (modelo do
-  // cliente). Strings cruas; números enviados parseados no submit. Só aparecem
-  // quando o contrato é PMOC.
-  const [pmocTipoAtividade, setPmocTipoAtividade] = useState('');
-  const [pmocIdentificacaoAmbiente, setPmocIdentificacaoAmbiente] = useState('');
-  const [pmocAreaClimatizada, setPmocAreaClimatizada] = useState('');
-  const [pmocOcupantesFixos, setPmocOcupantesFixos] = useState('');
-  const [pmocOcupantesFlutuantes, setPmocOcupantesFlutuantes] = useState('');
-  const [pmocCargaTermicaTr, setPmocCargaTermicaTr] = useState('');
+  // Ambientes climatizados (multi-ambiente PMOC). Cada ambiente carrega os 6
+  // campos da Seção 4 (strings cruas, parseadas no submit) + a lista de
+  // equipamentos do cliente que pertencem a ele. Um equipamento pertence a UM
+  // ambiente (exclusivo entre ambientes). Só aparece quando o contrato é PMOC.
+  const [environments, setEnvironments] = useState<EnvRow[]>([]);
   // Em modo edição, guarda a chamada que ficou esperando confirmação do "desligar PMOC".
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
   const { equipment } = useEquipment(customerId || undefined);
   const activeEquipment = equipment.filter(eq => eq.status === 'active');
+
+  // Etapa 3 muda de cara conforme o contrato: PMOC = "Ambientes"; comum = "Itens".
+  const STEPS = isPmoc ? STEPS_PMOC : STEPS_COMMON;
 
   // Rascunho (só em CRIAÇÃO). Persiste os campos das etapas em sessionStorage e,
   // ao reabrir com rascunho salvo, oferece o DraftResumeDialog. Espelha o padrão
@@ -300,8 +344,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     name: string; customerId: string; serviceTypeId: string; formTemplateId: string;
     notes: string; isActive: boolean; isPmoc: boolean; responsibleTechnicianId: string;
     freqType: 'months' | 'days'; freqValue: number; startDate: string; horizonMonths: number;
-    pmocTipoAtividade: string; pmocIdentificacaoAmbiente: string; pmocAreaClimatizada: string;
-    pmocOcupantesFixos: string; pmocOcupantesFlutuantes: string; pmocCargaTermicaTr: string;
   };
   const draft = useFormDraft<ContractDraft>({
     key: 'contract-form',
@@ -317,11 +359,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       draft.saveDraft({
         name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc,
         responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths,
-        pmocTipoAtividade, pmocIdentificacaoAmbiente, pmocAreaClimatizada,
-        pmocOcupantesFixos, pmocOcupantesFlutuantes, pmocCargaTermicaTr,
       });
     }
-  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, pmocTipoAtividade, pmocIdentificacaoAmbiente, pmocAreaClimatizada, pmocOcupantesFixos, pmocOcupantesFlutuantes, pmocCargaTermicaTr, open, isEditing, draft.showResumePrompt]);
+  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, open, isEditing, draft.showResumePrompt]);
 
   const applyContractDraft = (d: ContractDraft) => {
     setName(d.name || '');
@@ -336,12 +376,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setFreqValue(d.freqValue || 1);
     setStartDate(d.startDate || format(new Date(), 'yyyy-MM-dd'));
     setHorizonMonths(d.horizonMonths || 12);
-    setPmocTipoAtividade(d.pmocTipoAtividade || '');
-    setPmocIdentificacaoAmbiente(d.pmocIdentificacaoAmbiente || '');
-    setPmocAreaClimatizada(d.pmocAreaClimatizada || '');
-    setPmocOcupantesFixos(d.pmocOcupantesFixos || '');
-    setPmocOcupantesFlutuantes(d.pmocOcupantesFlutuantes || '');
-    setPmocCargaTermicaTr(d.pmocCargaTermicaTr || '');
   };
 
   useEffect(() => {
@@ -401,14 +435,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setIsPmoc(editIsPmoc);
       setResponsibleTechnicianId(editContract.responsible_technician_id || '');
       initialIsPmocRef.value = editIsPmoc;
-      // Caracterização do ambiente climatizado (Seção 4). Número nulo → string vazia.
-      const numToStr = (v: any) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
-      setPmocTipoAtividade(editContract.pmoc_tipo_atividade || '');
-      setPmocIdentificacaoAmbiente(editContract.pmoc_identificacao_ambiente || '');
-      setPmocAreaClimatizada(numToStr(editContract.pmoc_area_climatizada_m2));
-      setPmocOcupantesFixos(numToStr(editContract.pmoc_ocupantes_fixos));
-      setPmocOcupantesFlutuantes(numToStr(editContract.pmoc_ocupantes_flutuantes));
-      setPmocCargaTermicaTr(numToStr(editContract.pmoc_carga_termica_tr));
+      // Ambientes climatizados (multi-ambiente). Reconstrói os cards a partir de
+      // contract_environments + agrupa os equipamentos por environment_id (lido
+      // dos contract_items). Ambiente sem nenhum equipamento volta vazio.
+      const envRows: EnvRow[] = ((editContract.contract_environments || []) as any[])
+        .slice()
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((e) => {
+          envKeySeq += 1;
+          const eqIds = ((editContract.contract_items || []) as any[])
+            .filter((it) => it.environment_id === e.id && it.equipment_id)
+            .map((it) => it.equipment_id as string);
+          return {
+            id: e.id,
+            key: `env-${e.id}`,
+            identificacao: e.identificacao || '',
+            tipo_atividade: e.tipo_atividade || '',
+            area_climatizada_m2: numToStrBR(e.area_climatizada_m2),
+            ocupantes_fixos: numToStrBR(e.ocupantes_fixos),
+            ocupantes_flutuantes: numToStrBR(e.ocupantes_flutuantes),
+            carga_termica_tr: numToStrBR(e.carga_termica_tr),
+            equipment_ids: eqIds,
+          };
+        });
+      setEnvironments(envRows);
     } else {
       setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]);
       setBillingUserIds([]); setBillingTeamIds([]); setServiceTypeId('');
@@ -418,12 +468,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // Contrato novo: padrão da norma LIGADO, escopo só ar-condicionado (default).
       setPmocStandardOn(true); setPmocStandardScope('ac');
       setSelectedItems([]);
+      setEnvironments([]);
       // Default: contrato comum.
       setIsPmoc(false);
       setResponsibleTechnicianId('');
       initialIsPmocRef.value = false;
-      setPmocTipoAtividade(''); setPmocIdentificacaoAmbiente(''); setPmocAreaClimatizada('');
-      setPmocOcupantesFixos(''); setPmocOcupantesFlutuantes(''); setPmocCargaTermicaTr('');
     }
   }, [open, editContract]);
 
@@ -623,6 +672,89 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setShowManualItem(false);
   };
 
+  // ---- Ambientes climatizados (multi-ambiente PMOC) -------------------------
+  // Mapa equipment_id → key do ambiente que o reivindica (exclusividade: um
+  // equipamento pertence a UM ambiente). Usado pra desabilitar/realocar no UI.
+  const equipmentOwnerEnvKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const env of environments) {
+      for (const eqId of env.equipment_ids) map.set(eqId, env.key);
+    }
+    return map;
+  }, [environments]);
+
+  const addEnvironment = () => {
+    setEnvironments(prev => [...prev, newEnvRow()]);
+  };
+
+  const removeEnvironment = (key: string) => {
+    setEnvironments(prev => prev.filter(e => e.key !== key));
+  };
+
+  const updateEnvironmentField = (key: string, field: keyof EnvRow, value: string) => {
+    setEnvironments(prev => prev.map(e => e.key === key ? { ...e, [field]: value } : e));
+  };
+
+  // Alterna um equipamento dentro de um ambiente. Exclusivo: ao marcar num
+  // ambiente, é retirado de qualquer outro que o tivesse (sem duplicar).
+  const toggleEnvEquipment = (envKey: string, eqId: string) => {
+    setEnvironments(prev => prev.map(e => {
+      if (e.key === envKey) {
+        const has = e.equipment_ids.includes(eqId);
+        return {
+          ...e,
+          equipment_ids: has
+            ? e.equipment_ids.filter(id => id !== eqId)
+            : [...e.equipment_ids, eqId],
+        };
+      }
+      // Remove o equipamento de outros ambientes quando está sendo adicionado aqui.
+      const ownerKey = equipmentOwnerEnvKey.get(eqId);
+      if (ownerKey && ownerKey !== envKey && !prev.find(x => x.key === envKey)?.equipment_ids.includes(eqId)) {
+        return { ...e, equipment_ids: e.equipment_ids.filter(id => id !== eqId) };
+      }
+      return e;
+    }));
+  };
+
+  // Itens (contract_items) derivados pra um contrato PMOC: 1 item por equipamento
+  // atribuído a algum ambiente. Equipamento não atribuído a nenhum ambiente fica
+  // de fora (não entra no contrato). Espelha o shape de selectedItems.
+  const pmocDerivedItems = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { equipment_id: string; item_name: string; item_description?: string }[] = [];
+    for (const env of environments) {
+      for (const eqId of env.equipment_ids) {
+        if (seen.has(eqId)) continue;
+        seen.add(eqId);
+        const eq = activeEquipment.find(e => e.id === eqId) || equipment.find(e => e.id === eqId);
+        if (!eq) continue;
+        out.push({
+          equipment_id: eq.id,
+          item_name: eq.name,
+          item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined,
+        });
+      }
+    }
+    return out;
+  }, [environments, activeEquipment, equipment]);
+
+  // Conjunto de itens/equipamentos efetivo do contrato (vai pro payload `items`).
+  // PMOC = derivado dos ambientes; comum = a lista flat de selectedItems.
+  const effectiveItems = isPmoc ? pmocDerivedItems : selectedItems;
+
+  // Ambientes no formato de entrada do hook (parse dos números, equip vazio ok).
+  const buildEnvironmentsInput = () => environments.map(e => ({
+    id: e.id,
+    identificacao: e.identificacao.trim() || null,
+    tipo_atividade: e.tipo_atividade.trim() || null,
+    area_climatizada_m2: parseDecimalBR(e.area_climatizada_m2),
+    ocupantes_fixos: parseIntOrNull(e.ocupantes_fixos),
+    ocupantes_flutuantes: parseIntOrNull(e.ocupantes_flutuantes),
+    carga_termica_tr: parseDecimalBR(e.carga_termica_tr),
+    equipment_ids: e.equipment_ids,
+  }));
+
   const canNext = () => {
     if (step === 0) {
       // PMOC sem RT é permitido (warning toast no submit). Bloqueio só pra nome + cliente.
@@ -660,22 +792,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       plan_activities: planActivities.map(planRowToInput),
       // Equipamentos/itens (Fase 3). Sempre enviado em edição → o hook aplica
       // diff (insere novos, apaga removidos); mudança re-expande as visitas.
-      items: selectedItems.map(i => ({
+      // PMOC = itens derivados dos ambientes; comum = lista flat.
+      items: effectiveItems.map((i: any) => ({
         equipment_id: i.equipment_id || null,
         item_name: i.item_name,
         item_description: i.item_description || null,
         form_template_id: i.form_template_id || null,
       })),
+      // Ambientes climatizados (multi-ambiente PMOC). PMOC envia os cards;
+      // contrato comum envia [] (limpa qualquer ambiente legado e zera
+      // environment_id dos itens).
+      environments: isPmoc ? buildEnvironmentsInput() : [],
       // PMOC (Onda A)
       is_pmoc: isPmoc,
       responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
-      // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado.
-      pmoc_tipo_atividade: isPmoc ? (pmocTipoAtividade.trim() || null) : null,
-      pmoc_identificacao_ambiente: isPmoc ? (pmocIdentificacaoAmbiente.trim() || null) : null,
-      pmoc_area_climatizada_m2: isPmoc ? parseDecimalBR(pmocAreaClimatizada) : null,
-      pmoc_ocupantes_fixos: isPmoc ? parseIntOrNull(pmocOcupantesFixos) : null,
-      pmoc_ocupantes_flutuantes: isPmoc ? parseIntOrNull(pmocOcupantesFlutuantes) : null,
-      pmoc_carga_termica_tr: isPmoc ? parseDecimalBR(pmocCargaTermicaTr) : null,
     });
   };
 
@@ -729,7 +859,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
         const initialItemsSig = ((editContract.contract_items || []) as any[])
           .map((it) => itemKey(it)).sort().join('§');
-        const currentItemsSig = selectedItems.map((it) => itemKey(it)).sort().join('§');
+        const currentItemsSig = effectiveItems.map((it: any) => itemKey(it)).sort().join('§');
         const itemsChanged = initialItemsSig !== currentItemsSig;
         const scheduleChanged = scheduleFieldsChanged || planChanged || itemsChanged;
 
@@ -772,19 +902,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           // PMOC (Onda A). RT vai vazio quando o usuário ainda não escolheu.
           is_pmoc: isPmoc,
           responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
-          // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado.
-          pmoc_tipo_atividade: isPmoc ? (pmocTipoAtividade.trim() || null) : null,
-          pmoc_identificacao_ambiente: isPmoc ? (pmocIdentificacaoAmbiente.trim() || null) : null,
-          pmoc_area_climatizada_m2: isPmoc ? parseDecimalBR(pmocAreaClimatizada) : null,
-          pmoc_ocupantes_fixos: isPmoc ? parseIntOrNull(pmocOcupantesFixos) : null,
-          pmoc_ocupantes_flutuantes: isPmoc ? parseIntOrNull(pmocOcupantesFlutuantes) : null,
-          pmoc_carga_termica_tr: isPmoc ? parseDecimalBR(pmocCargaTermicaTr) : null,
-          items: selectedItems.map(i => ({
+          // Itens do contrato: PMOC = derivados dos ambientes; comum = lista flat.
+          items: effectiveItems.map((i: any) => ({
             equipment_id: i.equipment_id || null,
             item_name: i.item_name,
             item_description: i.item_description || null,
             form_template_id: i.form_template_id || null,
           })),
+          // Ambientes climatizados (multi-ambiente PMOC). Cada ambiente vira uma
+          // linha em contract_environments e amarra seus equipamentos.
+          environments: isPmoc ? buildEnvironmentsInput() : undefined,
           // Plano de serviços com frequência (Fase 1/2). Vazio = frequência única.
           // Preserva metadados do catálogo PMOC quando a linha veio do picker.
           plan_activities: planActivities.map(planRowToInput),
@@ -947,78 +1074,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </AlertDescription>
           </Alert>
 
-          {/* Seção 4 da Planilha PMOC — caracterização do ambiente
-              climatizado (modelo do cliente). Só aparece em PMOC. */}
-          <div className="rounded-lg border p-3 space-y-3">
-            <div>
-              <Label className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                Ambiente climatizado (Planilha PMOC)
-              </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Caracterização do ambiente para a Seção 4 da Planilha PMOC. Opcional —
-                campos em branco aparecem como "—" no documento.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Tipo de atividade</Label>
-                <Input
-                  value={pmocTipoAtividade}
-                  onChange={e => setPmocTipoAtividade(e.target.value)}
-                  placeholder="Ex: Escritório administrativo"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Identificação do ambiente</Label>
-                <Input
-                  value={pmocIdentificacaoAmbiente}
-                  onChange={e => setPmocIdentificacaoAmbiente(e.target.value)}
-                  placeholder="Ex: 2º andar — Sala 201"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Área climatizada (m²)</Label>
-                <Input
-                  inputMode="decimal"
-                  value={pmocAreaClimatizada}
-                  onChange={e => setPmocAreaClimatizada(e.target.value)}
-                  placeholder="Ex: 120,5"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Carga térmica (TR)</Label>
-                <Input
-                  inputMode="decimal"
-                  value={pmocCargaTermicaTr}
-                  onChange={e => setPmocCargaTermicaTr(e.target.value)}
-                  placeholder="Ex: 5,0"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Pode ser calculada na ferramenta de Carga Térmica do técnico. Aqui é só registro.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Nº de ocupantes fixos</Label>
-                <Input
-                  inputMode="numeric"
-                  value={pmocOcupantesFixos}
-                  onChange={e => setPmocOcupantesFixos(e.target.value)}
-                  placeholder="Ex: 12"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Nº de ocupantes flutuantes</Label>
-                <Input
-                  inputMode="numeric"
-                  value={pmocOcupantesFlutuantes}
-                  onChange={e => setPmocOcupantesFlutuantes(e.target.value)}
-                  placeholder="Ex: 30"
-                />
-              </div>
-            </div>
-          </div>
+          {/* A caracterização do ambiente climatizado (Seção 4) migrou para a
+              etapa "Ambientes", onde cada ambiente tem seus próprios dados e
+              equipamentos. */}
         </div>
       )}
     </div>
@@ -1453,8 +1511,168 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
-          {/* STEP 3: Items */}
-          {step === 2 && (
+          {/* STEP 3: Ambientes (PMOC) ou Itens (comum) */}
+          {step === 2 && isPmoc && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <p className="text-sm text-muted-foreground">
+                  Cadastre os ambientes climatizados deste contrato (ex: cada unidade ou sala).
+                  Cada ambiente tem seus dados da Planilha PMOC e seus próprios equipamentos.
+                </p>
+                {!customerId && (
+                  <p className="text-xs text-warning">Selecione o cliente na etapa 1 para escolher equipamentos.</p>
+                )}
+              </div>
+
+              {environments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-8 text-center">
+                  <ShieldCheck className="h-7 w-7 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Nenhum ambiente cadastrado ainda.</p>
+                  <Button type="button" variant="outline" onClick={addEnvironment}>
+                    <Plus className="h-4 w-4 mr-2" /> Adicionar ambiente
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {environments.map((env, idx) => {
+                    const envEquipmentCount = env.equipment_ids.length;
+                    return (
+                      <div key={env.key} className="rounded-lg border p-3 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
+                            <span className="text-sm font-medium truncate">
+                              {env.identificacao.trim() || 'Sem identificação'}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-destructive"
+                            onClick={() => removeEnvironment(env.key)}
+                            aria-label="Remover ambiente"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Identificação do ambiente</Label>
+                            <Input
+                              value={env.identificacao}
+                              onChange={e => updateEnvironmentField(env.key, 'identificacao', e.target.value)}
+                              placeholder="Ex: 2º andar — Sala 201"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Tipo de atividade</Label>
+                            <Input
+                              value={env.tipo_atividade}
+                              onChange={e => updateEnvironmentField(env.key, 'tipo_atividade', e.target.value)}
+                              placeholder="Ex: Escritório administrativo"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Área climatizada (m²)</Label>
+                            <Input
+                              inputMode="decimal"
+                              value={env.area_climatizada_m2}
+                              onChange={e => updateEnvironmentField(env.key, 'area_climatizada_m2', e.target.value)}
+                              placeholder="Ex: 120,5"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Carga térmica (TR)</Label>
+                            <Input
+                              inputMode="decimal"
+                              value={env.carga_termica_tr}
+                              onChange={e => updateEnvironmentField(env.key, 'carga_termica_tr', e.target.value)}
+                              placeholder="Ex: 5,0"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Nº de ocupantes fixos</Label>
+                            <Input
+                              inputMode="numeric"
+                              value={env.ocupantes_fixos}
+                              onChange={e => updateEnvironmentField(env.key, 'ocupantes_fixos', e.target.value)}
+                              placeholder="Ex: 12"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                            <Input
+                              inputMode="numeric"
+                              value={env.ocupantes_flutuantes}
+                              onChange={e => updateEnvironmentField(env.key, 'ocupantes_flutuantes', e.target.value)}
+                              placeholder="Ex: 30"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Equipamentos deste ambiente (exclusivos entre ambientes). */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs flex items-center gap-1.5">
+                            <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                            Equipamentos deste ambiente ({envEquipmentCount})
+                          </Label>
+                          {!customerId ? (
+                            <p className="text-xs text-muted-foreground">Selecione o cliente na etapa 1 primeiro.</p>
+                          ) : activeEquipment.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">O cliente não tem equipamentos ativos cadastrados.</p>
+                          ) : (
+                            <div className="rounded-md border max-h-44 overflow-y-auto divide-y">
+                              {activeEquipment.map(eq => {
+                                const checked = env.equipment_ids.includes(eq.id);
+                                const ownerKey = equipmentOwnerEnvKey.get(eq.id);
+                                const ownedByOther = !checked && ownerKey && ownerKey !== env.key;
+                                return (
+                                  <label
+                                    key={eq.id}
+                                    className={cn(
+                                      'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors',
+                                      ownedByOther ? 'opacity-50' : 'hover:bg-muted/50',
+                                    )}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className="rounded border-border"
+                                      checked={checked}
+                                      onChange={() => toggleEnvEquipment(env.key, eq.id)}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{eq.name}</p>
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                                        {ownedByOther && ' · já em outro ambiente'}
+                                      </p>
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <Button type="button" variant="outline" className="w-full" onClick={addEnvironment}>
+                    <Plus className="h-4 w-4 mr-2" /> Adicionar outro ambiente
+                  </Button>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Info className="h-3.5 w-3.5 shrink-0" />
+                    {pmocDerivedItems.length} equipamento(s) no total entram neste contrato.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 2 && !isPmoc && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Selecione os equipamentos do cliente e/ou adicione itens manuais que farão parte deste contrato.
@@ -1599,7 +1817,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 {!isEditing && (
                   <div className="flex justify-between"><span className="text-muted-foreground">{usePlanEngine ? 'Visitas' : 'Ocorrências'}</span><span className="font-medium">{visitCount} {usePlanEngine ? 'visitas' : 'datas'}</span></div>
                 )}
-                <div className="flex justify-between"><span className="text-muted-foreground">Itens</span><span className="font-medium">{selectedItems.length}</span></div>
+                {isPmoc ? (
+                  <div className="flex justify-between"><span className="text-muted-foreground">Ambientes</span><span className="font-medium">{environments.length} ({pmocDerivedItems.length} equip.)</span></div>
+                ) : (
+                  <div className="flex justify-between"><span className="text-muted-foreground">Itens</span><span className="font-medium">{selectedItems.length}</span></div>
+                )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={isActive ? 'success' : 'outline'}>{isActive ? 'Ativo' : 'Pausado'}</Badge></div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Tipo</span>

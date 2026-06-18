@@ -42,6 +42,10 @@ export interface Contract {
   customer?: { id: string; name: string } | null;
   responsible_technicians?: { id: string; full_name: string; cft_crea: string | null; modality: string | null } | null;
   contract_items?: ContractItem[];
+  // Ambientes climatizados do contrato (multi-ambiente PMOC). Cada contrato PMOC
+  // gerencia N ambientes; cada ambiente agrupa seus próprios equipamentos via
+  // contract_items.environment_id. Contrato comum não usa ambientes (lista flat).
+  contract_environments?: ContractEnvironment[];
   // OSs do contrato — fonte única das "visitas". Embute via FK
   // service_orders.contract_id. A tabela-sombra de ocorrências foi aposentada:
   // cada OS recorrente JÁ é a visita (geração eager desde a v1.9.12).
@@ -64,11 +68,50 @@ export interface ContractItem {
   id: string;
   contract_id: string;
   equipment_id: string | null;
+  // Ambiente climatizado ao qual o equipamento pertence (multi-ambiente PMOC).
+  // null = sem ambiente (caso comum / item flat).
+  environment_id: string | null;
   item_name: string;
   item_description: string | null;
   form_template_id: string | null;
   sort_order: number;
   equipment?: { id: string; name: string; brand: string | null; model: string | null } | null;
+}
+
+/**
+ * Ambiente climatizado de um contrato PMOC (Seção 4 da Planilha PMOC, por
+ * ambiente). 1 contrato → N ambientes; cada ambiente agrupa equipamentos via
+ * contract_items.environment_id. Substitui os 6 campos pmoc_* únicos de
+ * `contracts` (que ficaram legados/null).
+ */
+export interface ContractEnvironment {
+  id: string;
+  company_id: string;
+  contract_id: string;
+  identificacao: string | null;
+  tipo_atividade: string | null;
+  area_climatizada_m2: number | null;
+  ocupantes_fixos: number | null;
+  ocupantes_flutuantes: number | null;
+  carga_termica_tr: number | null;
+  sort_order: number;
+}
+
+/**
+ * Ambiente na forma de ENTRADA (criação/edição). `equipment_ids` é o conjunto de
+ * equipamentos do cliente que pertencem a este ambiente — vira
+ * contract_items.environment_id. Um equipamento pertence a UM único ambiente.
+ */
+export interface ContractEnvironmentInput {
+  // Presente em edição (ambiente já persistido); ausente em ambiente novo.
+  id?: string;
+  identificacao?: string | null;
+  tipo_atividade?: string | null;
+  area_climatizada_m2?: number | null;
+  ocupantes_fixos?: number | null;
+  ocupantes_flutuantes?: number | null;
+  carga_termica_tr?: number | null;
+  equipment_ids: string[];
 }
 
 // Status de OS que NÃO contam como "visita ativa". Tudo fora desse conjunto
@@ -494,6 +537,97 @@ async function persistContractVisit(args: {
   return true;
 }
 
+/**
+ * Sincroniza os ambientes climatizados (contract_environments) de um contrato
+ * com o conjunto desejado, e religa cada equipamento ao seu ambiente via
+ * contract_items.environment_id. Fonte única do diff de ambientes, usada por
+ * updateContract e updateContractEnvironments (criar usa o caminho próprio).
+ *
+ *  - ambiente com `id` existente → UPDATE dos campos;
+ *  - ambiente sem `id` (novo) → INSERT (company_id obrigatório p/ RLS);
+ *  - ambiente persistido que sumiu do conjunto → DELETE (FK em contract_items é
+ *    ON DELETE SET NULL → os itens daquele ambiente ficam com environment_id null);
+ *  - depois, para CADA contract_item, seta environment_id pelo ambiente que
+ *    reivindica seu equipment_id (um equipamento pertence a UM ambiente).
+ *
+ * Retorna se houve alguma mudança estrutural (insert/delete de ambiente ou
+ * religação de algum item) — sinaliza pro chamador re-expandir visitas.
+ */
+async function syncContractEnvironments(args: {
+  companyId: string;
+  contractId: string;
+  environments: ContractEnvironmentInput[];
+}): Promise<boolean> {
+  const { companyId, contractId, environments } = args;
+
+  const { data: existingEnvs } = await supabase
+    .from('contract_environments')
+    .select('id')
+    .eq('contract_id', contractId);
+  const existingIds = new Set(((existingEnvs ?? []) as { id: string }[]).map(e => e.id));
+
+  let changed = false;
+
+  // Resolve cada ambiente do input pra um id real (existente ou recém-inserido)
+  // e acumula o mapa equipment_id → environment_id.
+  const equipmentToEnv: Record<string, string> = {};
+
+  for (let i = 0; i < environments.length; i++) {
+    const env = environments[i];
+    const row = {
+      identificacao: env.identificacao ?? null,
+      tipo_atividade: env.tipo_atividade ?? null,
+      area_climatizada_m2: env.area_climatizada_m2 ?? null,
+      ocupantes_fixos: env.ocupantes_fixos ?? null,
+      ocupantes_flutuantes: env.ocupantes_flutuantes ?? null,
+      carga_termica_tr: env.carga_termica_tr ?? null,
+      sort_order: i,
+    };
+    let envId = env.id && existingIds.has(env.id) ? env.id : null;
+    if (envId) {
+      await supabase.from('contract_environments').update(row as any).eq('id', envId);
+    } else {
+      const { data: inserted, error: insErr } = await supabase
+        .from('contract_environments')
+        .insert({ company_id: companyId, contract_id: contractId, ...row } as any)
+        .select('id')
+        .single();
+      if (insErr) throw insErr;
+      envId = (inserted as { id: string }).id;
+      changed = true;
+    }
+    for (const eqId of env.equipment_ids) {
+      if (eqId) equipmentToEnv[eqId] = envId;
+    }
+  }
+
+  // Remove ambientes que sumiram do conjunto (FK SET NULL desliga os itens).
+  const keepIds = new Set(
+    environments.map(e => e.id).filter((x): x is string => !!x && existingIds.has(x)),
+  );
+  const toRemove = [...existingIds].filter(id => !keepIds.has(id));
+  if (toRemove.length > 0) {
+    await supabase.from('contract_environments').delete().in('id', toRemove);
+    changed = true;
+  }
+
+  // Religa cada contract_item ao ambiente do seu equipamento. Só faz UPDATE
+  // quando o vínculo realmente muda (idempotente).
+  const { data: itemRows } = await supabase
+    .from('contract_items')
+    .select('id, equipment_id, environment_id')
+    .eq('contract_id', contractId);
+  for (const it of (itemRows ?? []) as { id: string; equipment_id: string | null; environment_id: string | null }[]) {
+    const desired = it.equipment_id ? (equipmentToEnv[it.equipment_id] ?? null) : null;
+    if ((it.environment_id ?? null) !== desired) {
+      await supabase.from('contract_items').update({ environment_id: desired } as any).eq('id', it.id);
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
 export function getFrequencyLabel(type: string, value: number): string {
   if (type === 'months') {
     const labels: Record<number, string> = { 1: 'Mensal', 2: 'Bimestral', 3: 'Trimestral', 6: 'Semestral', 12: 'Anual' };
@@ -518,7 +652,8 @@ export function useContracts() {
           customers (id, name, document, address, city, state),
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
-          contract_items (id, contract_id, equipment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
+          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
+          contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, sort_order),
           service_orders (id, order_number, status, scheduled_date)
         `)
         .order('created_at', { ascending: false });
@@ -559,6 +694,11 @@ export function useContracts() {
       pmoc_ocupantes_flutuantes?: number | null;
       pmoc_carga_termica_tr?: number | null;
       items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
+      // Ambientes climatizados (multi-ambiente PMOC). Quando definido, cada
+      // ambiente vira uma linha em contract_environments e seus equipment_ids
+      // recebem o environment_id correspondente em contract_items. Itens sem
+      // ambiente (não-PMOC) ficam com environment_id null.
+      environments?: ContractEnvironmentInput[];
       // Plano de serviços com frequência por linha (Fase 1 — frequências por
       // serviço). Quando vazio, o contrato cai no comportamento de frequência
       // única (legado): generateOccurrences + cadência única. Quando tem ao
@@ -616,14 +756,14 @@ export function useContracts() {
             ? (input.pmoc_legal_compliance_text ?? 'Conforme Lei Federal 13.589/2018')
             : null,
           next_pmoc_generation_date: input.is_pmoc ? nextPmocGenerationDate : null,
-          // Caracterização do ambiente climatizado (Seção 4 da Planilha PMOC).
-          // Só grava quando PMOC; contrato comum zera os campos.
-          pmoc_tipo_atividade: input.is_pmoc ? (input.pmoc_tipo_atividade ?? null) : null,
-          pmoc_identificacao_ambiente: input.is_pmoc ? (input.pmoc_identificacao_ambiente ?? null) : null,
-          pmoc_area_climatizada_m2: input.is_pmoc ? (input.pmoc_area_climatizada_m2 ?? null) : null,
-          pmoc_ocupantes_fixos: input.is_pmoc ? (input.pmoc_ocupantes_fixos ?? null) : null,
-          pmoc_ocupantes_flutuantes: input.is_pmoc ? (input.pmoc_ocupantes_flutuantes ?? null) : null,
-          pmoc_carga_termica_tr: input.is_pmoc ? (input.pmoc_carga_termica_tr ?? null) : null,
+          // Caracterização do ambiente climatizado migrou para contract_environments
+          // (multi-ambiente). Os 6 campos pmoc_* únicos viraram legado e ficam null.
+          pmoc_tipo_atividade: null,
+          pmoc_identificacao_ambiente: null,
+          pmoc_area_climatizada_m2: null,
+          pmoc_ocupantes_fixos: null,
+          pmoc_ocupantes_flutuantes: null,
+          pmoc_carga_termica_tr: null,
           created_by: user?.id || null,
         } as any,
         ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'responsible_technician_id']
@@ -637,6 +777,40 @@ export function useContracts() {
 
       if (error) throw error;
 
+      // Ambientes climatizados (multi-ambiente PMOC). Inserimos ANTES dos itens
+      // pra resolver o id gerado de cada ambiente e mapear equipment_id →
+      // environment_id. RLS exige company_id no INSERT. Cada equipamento
+      // pertence a UM ambiente (o último ambiente que o reivindica ganha).
+      const equipmentToEnvironment: Record<string, string> = {};
+      const environments = input.environments ?? [];
+      if (environments.length > 0) {
+        const { data: insertedEnvs, error: envError } = await supabase
+          .from('contract_environments')
+          .insert(
+            environments.map((env, i) => ({
+              company_id: profile.company_id,
+              contract_id: (contract as any).id,
+              identificacao: env.identificacao ?? null,
+              tipo_atividade: env.tipo_atividade ?? null,
+              area_climatizada_m2: env.area_climatizada_m2 ?? null,
+              ocupantes_fixos: env.ocupantes_fixos ?? null,
+              ocupantes_flutuantes: env.ocupantes_flutuantes ?? null,
+              carga_termica_tr: env.carga_termica_tr ?? null,
+              sort_order: i,
+            })) as any
+          )
+          .select('id');
+        if (envError) throw envError;
+        const envRows = (insertedEnvs ?? []) as { id: string }[];
+        environments.forEach((env, i) => {
+          const envId = envRows[i]?.id;
+          if (!envId) return;
+          for (const eqId of env.equipment_ids) {
+            if (eqId) equipmentToEnvironment[eqId] = envId;
+          }
+        });
+      }
+
       // Create items. Capturamos os ids gerados pra montar o itemEquipmentMap
       // (contract_item_id → equipment_id) usado na expansão por equipamento.
       const itemEquipmentMap: Record<string, string | null> = {};
@@ -645,6 +819,9 @@ export function useContracts() {
           input.items.map((item, i) => ({
             contract_id: (contract as any).id,
             equipment_id: item.equipment_id || null,
+            // Liga o item ao ambiente do seu equipamento (PMOC multi-ambiente).
+            // Item sem equipamento ou sem ambiente → null (caso flat/comum).
+            environment_id: item.equipment_id ? (equipmentToEnvironment[item.equipment_id] ?? null) : null,
             item_name: item.item_name,
             item_description: item.item_description || null,
             form_template_id: item.form_template_id || null,
@@ -906,20 +1083,18 @@ export function useContracts() {
       // conjunto de equipamentos conta como mudança de cronograma → re-expande as
       // visitas futuras pelo novo conjunto. `undefined` = não mexe nos itens.
       items?: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
+      // Ambientes climatizados (multi-ambiente PMOC). Quando definido, aplica
+      // diff em contract_environments (insere/atualiza/remove) e seta o
+      // environment_id dos contract_items pelos equipment_ids de cada ambiente.
+      // `undefined` = não mexe nos ambientes.
+      environments?: ContractEnvironmentInput[];
       // PMOC
       is_pmoc?: boolean;
       responsible_technician_id?: string | null;
       pmoc_legal_compliance_text?: string | null;
       next_pmoc_generation_date?: string | null;
-      // Seção 4 da Planilha PMOC — caracterização do ambiente climatizado.
-      pmoc_tipo_atividade?: string | null;
-      pmoc_identificacao_ambiente?: string | null;
-      pmoc_area_climatizada_m2?: number | null;
-      pmoc_ocupantes_fixos?: number | null;
-      pmoc_ocupantes_flutuantes?: number | null;
-      pmoc_carga_termica_tr?: number | null;
     }) => {
-      const { id, assignee_user_ids, plan_activities, items, ...rest } = input;
+      const { id, assignee_user_ids, plan_activities, items, environments, ...rest } = input;
 
       // Empresa do usuário (RLS exige company_id em todo INSERT novo).
       const { data: profile } = await supabase
@@ -937,18 +1112,13 @@ export function useContracts() {
         .single();
       if (curErr) throw curErr;
 
-      // 1) UPDATE da linha do contrato.
+      // 1) UPDATE da linha do contrato. Os 6 campos pmoc_* únicos viraram legado
+      //    (caracterização migrou pra contract_environments) e NÃO são mais
+      //    gravados aqui — ficam null/legado no banco.
       const payload: any = { ...rest };
       if (input.is_pmoc === false) {
         payload.responsible_technician_id = null;
         payload.next_pmoc_generation_date = null;
-        // Sem PMOC, a caracterização do ambiente climatizado não se aplica.
-        payload.pmoc_tipo_atividade = null;
-        payload.pmoc_identificacao_ambiente = null;
-        payload.pmoc_area_climatizada_m2 = null;
-        payload.pmoc_ocupantes_fixos = null;
-        payload.pmoc_ocupantes_flutuantes = null;
-        payload.pmoc_carga_termica_tr = null;
       }
       const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
       if (updErr) throw updErr;
@@ -1066,6 +1236,20 @@ export function useContracts() {
           if (insErr) throw insErr;
           itemsChanged = true;
         }
+      }
+
+      // 2.6) Ambientes climatizados (multi-ambiente PMOC). Só quando
+      //       `environments` foi informado. Roda DEPOIS do diff de itens (2.5)
+      //       pra os contract_items já existirem na hora de religar o
+      //       environment_id. Mudança estrutural de ambiente/religação conta
+      //       como mudança de organização — NÃO afeta o cronograma (o motor de
+      //       visitas continua expandindo pelo conjunto de equipamentos).
+      if (environments !== undefined) {
+        await syncContractEnvironments({
+          companyId: profile.company_id,
+          contractId: id,
+          environments,
+        });
       }
 
       // 3) Detectar mudança de cronograma.
@@ -1434,6 +1618,188 @@ export function useContracts() {
   });
 
   /**
+   * Atualiza os AMBIENTES (e seus equipamentos) de um contrato PMOC pela aba
+   * "Ambientes" da tela de detalhe. Espelha o updateContractEquipment, mas:
+   *  - recebe `environments` (cada um com seus equipment_ids) ALÉM dos `items`;
+   *  - aplica o diff de contract_items (insere novos, apaga removidos);
+   *  - sincroniza contract_environments (insere/atualiza/remove) e religa
+   *    environment_id dos itens;
+   *  - regenera as visitas futuras SÓ quando o CONJUNTO de equipamentos muda
+   *    (mover equipamento entre ambientes não muda o cronograma);
+   *  - nunca dispara UPDATE na linha `contracts` (sem update vazio).
+   * Idempotente: salvar a mesma configuração não recria visitas.
+   */
+  const updateContractEnvironments = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
+      environments: ContractEnvironmentInput[];
+    }) => {
+      const { id, items, environments } = input;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user?.id || '')
+        .single();
+      if (!profile?.company_id) throw new Error('Empresa não encontrada');
+
+      const { data: current, error: curErr } = await supabase
+        .from('contracts')
+        .select('start_date, frequency_type, frequency_value, horizon_months, status, customer_id, name, technician_id, team_id, service_type_id, form_template_id')
+        .eq('id', id)
+        .single();
+      if (curErr) throw curErr;
+
+      // 1) Diff de contract_items (mesma chave estável: equipment_id || nome manual).
+      const { data: existingItems } = await supabase
+        .from('contract_items')
+        .select('id, equipment_id, item_name')
+        .eq('contract_id', id);
+      const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
+        it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
+      const existingByKey = new Map<string, { id: string }>();
+      for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string }[]) {
+        existingByKey.set(itemKey(it), { id: it.id });
+      }
+      const newKeys = new Set(items.map(itemKey));
+      const toInsert = items.filter(it => !existingByKey.has(itemKey(it)));
+      const toRemoveIds = (existingItems ?? [])
+        .filter((it: any) => !newKeys.has(itemKey(it)))
+        .map((it: any) => it.id) as string[];
+
+      let itemsChanged = false;
+      if (toRemoveIds.length > 0) {
+        await supabase.from('contract_items').delete().in('id', toRemoveIds);
+        itemsChanged = true;
+      }
+      if (toInsert.length > 0) {
+        const baseSort = (existingItems ?? []).length;
+        const { error: insErr } = await supabase.from('contract_items').insert(
+          toInsert.map((item, i) => ({
+            contract_id: id,
+            equipment_id: item.equipment_id || null,
+            item_name: item.item_name,
+            item_description: item.item_description || null,
+            form_template_id: item.form_template_id || null,
+            sort_order: baseSort + i,
+          })) as any
+        );
+        if (insErr) throw insErr;
+        itemsChanged = true;
+      }
+
+      // 2) Sincroniza ambientes + religa environment_id dos itens (após o diff).
+      await syncContractEnvironments({ companyId: profile.company_id, contractId: id, environments });
+
+      // Conjunto de equipamentos não mudou OU contrato inativo → não regerar.
+      if (!itemsChanged || current.status !== 'active') {
+        return { regenerated: false, deletedCount: 0, createdCount: 0 };
+      }
+
+      // 3) Regenerar visitas futuras (mesma regra do updateContractEquipment).
+      const todayStr = todayStrSaoPaulo();
+      const { data: contractOss } = await supabase
+        .from('service_orders')
+        .select('id, scheduled_date, status')
+        .eq('contract_id', id);
+      const regenerableIds = (contractOss || [])
+        .filter(o => REGENERABLE_OS_STATUSES.has(o.status ?? '') && (o.scheduled_date ?? '') >= todayStr)
+        .map(o => o.id)
+        .filter(Boolean) as string[];
+      if (regenerableIds.length > 0) {
+        await supabase.from('service_order_assignees').delete().in('service_order_id', regenerableIds);
+        await supabase.from('service_order_equipment').delete().in('service_order_id', regenerableIds);
+        await supabase.from('form_responses').delete().in('service_order_id', regenerableIds);
+        await supabase.from('os_photos').delete().in('service_order_id', regenerableIds);
+        await supabase.from('service_ratings').delete().in('service_order_id', regenerableIds);
+        await supabase.from('service_order_activities').delete().in('service_order_id', regenerableIds);
+        await supabase.from('service_orders').delete().in('id', regenerableIds);
+      }
+
+      const { data: persisted } = await supabase
+        .from('contract_plan_activities')
+        .select('id, description, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+        .eq('contract_id', id)
+        .order('sort_order', { ascending: true });
+      const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
+        description: a.description, section: a.section, component: a.component,
+        freq_code: a.freq_code, freq_months: a.freq_months, is_measurement: a.is_measurement,
+        unit: a.unit, expected_min: a.expected_min, expected_max: a.expected_max,
+        contract_item_id: a.contract_item_id, catalog_activity_id: a.catalog_activity_id,
+        applies_per_equipment: a.applies_per_equipment,
+      }));
+      const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
+      const useGroupedEngine = effPlan.length > 0;
+      const visits = buildContractVisits(
+        {
+          startDate: new Date(current.start_date + 'T12:00:00'),
+          frequencyType: current.frequency_type as 'days' | 'months',
+          frequencyValue: current.frequency_value as number,
+          horizonMonths: current.horizon_months as number,
+          planActivities: effPlan,
+          planActivityIds: effPlanIds,
+        },
+        todayStr,
+      );
+
+      const { data: contractItemsRows } = await supabase
+        .from('contract_items')
+        .select('id, equipment_id')
+        .eq('contract_id', id);
+      const equipmentIds = (contractItemsRows ?? []).map((i: any) => i.equipment_id).filter(Boolean) as string[];
+      const itemEquipmentMap: Record<string, string | null> = {};
+      for (const it of (contractItemsRows ?? []) as { id: string; equipment_id: string | null }[]) {
+        itemEquipmentMap[it.id] = it.equipment_id ?? null;
+      }
+      const effTechnicianId = (current.technician_id as string | null) ?? null;
+      const effTeamId = (current.team_id as string | null) ?? null;
+      const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
+      const effName = (current.name as string | null) || 'Contrato';
+
+      let createdCount = 0;
+      for (let i = 0; i < visits.length; i++) {
+        const ok = await persistContractVisit({
+          companyId: profile.company_id,
+          contractId: id,
+          visit: visits[i],
+          visitIndex: i,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: current.customer_id as string,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: (current.service_type_id as string | null) ?? null,
+          formTemplateId: (current.form_template_id as string | null) ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        });
+        if (ok) createdCount++;
+      }
+
+      return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-plan-activities'] });
+      if (result?.regenerated) {
+        toast({
+          title: 'Ambientes atualizados!',
+          description: `${result.createdCount} visita(s) futura(s) recalculada(s). Realizadas e em andamento preservadas.`,
+        });
+      } else {
+        toast({ title: 'Ambientes atualizados!' });
+      }
+    },
+    onError: (e: Error) =>
+      toast({ variant: 'destructive', title: 'Erro ao atualizar ambientes', description: getErrorMessage(e) }),
+  });
+
+  /**
    * Renovação assistida (estender no lugar). Aumenta o horizonte do MESMO
    * contrato em `extraMonths` (default 12) e gera APENAS o tail novo de visitas
    * — as datas estritamente DEPOIS da última visita existente. Não recria nem
@@ -1715,6 +2081,8 @@ export function useContracts() {
 
     // Delete related records
     await supabase.from('contract_items').delete().eq('contract_id', id);
+    // Ambientes climatizados do contrato (multi-ambiente PMOC).
+    await supabase.from('contract_environments').delete().eq('contract_id', id);
 
     // Delete future linked service orders (and their junction rows)
     if (futureOsIds.length > 0) {
@@ -1813,6 +2181,7 @@ export function useContracts() {
     createContract,
     updateContract,
     updateContractEquipment,
+    updateContractEnvironments,
     updateContractStatus,
     applyFinancialLinksToContractParcels,
     renewContract,

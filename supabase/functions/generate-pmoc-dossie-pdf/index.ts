@@ -35,6 +35,8 @@ import {
 import {
   drawPlanilha,
   PlanilhaActivity,
+  PlanilhaAmbiente,
+  PlanilhaAmbienteBlock,
   PlanilhaData,
   PlanilhaEquipment,
 } from "../_shared/pmoc-templates/planilha.ts";
@@ -683,12 +685,24 @@ Deno.serve(async (req) => {
 
     // ---- 7.7 (Planilha PMOC — Fase 4) Equipamentos + plano de manutenção +
     //          resumo de execução. A Planilha vira páginas finais do Dossiê.
-    const [{ data: contractItems }, { data: planActivities }, { data: allOrders }] =
-      await Promise.all([
+    const [
+      { data: environments },
+      { data: contractItems },
+      { data: planActivities },
+      { data: allOrders },
+    ] = await Promise.all([
+      // Ambientes climatizados do contrato (1→N). Ordem do cadastro.
+      supabase
+        .from("contract_environments")
+        .select(
+          "id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, sort_order",
+        )
+        .eq("contract_id", contract.id)
+        .order("sort_order", { ascending: true }),
         supabase
           .from("contract_items")
           .select(
-            "equipment_id, item_name, sort_order, equipment:equipment(name, brand, model, capacity, location, serial_number)",
+            "id, environment_id, equipment_id, item_name, sort_order, equipment:equipment(name, brand, model, capacity, location, serial_number)",
           )
           .eq("contract_id", contract.id)
           .order("sort_order", { ascending: true }),
@@ -706,6 +720,7 @@ Deno.serve(async (req) => {
       ]);
 
     type ContractItemRow = {
+      environment_id: string | null;
       item_name: string | null;
       equipment:
         | {
@@ -718,16 +733,15 @@ Deno.serve(async (req) => {
           }
         | null;
     };
-    const planilhaEquipments: PlanilhaEquipment[] = (
-      (contractItems ?? []) as ContractItemRow[]
-    ).map((ci) => ({
+    const planilhaItemRows = (contractItems ?? []) as ContractItemRow[];
+    const toPlanilhaEquip = (ci: ContractItemRow): PlanilhaEquipment => ({
       name: ci.equipment?.name ?? ci.item_name ?? null,
       brand: ci.equipment?.brand ?? null,
       model: ci.equipment?.model ?? null,
       capacity: ci.equipment?.capacity ?? null,
       location: ci.equipment?.location ?? null,
       serial_number: ci.equipment?.serial_number ?? null,
-    }));
+    });
 
     type PlanRow = {
       section: string | null;
@@ -769,9 +783,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---- Seção 4 da Planilha: caracterização do ambiente climatizado.
-    //      Vem das colunas pmoc_* do contrato; ausente → null (→ "—" no PDF).
-    const cRow = contract as Record<string, unknown>;
+    // ---- Seção 4 da Planilha: ambientes climatizados (1→N), cada um com seus
+    //      equipamentos (via environment_id). Fallback legado = um ambiente das
+    //      colunas pmoc_* do contrato. Campo ausente → null (→ "—" no PDF).
     const ambNum = (v: unknown): number | null => {
       if (v === null || v === undefined || v === "") return null;
       const n = Number(v);
@@ -781,14 +795,62 @@ Deno.serve(async (req) => {
       const s = (v ?? "").toString().trim();
       return s.length > 0 ? s : null;
     };
-    const planilhaAmbiente = {
-      tipo_atividade: ambStr(cRow.pmoc_tipo_atividade),
-      identificacao: ambStr(cRow.pmoc_identificacao_ambiente),
-      area_m2: ambNum(cRow.pmoc_area_climatizada_m2),
-      ocupantes_fixos: ambNum(cRow.pmoc_ocupantes_fixos),
-      ocupantes_flutuantes: ambNum(cRow.pmoc_ocupantes_flutuantes),
-      carga_termica_tr: ambNum(cRow.pmoc_carga_termica_tr),
+    type PlanilhaEnvRow = {
+      id: string;
+      identificacao: string | null;
+      tipo_atividade: string | null;
+      area_climatizada_m2: number | null;
+      ocupantes_fixos: number | null;
+      ocupantes_flutuantes: number | null;
+      carga_termica_tr: number | null;
     };
+    const planilhaEnvRows = (environments ?? []) as PlanilhaEnvRow[];
+    const planilhaAmbientes: PlanilhaAmbienteBlock[] = [];
+    if (planilhaEnvRows.length > 0) {
+      for (const env of planilhaEnvRows) {
+        const amb: PlanilhaAmbiente = {
+          tipo_atividade: ambStr(env.tipo_atividade),
+          identificacao: ambStr(env.identificacao),
+          area_m2: ambNum(env.area_climatizada_m2),
+          ocupantes_fixos: ambNum(env.ocupantes_fixos),
+          ocupantes_flutuantes: ambNum(env.ocupantes_flutuantes),
+          carga_termica_tr: ambNum(env.carga_termica_tr),
+        };
+        planilhaAmbientes.push({
+          ambiente: amb,
+          equipments: planilhaItemRows
+            .filter((ci) => ci.environment_id === env.id)
+            .map(toPlanilhaEquip),
+        });
+      }
+      const planilhaOrphans = planilhaItemRows.filter((ci) => !ci.environment_id);
+      if (planilhaOrphans.length > 0) {
+        planilhaAmbientes.push({
+          ambiente: {
+            tipo_atividade: null,
+            identificacao: "Geral",
+            area_m2: null,
+            ocupantes_fixos: null,
+            ocupantes_flutuantes: null,
+            carga_termica_tr: null,
+          },
+          equipments: planilhaOrphans.map(toPlanilhaEquip),
+        });
+      }
+    } else {
+      const cRow = contract as Record<string, unknown>;
+      planilhaAmbientes.push({
+        ambiente: {
+          tipo_atividade: ambStr(cRow.pmoc_tipo_atividade),
+          identificacao: ambStr(cRow.pmoc_identificacao_ambiente),
+          area_m2: ambNum(cRow.pmoc_area_climatizada_m2),
+          ocupantes_fixos: ambNum(cRow.pmoc_ocupantes_fixos),
+          ocupantes_flutuantes: ambNum(cRow.pmoc_ocupantes_flutuantes),
+          carga_termica_tr: ambNum(cRow.pmoc_carga_termica_tr),
+        },
+        equipments: planilhaItemRows.map(toPlanilhaEquip),
+      });
+    }
 
     // ---- 8. content_hash dos campos dinâmicos
     //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
@@ -831,13 +893,17 @@ Deno.serve(async (req) => {
     //    dominex.app) em toda página, oculto em white-label. O white_label já
     //    está no hash (tenant.white_label), mas o bump força regen dos PDFs
     //    cacheados sem o rodapé novo.
+    //    Multi-ambiente (2026-06): bump pra dossie_v15 — a Seção 4 da Planilha
+    //    embutida passou a renderizar UM bloco por ambiente
+    //    (contract_environments), cada um com seus equipamentos via
+    //    environment_id. Os ambientes entram no hash pra invalidar o cache.
     //    Ambiente climatizado (2026-06): bump pra dossie_v14 — a Seção 4 da
     //    Planilha embutida ganhou a caracterização do ambiente (tipo de
     //    atividade, identificação, área, ocupantes fixos/flutuantes e carga
     //    térmica TR), vinda das colunas pmoc_* do contrato. Entram no hash pra
     //    o cache invalidar quando o gestor preencher/editar esses campos.
     const hashInput = JSON.stringify({
-      v: "dossie_v14",
+      v: "dossie_v15",
       tenant: {
         name: tenantName,
         cnpj,
@@ -875,10 +941,9 @@ Deno.serve(async (req) => {
           .map((o) => ({ n: o.order_number, d: o.scheduled_date, s: o.status }))
           .sort((a, b) => (a.d ?? "").localeCompare(b.d ?? "")),
       },
-      // Fase 4 — Planilha PMOC embutida: equipamentos + plano + execução.
+      // Fase 4 — Planilha PMOC embutida: ambientes + plano + execução.
       planilha: {
-        ambiente: planilhaAmbiente,
-        equipments: planilhaEquipments,
+        ambientes: planilhaAmbientes,
         activities: planilhaActivities,
         execution: {
           total: planilhaTotalVisitas,
@@ -1023,8 +1088,7 @@ Deno.serve(async (req) => {
           (contract.frequency_type ?? null) as string | null,
         ),
       },
-      ambiente: planilhaAmbiente,
-      equipments: planilhaEquipments,
+      ambientes: planilhaAmbientes,
       activities: planilhaActivities,
       execution:
         planilhaTotalVisitas > 0

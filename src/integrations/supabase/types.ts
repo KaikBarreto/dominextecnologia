@@ -1064,10 +1064,71 @@ export type Database = {
           },
         ]
       }
+      contract_environments: {
+        Row: {
+          area_climatizada_m2: number | null
+          carga_termica_tr: number | null
+          company_id: string
+          contract_id: string
+          created_at: string
+          id: string
+          identificacao: string | null
+          ocupantes_fixos: number | null
+          ocupantes_flutuantes: number | null
+          sort_order: number
+          tipo_atividade: string | null
+          updated_at: string
+        }
+        Insert: {
+          area_climatizada_m2?: number | null
+          carga_termica_tr?: number | null
+          company_id: string
+          contract_id: string
+          created_at?: string
+          id?: string
+          identificacao?: string | null
+          ocupantes_fixos?: number | null
+          ocupantes_flutuantes?: number | null
+          sort_order?: number
+          tipo_atividade?: string | null
+          updated_at?: string
+        }
+        Update: {
+          area_climatizada_m2?: number | null
+          carga_termica_tr?: number | null
+          company_id?: string
+          contract_id?: string
+          created_at?: string
+          id?: string
+          identificacao?: string | null
+          ocupantes_fixos?: number | null
+          ocupantes_flutuantes?: number | null
+          sort_order?: number
+          tipo_atividade?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_environments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "contract_environments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_items: {
         Row: {
           contract_id: string
           created_at: string
+          environment_id: string | null
           equipment_id: string | null
           form_template_id: string | null
           id: string
@@ -1078,6 +1139,7 @@ export type Database = {
         Insert: {
           contract_id: string
           created_at?: string
+          environment_id?: string | null
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string
@@ -1088,6 +1150,7 @@ export type Database = {
         Update: {
           contract_id?: string
           created_at?: string
+          environment_id?: string | null
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string
@@ -1096,6 +1159,13 @@ export type Database = {
           sort_order?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contract_items_environment_id_fkey"
+            columns: ["environment_id"]
+            isOneToOne: false
+            referencedRelation: "contract_environments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contract_items_contract_id_fkey"
             columns: ["contract_id"]

@@ -27,6 +27,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { ContractEquipmentTab } from '@/components/contracts/ContractEquipmentTab';
+import { ContractEnvironmentsTab } from '@/components/contracts/ContractEnvironmentsTab';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
 import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
@@ -667,7 +668,7 @@ export default function ContractDetail() {
         const pmocSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
-          { value: 'equipamentos', label: 'Equipamentos', icon: Wrench },
+          { value: 'equipamentos', label: 'Ambientes', icon: Wrench },
           { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
           { value: 'documentos', label: 'Documentos', icon: FileText },
           { value: 'cronograma', label: 'Cronograma', icon: Calendar },
@@ -1286,7 +1287,11 @@ export default function ContractDetail() {
           >
             {pmocTab === 'overview' && overviewContent}
             {pmocTab === 'ocorrencias' && occurrencesContent}
-            {pmocTab === 'equipamentos' && <ContractEquipmentTab contract={contract} />}
+            {pmocTab === 'equipamentos' && (
+              isPmoc
+                ? <ContractEnvironmentsTab contract={contract} />
+                : <ContractEquipmentTab contract={contract} />
+            )}
             {pmocTab === 'financeiro' && financialContent}
             {isPmoc && pmocTab === 'documentos' && id && (
               <PmocContractDocsTab
