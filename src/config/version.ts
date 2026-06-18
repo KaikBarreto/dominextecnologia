@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.41";
+export const APP_VERSION = "1.12.42";
 
-export const VERSION_NOTES = "No Catálogo de Equipamentos, os ar-condicionados agora trazem o manual técnico/de instalação (não mais o do usuário) na maioria dos modelos — o documento que o técnico precisa em campo. As geladeiras e lavadoras ganharam o manual oficial onde estava faltando.";
+export const VERSION_NOTES = "O Catálogo de Equipamentos ganhou uma nova seção: Fluidos Refrigerantes. Consulte cada gás (R-410A, R-32, R-22, R-290 e outros) com suas especificidades — composição, GWP, classe de segurança, óleo, qual gás substitui — e baixe a ficha técnica e, quando disponível, o guia oficial do fabricante.";

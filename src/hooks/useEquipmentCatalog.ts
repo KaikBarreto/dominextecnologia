@@ -382,6 +382,55 @@ export function useModelIdsWithErrorCodes(domain: string = 'ar_condicionado') {
   });
 }
 
+/**
+ * Fluido refrigerante (gás) do catálogo GLOBAL — tabela `refrigerant_gases`.
+ * É consulta de campo (não confundir com o `refrigerant` textual dos modelos de AC).
+ * `ficha_url` é sempre o PDF NOSSO (Storage); `guia_oficial_url` é o PDF do
+ * fabricante quando existir. `cor` é o hex da bolinha do gás (régua: gás sempre
+ * com cor) — null cai num cinza neutro na UI.
+ */
+export interface RefrigerantGas {
+  id: string;
+  code: string;
+  name: string | null;
+  composicao: string | null;
+  tipo: string | null;
+  gwp: number | null;
+  odp: number | null;
+  ponto_ebulicao_c: number | null;
+  glide_k: number | null;
+  classe_seguranca: string | null;
+  oleo: string | null;
+  substitui: string | null;
+  aplicacao: string | null;
+  cor: string | null;
+  observacoes: string | null;
+  /** PDF NOSSO — sempre presente. */
+  ficha_url: string | null;
+  /** PDF oficial do fabricante — pode ser null. */
+  guia_oficial_url: string | null;
+  sort: number | null;
+}
+
+/**
+ * Catálogo GLOBAL de fluidos refrigerantes, ordenado por `sort`.
+ * Leitura pra qualquer técnico autenticado (RLS authenticated); nada de mutação.
+ */
+export function useRefrigerantGases() {
+  return useQuery({
+    queryKey: ['equipment-catalog', 'refrigerant-gases'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('refrigerant_gases')
+        .select('*')
+        .order('sort', { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as RefrigerantGas[];
+    },
+  });
+}
+
 /** Todos os códigos de erro de um modelo (o filtro por code é client-side). */
 export function useEquipmentErrorCodes(modelId: string | null | undefined) {
   return useQuery({

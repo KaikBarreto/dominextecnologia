@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.42',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova seção: Fluidos Refrigerantes',
+        description: 'O Catálogo de Equipamentos ganhou a aba Fluidos Refrigerantes, com os gases mais usados (R-410A, R-32, R-22, R-404A, R-134a, R-290, R-600a, R-1234yf, amônia, CO2 e outros). Cada gás traz suas especificidades — composição, tipo, GWP, ODP, ponto de ebulição, classe de segurança, óleo compatível e qual gás ele substitui — e tem download da ficha técnica; quando disponível, também o guia oficial do fabricante.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.41',
     date: '18 de junho de 2026',
     type: 'patch',

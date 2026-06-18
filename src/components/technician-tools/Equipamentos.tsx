@@ -18,6 +18,7 @@ import {
   Zap,
   Stethoscope,
   Wrench,
+  Droplet,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
@@ -35,12 +36,15 @@ import {
   useModelIdsWithErrorCodes,
   useAllModelsWithBrand,
   useAllErrorCodesWithModel,
+  useRefrigerantGases,
   rotuloManual,
   type EquipmentBrand,
   type EquipmentModel,
   type EquipmentDomain,
+  type RefrigerantGas,
 } from '@/hooks/useEquipmentCatalog';
 import { CompressorFicha } from './CompressorFicha';
+import { GasDetail } from './GasDetail';
 import { RemoteConfig } from './RemoteConfig';
 import { CatalogImage } from './CatalogImage';
 import {
@@ -235,20 +239,28 @@ async function baixarManual(url: string, nome: string) {
   }
 }
 
-/** Domínios do catálogo, na ordem das sub-abas (cada um com ícone). */
-const DOMAIN_OPTIONS: { value: EquipmentDomain; label: string; icon: ComponentType<{ className?: string }> }[] = [
+/**
+ * Subaba ativa do catálogo. Inclui os domínios reais de `equipment_models` +
+ * 'fluido_refrigerante', que é uma subaba SÓ de UI (gases vivem na tabela própria
+ * `refrigerant_gases`, não em equipment_models).
+ */
+type CatalogTab = EquipmentDomain | 'fluido_refrigerante';
+
+/** Subabas do catálogo, na ordem de exibição (cada uma com ícone). */
+const DOMAIN_OPTIONS: { value: CatalogTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { value: 'ar_condicionado', label: 'Ar Condicionado', icon: AirVent },
   { value: 'compressor', label: 'Compressores', icon: CompressorGlyph },
   { value: 'linha_branca', label: 'Linha Branca', icon: Refrigerator },
   { value: 'controle_remoto', label: 'Controles Remotos', icon: RemoteGlyph },
+  { value: 'fluido_refrigerante', label: 'Fluidos Refrigerantes', icon: Droplet },
 ];
 
 /**
- * Título da página por domínio ativo: "Catálogo - <label do domínio>".
+ * Título da página por subaba ativa: "Catálogo - <label da subaba>".
  * Reusa o label de DOMAIN_OPTIONS pra não duplicar texto.
  */
-function tituloCatalogo(domain: EquipmentDomain): string {
-  const label = DOMAIN_OPTIONS.find((o) => o.value === domain)?.label ?? 'Equipamentos';
+function tituloCatalogo(tab: CatalogTab): string {
+  const label = DOMAIN_OPTIONS.find((o) => o.value === tab)?.label ?? 'Equipamentos';
   return `Catálogo - ${label}`;
 }
 
@@ -257,7 +269,8 @@ type View =
   | { kind: 'models'; brand: EquipmentBrand }
   | { kind: 'errors'; model: EquipmentModel; initialCode?: string; brand?: EquipmentBrand }
   | { kind: 'compressor'; model: EquipmentModel; brand?: EquipmentBrand }
-  | { kind: 'remote'; model: EquipmentModel; brand?: EquipmentBrand };
+  | { kind: 'remote'; model: EquipmentModel; brand?: EquipmentBrand }
+  | { kind: 'gas'; gas: RefrigerantGas };
 
 /**
  * Seletor de domínio do catálogo — abas com sublinhado (mesmo estilo das subabas
@@ -267,8 +280,8 @@ function DomainSelector({
   value,
   onChange,
 }: {
-  value: EquipmentDomain;
-  onChange: (d: EquipmentDomain) => void;
+  value: CatalogTab;
+  onChange: (d: CatalogTab) => void;
 }) {
   return (
     <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
@@ -304,14 +317,19 @@ function DomainSelector({
  * é resolvida client-side dentro da própria tela inicial.
  */
 export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) {
-  const [domain, setDomain] = useState<EquipmentDomain>('ar_condicionado');
+  const [tab, setTab] = useState<CatalogTab>('ar_condicionado');
   const [view, setView] = useState<View>({ kind: 'brands' });
 
-  // Trocar de domínio reseta a navegação interna pra lista de marcas daquele domínio.
-  const onChangeDomain = (d: EquipmentDomain) => {
-    setDomain(d);
+  // Trocar de subaba reseta a navegação interna pra lista inicial daquela subaba.
+  const onChangeDomain = (d: CatalogTab) => {
+    setTab(d);
     setView({ kind: 'brands' });
   };
+
+  // Em 'fluido_refrigerante' não existe domínio de equipment_models — as telas de
+  // marca/modelo recebem só domínios reais. Fora dessa subaba, `domain` é o próprio tab.
+  const domain: EquipmentDomain =
+    tab === 'fluido_refrigerante' ? 'ar_condicionado' : tab;
 
   // Deep-link: abre direto na tela de detalhe do modelo recebido (Recentes/Favoritos).
   // O deep-link atual é só de AC (códigos de erro); mantém o comportamento.
@@ -380,10 +398,16 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
     );
   }
 
+  if (view.kind === 'gas') {
+    return <GasDetail gas={view.gas} onBack={() => setView({ kind: 'brands' })} />;
+  }
+
   return (
     <div className="space-y-4 pb-4">
-      <DomainSelector value={domain} onChange={onChangeDomain} />
-      {domain === 'controle_remoto' ? (
+      <DomainSelector value={tab} onChange={onChangeDomain} />
+      {tab === 'fluido_refrigerante' ? (
+        <GasesList onSelectGas={(gas) => setView({ kind: 'gas', gas })} />
+      ) : tab === 'controle_remoto' ? (
         <RemotesList
           onSelectDetail={(model) => setView({ kind: 'remote', model })}
         />
@@ -1407,6 +1431,137 @@ function RemoteCard({
         />
       )}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Fluidos Refrigerantes — lista global (tabela própria, sem marca)    */
+/* ------------------------------------------------------------------ */
+
+/** Cinza neutro pra gás sem cor cadastrada (régua: gás sempre com bolinha). */
+const GAS_COR_NEUTRA = '#6b7280';
+
+/**
+ * Lista GLOBAL de fluidos refrigerantes: igual à RemotesList, mas sobre a tabela
+ * própria `refrigerant_gases` (não navega por marca). Busca filtra por code/name.
+ * Ordem por `sort` (já vem do hook).
+ */
+function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void }) {
+  const { data: gases = [], isLoading } = useRefrigerantGases();
+
+  const [termoRaw, setTermoRaw] = useState('');
+  const [termo, setTermo] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
+    return () => clearTimeout(id);
+  }, [termoRaw]);
+
+  const q = norm(termo);
+
+  // Filtra por code OU name; mantém a ordem de `sort` que veio do hook.
+  const visiveis = useMemo(() => {
+    if (q.length === 0) return gases;
+    return gases.filter((g) => norm(g.code).includes(q) || norm(g.name).includes(q));
+  }, [gases, q]);
+
+  const semResultado = !isLoading && gases.length > 0 && visiveis.length === 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight md:text-xl">
+            {tituloCatalogo('fluido_refrigerante')}
+          </h2>
+          <p className="text-sm text-muted-foreground md:text-base">
+            Consulte os fluidos refrigerantes do catálogo.
+          </p>
+        </div>
+        {gases.length > 0 && (
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
+            {gases.length} fluidos
+          </span>
+        )}
+      </div>
+
+      {/* Busca global por código ou nome do gás */}
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Buscar por código ou nome (ex: R-410A)"
+          value={termoRaw}
+          onChange={(e) => setTermoRaw(e.target.value)}
+          className="h-14 pl-10 text-lg"
+        />
+      </div>
+
+      {isLoading ? (
+        <LoadingBlock />
+      ) : gases.length === 0 ? (
+        <EmptyState
+          title="Catálogo em atualização"
+          message="Os fluidos refrigerantes para consulta estão sendo cadastrados. Volte em breve."
+        />
+      ) : semResultado ? (
+        <EmptyState
+          title="Nenhum fluido encontrado"
+          message={`Não localizamos nada para "${termo}". Tente outro código ou nome.`}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {visiveis.map((gas) => (
+            <GasCard key={gas.id} gas={gas} onSelect={() => onSelectGas(gas)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Card de um fluido refrigerante na lista global: bolinha de cor (régua: gás
+ * sempre com cor), código em destaque, nome e badges de tipo e classe de segurança.
+ */
+function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void }) {
+  const cor = gas.cor || GAS_COR_NEUTRA;
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-all',
+        'hover:border-primary/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      )}
+    >
+      {/* Bolinha de cor do gás (régua CEO: gás sempre com cor saturada). */}
+      <span
+        className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+        style={{ backgroundColor: cor }}
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-base font-bold leading-tight tracking-tight text-foreground">
+          {gas.code}
+        </p>
+        <p className="mt-0.5 truncate text-sm text-muted-foreground">{gas.name}</p>
+        {(gas.tipo || gas.classe_seguranca) && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {gas.tipo && (
+              <span className="rounded-md bg-violet-500 px-2 py-0.5 text-xs font-semibold text-white">
+                {gas.tipo}
+              </span>
+            )}
+            {gas.classe_seguranca && (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                {gas.classe_seguranca}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+    </button>
   );
 }
 
