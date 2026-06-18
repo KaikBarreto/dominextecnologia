@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.47',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Selo "Câmara frigorífica" nos compressores',
+        description: 'Os compressores de refrigeração comercial (semi-herméticos, scroll e herméticos comerciais) agora aparecem com um selo "Câmara frigorífica" no Catálogo de Equipamentos, separando-os dos de geladeira e de ar-condicionado. Também completamos a foto de mais modelos de compressor.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.46',
     date: '18 de junho de 2026',
     type: 'patch',

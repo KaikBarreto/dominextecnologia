@@ -20,6 +20,7 @@ import {
   Wrench,
   Droplet,
   Flame,
+  Snowflake,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
@@ -1627,6 +1628,22 @@ function rodaContinuo(model: EquipmentModel): boolean {
   const alvo = `${model.category?.name ?? ''} ${model.name ?? ''}`.toLowerCase();
   return /gelad|refriger|freezer|frigobar|expositor|adega|cervejeira|conservador/.test(alvo);
 }
+/**
+ * Compressores de CÂMARA FRIGORÍFICA (refrigeração comercial). Identificados pela
+ * categoria do modelo: Semi-hermético, Scroll e Hermético comercial. As categorias
+ * Hermético (geladeira) e Rotativo (ar-condicionado) NÃO são câmara fria.
+ * Comparação normalizada (lowercase + sem acento) pra tolerar variações.
+ */
+function ehCamaraFria(categoriaNome?: string | null): boolean {
+  if (!categoriaNome) return false;
+  const norm = categoriaNome
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim();
+  return ['semi-hermetico', 'scroll', 'hermetico comercial'].includes(norm);
+}
+
 /** Evento disparado no window quando a config de energia muda (sync entre cards). */
 const ENERGIA_CONFIG_EVENT = 'energia-config-change';
 
@@ -1910,6 +1927,8 @@ function ModelCard({
   hasErrorCodes?: boolean;
 }) {
   const categoria = model.category?.name ?? null;
+  // Compressor de refrigeração comercial (câmara fria): badge dedicado.
+  const camaraFria = domain === 'compressor' && ehCamaraFria(categoria);
   const btu = extrairBtu(model.name);
   const subtitulo = brandName;
   const temManual = Boolean(model.manual_url);
@@ -1990,6 +2009,12 @@ function ModelCard({
             {categoria && (
               <span className="rounded-md bg-violet-500 px-2 py-0.5 text-xs font-semibold text-white">
                 {categoria}
+              </span>
+            )}
+            {camaraFria && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-cyan-600 px-2 py-0.5 text-xs font-semibold text-white">
+                <Snowflake className="h-3 w-3" />
+                Câmara frigorífica
               </span>
             )}
             {mostraGas &&
