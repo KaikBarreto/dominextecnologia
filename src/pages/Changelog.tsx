@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.48',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Gases do compressor com cores e alerta de inflamável',
+        description: 'Na ficha técnica de cada compressor, os gases compatíveis passaram a aparecer como badges individuais, cada um na cor do gás, com ícone de fogo (e aviso "Inflamável") quando o gás é inflamável. Na lista de compressores, os de câmara fria deixaram de exibir a longa lista de gases amontoada, deixando o card mais limpo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.47',
     date: '18 de junho de 2026',
     type: 'patch',
