@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { StepTransition } from '@/components/ui/step-transition';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
@@ -55,19 +56,24 @@ interface ContractFormDialogProps {
   defaultCustomerId?: string;
 }
 
-// Labels da etapa 3 são contextuais: contrato PMOC organiza por AMBIENTES;
-// contrato comum mantém a lista FLAT de equipamentos/itens.
+// A etapa `items` é contextual: contrato PMOC organiza por AMBIENTES; contrato
+// comum mantém a lista FLAT de equipamentos/itens. Ela vem ANTES da frequência
+// (escolher os equipamentos antes de cadenciar). A etapa `team` (Equipe &
+// Cobrança) reúne técnicos, cobrança, tipo de serviço, checklist, observações e
+// status — desafogando a Identificação.
 const STEPS_COMMON = [
-  { key: 'info', label: 'Informações' },
+  { key: 'info', label: 'Identificação' },
+  { key: 'items', label: 'Equipamentos' },
   { key: 'frequency', label: 'Frequência' },
-  { key: 'items', label: 'Itens' },
+  { key: 'team', label: 'Equipe & Cobrança' },
   { key: 'review', label: 'Revisão' },
 ];
 const STEPS_PMOC = [
-  { key: 'info', label: 'Informações' },
+  { key: 'info', label: 'Identificação' },
   { key: 'unit', label: 'Unidade & RT' },
-  { key: 'frequency', label: 'Frequência' },
   { key: 'items', label: 'Ambientes' },
+  { key: 'frequency', label: 'Frequência' },
+  { key: 'team', label: 'Equipe & Cobrança' },
   { key: 'review', label: 'Revisão' },
 ];
 
@@ -366,14 +372,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     [customers, customerId],
   );
 
-  // Wizard dinâmico: PMOC tem 5 etapas (info → unit → frequency → items → review);
-  // comum tem 4 (info → frequency → items → review). O conteúdo é renderizado pela
-  // KEY do step atual (nunca por índice numérico) pra não dar drift quando o PMOC
-  // liga/desliga.
+  // Wizard dinâmico: PMOC tem 6 etapas (info → unit → items → frequency → team →
+  // review); comum tem 5 (info → items → frequency → team → review). O conteúdo é
+  // renderizado pela KEY do step atual (nunca por índice numérico) pra não dar
+  // drift quando o PMOC liga/desliga.
   const STEPS = isPmoc ? STEPS_PMOC : STEPS_COMMON;
   const currentStepKey = STEPS[step]?.key ?? 'info';
 
-  // Ligar/desligar PMOC muda a contagem de etapas (4 ↔ 5). Se o índice atual
+  // Ligar/desligar PMOC muda a contagem de etapas (5 ↔ 6). Se o índice atual
   // estourar o novo array, recua pra última etapa válida (evita tela em branco).
   useEffect(() => {
     if (step > STEPS.length - 1) setStep(STEPS.length - 1);
@@ -841,6 +847,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       case 'frequency':
         return freqValue > 0 && !!startDate;
       case 'items':
+      case 'team':
       case 'review':
       default:
         return true;
@@ -1315,8 +1322,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 mt-4 space-y-4">
+        {/* Content — animação direcional de troca de etapa (slide + fade).
+            O scroll fica no container do ResponsiveModal; o StepTransition não
+            força overflow/height. */}
+        <div className="flex-1 mt-4">
+          <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
           {/* STEP: Informações */}
           {currentStepKey === 'info' && (
             <div className="space-y-4">
@@ -1351,84 +1361,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               </div>
 
               {/* PMOC (Onda A v1.9.0) — toggle no TOPO da etapa, logo após o Cliente.
-                  Os detalhes (RT, unidade, badge legal) ficam na etapa "Unidade & RT". */}
+                  Os detalhes (RT, unidade, badge legal) ficam na etapa "Unidade & RT".
+                  Equipe, cobrança, tipo de serviço, checklist, observações e status
+                  migraram pra etapa "Equipe & Cobrança". A Identificação fica enxuta. */}
               {pmocToggleSection}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <AssigneeMultiSelect
-                    technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
-                    teams={teamsWithMembers}
-                    selectedUserIds={selectedUserIds}
-                    selectedTeamIds={selectedTeamIds}
-                    onChangeUsers={setSelectedUserIds}
-                    onChangeTeams={setSelectedTeamIds}
-                    label="Técnicos Executores"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    Técnicos ou equipes que vão a campo executar as ordens de serviço deste contrato.
-                    {' '}Diferente do Responsável Técnico (RT) regulatório do PMOC.
-                  </p>
-                </div>
-                <div className="sm:col-span-2">
-                  <AssigneeMultiSelect
-                    technicians={(allProfiles ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
-                    teams={teamsWithMembers}
-                    selectedUserIds={billingUserIds}
-                    selectedTeamIds={billingTeamIds}
-                    onChangeUsers={setBillingUserIds}
-                    onChangeTeams={setBillingTeamIds}
-                    label="Responsáveis Financeiros (Cobrança)"
-                    usersLabel="Usuários"
-                  />
-                </div>
-                {/* Tipo de Serviço não se aplica a PMOC — quem manda nas atividades
-                    é o plano/catálogo da norma. Some quando o contrato é PMOC. */}
-                {!isPmoc && (
-                  <div className="space-y-2">
-                    <Label>Tipo de Serviço</Label>
-                    <Select value={serviceTypeId || 'none'} onValueChange={v => setServiceTypeId(v === 'none' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {serviceTypes.filter(t => t.is_active).map(st => (
-                          <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {/* Checklist Padrão só faz sentido em contrato SEM plano de
-                    serviços. Com plano, o checklist vem das atividades por
-                    equipamento — exibir o select duplicaria o checklist na OS.
-                    (usePlanEngine = há atividades agendáveis no plano.) */}
-                {!usePlanEngine && (
-                  <div className="space-y-2">
-                    <Label>Checklist Padrão</Label>
-                    <Select value={formTemplateId || 'none'} onValueChange={v => setFormTemplateId(v === 'none' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {templates.filter(t => t.is_active).map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Pode ser sobrescrito por item</p>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>Observações (opcional)</Label>
-                <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Instruções gerais, condições do contrato..." rows={3} />
-              </div>
-              <div className="flex items-center gap-3 pt-1">
-                <Switch checked={isActive} onCheckedChange={setIsActive} />
-                <div>
-                  <Label>Contrato Ativo</Label>
-                  <p className="text-xs text-muted-foreground">OSs só serão geradas para contratos ativos</p>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1999,6 +1935,89 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
+          {/* STEP: Equipe & Cobrança — técnicos executores, responsáveis pela
+              cobrança, tipo de serviço (só comum), checklist padrão (sem plano),
+              observações e status. Migrado da antiga etapa Identificação. */}
+          {currentStepKey === 'team' && (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <AssigneeMultiSelect
+                    technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
+                    teams={teamsWithMembers}
+                    selectedUserIds={selectedUserIds}
+                    selectedTeamIds={selectedTeamIds}
+                    onChangeUsers={setSelectedUserIds}
+                    onChangeTeams={setSelectedTeamIds}
+                    label="Técnicos Executores"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Técnicos ou equipes que vão a campo executar as ordens de serviço deste contrato.
+                    {' '}Diferente do Responsável Técnico (RT) regulatório do PMOC.
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <AssigneeMultiSelect
+                    technicians={(allProfiles ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
+                    teams={teamsWithMembers}
+                    selectedUserIds={billingUserIds}
+                    selectedTeamIds={billingTeamIds}
+                    onChangeUsers={setBillingUserIds}
+                    onChangeTeams={setBillingTeamIds}
+                    label="Responsáveis Financeiros (Cobrança)"
+                    usersLabel="Usuários"
+                  />
+                </div>
+                {/* Tipo de Serviço não se aplica a PMOC — quem manda nas atividades
+                    é o plano/catálogo da norma. Some quando o contrato é PMOC. */}
+                {!isPmoc && (
+                  <div className="space-y-2">
+                    <Label>Tipo de Serviço</Label>
+                    <Select value={serviceTypeId || 'none'} onValueChange={v => setServiceTypeId(v === 'none' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {serviceTypes.filter(t => t.is_active).map(st => (
+                          <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {/* Checklist Padrão só faz sentido em contrato SEM plano de
+                    serviços. Com plano, o checklist vem das atividades por
+                    equipamento — exibir o select duplicaria o checklist na OS.
+                    (usePlanEngine = há atividades agendáveis no plano.) */}
+                {!usePlanEngine && (
+                  <div className="space-y-2">
+                    <Label>Checklist Padrão</Label>
+                    <Select value={formTemplateId || 'none'} onValueChange={v => setFormTemplateId(v === 'none' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {templates.filter(t => t.is_active).map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Pode ser sobrescrito por item</p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Observações (opcional)</Label>
+                <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Instruções gerais, condições do contrato..." rows={3} />
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <Switch checked={isActive} onCheckedChange={setIsActive} />
+                <div>
+                  <Label>Contrato Ativo</Label>
+                  <p className="text-xs text-muted-foreground">OSs só serão geradas para contratos ativos</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* STEP: Revisão */}
           {currentStepKey === 'review' && (
             <div className="space-y-4 rounded-lg border p-4">
@@ -2077,6 +2096,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               </div>
             </div>
           )}
+          </StepTransition>
         </div>
     </div>
   );

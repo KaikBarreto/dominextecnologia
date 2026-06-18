@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { StepTransition } from '@/components/ui/step-transition';
 
 type Step = 'email' | 'code' | 'password' | 'done';
 
@@ -149,7 +150,8 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
     }
   };
 
-  if (step === 'done') {
+  const renderStepContent = () => {
+    if (step === 'done') {
     return (
       <div className="space-y-4 text-center">
         <div className="mx-auto w-12 h-12 rounded-full bg-primary flex items-center justify-center">
@@ -326,5 +328,12 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
         Voltar ao login
       </button>
     </div>
+    );
+  };
+
+  return (
+    <StepTransition stepKey={step} index={['email', 'code', 'password', 'done'].indexOf(step)}>
+      {renderStepContent()}
+    </StepTransition>
   );
 }

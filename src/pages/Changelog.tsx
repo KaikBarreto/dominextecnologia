@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.46',
+    date: '18 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criação de contrato ainda mais organizada',
+        description: 'Agora você define os equipamentos antes de escolher a frequência — a ordem natural: primeiro o que será mantido, depois com que frequência. Os campos de equipe e cobrança ganharam uma etapa só deles, e a primeira tela ficou bem enxuta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Transições suaves entre etapas',
+        description: 'As telas que têm várias etapas — criação de contrato, ordem de serviço, cadastro e recuperação de senha — agora deslizam suavemente de uma etapa para a outra, deixando a navegação mais agradável. Quem prefere menos animações no aparelho continua sendo respeitado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.45',
     date: '18 de junho de 2026',
     type: 'patch',

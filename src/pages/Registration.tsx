@@ -22,6 +22,7 @@ import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
+import { StepTransition } from '@/components/ui/step-transition';
 
 const ORIGIN_ICONS: Record<string, LucideIcon> = {
   Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
@@ -315,9 +316,10 @@ export default function Registration() {
 
               {/* Form */}
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <StepTransition stepKey={String(step)} index={step} className="space-y-4">
                 {/* Step 1: Company Data */}
                 {step === 1 && (
-                  <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="space-y-4">
                     <div>
                       <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Nome da Empresa*</Label>
                       <div className="relative mt-1">
@@ -385,7 +387,7 @@ export default function Registration() {
 
                 {/* Step 2: Origin */}
                 {step === 2 && (
-                  <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="space-y-4">
                     <p className="text-sm text-white/60 text-center">Como você nos conheceu?</p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {origins.map((o: any) => {
@@ -419,7 +421,7 @@ export default function Registration() {
 
                 {/* Step 3: Access */}
                 {step === 3 && (
-                  <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="space-y-4">
                     <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
                       <p className="text-sm text-white/70">
                         <strong className="text-white">Email de acesso:</strong> {emailValue}
@@ -462,6 +464,7 @@ export default function Registration() {
                     </div>
                   </div>
                 )}
+                </StepTransition>
 
                 {/* Navigation Buttons */}
                 {step <= 3 && (

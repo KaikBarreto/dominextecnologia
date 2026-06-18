@@ -49,6 +49,7 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
+import { StepTransition } from '@/components/ui/step-transition';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -837,6 +838,7 @@ export function ServiceOrderFormDialog({
 
         <Form {...form}>
           <form onSubmit={(e) => { e.preventDefault(); if (isLastStep) form.handleSubmit(handleEditSubmit)(); }} className="space-y-4">
+            <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
             {/* Step 1: Client & Service */}
             {currentStepKey === 'client' && (
               <div className="space-y-4">
@@ -1142,6 +1144,7 @@ export function ServiceOrderFormDialog({
                 </div>
               </div>
             )}
+            </StepTransition>
 
             {/* Navigation */}
             <div className="flex justify-between pt-4 border-t">
@@ -1271,6 +1274,7 @@ export function ServiceOrderFormDialog({
 
       <Form {...form}>
         <form onSubmit={(e) => { e.preventDefault(); if (isLastStep) handleCreateSubmit(); }} className="space-y-4">
+          <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
           {/* Step 1: Client & Service */}
           {currentStepKey === 'client' && (
             <div className="space-y-4">
@@ -1730,6 +1734,7 @@ export function ServiceOrderFormDialog({
               </div>
             </div>
           )}
+          </StepTransition>
 
           {/* Navigation */}
           <div className="flex justify-between pt-4 border-t">

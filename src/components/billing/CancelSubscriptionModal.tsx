@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { AlertTriangle, Gift, Heart, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { StepTransition } from '@/components/ui/step-transition';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { format } from 'date-fns';
@@ -178,8 +179,9 @@ export function CancelSubscriptionModal({
       className="max-w-md"
       footer={footerContent}
     >
-      {step === 'reason' && (
-        <div className="space-y-4">
+      <StepTransition stepKey={step} index={['reason', 'confirm', 'done'].indexOf(step)} className="space-y-4">
+        {step === 'reason' && (
+          <div className="space-y-4">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-xl bg-destructive shrink-0">
               <AlertTriangle className="h-5 w-5 text-white" />
@@ -256,8 +258,8 @@ export function CancelSubscriptionModal({
         </div>
       )}
 
-      {step === 'confirm' && (
-        <div className="space-y-4">
+        {step === 'confirm' && (
+          <div className="space-y-4">
           <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 space-y-2">
             <p className="text-sm font-medium">Ao confirmar:</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
@@ -284,8 +286,8 @@ export function CancelSubscriptionModal({
         </div>
       )}
 
-      {step === 'done' && (
-        <div className="space-y-4 text-center">
+        {step === 'done' && (
+          <div className="space-y-4 text-center">
           <div className="p-3 bg-emerald-500/10 rounded-full w-fit mx-auto">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
           </div>
@@ -300,7 +302,8 @@ export function CancelSubscriptionModal({
             </p>
           </div>
         </div>
-      )}
+        )}
+      </StepTransition>
     </ResponsiveModal>
   );
 }
