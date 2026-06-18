@@ -503,12 +503,19 @@ Deno.serve(async (req) => {
           ? { total: totalVisitas, concluidas, conformes, nao_conformes: naoConformes }
           : null,
       generated_at_extenso: dateToExtenso(new Date()),
+      // Rodapé Dominex (linha + logo + dominex.app) em toda página — oculto em
+      // white-label (mesmo critério do Dossiê).
+      whiteLabel: useWhiteLabel,
     };
 
     // ---- 5. content_hash
+    //   planilha_v2: rodapé Dominex por página (linha + logo + dominex.app),
+    //   oculto em white-label. O flag `white_label` entra no hash pra o cache
+    //   invalidar e regenerar com/sem rodapé conforme o tenant.
     const hashInput = JSON.stringify({
-      v: "planilha_v1",
+      v: "planilha_v2",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
+      white_label: useWhiteLabel,
       customer: planilhaData.customer,
       rt: planilhaData.rt,
       contract: planilhaData.contract,

@@ -29,6 +29,12 @@ import {
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
 import { drawComplianceSeal } from "./assets/draw-compliance-seal.ts";
+import { drawDominexFooterLine, embedDominexFooterLogo } from "./footer.ts";
+
+// Faixa inferior reservada pro rodapé Dominex (linha + logo + URL). O conteúdo
+// nunca pode invadir essa região, então a paginação descansa o cursor acima
+// dela. ~70pt cobre o texto (y≈24) + logo + linha (y≈54) com folga.
+const FOOTER_RESERVED_H = 92;
 
 const A4_W = 595.28;
 const A4_H = 841.89;
@@ -132,6 +138,12 @@ export interface PlanilhaData {
   activities: PlanilhaActivity[];
   execution: PlanilhaExecutionSummary | null;
   generated_at_extenso: string;
+  /**
+   * Quando true (tenant white-label), o rodapé Dominex NÃO é desenhado em
+   * nenhuma página. Mesmo critério do Dossiê (`company_settings
+   * .white_label_enabled`). Sem marca Dominex em documento white-label.
+   */
+  whiteLabel: boolean;
 }
 
 // WinAnsi (Helvetica) não tem todos os glifos — normaliza os problemáticos.
@@ -197,11 +209,25 @@ interface Ctx {
   helvBold: PDFFont;
   cursorY: number;
   data: PlanilhaData;
+  /** Logo Dominex pré-embedado (uma vez) pro rodapé de toda página. */
+  dominexLogo: PDFImage | null;
+}
+
+// Rodapé Dominex desenhado em TODA página (linha + logo + dominex.app). Some em
+// white-label. Reusa o PDFImage pré-embedado pra não estourar o worker de PDF.
+function drawPageFooter(ctx: Ctx): void {
+  drawDominexFooterLine(ctx.page, {
+    enabled: !ctx.data.whiteLabel,
+    logoImage: ctx.dominexLogo,
+    font: ctx.helv,
+    marginX: MARGIN_X,
+  });
 }
 
 function newPage(ctx: Ctx): void {
   ctx.page = ctx.pdf.addPage([A4_W, A4_H]);
   drawCompactHeader(ctx);
+  drawPageFooter(ctx);
 }
 
 // Cabeçalho compacto reusado no topo de cada página da planilha.
@@ -261,7 +287,7 @@ function drawCompactHeader(ctx: Ctx): void {
 }
 
 function ensureSpace(ctx: Ctx, needed: number): void {
-  if (ctx.cursorY - needed < 70) {
+  if (ctx.cursorY - needed < FOOTER_RESERVED_H) {
     newPage(ctx);
   }
 }
@@ -329,6 +355,10 @@ export async function drawPlanilha(
   const helv = await pdf.embedFont(StandardFonts.Helvetica);
   const helvBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
+  // Logo Dominex do rodapé: embedado UMA vez aqui e reusado em todas as páginas
+  // (a planilha auto-pagina). Pular o embed em white-label evita trabalho inútil.
+  const dominexLogo = data.whiteLabel ? null : await embedDominexFooterLogo(pdf);
+
   const ctx: Ctx = {
     pdf,
     page: pdf.addPage([A4_W, A4_H]),
@@ -336,8 +366,10 @@ export async function drawPlanilha(
     helvBold,
     cursorY: 0,
     data,
+    dominexLogo,
   };
   drawCompactHeader(ctx);
+  drawPageFooter(ctx);
 
   // ---- Seção 1 — Identificação do ambiente / unidade -----------------------
   drawSectionTitle(ctx, "1.", "Identificação do Ambiente Climatizado");
@@ -440,7 +472,7 @@ function drawEquipmentTable(ctx: Ctx): void {
   drawHeaderRow();
   let idx = 0;
   for (const eq of ctx.data.equipments) {
-    if (ctx.cursorY - rowH < 70) {
+    if (ctx.cursorY - rowH < FOOTER_RESERVED_H) {
       newPage(ctx);
       drawHeaderRow();
     }
@@ -569,7 +601,7 @@ function drawPlanTable(ctx: Ctx): void {
   let rowIdx = 0;
   for (const [section, acts] of bySection) {
     // Sub-cabeçalho da seção.
-    if (ctx.cursorY - (rowH + 14) < 70) {
+    if (ctx.cursorY - (rowH + 14) < FOOTER_RESERVED_H) {
       newPage(ctx);
       drawMatrixHeader();
     }
@@ -593,7 +625,7 @@ function drawPlanTable(ctx: Ctx): void {
     for (const a of acts) {
       const descLines = wrapText(helv, a.description ?? "", 7.5, descW - 18);
       const thisRowH = Math.max(rowH, descLines.length * 9 + 6);
-      if (ctx.cursorY - thisRowH < 70) {
+      if (ctx.cursorY - thisRowH < FOOTER_RESERVED_H) {
         newPage(ctx);
         drawMatrixHeader();
       }
@@ -714,20 +746,28 @@ function drawExecutionSummary(ctx: Ctx): void {
   ctx.cursorY -= 48;
 }
 
-// -- Rodapé/selo regulatório na última página --------------------------------
+// -- Selo regulatório (última página, ACIMA do rodapé Dominex) ----------------
+// O selo de conformidade + a linha da Lei ficam logo acima da faixa reservada
+// pro rodapé Dominex (FOOTER_RESERVED_H) pra não colidir com ele. Ancorado em
+// Y absoluto a partir do topo dessa faixa.
 async function drawFooterSeal(ctx: Ctx): Promise<void> {
   const { pdf, helv, helvBold, data } = ctx;
-  ensureSpace(ctx, 70);
+  // Garante que ainda há espaço acima da faixa do rodapé pro bloco do selo.
+  ensureSpace(ctx, 80);
+
   const sealText = "Conforme Lei Federal 13.589/2018";
   const sealSize = 9;
   const sealW = helvBold.widthOfTextAtSize(sealText, sealSize);
   const sealTextX = MARGIN_X + (CONTENT_W - sealW) / 2;
 
+  // Base do bloco logo acima da faixa reservada do rodapé Dominex.
+  const baseY = FOOTER_RESERVED_H + 8;
+
   ctx.page.drawText(
     `Documento gerado em ${safe(data.generated_at_extenso)}.`,
     {
       x: MARGIN_X,
-      y: 64,
+      y: baseY + 18,
       size: 7.5,
       font: helv,
       color: COLORS.gray,
@@ -735,7 +775,7 @@ async function drawFooterSeal(ctx: Ctx): Promise<void> {
   );
   ctx.page.drawText(sealText, {
     x: sealTextX,
-    y: 46,
+    y: baseY,
     size: sealSize,
     font: helvBold,
     color: COLORS.black,
@@ -744,7 +784,7 @@ async function drawFooterSeal(ctx: Ctx): Promise<void> {
   // Selo PNG de conformidade centralizado, logo acima do texto da lei.
   await drawComplianceSeal(pdf, ctx.page, {
     centerX: A4_W / 2,
-    baselineY: 46 + sealSize + 6,
+    baselineY: baseY + sealSize + 6,
     width: 50,
   });
 }

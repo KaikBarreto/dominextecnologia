@@ -798,8 +798,13 @@ Deno.serve(async (req) => {
     //    12 meses + registro de execução) passou a viver no fim do Dossiê. Os
     //    equipamentos, o plano (atividades+freq) e o resumo de execução entram
     //    no hash pra o cache invalidar quando qualquer um mudar.
+    //    Rodapé Dominex Planilha (2026-06): bump pra dossie_v13 — as páginas da
+    //    Planilha embutida ganharam o rodapé Dominex (linha + logo +
+    //    dominex.app) em toda página, oculto em white-label. O white_label já
+    //    está no hash (tenant.white_label), mas o bump força regen dos PDFs
+    //    cacheados sem o rodapé novo.
     const hashInput = JSON.stringify({
-      v: "dossie_v12",
+      v: "dossie_v13",
       tenant: {
         name: tenantName,
         cnpj,
@@ -996,6 +1001,9 @@ Deno.serve(async (req) => {
             }
           : null,
       generated_at_extenso: dateToExtenso(new Date()),
+      // Rodapé Dominex por página da Planilha embutida — oculto em white-label
+      // (mesmo `useWhiteLabel` do resto do Dossiê).
+      whiteLabel: useWhiteLabel,
     };
     await drawPlanilha(pdf, planilhaData);
 
