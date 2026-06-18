@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -22,7 +23,7 @@ import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
-import { usePmocActivityCatalog, type PmocCatalogActivity } from '@/hooks/usePmocActivityCatalog';
+import { usePmocActivityCatalog, type PmocCatalogActivity, PMOC_DEFAULT_SECTION } from '@/hooks/usePmocActivityCatalog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
 import { autoGeneratePmocDocsV1 } from '@/hooks/useGeneratePmocDocument';
@@ -208,7 +209,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { technicians: responsibleTechnicians, isLoading: rtLoading } = useResponsibleTechnicians({ activeOnly: true });
   // Catálogo PMOC (149 atividades da norma) — alimenta o picker por seção e a
   // pré-carga automática do plano padrão (seção condicionadores) num PMOC novo.
-  const { groups: catalogGroups, defaultSectionActivities, isLoading: catalogLoading } = usePmocActivityCatalog();
+  const { activities: catalogActivities, groups: catalogGroups, defaultSectionActivities, isLoading: catalogLoading } = usePmocActivityCatalog();
   const { toast } = useToast();
 
   const isEditing = !!editContract;
@@ -255,6 +256,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
   // Guarda contra re-empurrar o plano padrão PMOC mais de uma vez por abertura.
   const [pmocDefaultSeeded, setPmocDefaultSeeded] = useState(false);
+  // Controle EXPLÍCITO do padrão PMOC da norma (substitui a auto-carga silenciosa).
+  //  - pmocStandardOn: o plano recebe as atividades do catálogo (default ON num PMOC novo).
+  //  - pmocStandardScope: 'ac' = só condicionadores (~41) | 'all' = toda a norma (~149).
+  const [pmocStandardOn, setPmocStandardOn] = useState(true);
+  const [pmocStandardScope, setPmocStandardScope] = useState<'ac' | 'all'>('ac');
 
   // Step 3
   const [selectedItems, setSelectedItems] = useState<{ equipment_id?: string; item_name: string; item_description?: string; form_template_id?: string }[]>([]);
@@ -290,6 +296,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setStep(0);
       setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
       setShowCatalogPicker(false); setPickerSelection(new Set()); setPmocDefaultSeeded(false);
+      setPmocStandardOn(true); setPmocStandardScope('ac');
       return;
     }
 
@@ -355,6 +362,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setPlanActivities([]); setInitialPlanSig(''); setNewActivityDesc(''); setNewActivityFreq('M');
+      // Contrato novo: padrão da norma LIGADO, escopo só ar-condicionado (default).
+      setPmocStandardOn(true); setPmocStandardScope('ac');
       setSelectedItems([]);
       // Default: contrato comum.
       setIsPmoc(false);
@@ -387,6 +396,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     }));
     setPlanActivities(rows);
     setInitialPlanSig(planSigOf(rows));
+    // Reflete (sem re-empurrar) o estado do controle de padrão a partir do que
+    // já está salvo: se há linhas do catálogo, o toggle aparece LIGADO; o escopo
+    // é inferido (alguma seção fora de condicionadores → "Tudo da norma").
+    const catalogRows = rows.filter(r => !!r.catalog_activity_id);
+    setPmocStandardOn(catalogRows.length > 0);
+    const hasNonCondicionadores = catalogRows.some(r => r.section && r.section !== PMOC_DEFAULT_SECTION);
+    setPmocStandardScope(hasNonCondicionadores ? 'all' : 'ac');
   }, [open, editContract, existingPlan]);
 
   const customerOptions = useMemo(() =>
@@ -428,22 +444,63 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setNewActivityFreq('M');
   };
 
-  // PMOC nasce com o plano padrão da norma (Fase 2). Quando o contrato é marcado
-  // PMOC E o plano está vazio, pré-carrega as atividades da seção universal
-  // (condicionadores — split/AC) com as frequências default. Ponto de partida
-  // editável. Guards:
-  //  - só PMOC, só plano vazio, catálogo já carregado;
-  //  - `pmocDefaultSeeded` impede re-empurrar na mesma abertura (ex: o gestor
-  //    apagar tudo de propósito não deve fazer reaparecer);
-  //  - em edição de PMOC que já tem plano, o plano não está vazio → não duplica.
+  // Atividades do catálogo correspondentes a cada escopo do padrão PMOC:
+  //  - 'ac'  → só a seção condicionadores (split/AC), ~41 atividades.
+  //  - 'all' → toda a norma (todas as seções), ~149 atividades.
+  const standardScopeActivities = (scope: 'ac' | 'all'): PmocCatalogActivity[] =>
+    scope === 'all' ? catalogActivities : defaultSectionActivities;
+
+  // Aplica o padrão da norma (escopo dado) ao plano, SUBSTITUINDO apenas as
+  // linhas vindas do catálogo e PRESERVANDO as linhas manuais (sem
+  // catalog_activity_id). Dedup por catalog_activity_id evita duplicar.
+  const applyStandardPlan = (scope: 'ac' | 'all') => {
+    setPlanActivities(prev => {
+      const manual = prev.filter(a => !a.catalog_activity_id);
+      const seen = new Set<string>();
+      const catalogRows: PlanActivityRow[] = [];
+      for (const act of standardScopeActivities(scope)) {
+        if (seen.has(act.id)) continue;
+        seen.add(act.id);
+        catalogRows.push(catalogToPlanRow(act));
+      }
+      return [...catalogRows, ...manual];
+    });
+  };
+
+  // Remove do plano as linhas vindas do catálogo, mantendo as manuais.
+  const removeStandardPlan = () => {
+    setPlanActivities(prev => prev.filter(a => !a.catalog_activity_id));
+  };
+
+  // Liga/desliga o padrão da norma (Switch explícito). Desligar remove as linhas
+  // do catálogo; religar recarrega o escopo selecionado.
+  const handleStandardToggle = (on: boolean) => {
+    setPmocStandardOn(on);
+    if (on) applyStandardPlan(pmocStandardScope);
+    else removeStandardPlan();
+  };
+
+  // Troca o escopo (LabeledSwitch). Substitui as linhas do catálogo pelas do
+  // novo escopo; manuais ficam.
+  const handleStandardScope = (scope: 'ac' | 'all') => {
+    setPmocStandardScope(scope);
+    if (pmocStandardOn) applyStandardPlan(scope);
+  };
+
+  // Seed inicial do padrão da norma num contrato PMOC NOVO. Substitui a antiga
+  // auto-carga silenciosa: agora o estado inicial vem do Switch (default ON) +
+  // escopo (default 'ac'). Guards:
+  //  - só em contrato novo (edição reflete o plano salvo, nunca re-empurra);
+  //  - só PMOC, com o padrão ligado, catálogo carregado;
+  //  - `pmocDefaultSeeded` impede re-empurrar na mesma abertura (ex: gestor que
+  //    apagou tudo de propósito não vê reaparecer).
   useEffect(() => {
     if (!open || isEditing) return; // só em contrato novo; edição não re-empurra
-    if (!isPmoc || pmocDefaultSeeded) return;
+    if (!isPmoc || !pmocStandardOn || pmocDefaultSeeded) return;
     if (catalogLoading || defaultSectionActivities.length === 0) return;
-    if (planActivities.length > 0) return;
-    setPlanActivities(defaultSectionActivities.map(catalogToPlanRow));
+    applyStandardPlan(pmocStandardScope);
     setPmocDefaultSeeded(true);
-  }, [open, isEditing, isPmoc, pmocDefaultSeeded, catalogLoading, defaultSectionActivities, planActivities.length]);
+  }, [open, isEditing, isPmoc, pmocStandardOn, pmocStandardScope, pmocDefaultSeeded, catalogLoading, defaultSectionActivities.length, catalogActivities.length]);
 
   // Abre o picker do catálogo já com as linhas vindas do catálogo pré-marcadas
   // (evita duplicar uma atividade que o gestor já adicionou).
@@ -1148,16 +1205,48 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     Quando houver serviços aqui, o sistema gera <strong>1 visita por mês</strong> agrupando tudo que vence,
                     ignorando a frequência única acima.
                   </p>
-                  {isPmoc && (
-                    <p className="text-xs text-info mt-1 flex items-start gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                      <span>
-                        Pré-carregamos as atividades de Condicionadores de Ar conforme a norma (Lei 13.589/2018).
-                        É um <strong>ponto de partida editável</strong> — ajuste a frequência, remova ou adicione mais do catálogo.
-                      </span>
-                    </p>
-                  )}
                 </div>
+
+                {/* Controle explícito do padrão PMOC da norma (substitui a
+                    auto-carga silenciosa). Nível 1: ligar/desligar o padrão.
+                    Nível 2 (só quando ligado): escopo ar-condicionado vs. tudo. */}
+                {isPmoc && (
+                  <div className="rounded-lg border border-info/30 bg-info/5 p-3 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Switch
+                        checked={pmocStandardOn}
+                        onCheckedChange={handleStandardToggle}
+                        aria-label="Usar padrão PMOC da norma"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <Label className="flex items-center gap-2">
+                          <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                          Usar padrão PMOC da norma (atividades + checklists)
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Pré-carrega as atividades da norma (Lei 13.589/2018) como ponto de partida editável.
+                          Os serviços adicionados à mão são sempre preservados.
+                        </p>
+                      </div>
+                    </div>
+
+                    {pmocStandardOn && (
+                      <div className="flex flex-col gap-2 pl-1 animate-in fade-in slide-in-from-top-1 duration-200 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Escopo do padrão</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <LabeledSwitch
+                            value={pmocStandardScope}
+                            onChange={handleStandardScope}
+                            off={{ value: 'ac', label: `Só ar-condicionado (${defaultSectionActivities.length || '~41'})` }}
+                            on={{ value: 'all', label: `Tudo da norma (${catalogActivities.length || '~149'})` }}
+                            size="default"
+                            aria-label="Escopo do padrão PMOC"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Picker do catálogo PMOC (Fase 2). Disponível em qualquer
                     contrato; a auto-carga só acontece no PMOC. */}
