@@ -35,6 +35,7 @@ import {
   useModelIdsWithErrorCodes,
   useAllModelsWithBrand,
   useAllErrorCodesWithModel,
+  rotuloManual,
   type EquipmentBrand,
   type EquipmentModel,
   type EquipmentDomain,
@@ -1865,7 +1866,7 @@ function ModelCard({
                 className="w-full"
               >
                 <Download className="h-4 w-4 shrink-0" />
-                <span className="truncate">Baixar manual</span>
+                <span className="truncate">{rotuloManual(model.manual_type)}</span>
               </Button>
             ) : (
               <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
@@ -1887,7 +1888,9 @@ function ModelCard({
                 className="w-full"
               >
                 <FileText className="h-4 w-4 shrink-0" />
-                <span className="truncate">Datasheet</span>
+                <span className="truncate">
+                  {model.manual_type ? rotuloManual(model.manual_type) : 'Datasheet'}
+                </span>
               </Button>
             ) : (
               <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">

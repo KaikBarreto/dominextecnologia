@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.38',
+    date: '17 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Diagnóstico passo a passo e Solução nos códigos de erro',
+        description: 'Cada código de erro do Catálogo de Equipamentos agora traz um diagnóstico em passos — o que verificar e o que fazer, do mais provável e barato ao mais caro — e uma seção "Solução" com a ação final. Vale para ar-condicionado e linha branca (geladeiras e lavadoras), pensado para resolver mais rápido no campo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Compressores de câmara frigorífica no catálogo',
+        description: 'A seção de Compressores ganhou os modelos de refrigeração comercial e câmara frigorífica (Bitzer, Copeland, Danfoss/Maneurop e outros), separados por tipo (semi-hermético, scroll), com a aplicação (baixa ou média temperatura), o gás e a ficha técnica.',
+        category: 'recurso',
+      },
+      {
+        title: 'Consumo de energia revisado',
+        description: 'Revisamos a potência (W) e o consumo (kWh/mês) de todos os ares-condicionados e geladeiras do catálogo, corrigindo valores fora do padrão para ficarem coerentes por capacidade e tecnologia — inverter consumindo menos que convencional de mesma capacidade.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tipo do manual em destaque',
+        description: 'Cada equipamento agora indica que tipo de manual está disponível — Instalação, Serviço, Usuário, Guia Rápido ou Datasheet — direto no botão de download.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.37',
     date: '17 de junho de 2026',
     type: 'patch',

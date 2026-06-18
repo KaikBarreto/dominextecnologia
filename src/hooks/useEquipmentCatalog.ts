@@ -42,6 +42,12 @@ export interface EquipmentModel {
   code: string | null;
   image_url: string | null;
   manual_url: string | null;
+  /**
+   * Tipo do manual/documento ligado ao modelo: 'instalacao' | 'servico' |
+   * 'usuario' | 'guia' | 'datasheet'. Null/desconhecido cai no rótulo genérico.
+   * Usado pra rotular o botão de download (ver `rotuloManual`).
+   */
+  manual_type?: string | null;
   /** Gás refrigerante do modelo (ex.: 'R-32', 'R-410A'); null quando não cadastrado. */
   refrigerant: string | null;
   /** Consumo mensal OFICIAL (Procel/INMETRO) em kWh/mês; null quando não cadastrado. */
@@ -61,6 +67,27 @@ export interface EquipmentModel {
   brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
   /** Hidratado nas queries que fazem join com a categoria (tipo do equipamento). */
   category?: EquipmentModelCategory | null;
+}
+
+/**
+ * Rótulo amigável (PT-BR) do botão de download conforme o `manual_type`.
+ * Tipos desconhecidos/null caem no genérico "Baixar Manual".
+ */
+export function rotuloManual(manualType: string | null | undefined): string {
+  switch (manualType) {
+    case 'instalacao':
+      return 'Manual de Instalação';
+    case 'servico':
+      return 'Manual de Serviço';
+    case 'usuario':
+      return 'Manual do Usuário';
+    case 'guia':
+      return 'Guia Rápido';
+    case 'datasheet':
+      return 'Datasheet';
+    default:
+      return 'Baixar Manual';
+  }
 }
 
 export interface EquipmentErrorCode {
@@ -137,7 +164,7 @@ export function useEquipmentModelsByBrand(
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, category:equipment_model_categories(id, name)',
         )
         .eq('brand_id', brandId as string)
         .eq('domain', domain)
@@ -157,7 +184,7 @@ export function useEquipmentModel(modelId: string | null | undefined) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('id', modelId as string)
         .maybeSingle();
@@ -180,7 +207,7 @@ export function useEquipmentModelsByCode(term: string) {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, domain, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .ilike('code', `%${trimmed}%`)
         .order('name', { ascending: true })
@@ -203,7 +230,7 @@ export function useAllModelsWithBrand(domain: string = 'ar_condicionado') {
       const { data, error } = await supabase
         .from('equipment_models')
         .select(
-          'id, brand_id, category_id, name, code, image_url, manual_url, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
+          'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name)',
         )
         .eq('domain', domain)
         .order('name', { ascending: true });

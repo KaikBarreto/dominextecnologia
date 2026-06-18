@@ -9,6 +9,7 @@ import { RefrigeranteInflamavel } from './RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
 import {
   useCompressorSpec,
+  rotuloManual,
   type EquipmentModel,
 } from '@/hooks/useEquipmentCatalog';
 
@@ -171,7 +172,7 @@ export function CompressorFicha({
           }
         >
           <Download className="h-4 w-4" />
-          Datasheet
+          {model.manual_type ? rotuloManual(model.manual_type) : 'Datasheet'}
         </Button>
       )}
 
