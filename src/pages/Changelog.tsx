@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.6',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criar cotação de compra mais rápido',
+        description: 'Na compra, criar uma cotação agora é um único botão "Nova cotação" que abre tudo numa tela só: você escolhe (ou cadastra na hora) o fornecedor e já preenche os preços dos materiais — informando o valor unitário ou o total. Antes era preciso adicionar o fornecedor e depois editar os preços em uma etapa separada.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.5',
     date: '19 de junho de 2026',
     type: 'patch',

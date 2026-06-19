@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
@@ -17,8 +16,7 @@ import { unitLabel } from '@/lib/inventoryUnits';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useCompras, type CompraListRow, type CompraMaterial } from '@/hooks/useCompras';
 import { useCompraCotacoes, type CotacaoRow } from '@/hooks/useCompraCotacoes';
-import { SupplierFormDialog } from './SupplierFormDialog';
-import { CotacaoPriceSheet } from './CotacaoPriceSheet';
+import { CotacaoDialog } from './CotacaoDialog';
 
 interface CompraDetailViewProps {
   compra: CompraListRow;
@@ -46,12 +44,11 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   const { suppliers } = useSuppliers();
   const { loadCompra, setStatus, deleteCompra } = useCompras();
   const {
-    cotacoes, isLoading, createCotacao, decideCotacao, deleteCotacao, registerStockEntry,
+    cotacoes, isLoading, decideCotacao, deleteCotacao, registerStockEntry,
   } = useCompraCotacoes(compra.id);
 
   const [materials, setMaterials] = useState<CompraMaterial[]>([]);
-  const [addSupplierId, setAddSupplierId] = useState('');
-  const [quickOpen, setQuickOpen] = useState(false);
+  const [newCotacaoOpen, setNewCotacaoOpen] = useState(false);
   const [sheetFor, setSheetFor] = useState<CotacaoRow | null>(null);
   const [toRefuse, setToRefuse] = useState<CotacaoRow | null>(null);
   const [toDelete, setToDelete] = useState<CotacaoRow | null>(null);
@@ -85,12 +82,6 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
     }
     return best;
   }, [cotacoes]);
-
-  const handleAddCotacao = async () => {
-    if (!addSupplierId) return;
-    await createCotacao.mutateAsync(addSupplierId);
-    setAddSupplierId('');
-  };
 
   const meta = COMPRA_STATUS[compra.status] ?? COMPRA_STATUS.aberta;
 
@@ -166,39 +157,18 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
 
       {/* Cotações por fornecedor */}
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Cotações</h3>
-
-        {/* Adicionar cotação */}
-        <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-2 sm:flex-row sm:items-center">
-          <div className="flex-1">
-            <SearchableSelect
-              options={availableSuppliers}
-              value={addSupplierId}
-              onValueChange={setAddSupplierId}
-              placeholder="Escolher fornecedor..."
-              searchPlaceholder="Buscar fornecedor..."
-              emptyMessage="Todos os fornecedores já têm cotação."
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="gap-1.5" onClick={() => setQuickOpen(true)}>
-              <Plus className="h-4 w-4" /> Novo
-            </Button>
-            <Button
-              className="gap-1.5"
-              onClick={handleAddCotacao}
-              disabled={!addSupplierId || createCotacao.isPending}
-            >
-              <Plus className="h-4 w-4" /> Adicionar
-            </Button>
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Cotações</h3>
+          <Button size="sm" className="gap-1.5" onClick={() => setNewCotacaoOpen(true)}>
+            <Plus className="h-4 w-4" /> Nova cotação
+          </Button>
         </div>
 
         {isLoading ? (
           <p className="py-4 text-center text-sm text-muted-foreground">Carregando cotações...</p>
         ) : cotacoes.length === 0 ? (
           <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-            Nenhuma cotação ainda. Escolha um fornecedor acima para começar a comparar preços.
+            Nenhuma cotação ainda. Toque em "Nova cotação" para começar a comparar preços.
           </p>
         ) : (
           <div className="space-y-2">
@@ -310,9 +280,18 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
         )}
       </section>
 
-      {/* Planilha de preços */}
+      {/* Nova cotação (fornecedor + preços num fluxo só) */}
+      <CotacaoDialog
+        open={newCotacaoOpen}
+        onOpenChange={setNewCotacaoOpen}
+        compraId={compra.id}
+        materials={materials}
+        availableSuppliers={availableSuppliers}
+      />
+
+      {/* Editar/ver preços de cotação existente (fornecedor fixo) */}
       {sheetFor && (
-        <CotacaoPriceSheet
+        <CotacaoDialog
           open={!!sheetFor}
           onOpenChange={(o) => !o && setSheetFor(null)}
           compraId={compra.id}
@@ -320,13 +299,6 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
           materials={materials}
         />
       )}
-
-      {/* Quick fornecedor */}
-      <SupplierFormDialog
-        open={quickOpen}
-        onOpenChange={setQuickOpen}
-        onCreated={(s) => setAddSupplierId(s.id)}
-      />
 
       {/* Recusar cotação */}
       <AlertDialog open={!!toRefuse} onOpenChange={(o) => !o && setToRefuse(null)}>

@@ -100,6 +100,54 @@ export function useCompraCotacoes(compraId: string | null) {
     },
   });
 
+  // ---- Criar cotação + gravar preços de uma vez (fluxo do modal de nova cotação) ----
+  const createCotacaoWithPrices = useMutation({
+    mutationFn: async ({
+      supplierId,
+      prices,
+    }: {
+      supplierId: string;
+      prices: { compra_material_id: string; unit_price: number }[];
+    }) => {
+      if (!companyId) throw new Error('Usuário sem empresa associada. Contate o administrador.');
+      if (!compraId) throw new Error('Compra inválida.');
+      const { data: cot, error: cErr } = await supabase
+        .from('compra_cotacoes')
+        .insert({
+          company_id: companyId,
+          compra_id: compraId,
+          supplier_id: supplierId,
+          status: 'pendente',
+        })
+        .select()
+        .single();
+      if (cErr) throw cErr;
+      const cotacao = cot as CompraCotacao;
+
+      const valid = prices.filter((p) => p.unit_price > 0);
+      if (valid.length > 0) {
+        const { error: iErr } = await supabase.from('compra_cotacao_precos').insert(
+          valid.map((p) => ({
+            company_id: companyId,
+            cotacao_id: cotacao.id,
+            compra_material_id: p.compra_material_id,
+            unit_price: p.unit_price,
+          })),
+        );
+        if (iErr) throw iErr;
+      }
+      return cotacao;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compra-cotacoes', compraId] });
+      queryClient.invalidateQueries({ queryKey: ['compras'] });
+      toast({ title: 'Cotação criada!' });
+    },
+    onError: (error) => {
+      toast({ title: 'Erro ao criar cotação', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+
   // ---- Carregar preços de uma cotação (compra_material_id → unit_price) ----
   const loadPrices = async (cotacaoId: string): Promise<CompraCotacaoPreco[]> => {
     const { data, error } = await supabase
@@ -284,6 +332,7 @@ export function useCompraCotacoes(compraId: string | null) {
     isLoading: listQuery.isLoading,
     error: listQuery.error,
     createCotacao,
+    createCotacaoWithPrices,
     loadPrices,
     savePrices,
     decideCotacao,
