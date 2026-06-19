@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.5',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configurar campos do equipamento mais completo',
+        description: 'A tela de configurar campos do equipamento foi repaginada: arraste para reordenar os campos, crie campos do tipo lista de opções (com os valores que você definir), edite o tipo de um campo já criado e marque campos como obrigatórios — agora exigidos de verdade no cadastro. Renomear ficou mais claro e, no celular, dá para configurar os campos direto pela tela de Equipamentos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Campos personalizados no Portal do Cliente',
+        description: 'Os campos personalizados que você cadastra no equipamento agora também aparecem no Portal do Cliente, com o nome e a ordem que você definiu.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Emissão de NFS-e mais simples',
+        description: 'Ao salvar os dados da empresa nas configurações fiscais, o registro para emissão passa a ser feito automaticamente. Os impostos por nota saíram da configuração da empresa e agora cada serviço guarda os próprios códigos fiscais: ao emitir uma nota, basta escolher o serviço que os códigos vêm preenchidos — e se você completar algum na hora, ele fica salvo no serviço para a próxima vez.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.4',
     date: '19 de junho de 2026',
     type: 'patch',

@@ -93,6 +93,26 @@ export function useServiceTypes() {
     },
   });
 
+  /**
+   * Gap-fill silencioso dos campos fiscais de um tipo de serviço (sem toast).
+   * Usado na emissão de NFS-e: quando o usuário completa códigos que estavam
+   * vazios no serviço, gravamos de volta pra próxima emissão já puxar tudo.
+   * Falha não atrapalha o fluxo de quem chamou (devolve sucesso/erro).
+   */
+  const gapFillServiceTypeFiscal = async (
+    id: string,
+    fields: Partial<Pick<ServiceTypeInput, 'codigo_servico' | 'codigo_nbs' | 'iss_aliquota' | 'item_lc116'>>,
+  ): Promise<boolean> => {
+    if (Object.keys(fields).length === 0) return true;
+    const { error } = await supabase
+      .from('service_types')
+      .update(fields as any)
+      .eq('id', id);
+    if (error) return false;
+    queryClient.invalidateQueries({ queryKey: ['service-types'] });
+    return true;
+  };
+
   const deleteServiceType = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -115,6 +135,7 @@ export function useServiceTypes() {
     isLoading,
     createServiceType,
     updateServiceType,
+    gapFillServiceTypeFiscal,
     deleteServiceType,
   };
 }

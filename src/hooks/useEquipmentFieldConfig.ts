@@ -77,11 +77,29 @@ export function useEquipmentFieldConfig() {
     },
   });
 
+  // Persiste a nova ordem (coluna position) — espelha useReorderSections do Domiflix.
+  const reorderFields = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      await Promise.all(
+        orderedIds.map((id, index) =>
+          supabase.from('equipment_field_config').update({ position: index }).eq('id', id)
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment-field-config'] });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao reordenar campos', description: getErrorMessage(error) });
+    },
+  });
+
   return {
     fields: fieldsQuery.data ?? [],
     isLoading: fieldsQuery.isLoading,
     updateField,
     createField,
     deleteField,
+    reorderFields,
   };
 }

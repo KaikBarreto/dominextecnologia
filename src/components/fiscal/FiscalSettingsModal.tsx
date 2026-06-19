@@ -11,6 +11,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Info,
+  Landmark,
   Eye,
   EyeOff,
   type LucideIcon,
@@ -38,7 +39,6 @@ import {
 } from '@/hooks/useFiscalSettings';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { invokeFisqal } from '@/utils/fisqalEdge';
-import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 
@@ -61,7 +61,7 @@ interface FiscalSettingsModalProps {
 const SECTIONS: { value: FiscalSettingsSection; label: string; icon: LucideIcon; step: number }[] = [
   { value: 'empresa', label: 'Empresa', icon: Building2, step: 1 },
   { value: 'certificado', label: 'Certificado A1', icon: Shield, step: 2 },
-  { value: 'impostos', label: 'Impostos', icon: Info, step: 3 },
+  { value: 'impostos', label: 'Tributação', icon: Landmark, step: 3 },
 ];
 
 const REGIMES = [
@@ -117,14 +117,6 @@ const EMPTY_FORM: FiscalForm = {
   uf: '',
 };
 
-/** Converte string crua → number ou null (sem prender 0). */
-function num(s: string): number | null {
-  const t = s.trim().replace(',', '.');
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-}
-
 function formatDate(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
@@ -159,11 +151,6 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
   const [certName, setCertName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [uploadingCert, setUploadingCert] = useState(false);
-
-  // Ações de onboarding
-  const [registering, setRegistering] = useState(false);
-  const [checkingCoverage, setCheckingCoverage] = useState(false);
-  const [coverageResult, setCoverageResult] = useState<{ pode: boolean; municipio: string | null } | null>(null);
 
   // Aplica a seção inicial sempre que o modal abre.
   useEffect(() => {
@@ -210,16 +197,14 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     }
   }, [isLoadingCompany, companySettings]);
 
-  // Salva impostos / ambiente (company_fiscal_settings via useFiscalSettings).
+  // Salva tributação / ambiente (company_fiscal_settings via useFiscalSettings).
+  // Códigos por-nota (ISS, serviço, NBS, LC 116) saíram daqui — passaram a ser
+  // definidos no cadastro do serviço e na emissão (outra frente).
   const handleSave = async () => {
     const payload: Partial<FiscalSettingsEditable> = {
       regime_tributario: form.regime_tributario || null,
       inscricao_municipal: form.inscricao_municipal.trim() || null,
       inscricao_estadual: form.inscricao_estadual.trim() || null,
-      codigo_servico_default: form.codigo_servico_default.trim() || null,
-      codigo_nbs_default: form.codigo_nbs_default.trim() || null,
-      item_lc116: form.item_lc116.trim() || null,
-      iss_aliquota: num(form.iss_aliquota),
       municipio_ibge: form.municipio_ibge.trim() || null,
       fiscal_ambiente: form.fiscal_ambiente,
     };
@@ -261,6 +246,29 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         save(fiscalPayload),
       ]);
       toast.success('Dados da empresa salvos.');
+
+      // Após salvar, registra/atualiza a empresa na Fisqal automaticamente
+      // (cria na 1ª vez, atualiza nas demais). Falha aqui NÃO derruba o fluxo:
+      // o save já confirmou sucesso, então só avisamos.
+      try {
+        const res = await invokeFisqal('fisqal-register-company');
+        if (!res.ok) {
+          toast.warning(
+            `Dados salvos, mas o registro para emissão falhou: ${
+              res.message ?? 'erro desconhecido'
+            }. Revise os dados e salve novamente.`,
+          );
+        }
+      } catch (regErr) {
+        toast.warning(
+          `Dados salvos, mas o registro para emissão falhou: ${
+            regErr instanceof Error ? regErr.message : 'erro desconhecido'
+          }. Revise os dados e salve novamente.`,
+        );
+      } finally {
+        // Atualiza isRegistered / status da emissão na UI.
+        invalidate();
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Não foi possível salvar os dados da empresa.');
     }
@@ -331,43 +339,6 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       invalidate();
     } finally {
       setUploadingCert(false);
-    }
-  };
-
-  const handleRegisterCompany = async () => {
-    setRegistering(true);
-    try {
-      const res = await invokeFisqal('fisqal-register-company');
-      if (!res.ok) {
-        toast.error(res.message ?? 'Não foi possível ativar a emissão de notas.');
-        return;
-      }
-      toast.success(res.message ?? 'Emissão de notas ativada com sucesso.');
-      invalidate();
-    } finally {
-      setRegistering(false);
-    }
-  };
-
-  const handleCheckCoverage = async () => {
-    const ibge = form.municipio_ibge.trim();
-    setCheckingCoverage(true);
-    setCoverageResult(null);
-    try {
-      const res = await invokeFisqal<{ pode_emitir?: boolean; municipio?: string | null }>(
-        'fisqal-check-coverage',
-        ibge ? { ibge } : undefined,
-      );
-      if (!res.ok) {
-        toast.error(res.message ?? 'Falha ao verificar a cobertura.');
-        return;
-      }
-      const pode = res.data?.pode_emitir === true;
-      setCoverageResult({ pode, municipio: res.data?.municipio ?? null });
-      if (res.message) (pode ? toast.success : toast.warning)(res.message);
-      invalidate();
-    } finally {
-      setCheckingCoverage(false);
     }
   };
 
@@ -470,38 +441,6 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     placeholder="00.000.000/0000-00"
                     value={form.cnpj}
                     onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Regime tributário</Label>
-                  <Select
-                    value={form.regime_tributario}
-                    onValueChange={(v) => setForm((p) => ({ ...p, regime_tributario: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {REGIMES.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>
-                          {r.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Inscrição Municipal</Label>
-                  <Input
-                    value={form.inscricao_municipal}
-                    onChange={(e) => setForm((p) => ({ ...p, inscricao_municipal: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Inscrição Estadual</Label>
-                  <Input
-                    value={form.inscricao_estadual}
-                    onChange={(e) => setForm((p) => ({ ...p, inscricao_estadual: e.target.value }))}
                   />
                 </div>
               </div>
@@ -635,71 +574,6 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 </div>
               </div>
 
-              {/* Registrar empresa na Fisqal (precede o certificado).
-                  Edge fisqal-register-company; só depois o certificado é liberado.
-                  Botão ÚNICO — não duplicar. */}
-              <div className="flex flex-col gap-2 rounded-lg border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Registrar empresa para emissão</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {isRegistered
-                        ? 'Empresa registrada — já pode subir o certificado.'
-                        : 'Salve os dados acima e registre a empresa antes do certificado.'}
-                    </p>
-                  </div>
-                  {isRegistered && <CheckCircle2 className="h-5 w-5 text-success shrink-0" />}
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={handleRegisterCompany}
-                  disabled={registering}
-                  className="w-full sm:w-auto"
-                >
-                  {registering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Building2 className="h-4 w-4 mr-2" />}
-                  {isRegistered ? 'Atualizar registro da empresa' : 'Registrar empresa'}
-                </Button>
-              </div>
-
-              {/* Cobertura do município (realocado da antiga aba "Ativação"). */}
-              <div className="flex flex-col gap-2 rounded-lg border p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Cobertura do município</p>
-                  <p className="text-xs text-muted-foreground">
-                    Confere se o seu município já emite NFS-e pela integração.
-                  </p>
-                </div>
-                {coverageResult && (
-                  <Alert
-                    className={
-                      coverageResult.pode
-                        ? 'border-success/40 bg-success/10'
-                        : 'border-destructive/40 bg-destructive/10'
-                    }
-                  >
-                    {coverageResult.pode ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4" />
-                    )}
-                    <AlertDescription className="text-xs">
-                      {coverageResult.pode
-                        ? `${coverageResult.municipio ?? 'Seu município'} já permite emissão de NFS-e.`
-                        : `${coverageResult.municipio ?? 'Seu município'} ainda não permite emissão de NFS-e.`}
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={handleCheckCoverage}
-                  disabled={checkingCoverage}
-                  className="w-full sm:w-auto"
-                >
-                  {checkingCoverage ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}
-                  Verificar cobertura
-                </Button>
-              </div>
-
               {isRegistered && (
                 <Button onClick={() => setSection('certificado')} className="w-full sm:w-auto">
                   Próximo: enviar certificado <ArrowRight className="h-4 w-4 ml-2" />
@@ -708,63 +582,47 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             </div>
           )}
 
-          {/* ---- Seção: Impostos ---- */}
+          {/* ---- Seção: Tributação ---- */}
           {section === 'impostos' && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Alíquota de ISS (%)</Label>
-                  <Input
-                    inputMode="decimal"
-                    placeholder="Ex: 5"
-                    value={form.iss_aliquota}
-                    onChange={(e) => setForm((p) => ({ ...p, iss_aliquota: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Código de serviço</Label>
-                  <TaxCodeCombobox
-                    type="servico"
-                    value={form.codigo_servico_default}
-                    onSelect={(codigo, item) =>
-                      setForm((p) => ({
-                        ...p,
-                        codigo_servico_default: codigo,
-                        // Preenche o item da LC 116 quando o código traz essa info.
-                        item_lc116: item?.itemLc116 ? String(item.itemLc116) : p.item_lc116,
-                      }))
-                    }
-                    placeholder="Buscar por código ou descrição..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Digite o código ou parte da descrição para buscar.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Código NBS</Label>
-                  <TaxCodeCombobox
-                    type="nbs"
-                    value={form.codigo_nbs_default}
-                    onSelect={(codigo) => setForm((p) => ({ ...p, codigo_nbs_default: codigo }))}
-                    placeholder="Digite ao menos 2 caracteres..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Opcional. Busca por código ou descrição (mín. 2 caracteres).
-                  </p>
-                </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Item da LC 116</Label>
+                  <Label>Regime tributário</Label>
+                  <Select
+                    value={form.regime_tributario}
+                    onValueChange={(v) => setForm((p) => ({ ...p, regime_tributario: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REGIMES.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Inscrição Municipal</Label>
                   <Input
-                    placeholder="Ex: 14.01"
-                    value={form.item_lc116}
-                    onChange={(e) => setForm((p) => ({ ...p, item_lc116: e.target.value }))}
+                    value={form.inscricao_municipal}
+                    onChange={(e) => setForm((p) => ({ ...p, inscricao_municipal: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Inscrição Estadual</Label>
+                  <Input
+                    value={form.inscricao_estadual}
+                    onChange={(e) => setForm((p) => ({ ...p, inscricao_estadual: e.target.value }))}
                   />
                 </div>
               </div>
 
               <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
                 {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Salvar impostos
+                Salvar tributação
               </Button>
             </div>
           )}

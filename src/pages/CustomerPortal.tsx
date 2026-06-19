@@ -70,6 +70,18 @@ interface Equipment {
   status: string;
   photo_url: string | null;
   identifier: string | null;
+  // Mapa field_key → valor dos campos custom (jsonb). Vem `{}` quando vazio.
+  custom_fields?: Record<string, any> | null;
+}
+
+// Configuração de campos visíveis da empresa (vem do payload do RPC, ordenada por position).
+// Inclui campos built-in (coluna do equipment) E custom (vivem em custom_fields).
+interface FieldConfig {
+  field_key: string;
+  label: string;
+  field_type: string;
+  position: number;
+  options: string[] | null;
 }
 
 interface ServiceOrder {
@@ -122,7 +134,20 @@ interface PortalPayload {
   company_settings: CompanySettings | null;
   equipment: Equipment[];
   service_orders: ServiceOrder[];
+  // Campos visíveis configurados pela empresa (built-in + custom), ordenados por position.
+  // Opcional: payloads antigos em cache podem não trazer → fallback pros campos fixos.
+  equipment_field_config?: FieldConfig[];
 }
+
+// field_key built-in → propriedade de topo do objeto Equipment do portal.
+// Espelha builtInFieldKeys/fieldKeyToName do EquipmentFormDialog, mas só os campos
+// que o payload do portal carrega (capacity/install_date não vêm no Equipment do portal).
+const BUILT_IN_FIELD_KEYS: Record<string, keyof Equipment> = {
+  brand: 'brand',
+  model: 'model',
+  serial_number: 'serial_number',
+  location: 'location',
+};
 
 export default function CustomerPortal() {
   const { token } = useParams<{ token: string }>();
@@ -133,6 +158,7 @@ export default function CustomerPortal() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [equipmentFieldConfig, setEquipmentFieldConfig] = useState<FieldConfig[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -221,6 +247,7 @@ export default function CustomerPortal() {
       setCustomer(payload.customer);
       setCompanySettings(payload.company_settings ?? null);
       setEquipment(payload.equipment ?? []);
+      setEquipmentFieldConfig(payload.equipment_field_config ?? []);
       setServiceOrders(payload.service_orders ?? []);
     } catch {
       setError('Erro ao carregar portal.');
@@ -282,6 +309,43 @@ export default function CustomerPortal() {
   const equipmentOrders = selectedEquipment
     ? serviceOrders.filter(os => (os as any).equipment_id === selectedEquipment)
     : [];
+
+  // Formata o valor de um campo conforme o tipo configurado pela empresa.
+  // boolean: aceita true/false e strings 'sim'/'nao' (defensivo); date: BR (UTC-3).
+  const formatFieldValue = (value: any, fieldType: string): string => {
+    if (fieldType === 'boolean') {
+      const truthy = value === true || value === 'sim' || value === 'true' || value === 1;
+      return truthy ? 'Sim' : 'Não';
+    }
+    if (fieldType === 'date') {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return String(value);
+      return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    }
+    return String(value);
+  };
+
+  // Linhas a renderizar no detalhe do equipamento, derivadas da config da empresa
+  // (ordenada por position). Resolve built-in (propriedade de topo) vs custom
+  // (custom_fields[field_key]) e pula valores vazios.
+  const buildDetailRows = (eq: Equipment) => {
+    return [...equipmentFieldConfig]
+      .sort((a, b) => a.position - b.position)
+      .map((fc) => {
+        const builtInProp = BUILT_IN_FIELD_KEYS[fc.field_key];
+        const rawValue = builtInProp
+          ? eq[builtInProp]
+          : eq.custom_fields?.[fc.field_key];
+        return { fc, rawValue };
+      })
+      .filter(({ rawValue, fc }) => {
+        // boolean false ainda é um valor válido a exibir ("Não"); demais: pula vazio.
+        if (fc.field_type === 'boolean') {
+          return rawValue !== null && rawValue !== undefined && rawValue !== '';
+        }
+        return rawValue !== null && rawValue !== undefined && String(rawValue).trim() !== '';
+      });
+  };
 
   if (loading) {
     return (
@@ -550,23 +614,46 @@ export default function CustomerPortal() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
-                    {selectedEq.serial_number && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Nº Série</span>
-                        <span className="font-mono">{selectedEq.serial_number}</span>
-                      </div>
-                    )}
-                    {selectedEq.identifier && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Identificador</span>
-                        <span className="font-mono">{selectedEq.identifier}</span>
-                      </div>
-                    )}
-                    {selectedEq.location && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Local</span>
-                        <span>{selectedEq.location}</span>
-                      </div>
+                    {equipmentFieldConfig.length > 0 ? (
+                      <>
+                        {buildDetailRows(selectedEq).map(({ fc, rawValue }) => (
+                          <div key={fc.field_key} className="flex justify-between gap-3">
+                            <span className="text-muted-foreground">{fc.label}</span>
+                            <span className="text-right break-words">
+                              {formatFieldValue(rawValue, fc.field_type)}
+                            </span>
+                          </div>
+                        ))}
+                        {/* Identificador é sempre fixo (não faz parte da config configurável). */}
+                        {selectedEq.identifier && (
+                          <div className="flex justify-between gap-3">
+                            <span className="text-muted-foreground">Identificador</span>
+                            <span className="font-mono text-right break-words">{selectedEq.identifier}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {/* Fallback: sem config (ou payload antigo em cache) → campos fixos. */}
+                        {selectedEq.serial_number && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Nº Série</span>
+                            <span className="font-mono">{selectedEq.serial_number}</span>
+                          </div>
+                        )}
+                        {selectedEq.identifier && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Identificador</span>
+                            <span className="font-mono">{selectedEq.identifier}</span>
+                          </div>
+                        )}
+                        {selectedEq.location && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Local</span>
+                            <span>{selectedEq.location}</span>
+                          </div>
+                        )}
+                      </>
                     )}
                     <Badge variant={selectedEq.status === 'active' ? 'default' : 'secondary'}>
                       {selectedEq.status === 'active' ? 'Ativo' : 'Inativo'}

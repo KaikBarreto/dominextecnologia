@@ -63,6 +63,7 @@ export function EquipmentFormDialog({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  const [customFieldErrors, setCustomFieldErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initializedContextRef = useRef<string | null>(null);
 
@@ -161,6 +162,7 @@ export function EquipmentFormDialog({
 
     setPhotoFile(null);
     setPhotoPreview(equipment?.photo_url ?? null);
+    setCustomFieldErrors([]);
   }, [open, formContextKey, form, defaultCustomerId, equipment]);
 
   const uploadPhoto = async (): Promise<string | null> => {
@@ -189,6 +191,21 @@ export function EquipmentFormDialog({
   };
 
   const handleSubmit = async (data: EquipmentFormData) => {
+    // Valida campos custom visíveis e obrigatórios antes de salvar.
+    const visible = fieldConfig.filter(f => f.is_visible);
+    const requiredCustom = visible.filter(f => !builtInFieldKeys.has(f.field_key) && f.is_required);
+    const missing = requiredCustom.filter(f => !(customFieldValues[f.field_key] ?? '').trim());
+    if (missing.length > 0) {
+      setCustomFieldErrors(missing.map(f => f.field_key));
+      toast({
+        variant: 'destructive',
+        title: 'Preencha os campos obrigatórios',
+        description: missing.map(f => f.label).join(', '),
+      });
+      return;
+    }
+    setCustomFieldErrors([]);
+
     try {
       let photo_url: string | null = equipment?.photo_url ?? null;
 
@@ -395,58 +412,70 @@ export function EquipmentFormDialog({
             })}
 
             {/* Custom user-created fields (stored in custom_fields jsonb) */}
-            {customVisible.map((fc) => (
-              <div key={fc.id} className="space-y-2">
-                <FormLabel>{fc.label}{fc.is_required && ' *'}</FormLabel>
-                {fc.field_type === 'date' ? (
-                  <Input
-                    type="date"
-                    value={customFieldValues[fc.field_key] ?? ''}
-                    onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: e.target.value }))}
-                  />
-                ) : fc.field_type === 'number' ? (
-                  <Input
-                    type="number"
-                    placeholder={fc.label}
-                    value={customFieldValues[fc.field_key] ?? ''}
-                    onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: e.target.value }))}
-                  />
-                ) : fc.field_type === 'boolean' ? (
-                  <Select
-                    value={customFieldValues[fc.field_key] ?? ''}
-                    onValueChange={(v) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sim">Sim</SelectItem>
-                      <SelectItem value="nao">Não</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : fc.field_type === 'select' && fc.options?.length ? (
-                  <Select
-                    value={customFieldValues[fc.field_key] ?? ''}
-                    onValueChange={(v) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fc.options.map((opt) => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    placeholder={fc.label}
-                    value={customFieldValues[fc.field_key] ?? ''}
-                    onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: e.target.value }))}
-                  />
-                )}
-              </div>
-            ))}
+            {customVisible.map((fc) => {
+              const setCustom = (v: string) => {
+                setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: v }));
+                setCustomFieldErrors(prev => prev.filter(k => k !== fc.field_key));
+              };
+              const hasError = customFieldErrors.includes(fc.field_key);
+              return (
+                <div key={fc.id} className="space-y-2">
+                  <FormLabel className={hasError ? 'text-destructive' : undefined}>
+                    {fc.label}{fc.is_required && ' *'}
+                  </FormLabel>
+                  {fc.field_type === 'date' ? (
+                    <Input
+                      type="date"
+                      value={customFieldValues[fc.field_key] ?? ''}
+                      onChange={(e) => setCustom(e.target.value)}
+                    />
+                  ) : fc.field_type === 'number' ? (
+                    <Input
+                      type="number"
+                      placeholder={fc.label}
+                      value={customFieldValues[fc.field_key] ?? ''}
+                      onChange={(e) => setCustom(e.target.value)}
+                    />
+                  ) : fc.field_type === 'boolean' ? (
+                    <Select
+                      value={customFieldValues[fc.field_key] ?? ''}
+                      onValueChange={setCustom}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sim">Sim</SelectItem>
+                        <SelectItem value="nao">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : fc.field_type === 'select' && fc.options?.length ? (
+                    <Select
+                      value={customFieldValues[fc.field_key] ?? ''}
+                      onValueChange={setCustom}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fc.options.map((opt) => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      placeholder={fc.label}
+                      value={customFieldValues[fc.field_key] ?? ''}
+                      onChange={(e) => setCustom(e.target.value)}
+                    />
+                  )}
+                  {hasError && (
+                    <p className="text-sm font-medium text-destructive">Campo obrigatório</p>
+                  )}
+                </div>
+              );
+            })}
 
             <FormField
               control={form.control}

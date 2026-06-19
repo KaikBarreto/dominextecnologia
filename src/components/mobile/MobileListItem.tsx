@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { motion, useAnimation, useMotionValue, type PanInfo } from 'framer-motion';
+import { motion, useAnimation, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
 import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -114,6 +114,9 @@ export function MobileListItem({
 
   const controls = useAnimation();
   const x = useMotionValue(0);
+  // Em repouso (x=0) a camada de fundo fica invisível — evita o "fio" colorido
+  // vazando na borda. Sobe pra opacidade total já no início do swipe (~-12px).
+  const bgOpacity = useTransform(x, [-12, 0], [1, 0]);
   const isOpenRef = useRef(false);
   const [, force] = useState(0);
 
@@ -249,9 +252,9 @@ export function MobileListItem({
   return (
     <div className="relative overflow-hidden border-b border-border/60 last:border-b-0">
       {/* Camada de fundo — botões revelados ao swipar pra esquerda. */}
-      <div
+      <motion.div
         className="absolute inset-y-0 right-0 flex items-stretch"
-        style={{ width: revealWidth }}
+        style={{ width: revealWidth, opacity: bgOpacity }}
         aria-hidden={!isOpenRef.current}
       >
         {swipeActions.map((action) => (
@@ -278,7 +281,7 @@ export function MobileListItem({
             <span>{action.label}</span>
           </button>
         ))}
-      </div>
+      </motion.div>
 
       {/* Linha arrastável (frente). */}
       <motion.div

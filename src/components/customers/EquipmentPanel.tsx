@@ -219,6 +219,18 @@ export function EquipmentPanel() {
             >
               {filterContent}
             </FilterSheet>
+            {canManageEquipment && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0 text-warning"
+                onClick={() => setConfigOpen(true)}
+                title="Configurar campos"
+                aria-label="Configurar campos"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {/* StatCarousel só faz sentido se houver categorias cadastradas. */}

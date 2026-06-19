@@ -1562,7 +1562,7 @@ function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void 
     >
       {/* Bolinha de cor do gás (régua CEO: gás sempre com cor saturada). */}
       <span
-        className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+        className="h-5 w-5 shrink-0 rounded-full ring-1 ring-black/10"
         style={{ backgroundColor: cor }}
         aria-hidden
       />

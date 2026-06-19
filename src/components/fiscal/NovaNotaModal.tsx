@@ -11,7 +11,6 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
-import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import {
@@ -40,10 +39,9 @@ function num(s: string): number | null {
 
 export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalProps) {
   const { customers } = useCustomers();
-  const { settings } = useFiscalSettings();
   const { emitNfse, isEmitting } = useNfse();
   const { companyId } = useUserCompany();
-  const { serviceTypes } = useServiceTypes();
+  const { serviceTypes, gapFillServiceTypeFiscal } = useServiceTypes();
 
   const [customerId, setCustomerId] = useState('');
   const [serviceTypeId, setServiceTypeId] = useState('');
@@ -57,18 +55,19 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
   const [blockInfo, setBlockInfo] = useState<NfseQuotaBlockInfo | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
 
-  // Reseta ao abrir; pré-preenche os campos fiscais com o default da empresa.
+  // Reseta ao abrir. Os códigos fiscais começam vazios — a fonte é o tipo de
+  // serviço selecionado (ou digitação manual). Sem default da empresa.
   useEffect(() => {
     if (open) {
       setCustomerId('');
       setServiceTypeId('');
       setDescricao('');
       setValor('');
-      setCodigoServico(settings.codigo_servico_default || '');
-      setCodigoNbs(settings.codigo_nbs_default || '');
+      setCodigoServico('');
+      setCodigoNbs('');
       setIssAliquota('');
     }
-  }, [open, settings.codigo_servico_default, settings.codigo_nbs_default]);
+  }, [open]);
 
   const customerOptions = useMemo(
     () => (customers ?? []).map((c) => ({ value: c.id, label: c.name })),
@@ -86,15 +85,23 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
 
   /**
    * Ao escolher um tipo de serviço, pré-preenche os campos fiscais a partir das
-   * colunas do catálogo (cada um segue editável depois). Default da empresa é
-   * usado como fallback quando o tipo não tem o campo configurado.
+   * colunas do catálogo do PRÓPRIO serviço (cada um segue editável depois).
+   * Sem fallback pro default da empresa — a fonte é o serviço (ou digitação
+   * manual). Se o serviço estiver incompleto, o usuário completa na nota e a
+   * emissão grava de volta no serviço (gap-fill), pra próxima vez já puxar tudo.
    */
   const handleServiceTypeChange = (id: string) => {
     setServiceTypeId(id);
     const st = (serviceTypes ?? []).find((s) => s.id === id);
-    if (!st) return;
-    setCodigoServico(st.codigo_servico || settings.codigo_servico_default || '');
-    setCodigoNbs(st.codigo_nbs || settings.codigo_nbs_default || '');
+    if (!st) {
+      // Limpou a seleção: zera os campos fiscais (sem serviço, sem fonte).
+      setCodigoServico('');
+      setCodigoNbs('');
+      setIssAliquota('');
+      return;
+    }
+    setCodigoServico(st.codigo_servico || '');
+    setCodigoNbs(st.codigo_nbs || '');
     setIssAliquota(
       st.iss_aliquota != null
         ? String(st.iss_aliquota).replace('.', ',')
@@ -127,7 +134,7 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
    */
   const runEmit = async (v: number) => {
     // Valores fiscais resolvidos: o que estiver nos campos (serviço escolhido ou
-    // override manual). Se vazios, NÃO enviamos — a edge cai no default da empresa.
+    // digitação manual). Se vazios, NÃO enviamos esses campos.
     const issNum = num(issAliquota);
     const res = await emitNfse({
       customerId,
@@ -167,6 +174,26 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
     }
 
     toast.success(res.message ?? 'Nota fiscal enviada para emissão.');
+
+    // Gap-fill silencioso: se a nota foi emitida a partir de um tipo de serviço
+    // e o usuário completou códigos fiscais que estavam VAZIOS naquele serviço,
+    // grava de volta no serviço (só os campos vazios — não clobbera config
+    // deliberada). Roda em segundo plano; falha não atrapalha a nota.
+    if (serviceTypeId) {
+      const st = (serviceTypes ?? []).find((s) => s.id === serviceTypeId);
+      if (st) {
+        const fill: Record<string, string | number> = {};
+        const cs = codigoServico.trim();
+        if (cs && !st.codigo_servico) fill.codigo_servico = cs;
+        const cn = codigoNbs.trim();
+        if (cn && !st.codigo_nbs) fill.codigo_nbs = cn;
+        if (issNum != null && st.iss_aliquota == null) fill.iss_aliquota = issNum;
+        if (Object.keys(fill).length > 0) {
+          void gapFillServiceTypeFiscal(st.id, fill);
+        }
+      }
+    }
+
     onOpenChange(false);
     // A edge devolve a emissão recém-criada em `data.emission`; repassa pro pai
     // abrir o detalhe e ligar o polling automático até virar terminal.
@@ -299,7 +326,7 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
         </div>
 
         {/* Classificação fiscal: códigos do serviço. Pré-preenchidos pelo tipo de
-            serviço ou pelo padrão da empresa — editáveis. */}
+            serviço selecionado — editáveis. */}
         <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
           <p className="text-sm font-medium">Classificação fiscal</p>
           <div className="space-y-2">
