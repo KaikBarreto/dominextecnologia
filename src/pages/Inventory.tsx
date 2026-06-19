@@ -61,8 +61,7 @@ import { generateInventoryExcel } from '@/utils/inventoryExcelGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { InventoryKardexTab } from '@/components/inventory/InventoryKardexTab';
 import { MaterialPurchasesTab } from '@/components/inventory/MaterialPurchasesTab';
 
@@ -267,6 +266,14 @@ export default function Inventory() {
     />
   );
 
+  // Abas: desktop = sidebar vertical (SettingsSidebarLayout); mobile = pills em
+  // carrossel (o próprio layout faz a adaptação). As 3 são chãs (sem group).
+  const inventoryTabs: SettingsTab[] = [
+    { value: 'estoque', label: 'Estoque Atual', icon: Boxes },
+    { value: 'historico', label: 'Histórico de Materiais (Kardex)', icon: History },
+    { value: 'compras', label: 'Compras de Material', icon: ShoppingCart },
+  ];
+
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
@@ -290,34 +297,21 @@ export default function Inventory() {
       />
 
       {/* Abas: Estoque Atual / Histórico (Kardex) / Compras de Material.
-          Mobile = pills scrolláveis; desktop = TabsList em grid (padrão do app). */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        {isMobile ? (
-          <MobilePillTabs
-            tabs={[
-              { value: 'estoque', label: 'Estoque Atual', icon: <Boxes className="h-4 w-4 shrink-0" /> },
-              { value: 'historico', label: 'Histórico', icon: <History className="h-4 w-4 shrink-0" /> },
-              { value: 'compras', label: 'Compras', icon: <ShoppingCart className="h-4 w-4 shrink-0" /> },
-            ]}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-        ) : (
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="estoque">
-              <Boxes className="h-4 w-4 mr-2" /> Estoque Atual
-            </TabsTrigger>
-            <TabsTrigger value="historico">
-              <History className="h-4 w-4 mr-2" /> Histórico (Kardex)
-            </TabsTrigger>
-            <TabsTrigger value="compras">
-              <ShoppingCart className="h-4 w-4 mr-2" /> Compras de Material
-            </TabsTrigger>
-          </TabsList>
-        )}
+          Padrão do app: desktop = sidebar vertical à esquerda; mobile = pills
+          em carrossel. O SettingsSidebarLayout cuida das duas adaptações. */}
+      <SettingsSidebarLayout
+        tabs={inventoryTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
+        {/* Título da aba ativa, no topo do conteúdo (cada aba tem seu título). */}
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+          {inventoryTabs.find((t) => t.value === activeTab)?.label}
+        </h2>
 
         {/* ===================== ABA: ESTOQUE ATUAL ===================== */}
-        <TabsContent value="estoque" className="space-y-6 mt-0">
+        {activeTab === 'estoque' && (
+        <div className="space-y-6">
       {/* Stats — StatCarousel adapta mobile (chips horizontais) vs desktop (grid). */}
       <StatCarousel items={statItems} loading={isLoading} />
 
@@ -579,18 +573,15 @@ export default function Inventory() {
           </CardContent>
         </Card>
       )}
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===================== ABA: HISTÓRICO (KARDEX) ===================== */}
-        <TabsContent value="historico" className="mt-0">
-          <InventoryKardexTab />
-        </TabsContent>
+        {activeTab === 'historico' && <InventoryKardexTab />}
 
         {/* ===================== ABA: COMPRAS DE MATERIAL ===================== */}
-        <TabsContent value="compras" className="mt-0">
-          <MaterialPurchasesTab />
-        </TabsContent>
-      </Tabs>
+        {activeTab === 'compras' && <MaterialPurchasesTab />}
+      </SettingsSidebarLayout>
 
       {/* FAB mobile-only (só na aba de estoque) — desktop usa botão no header. */}
       {isMobile && activeTab === 'estoque' && (

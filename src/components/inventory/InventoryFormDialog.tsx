@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
+import { INVENTORY_UNITS as UNITS } from '@/lib/inventoryUnits';
 
 interface InventoryFormDialogProps {
   open: boolean;
@@ -16,15 +17,6 @@ interface InventoryFormDialogProps {
 }
 
 const CATEGORIES = ['Peças', 'Filtros', 'Gases', 'Ferramentas', 'Materiais', 'Equipamentos', 'Outros'];
-const UNITS = [
-  { value: 'un', label: 'Unidade' },
-  { value: 'kg', label: 'Quilograma' },
-  { value: 'l', label: 'Litro' },
-  { value: 'm', label: 'Metro' },
-  { value: 'cx', label: 'Caixa' },
-  { value: 'pc', label: 'Peça' },
-];
-
 export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormDialogProps) {
   const { createItem, updateItem } = useInventory();
   const isEditing = !!item;

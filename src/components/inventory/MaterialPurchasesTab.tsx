@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  ShoppingCart, Plus, Search, Users, Pencil, Trash2, PackagePlus, XCircle, FileText,
+  ShoppingCart, Plus, Search, Users, Pencil, Trash2, PackagePlus, XCircle, FileText, Copy,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,10 @@ import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
 import {
-  useMaterialPurchases, shortId, type PurchaseListRow,
+  useMaterialPurchases, shortId,
+  type PurchaseListRow, type MaterialPurchaseItem,
 } from '@/hooks/useMaterialPurchases';
+import { unitLabel } from '@/lib/inventoryUnits';
 import { SuppliersDialog } from './SuppliersDialog';
 import { PurchaseEditorDialog } from './PurchaseEditorDialog';
 
@@ -32,8 +34,8 @@ function formatDate(iso: string): string {
 
 export function MaterialPurchasesTab() {
   const {
-    purchases, isLoading,
-    cancelPurchase, deletePurchase, registerStockEntry,
+    purchases, isLoading, loadPurchase,
+    cancelPurchase, deletePurchase, duplicatePurchase, registerStockEntry,
   } = useMaterialPurchases();
 
   const [search, setSearch] = useState('');
@@ -43,6 +45,18 @@ export function MaterialPurchasesTab() {
   const [toCancel, setToCancel] = useState<PurchaseListRow | null>(null);
   const [toDelete, setToDelete] = useState<PurchaseListRow | null>(null);
   const [toRegister, setToRegister] = useState<PurchaseListRow | null>(null);
+  const [registerItems, setRegisterItems] = useState<MaterialPurchaseItem[] | null>(null);
+
+  // Carrega os itens da cotação ao abrir o diálogo de entrada (pra mostrar o que entra).
+  useEffect(() => {
+    if (!toRegister) { setRegisterItems(null); return; }
+    let cancelled = false;
+    loadPurchase(toRegister.id)
+      .then((d) => { if (!cancelled) setRegisterItems(d.items); })
+      .catch(() => { if (!cancelled) setRegisterItems([]); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toRegister]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return purchases;
@@ -69,6 +83,11 @@ export function MaterialPurchasesTab() {
       icon: PackagePlus,
       onClick: () => setToRegister(p),
       hidden: p.status !== 'aprovada',
+    },
+    {
+      label: 'Duplicar',
+      icon: Copy,
+      onClick: () => duplicatePurchase.mutate(p.id),
     },
     {
       label: 'Cancelar cotação',
@@ -221,12 +240,31 @@ export function MaterialPurchasesTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Registrar entrada no estoque?</AlertDialogTitle>
             <AlertDialogDescription>
-              Os {toRegister?.item_count ?? 0} {toRegister?.item_count === 1 ? 'material' : 'materiais'} desta
-              cotação serão dados de entrada no estoque com o fornecedor aprovado
+              Os materiais abaixo serão dados de entrada no estoque com o fornecedor aprovado
               {toRegister?.approved_supplier_name ? ` (${toRegister.approved_supplier_name})` : ''}.
               O movimento aparece no histórico (Kardex).
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {registerItems === null ? (
+            <p className="py-2 text-sm text-muted-foreground">Carregando itens...</p>
+          ) : (
+            <ul className="max-h-56 space-y-1.5 overflow-y-auto py-1 text-sm">
+              {registerItems.map((it) => {
+                const isManual = !it.inventory_id;
+                return (
+                  <li key={it.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                    <span className="min-w-0 truncate">
+                      {it.material_name || 'Material'}
+                      <span className="text-muted-foreground"> • {it.quantity} {unitLabel(it.unit)}</span>
+                    </span>
+                    {isManual && (
+                      <Badge variant="warning" className="shrink-0 text-[10px]">Criar no estoque</Badge>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Voltar</AlertDialogCancel>
             <AlertDialogAction

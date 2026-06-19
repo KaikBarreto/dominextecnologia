@@ -175,7 +175,7 @@ export function SettingsSidebarLayout({
                       )}
                       <IconComponent className="h-4 w-4 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <span className="block truncate">{tab.label}</span>
+                        <span className="block leading-tight">{tab.label}</span>
                         {tab.sublabel && (
                           <span
                             // No estilo colorBg, o sublabel herda a cor contrastante

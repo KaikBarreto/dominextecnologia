@@ -3847,24 +3847,30 @@ export type Database = {
           created_at: string
           id: string
           inventory_id: string | null
+          material_name: string | null
           purchase_id: string
           quantity: number
+          unit: string | null
         }
         Insert: {
           company_id: string
           created_at?: string
           id?: string
           inventory_id?: string | null
+          material_name?: string | null
           purchase_id: string
           quantity: number
+          unit?: string | null
         }
         Update: {
           company_id?: string
           created_at?: string
           id?: string
           inventory_id?: string | null
+          material_name?: string | null
           purchase_id?: string
           quantity?: number
+          unit?: string | null
         }
         Relationships: [
           {
@@ -3888,8 +3894,8 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
-          inventory_id: string
           purchase_id: string
+          purchase_item_id: string
           supplier_id: string
           unit_price: number
         }
@@ -3897,8 +3903,8 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
-          inventory_id: string
           purchase_id: string
+          purchase_item_id: string
           supplier_id: string
           unit_price: number
         }
@@ -3906,24 +3912,24 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
-          inventory_id?: string
           purchase_id?: string
+          purchase_item_id?: string
           supplier_id?: string
           unit_price?: number
         }
         Relationships: [
           {
-            foreignKeyName: "material_purchase_quotes_inventory_id_fkey"
-            columns: ["inventory_id"]
-            isOneToOne: false
-            referencedRelation: "inventory"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "material_purchase_quotes_purchase_id_fkey"
             columns: ["purchase_id"]
             isOneToOne: false
             referencedRelation: "material_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_purchase_quotes_purchase_item_id_fkey"
+            columns: ["purchase_item_id"]
+            isOneToOne: false
+            referencedRelation: "material_purchase_items"
             referencedColumns: ["id"]
           },
           {

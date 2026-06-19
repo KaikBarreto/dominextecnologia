@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.1',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cotações de compra mais completas',
+        description: 'Na cotação de compra agora você pode incluir materiais que ainda não estão no estoque (basta informar o nome e a unidade), definir a quantidade e preencher o valor unitário OU o valor total — um calcula o outro automaticamente. Também dá para duplicar uma cotação. Ao registrar a entrada, os materiais novos são criados no estoque na hora.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Navegação do Estoque mais organizada',
+        description: 'A tela de Estoque passou a usar um menu lateral no computador e abas deslizantes no celular, com o título de cada seção sempre visível.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.0',
     date: '19 de junho de 2026',
     type: 'minor',
