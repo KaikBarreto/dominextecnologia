@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.3',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compras de Material reorganizado',
+        description: 'A área de Compras agora trabalha por Compra: você cria uma compra com a lista de materiais (do estoque ou avulsos, com quantidade e unidade) e adiciona uma cotação para cada fornecedor. Em cada cotação, os preços são preenchidos numa planilha — informando valor unitário ou total, com o total calculado na hora. Compare as cotações, aceite ou recuse cada uma e, ao aceitar, registre a entrada no estoque com um clique.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.2',
     date: '19 de junho de 2026',
     type: 'patch',

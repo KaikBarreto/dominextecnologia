@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.13.2";
+export const APP_VERSION = "1.13.3";
 
-export const VERSION_NOTES = "No Histórico de Materiais do estoque, o filtro de material passou a mostrar todos os materiais cadastrados (não só os que já tiveram movimentação). E no computador, os botões de cadastrar e exportar ficam agora na linha da busca, deixando o topo da tela mais limpo.";
+export const VERSION_NOTES = "Compras de Material reorganizado: você cria uma Compra com a lista de materiais e recebe uma cotação por fornecedor, preenchendo os preços numa planilha. Compare as cotações, aceite a melhor e registre a entrada no estoque.";

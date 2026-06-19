@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  ShoppingCart, Plus, Search, Users, Pencil, Trash2, PackagePlus, XCircle, FileText, Copy,
+  ShoppingCart, Plus, Search, Users, Pencil, Trash2, CheckCheck, XCircle, RotateCcw,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,19 +12,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
-import { fuzzyIncludes, cn } from '@/lib/utils';
+import { fuzzyIncludes } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
-import {
-  useMaterialPurchases, shortId,
-  type PurchaseListRow, type MaterialPurchaseItem,
-} from '@/hooks/useMaterialPurchases';
-import { unitLabel } from '@/lib/inventoryUnits';
+import { useCompras, type CompraListRow } from '@/hooks/useCompras';
 import { SuppliersDialog } from './SuppliersDialog';
-import { PurchaseEditorDialog } from './PurchaseEditorDialog';
+import { CompraEditorDialog } from './CompraEditorDialog';
+import { CompraDetailDialog } from './CompraDetailDialog';
 
-const STATUS_META: Record<string, { label: string; variant: 'muted' | 'success' | 'destructive' }> = {
-  rascunho: { label: 'Rascunho', variant: 'muted' },
-  aprovada: { label: 'Aprovada', variant: 'success' },
+const STATUS_META: Record<string, { label: string; variant: 'info' | 'success' | 'destructive' }> = {
+  aberta: { label: 'Aberta', variant: 'info' },
+  concluida: { label: 'Concluída', variant: 'success' },
   cancelada: { label: 'Cancelada', variant: 'destructive' },
 };
 
@@ -33,74 +30,49 @@ function formatDate(iso: string): string {
 }
 
 export function MaterialPurchasesTab() {
-  const {
-    purchases, isLoading, loadPurchase,
-    cancelPurchase, deletePurchase, duplicatePurchase, registerStockEntry,
-  } = useMaterialPurchases();
+  const { compras, isLoading, setStatus, deleteCompra } = useCompras();
 
   const [search, setSearch] = useState('');
   const [suppliersOpen, setSuppliersOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editing, setEditing] = useState<PurchaseListRow | null>(null);
-  const [toCancel, setToCancel] = useState<PurchaseListRow | null>(null);
-  const [toDelete, setToDelete] = useState<PurchaseListRow | null>(null);
-  const [toRegister, setToRegister] = useState<PurchaseListRow | null>(null);
-  const [registerItems, setRegisterItems] = useState<MaterialPurchaseItem[] | null>(null);
-
-  // Carrega os itens da cotação ao abrir o diálogo de entrada (pra mostrar o que entra).
-  useEffect(() => {
-    if (!toRegister) { setRegisterItems(null); return; }
-    let cancelled = false;
-    loadPurchase(toRegister.id)
-      .then((d) => { if (!cancelled) setRegisterItems(d.items); })
-      .catch(() => { if (!cancelled) setRegisterItems([]); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toRegister]);
+  const [editing, setEditing] = useState<CompraListRow | null>(null);
+  const [detailFor, setDetailFor] = useState<CompraListRow | null>(null);
+  const [toCancel, setToCancel] = useState<CompraListRow | null>(null);
+  const [toDelete, setToDelete] = useState<CompraListRow | null>(null);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return purchases;
-    return purchases.filter((p) =>
-      fuzzyIncludes(shortId(p.id), search) ||
-      fuzzyIncludes(p.approved_supplier_name ?? '', search) ||
-      fuzzyIncludes(STATUS_META[p.status]?.label ?? '', search) ||
-      fuzzyIncludes(p.notes ?? '', search),
+    if (!search.trim()) return compras;
+    return compras.filter((c) =>
+      fuzzyIncludes(c.title, search) ||
+      fuzzyIncludes(STATUS_META[c.status]?.label ?? '', search) ||
+      fuzzyIncludes(c.notes ?? '', search),
     );
-  }, [purchases, search]);
+  }, [compras, search]);
 
   const openNew = () => { setEditing(null); setEditorOpen(true); };
-  const openEdit = (p: PurchaseListRow) => { setEditing(p); setEditorOpen(true); };
+  const openEdit = (c: CompraListRow) => { setEditing(c); setEditorOpen(true); };
 
-  const rowActions = (p: PurchaseListRow): RowAction[] => [
+  const rowActions = (c: CompraListRow): RowAction[] => [
+    { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEdit(c) },
     {
-      label: p.status === 'rascunho' ? 'Editar' : 'Ver detalhes',
-      icon: p.status === 'rascunho' ? Pencil : FileText,
-      variant: p.status === 'rascunho' ? 'edit' : 'default',
-      onClick: () => openEdit(p),
+      label: 'Concluir compra',
+      icon: CheckCheck,
+      onClick: () => setStatus.mutate({ id: c.id, status: 'concluida' }),
+      hidden: c.status !== 'aberta',
     },
     {
-      label: 'Registrar entrada no estoque',
-      icon: PackagePlus,
-      onClick: () => setToRegister(p),
-      hidden: p.status !== 'aprovada',
+      label: 'Reabrir compra',
+      icon: RotateCcw,
+      onClick: () => setStatus.mutate({ id: c.id, status: 'aberta' }),
+      hidden: c.status === 'aberta',
     },
     {
-      label: 'Duplicar',
-      icon: Copy,
-      onClick: () => duplicatePurchase.mutate(p.id),
-    },
-    {
-      label: 'Cancelar cotação',
+      label: 'Cancelar compra',
       icon: XCircle,
-      onClick: () => setToCancel(p),
-      hidden: p.status !== 'rascunho',
+      onClick: () => setToCancel(c),
+      hidden: c.status === 'cancelada',
     },
-    {
-      label: 'Excluir',
-      icon: Trash2,
-      variant: 'delete',
-      onClick: () => setToDelete(p),
-    },
+    { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setToDelete(c) },
   ];
 
   return (
@@ -111,7 +83,7 @@ export function MaterialPurchasesTab() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Buscar cotação..."
+            placeholder="Buscar compra..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -121,7 +93,7 @@ export function MaterialPurchasesTab() {
             <Users className="h-4 w-4" /> Fornecedores
           </Button>
           <Button className="gap-1.5" onClick={openNew}>
-            <Plus className="h-4 w-4" /> Nova cotação
+            <Plus className="h-4 w-4" /> Nova compra
           </Button>
         </div>
       </div>
@@ -133,48 +105,43 @@ export function MaterialPurchasesTab() {
           <CardContent className="p-0">
             <EmptyState
               icon={<ShoppingCart className="h-8 w-8" />}
-              title={search ? 'Nenhuma cotação encontrada' : 'Nenhuma cotação ainda'}
+              title={search ? 'Nenhuma compra encontrada' : 'Nenhuma compra ainda'}
               description={
                 search
                   ? 'Tente outro termo de busca.'
-                  : 'Crie uma cotação para comparar preços de fornecedores antes de comprar.'
+                  : 'Crie uma compra, liste os materiais e compare cotações de fornecedores.'
               }
-              action={search ? undefined : { label: 'Nova cotação', onClick: openNew }}
+              action={search ? undefined : { label: 'Nova compra', onClick: openNew }}
             />
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map((p) => {
-            const meta = STATUS_META[p.status] ?? STATUS_META.rascunho;
+          {filtered.map((c) => {
+            const meta = STATUS_META[c.status] ?? STATUS_META.aberta;
             return (
-              <Card key={p.id} className="overflow-hidden">
+              <Card key={c.id} className="overflow-hidden">
                 <CardContent className="flex items-center justify-between gap-3 p-3 sm:p-4">
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left"
-                    onClick={() => openEdit(p)}
+                    onClick={() => setDetailFor(c)}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">Cotação #{shortId(p.id)}</span>
+                      <span className="truncate font-semibold">{c.title}</span>
                       <Badge variant={meta.variant}>{meta.label}</Badge>
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatDate(p.created_at)} • {p.item_count} {p.item_count === 1 ? 'material' : 'materiais'}
+                      {formatDate(c.created_at)} • {c.cotacao_count} {c.cotacao_count === 1 ? 'cotação' : 'cotações'}
                     </p>
-                    {p.approved_supplier_name && (
+                    {c.lowest_total != null && (
                       <p className="mt-1 text-sm">
-                        <span className="text-muted-foreground">Fornecedor: </span>
-                        <span className="font-medium">{p.approved_supplier_name}</span>
-                        {p.approved_total != null && (
-                          <span className={cn('ml-2 font-semibold text-success')}>
-                            R$ {formatBRL(p.approved_total)}
-                          </span>
-                        )}
+                        <span className="text-muted-foreground">Menor cotação: </span>
+                        <span className="font-semibold text-success">R$ {formatBRL(c.lowest_total)}</span>
                       </p>
                     )}
                   </button>
-                  <RowActionsMenu actions={rowActions(p)} />
+                  <RowActionsMenu actions={rowActions(c)} />
                 </CardContent>
               </Card>
             );
@@ -184,15 +151,22 @@ export function MaterialPurchasesTab() {
 
       {/* Dialogs */}
       <SuppliersDialog open={suppliersOpen} onOpenChange={setSuppliersOpen} />
-      <PurchaseEditorDialog open={editorOpen} onOpenChange={setEditorOpen} purchase={editing} />
+      <CompraEditorDialog open={editorOpen} onOpenChange={setEditorOpen} compra={editing} />
+      {detailFor && (
+        <CompraDetailDialog
+          open={!!detailFor}
+          onOpenChange={(o) => !o && setDetailFor(null)}
+          compra={detailFor}
+        />
+      )}
 
-      {/* Cancelar cotação */}
+      {/* Cancelar compra */}
       <AlertDialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar cotação?</AlertDialogTitle>
+            <AlertDialogTitle>Cancelar compra?</AlertDialogTitle>
             <AlertDialogDescription>
-              A cotação ficará marcada como cancelada. Você pode excluí-la depois se quiser.
+              A compra ficará marcada como cancelada. Você pode reabri-la ou excluí-la depois.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -200,23 +174,24 @@ export function MaterialPurchasesTab() {
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
-                if (toCancel) await cancelPurchase.mutateAsync(toCancel.id);
+                if (toCancel) await setStatus.mutateAsync({ id: toCancel.id, status: 'cancelada' });
                 setToCancel(null);
               }}
             >
-              Cancelar cotação
+              Cancelar compra
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Excluir cotação */}
+      {/* Excluir compra */}
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cotação?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir compra?</AlertDialogTitle>
             <AlertDialogDescription>
-              A cotação e seus dados serão removidos. Esta ação não pode ser desfeita.
+              {toDelete ? `"${toDelete.title}" e suas cotações serão removidas. ` : ''}
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -224,57 +199,11 @@ export function MaterialPurchasesTab() {
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
-                if (toDelete) await deletePurchase.mutateAsync(toDelete.id);
+                if (toDelete) await deleteCompra.mutateAsync(toDelete.id);
                 setToDelete(null);
               }}
             >
               Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Registrar entrada no estoque */}
-      <AlertDialog open={!!toRegister} onOpenChange={(o) => !o && setToRegister(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Registrar entrada no estoque?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Os materiais abaixo serão dados de entrada no estoque com o fornecedor aprovado
-              {toRegister?.approved_supplier_name ? ` (${toRegister.approved_supplier_name})` : ''}.
-              O movimento aparece no histórico (Kardex).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {registerItems === null ? (
-            <p className="py-2 text-sm text-muted-foreground">Carregando itens...</p>
-          ) : (
-            <ul className="max-h-56 space-y-1.5 overflow-y-auto py-1 text-sm">
-              {registerItems.map((it) => {
-                const isManual = !it.inventory_id;
-                return (
-                  <li key={it.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                    <span className="min-w-0 truncate">
-                      {it.material_name || 'Material'}
-                      <span className="text-muted-foreground"> • {it.quantity} {unitLabel(it.unit)}</span>
-                    </span>
-                    {isManual && (
-                      <Badge variant="warning" className="shrink-0 text-[10px]">Criar no estoque</Badge>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={registerStockEntry.isPending}
-              onClick={async () => {
-                if (toRegister) await registerStockEntry.mutateAsync(toRegister.id);
-                setToRegister(null);
-              }}
-            >
-              {registerStockEntry.isPending ? 'Registrando...' : 'Registrar entrada'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

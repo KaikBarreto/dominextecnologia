@@ -952,6 +952,180 @@ export type Database = {
           },
         ]
       }
+      compra_cotacao_precos: {
+        Row: {
+          company_id: string
+          compra_material_id: string
+          cotacao_id: string
+          created_at: string
+          id: string
+          unit_price: number
+        }
+        Insert: {
+          company_id: string
+          compra_material_id: string
+          cotacao_id: string
+          created_at?: string
+          id?: string
+          unit_price: number
+        }
+        Update: {
+          company_id?: string
+          compra_material_id?: string
+          cotacao_id?: string
+          created_at?: string
+          id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_cotacao_precos_compra_material_id_fkey"
+            columns: ["compra_material_id"]
+            isOneToOne: false
+            referencedRelation: "compra_materiais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_cotacao_precos_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "compra_cotacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compra_cotacoes: {
+        Row: {
+          company_id: string
+          compra_id: string
+          created_at: string
+          decided_at: string | null
+          id: string
+          notes: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          compra_id: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          compra_id?: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_cotacoes_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_cotacoes_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compra_materiais: {
+        Row: {
+          company_id: string
+          compra_id: string
+          created_at: string
+          id: string
+          inventory_id: string | null
+          material_name: string | null
+          quantity: number
+          unit: string | null
+        }
+        Insert: {
+          company_id: string
+          compra_id: string
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          material_name?: string | null
+          quantity: number
+          unit?: string | null
+        }
+        Update: {
+          company_id?: string
+          compra_id?: string
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          material_name?: string | null
+          quantity?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_materiais_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_materiais_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compras: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       compressor_specs: {
         Row: {
           aplicacao: string | null
@@ -3840,189 +4014,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
-      }
-      material_purchase_items: {
-        Row: {
-          company_id: string
-          created_at: string
-          id: string
-          inventory_id: string | null
-          material_name: string | null
-          purchase_id: string
-          quantity: number
-          unit: string | null
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          id?: string
-          inventory_id?: string | null
-          material_name?: string | null
-          purchase_id: string
-          quantity: number
-          unit?: string | null
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          id?: string
-          inventory_id?: string | null
-          material_name?: string | null
-          purchase_id?: string
-          quantity?: number
-          unit?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "material_purchase_items_inventory_id_fkey"
-            columns: ["inventory_id"]
-            isOneToOne: false
-            referencedRelation: "inventory"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "material_purchase_items_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "material_purchases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      material_purchase_quotes: {
-        Row: {
-          company_id: string
-          created_at: string
-          id: string
-          purchase_id: string
-          purchase_item_id: string
-          supplier_id: string
-          unit_price: number
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          id?: string
-          purchase_id: string
-          purchase_item_id: string
-          supplier_id: string
-          unit_price: number
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          id?: string
-          purchase_id?: string
-          purchase_item_id?: string
-          supplier_id?: string
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "material_purchase_quotes_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "material_purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "material_purchase_quotes_purchase_item_id_fkey"
-            columns: ["purchase_item_id"]
-            isOneToOne: false
-            referencedRelation: "material_purchase_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "material_purchase_quotes_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      material_purchase_suppliers: {
-        Row: {
-          company_id: string
-          created_at: string
-          id: string
-          purchase_id: string
-          supplier_id: string
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          id?: string
-          purchase_id: string
-          supplier_id: string
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          id?: string
-          purchase_id?: string
-          supplier_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "material_purchase_suppliers_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "material_purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "material_purchase_suppliers_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      material_purchases: {
-        Row: {
-          approved_at: string | null
-          approved_supplier_id: string | null
-          company_id: string
-          created_at: string
-          created_by: string | null
-          id: string
-          notes: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_supplier_id?: string | null
-          company_id: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          notes?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          approved_at?: string | null
-          approved_supplier_id?: string | null
-          company_id?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          notes?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "material_purchases_approved_supplier_id_fkey"
-            columns: ["approved_supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       nfse_emissions: {
         Row: {
