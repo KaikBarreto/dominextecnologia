@@ -2002,6 +2002,7 @@ export default function TechnicianOS() {
             do plano (gerada por contrato). OS avulsa não renderiza nada aqui. */}
         {isCheckedIn && hasChecklist && (
           <VisitChecklistPanel
+            serviceOrderId={serviceOrder.id}
             groups={checklistGroups}
             readOnly={isPaused}
             onSave={saveChecklistActivity}
@@ -2086,18 +2087,18 @@ export default function TechnicianOS() {
             Só aparece quando OS pertence a contrato PMOC. Bloqueia finalizar
             se status='parcial'|'nao_conforme' sem notas. */}
         {isCheckedIn && !isPaused && isPmocOrder && (
-          <Card className="border-info bg-info text-info-foreground">
+          <Card className="border-info/30">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium text-info-foreground">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-info/10 px-2.5 py-1 text-xs font-medium text-info">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   PMOC
                 </span>
-                <CardTitle className="text-base text-info-foreground">Classificação de Conformidade PMOC</CardTitle>
+                <CardTitle className="text-base">Classificação de Conformidade PMOC</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-info-foreground/90">
+              <p className="text-xs text-muted-foreground">
                 Esta OS pertence a contrato PMOC. Indique a conformidade com a Lei 13.589/2018:
               </p>
               <RadioGroup
@@ -2133,10 +2134,10 @@ export default function TechnicianOS() {
                 </label>
               </RadioGroup>
               <div className="space-y-1.5">
-                <Label htmlFor="conformity-notes" className="text-xs text-info-foreground">
+                <Label htmlFor="conformity-notes" className="text-xs">
                   Notas de conformidade
                   {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
-                    <span className="text-white ml-1">*</span>
+                    <span className="text-destructive ml-1">*</span>
                   )}
                 </Label>
                 <Textarea
@@ -2148,7 +2149,7 @@ export default function TechnicianOS() {
                   className="text-sm"
                 />
                 {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
-                  <p className="text-xs text-info-foreground/90">
+                  <p className="text-xs text-muted-foreground">
                     Obrigatório quando a classificação é parcial ou não-conforme.
                   </p>
                 )}

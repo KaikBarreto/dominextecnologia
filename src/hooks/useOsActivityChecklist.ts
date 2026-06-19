@@ -23,6 +23,8 @@ export interface ChecklistActivity {
   section: string | null;
   component: string | null;
   description: string;
+  /** Instrução intuitiva de "como fazer" a atividade, exibida só pro técnico no preenchimento. */
+  guidance: string | null;
   freq_code: string | null;
   is_measurement: boolean;
   unit: string | null;
@@ -31,6 +33,8 @@ export interface ChecklistActivity {
   sort_order: number;
   conformity_status: ActivityConformity | null;
   measured_value: number | null;
+  /** CSV de URLs de fotos opcionais anexadas pelo técnico (mesmo padrão do form). */
+  activity_photos: string | null;
 }
 
 export interface ChecklistEquipmentGroup {
@@ -41,7 +45,7 @@ export interface ChecklistEquipmentGroup {
 }
 
 const SELECT =
-  'id, equipment_id, section, component, description, freq_code, is_measurement, unit, expected_min, expected_max, sort_order, conformity_status, measured_value';
+  'id, equipment_id, section, component, description, guidance, freq_code, is_measurement, unit, expected_min, expected_max, sort_order, conformity_status, measured_value, activity_photos';
 
 /** M/T/S/A/E → label de frequência. Default: o próprio código. */
 export function freqLabel(freqCode: string | null | undefined): string | null {
@@ -147,7 +151,11 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
   const saveActivity = useCallback(
     async (
       activityId: string,
-      patch: { conformity_status?: ActivityConformity | null; measured_value?: number | null }
+      patch: {
+        conformity_status?: ActivityConformity | null;
+        measured_value?: number | null;
+        activity_photos?: string | null;
+      }
     ) => {
       const prev = activities.find((a) => a.id === activityId);
       setActivities((curr) =>

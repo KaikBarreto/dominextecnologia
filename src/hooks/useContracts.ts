@@ -165,6 +165,7 @@ export type FreqCode = 'M' | 'T' | 'S' | 'A' | 'E';
 
 export interface PlanActivityInput {
   description: string;
+  guidance?: string | null;
   section?: string | null;
   component?: string | null;
   freq_code?: FreqCode | null;
@@ -251,6 +252,7 @@ export function generateGroupedVisits(
 export interface ContractPlanActivityRow {
   id: string;
   description: string;
+  guidance: string | null;
   freq_code: string | null;
   freq_months: number | null;
   section: string | null;
@@ -277,7 +279,7 @@ export function useContractPlanActivities(contractId: string | null | undefined)
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, freq_code, freq_months, section, component, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, sort_order')
+        .select('id, description, guidance, freq_code, freq_months, section, component, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, sort_order')
         .eq('contract_id', contractId as string)
         .order('sort_order', { ascending: true });
       if (error) throw error;
@@ -496,6 +498,7 @@ async function persistContractVisit(args: {
       section: a.section ?? null,
       component: a.component ?? null,
       description: a.description.trim(),
+      guidance: a.guidance ?? null,
       freq_code: a.freq_code ?? null,
       is_measurement: a.is_measurement ?? false,
       unit: a.unit ?? null,
@@ -873,6 +876,7 @@ export function useContracts() {
               section: a.section ?? null,
               component: a.component ?? null,
               description: a.description.trim(),
+              guidance: a.guidance ?? null,
               freq_code: a.freq_code ?? null,
               freq_months: a.freq_months ?? null,
               is_measurement: a.is_measurement ?? false,
@@ -1197,6 +1201,7 @@ export function useContracts() {
                   section: a.section ?? null,
                   component: a.component ?? null,
                   description: a.description.trim(),
+                  guidance: a.guidance ?? null,
                   freq_code: a.freq_code ?? null,
                   freq_months: a.freq_months ?? null,
                   is_measurement: a.is_measurement ?? false,
@@ -1348,11 +1353,12 @@ export function useContracts() {
         // Plano não veio no input → usar o que já está no banco.
         const { data: persisted } = await supabase
           .from('contract_plan_activities')
-          .select('id, description, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+          .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
           .eq('contract_id', id)
           .order('sort_order', { ascending: true });
         effPlan = (persisted ?? []).map((a: any) => ({
           description: a.description,
+          guidance: a.guidance,
           section: a.section,
           component: a.component,
           freq_code: a.freq_code,
@@ -1564,11 +1570,12 @@ export function useContracts() {
       // Plano persistido atual (não muda na aba de equipamentos).
       const { data: persisted } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
         .eq('contract_id', id)
         .order('sort_order', { ascending: true });
       const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
         description: a.description,
+        guidance: a.guidance,
         section: a.section,
         component: a.component,
         freq_code: a.freq_code,
@@ -1758,11 +1765,11 @@ export function useContracts() {
 
       const { data: persisted } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
         .eq('contract_id', id)
         .order('sort_order', { ascending: true });
       const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
-        description: a.description, section: a.section, component: a.component,
+        description: a.description, guidance: a.guidance, section: a.section, component: a.component,
         freq_code: a.freq_code, freq_months: a.freq_months, is_measurement: a.is_measurement,
         unit: a.unit, expected_min: a.expected_min, expected_max: a.expected_max,
         contract_item_id: a.contract_item_id, catalog_activity_id: a.catalog_activity_id,
@@ -1902,11 +1909,12 @@ export function useContracts() {
       // Plano persistido do contrato (mesma forma do updateContractEquipment).
       const { data: persisted } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
         .eq('contract_id', id)
         .order('sort_order', { ascending: true });
       const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
         description: a.description,
+        guidance: a.guidance,
         section: a.section,
         component: a.component,
         freq_code: a.freq_code,

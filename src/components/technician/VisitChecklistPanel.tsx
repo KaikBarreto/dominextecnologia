@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Wrench, Check, X, MinusCircle, AlertTriangle, Lock } from 'lucide-react';
+import { ListChecks, Wrench, Check, X, MinusCircle, AlertTriangle, Lock, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { OsPhotoField } from '@/components/technician/OsPhotoField';
 import {
   type ChecklistActivity,
   type ChecklistEquipmentGroup,
@@ -16,11 +17,17 @@ import {
 } from '@/hooks/useOsActivityChecklist';
 
 interface Props {
+  /** OS dona das atividades — usado no path das fotos no bucket. */
+  serviceOrderId: string;
   groups: ChecklistEquipmentGroup[];
   readOnly?: boolean;
   onSave: (
     activityId: string,
-    patch: { conformity_status?: ActivityConformity | null; measured_value?: number | null }
+    patch: {
+      conformity_status?: ActivityConformity | null;
+      measured_value?: number | null;
+      activity_photos?: string | null;
+    }
   ) => Promise<void>;
 }
 
@@ -44,10 +51,12 @@ const CONFORMITY_OPTIONS: {
 ];
 
 function ActivityRow({
+  serviceOrderId,
   activity,
   readOnly,
   onSave,
 }: {
+  serviceOrderId: string;
   activity: ChecklistActivity;
   readOnly?: boolean;
   onSave: Props['onSave'];
@@ -58,6 +67,12 @@ function ActivityRow({
     activity.measured_value !== null ? String(activity.measured_value).replace('.', ',') : ''
   );
   const [savingStatus, setSavingStatus] = useState(false);
+
+  const photoUrls = (activity.activity_photos || '').split(',').filter(Boolean);
+  const isNaoConforme = activity.conformity_status === 'nao_conforme';
+  // Abre o campo de foto: por padrão fechado quando vazio, mas já abre quando há
+  // foto OU quando a atividade é não-conforme (evidência recomendada).
+  const [photoOpen, setPhotoOpen] = useState<boolean>(photoUrls.length > 0);
 
   const freq = freqLabel(activity.freq_code);
   const currentNumber =
@@ -99,6 +114,16 @@ function ActivityRow({
     }
   };
 
+  // Salva o CSV de fotos da atividade (idempotente — UPDATE por id). Erro reverte
+  // no hook e relança; aqui só damos o feedback.
+  const savePhotos = async (csv: string | null) => {
+    try {
+      await onSave(activity.id, { activity_photos: csv });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Não foi possível salvar a foto', description: getErrorMessage(error) });
+    }
+  };
+
   return (
     <div className="py-3 border-b last:border-0 space-y-2.5">
       <div className="flex items-start gap-2">
@@ -110,6 +135,9 @@ function ActivityRow({
             </p>
           )}
           <p className="text-sm font-medium text-foreground break-words">{activity.description}</p>
+          {activity.guidance && (
+            <p className="text-xs text-muted-foreground break-words mt-0.5">{activity.guidance}</p>
+          )}
         </div>
         {freq && (
           <Badge variant="outline" className="shrink-0 text-[10px]">
@@ -172,6 +200,45 @@ function ActivityRow({
           </div>
         </div>
       )}
+
+      {/* Foto opcional (nunca obrigatória, não bloqueia finalizar). Realça quando
+          a atividade é não-conforme: evidência recomendada, mas sem obrigar. */}
+      {photoOpen || photoUrls.length > 0 ? (
+        <div className="space-y-1.5">
+          {isNaoConforme && (
+            <p className="flex items-center gap-1 text-[11px] font-medium text-destructive">
+              <Camera className="h-3 w-3 shrink-0" />
+              Recomendado anexar evidência da não-conformidade
+            </p>
+          )}
+          <OsPhotoField
+            serviceOrderId={serviceOrderId}
+            pathPrefix={`activity-${activity.id}`}
+            value={activity.activity_photos}
+            onChange={savePhotos}
+            readOnly={readOnly}
+            showEmptyPlaceholder={false}
+          />
+        </div>
+      ) : (
+        !readOnly && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPhotoOpen(true)}
+            className={cn(
+              'h-8 gap-1.5 text-xs',
+              isNaoConforme
+                ? 'border-destructive/60 text-destructive hover:bg-destructive/10'
+                : 'text-muted-foreground',
+            )}
+          >
+            <Camera className="h-3.5 w-3.5 shrink-0" />
+            {isNaoConforme ? 'Anexar evidência (recomendado)' : 'Anexar foto'}
+          </Button>
+        )
+      )}
     </div>
   );
 }
@@ -182,7 +249,7 @@ function ActivityRow({
  * equipamento; cada atividade tem conforme/não-conforme/N/A e, se for medição,
  * campo numérico com aviso de faixa.
  */
-export function VisitChecklistPanel({ groups, readOnly, onSave }: Props) {
+export function VisitChecklistPanel({ serviceOrderId, groups, readOnly, onSave }: Props) {
   if (groups.length === 0) return null;
 
   return (
@@ -216,6 +283,7 @@ export function VisitChecklistPanel({ groups, readOnly, onSave }: Props) {
                 {group.activities.map((activity) => (
                   <ActivityRow
                     key={activity.id}
+                    serviceOrderId={serviceOrderId}
                     activity={activity}
                     readOnly={readOnly}
                     onSave={onSave}

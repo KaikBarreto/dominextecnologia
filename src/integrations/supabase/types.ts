@@ -1210,6 +1210,7 @@ export type Database = {
           expected_min: number | null
           freq_code: string | null
           freq_months: number | null
+          guidance: string | null
           id: string
           is_active: boolean
           is_measurement: boolean
@@ -1231,6 +1232,7 @@ export type Database = {
           expected_min?: number | null
           freq_code?: string | null
           freq_months?: number | null
+          guidance?: string | null
           id?: string
           is_active?: boolean
           is_measurement?: boolean
@@ -1252,6 +1254,7 @@ export type Database = {
           expected_min?: number | null
           freq_code?: string | null
           freq_months?: number | null
+          guidance?: string | null
           id?: string
           is_active?: boolean
           is_measurement?: boolean
@@ -4256,6 +4259,7 @@ export type Database = {
           description: string
           expected_max: number | null
           expected_min: number | null
+          guidance: string | null
           id: string
           is_active: boolean
           is_measurement: boolean
@@ -4271,6 +4275,7 @@ export type Database = {
           description: string
           expected_max?: number | null
           expected_min?: number | null
+          guidance?: string | null
           id?: string
           is_active?: boolean
           is_measurement?: boolean
@@ -4286,6 +4291,7 @@ export type Database = {
           description?: string
           expected_max?: number | null
           expected_min?: number | null
+          guidance?: string | null
           id?: string
           is_active?: boolean
           is_measurement?: boolean
@@ -5460,6 +5466,7 @@ export type Database = {
       }
       service_order_activities: {
         Row: {
+          activity_photos: string | null
           company_id: string
           component: string | null
           conformity_status: string | null
@@ -5469,6 +5476,7 @@ export type Database = {
           expected_max: number | null
           expected_min: number | null
           freq_code: string | null
+          guidance: string | null
           id: string
           is_measurement: boolean
           measured_value: number | null
@@ -5480,6 +5488,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activity_photos?: string | null
           company_id: string
           component?: string | null
           conformity_status?: string | null
@@ -5489,6 +5498,7 @@ export type Database = {
           expected_max?: number | null
           expected_min?: number | null
           freq_code?: string | null
+          guidance?: string | null
           id?: string
           is_measurement?: boolean
           measured_value?: number | null
@@ -5500,6 +5510,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activity_photos?: string | null
           company_id?: string
           component?: string | null
           conformity_status?: string | null
@@ -5509,6 +5520,7 @@ export type Database = {
           expected_max?: number | null
           expected_min?: number | null
           freq_code?: string | null
+          guidance?: string | null
           id?: string
           is_measurement?: boolean
           measured_value?: number | null

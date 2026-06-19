@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.12.51";
+export const APP_VERSION = "1.12.52";
 
-export const VERSION_NOTES = "As ferramentas de Cabo Elétrico e Cálculo de Capacitor agora mostram uma foto do componente recomendado (disjuntor / capacitor) com as especificações ao lado. E no celular, a barra de ferramentas agora rola sozinha para centralizar a ferramenta aberta.";
+export const VERSION_NOTES = "No checklist da visita de PMOC, o técnico agora pode anexar fotos em cada item para comprovar o que foi feito. E cada atividade do checklist passou a trazer uma instrução de como executá-la, visível só para o técnico durante o preenchimento.";

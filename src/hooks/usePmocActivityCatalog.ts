@@ -15,6 +15,7 @@ export interface PmocCatalogActivity {
   section: string;
   component: string | null;
   description: string;
+  guidance: string | null;
   default_freq_code: string;
   is_measurement: boolean;
   unit: string | null;
@@ -61,7 +62,7 @@ export function usePmocActivityCatalog() {
       const { data, error } = await supabase
         .from('pmoc_activity_catalog')
         .select(
-          'id, section, component, description, default_freq_code, is_measurement, unit, expected_min, expected_max, sort_order',
+          'id, section, component, description, guidance, default_freq_code, is_measurement, unit, expected_min, expected_max, sort_order',
         )
         .eq('is_active', true)
         .order('section', { ascending: true })

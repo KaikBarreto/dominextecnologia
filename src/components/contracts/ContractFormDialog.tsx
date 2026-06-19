@@ -131,6 +131,7 @@ function defaultScopeForSection(section: string | null | undefined): boolean {
 // linha vem do picker; linhas manuais livres só têm description + freq_code.
 interface PlanActivityRow {
   description: string;
+  guidance?: string | null;
   freq_code: FreqCode;
   section?: string | null;
   component?: string | null;
@@ -147,6 +148,7 @@ interface PlanActivityRow {
 function planRowToInput(a: PlanActivityRow): PlanActivityInput {
   return {
     description: a.description,
+    guidance: a.guidance ?? null,
     freq_code: a.freq_code,
     section: a.section ?? null,
     component: a.component ?? null,
@@ -169,6 +171,7 @@ function catalogFreqCode(code: string | null | undefined): FreqCode {
 function catalogToPlanRow(a: PmocCatalogActivity): PlanActivityRow {
   return {
     description: a.description,
+    guidance: a.guidance ?? null,
     freq_code: catalogFreqCode(a.default_freq_code),
     section: a.section,
     component: a.component,
@@ -548,6 +551,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (!open || !editContract) return;
     const rows: PlanActivityRow[] = (existingPlan ?? []).map(r => ({
       description: r.description,
+      guidance: r.guidance ?? null,
       freq_code: planRowToFreqCode(r),
       section: r.section,
       component: r.component,

@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.52',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos no checklist da visita de PMOC',
+        description: 'Durante o preenchimento do checklist de uma visita de PMOC, o técnico agora pode anexar fotos em cada item para comprovar o serviço — quantas precisar, pela câmera ou pela galeria. Quando o item é marcado como não-conforme, o sistema destaca o anexo de foto como evidência recomendada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Instruções de como executar cada atividade do PMOC',
+        description: 'Cada atividade do checklist da visita de PMOC agora traz uma orientação curta de como executá-la, exibida logo abaixo do título — visível apenas para o técnico durante o preenchimento. Ajuda a padronizar o serviço em campo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.12.51',
     date: '18 de junho de 2026',
     type: 'patch',
