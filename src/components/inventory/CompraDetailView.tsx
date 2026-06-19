@@ -148,15 +148,15 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
         ) : (
           <div className="space-y-1.5">
             {materials.map((m) => (
-              <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
-                <span className="min-w-0 truncate">
+              <div key={m.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                <span className="truncate max-w-[70%]">
                   {m.material_name || 'Material'}
                   {!m.inventory_id && (
                     <span className="ml-2 text-xs text-warning">fora do estoque</span>
                   )}
                 </span>
                 <span className="shrink-0 text-muted-foreground">
-                  {m.quantity} {unitLabel(m.unit)}
+                  • {m.quantity} {unitLabel(m.unit)}
                 </span>
               </div>
             ))}
