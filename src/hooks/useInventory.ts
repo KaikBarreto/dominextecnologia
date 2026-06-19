@@ -46,19 +46,48 @@ export function useInventory() {
   });
 
   const updateItem = useMutation({
-    mutationFn: async ({ id, ...updates }: InventoryItemUpdate & { id: string }) => {
-      const { data, error } = await supabase
-        .from('inventory')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+    // `previousQuantity` é o valor ANTES da edição (o que está no banco hoje).
+    // Quando a quantidade muda, NÃO escrevemos quantity no update direto: a
+    // diferença vira um movimento 'ajuste' via RPC atômica, que já recalcula o
+    // estoque e deixa rastro no Kardex. Os demais campos seguem no update normal.
+    mutationFn: async ({
+      id,
+      previousQuantity,
+      ...updates
+    }: InventoryItemUpdate & { id: string; previousQuantity?: number | null }) => {
+      // Separa a quantidade dos demais campos.
+      const { quantity: newQuantityRaw, ...nonQuantity } = updates;
+
+      // 1) Campos não-quantidade vão no update direto (se houver algum).
+      if (Object.keys(nonQuantity).length > 0) {
+        const { error } = await supabase
+          .from('inventory')
+          .update(nonQuantity)
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      // 2) Se a quantidade mudou, registra um movimento de ajuste (delta
+      //    assinado). A RPC trava a linha, recalcula e grava o movimento —
+      //    por isso NÃO aplicamos a quantity no update acima (evita double-count).
+      const oldQty = previousQuantity ?? 0;
+      const newQty = newQuantityRaw ?? oldQty;
+      const delta = newQty - oldQty;
+      if (newQuantityRaw !== undefined && delta !== 0) {
+        const { error: rpcError } = await supabase.rpc('register_inventory_movement', {
+          p_inventory_id: id,
+          p_movement_type: 'ajuste',
+          p_quantity: delta,
+          p_notes: 'Ajuste manual',
+        });
+        if (rpcError) throw rpcError;
+      }
+
+      return { id };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       toast({ title: 'Item atualizado com sucesso!' });
     },
     onError: (error) => {
@@ -95,6 +124,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       toast({ title: 'Item removido com sucesso!' });
     },
     onError: (error) => {

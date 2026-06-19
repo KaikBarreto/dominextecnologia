@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.0',
+    date: '19 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Histórico de movimentações do estoque (Kardex)',
+        description: 'O Estoque agora tem abas. Na nova aba "Histórico (Kardex)" você vê cada movimentação de cada material — entradas, saídas, ajustes e transferências — com quem fez, a data e o saldo antes e depois. Toda edição manual de quantidade passa a ficar registrada como ajuste, com filtros por período, material e tipo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Compras de Material com cotação de fornecedores',
+        description: 'Nova aba "Compras de Material": cadastre seus fornecedores e crie cotações lançando os materiais e o preço de cada fornecedor lado a lado. O sistema destaca o mais barato e você aprova a melhor proposta. Quando o material chega, um clique registra a entrada no estoque.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.53',
     date: '19 de junho de 2026',
     type: 'patch',

@@ -74,7 +74,11 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isEditing && item) { await updateItem.mutateAsync({ id: item.id, ...formData }); }
+    if (isEditing && item) {
+      // Passa a quantidade ANTERIOR pro hook: se a quantidade mudou, ele converte
+      // a diferença num movimento 'ajuste' (Kardex) em vez de gravar direto.
+      await updateItem.mutateAsync({ id: item.id, ...formData, previousQuantity: item.quantity });
+    }
     else { await createItem.mutateAsync(formData as InventoryItemInsert); }
     onOpenChange(false);
   };

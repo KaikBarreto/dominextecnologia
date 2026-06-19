@@ -3547,6 +3547,7 @@ export type Database = {
       }
       inventory_movements: {
         Row: {
+          company_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -3554,9 +3555,15 @@ export type Database = {
           movement_type: string
           notes: string | null
           quantity: number
+          related_movement_id: string | null
           service_order_id: string | null
+          stock_after: number | null
+          stock_before: number | null
+          supplier_id: string | null
+          unit_cost: number | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3564,9 +3571,15 @@ export type Database = {
           movement_type: string
           notes?: string | null
           quantity: number
+          related_movement_id?: string | null
           service_order_id?: string | null
+          stock_after?: number | null
+          stock_before?: number | null
+          supplier_id?: string | null
+          unit_cost?: number | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3574,7 +3587,12 @@ export type Database = {
           movement_type?: string
           notes?: string | null
           quantity?: number
+          related_movement_id?: string | null
           service_order_id?: string | null
+          stock_after?: number | null
+          stock_before?: number | null
+          supplier_id?: string | null
+          unit_cost?: number | null
         }
         Relationships: [
           {
@@ -3585,10 +3603,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_movements_related_movement_id_fkey"
+            columns: ["related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_movements"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_movements_service_order_id_fkey"
             columns: ["service_order_id"]
             isOneToOne: false
             referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -3808,6 +3840,183 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      material_purchase_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          inventory_id: string | null
+          purchase_id: string
+          quantity: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          purchase_id: string
+          quantity: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          inventory_id?: string | null
+          purchase_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_purchase_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "material_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_purchase_quotes: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          inventory_id: string
+          purchase_id: string
+          supplier_id: string
+          unit_price: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          inventory_id: string
+          purchase_id: string
+          supplier_id: string
+          unit_price: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          inventory_id?: string
+          purchase_id?: string
+          supplier_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_purchase_quotes_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_purchase_quotes_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "material_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_purchase_quotes_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_purchase_suppliers: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          purchase_id: string
+          supplier_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          purchase_id: string
+          supplier_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          purchase_id?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_purchase_suppliers_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "material_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_purchase_suppliers_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_purchases: {
+        Row: {
+          approved_at: string | null
+          approved_supplier_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_supplier_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_supplier_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_purchases_approved_supplier_id_fkey"
+            columns: ["approved_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nfse_emissions: {
         Row: {
@@ -6283,6 +6492,48 @@ export type Database = {
         }
         Relationships: []
       }
+      suppliers: {
+        Row: {
+          company_id: string
+          contact_name: string | null
+          cpf_cnpj: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          contact_name?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          contact_name?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_types: {
         Row: {
           color: string
@@ -7194,6 +7445,19 @@ export type Database = {
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
         Returns: string
+      }
+      register_inventory_movement: {
+        Args: {
+          p_inventory_id: string
+          p_movement_type: string
+          p_quantity: number
+          p_supplier_id?: string
+          p_unit_cost?: number
+          p_notes?: string
+          p_service_order_id?: string
+          p_related_movement_id?: string
+        }
+        Returns: Database["public"]["Tables"]["inventory_movements"]["Row"]
       }
       register_manual_company_payment: {
         Args: {
