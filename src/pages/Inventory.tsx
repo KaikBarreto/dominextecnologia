@@ -280,20 +280,7 @@ export default function Inventory() {
         title="Estoque"
         subtitle="Controle de peças e materiais"
         icon={Package}
-        actions={
-          isMobile || activeTab !== 'estoque' ? undefined : (
-            <div className="flex items-center gap-2">
-              {exportDropdown()}
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-                onClick={openNewItem}
-              >
-                <Plus className="h-4 w-4" />
-                Cadastrar Material
-              </Button>
-            </div>
-          )
-        }
+        actions={undefined}
       />
 
       {/* Abas: Estoque Atual / Histórico (Kardex) / Compras de Material.
@@ -349,14 +336,24 @@ export default function Inventory() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          {categories.length > 0 && (
-            <FilterButton
-              activeCount={categoryFilter.length > 0 ? 1 : 0}
-              onClear={() => setCategoryFilter([])}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {categories.length > 0 && (
+              <FilterButton
+                activeCount={categoryFilter.length > 0 ? 1 : 0}
+                onClear={() => setCategoryFilter([])}
+              >
+                {categoryFilterContent}
+              </FilterButton>
+            )}
+            {exportDropdown()}
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+              onClick={openNewItem}
             >
-              {categoryFilterContent}
-            </FilterButton>
-          )}
+              <Plus className="h-4 w-4" />
+              Cadastrar Material
+            </Button>
+          </div>
         </div>
       )}
 

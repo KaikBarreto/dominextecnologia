@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.13.1";
+export const APP_VERSION = "1.13.2";
 
-export const VERSION_NOTES = "Cotações de compra mais completas: agora você inclui até materiais que ainda não estão no estoque, com unidade e valor unitário ou total (um calcula o outro), e duplica cotações. E a tela de Estoque ganhou navegação por menu lateral no computador e abas deslizantes no celular.";
+export const VERSION_NOTES = "No Histórico de Materiais do estoque, o filtro de material passou a mostrar todos os materiais cadastrados (não só os que já tiveram movimentação). E no computador, os botões de cadastrar e exportar ficam agora na linha da busca, deixando o topo da tela mais limpo.";

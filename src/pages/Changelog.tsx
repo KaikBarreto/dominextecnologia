@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.2',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Filtro de materiais no histórico do estoque',
+        description: 'No Histórico de Materiais (Kardex), o filtro por material agora lista todos os materiais cadastrados — inclusive os que ainda não tiveram nenhuma movimentação. Sem nada selecionado, continua mostrando tudo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ações do estoque mais à mão',
+        description: 'No computador, os botões de Cadastrar Material e Exportar passaram para a linha da busca, dentro da aba Estoque Atual, deixando o topo da tela mais limpo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.1',
     date: '19 de junho de 2026',
     type: 'patch',

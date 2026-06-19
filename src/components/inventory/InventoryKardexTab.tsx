@@ -31,6 +31,7 @@ import {
   type InventoryMovementWithRelations,
   type MovementType,
 } from '@/hooks/useInventoryMovements';
+import { useInventory } from '@/hooks/useInventory';
 
 // --------------------------------------------------------------------------
 // Config visual por tipo de movimento. Badge SATURADA com texto branco
@@ -116,23 +117,24 @@ function initials(name: string | null, email: string | null): string {
 export function InventoryKardexTab() {
   const isMobile = useIsMobile();
   const { movements, isLoading } = useInventoryMovements();
+  const { items } = useInventory();
 
   // Período: default "este mês". Filtra por created_at.
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
 
   // Material (multi) + Tipo (multi). Vazio = mostra tudo.
-  const materialOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    movements.forEach((m) => {
-      if (m.inventory_id && m.material) {
-        const label = m.material.sku ? `${m.material.name} (${m.material.sku})` : m.material.name;
-        map.set(m.inventory_id, label);
-      }
-    });
-    return [...map.entries()]
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [movements]);
+  // Fonte = TODOS os materiais do estoque (não só os que têm movimentação),
+  // pra o gestor poder filtrar mesmo item que ainda não movimentou.
+  const materialOptions = useMemo(
+    () =>
+      items
+        .map((item) => ({
+          value: item.id,
+          label: item.sku ? `${item.name} (${item.sku})` : item.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
+    [items],
+  );
 
   const typeOptions = useMemo(() => {
     const present = new Set(movements.map((m) => m.movement_type));
