@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.4',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compra em tela própria e preços mais claros',
+        description: 'Ao abrir uma compra, ela agora aparece em uma tela dedicada dentro de Compras de Material, com botão para voltar à lista — mais espaço e leitura melhor que a janela anterior. E o preenchimento de preços da cotação ficou mais intuitivo: o valor unitário e o valor total aparecem lado a lado e um é calculado automaticamente a partir do outro.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.3',
     date: '19 de junho de 2026',
     type: 'patch',

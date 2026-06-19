@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ShoppingCart, Plus, Search, Users, Pencil, Trash2, CheckCheck, XCircle, RotateCcw,
 } from 'lucide-react';
@@ -17,7 +17,7 @@ import { formatBRL } from '@/utils/currency';
 import { useCompras, type CompraListRow } from '@/hooks/useCompras';
 import { SuppliersDialog } from './SuppliersDialog';
 import { CompraEditorDialog } from './CompraEditorDialog';
-import { CompraDetailDialog } from './CompraDetailDialog';
+import { CompraDetailView } from './CompraDetailView';
 
 const STATUS_META: Record<string, { label: string; variant: 'info' | 'success' | 'destructive' }> = {
   aberta: { label: 'Aberta', variant: 'info' },
@@ -36,9 +36,21 @@ export function MaterialPurchasesTab() {
   const [suppliersOpen, setSuppliersOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<CompraListRow | null>(null);
-  const [detailFor, setDetailFor] = useState<CompraListRow | null>(null);
+  const [selectedCompraId, setSelectedCompraId] = useState<string | null>(null);
   const [toCancel, setToCancel] = useState<CompraListRow | null>(null);
   const [toDelete, setToDelete] = useState<CompraListRow | null>(null);
+
+  // Compra selecionada para a tela de detalhe (sub-view dentro da própria aba).
+  // Resolvida da lista por id para refletir refetches (status, menor cotação etc.).
+  const selectedCompra = useMemo(
+    () => compras.find((c) => c.id === selectedCompraId) ?? null,
+    [compras, selectedCompraId],
+  );
+
+  // Se a compra selecionada sumiu (ex.: excluída), volta para a lista.
+  useEffect(() => {
+    if (selectedCompraId && !isLoading && !selectedCompra) setSelectedCompraId(null);
+  }, [selectedCompraId, isLoading, selectedCompra]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return compras;
@@ -51,6 +63,20 @@ export function MaterialPurchasesTab() {
 
   const openNew = () => { setEditing(null); setEditorOpen(true); };
   const openEdit = (c: CompraListRow) => { setEditing(c); setEditorOpen(true); };
+
+  // Sub-view de detalhe: ocupa o lugar da lista dentro da própria aba.
+  if (selectedCompra) {
+    return (
+      <>
+        <CompraDetailView
+          compra={selectedCompra}
+          onBack={() => setSelectedCompraId(null)}
+          onEdit={openEdit}
+        />
+        <CompraEditorDialog open={editorOpen} onOpenChange={setEditorOpen} compra={editing} />
+      </>
+    );
+  }
 
   const rowActions = (c: CompraListRow): RowAction[] => [
     { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEdit(c) },
@@ -125,7 +151,7 @@ export function MaterialPurchasesTab() {
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left"
-                    onClick={() => setDetailFor(c)}
+                    onClick={() => setSelectedCompraId(c.id)}
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate font-semibold">{c.title}</span>
@@ -152,13 +178,6 @@ export function MaterialPurchasesTab() {
       {/* Dialogs */}
       <SuppliersDialog open={suppliersOpen} onOpenChange={setSuppliersOpen} />
       <CompraEditorDialog open={editorOpen} onOpenChange={setEditorOpen} compra={editing} />
-      {detailFor && (
-        <CompraDetailDialog
-          open={!!detailFor}
-          onOpenChange={(o) => !o && setDetailFor(null)}
-          compra={detailFor}
-        />
-      )}
 
       {/* Cancelar compra */}
       <AlertDialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>
