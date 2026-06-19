@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.12.53',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exportar o estoque em PDF ou Excel',
+        description: 'A tela de Estoque ganhou um botão Exportar. Ao escolher PDF ou Excel, você seleciona quais materiais incluir (todos vêm marcados por padrão) e gera o relatório na hora. O PDF traz os dados da sua empresa no topo, a lista completa dos materiais com quantidades e preços, e o valor total em estoque.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.12.52',
     date: '19 de junho de 2026',
     type: 'patch',

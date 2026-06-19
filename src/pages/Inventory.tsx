@@ -12,8 +12,18 @@ import {
   TrendingUp,
   Boxes,
   Eye,
+  FileDown,
+  FileText,
+  FileSpreadsheet,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -40,16 +50,30 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import {
+  InventoryExportDialog,
+  type ExportFormat,
+} from '@/components/inventory/InventoryExportDialog';
+import { generateInventoryReportPdf } from '@/utils/inventoryPdfGenerator';
+import { generateInventoryExcel } from '@/utils/inventoryExcelGenerator';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
   const { items, isLoading, stats, deleteItem } = useInventory();
+  const { settings: companySettings } = useCompanySettings();
+  const { enabled: whiteLabelEnabled } = useWhiteLabel();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const filteredItems = items.filter((item) => {
     const matchesSearch =
@@ -104,6 +128,75 @@ export default function Inventory() {
     setEditingItem(null);
     setDialogOpen(true);
   };
+
+  const openExport = (format: ExportFormat) => {
+    setExportFormat(format);
+    setExportOpen(true);
+  };
+
+  const handleExportConfirm = async (selected: InventoryItem[]) => {
+    const rows = selected.map((i) => ({
+      name: i.name,
+      sku: i.sku ?? null,
+      category: i.category ?? null,
+      quantity: i.quantity ?? null,
+      unit: i.unit ?? null,
+      cost_price: i.cost_price ?? null,
+      sale_price: i.sale_price ?? null,
+    }));
+    const title = 'Relatório de Estoque';
+    try {
+      if (exportFormat === 'excel') {
+        await generateInventoryExcel({ title, rows });
+      } else {
+        await generateInventoryReportPdf({
+          company: companySettings,
+          whiteLabel: whiteLabelEnabled,
+          title,
+          rows,
+        });
+      }
+    } catch (err) {
+      console.error('Falha ao exportar estoque:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao exportar',
+        description: 'Não foi possível gerar o arquivo. Tente novamente.',
+      });
+    }
+  };
+
+  // Botão Exportar com dropdown PDF/Excel (reusado no header desktop e na
+  // linha de busca mobile). Visual espelha o das Movimentações.
+  const exportDropdown = (compact = false) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {compact ? (
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-xl" aria-label="Exportar estoque">
+            <FileDown className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className="gap-1 min-h-11 rounded-xl">
+            <FileDown className="h-4 w-4" /> Exportar <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          </Button>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem
+          onClick={() => openExport('pdf')}
+          className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
+        >
+          <FileText className="h-4 w-4" /> PDF
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => openExport('excel')}
+          className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white"
+        >
+          <FileSpreadsheet className="h-4 w-4" /> Excel
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   const isLowStock = (item: InventoryItem) =>
     item.quantity !== null &&
@@ -175,13 +268,16 @@ export default function Inventory() {
         icon={Package}
         actions={
           isMobile ? undefined : (
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-              onClick={openNewItem}
-            >
-              <Plus className="h-4 w-4" />
-              Cadastrar Material
-            </Button>
+            <div className="flex items-center gap-2">
+              {exportDropdown()}
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                onClick={openNewItem}
+              >
+                <Plus className="h-4 w-4" />
+                Cadastrar Material
+              </Button>
+            </div>
           )
         }
       />
@@ -210,6 +306,7 @@ export default function Inventory() {
               {categoryFilterContent}
             </FilterSheet>
           )}
+          {exportDropdown(true)}
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -461,6 +558,15 @@ export default function Inventory() {
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         item={editingItem}
+      />
+
+      {/* Seleção de materiais p/ exportar (PDF ou Excel). Fonte = estoque completo. */}
+      <InventoryExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        format={exportFormat}
+        items={items}
+        onConfirm={handleExportConfirm}
       />
 
       {/* Confirmação de exclusão — substitui o confirm() nativo. */}
