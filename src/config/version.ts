@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.13.7";
+export const APP_VERSION = "1.13.8";
 
-export const VERSION_NOTES = "Compras de Material repaginado: a tela da compra ficou mais clara (nome em destaque, ações da cotação num menu), a lista ganhou layout melhor com o fornecedor aceito em destaque, agora dá para filtrar por situação (aberta, concluída, cancelada) e cada compra tem o seu código sequencial (#1, #2...).";
+export const VERSION_NOTES = "Agora dá para importar estoque pela NF-e do fornecedor: suba o XML da nota de compra, confira os produtos (casando com itens existentes ou criando novos) e o sistema dá entrada no estoque com o custo da nota e vincula o fornecedor — avisando se a nota já tiver sido importada.";

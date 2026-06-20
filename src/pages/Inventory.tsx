@@ -18,6 +18,7 @@ import {
   ChevronDown,
   History,
   ShoppingCart,
+  FileUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -64,6 +65,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { InventoryKardexTab } from '@/components/inventory/InventoryKardexTab';
 import { MaterialPurchasesTab } from '@/components/inventory/MaterialPurchasesTab';
+import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
@@ -79,6 +81,7 @@ export default function Inventory() {
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [nfeImportOpen, setNfeImportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('estoque');
 
   const filteredItems = items.filter((item) => {
@@ -327,6 +330,15 @@ export default function Inventory() {
             </FilterSheet>
           )}
           {exportDropdown(true)}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 shrink-0 rounded-xl"
+            aria-label="Importar XML de NF-e"
+            onClick={() => setNfeImportOpen(true)}
+          >
+            <FileUp className="h-4 w-4" />
+          </Button>
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -349,6 +361,14 @@ export default function Inventory() {
               </FilterButton>
             )}
             {exportDropdown()}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 min-h-11 rounded-xl"
+              onClick={() => setNfeImportOpen(true)}
+            >
+              <FileUp className="h-4 w-4" /> Importar XML (NF-e)
+            </Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
               onClick={openNewItem}
@@ -598,6 +618,9 @@ export default function Inventory() {
         onOpenChange={handleDialogClose}
         item={editingItem}
       />
+
+      {/* Importação de estoque via XML de NF-e (parse no navegador + entrada via RPC). */}
+      <NfeImportDialog open={nfeImportOpen} onOpenChange={setNfeImportOpen} />
 
       {/* Seleção de materiais p/ exportar (PDF ou Excel). Fonte = estoque completo. */}
       <InventoryExportDialog

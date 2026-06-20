@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.8',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Importar estoque pela NF-e do fornecedor',
+        description: 'No Estoque, o botão "Importar XML (NF-e)" lê a nota fiscal de compra do fornecedor: o sistema identifica o fornecedor (pelo CNPJ) e os produtos da nota, e abre uma tela de revisão onde você confirma cada item — casando com um material que já existe ou criando um novo, com quantidade e custo. Ao confirmar, os itens recebem entrada no estoque com o custo da nota e o fornecedor é vinculado. Se a mesma nota já tiver sido importada, o sistema avisa antes de duplicar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.13.7',
     date: '19 de junho de 2026',
     type: 'patch',
