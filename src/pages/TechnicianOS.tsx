@@ -201,6 +201,10 @@ export default function TechnicianOS() {
   // Accordion de checklists (autenticado) controlado pra a sidebar desktop poder
   // abrir o equipamento ao navegar. Default: nada aberto (igual ao mobile).
   const [openChecklistKeys, setOpenChecklistKeys] = useState<string[]>([]);
+  // Accordion da VISITA PMOC (checklistGroups) — separado do de questionários.
+  // Controlado pra a sidebar desktop poder abrir o equipamento ao navegar.
+  // Inicia com a 1ª chave aberta (replica o defaultValue do VisitChecklistPanel).
+  const [openVisitKeys, setOpenVisitKeys] = useState<string[]>([]);
   // Navega (scroll suave) até a seção do equipamento clicada na sidebar desktop
   // e abre o accordion correspondente quando a chave bate com um item.
   const scrollToAnchor = useCallback((anchorId: string, accordionKey?: string) => {
@@ -210,6 +214,25 @@ export default function TechnicianOS() {
       setOpenChecklistKeys((prev) => (prev.includes(accordionKey) ? prev : [...prev, accordionKey]));
     }
   }, []);
+  // Navega até a seção da visita PMOC e abre o accordion próprio (openVisitKeys),
+  // que é separado do accordion de questionários.
+  const scrollToVisitAnchor = useCallback((anchorId: string, accordionKey?: string) => {
+    const el = document.getElementById(anchorId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (accordionKey) {
+      setOpenVisitKeys((prev) => (prev.includes(accordionKey) ? prev : [...prev, accordionKey]));
+    }
+  }, []);
+  // Inicializa o accordion da visita PMOC com o 1º equipamento aberto (demais
+  // fechados) — replica o defaultValue do VisitChecklistPanel. Só seta a primeira
+  // vez que os grupos chegam, pra não reabrir o que o técnico já fechou.
+  const visitKeysInitRef = useRef(false);
+  useEffect(() => {
+    if (visitKeysInitRef.current) return;
+    if (checklistGroups.length === 0) return;
+    visitKeysInitRef.current = true;
+    setOpenVisitKeys([checklistGroups[0].equipmentId ?? '__local__']);
+  }, [checklistGroups]);
   // Copia o link público de acompanhamento e mostra toast (link gerado já copia no ato).
   const handleCopyTrackingLink = async () => {
     if (!id) return;
@@ -1859,6 +1882,37 @@ export default function TechnicianOS() {
         status,
       });
     });
+
+    // Visita PMOC: equipamentos não vêm de questionários e sim do checklist da
+    // visita (checklistGroups). Monta um item por grupo, com a MESMA chave estável
+    // do accordion do VisitChecklistPanel (`equipmentId ?? '__local__'`) pra o
+    // clique abrir o checklist certo. Status = mesmo critério do badge do painel.
+    if (hasChecklist) {
+      checklistGroups.forEach((group) => {
+        const groupKey = group.equipmentId ?? '__local__';
+        if (seen.has(groupKey)) return;
+        seen.add(groupKey);
+        const total = group.activities.length;
+        const answered = group.activities.filter((a) => !!a.conformity_status).length;
+        const naoConforme = group.activities.some((a) => a.conformity_status === 'nao_conforme');
+        const status: OsSidebarStatus = naoConforme
+          ? 'nao_conforme'
+          : answered === total && total > 0
+            ? 'concluido'
+            : 'pendente';
+        items.push({
+          key: groupKey,
+          anchorId: `os-pmoc-${groupKey}`,
+          label: group.equipmentName,
+          sublabel:
+            [group.equipment?.brand, group.equipment?.model].filter(Boolean).join(' ') || null,
+          photoUrl: group.equipment?.photo_url ?? null,
+          categoryColor: group.equipment?.category?.color ?? null,
+          status,
+        });
+      });
+    }
+
     return items;
   })();
 
@@ -2071,7 +2125,11 @@ export default function TechnicianOS() {
       <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_20rem] lg:gap-4 lg:px-8 lg:w-full lg:max-w-screen-2xl lg:mx-auto lg:items-start lg:pt-4">
         <OsEquipmentSidebar
           items={interactiveSidebarItems}
-          onNavigate={(item) => scrollToAnchor(item.anchorId, item.key)}
+          onNavigate={(item) =>
+            item.anchorId.startsWith('os-pmoc-')
+              ? scrollToVisitAnchor(item.anchorId, item.key)
+              : scrollToAnchor(item.anchorId, item.key)
+          }
           topPx={headerHeight + 16}
           header={sidebarContextBlocks}
         />
@@ -2458,6 +2516,8 @@ export default function TechnicianOS() {
             readOnly={isPaused}
             onSave={saveChecklistActivity}
             onPreviewPhoto={setPreviewPhoto}
+            openKeys={openVisitKeys}
+            onOpenChange={setOpenVisitKeys}
           />
         )}
 

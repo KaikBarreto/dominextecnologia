@@ -33,6 +33,13 @@ interface Props {
   ) => Promise<void>;
   /** Abre a foto do equipamento em tela cheia (mesmo viewer da OS comum). */
   onPreviewPhoto?: (url: string) => void;
+  /**
+   * Accordion controlado (sidebar desktop): chaves abertas + callback de mudança.
+   * Quando AMBOS vêm, o accordion vira controlado; senão mantém o comportamento
+   * não-controlado (1º grupo aberto por defaultValue) pra retrocompat.
+   */
+  openKeys?: string[];
+  onOpenChange?: (keys: string[]) => void;
 }
 
 /** Número PT-BR: aceita vírgula ou ponto; vazio = null. */
@@ -268,12 +275,17 @@ export function VisitChecklistPanel({
   readOnly,
   onSave,
   onPreviewPhoto,
+  openKeys,
+  onOpenChange,
 }: Props) {
   if (groups.length === 0) return null;
 
   // Requisito: 1º equipamento aberto, demais fechados, todos expansíveis.
   // type="multiple" + defaultValue com a chave do primeiro grupo (igual à OS comum).
   const firstKey = groupKey(groups[0]);
+  // Controlado só quando a página passa openKeys + onOpenChange (sidebar desktop).
+  // Senão mantém o uso não-controlado original (defaultValue).
+  const controlled = openKeys !== undefined && onOpenChange !== undefined;
 
   return (
     <Card>
@@ -294,7 +306,9 @@ export function VisitChecklistPanel({
         )}
         <Accordion
           type="multiple"
-          defaultValue={[firstKey]}
+          {...(controlled
+            ? { value: openKeys, onValueChange: onOpenChange }
+            : { defaultValue: [firstKey] })}
           className={cn('w-full', readOnly && 'opacity-60 cursor-not-allowed')}
         >
           {groups.map((group) => {
@@ -314,7 +328,8 @@ export function VisitChecklistPanel({
               <AccordionItem
                 key={groupKey(group)}
                 value={groupKey(group)}
-                className="border-b last:border-0"
+                id={`os-pmoc-${groupKey(group)}`}
+                className="border-b last:border-0 scroll-mt-28"
               >
                 <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
                   <div className="flex items-center gap-3 flex-1 min-w-0 text-left">

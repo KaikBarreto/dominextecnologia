@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.1',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Navegação entre equipamentos nas visitas PMOC',
+        description: 'No computador, as ordens de serviço de visita de contrato PMOC voltaram a mostrar a navegação lateral de equipamentos. Cada máquina aparece com foto e situação (concluído, pendente ou com pendência); ao clicar, a tela rola até ela e já abre o seu checklist — do mesmo jeito que acontece nas demais ordens de serviço.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.0',
     date: '20 de junho de 2026',
     type: 'minor',
