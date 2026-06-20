@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.11',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ilustração do Ciclo Básico mais clara',
+        description: 'Na ferramenta Ciclo Básico de Refrigeração, o diagrama foi reorganizado: o compressor agora aparece na parte de baixo e os trocadores (evaporador e condensador) ficaram centralizados, com os rótulos mais bem distribuídos — fica mais fácil acompanhar o caminho do gás pelo sistema.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.10',
     date: '20 de junho de 2026',
     type: 'patch',

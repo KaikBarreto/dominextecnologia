@@ -2,14 +2,14 @@
  * Ilustração do ciclo de refrigeração — diagrama SVG inline, original (sem arte
  * de terceiros), no estilo CLÁSSICO de manual técnico (orientação paisagem).
  *
- * LAYOUT:
- *   - Compressor: TOPO-CENTRO, símbolo de círculo com cunha de compressão.
- *     Fica INLINE com a linha horizontal do topo: sucção entra pela ESQUERDA
+ * LAYOUT (compressor SEMPRE EMBAIXO — régua do CEO):
+ *   - Compressor: BAIXO-CENTRO, símbolo de círculo com cunha de compressão.
+ *     Fica INLINE com a linha horizontal de baixo: sucção entra pela ESQUERDA
  *     e descarga sai pela DIREITA, ambas na ALTURA DO CENTRO do compressor.
  *   - Evaporador: ESQUERDA, CAIXA AZUL (fria) com SERPENTINA em MEANDRO.
  *   - Condensador: DIREITA, CAIXA LARANJA (quente) com SERPENTINA em MEANDRO.
- *   - Válvula de Expansão: BAIXO-CENTRO, símbolo de bowtie, inline na linha
- *     de baixo (a linha passa pelo centro dela, igual ao compressor no topo).
+ *   - Válvula de Expansão: TOPO-CENTRO, símbolo de bowtie, inline na linha
+ *     de cima (a linha passa pelo centro dela, igual ao compressor embaixo).
  *
  * SERPENTINAS: cada caixa tem uma serpentina em meandro/boustrophedon — ~5
  * passagens horizontais paralelas conectadas por curvas em U nas pontas,
@@ -20,10 +20,10 @@
  * linha externa (transição tubo↔linha como peça única, sem degrau).
  *
  * LOOP FECHADO (linhas grossas com seta tocando cada componente, sem pontas soltas):
- *   - Sucção (azul):   Evaporador (topo) → Compressor (esquerda)  — vapor baixa pressão
- *   - Descarga (laranja): Compressor (direita) → Condensador (topo) — vapor alta pressão
- *   - Líquido (laranja):  Condensador (base) → Válvula (lado dir.)  — líquido alta pressão
- *   - Expansão (azul):    Válvula (lado esq.) → Evaporador (base)   — líquido/vapor baixa pressão
+ *   - Sucção (azul):   Evaporador (base) → Compressor (esquerda)   — vapor baixa pressão
+ *   - Descarga (laranja): Compressor (direita) → Condensador (base) — vapor alta pressão
+ *   - Líquido (laranja):  Condensador (topo) → Válvula (lado dir.)  — líquido alta pressão
+ *   - Expansão (azul):    Válvula (lado esq.) → Evaporador (topo)   — líquido/vapor baixa pressão
  *
  * CORES DE PRESSÃO: lado ESQUERDO = baixa (azul/frio); lado DIREITO = alta
  * (laranja/quente). Fundo dividido em duas metades translúcidas.
@@ -198,9 +198,10 @@ function ManometroIcon({ cx, cy, height, fill }: { cx: number; cy: number; heigh
  * U invertido), percorre `rows` fileiras horizontais ligadas por curvas em U
  * nas pontas, e SAI por outra curva suave de volta ao tubo externo de saída.
  *
- * `entry`/`exit` = 'top' | 'bottom' indicam por onde o tubo externo conecta:
- *   - Evaporador: entry='bottom' (expansão sobe), exit='top' (sucção sobe).
- *   - Condensador: entry='top' (descarga desce), exit='bottom' (líquido desce).
+ * `entry`/`exit` = 'top' | 'bottom' indicam por onde o tubo externo conecta
+ * (com o compressor EMBAIXO e a válvula EM CIMA):
+ *   - Evaporador: entry='top' (expansão vem da válvula no topo), exit='bottom' (sucção desce ao compressor).
+ *   - Condensador: entry='bottom' (descarga vem do compressor embaixo), exit='top' (líquido sobe à válvula).
  *
  * IMPORTANTE: é UM ÚNICO path com ESPESSURA UNIFORME (sem trechos afilados). As
  * pontas de ENTRADA e de SAÍDA usam EXATAMENTE a mesma construção (espelhada):
@@ -367,9 +368,12 @@ export function CicloRefrigeracaoIlustracao() {
     onPointerDown: onTap(key),
   });
 
-  // Caixas dos trocadores (compartilham os mesmos Y)
-  const boxTop = 230;
-  const boxBottom = 360;
+  // Caixas dos trocadores (compartilham os mesmos Y).
+  // CENTRALIZADAS verticalmente: o centro (255) é o ponto médio entre a faixa da
+  // válvula (valveY=110, topo) e a faixa do compressor (compY=400, base), de modo
+  // que o espaço acima (até a válvula) ≈ espaço abaixo (até o compressor).
+  const boxTop = 190;
+  const boxBottom = 320;
   const boxH = boxBottom - boxTop;
 
   // Evaporador (esquerda)
@@ -387,7 +391,8 @@ export function CicloRefrigeracaoIlustracao() {
   const evapCx = evapX + evapW / 2; // 130
   const condCx = condX + condW / 2; // 630
 
-  // Evaporador: tubo entra embaixo (expansão) e sai em cima (sucção) — tubo contínuo.
+  // Compressor agora EMBAIXO: o evaporador entra em CIMA (expansão, que vem da
+  // válvula no topo) e sai EMBAIXO (sucção, que desce até o compressor).
   const evapSerp = meanderPath({
     left: evapX + padX,
     right: evapX + evapW - padX,
@@ -397,10 +402,11 @@ export function CicloRefrigeracaoIlustracao() {
     boxTop,
     boxBottom,
     rows,
-    entry: "bottom",
-    exit: "top",
+    entry: "top",
+    exit: "bottom",
   });
-  // Condensador: tubo entra em cima (descarga) e sai embaixo (líquido) — tubo contínuo.
+  // Condensador: entra EMBAIXO (descarga vinda do compressor no rodapé) e sai em
+  // CIMA (líquido, que sobe até a válvula no topo) — tubo contínuo.
   const condSerp = meanderPath({
     left: condX + padX,
     right: condX + condW - padX,
@@ -410,17 +416,17 @@ export function CicloRefrigeracaoIlustracao() {
     boxTop,
     boxBottom,
     rows,
-    entry: "top",
-    exit: "bottom",
+    entry: "bottom",
+    exit: "top",
   });
 
-  // Compressor: inline na linha do topo (y=110), centro x=380
-  const compY = 110;
+  // Compressor: inline na linha de BAIXO (y=400), centro x=380 — agora no rodapé.
+  const compY = 400;
   const compCx = 380;
   const compR = 30;
 
-  // Válvula: inline na linha de baixo (y=400), centro x=380
-  const valveY = 400;
+  // Válvula: inline na linha do TOPO (y=110), centro x=380 — agora em cima.
+  const valveY = 110;
   const valveCx = 380;
 
   const currentTip = tip ? TIPS[tip.key] : null;
@@ -443,10 +449,11 @@ export function CicloRefrigeracaoIlustracao() {
     evapX: 38,
     condX: 252,
     boxW: 110,
-    // compressor (topo-centro) e válvula (base-centro)
-    compY: 118,
+    // compressor agora BASE-centro e válvula TOPO-centro (CEO: compressor sempre
+    // embaixo). compY desce p/ o rodapé, valveY sobe p/ o topo.
+    compY: 642,
     compR: 28,
-    valveY: 642,
+    valveY: 118,
     // padding interno da serpentina
     padX: 18,
     padY: 24,
@@ -454,11 +461,12 @@ export function CicloRefrigeracaoIlustracao() {
   const mBoxH = M.boxBottom - M.boxTop;
   const mEvapCx = M.evapX + M.boxW / 2; // 93
   const mCondCx = M.condX + M.boxW / 2; // 307
-  // compressor toca a linha em compY; válvula em valveY
-  const mCompTop = M.compY; // y das linhas de sucção/descarga
-  const mValveBot = M.valveY; // y das linhas de líquido/expansão
+  // y das linhas que tocam o compressor (rodapé) e a válvula (topo).
+  const mCompY = M.compY; // y das linhas de sucção/descarga (rodapé)
+  const mValveY = M.valveY; // y das linhas de líquido/expansão (topo)
 
-  // Evaporador: entra embaixo (expansão) e sai em cima (sucção).
+  // Compressor embaixo: evaporador entra em CIMA (expansão vinda da válvula no
+  // topo) e sai EMBAIXO (sucção, que desce até o compressor).
   const mEvapSerp = meanderPath({
     left: M.evapX + M.padX,
     right: M.evapX + M.boxW - M.padX,
@@ -469,10 +477,11 @@ export function CicloRefrigeracaoIlustracao() {
     boxBottom: M.boxBottom,
     // Mesma quantidade/aparência do desktop: caixa COMPACTA com ~5 passagens.
     rows: 5,
-    entry: "bottom",
-    exit: "top",
+    entry: "top",
+    exit: "bottom",
   });
-  // Condensador: entra em cima (descarga) e sai embaixo (líquido).
+  // Condensador: entra EMBAIXO (descarga vinda do compressor no rodapé) e sai em
+  // CIMA (líquido, que sobe até a válvula no topo).
   const mCondSerp = meanderPath({
     left: M.condX + M.padX,
     right: M.condX + M.boxW - M.padX,
@@ -482,8 +491,8 @@ export function CicloRefrigeracaoIlustracao() {
     boxTop: M.boxTop,
     boxBottom: M.boxBottom,
     rows: 5,
-    entry: "top",
-    exit: "bottom",
+    entry: "bottom",
+    exit: "top",
   });
 
   return (
@@ -495,7 +504,7 @@ export function CicloRefrigeracaoIlustracao() {
           // coordenadas próprias (sem rotação). DESKTOP: paisagem original.
           viewBox={isMobile ? "0 0 408 760" : "-24 0 828 480"}
           role="img"
-          aria-label="Diagrama do ciclo de refrigeração em loop fechado. Compressor no topo-centro inline com a linha de sucção e descarga, evaporador à esquerda (caixa azul fria com serpentina em meandro), condensador à direita (caixa laranja quente com serpentina em meandro) e válvula de expansão embaixo no centro inline com a linha de líquido e expansão. Lado esquerdo é baixa pressão (azul) e lado direito é alta pressão (laranja). Manômetro e termômetro marcados na linha de sucção."
+          aria-label="Diagrama do ciclo de refrigeração em loop fechado. Compressor embaixo no centro inline com a linha de sucção e descarga, evaporador à esquerda (caixa azul fria com serpentina em meandro), condensador à direita (caixa laranja quente com serpentina em meandro) e válvula de expansão no topo-centro inline com a linha de líquido e expansão. Lado esquerdo é baixa pressão (azul) e lado direito é alta pressão (laranja). Manômetro e termômetro marcados na linha de sucção."
           className={
             isMobile
               ? "block h-auto w-full max-h-[80vh]"
@@ -562,9 +571,71 @@ export function CicloRefrigeracaoIlustracao() {
               LINHAS DO CICLO (desenhadas antes dos componentes; setas tocam o destino)
               =================================================================== */}
 
-          {/* SUCÇÃO (azul): Evaporador (topo, 130,230) → Compressor (esquerda, 350,110) */}
+          {/* SUCÇÃO (azul): Evaporador (base, 130,320) → Compressor (esquerda, 350,400) */}
           <path
-            d="M130 230 V110 H350"
+            d="M130 320 V400 H350"
+            className="text-sky-500 dark:text-sky-400"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            markerEnd="url(#seta-fria)"
+          />
+          {/* Rótulo SUBIDO (y=372 em vez de 388) pra não encostar nos ícones de
+              manômetro/termômetro, cujos círculos (cy=400, r=13) começam em ~387. */}
+          <text
+            x="156"
+            y="372"
+            textAnchor="start"
+            className="fill-sky-600 dark:fill-sky-400 text-[11px] font-semibold"
+          >
+            Vapor — baixa pressão
+          </text>
+
+          {/* DESCARGA (laranja): Compressor (direita, 410,400) → Condensador (base, 630,320) */}
+          <path
+            d="M410 400 H630 V320"
+            className="text-orange-500 dark:text-orange-400"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            markerEnd="url(#seta-quente)"
+          />
+          <text
+            x="604"
+            y="388"
+            textAnchor="end"
+            className="fill-orange-600 dark:fill-orange-400 text-[11px] font-semibold"
+          >
+            Vapor — alta pressão
+          </text>
+
+          {/* LÍQUIDO (laranja): Condensador (topo, 630,190) → Válvula (lado dir., 406,110) */}
+          <path
+            d="M630 190 V110 H406"
+            className="text-orange-500 dark:text-orange-400"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            markerEnd="url(#seta-quente)"
+          />
+          <text
+            x="604"
+            y="130"
+            textAnchor="end"
+            className="fill-orange-600 dark:fill-orange-400 text-[11px] font-semibold"
+          >
+            Líquido — alta pressão
+          </text>
+
+          {/* EXPANSÃO (azul): Válvula (lado esq., 354,110) → Evaporador (topo, 130,190) */}
+          <path
+            d="M354 110 H130 V190"
             className="text-sky-500 dark:text-sky-400"
             stroke="currentColor"
             strokeWidth="4"
@@ -579,66 +650,6 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="start"
             className="fill-sky-600 dark:fill-sky-400 text-[11px] font-semibold"
           >
-            Vapor — baixa pressão
-          </text>
-
-          {/* DESCARGA (laranja): Compressor (direita, 410,110) → Condensador (topo, 630,230) */}
-          <path
-            d="M410 110 H630 V230"
-            className="text-orange-500 dark:text-orange-400"
-            stroke="currentColor"
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            markerEnd="url(#seta-quente)"
-          />
-          <text
-            x="604"
-            y="132"
-            textAnchor="end"
-            className="fill-orange-600 dark:fill-orange-400 text-[11px] font-semibold"
-          >
-            Vapor — alta pressão
-          </text>
-
-          {/* LÍQUIDO (laranja): Condensador (base, 630,360) → Válvula (lado dir., 406,400) */}
-          <path
-            d="M630 360 V400 H406"
-            className="text-orange-500 dark:text-orange-400"
-            stroke="currentColor"
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            markerEnd="url(#seta-quente)"
-          />
-          <text
-            x="604"
-            y="388"
-            textAnchor="end"
-            className="fill-orange-600 dark:fill-orange-400 text-[11px] font-semibold"
-          >
-            Líquido — alta pressão
-          </text>
-
-          {/* EXPANSÃO (azul): Válvula (lado esq., 354,400) → Evaporador (base, 130,360) */}
-          <path
-            d="M354 400 H130 V360"
-            className="text-sky-500 dark:text-sky-400"
-            stroke="currentColor"
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            markerEnd="url(#seta-fria)"
-          />
-          <text
-            x="156"
-            y="388"
-            textAnchor="start"
-            className="fill-sky-600 dark:fill-sky-400 text-[11px] font-semibold"
-          >
             Líquido / vapor — baixa pressão
           </text>
 
@@ -646,7 +657,9 @@ export function CicloRefrigeracaoIlustracao() {
               COMPONENTES — desenhados sobre as linhas
               =================================================================== */}
 
-          {/* Compressor — TOPO-CENTRO (círculo com cunha), inline na linha */}
+          {/* Compressor — BASE-CENTRO (círculo com cunha), inline na linha de baixo.
+              Rótulo ACIMA do círculo (entre as caixas) pra não colidir com os
+              rótulos de pressão do rodapé (y=466). */}
           <circle
             cx={compCx}
             cy={compY}
@@ -658,7 +671,7 @@ export function CicloRefrigeracaoIlustracao() {
           <CompressorIcon cx={compCx} cy={compY} scale={(compR * 1.4) / 600} fill={compIconFill} />
           <text
             x={compCx}
-            y={compY - compR - 10}
+            y={compY - compR - 12}
             textAnchor="middle"
             className="fill-foreground text-[19px] font-extrabold uppercase tracking-wide"
           >
@@ -752,28 +765,24 @@ export function CicloRefrigeracaoIlustracao() {
               quando desenhado direto sobre a linha de sucção (também azul). O
               círculo é desenhado POR CIMA da linha (a linha passa "atrás").
               =================================================================== */}
+          {/* A linha de sucção agora corre EMBAIXO: trecho horizontal em y=400
+              entre o evaporador (x=130) e o compressor (x=350). Os dois
+              instrumentos ficam sobre esse trecho, com rótulo ACIMA da linha
+              pra não brigar com o rótulo "Vapor — baixa pressão" (y≈388). */}
           {/* Manômetro — círculo de contraste + ícone vetorial dentro */}
           <circle
-            cx="130"
-            cy="158"
+            cx="180"
+            cy="400"
             r="13"
             fill="hsl(var(--background))"
             className="stroke-sky-500/60 dark:stroke-sky-400/60"
             strokeWidth="1.5"
           />
-          <ManometroIcon cx={130} cy={158} height={18} fill={termoIconFill} />
-          <line
-            x1="145"
-            y1="158"
-            x2="158"
-            y2="158"
-            className="stroke-sky-500/50 dark:stroke-sky-400/50"
-            strokeWidth="1.2"
-          />
+          <ManometroIcon cx={180} cy={400} height={18} fill={termoIconFill} />
           <text
-            x="160"
-            y="162"
-            textAnchor="start"
+            x="180"
+            y="430"
+            textAnchor="middle"
             className="fill-sky-600 dark:fill-sky-300 text-[11px] font-semibold"
           >
             Manômetro
@@ -781,26 +790,18 @@ export function CicloRefrigeracaoIlustracao() {
 
           {/* Termômetro — círculo de contraste + ícone vetorial dentro */}
           <circle
-            cx="130"
-            cy="204"
+            cx="270"
+            cy="400"
             r="13"
             fill="hsl(var(--background))"
             className="stroke-sky-500/60 dark:stroke-sky-400/60"
             strokeWidth="1.5"
           />
-          <TermometroIcon cx={130} cy={204} height={18} fill={termoIconFill} />
-          <line
-            x1="145"
-            y1="204"
-            x2="158"
-            y2="204"
-            className="stroke-sky-500/50 dark:stroke-sky-400/50"
-            strokeWidth="1.2"
-          />
+          <TermometroIcon cx={270} cy={400} height={18} fill={termoIconFill} />
           <text
-            x="160"
-            y="208"
-            textAnchor="start"
+            x="270"
+            y="430"
+            textAnchor="middle"
             className="fill-sky-600 dark:fill-sky-300 text-[11px] font-semibold"
           >
             Termômetro
@@ -817,11 +818,12 @@ export function CicloRefrigeracaoIlustracao() {
           <rect x="0" y="448" width="220" height="32" {...hitProps("baixaPressao")} />
           <rect x="600" y="448" width="160" height="32" {...hitProps("altaPressao")} />
 
-          {/* linhas do ciclo */}
-          <rect x="118" y="108" width="244" height="28" {...hitProps("linhaSuccao")} />
-          <rect x="398" y="98" width="244" height="28" {...hitProps("linhaDescarga")} />
-          <rect x="398" y="372" width="244" height="28" {...hitProps("linhaLiquido")} />
-          <rect x="118" y="372" width="244" height="28" {...hitProps("linhaExpansao")} />
+          {/* linhas do ciclo — agora sucção/descarga embaixo (y≈400) e
+              líquido/expansão em cima (y≈110), acompanhando a inversão */}
+          <rect x="118" y="386" width="244" height="28" {...hitProps("linhaSuccao")} />
+          <rect x="398" y="386" width="244" height="28" {...hitProps("linhaDescarga")} />
+          <rect x="398" y="96" width="244" height="28" {...hitProps("linhaLiquido")} />
+          <rect x="118" y="96" width="244" height="28" {...hitProps("linhaExpansao")} />
 
           {/* compressor (forma + rótulo) */}
           <rect x={compCx - 60} y={compY - compR - 24} width="120" height="84" {...hitProps("compressor")} />
@@ -835,10 +837,10 @@ export function CicloRefrigeracaoIlustracao() {
           {/* válvula de expansão (bowtie + rótulo) */}
           <rect x={valveCx - 80} y={valveY - 26} width="160" height="64" {...hitProps("expansao")} />
 
-          {/* manômetro (círculo + rótulo) */}
-          <rect x="113" y="143" width="120" height="30" {...hitProps("manometro")} />
-          {/* termômetro (círculo + rótulo) */}
-          <rect x="113" y="189" width="120" height="30" {...hitProps("termometro")} />
+          {/* manômetro (círculo + rótulo abaixo, na linha de sucção do rodapé) */}
+          <rect x="148" y="385" width="64" height="52" {...hitProps("manometro")} />
+          {/* termômetro (círculo + rótulo abaixo, na linha de sucção do rodapé) */}
+          <rect x="238" y="385" width="64" height="52" {...hitProps("termometro")} />
           </g>
           )}
 
@@ -891,9 +893,9 @@ export function CicloRefrigeracaoIlustracao() {
               {/* ===================================================================
                   LINHAS DO CICLO (antes dos componentes; seta toca o destino)
                   =================================================================== */}
-              {/* SUCÇÃO (azul): Evaporador (topo, 93,200) → Compressor (esq., 172,118) */}
+              {/* SUCÇÃO (azul): Evaporador (base) → Compressor (esq., rodapé) */}
               <path
-                d={`M${mEvapCx} ${M.boxTop} V${mCompTop} H${M.cx - M.compR}`}
+                d={`M${mEvapCx} ${M.boxBottom} V${mCompY} H${M.cx - M.compR}`}
                 className="text-sky-500 dark:text-sky-400"
                 stroke="currentColor"
                 strokeWidth="4"
@@ -902,9 +904,9 @@ export function CicloRefrigeracaoIlustracao() {
                 strokeLinejoin="round"
                 markerEnd="url(#seta-fria)"
               />
-              {/* DESCARGA (laranja): Compressor (dir., 228,118) → Condensador (topo, 307,200) */}
+              {/* DESCARGA (laranja): Compressor (dir., rodapé) → Condensador (base) */}
               <path
-                d={`M${M.cx + M.compR} ${mCompTop} H${mCondCx} V${M.boxTop}`}
+                d={`M${M.cx + M.compR} ${mCompY} H${mCondCx} V${M.boxBottom}`}
                 className="text-orange-500 dark:text-orange-400"
                 stroke="currentColor"
                 strokeWidth="4"
@@ -913,9 +915,9 @@ export function CicloRefrigeracaoIlustracao() {
                 strokeLinejoin="round"
                 markerEnd="url(#seta-quente)"
               />
-              {/* LÍQUIDO (laranja): Condensador (base, 307,560) → Válvula (dir., 226,642) */}
+              {/* LÍQUIDO (laranja): Condensador (topo) → Válvula (dir., topo) */}
               <path
-                d={`M${mCondCx} ${M.boxBottom} V${mValveBot} H${M.cx + 26}`}
+                d={`M${mCondCx} ${M.boxTop} V${mValveY} H${M.cx + 26}`}
                 className="text-orange-500 dark:text-orange-400"
                 stroke="currentColor"
                 strokeWidth="4"
@@ -924,9 +926,9 @@ export function CicloRefrigeracaoIlustracao() {
                 strokeLinejoin="round"
                 markerEnd="url(#seta-quente)"
               />
-              {/* EXPANSÃO (azul): Válvula (esq., 174,642) → Evaporador (base, 93,560) */}
+              {/* EXPANSÃO (azul): Válvula (esq., topo) → Evaporador (topo) */}
               <path
-                d={`M${M.cx - 26} ${mValveBot} H${mEvapCx} V${M.boxBottom}`}
+                d={`M${M.cx - 26} ${mValveY} H${mEvapCx} V${M.boxTop}`}
                 className="text-sky-500 dark:text-sky-400"
                 stroke="currentColor"
                 strokeWidth="4"
@@ -940,48 +942,47 @@ export function CicloRefrigeracaoIlustracao() {
                    em área livre, sem sobrepor outro rótulo/caixa/linha. =====
                    Tubos de ligação ficaram longos (compY 118 ↔ boxTop 300 em
                    cima; boxBottom 460 ↔ valveY 642 embaixo). */}
-              {/* SUCÇÃO — trecho vertical topo-esquerda (Evap→Compressor). Rótulo
-                   à DIREITA do tubo (x=93), na metade baixa-pressão. Puxado um
-                   pouco mais para a ESQUERDA pra dar respiro do centro. */}
+              {/* Com o compressor no RODAPÉ e a válvula no TOPO, a sucção/descarga
+                   correm EMBAIXO (entre boxBottom=460 e compY=642) e a
+                   líquido/expansão correm EM CIMA (entre valveY=118 e boxTop=300). */}
+              {/* SUCÇÃO — trecho vertical base-esquerda (Evap→Compressor). Rótulo
+                   à DIREITA do tubo (x=93), na metade baixa-pressão. */}
               <text
                 x={mEvapCx + 8}
-                y={258}
+                y={514}
                 textAnchor="start"
                 className="fill-sky-600 dark:fill-sky-400 text-[12px] font-semibold"
               >
                 Vapor —
                 <tspan x={mEvapCx + 8} dy="15">baixa pressão</tspan>
               </text>
-              {/* DESCARGA — trecho vertical topo-direita (Compressor→Cond). Rótulo
-                   à ESQUERDA do tubo (x=307), na metade alta-pressão. Puxado um
-                   pouco mais para a DIREITA pra dar respiro do centro. */}
+              {/* DESCARGA — trecho vertical base-direita (Compressor→Cond). Rótulo
+                   à ESQUERDA do tubo (x=307), na metade alta-pressão. */}
               <text
                 x={mCondCx - 8}
-                y={258}
+                y={514}
                 textAnchor="end"
                 className="fill-orange-600 dark:fill-orange-400 text-[12px] font-semibold"
               >
                 Vapor —
                 <tspan x={mCondCx - 8} dy="15">alta pressão</tspan>
               </text>
-              {/* LÍQUIDO — trecho vertical base-direita (Cond→Válvula). Rótulo à
-                   ESQUERDA do tubo (x=307), na metade alta-pressão. Puxado um
-                   pouco mais para a DIREITA pra dar respiro do centro. */}
+              {/* LÍQUIDO — trecho vertical topo-direita (Cond→Válvula). Rótulo à
+                   ESQUERDA do tubo (x=307), na metade alta-pressão. */}
               <text
                 x={mCondCx - 8}
-                y={522}
+                y={216}
                 textAnchor="end"
                 className="fill-orange-600 dark:fill-orange-400 text-[12px] font-semibold"
               >
                 Líquido —
                 <tspan x={mCondCx - 8} dy="15">alta pressão</tspan>
               </text>
-              {/* EXPANSÃO — trecho vertical base-esquerda (Válvula→Evap). Rótulo à
-                   DIREITA do tubo (x=93), na metade baixa-pressão. Puxado um
-                   pouco mais para a ESQUERDA pra dar respiro do centro. */}
+              {/* EXPANSÃO — trecho vertical topo-esquerda (Válvula→Evap). Rótulo à
+                   DIREITA do tubo (x=93), na metade baixa-pressão. */}
               <text
                 x={mEvapCx + 8}
-                y={522}
+                y={216}
                 textAnchor="start"
                 className="fill-sky-600 dark:fill-sky-400 text-[12px] font-semibold"
               >
@@ -992,7 +993,9 @@ export function CicloRefrigeracaoIlustracao() {
               {/* ===================================================================
                   COMPONENTES
                   =================================================================== */}
-              {/* Compressor — TOPO-CENTRO (círculo com cunha) */}
+              {/* Compressor — BASE-CENTRO (círculo com cunha). Rótulo ABAIXO do
+                   círculo (no mobile não há rótulos de pressão no rodapé — eles
+                   ficam no topo). */}
               <circle
                 cx={M.cx}
                 cy={M.compY}
@@ -1004,7 +1007,7 @@ export function CicloRefrigeracaoIlustracao() {
               <CompressorIcon cx={M.cx} cy={M.compY} scale={(M.compR * 1.4) / 600} fill={compIconFill} />
               <text
                 x={M.cx}
-                y={M.compY - M.compR - 12}
+                y={M.compY + M.compR + 26}
                 textAnchor="middle"
                 className="fill-foreground text-[16px] font-extrabold uppercase tracking-wide"
               >
@@ -1098,31 +1101,32 @@ export function CicloRefrigeracaoIlustracao() {
               </text>
 
               {/* ===== INSTRUMENTOS na linha de sucção (UM conjunto só) =====
-                   trecho vertical da sucção em x=93, y 118→200. Cada instrumento
-                   fica DENTRO de um círculo de fundo NEUTRO (theme-aware) com
-                   borda azul sutil, pra dar CONTRASTE — o ícone azul some sobre a
-                   linha de sucção azul. O círculo passa POR CIMA da linha. */}
+                   A sucção agora corre EMBAIXO: trecho vertical em x=93 entre o
+                   evaporador (boxBottom=460) e o compressor (compY=642). Os dois
+                   instrumentos ficam sobre esse trecho, abaixo do rótulo de
+                   pressão (y≈528/543). Cada um num círculo neutro (contraste) com
+                   rótulo à direita do tubo. */}
               {/* Manômetro — círculo de contraste + ícone vetorial dentro */}
               <circle
                 cx={mEvapCx}
-                cy={158}
+                cy={552}
                 r="13"
                 fill="hsl(var(--background))"
                 className="stroke-sky-500/60 dark:stroke-sky-400/60"
                 strokeWidth="1.5"
               />
-              <ManometroIcon cx={mEvapCx} cy={158} height={18} fill={termoIconFill} />
+              <ManometroIcon cx={mEvapCx} cy={552} height={18} fill={termoIconFill} />
               <line
                 x1={mEvapCx + 15}
-                y1={158}
+                y1={552}
                 x2={mEvapCx + 28}
-                y2={158}
+                y2={552}
                 className="stroke-sky-500/50 dark:stroke-sky-400/50"
                 strokeWidth="1.2"
               />
               <text
                 x={mEvapCx + 32}
-                y={162}
+                y={556}
                 textAnchor="start"
                 className="fill-sky-600 dark:fill-sky-300 text-[12px] font-semibold"
               >
@@ -1131,24 +1135,24 @@ export function CicloRefrigeracaoIlustracao() {
               {/* Termômetro — círculo de contraste + ícone vetorial dentro */}
               <circle
                 cx={mEvapCx}
-                cy={198}
+                cy={592}
                 r="13"
                 fill="hsl(var(--background))"
                 className="stroke-sky-500/60 dark:stroke-sky-400/60"
                 strokeWidth="1.5"
               />
-              <TermometroIcon cx={mEvapCx} cy={198} height={18} fill={termoIconFill} />
+              <TermometroIcon cx={mEvapCx} cy={592} height={18} fill={termoIconFill} />
               <line
                 x1={mEvapCx + 15}
-                y1={198}
+                y1={592}
                 x2={mEvapCx + 28}
-                y2={198}
+                y2={592}
                 className="stroke-sky-500/50 dark:stroke-sky-400/50"
                 strokeWidth="1.2"
               />
               <text
                 x={mEvapCx + 32}
-                y={202}
+                y={596}
                 textAnchor="start"
                 className="fill-sky-600 dark:fill-sky-300 text-[12px] font-semibold"
               >
@@ -1162,30 +1166,32 @@ export function CicloRefrigeracaoIlustracao() {
               <rect x="0" y="6" width={M.cx} height="30" {...hitProps("baixaPressao")} />
               <rect x={M.cx} y="6" width={M.W - M.cx} height="30" {...hitProps("altaPressao")} />
 
-              {/* linhas do ciclo (trechos verticais junto às caixas) */}
-              <rect x={mEvapCx - 16} y={M.boxTop - 90} width="32" height="90" {...hitProps("linhaSuccao")} />
-              <rect x={mCondCx - 16} y={M.boxTop - 90} width="32" height="90" {...hitProps("linhaDescarga")} />
-              <rect x={mCondCx - 16} y={M.boxBottom} width="32" height="90" {...hitProps("linhaLiquido")} />
-              <rect x={mEvapCx - 16} y={M.boxBottom} width="32" height="90" {...hitProps("linhaExpansao")} />
+              {/* linhas do ciclo (trechos verticais junto às caixas) — sucção e
+                   descarga agora EMBAIXO (boxBottom→compY), líquido e expansão
+                   EM CIMA (valveY→boxTop). */}
+              <rect x={mEvapCx - 16} y={M.boxBottom} width="32" height="90" {...hitProps("linhaSuccao")} />
+              <rect x={mCondCx - 16} y={M.boxBottom} width="32" height="90" {...hitProps("linhaDescarga")} />
+              <rect x={mCondCx - 16} y={M.boxTop - 90} width="32" height="90" {...hitProps("linhaLiquido")} />
+              <rect x={mEvapCx - 16} y={M.boxTop - 90} width="32" height="90" {...hitProps("linhaExpansao")} />
 
-              {/* compressor (forma + rótulo) */}
+              {/* compressor (forma + rótulo abaixo do círculo) */}
               <rect
                 x={M.cx - 46}
-                y={M.compY - M.compR - 26}
+                y={M.compY - M.compR - 4}
                 width="92"
-                height={M.compR * 2 + 36}
+                height={M.compR * 2 + 40}
                 {...hitProps("compressor")}
               />
               {/* evaporador (caixa + rótulo vertical à esquerda) */}
               <rect x={M.evapX - 26} y={M.boxTop} width={M.boxW + 26} height={mBoxH} {...hitProps("evaporador")} />
               {/* condensador (caixa + rótulo vertical à direita) */}
               <rect x={M.condX} y={M.boxTop} width={M.boxW + 26} height={mBoxH} {...hitProps("condensador")} />
-              {/* válvula (bowtie + rótulo 2 linhas) */}
+              {/* válvula (bowtie no topo + rótulo 2 linhas abaixo dele) */}
               <rect x={M.cx - 48} y={M.valveY - 24} width="96" height="92" {...hitProps("expansao")} />
-              {/* manômetro (círculo + rótulo) */}
-              <rect x={mEvapCx - 15} y={143} width="135" height="30" {...hitProps("manometro")} />
-              {/* termômetro (círculo + rótulo) */}
-              <rect x={mEvapCx - 15} y={183} width="135" height="30" {...hitProps("termometro")} />
+              {/* manômetro (círculo + rótulo, na sucção do rodapé) */}
+              <rect x={mEvapCx - 15} y={537} width="135" height="30" {...hitProps("manometro")} />
+              {/* termômetro (círculo + rótulo, na sucção do rodapé) */}
+              <rect x={mEvapCx - 15} y={577} width="135" height="30" {...hitProps("termometro")} />
             </g>
           )}
         </svg>
