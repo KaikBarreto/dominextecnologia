@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -41,17 +41,30 @@ import { getFrequencyLabel } from '@/hooks/useContracts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { TaskFormDialog, TaskFormData } from '@/components/schedule/TaskFormDialog';
+import { useTaskSubmit } from '@/hooks/useTaskSubmit';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useQueryClient } from '@tanstack/react-query';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { CustomerTransactionDetailModal } from '@/components/financial/CustomerTransactionDetailModal';
+import { parseISO } from 'date-fns';
+import type { FinancialTransaction } from '@/types/database';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
+
+type FinanceSubTab = 'tudo' | 'a_vencer' | 'pagas';
+
+/**
+ * Datas financeiras vêm como 'YYYY-MM-DD'. Ancoramos ao meio-dia para comparar
+ * em horário de Brasília (UTC-3) sem o lançamento "pular" pro dia anterior.
+ */
+function parseLocalFinanceDate(dateStr: string): Date {
+  return parseISO(dateStr + 'T12:00:00');
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -68,7 +81,8 @@ export default function CustomerDetail() {
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
   const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
-  const { serviceOrders, createServiceOrder } = useServiceOrders();
+  const { serviceOrders, createServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const { submitTask } = useTaskSubmit();
   const { transactions } = useFinancial();
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
   const { categories } = useEquipmentCategories();
@@ -92,8 +106,12 @@ export default function CustomerDetail() {
   const [contractFormOpen, setContractFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<any | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [financeSubTab, setFinanceSubTab] = useState<FinanceSubTab>('tudo');
+  const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -117,6 +135,26 @@ export default function CustomerDetail() {
     setEquipmentToDelete(null);
   };
 
+  // Abre o formulário de tarefa em modo edição (mesma série/recorrência da agenda).
+  const handleEditTask = (task: any) => {
+    setEditingTask(task);
+    setTaskFormOpen(true);
+  };
+
+  // Exclui SÓ a ocorrência selecionada (não a série inteira). A confirmação
+  // deixa isso claro pro usuário. A lista re-renderiza pela invalidação do hook.
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
+    try {
+      await deleteServiceOrder.mutateAsync(taskToDelete.id);
+      toast({ title: 'Tarefa excluída' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir tarefa', description: getErrorMessage(err) });
+    } finally {
+      setTaskToDelete(null);
+    }
+  };
+
   const customerOptions = useMemo(
     () =>
       customers.map((c) => ({
@@ -129,6 +167,17 @@ export default function CustomerDetail() {
   const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
   const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
   const customerTransactions = transactions.filter(t => t.customer_id === id);
+  // Subaba do Financeiro: Tudo / A vencer (pendentes com vencimento >= hoje) / Pagas.
+  const filteredCustomerTransactions = useMemo(() => {
+    if (financeSubTab === 'tudo') return customerTransactions;
+    if (financeSubTab === 'pagas') return customerTransactions.filter(t => t.is_paid);
+    // A vencer
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return customerTransactions.filter(
+      t => !t.is_paid && t.due_date && parseLocalFinanceDate(t.due_date) >= today,
+    );
+  }, [customerTransactions, financeSubTab]);
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
   // Portal tickets (origin = 'portal')
@@ -138,7 +187,7 @@ export default function CustomerDetail() {
   const ordersPagination = useDataPagination(sortedOrders);
   const { sortedItems: sortedTasks, sortConfig: taskSortConfig, handleSort: handleTaskSort } = useTableSort(customerTasks);
   const tasksPagination = useDataPagination(sortedTasks);
-  const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(customerTransactions);
+  const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(filteredCustomerTransactions);
   const transactionsPagination = useDataPagination(sortedTransactions);
   const { sortedItems: sortedTickets, sortConfig: ticketSortConfig, handleSort: handleTicketSort } = useTableSort(portalTickets);
   const ticketsPagination = useDataPagination(sortedTickets);
@@ -850,6 +899,7 @@ export default function CustomerDetail() {
                       <SortableTableHead sortKey="status" sortConfig={taskSortConfig} onSort={handleTaskSort}>Status</SortableTableHead>
                       <SortableTableHead sortKey="scheduled_date" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Data</SortableTableHead>
                       <SortableTableHead sortKey="scheduled_time" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Horário</SortableTableHead>
+                      <TableCell className="w-12 text-right">Ações</TableCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -873,6 +923,24 @@ export default function CustomerDetail() {
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
                             {task.scheduled_time ? task.scheduled_time.slice(0, 5) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <RowActionsMenu
+                              actions={[
+                                {
+                                  label: 'Editar tarefa',
+                                  icon: Edit,
+                                  variant: 'edit',
+                                  onClick: () => handleEditTask(task),
+                                },
+                                {
+                                  label: 'Excluir tarefa',
+                                  icon: Trash2,
+                                  variant: 'delete',
+                                  onClick: () => setTaskToDelete(task),
+                                },
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       );
@@ -1014,12 +1082,55 @@ export default function CustomerDetail() {
       {activeTab === 'financeiro' && (
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Transações do Cliente</h2>
-          {customerTransactions.length === 0 ? (
+
+          {/* Subabas: Tudo / A vencer / Pagas — mobile usa pills scrolláveis, desktop botões */}
+          {isMobile ? (
+            <MobilePillTabs
+              tabs={[
+                { value: 'tudo', label: 'Tudo' },
+                { value: 'a_vencer', label: 'A vencer' },
+                { value: 'pagas', label: 'Pagas' },
+              ]}
+              activeTab={financeSubTab}
+              onTabChange={(v) => setFinanceSubTab(v as FinanceSubTab)}
+            />
+          ) : (
+            <div className="flex gap-2">
+              {([
+                { value: 'tudo', label: 'Tudo' },
+                { value: 'a_vencer', label: 'A vencer' },
+                { value: 'pagas', label: 'Pagas' },
+              ] as const).map((opt) => (
+                <Button
+                  key={opt.value}
+                  variant={financeSubTab === opt.value ? 'default' : 'outline'}
+                  onClick={() => setFinanceSubTab(opt.value)}
+                  className="min-h-10 rounded-xl"
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {filteredCustomerTransactions.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<DollarSign className="h-10 w-10" />}
-              title="Nenhuma transação"
-              description="Nenhuma transação registrada para este cliente"
+              title={
+                financeSubTab === 'a_vencer'
+                  ? 'Nada a vencer'
+                  : financeSubTab === 'pagas'
+                  ? 'Nenhuma transação paga'
+                  : 'Nenhuma transação'
+              }
+              description={
+                financeSubTab === 'a_vencer'
+                  ? 'Nenhum lançamento pendente com vencimento a partir de hoje'
+                  : financeSubTab === 'pagas'
+                  ? 'Nenhum lançamento quitado para este cliente'
+                  : 'Nenhuma transação registrada para este cliente'
+              }
             />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
@@ -1031,6 +1142,7 @@ export default function CustomerDetail() {
                       <SortableTableHead sortKey="amount" sortConfig={finSortConfig} onSort={handleFinSort}>Valor</SortableTableHead>
                       <SortableTableHead sortKey="transaction_date" sortConfig={finSortConfig} onSort={handleFinSort} className="hidden sm:table-cell">Data</SortableTableHead>
                       <SortableTableHead sortKey="is_paid" sortConfig={finSortConfig} onSort={handleFinSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={finSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1049,6 +1161,17 @@ export default function CustomerDetail() {
                           <Badge variant={t.is_paid ? 'default' : 'secondary'}>
                             {t.is_paid ? 'Pago' : 'Pendente'}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="min-h-[44px] min-w-[44px]"
+                            onClick={() => setViewingTxn(t)}
+                            title="Ver detalhes"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1117,53 +1240,50 @@ export default function CustomerDetail() {
         isLoading={createServiceOrder.isPending}
       />
 
-      {/* Task Form Dialog - pre-filled with this customer */}
+      {/* Task Form Dialog — criar (pré-preenchido com este cliente) ou editar.
+          A edição reaproveita a mesma lógica "esta e as futuras" da agenda via
+          useTaskSubmit, sem duplicar a regeneração de série. */}
       <TaskFormDialog
         open={taskFormOpen}
-        onOpenChange={setTaskFormOpen}
+        onOpenChange={(open) => { setTaskFormOpen(open); if (!open) setEditingTask(null); }}
         defaultCustomerId={id}
+        task={editingTask}
         isLoading={creatingTask}
         onSubmit={async (data: TaskFormData) => {
           setCreatingTask(true);
           try {
-            const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
-            const company_id = await getCurrentUserCompanyId();
-            const payload = normalizeOptionalForeignKeys({
-              entry_type: 'tarefa',
-              task_title: data.task_title,
-              task_type_id: data.task_type_id || null,
-              service_type_id: data.service_type_id || null,
-              customer_id: id || null,
-              technician_id: data.technician_id || null,
-              team_id: data.team_id || null,
-              scheduled_date: data.scheduled_date || null,
-              scheduled_time: data.scheduled_time || null,
-              duration_minutes: data.duration_minutes || 60,
-              description: data.description || null,
-              os_type: 'visita_tecnica',
-              status: 'pendente',
-              company_id,
-            } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']);
-
-            const { data: created, error } = await supabase.from('service_orders').insert(payload as any).select('id');
-            if (error) throw error;
-
-            if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
-              const assigneeRows = created.flatMap((row: any) =>
-                data.assignee_user_ids!.map(uid => ({ service_order_id: row.id, user_id: uid }))
-              );
-              await supabase.from('service_order_assignees').insert(assigneeRows);
-            }
-
-            toast({ title: 'Tarefa criada com sucesso!' });
-            queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-          } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: getErrorMessage(err) });
+            // Em criação a partir da aba, o cliente atual é sempre o vínculo.
+            const payload = editingTask ? data : { ...data, customer_id: id || data.customer_id };
+            await submitTask(payload, editingTask);
           } finally {
             setCreatingTask(false);
+            setEditingTask(null);
           }
         }}
       />
+
+      {/* Confirmação de exclusão de tarefa (só a ocorrência, não a série) */}
+      <AlertDialog open={!!taskToDelete} onOpenChange={(open) => { if (!open) setTaskToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {taskToDelete?.recurrence_group_id
+                ? 'Esta tarefa faz parte de uma série. Apenas esta ocorrência será excluída — as demais permanecem na agenda.'
+                : 'A tarefa será removida da agenda. Esta ação não pode ser desfeita.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Contract Form Dialog - pre-filled with this customer */}
       <ContractFormDialog
@@ -1251,6 +1371,12 @@ export default function CustomerDetail() {
         alt={customer.name}
         open={!!previewImage}
         onClose={() => setPreviewImage(null)}
+      />
+
+      <CustomerTransactionDetailModal
+        open={!!viewingTxn}
+        onOpenChange={(open) => { if (!open) setViewingTxn(null); }}
+        transaction={viewingTxn}
       />
     </div>
   );

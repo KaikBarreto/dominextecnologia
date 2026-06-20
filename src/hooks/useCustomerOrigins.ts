@@ -12,6 +12,24 @@ export interface CustomerOrigin {
   created_at: string;
 }
 
+/**
+ * Conjunto inicial de origens, criado de uma vez pra empresa nova.
+ * São linhas NORMAIS — totalmente editáveis e excluíveis pelo usuário.
+ * Base universal herdada das origens fixas antigas do CRM.
+ */
+export const DEFAULT_CUSTOMER_ORIGINS: Array<Pick<CustomerOrigin, 'name' | 'icon' | 'color'>> = [
+  { name: 'Indicação', icon: 'Users', color: '#22C55E' },
+  { name: 'Site', icon: 'Globe', color: '#3B82F6' },
+  { name: 'Telefone', icon: 'Phone', color: '#0EA5E9' },
+  { name: 'WhatsApp', icon: 'MessageCircle', color: '#10B981' },
+  { name: 'Google', icon: 'Search', color: '#EAB308' },
+  { name: 'Instagram', icon: 'Instagram', color: '#EC4899' },
+  { name: 'Facebook', icon: 'Facebook', color: '#6366F1' },
+  { name: 'Parceiro', icon: 'Handshake', color: '#A855F7' },
+  { name: 'Feira/Evento', icon: 'CalendarDays', color: '#F97316' },
+  { name: 'Outro', icon: 'Tag', color: '#6B7280' },
+];
+
 export function useCustomerOrigins() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,6 +59,33 @@ export function useCustomerOrigins() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-origins'] });
       toast({ title: 'Origem criada!' });
+    },
+    onError: (err) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) }),
+  });
+
+  const seedDefaultOrigins = useMutation({
+    mutationFn: async () => {
+      // Idempotência: só semeia quando o catálogo está vazio.
+      const existing = originsQuery.data ?? [];
+      if (existing.length > 0) return [];
+
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+      const rows = DEFAULT_CUSTOMER_ORIGINS.map((o) => ({
+        ...o,
+        is_active: true,
+        company_id,
+      }));
+      const { data, error } = await supabase
+        .from('customer_origins' as any)
+        .insert(rows as any)
+        .select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-origins'] });
+      toast({ title: 'Origens padrão criadas!' });
     },
     onError: (err) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) }),
   });
@@ -82,6 +127,7 @@ export function useCustomerOrigins() {
     activeOrigins,
     isLoading: originsQuery.isLoading,
     createOrigin,
+    seedDefaultOrigins,
     updateOrigin,
     deleteOrigin,
   };

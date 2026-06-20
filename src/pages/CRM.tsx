@@ -63,7 +63,7 @@ export default function CRM() {
   const isMobile = useIsMobile();
   const { leads, isLoading, updateLead } = useLeads();
   const { users } = useUsers();
-  const { stages, isLoading: stagesLoading } = useCrmStages();
+  const { stages, isLoading: stagesLoading, seedDefaultStages } = useCrmStages();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -411,12 +411,27 @@ export default function CRM() {
         </div>
       ) : stages.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Settings2 className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">Nenhum estágio configurado</h3>
-            <p className="text-muted-foreground max-w-sm">
-              Toque em configurações para criar estágios do pipeline
-            </p>
+          <CardContent className="py-8">
+            <EmptyState
+              icon={<Settings2 className="h-12 w-12" />}
+              title="Configure seu funil de vendas"
+              description="Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito."
+              action={{
+                label: seedDefaultStages.isPending ? 'Criando estágios...' : 'Começar com estágios padrão',
+                onClick: () => {
+                  if (seedDefaultStages.isPending) return;
+                  seedDefaultStages.mutate();
+                },
+              }}
+            />
+            <div className="flex justify-center">
+              <StageManagerDialog>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Personalizar estágios
+                </Button>
+              </StageManagerDialog>
+            </div>
           </CardContent>
         </Card>
       ) : filteredLeads.length === 0 ? (

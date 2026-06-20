@@ -64,6 +64,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   const { customers } = useCustomers();
 
   const isEditing = !!task;
+  const isRecurringSeries = !!(task && task.recurrence_group_id);
 
   const [title, setTitle] = useState('');
   const [customerId, setCustomerId] = useState('');
@@ -92,11 +93,14 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         setScheduledTime(task.scheduled_time || '08:00');
         setDuration(task.duration_minutes || 60);
         setDescription(task.description || '');
-        setRecurrenceEnabled(false);
-        setRecurrenceType('weekly');
-        setRecurrenceInterval(1);
-        setRecurrenceEndDate('');
-        setRecurrenceWeekdays([]);
+        // Pré-preenche recorrência a partir da série (se a tarefa pertencer a uma).
+        const hasSeries = !!task.recurrence_group_id;
+        setRecurrenceEnabled(hasSeries);
+        setRecurrenceType(task.recurrence_type || 'weekly');
+        setRecurrenceInterval(task.recurrence_interval || 1);
+        setRecurrenceEndDate(task.recurrence_end_date || '');
+        const baseDay = new Date((task.scheduled_date || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00').getDay();
+        setRecurrenceWeekdays(hasSeries ? [baseDay] : []);
       } else {
         setTitle('');
         setCustomerId(defaultCustomerId || '');
@@ -230,13 +234,19 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           />
         </div>
 
-        {/* Recurrence - only show when creating */}
-        {!isEditing && (
+        {/* Recorrência — disponível ao criar e ao editar uma tarefa */}
         <div className="rounded-lg border p-3 space-y-3">
           <div className="flex items-center gap-2">
             <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
             <Label className="cursor-pointer">Recorrência</Label>
           </div>
+          {isEditing && (
+            <p className="text-xs text-muted-foreground">
+              {isRecurringSeries
+                ? 'Alterar a recorrência atualiza esta tarefa e as próximas da série. As anteriores e as já concluídas permanecem como estão.'
+                : 'Ativar a recorrência transforma esta tarefa numa série, criando as próximas ocorrências.'}
+            </p>
+          )}
           {recurrenceEnabled && (
             <div className="space-y-3 pt-1">
               <div className="grid gap-3 sm:grid-cols-3">
@@ -295,7 +305,6 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
             </div>
           )}
         </div>
-        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

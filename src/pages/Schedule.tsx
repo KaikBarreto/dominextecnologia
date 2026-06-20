@@ -19,11 +19,11 @@ import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
 import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
+import { useTaskSubmit } from '@/hooks/useTaskSubmit';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
-import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -47,7 +47,6 @@ import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays'
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
@@ -108,6 +107,7 @@ export default function Schedule() {
   const { pausedOrders } = usePausedOrders();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { submitTask } = useTaskSubmit();
 
   // Filters — multi-select (vazio = todos)
   const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);
@@ -465,111 +465,11 @@ export default function Schedule() {
     setIsTaskFormOpen(true);
   };
 
+  // Submit de tarefa (criação + edição "esta e as futuras") vive no hook
+  // compartilhado useTaskSubmit, reaproveitado pela aba Tarefas do cliente.
   const handleTaskSubmit = async (data: TaskFormData) => {
-    // If editing an existing task, update it
-    if (editingTask) {
-      const updatePayload = normalizeOptionalForeignKeys({
-        task_title: data.task_title,
-        task_type_id: data.task_type_id || null,
-        service_type_id: data.service_type_id || null,
-        customer_id: data.customer_id || null,
-        technician_id: data.technician_id || null,
-        team_id: data.team_id || null,
-        scheduled_date: data.scheduled_date || null,
-        scheduled_time: data.scheduled_time || null,
-        duration_minutes: data.duration_minutes || 60,
-        description: data.description || null,
-      } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']);
-
-      const { error } = await supabase.from('service_orders').update(updatePayload).eq('id', editingTask.id);
-      if (error) {
-        toast({ variant: 'destructive', title: 'Erro ao atualizar tarefa', description: getErrorMessage(error) });
-      } else {
-        // Update assignees
-        await supabase.from('service_order_assignees').delete().eq('service_order_id', editingTask.id);
-        if (data.assignee_user_ids && data.assignee_user_ids.length > 0) {
-          await supabase.from('service_order_assignees').insert(
-            data.assignee_user_ids.map(uid => ({ service_order_id: editingTask.id, user_id: uid }))
-          );
-        }
-        toast({ title: 'Tarefa atualizada!' });
-        queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-      }
-      setEditingTask(null);
-      return;
-    }
-
-    const groupId = data.recurrence_type ? crypto.randomUUID() : undefined;
-
-    // Generate dates for recurrence
-    const dates: string[] = [data.scheduled_date || format(new Date(), 'yyyy-MM-dd')];
-    if (data.recurrence_type && data.recurrence_end_date) {
-      const endDate = new Date(data.recurrence_end_date + 'T12:00:00');
-
-      if (data.recurrence_type === 'custom' && data.recurrence_weekdays && data.recurrence_weekdays.length > 0) {
-        let current = addDays(new Date(dates[0] + 'T12:00:00'), 1);
-        while (current <= endDate) {
-          if (data.recurrence_weekdays.includes(current.getDay())) {
-            dates.push(format(current, 'yyyy-MM-dd'));
-          }
-          current = addDays(current, 1);
-        }
-      } else {
-        let current = new Date(dates[0] + 'T12:00:00');
-        const interval = data.recurrence_interval || 1;
-        while (true) {
-          if (data.recurrence_type === 'daily') current = addDays(current, interval);
-          else if (data.recurrence_type === 'weekly') current = addWeeks(current, interval);
-          else if (data.recurrence_type === 'biweekly') current = addWeeks(current, 2 * interval);
-          else if (data.recurrence_type === 'monthly') current = addMonths(current, interval);
-          else if (data.recurrence_type === 'yearly') current = addMonths(current, 12 * interval);
-          else break;
-          if (current > endDate) break;
-          dates.push(format(current, 'yyyy-MM-dd'));
-        }
-      }
-    }
-
-    // Create all task entries
-    const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
-    const company_id = await getCurrentUserCompanyId();
-    const inserts = dates.map(date => normalizeOptionalForeignKeys({
-      entry_type: 'tarefa',
-      task_title: data.task_title,
-      task_type_id: data.task_type_id || null,
-      service_type_id: data.service_type_id || null,
-      customer_id: data.customer_id || null,
-      technician_id: data.technician_id || null,
-      team_id: data.team_id || null,
-      scheduled_date: date,
-      scheduled_time: data.scheduled_time || null,
-      duration_minutes: data.duration_minutes || 60,
-      description: data.description || null,
-      os_type: 'visita_tecnica',
-      status: 'pendente',
-      recurrence_type: data.recurrence_type || null,
-      recurrence_interval: data.recurrence_interval || null,
-      recurrence_end_date: data.recurrence_end_date || null,
-      recurrence_group_id: groupId || null,
-      company_id,
-    } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']));
-
-    const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
-    if (error) {
-      toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: getErrorMessage(error) });
-    } else {
-      if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
-        const assigneeRows = created.flatMap((row: any) =>
-          data.assignee_user_ids!.map(uid => ({
-            service_order_id: row.id,
-            user_id: uid,
-          }))
-        );
-        await supabase.from('service_order_assignees').insert(assigneeRows);
-      }
-      toast({ title: `${dates.length} tarefa(s) criada(s)!` });
-      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-    }
+    await submitTask(data, editingTask);
+    setEditingTask(null);
   };
 
   const handleSlotClick = (date: string, time: string) => {

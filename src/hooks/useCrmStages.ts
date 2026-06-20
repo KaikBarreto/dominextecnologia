@@ -40,6 +40,15 @@ export const STAGE_COLORS = [
   { value: 'primary', label: 'Dourado', class: 'bg-primary text-white' },
 ];
 
+/** Conjunto padrão de estágios do pipeline, criado de uma vez pra empresa nova. */
+export const DEFAULT_CRM_STAGES: Array<Pick<CrmStageInsert, 'name' | 'color' | 'is_won' | 'is_lost'>> = [
+  { name: 'Lead', color: 'muted', is_won: false, is_lost: false },
+  { name: 'Proposta', color: 'info', is_won: false, is_lost: false },
+  { name: 'Negociação', color: 'warning', is_won: false, is_lost: false },
+  { name: 'Fechado (Ganho)', color: 'success', is_won: true, is_lost: false },
+  { name: 'Fechado (Perdido)', color: 'destructive', is_won: false, is_lost: true },
+];
+
 // Map legacy named colors to hex for badge inline styles
 const LEGACY_COLOR_MAP: Record<string, string> = {
   muted: '#6B7280',
@@ -90,6 +99,36 @@ export function useCrmStages() {
     onError: (error) => {
       toast({
         title: 'Erro ao criar estágio',
+        description: getErrorMessage(error),
+        variant: 'destructive'
+      });
+    },
+  });
+
+  const seedDefaultStages = useMutation({
+    mutationFn: async () => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+      const rows = DEFAULT_CRM_STAGES.map((stage, index) => ({
+        ...stage,
+        position: index,
+        company_id,
+      }));
+      const { data, error } = await supabase
+        .from('crm_stages')
+        .insert(rows as any)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crm_stages'] });
+      toast({ title: 'Estágios padrão criados!' });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erro ao criar estágios padrão',
         description: getErrorMessage(error),
         variant: 'destructive'
       });
@@ -178,6 +217,7 @@ export function useCrmStages() {
     isLoading,
     error,
     createStage,
+    seedDefaultStages,
     updateStage,
     deleteStage,
     reorderStages,

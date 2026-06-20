@@ -57,6 +57,12 @@ export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
   check_out_time?: string;
   check_out_location?: { lat: number; lng: number };
   client_signature?: string;
+  // Recorrência de tarefas (entry_type='tarefa'). A regeneração de ocorrências
+  // ("esta e as futuras") é orquestrada na agenda; aqui só persistimos os campos.
+  recurrence_type?: string | null;
+  recurrence_interval?: number | null;
+  recurrence_end_date?: string | null;
+  recurrence_group_id?: string | null;
 }
 
 export function useServiceOrders() {

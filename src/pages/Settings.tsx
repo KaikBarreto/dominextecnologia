@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2 } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +36,9 @@ import { ReportHeader, DEFAULT_HEADER_CONFIG } from '@/components/technician/Rep
 import { Slider } from '@/components/ui/slider';
 import { DangerZoneCard } from '@/components/settings/DangerZoneCard';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
+import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
+import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
+import * as LucideIcons from 'lucide-react';
 import type { AppRole } from '@/types/database';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
@@ -93,6 +96,8 @@ export default function Settings() {
   const canResetSystem = hasRole('admin') || hasRole('super_admin' as AppRole);
   const [wlGateOpen, setWlGateOpen] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [originManagerOpen, setOriginManagerOpen] = useState(false);
+  const { origins: customerOrigins, seedDefaultOrigins } = useCustomerOrigins();
   const { acceptedAt: termsAcceptedAt } = useTermsOfService();
   const termsAcceptedLabel = formatBrtDateTime(termsAcceptedAt);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1050,6 +1055,7 @@ export default function Settings() {
 
       case 'usabilidade':
         return (
+          <div className="space-y-6">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -1094,6 +1100,63 @@ export default function Settings() {
               ))}
             </CardContent>
           </Card>
+
+          {/* Origens — catálogo compartilhado por Clientes e CRM */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Tags className="h-5 w-5 text-primary" />
+                    <CardTitle>Origens</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Lista de origens usada no cadastro de clientes e nas oportunidades do CRM
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" className="shrink-0" onClick={() => setOriginManagerOpen(true)}>
+                  Gerenciar origens
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {customerOrigins.length === 0 ? (
+                <div className="flex flex-col items-start gap-3 py-2">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma origem cadastrada. Crie um conjunto inicial e edite à vontade depois.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => { if (!seedDefaultOrigins.isPending) seedDefaultOrigins.mutate(); }}
+                    disabled={seedDefaultOrigins.isPending}
+                  >
+                    {seedDefaultOrigins.isPending ? 'Criando…' : 'Criar origens padrão'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-lg border divide-y">
+                  {customerOrigins.map((o) => {
+                    const OriginIcon = (LucideIcons as any)[o.icon] || Tags;
+                    return (
+                      <div key={o.id} className="flex items-center gap-3 px-3 py-2.5">
+                        <div
+                          className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: o.color }}
+                        >
+                          <OriginIcon className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <span className="flex-1 text-sm font-medium truncate">{o.name}</span>
+                        {!o.is_active && (
+                          <span className="text-xs text-muted-foreground">Inativa</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          </div>
         );
 
       case 'atalhos':
@@ -1165,6 +1228,8 @@ export default function Settings() {
           {renderContent()}
         </SettingsSidebarLayout>
       </div>
+
+      <CustomerOriginManagerDialog open={originManagerOpen} onOpenChange={setOriginManagerOpen} />
     </div>
   );
 }

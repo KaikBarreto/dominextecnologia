@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, Tag } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { useCustomerOrigins, type CustomerOrigin } from '@/hooks/useCustomerOrigins';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const ICON_OPTIONS = ['Globe', 'UserPlus', 'Megaphone', 'Handshake', 'Phone', 'Mail', 'MapPin', 'Star', 'Heart', 'Target', 'Zap', 'TrendingUp', 'Share2', 'Users'];
+const ICON_OPTIONS = ['Globe', 'UserPlus', 'Megaphone', 'Handshake', 'Phone', 'Mail', 'MapPin', 'Star', 'Heart', 'Target', 'Zap', 'TrendingUp', 'Share2', 'Users', 'MessageCircle', 'Search', 'Instagram', 'Facebook', 'CalendarDays', 'Tag'];
 
 function IconPreview({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
@@ -23,7 +24,7 @@ interface Props {
 }
 
 export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
-  const { origins, createOrigin, updateOrigin, deleteOrigin } = useCustomerOrigins();
+  const { origins, isLoading, createOrigin, seedDefaultOrigins, updateOrigin, deleteOrigin } = useCustomerOrigins();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editIcon, setEditIcon] = useState('Globe');
@@ -58,6 +59,20 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Origens de Clientes">
       <div className="space-y-4">
+        {/* Empty state com CTA de seed */}
+        {!isLoading && origins.length === 0 && (
+          <EmptyState
+            size="compact"
+            icon={<Tag className="h-8 w-8" />}
+            title="Nenhuma origem cadastrada"
+            description="Crie um conjunto inicial de origens (Indicação, Site, WhatsApp, Google…) e edite ou exclua à vontade depois."
+            action={{
+              label: seedDefaultOrigins.isPending ? 'Criando…' : 'Criar origens padrão',
+              onClick: () => { if (!seedDefaultOrigins.isPending) seedDefaultOrigins.mutate(); },
+            }}
+          />
+        )}
+
         {/* Existing origins */}
         <div className="space-y-2">
           {origins.map((o) => (

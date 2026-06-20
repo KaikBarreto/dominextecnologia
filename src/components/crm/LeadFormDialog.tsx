@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { useLeads, type Lead, type LeadInsert, LEAD_SOURCES } from '@/hooks/useLeads';
+import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
+import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const { customers } = useCustomers();
   const { users } = useUsers();
   const { stages } = useCrmStages();
+  const { activeOrigins } = useCustomerOrigins();
   const isEditing = !!lead;
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
@@ -151,9 +153,21 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Não informado</SelectItem>
-                  {LEAD_SOURCES.map(src => (
-                    <SelectItem key={src} value={src}>{src}</SelectItem>
+                  {activeOrigins.map(origin => (
+                    <SelectItem key={origin.id} value={origin.name}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: origin.color }}
+                        />
+                        {origin.name}
+                      </span>
+                    </SelectItem>
                   ))}
+                  {formData.source &&
+                    !activeOrigins.some(o => o.name === formData.source) && (
+                      <SelectItem value={formData.source}>{formData.source}</SelectItem>
+                    )}
                 </SelectContent>
               </Select>
             </div>

@@ -23,6 +23,7 @@ import {
 } from '@/hooks/useLeads';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { buildWhatsAppLink } from '@/utils/shareLinks';
 
 interface LeadDetailModalProps {
   open: boolean;
@@ -199,13 +200,29 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                 </h4>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {lead.customers.phone && (
-                    <a 
-                      href={`tel:${lead.customers.phone}`}
-                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                    >
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      {lead.customers.phone}
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`tel:${lead.customers.phone}`}
+                        className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                      >
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        {lead.customers.phone}
+                      </a>
+                      {buildWhatsAppLink(lead.customers.phone) && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 gap-1.5 px-2 text-white hover:opacity-90"
+                          style={{ backgroundColor: '#25D366' }}
+                          onClick={() =>
+                            window.open(buildWhatsAppLink(lead.customers!.phone)!, '_blank')
+                          }
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          WhatsApp
+                        </Button>
+                      )}
+                    </div>
                   )}
                   {lead.customers.email && (
                     <a 
