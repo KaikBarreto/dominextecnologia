@@ -809,7 +809,7 @@ export function ServiceOrderFormDialog({
   if (serviceOrder) {
     return (
       <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS">
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS" className="sm:max-w-[920px]">
         {isPmocOrder && (
           <PmocComplianceBadge variant="ribbon" withTooltip className="mb-4" />
         )}
@@ -857,6 +857,10 @@ export function ServiceOrderFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
+
+                {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
+                {serviceAddressSection}
+
                 <FormField control={form.control} name="service_type_id" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Serviço</FormLabel>
@@ -1125,9 +1129,6 @@ export function ServiceOrderFormDialog({
                   <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
 
-                {/* Endereço de serviço (diferente do cliente) */}
-                {serviceAddressSection}
-
                 {/* Pesquisa de Satisfação (NPS) ao finalizar */}
                 <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
                   <Label className="cursor-default flex items-center gap-1.5 text-sm">
@@ -1227,7 +1228,7 @@ export function ServiceOrderFormDialog({
   }
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço" className="sm:max-w-[920px]">
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -1380,6 +1381,9 @@ export function ServiceOrderFormDialog({
                   </div>
                 </div>
               )}
+
+              {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
+              {serviceAddressSection}
 
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
@@ -1714,9 +1718,6 @@ export function ServiceOrderFormDialog({
                   </div>
                 )}
               </div>
-
-              {/* Endereço de serviço (diferente do cliente) */}
-              {serviceAddressSection}
 
               {/* Pesquisa de Satisfação (NPS) ao finalizar */}
               <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
