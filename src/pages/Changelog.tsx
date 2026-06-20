@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.16',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefas: editar data e repetição em qualquer lugar',
+        description: 'Agora dá para editar uma tarefa — data, repetição e demais campos — tanto na Agenda quanto na aba Tarefas da ficha do cliente. Ao mudar a repetição de uma tarefa que se repete, as próximas ocorrências são refeitas automaticamente com a nova frequência (as que já passaram ou foram concluídas ficam como estão). A aba Tarefas do cliente também ganhou editar e excluir.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Financeiro do cliente com "A vencer" e detalhes',
+        description: 'Na ficha do cliente, a aba Financeiro agora separa em Tudo, A vencer e Pagas — incluindo as contas a vencer lançadas para aquele cliente. Cada lançamento tem um botão de "olho" que abre todos os detalhes (valor, vencimento, forma de pagamento, parcela, observações e mais).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Origem padronizada entre Clientes e Oportunidades',
+        description: 'O campo Origem passou a usar a mesma lista no cadastro de cliente e no cadastro de oportunidade do CRM, gerenciável também em Configurações → Usabilidade. Quem está começando pode criar um conjunto de origens padrão com um clique e editar ou excluir cada uma à vontade.',
+        category: 'melhoria',
+      },
+      {
+        title: 'CRM mais fácil de começar',
+        description: 'Quando o CRM ainda não tem colunas, a tela passou a oferecer um botão que cria as etapas padrão na hora, para você já começar a arrastar as oportunidades.',
+        category: 'melhoria',
+      },
+      {
+        title: 'WhatsApp direto na oportunidade',
+        description: 'Ao abrir uma oportunidade no CRM, um botão leva direto para a conversa de WhatsApp do contato, igual já acontece na tela de clientes.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Telas e listas vazias mais claras',
+        description: 'Em todo o sistema, listas, abas e colunas sem registros agora mostram uma mensagem clara — muitas com um atalho para a próxima ação — em vez de aparecerem em branco.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.15',
     date: '20 de junho de 2026',
     type: 'patch',
