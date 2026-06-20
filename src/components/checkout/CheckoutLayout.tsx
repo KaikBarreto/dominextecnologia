@@ -8,13 +8,11 @@ import { cpfCnpjMask } from "@/utils/masks";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import logoWhite from "@/assets/logo-white-horizontal.png";
-import logoDark from "@/assets/logo-horizontal-verde.png";
 import { PixPaymentView } from "./PixPaymentView";
 import { BoletoPaymentView } from "./BoletoPaymentView";
 import { CardPaymentForm } from "./CardPaymentForm";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { useTheme } from "next-themes";
 import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
@@ -137,7 +135,9 @@ export function CheckoutLayout({
   currentSubscriptionValue,
 }: CheckoutLayoutProps) {
   const navigate = useNavigate();
-  const { resolvedTheme } = useTheme();
+  // O logo Dominex deste layout vive no painel esquerdo de fundo fixo escuro
+  // (`bg-gray-950`), que não muda com o tema — por isso usa sempre o logo
+  // branco (proposital), sem depender de useIsDark.
   // White-label da empresa DO checkout: useWhiteLabel resolve pelo company_id
   // do usuário logado (que é o tenant do próprio checkout) — nunca global, e
   // já retorna enabled=false para super_admin. Quando white-label está ativo,

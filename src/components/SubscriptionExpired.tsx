@@ -4,14 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, LogOut, CreditCard } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useIsDark } from "@/hooks/useIsDark";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatBRL } from "@/utils/currency";
 import { getEffectiveSubscriptionValue } from "@/utils/subscriptionPricing";
 import logoWhite from "@/assets/logo-white-horizontal.png";
-import logoDark from "@/assets/logo-horizontal-verde.png";
+import logoBlack from "@/assets/logo-black-horizontal.png";
 
 interface SubscriptionExpiredProps {
   expirationDate: string;
@@ -24,7 +24,7 @@ interface SubscriptionExpiredProps {
  */
 export function SubscriptionExpired({ expirationDate }: SubscriptionExpiredProps) {
   const navigate = useNavigate();
-  const { resolvedTheme } = useTheme();
+  const isDark = useIsDark();
   const { signOut } = useAuth();
   const formattedDate = format(parseISO(expirationDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
@@ -66,7 +66,7 @@ export function SubscriptionExpired({ expirationDate }: SubscriptionExpiredProps
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={resolvedTheme === "dark" ? logoWhite : logoDark} alt="Dominex" className="h-12" />
+            <img src={isDark ? logoWhite : logoBlack} alt="Dominex" className="h-12" />
           </div>
           <div className="flex justify-center">
             <div className="rounded-full bg-destructive p-3">

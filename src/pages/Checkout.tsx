@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { addMonths, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
+import { useIsDark } from "@/hooks/useIsDark";
 import { Check, ArrowRight, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import {
 import type { CardData, PaymentResult } from "@/hooks/useAsaasPayment";
 import { useAsaasPayment } from "@/hooks/useAsaasPayment";
 import logoWhite from "@/assets/logo-white-horizontal.png";
-import logoDark from "@/assets/logo-horizontal-verde.png";
+import logoBlack from "@/assets/logo-black-horizontal.png";
 import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 import { PriceAmount } from "@/components/ui/PriceAmount";
 
@@ -91,7 +91,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isRenewal = searchParams.get("mode") === "renewal";
-  const { resolvedTheme } = useTheme();
+  const isDark = useIsDark();
   const { profile } = useAuth();
   // Mesma regra do painel de pagamento: white-label da empresa do checkout
   // (resolvido pelo company_id do usuário logado, nunca global). Ativo =
@@ -471,7 +471,7 @@ export default function Checkout() {
             ) : null
           ) : (
             <img
-              src={resolvedTheme === "dark" ? logoWhite : logoDark}
+              src={isDark ? logoWhite : logoBlack}
               alt="Dominex"
               className="h-10 mx-auto"
             />

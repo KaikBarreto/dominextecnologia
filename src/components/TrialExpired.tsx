@@ -3,11 +3,11 @@ import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, LogOut, Sparkles, Rocket, CheckCircle2 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useIsDark } from "@/hooks/useIsDark";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import logoWhite from "@/assets/logo-white-horizontal.png";
-import logoDark from "@/assets/logo-horizontal-verde.png";
+import logoBlack from "@/assets/logo-black-horizontal.png";
 
 interface TrialExpiredProps {
   expirationDate: string;
@@ -20,7 +20,7 @@ interface TrialExpiredProps {
  */
 export function TrialExpired({ expirationDate }: TrialExpiredProps) {
   const navigate = useNavigate();
-  const { resolvedTheme } = useTheme();
+  const isDark = useIsDark();
   const { signOut } = useAuth();
   const formattedDate = format(parseISO(expirationDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
@@ -36,7 +36,7 @@ export function TrialExpired({ expirationDate }: TrialExpiredProps) {
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={resolvedTheme === "dark" ? logoWhite : logoDark} alt="Dominex" className="h-12" />
+            <img src={isDark ? logoWhite : logoBlack} alt="Dominex" className="h-12" />
           </div>
           <div className="flex justify-center">
             <div className="rounded-full bg-primary/10 p-3">
