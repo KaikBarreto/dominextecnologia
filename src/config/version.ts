@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.13.11";
+export const APP_VERSION = "1.13.12";
 
-export const VERSION_NOTES = "Na ferramenta Ciclo Básico de Refrigeração, o diagrama ficou mais fácil de acompanhar: o compressor passou para a parte de baixo e o evaporador e o condensador foram centralizados, com os rótulos mais bem distribuídos.";
+export const VERSION_NOTES = "Novidades nas Ferramentas do Técnico: nova calculadora de Diluição de Produto, o segmento Estética Automotiva, catálogo de fluidos mais didático (gases separados em puros e misturas, com explicações), o substituto mais indicado em destaque no Retrofit de Gás e links compartilháveis das ferramentas. Na agenda financeira, as compras no cartão agora aparecem como a fatura, não uma a uma.";

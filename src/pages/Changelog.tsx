@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.12',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova ferramenta: calculadora de Diluição de Produto',
+        description: 'Chegou a calculadora de Diluição de Produto (nas Ferramentas do Técnico, disponível na Refrigeração e no novo segmento Estética Automotiva): informe a proporção (1:N) e o volume que você quer preparar e veja na hora quanto de produto e quanto de água usar — com uma ilustração do galão mostrando as partes. Também dá para fazer o caminho inverso, partindo da quantidade de produto que você já tem.',
+        category: 'recurso',
+      },
+      {
+        title: 'Novo segmento: Estética Automotiva',
+        description: 'Adicionamos o segmento Estética Automotiva na escolha de área de atuação da empresa (nas Configurações e no cadastro), com suas próprias ferramentas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Retrofit de Gás: substituto mais indicado em destaque',
+        description: 'Na ferramenta de Retrofit de Gás, o substituto mais recomendado para cada gás agora aparece em primeiro e com um selo "Mais Indicado" — fica mais rápido escolher a troca certa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Catálogo de fluidos mais didático',
+        description: 'Os fluidos refrigerantes agora vêm separados em "Puros" e "Misturas", com explicações ao toque sobre os tipos (HFC, HCFC, HFO, blends) e classes de segurança, além de um novo glossário de nomenclatura no início das Ferramentas. O campo "Substitui" foi reescrito para deixar claro quando é troca de geração (equipamento novo) e quando é troca direta no mesmo aparelho, e os botões de ficha técnica ficaram mais visíveis.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Links e atualização de página nas Ferramentas do Técnico',
+        description: 'Agora você pode compartilhar o link de uma ferramenta ou de um fluido/equipamento específico, e atualizar a página sem cair no início — a tela em que você está é mantida, e o voltar do celular funciona certinho.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Agenda mostra a fatura do cartão, não cada compra',
+        description: 'As compras parceladas no cartão de crédito deixaram de aparecer uma a uma na agenda. Agora aparece apenas a fatura do cartão, no dia do vencimento, com o valor total a pagar — as compras seguem registradas normalmente no Financeiro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.13.11',
     date: '20 de junho de 2026',
     type: 'patch',
