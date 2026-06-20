@@ -7269,6 +7269,10 @@ export type Database = {
         Args: { p_version?: string }
         Returns: undefined
       }
+      admin_delete_company: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
       asaas_reconciliation_alert: { Args: never; Returns: number }
       asaas_reconciliation_check: {
         Args: never

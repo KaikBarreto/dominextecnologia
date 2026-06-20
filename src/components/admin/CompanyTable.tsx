@@ -86,7 +86,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('companies').delete().eq('id', id);
+      const { error } = await supabase.rpc('admin_delete_company', { p_company_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
