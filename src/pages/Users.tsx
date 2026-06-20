@@ -160,6 +160,11 @@ export default function Users() {
 
   const handleEditUser = async (data: any) => {
     if (!editingUser) return;
+    // Guarda: rebaixar o último admin ativo (admin -> gestor/tecnico) é bloqueado.
+    if (data.role !== 'admin' && isLastActiveAdmin(editingUser)) {
+      blockLastAdmin();
+      return;
+    }
     try {
       // Handle photo
       let avatarUrl: string | null | undefined = undefined;
@@ -229,6 +234,11 @@ export default function Users() {
   // Desativar conta (reversível): libera slot e derruba a sessão do usuário.
   const handleDeactivateUser = async (userProfile: UserWithRole) => {
     if (userProfile.user_id === user?.id) return; // não pode se desativar
+    // Guarda: desativar o último admin ativo deixaria a empresa órfã.
+    if (isLastActiveAdmin(userProfile)) {
+      blockLastAdmin();
+      return;
+    }
     try {
       const { data: result, error } = await supabase.functions.invoke('manage-user', {
         body: { action: 'deactivate_user', user_id: userProfile.user_id },
@@ -261,6 +271,12 @@ export default function Users() {
 
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
+    // Guarda: excluir o último admin ativo deixaria a empresa órfã.
+    if (isLastActiveAdmin(deletingUser)) {
+      blockLastAdmin();
+      setDeletingUser(null);
+      return;
+    }
     setDeleteLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke('manage-user', {
@@ -309,6 +325,20 @@ export default function Users() {
 
   // Conta ativos pelo status da CONTA (profiles.is_active). undefined = ativo.
   const activeCount = users.filter(u => u.is_active !== false).length;
+
+  // Guarda amigável: a empresa precisa de >= 1 admin ativo (espelha a trava do
+  // servidor). Admin ativo = role 'admin' e is_active !== false. Bloqueia no
+  // client (rebaixar/excluir/desativar) quando o alvo é o ÚLTIMO admin ativo.
+  const activeAdmins = users.filter(u => u.role === 'admin' && u.is_active !== false);
+  const isLastActiveAdmin = (target: UserWithRole) =>
+    target.role === 'admin' && target.is_active !== false && activeAdmins.length <= 1;
+  const blockLastAdmin = () => {
+    toast({
+      title: 'Ação bloqueada',
+      description: 'A empresa precisa de pelo menos um administrador ativo.',
+      variant: 'destructive',
+    });
+  };
 
   // ---------------------------------------------------------------------------
   // Preset handlers (lista nas tabs mobile abre dialog em modo edit/create)
