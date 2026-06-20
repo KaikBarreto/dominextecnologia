@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Star, Loader2, CheckCircle2, Smile, Meh, Frown } from 'lucide-react';
+import { Star, Loader2, CheckCircle2, Smile, Meh, Frown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -139,6 +139,10 @@ function NpsScale({
   const FaceIcon = meta?.icon ?? Meh;
   // Posição visual do thumb: nota real ou centro neutro enquanto não tocado.
   const sliderValue = value ?? 5;
+  // Posição horizontal da dica "Arraste aqui" (segue o thumb). 0→0%, 10→100%.
+  // clamp 6%–94% pra o texto centralizado (translateX(-50%)) não cortar nas
+  // bordas do container nos extremos 0 e 10.
+  const hintPct = Math.min(94, Math.max(6, (sliderValue / 10) * 100));
 
   return (
     <div className="space-y-4">
@@ -183,6 +187,20 @@ function NpsScale({
             value === null && '[&_[role=slider]]:opacity-50',
           )}
         />
+
+        {/* Dica "Arraste aqui" que segue horizontalmente o thumb. Some após a
+            1ª interação — aí o número grande já comunica a nota. */}
+        {value === null && (
+          <div className="relative h-7 select-none" aria-hidden>
+            <span
+              className="absolute top-0 flex -translate-x-1/2 flex-col items-center text-[11px] font-medium text-muted-foreground transition-[left] duration-100"
+              style={{ left: `${hintPct}%` }}
+            >
+              <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/70" />
+              Arraste aqui
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Rótulos das pontas */}

@@ -51,6 +51,7 @@ import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hook
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { useOsActivityChecklist } from '@/hooks/useOsActivityChecklist';
 import { VisitChecklistPanel } from '@/components/technician/VisitChecklistPanel';
+import { ReportChecklist, type ReportChecklistItem } from '@/components/technician/ReportChecklist';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
@@ -61,6 +62,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import TechnicianTools from '@/pages/TechnicianTools';
@@ -117,6 +119,10 @@ export default function TechnicianOS() {
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
+  // Checklist da visita no MODO ANÔNIMO: a RLS bloqueia service_order_activities
+  // pro anon, então as atividades já vêm no payload da RPC get_public_os (chave
+  // `activities`) no shape firme de ReportChecklistItem.
+  const [publicActivities, setPublicActivities] = useState<ReportChecklistItem[]>([]);
   const [technicianProfile, setTechnicianProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -133,6 +139,12 @@ export default function TechnicianOS() {
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  // Modal de finalização quando a OS PMOC tem itens do checklist sem resposta.
+  // `pendingChecklistCount` guarda quantos faltam; o modal abre quando > 0 ao
+  // tentar finalizar. `markingChecklist` trava os botões durante o bulk update.
+  const [checklistGapOpen, setChecklistGapOpen] = useState(false);
+  const [pendingChecklistCount, setPendingChecklistCount] = useState(0);
+  const [markingChecklist, setMarkingChecklist] = useState(false);
 
   // Onda D v1.9.x — classificação de conformidade PMOC.
   // Só aparece quando a OS é PMOC (`useIsPmocOrder`). Notas são obrigatórias
@@ -142,10 +154,12 @@ export default function TechnicianOS() {
   // a OS foi gerada por contrato com plano; OS avulsa volta vazia (RLS anon
   // também devolve vazio no modo cliente → painel não aparece).
   const {
+    activities: checklistActivities,
     groups: checklistGroups,
     hasActivities: hasChecklist,
     saveActivity: saveChecklistActivity,
     rollup: checklistRollup,
+    refetch: refetchChecklist,
   } = useOsActivityChecklist(isAuthenticated === true ? id : undefined);
   type PmocConformity = 'conforme' | 'parcial' | 'nao_conforme';
   const [conformityStatus, setConformityStatus] = useState<PmocConformity | ''>('');
@@ -207,12 +221,36 @@ export default function TechnicianOS() {
   // Helper to safely extract joined object (Supabase may return array for some joins)
   const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
 
-  // Check if user is authenticated
+  // Resolve o estado de auth ANTES de escolher o caminho de leitura.
+  // Regras:
+  // - `?modo=cliente` → sempre modo público (anon), com ou sem sessão.
+  // - sem `?modo=cliente` E SEM sessão (ex: cliente final abrindo o link puro
+  //   em guia anônima) → redireciona pra MESMA URL com `?modo=cliente`
+  //   (preserva demais query params, REPLACE pra não criar loop nem sujar o
+  //   histórico). Mantemos `isAuthenticated = null` durante o redirect pra a
+  //   tela ficar no loading e NÃO disparar o fetch autenticado que falharia.
+  // - sem `?modo=cliente` E COM sessão (técnico logado) → modo autenticado.
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setIsAuthenticated(forceReadOnly ? false : !!data.user);
+    if (forceReadOnly) {
+      setIsAuthenticated(false);
+      return;
+    }
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (data.session) {
+        setIsAuthenticated(true);
+        return;
+      }
+      // Sem sessão e sem `modo=cliente`: cai no modo público preservando params.
+      const params = new URLSearchParams(searchParams);
+      params.set('modo', 'cliente');
+      navigate({ search: `?${params.toString()}` }, { replace: true });
+      // Não seta isAuthenticated: a tela segue no loading até a nova URL
+      // remontar o efeito com forceReadOnly === true.
     });
-  }, [forceReadOnly]);
+    return () => { active = false; };
+  }, [forceReadOnly, searchParams, navigate]);
 
   const fetchFormResponses = async () => {
     if (!id) return;
@@ -363,6 +401,28 @@ export default function TechnicianOS() {
 
       // form_responses + question join (espelha o select da página)
       setPublicFormResponses(payload.form_responses || []);
+
+      // activities (checklist da visita) — já no shape firme de ReportChecklistItem.
+      // RLS bloqueia a tabela pro anon, então só chegam por aqui.
+      setPublicActivities(
+        ((payload.activities || []) as any[]).map((a) => ({
+          id: a.id,
+          equipment_id: a.equipment_id ?? null,
+          equipment_name: a.equipment_name ?? null,
+          description: a.description ?? '',
+          section: a.section ?? null,
+          component: a.component ?? null,
+          guidance: a.guidance ?? null,
+          conformity_status: a.conformity_status ?? null,
+          is_measurement: a.is_measurement === true,
+          measured_value: a.measured_value ?? null,
+          unit: a.unit ?? null,
+          expected_min: a.expected_min ?? null,
+          expected_max: a.expected_max ?? null,
+          sort_order: a.sort_order ?? 0,
+          photos: Array.isArray(a.photos) ? a.photos.filter(Boolean) : [],
+        })) as ReportChecklistItem[]
+      );
 
       // technician profile (full_name, avatar_url)
       setTechnicianProfile(payload.technician || null);
@@ -746,6 +806,24 @@ export default function TechnicianOS() {
       }
     }
 
+    // OS PMOC com checklist: se ainda há itens sem resposta, NÃO finaliza direto.
+    // Abre o modal mostrando quantos faltam (voltar e preencher OU marcar
+    // restantes como Conforme e concluir). OS comum não passa por aqui.
+    if (isPmocOrder && hasChecklist) {
+      const blanks = checklistActivities.filter((a) => !a.conformity_status).length;
+      if (blanks > 0) {
+        setPendingChecklistCount(blanks);
+        setChecklistGapOpen(true);
+        return;
+      }
+    }
+
+    await proceedFinishOS();
+  };
+
+  // Conclusão efetiva da OS (após validações e, quando aplicável, a decisão do
+  // modal de checklist em branco). Isolada pra ser reusada pelo modal.
+  const proceedFinishOS = async () => {
     setFinishing(true);
     try {
       const location = await getCurrentLocation();
@@ -818,11 +896,68 @@ export default function TechnicianOS() {
     }
   };
 
+  // Escolha (b) do modal: marca TODOS os itens em branco como 'conforme' (bulk
+  // update server-side, idempotente) e então conclui a OS. O conteúdo é de
+  // responsabilidade do técnico/RT — facilidade de preenchimento, não auditoria.
+  const handleMarkRestAndFinish = async () => {
+    if (!id) return;
+    setMarkingChecklist(true);
+    try {
+      const { error } = await supabase
+        .from('service_order_activities')
+        .update({ conformity_status: 'conforme' })
+        .eq('service_order_id', id)
+        .is('conformity_status', null);
+      if (error) throw error;
+      // Recarrega o checklist pra o rollup refletir 'conforme' nas atividades
+      // que estavam em branco (proceedFinishOS deriva pmoc_conformity_status do rollup).
+      await refetchChecklist();
+      setChecklistGapOpen(false);
+      setPendingChecklistCount(0);
+      await proceedFinishOS();
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível concluir',
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setMarkingChecklist(false);
+    }
+  };
+
   // Selo de conformidade PMOC (Lei Federal 13.589/2018). No modo cliente (anon)
   // o hook `useIsPmocOrder` não passa na RLS, então derivamos do payload público.
   const isPublicMode = forceReadOnly;
   const isPmocPublic = publicContract?.is_pmoc === true;
   const showPmocSeal = isPublicMode ? isPmocPublic : isPmocOrder;
+
+  // Checklist da visita normalizado pro RELATÓRIO (read-only). Os dois modos
+  // convergem pro MESMO shape (ReportChecklistItem):
+  // - anônimo: já vem pronto do payload (publicActivities);
+  // - autenticado: adaptado de checklistGroups (equipmentName resolvido) +
+  //   activity_photos (CSV → array).
+  const reportChecklistItems: ReportChecklistItem[] = isPublicMode
+    ? publicActivities
+    : checklistGroups.flatMap((group) =>
+        group.activities.map((a) => ({
+          id: a.id,
+          equipment_id: a.equipment_id,
+          equipment_name: group.equipmentId ? group.equipmentName : null,
+          description: a.description,
+          section: a.section,
+          component: a.component,
+          guidance: a.guidance,
+          conformity_status: a.conformity_status,
+          is_measurement: a.is_measurement,
+          measured_value: a.measured_value,
+          unit: a.unit,
+          expected_min: a.expected_min,
+          expected_max: a.expected_max,
+          sort_order: a.sort_order,
+          photos: (a.activity_photos || '').split(',').map((u) => u.trim()).filter(Boolean),
+        }))
+      );
 
   if (loading || isAuthenticated === null) {
     return (
@@ -921,10 +1056,31 @@ export default function TechnicianOS() {
             </>
           )}
           <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} />
+          {/* Checklist da visita (read-only). Aparece nos dois modos do relatório
+              (técnico autenticado e cliente anônimo). Some quando não há atividades. */}
+          <ReportChecklist
+            items={reportChecklistItems}
+            onPreviewPhoto={(url, images, index) => {
+              setGalleryImages(images && images.length > 1 ? images : []);
+              setGalleryIndex(index ?? 0);
+              setPreviewPhoto(url);
+            }}
+          />
           {isPublicMode && isPmocPublic && (
             <PmocComplianceBadge variant="footer" className="pt-2" />
           )}
         </div>
+
+        {/* Viewer de foto do checklist (nunca abre em nova aba) */}
+        <ImagePreviewModal
+          src={previewPhoto || ''}
+          alt="Foto"
+          open={!!previewPhoto}
+          onClose={() => { setPreviewPhoto(null); setGalleryImages([]); }}
+          images={galleryImages.length > 1 ? galleryImages : undefined}
+          currentIndex={galleryIndex}
+          onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
+        />
       </div>
     );
   }
@@ -2212,6 +2368,50 @@ export default function TechnicianOS() {
         currentIndex={galleryIndex}
         onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
       />
+
+      {/* Modal: OS PMOC com itens do checklist sem resposta ao finalizar.
+          Mobile vira drawer de baixo (ResponsiveModal). Voltar = não finaliza;
+          marcar restantes como Conforme = bulk update + conclui. */}
+      <ResponsiveModal
+        open={checklistGapOpen}
+        onOpenChange={(o) => { if (!markingChecklist) setChecklistGapOpen(o); }}
+        title="Checklist incompleto"
+        footer={
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:flex-1"
+              disabled={markingChecklist}
+              onClick={() => setChecklistGapOpen(false)}
+            >
+              Voltar e preencher
+            </Button>
+            <Button
+              className="w-full sm:flex-1 bg-success hover:bg-success/90 text-success-foreground"
+              disabled={markingChecklist}
+              onClick={handleMarkRestAndFinish}
+            >
+              {markingChecklist
+                ? 'Concluindo...'
+                : `Marcar ${pendingChecklistCount} como Conforme e concluir`}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3 py-1">
+          <p className="text-sm text-foreground">
+            Faltam <strong>{pendingChecklistCount}</strong> item{pendingChecklistCount > 1 ? 's' : ''} do
+            checklist sem resposta. Você pode voltar e preencher, ou marcar
+            {' '}{pendingChecklistCount > 1 ? `os ${pendingChecklistCount} restantes` : 'o restante'}
+            {' '}como <strong>Conforme</strong> para concluir agora.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Isto é apenas uma facilidade de preenchimento: o conteúdo é de
+            responsabilidade do técnico e do responsável técnico, e o sistema não
+            se responsabiliza pelo que for preenchido.
+          </p>
+        </div>
+      </ResponsiveModal>
 
       {/* FAB speed-dial (canto inferior esquerdo) — atalho pras Ferramentas do Técnico */}
       <SpeedDialFAB actions={speedDialActions} side="left" />

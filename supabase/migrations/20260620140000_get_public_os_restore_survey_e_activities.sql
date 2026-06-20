@@ -1,0 +1,270 @@
+-- =============================================================================
+-- get_public_os: RESTAURA campos de pesquisa de satisfação + ADICIONA activities
+-- =============================================================================
+-- POR QUÊ (causa-raiz do bug do link anônimo):
+--   A migration 20260616140000_nps_onda2_criterios_dinamicos.sql adicionou ao
+--   payload de get_public_os os campos `survey_enabled`, `nps_criteria` e o
+--   `generate_on_finish` dentro de `nps_config`. A migration POSTERIOR
+--   20260617120000_get_public_os_pmoc_flag.sql fez um CREATE OR REPLACE da
+--   função partindo de uma versão ANTERIOR (sem esses campos) só pra adicionar
+--   as flags de PMOC ao `contract` — REGRESSÃO: derrubou survey_enabled +
+--   nps_criteria + generate_on_finish do payload.
+--
+--   Efeito no anônimo: o frontend (TechnicianOS.tsx) lê
+--   `payload.survey_enabled === true` → como o campo sumiu, vira sempre false →
+--   o bloco de pesquisa de satisfação NUNCA renderiza no modo cliente.
+--   `nps_criteria` também sumiu → critérios de estrela dinâmicos vazios.
+--
+--   `company_settings` SEMPRE esteve no payload (não era a causa do "Empresa"
+--   genérico — esse texto é o fallback de ReportHeader quando company é null;
+--   com o payload correto o nome real aparece). Logo da empresa fica em bucket
+--   PÚBLICO (company-logos) → URL já é pública, anônimo abre direto, sem signed
+--   URL. Idem fotos (os-photos público).
+--
+-- O QUE ESTA MIGRATION FAZ:
+--   1. Reúne a versão MAIS COMPLETA: base atual (com flags PMOC no contract)
+--      + survey_enabled + nps_config.generate_on_finish + nps_criteria.
+--   2. ADICIONA a chave `activities` (checklist PMOC) — só quando a OS tem
+--      linhas em service_order_activities. Fotos vêm do CSV activity_photos
+--      como array de URLs (já públicas no bucket os-photos).
+--
+-- Idempotente: CREATE OR REPLACE. SECURITY DEFINER, search_path fixo.
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.get_public_os(p_os_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_so            service_orders%ROWTYPE;
+  v_technician_id uuid;
+  v_result        jsonb;
+  v_activities    jsonb;
+BEGIN
+  SELECT * INTO v_so FROM service_orders WHERE id = p_os_id;
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
+  v_technician_id := v_so.technician_id;
+  IF v_technician_id IS NULL THEN
+    SELECT user_id INTO v_technician_id
+    FROM service_order_assignees
+    WHERE service_order_id = p_os_id
+    ORDER BY created_at ASC
+    LIMIT 1;
+  END IF;
+
+  v_result := jsonb_build_object(
+    'service_order', to_jsonb(v_so),
+
+    'customer', (
+      SELECT jsonb_build_object(
+        'id', c.id, 'name', c.name, 'phone', c.phone, 'address', c.address,
+        'city', c.city, 'state', c.state, 'document', c.document, 'photo_url', c.photo_url
+      )
+      FROM customers c WHERE c.id = v_so.customer_id
+    ),
+
+    'customer_geo', (
+      SELECT jsonb_build_object(
+        'id', c.id, 'lat', c.lat, 'lng', c.lng, 'address', c.address,
+        'city', c.city, 'state', c.state, 'zip_code', c.zip_code
+      )
+      FROM customers c WHERE c.id = v_so.customer_id
+    ),
+
+    'equipment', (
+      SELECT jsonb_build_object(
+        'id', e.id, 'name', e.name, 'brand', e.brand, 'model', e.model,
+        'serial_number', e.serial_number, 'location', e.location, 'capacity', e.capacity
+      )
+      FROM equipment e WHERE e.id = v_so.equipment_id
+    ),
+
+    'form_template', (
+      SELECT jsonb_build_object('id', ft.id, 'name', ft.name)
+      FROM form_templates ft WHERE ft.id = v_so.form_template_id
+    ),
+
+    'service_type', (
+      SELECT jsonb_build_object('id', st.id, 'name', st.name, 'color', st.color)
+      FROM service_types st WHERE st.id = v_so.service_type_id
+    ),
+
+    'photos', COALESCE((
+      SELECT jsonb_agg(to_jsonb(p) ORDER BY p.created_at ASC)
+      FROM os_photos p WHERE p.service_order_id = p_os_id
+    ), '[]'::jsonb),
+
+    'form_responses', COALESCE((
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'id', fr.id,
+          'question_id', fr.question_id,
+          'response_value', fr.response_value,
+          'response_photo_url', fr.response_photo_url,
+          'equipment_id', fr.equipment_id,
+          'question', (SELECT to_jsonb(fq) FROM form_questions fq WHERE fq.id = fr.question_id)
+        )
+      )
+      FROM form_responses fr WHERE fr.service_order_id = p_os_id
+    ), '[]'::jsonb),
+
+    'equipment_items', COALESCE((
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'equipment_id', soe.equipment_id,
+          'form_template_id', soe.form_template_id,
+          'equipment', (
+            SELECT jsonb_build_object(
+              'id', e2.id, 'name', e2.name, 'brand', e2.brand, 'model', e2.model,
+              'location', e2.location, 'photo_url', e2.photo_url,
+              'category', (
+                SELECT jsonb_build_object('id', ec.id, 'name', ec.name, 'color', ec.color)
+                FROM equipment_categories ec WHERE ec.id = e2.category_id
+              )
+            )
+            FROM equipment e2 WHERE e2.id = soe.equipment_id
+          ),
+          'form_template', (
+            SELECT jsonb_build_object('id', ft2.id, 'name', ft2.name)
+            FROM form_templates ft2 WHERE ft2.id = soe.form_template_id
+          )
+        )
+      )
+      FROM service_order_equipment soe WHERE soe.service_order_id = p_os_id
+    ), '[]'::jsonb),
+
+    'technician', (
+      SELECT jsonb_build_object('full_name', pr.full_name, 'avatar_url', pr.avatar_url)
+      FROM profiles pr WHERE pr.user_id = v_technician_id
+    ),
+
+    -- rating: subset SEM token. Inclui flags de estado pro link público decidir
+    -- se mostra o formulário de avaliação ou o "obrigado".
+    'rating', (
+      SELECT jsonb_build_object(
+        'is_concluded', (v_so.status = 'concluida'),
+        'already_rated', (sr.rated_at IS NOT NULL),
+        'rated_at', sr.rated_at,
+        'nps_score', sr.nps_score,
+        'quality_rating', sr.quality_rating,
+        'punctuality_rating', sr.punctuality_rating,
+        'professionalism_rating', sr.professionalism_rating,
+        'comment', sr.comment,
+        'rated_by_name', sr.rated_by_name
+      )
+      FROM service_ratings sr WHERE sr.service_order_id = p_os_id LIMIT 1
+    ),
+
+    -- survey_enabled: existe linha de rating (criada na conclusão da OS) →
+    -- a pesquisa de satisfação pode ser ofertada no modo cliente.
+    'survey_enabled', EXISTS (
+      SELECT 1 FROM service_ratings sr2 WHERE sr2.service_order_id = p_os_id
+    ),
+
+    -- nps_config: pergunta + estrelas obrigatórias + generate_on_finish da
+    -- empresa DONA da OS. Defaults quando a empresa não tem linha em nps_settings.
+    'nps_config', (
+      SELECT jsonb_build_object(
+        'question', COALESCE(ns.question,
+          'De 0 a 10, o quão satisfeito(a) você ficou com o nosso serviço?'),
+        'require_stars', COALESCE(ns.require_stars, false),
+        'generate_on_finish', COALESCE(ns.generate_on_finish, true)
+      )
+      FROM (SELECT 1) dummy
+      LEFT JOIN nps_settings ns ON ns.company_id = v_so.company_id
+    ),
+
+    -- nps_criteria: critérios de estrela DINÂMICOS ATIVOS da empresa, ordenados.
+    'nps_criteria', COALESCE((
+      SELECT jsonb_agg(
+        jsonb_build_object('id', nc.id, 'label', nc.label)
+        ORDER BY nc.position ASC, nc.created_at ASC
+      )
+      FROM nps_criteria nc
+      WHERE nc.company_id = v_so.company_id AND nc.active = true
+    ), '[]'::jsonb),
+
+    'company_settings', (
+      SELECT to_jsonb(cs) FROM company_settings cs WHERE cs.company_id = v_so.company_id
+    ),
+
+    'contract', (
+      SELECT jsonb_build_object(
+        'id', ct.id,
+        'name', ct.name,
+        'is_pmoc', ct.is_pmoc,
+        'pmoc_legal_compliance_text', ct.pmoc_legal_compliance_text
+      )
+      FROM contracts ct WHERE ct.id = v_so.contract_id
+    )
+  );
+
+  -- ---------------------------------------------------------------------------
+  -- activities: respostas do checklist PMOC (service_order_activities).
+  -- No modo anônimo o RLS bloqueia leitura direta dessa tabela, então o
+  -- relatório público depende deste payload. Só inclui a chave quando a OS
+  -- TEM checklist (≥1 linha). Fotos: activity_photos é CSV de URLs já públicas
+  -- (bucket os-photos) → vira array, split por vírgula, trim, sem vazios.
+  -- equipment_name resolvido via equipment.name (join por equipment_id);
+  -- null = atividade geral (sem equipamento). Ordem estável:
+  -- equipment_name (nulls por último), depois sort_order, depois section.
+  -- ---------------------------------------------------------------------------
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'id',                a.id,
+      'equipment_id',      a.equipment_id,
+      'equipment_name',    e.name,
+      'description',       a.description,
+      'section',           a.section,
+      'component',         a.component,
+      'guidance',          a.guidance,
+      'conformity_status', a.conformity_status,
+      'is_measurement',    a.is_measurement,
+      'measured_value',    a.measured_value,
+      'unit',              a.unit,
+      'expected_min',      a.expected_min,
+      'expected_max',      a.expected_max,
+      'sort_order',        a.sort_order,
+      'photos', COALESCE((
+        SELECT jsonb_agg(trim(u))
+        FROM unnest(string_to_array(a.activity_photos, ',')) AS u
+        WHERE trim(u) <> ''
+      ), '[]'::jsonb)
+    )
+    ORDER BY (e.name IS NULL), e.name ASC, a.sort_order ASC NULLS LAST, a.section ASC NULLS LAST
+  )
+  INTO v_activities
+  FROM service_order_activities a
+  LEFT JOIN equipment e ON e.id = a.equipment_id
+  WHERE a.service_order_id = p_os_id;
+
+  IF v_activities IS NOT NULL THEN
+    v_result := jsonb_set(v_result, '{activities}', v_activities);
+  END IF;
+
+  -- Caso a OS esteja concluída mas (excepcionalmente) sem linha de rating ainda,
+  -- ainda assim devolve o estado pra UI poder ofertar a avaliação.
+  IF v_result->'rating' IS NULL OR v_result->>'rating' = 'null' THEN
+    v_result := jsonb_set(v_result, '{rating}', jsonb_build_object(
+      'is_concluded', (v_so.status = 'concluida'),
+      'already_rated', false,
+      'rated_at', NULL,
+      'nps_score', NULL,
+      'quality_rating', NULL,
+      'punctuality_rating', NULL,
+      'professionalism_rating', NULL,
+      'comment', NULL,
+      'rated_by_name', NULL
+    ));
+  END IF;
+
+  RETURN v_result;
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.get_public_os(uuid) TO anon, authenticated, service_role;

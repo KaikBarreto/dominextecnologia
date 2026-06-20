@@ -56,18 +56,18 @@ function RibbonBody({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2',
-        'text-info',
+        'flex items-center gap-2 rounded-lg border border-blue-700 bg-blue-600 px-3 py-2',
+        'text-white',
         className,
       )}
       role="note"
       aria-label="Conforme Lei Federal 13.589/2018"
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info/15">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
         <ShieldCheck className="h-4 w-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/80">
           Contrato PMOC
         </p>
         <p className="text-sm font-semibold leading-tight">

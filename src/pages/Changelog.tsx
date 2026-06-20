@@ -40,6 +40,38 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.13',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist da visita no relatório de serviço',
+        description: 'O relatório de serviço da OS agora mostra o checklist da visita: cada item com a sua resposta (Conforme, Não-conforme ou N/A), os valores medidos e as fotos anexadas — visível também no link público compartilhado com o cliente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Link da OS abre direto para o cliente',
+        description: 'Quando o cliente abre o link da Ordem de Serviço sem estar logado, o sistema já entende que é a visão do cliente e abre a página pública automaticamente, com os dados da empresa e a pesquisa de satisfação.',
+        category: 'correcao',
+      },
+      {
+        title: 'Finalizar OS de PMOC com itens pendentes',
+        description: 'Ao concluir uma OS de contrato PMOC que ainda tem itens do checklist sem resposta, o sistema avisa quantos faltam e deixa você escolher: voltar para preencher ou marcar os restantes como Conforme para concluir.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Selos do contrato e da norma PMOC em destaque',
+        description: 'No relatório de serviço, o selo do contrato e o selo de conformidade com a Lei Federal 13.589/2018 ganharam um azul mais forte, ficando mais visíveis.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Pesquisa de satisfação mais clara',
+        description: 'A nota de 0 a 10 da pesquisa de satisfação agora traz uma dica "Arraste aqui" abaixo do controle, ajudando o cliente a avaliar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.12',
     date: '20 de junho de 2026',
     type: 'patch',
