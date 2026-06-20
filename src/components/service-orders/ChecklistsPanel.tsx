@@ -32,7 +32,7 @@ function getServiceIds(template: unknown): string[] | undefined {
   return (template as TemplateWithServiceIds).service_type_ids;
 }
 
-export function QuestionnairesPanel() {
+export function ChecklistsPanel() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [createOpen, setCreateOpen] = useState(false);
@@ -58,7 +58,7 @@ export function QuestionnairesPanel() {
         setSelectedServiceIds([]);
         setCreateOpen(false);
         if (data) {
-          navigate(`/questionarios/${data.id}`);
+          navigate(`/checklists/${data.id}`);
         }
       },
     });
@@ -134,7 +134,7 @@ export function QuestionnairesPanel() {
                 label: 'Visualizar / Editar',
                 icon: <Pencil className="h-4 w-4" />,
                 variant: 'edit',
-                onClick: () => navigate(`/questionarios/${template.id}`),
+                onClick: () => navigate(`/checklists/${template.id}`),
               },
               {
                 key: 'delete',
@@ -148,7 +148,7 @@ export function QuestionnairesPanel() {
             return (
               <MobileListItem
                 key={template.id}
-                onClick={() => navigate(`/questionarios/${template.id}`)}
+                onClick={() => navigate(`/checklists/${template.id}`)}
                 actions={itemActions}
                 leading={
                   <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -190,7 +190,7 @@ export function QuestionnairesPanel() {
                       <TableRow
                         key={template.id}
                         className="cursor-pointer"
-                        onClick={() => navigate(`/questionarios/${template.id}`)}
+                        onClick={() => navigate(`/checklists/${template.id}`)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -227,7 +227,7 @@ export function QuestionnairesPanel() {
                           <div onClick={(e) => e.stopPropagation()}>
                             <RowActionsMenu
                               actions={[
-                                { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => navigate(`/questionarios/${template.id}`) },
+                                { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => navigate(`/checklists/${template.id}`) },
                                 { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(template.id) },
                               ]}
                             />

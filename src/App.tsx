@@ -65,8 +65,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import ServiceOrders from "./pages/ServiceOrders";
 import ServicesPage from "./pages/Services";
-import QuestionnairesPage from "./pages/Questionnaires";
-import QuestionnaireDetail from "./pages/QuestionnaireDetail";
+import ChecklistDetail from "./pages/ChecklistDetail";
 import Schedule from "./pages/Schedule";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
@@ -420,8 +419,11 @@ const AppRoutes = () => (
       <Route path="/dashboard" element={<PermissionRoute screenKey="screen:dashboard"><Dashboard /></PermissionRoute>} />
       <Route path="/ordens-servico" element={<PermissionRoute screenKey="screen:service_orders"><ServiceOrders /></PermissionRoute>} />
       <Route path="/servicos" element={<PermissionRoute screenKey="screen:services"><ServicesPage /></PermissionRoute>} />
-      <Route path="/questionarios" element={<Navigate to="/servicos" replace />} />
-      <Route path="/questionarios/:id" element={<PermissionRoute screenKey="screen:services"><QuestionnaireDetail /></PermissionRoute>} />
+      <Route path="/checklists" element={<Navigate to="/servicos" replace />} />
+      <Route path="/checklists/:id" element={<PermissionRoute screenKey="screen:services"><ChecklistDetail /></PermissionRoute>} />
+      {/* Back-compat: rotas antigas /questionarios redirecionam para as novas /checklists */}
+      <Route path="/questionarios" element={<Navigate to="/checklists" replace />} />
+      <Route path="/questionarios/:id" element={<RedirectQuestionariosToChecklists />} />
       <Route path="/agenda" element={<PermissionRoute screenKey="screen:schedule"><Schedule /></PermissionRoute>} />
       <Route path="/clientes" element={<PermissionRoute screenKey="screen:customers"><Customers /></PermissionRoute>} />
       <Route path="/clientes/:id" element={<PermissionRoute screenKey="screen:customers"><CustomerDetail /></PermissionRoute>} />
@@ -524,6 +526,12 @@ function OSRedirect() {
     return <Navigate to={`/os-tecnico/${osId}?modo=cliente`} replace />;
   }
   return <NotFound />;
+}
+
+// Back-compat: link antigo /questionarios/:id redireciona pro novo /checklists/:id preservando o id.
+function RedirectQuestionariosToChecklists() {
+  const { id } = useParams();
+  return <Navigate to={`/checklists/${id}`} replace />;
 }
 
 const App = () => (

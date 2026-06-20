@@ -3,14 +3,14 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { QUESTION_TYPES } from '@/hooks/useFormTemplates';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 
-interface QuestionnairePreviewDialogProps {
+interface ChecklistPreviewDialogProps {
   templateId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   templates: (FormTemplate & { questions: FormQuestion[] })[];
 }
 
-export function QuestionnairePreviewDialog({ templateId, open, onOpenChange, templates }: QuestionnairePreviewDialogProps) {
+export function ChecklistPreviewDialog({ templateId, open, onOpenChange, templates }: ChecklistPreviewDialogProps) {
   const template = templates.find(t => t.id === templateId);
   if (!template) return null;
 

@@ -35,7 +35,7 @@ function getServiceIds(template: unknown): string[] | undefined {
   return (template as TemplateWithServiceIds).service_type_ids;
 }
 
-export default function QuestionnairesPage() {
+export default function ChecklistsPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [createOpen, setCreateOpen] = useState(false);
@@ -51,7 +51,7 @@ export default function QuestionnairesPage() {
   const activeTemplates = templates.filter((template) => template.is_active);
   const filteredTemplates = activeTemplates.filter((t) => fuzzyIncludes(t.name, searchTerm));
   const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(filteredTemplates);
-  const pagination = useDataPagination(sortedTemplates, 10, 'questionnaires-list');
+  const pagination = useDataPagination(sortedTemplates, 10, 'checklists-list');
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -64,9 +64,9 @@ export default function QuestionnairesPage() {
         setAllServices(true);
         setSelectedServiceIds([]);
         setCreateOpen(false);
-        // Navigate to the new questionnaire page
+        // Navigate to the new checklist page
         if (data) {
-          navigate(`/questionarios/${data.id}`);
+          navigate(`/checklists/${data.id}`);
         }
       },
     });
@@ -157,7 +157,7 @@ export default function QuestionnairesPage() {
                       label: 'Visualizar / Editar',
                       icon: <Pencil className="h-4 w-4" />,
                       variant: 'edit',
-                      onClick: () => navigate(`/questionarios/${template.id}`),
+                      onClick: () => navigate(`/checklists/${template.id}`),
                     },
                     {
                       key: 'delete',
@@ -171,7 +171,7 @@ export default function QuestionnairesPage() {
                   return (
                     <MobileListItem
                       key={template.id}
-                      onClick={() => navigate(`/questionarios/${template.id}`)}
+                      onClick={() => navigate(`/checklists/${template.id}`)}
                       actions={itemActions}
                       leading={
                         <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
@@ -243,7 +243,7 @@ export default function QuestionnairesPage() {
                           <TableRow
                             key={template.id}
                             className="cursor-pointer"
-                            onClick={() => navigate(`/questionarios/${template.id}`)}
+                            onClick={() => navigate(`/checklists/${template.id}`)}
                           >
                             <TableCell>
                               <div className="flex items-center gap-2">

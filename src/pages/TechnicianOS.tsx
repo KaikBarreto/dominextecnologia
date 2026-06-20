@@ -65,6 +65,7 @@ import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
+import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarStatus } from '@/components/technician/OsDesktopShell';
 import TechnicianTools from '@/pages/TechnicianTools';
 import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -175,10 +176,40 @@ export default function TechnicianOS() {
   const lastOriginRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastOriginAtRef = useRef<number>(0);
 
+  // Altura REAL do header sticky (desktop), medida via ref. A sidebar de
+  // equipamentos usa essa altura como offset de topo pra começar logo ABAIXO do
+  // header e nunca ser coberta por ele (o header é z-20; a sidebar fica abaixo
+  // disso no fluxo). ResizeObserver acompanha mudança de altura (ex.: logo carrega,
+  // status muda de linha). Default 96px = palpite seguro antes da 1ª medição.
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(96);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderHeight(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // Remede ao trocar de modo (report/público/autenticado montam headers distintos).
+  }, [serviceOrder?.status, isAuthenticated]);
+
   // Overlay fullscreen das Ferramentas do Técnico (atalho a partir do FAB).
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
   const [toolsOpen, setToolsOpen] = useState(false);
   const [routeFullscreen, setRouteFullscreen] = useState(false);
+  // Accordion de checklists (autenticado) controlado pra a sidebar desktop poder
+  // abrir o equipamento ao navegar. Default: nada aberto (igual ao mobile).
+  const [openChecklistKeys, setOpenChecklistKeys] = useState<string[]>([]);
+  // Navega (scroll suave) até a seção do equipamento clicada na sidebar desktop
+  // e abre o accordion correspondente quando a chave bate com um item.
+  const scrollToAnchor = useCallback((anchorId: string, accordionKey?: string) => {
+    const el = document.getElementById(anchorId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (accordionKey) {
+      setOpenChecklistKeys((prev) => (prev.includes(accordionKey) ? prev : [...prev, accordionKey]));
+    }
+  }, []);
   // Copia o link público de acompanhamento e mostra toast (link gerado já copia no ato).
   const handleCopyTrackingLink = async () => {
     if (!id) return;
@@ -208,12 +239,14 @@ export default function TechnicianOS() {
       icon: Link2,
       label: 'Copiar o link público da OS (cliente)',
       onClick: handleCopyTrackingLink,
+      bare: true,
     },
     ...(showTools
       ? [{
           icon: FerramentasTecnicoIcon,
           label: 'Ferramentas do Técnico',
           onClick: () => setToolsOpen(true),
+          bare: true,
         } as SpeedDialAction]
       : []),
   ];
@@ -959,6 +992,73 @@ export default function TechnicianOS() {
         }))
       );
 
+  // Âncora estável (scroll target) por nome de equipamento no RELATÓRIO/público.
+  // Espelha a chave de grupo do ReportChecklist (equipmentName ?? '__geral__').
+  const reportGroupAnchorId = (equipmentName: string | null) =>
+    `os-report-eq-${encodeURIComponent(equipmentName ?? '__geral__')}`;
+
+  // Itens da sidebar desktop do RELATÓRIO/público: um por equipamento do
+  // checklist da visita. Status agregado: vermelho se algum não-conforme;
+  // laranja se algum sem resposta; verde se tudo respondido sem não-conforme.
+  const reportSidebarItems: OsSidebarItem[] = (() => {
+    const byName = new Map<string, ReportChecklistItem[]>();
+    for (const it of reportChecklistItems) {
+      const key = it.equipment_name ?? '__geral__';
+      if (!byName.has(key)) byName.set(key, []);
+      byName.get(key)!.push(it);
+    }
+    return Array.from(byName.entries()).map(([key, group]) => {
+      const naoConforme = group.some((a) => a.conformity_status === 'nao_conforme');
+      const pending = group.some((a) => !a.conformity_status);
+      const status: OsSidebarStatus = naoConforme ? 'nao_conforme' : pending ? 'pendente' : 'concluido';
+      const name = key === '__geral__' ? 'Geral / Local' : key;
+      return {
+        key,
+        anchorId: reportGroupAnchorId(key === '__geral__' ? null : key),
+        label: name,
+        sublabel: `${group.length} item${group.length > 1 ? 's' : ''}`,
+        status,
+      };
+    });
+  })();
+
+  // Itens da sidebar desktop do modo PÚBLICO (OS ainda em andamento). Um por
+  // equipamento (dedupe por equipment_id). Status agregado combinando:
+  //  - atividades do checklist da visita (publicActivities): não-conforme manda;
+  //  - respostas do formulário (publicFormResponses): pendente se alguma vazia.
+  // Âncora = card de equipamentos (id fixo). Sem dado essencial faltando: o que
+  // o payload não traz simplesmente não vira item.
+  const publicSidebarItems: OsSidebarItem[] = (() => {
+    const seen = new Set<string>();
+    const items: OsSidebarItem[] = [];
+    for (const it of equipmentItems) {
+      if (!it.equipment_id || !it.equipment) continue;
+      if (seen.has(it.equipment_id)) continue;
+      seen.add(it.equipment_id);
+      const acts = publicActivities.filter((a) => a.equipment_id === it.equipment_id);
+      const resps = publicFormResponses.filter((r) => r.equipment_id === it.equipment_id);
+      const naoConforme = acts.some((a) => a.conformity_status === 'nao_conforme');
+      const actPending = acts.some((a) => !a.conformity_status);
+      const respPending = resps.some((r) => !r.response_value && !r.response_photo_url);
+      const hasAny = acts.length > 0 || resps.length > 0;
+      const status: OsSidebarStatus = naoConforme
+        ? 'nao_conforme'
+        : !hasAny || actPending || respPending
+          ? 'pendente'
+          : 'concluido';
+      items.push({
+        key: it.equipment_id,
+        anchorId: 'os-public-equipments',
+        label: it.equipment.name,
+        sublabel: it.equipment.model || it.equipment.brand || null,
+        photoUrl: it.equipment.photo_url,
+        categoryColor: it.equipment.category?.color || null,
+        status,
+      });
+    }
+    return items;
+  })();
+
   if (loading || isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-background p-4 space-y-4">
@@ -996,12 +1096,13 @@ export default function TechnicianOS() {
   // Show report mode for completed OS
   if (serviceOrder.status === 'concluida') {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:flex lg:flex-col">
         <div
+          ref={headerRef}
           className="sticky top-0 z-20 bg-primary text-primary-foreground p-3 sm:p-4 shadow-lg print:hidden"
           style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
-          <div className="max-w-2xl mx-auto flex items-center gap-3">
+          <div className="max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 flex items-center gap-3">
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -1014,8 +1115,14 @@ export default function TechnicianOS() {
             </Badge>
           </div>
         </div>
-        <div
-          className="max-w-2xl mx-auto p-3 sm:p-4 space-y-4"
+        <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_20rem] lg:gap-4 lg:px-8 lg:w-full lg:max-w-screen-2xl lg:mx-auto lg:items-start lg:pt-4">
+          <OsEquipmentSidebar
+            items={reportSidebarItems}
+            onNavigate={(item) => scrollToAnchor(item.anchorId)}
+            topPx={headerHeight + 16}
+          />
+        <main
+          className="w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-4 lg:pb-24"
           // Folga inferior pro rodapé fixo (mobile) / FAB (desktop) de avaliar
           // não cobrir o fim do relatório quando o affordance está visível.
           style={
@@ -1055,11 +1162,12 @@ export default function TechnicianOS() {
                 )}
             </>
           )}
-          <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} />
+          <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} desktopActionFooter />
           {/* Checklist da visita (read-only). Aparece nos dois modos do relatório
               (técnico autenticado e cliente anônimo). Some quando não há atividades. */}
           <ReportChecklist
             items={reportChecklistItems}
+            anchorIdForGroup={reportGroupAnchorId}
             onPreviewPhoto={(url, images, index) => {
               setGalleryImages(images && images.length > 1 ? images : []);
               setGalleryIndex(index ?? 0);
@@ -1069,6 +1177,9 @@ export default function TechnicianOS() {
           {isPublicMode && isPmocPublic && (
             <PmocComplianceBadge variant="footer" className="pt-2" />
           )}
+        </main>
+        {/* Spacer (col 3): equilibra a sidebar à esquerda pra o main centralizar no viewport. */}
+        <div className="hidden lg:block" aria-hidden />
         </div>
 
         {/* Viewer de foto do checklist (nunca abre em nova aba) */}
@@ -1088,9 +1199,9 @@ export default function TechnicianOS() {
   // PUBLIC READ-ONLY MODE for non-authenticated users
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:flex lg:flex-col">
         <div className="bg-primary text-primary-foreground">
-          <div className="max-w-2xl mx-auto p-3 sm:p-4">
+          <div className="max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
             <div className="flex items-center gap-2 sm:gap-3 mb-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -1124,7 +1235,13 @@ export default function TechnicianOS() {
           </div>
         </div>
 
-        <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_20rem] lg:gap-4 lg:px-8 lg:w-full lg:max-w-screen-2xl lg:mx-auto lg:items-start lg:pt-4">
+          <OsEquipmentSidebar
+            items={publicSidebarItems}
+            onNavigate={(item) => scrollToAnchor(item.anchorId)}
+            topPx={16}
+          />
+        <main className="w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 lg:pb-24">
           {showPmocSeal && (
             <PmocComplianceBadge variant="ribbon" withTooltip />
           )}
@@ -1289,7 +1406,7 @@ export default function TechnicianOS() {
             }
             if (uniqueEquipmentItems.length === 0) return null;
             return (
-              <Card>
+              <Card id="os-public-equipments" className="scroll-mt-6">
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Wrench className="h-4 w-4 text-primary" />
@@ -1395,7 +1512,7 @@ export default function TechnicianOS() {
             <PublicTrackingMap serviceOrderId={serviceOrder.id} />
           )}
 
-          {/* Real-time questionnaire responses grouped by (equipment_id, template_id) */}
+          {/* Real-time checklist responses grouped by (equipment_id, template_id) */}
           {publicFormResponses.length > 0 && (() => {
             // Index by composite key — same equipment may have multiple templates
             const itemByPair = new Map<string, EquipmentItem>();
@@ -1406,7 +1523,7 @@ export default function TechnicianOS() {
             });
 
             // Group responses by composite (equipment_id, template_id) so the same
-            // equipment can appear in multiple questionnaire cards.
+            // equipment can appear in multiple checklist cards.
             const groupedByEquipment = new Map<string, { equipment: EquipmentItem | null; responses: typeof publicFormResponses; totalQuestions: number }>();
 
             publicFormResponses.forEach(r => {
@@ -1644,7 +1761,18 @@ export default function TechnicianOS() {
           {isPublicMode && isPmocPublic && (
             <PmocComplianceBadge variant="footer" className="pt-2" />
           )}
+        </main>
+        {/* Spacer (col 3): equilibra a sidebar à esquerda pra o main centralizar no viewport. */}
+        <div className="hidden lg:block" aria-hidden />
         </div>
+
+        {/* Rodapé de ações fixo (desktop) — link público da OS. */}
+        <OsActionFooter>
+          <Button variant="outline" className="flex-1" onClick={handleCopyTrackingLink}>
+            {trackingLinkCopied ? <Check className="h-4 w-4 mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
+            {trackingLinkCopied ? 'Link copiado!' : 'Copiar link'}
+          </Button>
+        </OsActionFooter>
 
         {/* Photo preview modal */}
         <ImagePreviewModal
@@ -1665,6 +1793,74 @@ export default function TechnicianOS() {
   const isPending = serviceOrder.status === 'pendente' || serviceOrder.status === 'agendada';
   const isACaminho = serviceOrder.status === 'a_caminho';
   const isPaused = serviceOrder.status === 'pausada';
+
+  // Pausar/retomar extraídos pra reuso entre os botões inline (mobile) e o
+  // rodapé de ações fixo (desktop) — mesma lógica, sem duplicar.
+  const handlePauseOS = async () => {
+    try {
+      const { error } = await supabase
+        .from('service_orders')
+        .update({ status: 'pausada' } as any)
+        .eq('id', id);
+      if (error) throw error;
+      setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
+      toast({ title: 'OS pausada com sucesso!' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erro ao pausar OS', description: getErrorMessage(error) });
+    }
+  };
+  const handleResumeOS = async () => {
+    try {
+      const { error } = await supabase
+        .from('service_orders')
+        .update({ status: 'em_andamento' })
+        .eq('id', id);
+      if (error) throw error;
+      setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
+      toast({ title: 'OS retomada com sucesso!' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erro ao retomar OS', description: getErrorMessage(error) });
+    }
+  };
+
+  // Itens da sidebar desktop (modo autenticado): um por checklist de equipamento
+  // (mesma chave do accordion). Status: pendente até check-in; depois deriva das
+  // validações do form + conformidade do checklist da visita por equipamento.
+  const interactiveSidebarItems: OsSidebarItem[] = (() => {
+    if (!isCheckedIn) return [];
+    const items: OsSidebarItem[] = [];
+    const seen = new Set<string>();
+    equipmentItems.forEach((item, idx) => {
+      if (!item.form_template_id) return;
+      const itemKey = item.equipment_id
+        ? `${item.equipment_id}::${item.form_template_id}`
+        : `standalone-${item.form_template_id}-${idx}`;
+      if (seen.has(itemKey)) return;
+      seen.add(itemKey);
+      const validation = formValidations[itemKey];
+      const formPending = validation ? !validation.isValid : true;
+      // Conformidade do checklist da visita pro mesmo equipamento (se houver).
+      const grp = item.equipment_id
+        ? checklistGroups.find((g) => g.equipmentId === item.equipment_id)
+        : undefined;
+      const naoConforme = grp?.activities.some((a) => a.conformity_status === 'nao_conforme');
+      const status: OsSidebarStatus = naoConforme
+        ? 'nao_conforme'
+        : formPending
+          ? 'pendente'
+          : 'concluido';
+      items.push({
+        key: itemKey,
+        anchorId: `os-eq-${itemKey}`,
+        label: item.equipment?.name || item.form_template?.name || 'Checklist',
+        sublabel: item.equipment?.model || item.equipment?.brand || item.form_template?.name || null,
+        photoUrl: item.equipment?.photo_url,
+        categoryColor: item.equipment?.category?.color || null,
+        status,
+      });
+    });
+    return items;
+  })();
 
   const handleEnRoute = async () => {
     try {
@@ -1734,14 +1930,107 @@ export default function TechnicianOS() {
     window.open(url, '_blank', 'noopener');
   };
 
+  // Bloco ÚNICO de contexto renderizado na LATERAL no desktop (acima dos
+  // equipamentos): Cliente → Técnico → Execução (Check-in/out) → Descrição do
+  // serviço, em UMA borda só, com seções separadas por divisor. No mobile estes
+  // dados seguem no fluxo central (os cards correspondentes são `lg:hidden`).
+  const sidebarContextBlocks = (
+    <div className="rounded-lg border border-border bg-card divide-y divide-border">
+      {/* Cliente */}
+      <div className="p-3">
+        <div className="flex items-center gap-2 mb-1.5">
+          <User className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">Cliente</span>
+        </div>
+        <p className="font-semibold text-sm break-words">{serviceOrder.customer?.name}</p>
+        {serviceOrder.customer?.phone && (
+          <a href={`tel:${serviceOrder.customer.phone}`} className="flex items-center gap-1.5 text-xs text-primary mt-1">
+            <Phone className="h-3 w-3 shrink-0" />
+            {serviceOrder.customer.phone}
+          </a>
+        )}
+        {(isServiceAddress && destAddress ? destAddress : serviceOrder.customer?.address) && (
+          <p className="text-xs text-muted-foreground flex items-start gap-1.5 mt-1">
+            <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+            <span className="break-words">
+              {isServiceAddress && destAddress
+                ? destAddress
+                : `${serviceOrder.customer?.address}${serviceOrder.customer?.city ? `, ${serviceOrder.customer.city}` : ''}${serviceOrder.customer?.state ? ` - ${serviceOrder.customer.state}` : ''}`}
+            </span>
+          </p>
+        )}
+      </div>
+
+      {/* Técnico */}
+      {technicianProfile && (
+        <div className="p-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Wrench className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Técnico</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            {technicianProfile.avatar_url ? (
+              <SignedImg
+                src={technicianProfile.avatar_url}
+                alt={technicianProfile.full_name}
+                className="h-9 w-9 rounded-full object-cover border shrink-0 cursor-pointer"
+                onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
+              />
+            ) : (
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <User className="h-4 w-4 text-primary" />
+              </div>
+            )}
+            <p className="font-medium text-sm break-words min-w-0">{technicianProfile.full_name}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Execução (Check-in / Check-out) */}
+      {(checkInTime || checkOutTime) && (
+        <div className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Execução</span>
+          </div>
+          {checkInTime && (
+            <div>
+              <p className="text-[11px] text-muted-foreground font-semibold">CHECK-IN</p>
+              <p className="text-xs font-medium text-foreground">
+                {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </p>
+            </div>
+          )}
+          {checkOutTime && (
+            <div>
+              <p className="text-[11px] text-muted-foreground font-semibold">CHECK-OUT</p>
+              <p className="text-xs font-medium text-foreground">
+                {format(new Date(checkOutTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Descrição do serviço */}
+      {serviceOrder.description && (
+        <div className="p-3">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">Descrição do serviço</p>
+          <p className="text-sm break-words">{serviceOrder.description}</p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:flex lg:flex-col">
       {/* Header fixo no topo: o botão Voltar fica sempre acessível ao rolar */}
       <div
+        ref={headerRef}
         className="sticky top-0 z-20 bg-primary text-primary-foreground shadow-md"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="max-w-2xl mx-auto p-3 sm:p-4">
+        <div className="max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
           <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
@@ -1779,7 +2068,14 @@ export default function TechnicianOS() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+      <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_20rem] lg:gap-4 lg:px-8 lg:w-full lg:max-w-screen-2xl lg:mx-auto lg:items-start lg:pt-4">
+        <OsEquipmentSidebar
+          items={interactiveSidebarItems}
+          onNavigate={(item) => scrollToAnchor(item.anchorId, item.key)}
+          topPx={headerHeight + 16}
+          header={sidebarContextBlocks}
+        />
+      <main className="w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 lg:pb-24">
         {showPmocSeal && (
           <PmocComplianceBadge variant="ribbon" withTooltip />
         )}
@@ -1915,7 +2211,7 @@ export default function TechnicianOS() {
                   <p className="text-sm text-muted-foreground">
                     Informe ao cliente que você está a caminho ou faça o check-in ao chegar.
                   </p>
-                  <Button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white" size="lg" onClick={handleEnRoute}>
+                  <Button className="w-full lg:hidden bg-indigo-500 hover:bg-indigo-600 text-white" size="lg" onClick={handleEnRoute}>
                     <Navigation className="h-4 w-4 mr-2" />
                     A Caminho
                   </Button>
@@ -1926,7 +2222,7 @@ export default function TechnicianOS() {
                   Chegou no local? Faça o check-in para iniciar.
                 </p>
               )}
-              <Button className="w-full" size="lg" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
+              <Button className="w-full lg:hidden" size="lg" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
                 <Play className="h-4 w-4 mr-2" />
                 Fazer Check-in
               </Button>
@@ -1947,19 +2243,7 @@ export default function TechnicianOS() {
               <p className="text-sm text-muted-foreground">
                 Esta OS foi pausada. Retome o atendimento para continuar o preenchimento.
               </p>
-              <Button className="w-full" size="lg" onClick={async () => {
-                try {
-                  const { error } = await supabase
-                    .from('service_orders')
-                    .update({ status: 'em_andamento' })
-                    .eq('id', id);
-                  if (error) throw error;
-                  setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
-                  toast({ title: 'OS retomada com sucesso!' });
-                } catch (error: any) {
-                  toast({ variant: 'destructive', title: 'Erro ao retomar OS', description: getErrorMessage(error) });
-                }
-              }}>
+              <Button className="w-full lg:hidden" size="lg" onClick={handleResumeOS}>
                 <Play className="h-4 w-4 mr-2" />
                 Retomar OS
               </Button>
@@ -1967,9 +2251,9 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Check-in timestamp */}
+        {/* Check-in timestamp — no desktop migra pra lateral (sidebarContextBlocks) */}
         {isCheckedIn && (
-          <div className="space-y-2">
+          <div className="space-y-2 lg:hidden">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
               <div className="flex items-center gap-2">
                 <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -1987,8 +2271,8 @@ export default function TechnicianOS() {
           </div>
         )}
 
-        {/* Client Info */}
-        <Card>
+        {/* Client Info — no desktop migra pra lateral (sidebarContextBlocks) */}
+        <Card className="lg:hidden">
           <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <User className="h-4 w-4 text-primary" />
@@ -2032,9 +2316,9 @@ export default function TechnicianOS() {
           </CardContent>
         </Card>
 
-        {/* Description & Notes */}
+        {/* Descrição do Serviço — no desktop migra pra lateral (sidebarContextBlocks) */}
         {serviceOrder.description && (
-          <Card>
+          <Card className="lg:hidden">
             <CardContent className="p-3 sm:p-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Serviço</p>
               <p className="text-sm break-words">{serviceOrder.description}</p>
@@ -2050,7 +2334,7 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Questionnaires - Multi equipment from junction table (accordion) */}
+        {/* Checklists - Multi equipment from junction table (accordion) */}
         {isCheckedIn && equipmentItems.length > 0 && (
           <Card>
             <CardHeader className="pb-2 px-3 sm:px-6">
@@ -2068,7 +2352,12 @@ export default function TechnicianOS() {
                   </p>
                 </div>
               )}
-              <Accordion type="multiple" className={`w-full ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}>
+              <Accordion
+                type="multiple"
+                value={openChecklistKeys}
+                onValueChange={setOpenChecklistKeys}
+                className={`w-full ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
                 {equipmentItems.map((item, idx) => {
                   if (!item.form_template_id) return null;
                   // Composite key — same equipment can carry multiple templates
@@ -2084,7 +2373,7 @@ export default function TechnicianOS() {
                     : 0;
                   const hasMultipleOnSameEquip = sameEquipCount > 1;
                   return (
-                    <AccordionItem key={itemKey} value={itemKey} className="border-b last:border-0">
+                    <AccordionItem key={itemKey} value={itemKey} id={`os-eq-${itemKey}`} className="border-b last:border-0 scroll-mt-28">
                       <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                           {item.equipment?.photo_url ? (
@@ -2172,7 +2461,7 @@ export default function TechnicianOS() {
           />
         )}
 
-        {/* Fallback: single questionnaire from OS (legacy / no junction data) */}
+        {/* Fallback: single checklist from OS (legacy / no junction data) */}
         {isCheckedIn && equipmentItems.length === 0 && serviceOrder.form_template_id && (
           <Card>
             <CardHeader className="pb-3 px-3 sm:px-6">
@@ -2321,11 +2610,11 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Finish & Pause OS buttons */}
+        {/* Finish & Pause OS buttons (mobile/tablet; desktop usa o rodapé fixo) */}
         {isCheckedIn && !isPaused && (
-          <div className="pb-6 space-y-2">
-            <Button 
-              className="w-full bg-success hover:bg-success/90 text-success-foreground" 
+          <div className="pb-6 space-y-2 lg:hidden">
+            <Button
+              className="w-full bg-success hover:bg-success/90 text-success-foreground"
               size="lg"
               onClick={handleFinishOS}
               disabled={finishing}
@@ -2333,30 +2622,65 @@ export default function TechnicianOS() {
               <CheckCircle2 className="h-4 w-4 mr-2" />
               {finishing ? 'Finalizando...' : 'Finalizar OS'}
             </Button>
-            <Button 
+            <Button
               variant="outline"
-              className="w-full border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white" 
+              className="w-full border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
               size="lg"
-              onClick={async () => {
-                try {
-                  const { error } = await supabase
-                    .from('service_orders')
-                    .update({ status: 'pausada' } as any)
-                    .eq('id', id);
-                  if (error) throw error;
-                  setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
-                  toast({ title: 'OS pausada com sucesso!' });
-                } catch (error: any) {
-                  toast({ variant: 'destructive', title: 'Erro ao pausar OS', description: getErrorMessage(error) });
-                }
-              }}
+              onClick={handlePauseOS}
             >
               <Pause className="h-4 w-4 mr-2" />
               Pausar OS
             </Button>
           </div>
         )}
+      </main>
+      {/* Spacer (col 3): equilibra a sidebar à esquerda pra o main centralizar no viewport. */}
+      <div className="hidden lg:block" aria-hidden />
       </div>
+
+      {/* Rodapé de ações fixo (desktop) — botões do estado atual, mesmos handlers. */}
+      {(isPending || isACaminho) && (
+        <OsActionFooter>
+          {isPending && (
+            <Button className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={handleEnRoute}>
+              <Navigation className="h-4 w-4 mr-2" />
+              A Caminho
+            </Button>
+          )}
+          <Button className="flex-1" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
+            <Play className="h-4 w-4 mr-2" />
+            Fazer Check-in
+          </Button>
+        </OsActionFooter>
+      )}
+      {isPaused && (
+        <OsActionFooter>
+          <Button className="flex-1" onClick={handleResumeOS}>
+            <Play className="h-4 w-4 mr-2" />
+            Retomar OS
+          </Button>
+        </OsActionFooter>
+      )}
+      {isCheckedIn && !isPaused && (
+        <OsActionFooter>
+          <Button
+            className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+            onClick={handleFinishOS}
+            disabled={finishing}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+            {finishing ? 'Finalizando...' : 'Finalizar OS'}
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
+            onClick={handlePauseOS}
+          >
+            <Pause className="h-4 w-4 mr-2" />
+            Pausar OS
+          </Button>
+        </OsActionFooter>
+      )}
 
       {/* Equipment photo preview */}
       <ImagePreviewModal

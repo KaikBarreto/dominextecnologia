@@ -35,7 +35,7 @@ import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog'
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
-import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
+import { ChecklistPreviewDialog } from '@/components/service-orders/ChecklistPreviewDialog';
 import { CepLookup } from '@/components/CepLookup';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
@@ -996,7 +996,7 @@ export function ServiceOrderFormDialog({
                   </FormItem>
                 )} />
 
-                {/* Questionnaire per equipment */}
+                {/* Checklist per equipment */}
                 {selectedEquipmentIds.length > 0 ? (
                   <div className="space-y-3">
                     <p className="text-sm font-medium">Checklists por equipamento</p>
@@ -1532,7 +1532,7 @@ export function ServiceOrderFormDialog({
                 )} />
               </div>
 
-              {/* Questionnaire per equipment */}
+              {/* Checklist per equipment */}
               {selectedEquipmentIds.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Checklists por equipamento</p>
@@ -1803,8 +1803,8 @@ export function ServiceOrderFormDialog({
         isLoading={createCustomer.isPending}
       />
 
-      {/* Questionnaire preview */}
-      <QuestionnairePreviewDialog
+      {/* Checklist preview */}
+      <ChecklistPreviewDialog
         templateId={previewTemplateId}
         open={!!previewTemplateId}
         onOpenChange={(o) => { if (!o) setPreviewTemplateId(null); }}

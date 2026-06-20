@@ -34,7 +34,7 @@ const getQTypeIcon = (type: string) => {
 };
 const getQTypeLabel = (type: string) => QUESTION_TYPES.find(t => t.value === type)?.label || type;
 
-export default function QuestionnaireDetail() {
+export default function ChecklistDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -103,7 +103,7 @@ export default function QuestionnaireDetail() {
   if (!template) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/servicos?tab=questionnaires')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
+        <Button variant="ghost" onClick={() => navigate('/servicos?tab=checklists')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
         <p className="text-muted-foreground">Checklist não encontrado.</p>
       </div>
     );
@@ -218,7 +218,7 @@ export default function QuestionnaireDetail() {
   };
 
   const handleDeleteTemplate = () => {
-    deleteTemplate.mutate(template.id, { onSuccess: () => navigate('/servicos?tab=questionnaires') });
+    deleteTemplate.mutate(template.id, { onSuccess: () => navigate('/servicos?tab=checklists') });
   };
 
   const handleDeleteQuestion = () => {
@@ -245,7 +245,7 @@ export default function QuestionnaireDetail() {
     <div className={cn("space-y-6", isMobile && "pb-24")}>
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/servicos?tab=questionnaires')} className="self-start">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/servicos?tab=checklists')} className="self-start">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">

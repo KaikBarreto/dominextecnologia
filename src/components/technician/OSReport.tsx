@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
+import { OsActionFooter } from './OsDesktopShell';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
 interface OSPhoto {
@@ -57,6 +58,12 @@ interface OSReportProps {
   serviceOrder: ServiceOrder & { customer: any; equipment: any; form_template?: any };
   photos: OSPhoto[];
   forceReadOnly?: boolean;
+  /**
+   * Quando true (layout desktop da tela de OS), além dos botões inline (que
+   * passam a `lg:hidden`), renderiza um rodapé de ações FIXO no desktop com os
+   * MESMOS handlers (Baixar PDF / Imprimir / Copiar link). Mobile inalterado.
+   */
+  desktopActionFooter?: boolean;
 }
 
 // Helper to safely extract joined object (Supabase may return array for some joins)
@@ -87,7 +94,7 @@ function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: 
   );
 }
 
-export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false }: OSReportProps) {
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
   // (e nao como o usuario logado de outra empresa).
   const db = forceReadOnly ? supabaseAnon : supabase;
@@ -114,7 +121,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
   const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
-  const [openQuestionnaireItems, setOpenQuestionnaireItems] = useState<string[]>([]);
+  const [openChecklistItems, setOpenChecklistItems] = useState<string[]>([]);
   const printRestoreRef = useRef<string[] | null>(null);
   const { toast } = useToast();
 
@@ -207,23 +214,23 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
       .filter(Boolean) as string[];
 
-    if (validValues.length > 0 && openQuestionnaireItems.length === 0) {
-      setOpenQuestionnaireItems(validValues);
+    if (validValues.length > 0 && openChecklistItems.length === 0) {
+      setOpenChecklistItems(validValues);
     }
   }, [formResponses, equipmentItems.length]);
 
   useEffect(() => {
     const openAllForPrint = () => {
-      printRestoreRef.current = openQuestionnaireItems;
+      printRestoreRef.current = openChecklistItems;
       const validValues = responsesByTemplate
         .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
         .filter(Boolean) as string[];
-      setOpenQuestionnaireItems(validValues);
+      setOpenChecklistItems(validValues);
     };
 
     const restoreAfterPrint = () => {
       if (printRestoreRef.current) {
-        setOpenQuestionnaireItems(printRestoreRef.current);
+        setOpenChecklistItems(printRestoreRef.current);
         printRestoreRef.current = null;
       }
     };
@@ -234,7 +241,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       window.removeEventListener('beforeprint', openAllForPrint);
       window.removeEventListener('afterprint', restoreAfterPrint);
     };
-  }, [openQuestionnaireItems, formResponses, equipmentItems.length]);
+  }, [openChecklistItems, formResponses, equipmentItems.length]);
 
   // Aplica o branding white-label (estado + header config) a partir do registro
   // de company_settings. Reusado pelo modo autenticado e pelo modo público.
@@ -401,11 +408,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   };
 
   const handlePrint = () => {
-    printRestoreRef.current = openQuestionnaireItems;
+    printRestoreRef.current = openChecklistItems;
     const allValues = responsesByTemplate
       .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
       .filter(Boolean) as string[];
-    setOpenQuestionnaireItems(allValues);
+    setOpenChecklistItems(allValues);
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   };
 
@@ -413,12 +420,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     if (!reportRef.current) return;
     setGenerating(true);
 
-    // Open all questionnaire accordions so content is in the DOM before cloning
-    const prevOpen = openQuestionnaireItems;
+    // Open all checklist accordions so content is in the DOM before cloning
+    const prevOpen = openChecklistItems;
     const allValues = responsesByTemplate
       .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
       .filter(Boolean) as string[];
-    setOpenQuestionnaireItems(allValues);
+    setOpenChecklistItems(allValues);
 
     // Wait for React to render the open accordions
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200))));
@@ -432,7 +439,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       console.error('PDF generation error:', err);
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
-      setOpenQuestionnaireItems(prevOpen);
+      setOpenChecklistItems(prevOpen);
       setGenerating(false);
     }
   };
@@ -792,15 +799,15 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             </div>
           )}
 
-          {/* Questionnaire Responses - grouped by equipment (accordions) */}
+          {/* Checklist Responses - grouped by equipment (accordions) */}
           {responsesByTemplate.length > 0 && (() => {
             const validGroups = responsesByTemplate.filter(group => group.responses.some(r => !isResponseEmpty(r)));
             if (validGroups.length === 0) return null;
             return (
               <Accordion
                 type="multiple"
-                value={openQuestionnaireItems}
-                onValueChange={setOpenQuestionnaireItems}
+                value={openChecklistItems}
+                onValueChange={setOpenChecklistItems}
                 className="w-full space-y-2"
               >
                 {validGroups.map((group, gi) => {
@@ -972,8 +979,9 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         </div>
       </div>
 
-      {/* Action buttons at the bottom */}
-      <div className="flex flex-col sm:flex-row gap-2 print:hidden">
+      {/* Action buttons at the bottom (mobile/tablet). No desktop com rodapé
+          fixo ligado, esconde estes inline pra não duplicar (lg:hidden). */}
+      <div className={cn('flex flex-col sm:flex-row gap-2 print:hidden', desktopActionFooter && 'lg:hidden')}>
         <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
           <Download className="h-4 w-4 mr-2" />
           {generating ? 'Gerando PDF...' : 'Baixar PDF'}
@@ -987,6 +995,24 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           Copiar Link
         </Button>
       </div>
+
+      {/* Rodapé de ações fixo (desktop) — MESMOS handlers, sem duplicar lógica. */}
+      {desktopActionFooter && (
+        <OsActionFooter>
+          <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
+            <Download className="h-4 w-4 mr-2" />
+            {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+          </Button>
+          <Button variant="outline" onClick={handlePrint} className="flex-1">
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
+          <Button variant="outline" onClick={handleCopyLink} className="flex-1">
+            <Link2 className="h-4 w-4 mr-2" />
+            Copiar Link
+          </Button>
+        </OsActionFooter>
+      )}
 
       {/* Dominex branding (only when no white label) — outside report */}
       {!isWhiteLabel && (

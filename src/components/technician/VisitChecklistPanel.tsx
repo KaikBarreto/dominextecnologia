@@ -57,11 +57,14 @@ const CONFORMITY_OPTIONS: {
 function ActivityRow({
   serviceOrderId,
   activity,
+  index,
   readOnly,
   onSave,
 }: {
   serviceOrderId: string;
   activity: ChecklistActivity;
+  /** Posição 1-based pra numeração (mesmo padrão do checklist por equipamento). */
+  index: number;
   readOnly?: boolean;
   onSave: Props['onSave'];
 }) {
@@ -129,8 +132,9 @@ function ActivityRow({
   };
 
   return (
-    <div className="py-3 border-b last:border-0 space-y-2.5">
+    <div className="space-y-2.5 p-3 rounded-lg bg-muted/30">
       <div className="flex items-start gap-2">
+        <span className="font-bold text-muted-foreground text-sm leading-5">{index}.</span>
         <div className="flex-1 min-w-0">
           {activity.section && (
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -318,20 +322,20 @@ export function VisitChecklistPanel({
                       <SignedImg
                         src={photo}
                         alt={group.equipmentName}
-                        className="h-12 w-12 rounded-md object-cover shrink-0 border cursor-pointer"
+                        className="h-10 w-10 rounded-md object-cover shrink-0 border cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           onPreviewPhoto?.(photo);
                         }}
                       />
                     ) : (
-                      <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+                      <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
                         <Wrench className="h-5 w-5 text-muted-foreground" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-semibold text-base truncate">{group.equipmentName}</p>
+                        <p className="font-medium text-sm truncate">{group.equipmentName}</p>
                         {category && (
                           <Badge
                             className="text-[10px] shrink-0 text-white border-0"
@@ -365,12 +369,13 @@ export function VisitChecklistPanel({
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="px-1">
-                    {group.activities.map((activity) => (
+                  <div className="space-y-4 pt-1">
+                    {group.activities.map((activity, idx) => (
                       <ActivityRow
                         key={activity.id}
                         serviceOrderId={serviceOrderId}
                         activity={activity}
+                        index={idx + 1}
                         readOnly={readOnly}
                         onSave={onSave}
                       />

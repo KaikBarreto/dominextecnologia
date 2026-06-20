@@ -7,6 +7,11 @@ export interface SpeedDialAction {
   icon: ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
+  /**
+   * Ícone "puro": cor saturada (primary) e SEM o fundo circular dessaturado.
+   * Default false (mantém o disco bg-primary/10 atrás do ícone).
+   */
+  bare?: boolean;
 }
 
 interface SpeedDialFABProps {
@@ -78,8 +83,13 @@ export function SpeedDialFAB({ actions, side = 'left', className }: SpeedDialFAB
                   style={{ animationDelay: `${i * 40}ms` }}
                   className="flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-transform active:scale-95 animate-in fade-in slide-in-from-bottom-2"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Icon className="h-4 w-4" />
+                  <span
+                    className={cn(
+                      'flex h-8 w-8 items-center justify-center rounded-full text-primary',
+                      action.bare ? '' : 'bg-primary/10',
+                    )}
+                  >
+                    <Icon className={cn('h-4 w-4', action.bare && 'h-5 w-5')} />
                   </span>
                   <span className="text-sm font-medium whitespace-nowrap">{action.label}</span>
                 </button>

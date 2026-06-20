@@ -29,6 +29,8 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
+import { useViewMode } from '@/hooks/useViewMode';
 
 // Gera iniciais (máx 2 caracteres) para avatar fallback.
 function getInitials(name?: string) {
@@ -36,6 +38,79 @@ function getInitials(name?: string) {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+// Paleta estável p/ avatar fallback (mesma régua do SalespersonAvatar).
+const AVATAR_PALETTE = [
+  '#00C597', '#0EA5E9', '#8B5CF6', '#EC4899', '#F97316', '#10B981',
+  '#F43F5E', '#6366F1', '#14B8A6', '#D946EF', '#3B82F6', '#EF4444',
+];
+function colorFromName(name?: string): string {
+  if (!name) return '#6B7280';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+interface CustomerGridCardProps {
+  customer: Customer;
+  isMobile: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  onOpen: () => void;
+  onEdit: (e?: React.MouseEvent) => void;
+  onDelete: (e?: React.MouseEvent) => void;
+}
+
+function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEdit, onDelete }: CustomerGridCardProps) {
+  const subtitleParts = [customer.phone, customer.city].filter(Boolean);
+  const subtitle = subtitleParts.length > 0
+    ? subtitleParts.join(' • ')
+    : (customer.company_name || customer.email || '—');
+
+  return (
+    <Card
+      className="cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99]"
+      onClick={onOpen}
+    >
+      <CardContent className="p-4 flex flex-col items-center text-center gap-3">
+        {customer.photo_url ? (
+          <img src={customer.photo_url} alt={customer.name} className="h-16 w-16 rounded-full object-cover" />
+        ) : (
+          <div
+            className="h-16 w-16 rounded-full flex items-center justify-center text-white text-lg font-semibold"
+            style={{ backgroundColor: colorFromName(customer.name) }}
+          >
+            {getInitials(customer.name)}
+          </div>
+        )}
+        <div className="min-w-0 w-full">
+          <p className="font-medium truncate">{customer.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+        </div>
+        <Badge
+          variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
+          className="text-[10px] px-2 py-0.5"
+        >
+          {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
+        </Badge>
+        {!isMobile && (canEdit || canDelete) && (
+          <div className="flex items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
+            {canEdit && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title="Editar">
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {canDelete && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title="Excluir">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function Customers() {
@@ -48,6 +123,7 @@ export default function Customers() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [originConfigOpen, setOriginConfigOpen] = useState(false);
+  const [viewMode, setViewMode] = useViewMode('customers-view-mode');
 
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
   const canEditCustomer = isAdminOrGestor() || hasPermission('fn:edit_customer');
@@ -130,20 +206,77 @@ export default function Customers() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        {isMobile && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setOriginConfigOpen(true)}
-            className="self-start gap-2"
-          >
-            <Settings2 className="h-4 w-4" />
-            Origens
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOriginConfigOpen(true)}
+              className="gap-2 h-10"
+            >
+              <Settings2 className="h-4 w-4" />
+              Origens
+            </Button>
+          )}
+          <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels={!isMobile} />
+        </div>
       </div>
 
-      {isMobile ? (
+      {viewMode === 'grid' ? (
+        // -----------------------------------------------------------------
+        // Grade: cards responsivos (mobile e desktop). Reusa o mesmo
+        // dataset paginado/filtrado da lista.
+        // -----------------------------------------------------------------
+        <>
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-40 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : isError ? (
+            <EmptyState
+              icon={<Users className="h-12 w-12 text-destructive" />}
+              title="Erro ao carregar clientes"
+              description="Não foi possível conectar ao servidor. Tente novamente."
+              action={{ label: 'Tentar novamente', onClick: () => refetch() }}
+            />
+          ) : filteredCustomers.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-12 w-12" />}
+              title={searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+              description={searchTerm ? 'Tente uma busca diferente' : 'Adicione um cliente para começar'}
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pagination.paginatedItems.map((customer) => (
+                  <CustomerGridCard
+                    key={customer.id}
+                    customer={customer}
+                    isMobile={isMobile}
+                    canEdit={canEditCustomer}
+                    canDelete={canDeleteCustomer}
+                    onOpen={() => navigate(`/clientes/${customer.id}`)}
+                    onEdit={(e) => handleEdit(customer, e)}
+                    onDelete={(e) => handleDeleteClick(customer, e)}
+                  />
+                ))}
+              </div>
+              <DataTablePagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                from={pagination.from}
+                to={pagination.to}
+                pageSize={pagination.pageSize}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </>
+          )}
+        </>
+      ) : isMobile ? (
         // -----------------------------------------------------------------
         // Mobile: lista nativa, sem Card wrapper, sem header redundante.
         // -----------------------------------------------------------------

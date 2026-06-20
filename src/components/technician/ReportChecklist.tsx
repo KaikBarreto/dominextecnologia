@@ -43,6 +43,12 @@ interface Props {
   items: ReportChecklistItem[];
   /** Abre a foto no viewer interno da tela (NUNCA em nova aba). */
   onPreviewPhoto?: (url: string, images?: string[], index?: number) => void;
+  /**
+   * Id de âncora (scroll target) por grupo de equipamento. Usado pela sidebar
+   * desktop da tela de OS pra rolar até o equipamento. Recebe o equipmentName
+   * (ou null pro grupo "Geral"). Só desktop — não afeta o mobile.
+   */
+  anchorIdForGroup?: (equipmentName: string | null) => string | undefined;
 }
 
 const CONFORMITY_META: Record<
@@ -109,7 +115,7 @@ function groupItems(items: ReportChecklistItem[]): ReportChecklistGroup[] {
  * equipamento e mostra conformidade, medição e fotos de cada atividade. Não
  * renderiza nada quando não há atividades.
  */
-export function ReportChecklist({ items, onPreviewPhoto }: Props) {
+export function ReportChecklist({ items, onPreviewPhoto, anchorIdForGroup }: Props) {
   if (!items || items.length === 0) return null;
 
   const groups = groupItems(items);
@@ -132,7 +138,12 @@ export function ReportChecklist({ items, onPreviewPhoto }: Props) {
             const naoConforme = group.items.filter((a) => a.conformity_status === 'nao_conforme').length;
             const pending = total - answered;
             return (
-              <AccordionItem key={groupKey} value={groupKey} className="border-b last:border-0">
+              <AccordionItem
+                key={groupKey}
+                value={groupKey}
+                id={anchorIdForGroup?.(group.equipmentName)}
+                className="border-b last:border-0 scroll-mt-24"
+              >
                 <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
                   <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                     <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center shrink-0">
@@ -163,10 +174,11 @@ export function ReportChecklist({ items, onPreviewPhoto }: Props) {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="px-1">
-                    {group.items.map((item) => (
-                      <div key={item.id} className="py-3 border-b last:border-0 space-y-2">
+                  <div className="space-y-4 pt-1">
+                    {group.items.map((item, idx) => (
+                      <div key={item.id} className="space-y-2 p-3 rounded-lg bg-muted/30">
                         <div className="flex items-start gap-2">
+                          <span className="font-bold text-muted-foreground text-sm leading-5">{idx + 1}.</span>
                           <div className="flex-1 min-w-0">
                             {item.section && (
                               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">

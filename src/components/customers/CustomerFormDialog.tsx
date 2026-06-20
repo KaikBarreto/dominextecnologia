@@ -224,13 +224,13 @@ export function CustomerFormDialog({
             {/* ===== Aba Contato — dados do dia a dia ===== */}
             <TabsContent value="contato" className="mt-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                {/* Photo upload */}
-                <div className="sm:col-span-2 flex items-center gap-4">
+                {/* Photo upload — coluna centralizada, círculo grande acima do botão */}
+                <div className="sm:col-span-2 flex flex-col items-center gap-3">
                   {photoPreview ? (
-                    <img src={photoPreview} alt="" className="h-16 w-16 rounded-full object-cover border" />
+                    <img src={photoPreview} alt="" className="h-28 w-28 rounded-full object-cover border" />
                   ) : (
-                    <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center border">
-                      <Users className="h-6 w-6 text-muted-foreground" />
+                    <div className="h-28 w-28 rounded-full bg-muted flex items-center justify-center border">
+                      <Users className="h-10 w-10 text-muted-foreground" />
                     </div>
                   )}
                   <label className="cursor-pointer">

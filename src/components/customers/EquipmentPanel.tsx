@@ -38,6 +38,71 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
+import { useViewMode } from '@/hooks/useViewMode';
+
+interface EquipmentGridCardProps {
+  eq: Equipment & { customer?: any };
+  categoryName?: string | null;
+  categoryColor?: string;
+  isMobile: boolean;
+  canManage: boolean;
+  onOpen: () => void;
+  onEdit: (e?: React.MouseEvent) => void;
+  onDelete: (e?: React.MouseEvent) => void;
+}
+
+function EquipmentGridCard({
+  eq, categoryName, categoryColor, isMobile, canManage, onOpen, onEdit, onDelete,
+}: EquipmentGridCardProps) {
+  const customerName = eq.customer?.name;
+  return (
+    <Card
+      className="cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99]"
+      onClick={onOpen}
+    >
+      <CardContent className="p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {(eq as any).photo_url ? (
+            <img src={(eq as any).photo_url} alt={eq.name} className="h-14 w-14 rounded-lg object-cover shrink-0" />
+          ) : (
+            <div
+              className="h-14 w-14 rounded-lg flex items-center justify-center text-white shrink-0"
+              style={{ backgroundColor: categoryColor || 'hsl(var(--muted))' }}
+            >
+              <Package className={cn('h-6 w-6', !categoryColor && 'text-muted-foreground')} />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="font-medium truncate">
+              {eq.name}
+              {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
+            </p>
+            {customerName && <p className="text-xs text-muted-foreground truncate">{customerName}</p>}
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          {categoryName ? (
+            <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: categoryColor }} />
+              {categoryName}
+            </Badge>
+          ) : <span />}
+          {!isMobile && canManage && (
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title="Editar">
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title="Excluir">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function EquipmentPanel() {
   const isMobile = useIsMobile();
@@ -52,6 +117,7 @@ export function EquipmentPanel() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [viewMode, setViewMode] = useViewMode('equipment-view-mode');
 
   const canManageEquipment = isAdminOrGestor() || hasPermission('fn:manage_equipment');
 
@@ -231,6 +297,7 @@ export function EquipmentPanel() {
                 <Settings className="h-4 w-4" />
               </Button>
             )}
+            <ViewModeToggle value={viewMode} onChange={setViewMode} />
           </div>
 
           {/* StatCarousel só faz sentido se houver categorias cadastradas. */}
@@ -253,6 +320,7 @@ export function EquipmentPanel() {
             <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
               {filterContent}
             </FilterButton>
+            <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button
@@ -274,8 +342,55 @@ export function EquipmentPanel() {
         </div>
       )}
 
-      {/* Lista — mobile: nativa via MobileListItem. Desktop: tabela em Card. */}
-      {isMobile ? (
+      {/* Visualização — grade (cards) ou lista. Lista: mobile nativa / desktop tabela. */}
+      {viewMode === 'grid' ? (
+        isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
+          </div>
+        ) : isError ? (
+          <EmptyState
+            icon={<Package className="h-12 w-12 text-destructive" />}
+            title="Erro ao carregar equipamentos"
+            description="Não foi possível conectar ao servidor. Tente novamente."
+            action={{ label: 'Tentar novamente', onClick: () => refetch() }}
+          />
+        ) : filteredEquipment.length === 0 ? (
+          <EmptyState
+            icon={<Package className="h-12 w-12" />}
+            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
+            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Tente filtros diferentes' : 'Adicione um equipamento para começar'}
+          />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {pagination.paginatedItems.map((eq) => (
+                <EquipmentGridCard
+                  key={eq.id}
+                  eq={eq}
+                  categoryName={getCategoryName(eq.category_id)}
+                  categoryColor={getCategoryColor(eq.category_id)}
+                  isMobile={isMobile}
+                  canManage={canManageEquipment}
+                  onOpen={() => navigate(`/equipamentos/${eq.id}`)}
+                  onEdit={(e) => handleEdit(eq, e)}
+                  onDelete={(e) => handleDeleteClick(eq, e)}
+                />
+              ))}
+            </div>
+            <DataTablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              from={pagination.from}
+              to={pagination.to}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+          </>
+        )
+      ) : isMobile ? (
         isLoading ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}

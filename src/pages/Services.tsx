@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { TaskTypesPanel } from '@/components/service-orders/TaskTypesPanel';
-import { QuestionnairesPanel } from '@/components/service-orders/QuestionnairesPanel';
+import { ChecklistsPanel } from '@/components/service-orders/ChecklistsPanel';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
 import { Settings, FileText, CheckSquare, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,14 +12,16 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 const tabs = [
   { value: 'types', label: 'Tipos de Serviços', icon: Settings },
   { value: 'task-types', label: 'Tipos de Tarefas', icon: CheckSquare },
-  { value: 'questionnaires', label: 'Checklists', icon: FileText },
+  { value: 'checklists', label: 'Checklists', icon: FileText },
 ];
 
 export default function ServicesPage() {
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
-    const tabFromUrl = searchParams.get('tab');
+    const rawTab = searchParams.get('tab');
+    // Back-compat: link antigo ?tab=questionnaires vira a aba checklists.
+    const tabFromUrl = rawTab === 'questionnaires' ? 'checklists' : rawTab;
     return tabFromUrl && tabs.some(t => t.value === tabFromUrl) ? tabFromUrl : 'types';
   });
   const setActiveTab = (tab: string) => {
@@ -42,7 +44,7 @@ export default function ServicesPage() {
       >
         {activeTab === 'types' && <ServiceTypesPanel />}
         {activeTab === 'task-types' && <TaskTypesPanel />}
-        {activeTab === 'questionnaires' && <QuestionnairesPanel />}
+        {activeTab === 'checklists' && <ChecklistsPanel />}
       </SettingsSidebarLayout>
     </div>
   );

@@ -109,7 +109,7 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'Este contrato não pode ser excluído porque possui transações financeiras vinculadas.',
   },
 
-  // ── FK: Form Templates / Questionnaires ──
+  // ── FK: Form Templates / Checklists ──
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_form_template_id_fkey'),
     text: 'Este checklist não pode ser excluído porque está vinculado a ordens de serviço.',
