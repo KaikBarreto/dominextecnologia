@@ -9,7 +9,7 @@ export default function LogosSection() {
   const ref = useScrollReveal();
 
   return (
-    <section className="relative py-16 bg-[hsl(0,0%,4%)] border-y border-white/5">
+    <section className="relative py-16 border-y border-white/5">
       <div ref={ref} className="scroll-reveal">
         <p className="text-center text-sm text-white/60 uppercase tracking-widest mb-8">
           Empresas que já dominam suas operações com o Dominex

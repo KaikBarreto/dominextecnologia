@@ -94,7 +94,7 @@ export default function PricingSection() {
   const ref = useScrollReveal();
 
   return (
-    <section id="pricing" className="py-24 bg-[hsl(0,0%,5%)]">
+    <section id="pricing" className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
           Planos que crescem com a sua operação

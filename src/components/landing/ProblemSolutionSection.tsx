@@ -21,7 +21,7 @@ export default function ProblemSolutionSection() {
   const ref = useScrollReveal();
 
   return (
-    <section className="py-24 bg-[hsl(0,0%,4%)]">
+    <section className="py-24">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)] overflow-hidden">
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/10">

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import iphoneFrame from '@/assets/iphone-17-pro-deep-blue.svg';
 
 const HERO_VIDEO_URL =
   'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/Dominex%20-%20Completo.MP4';
 
-const FULL_TEXT_PRE = 'Gestão de equipes de campo que realmente ';
-const FULL_TEXT_HIGHLIGHT = 'funciona.';
+const FULL_TEXT_PRE = 'Domine a execução do ';
+const FULL_TEXT_HIGHLIGHT = 'seu negócio.';
 const TOTAL_LENGTH = FULL_TEXT_PRE.length + FULL_TEXT_HIGHLIGHT.length;
 
 export default function HeroSection() {
@@ -32,7 +32,7 @@ export default function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
       {/* Background */}
-      <div className="absolute inset-0 bg-[hsl(0,0%,4%)]">
+      <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(160,100%,39%,0.08)_0%,transparent_70%)]" />
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -47,13 +47,7 @@ export default function HeroSection() {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left — texto (depois do video no mobile) */}
           <div className="space-y-8 order-2 lg:order-1 text-center lg:text-left">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary animate-glow-pulse">
-              <span>✦</span>
-              <span>Mais de 200 equipes gerenciadas</span>
-            </div>
-
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[3.5em]">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[2.5em]">
               <span>{preTyped}</span>
               <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
                 {highlightTyped}
@@ -85,39 +79,23 @@ export default function HeroSection() {
                 className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
                 asChild
               >
-                <a href="#how-it-works">
-                  <Play className="h-4 w-4 mr-2" /> Ver demonstração
-                </a>
+                <a href="#pricing">Ver planos</a>
               </Button>
-            </div>
-
-            {/* Avatars */}
-            <div className="flex items-center gap-3 justify-center lg:justify-start">
-              <div className="flex -space-x-2">
-                {[
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face',
-                  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&fit=crop&crop=face',
-                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face',
-                  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face',
-                  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=face',
-                ].map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt="Usuário"
-                    loading="lazy"
-                    className="h-8 w-8 rounded-full border-2 border-[hsl(0,0%,4%)] object-cover"
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-white/50">Mais de 200 gestores já usam</span>
             </div>
           </div>
 
-          {/* Right — Demo video (16:9 mobile, 9:16 desktop) — antes do texto no mobile */}
+          {/* Right — Demo video dentro da moldura do iPhone 17 Pro — antes do texto no mobile */}
           <div className="relative flex justify-center order-1 lg:order-2">
-            <div className="relative rounded-2xl border border-white/10 bg-[hsl(0,0%,7%)] p-2 shadow-2xl w-full lg:w-auto">
-              <div className="absolute -inset-px rounded-2xl bg-[radial-gradient(ellipse_at_top_right,hsl(160,100%,39%,0.18)_0%,transparent_60%)] pointer-events-none" />
+            <div className="relative aspect-[880/1832] w-full max-w-[240px] sm:max-w-[260px] lg:max-w-[320px] mx-auto">
+              {/* Recorte EXATO da tela do iPhone (squircle, extraído do SVG e normalizado p/ escalar) */}
+              <svg width="0" height="0" className="absolute" aria-hidden="true">
+                <defs>
+                  <clipPath id="iphone-screen-clip" clipPathUnits="objectBoundingBox">
+                    <path d="M0.250746 0C0.162977 0 0.119091 0 0.085568 0.007856C0.056080 0.014767 0.032105 0.025794 0.017080 0.039358C0 0.054783 0 0.074961 0 0.115332V0.884668C0 0.924983 0 0.945223 0.017080 0.960641C0.032105 0.974205 0.056080 0.985235 0.085568 0.992145C0.119091 1 0.162977 1 0.250746 1H0.749254C0.836999 1 0.880908 1 0.914431 0.992145C0.943920 0.985235 0.967896 0.974205 0.982920 0.960641C1 0.945223 1 0.924983 1 0.884668V0.115332C1 0.074961 1 0.054783 0.982920 0.039358C0.967896 0.025794 0.943920 0.014767 0.914431 0.007856C0.880908 0 0.836999 0 0.749254 0H0.250746Z" />
+                  </clipPath>
+                </defs>
+              </svg>
+              {/* Vídeo na área da tela — ATRÁS da moldura. Cantos/ilha vêm do SVG por cima. */}
               <video
                 src={`${HERO_VIDEO_URL}#t=10`}
                 controls
@@ -130,11 +108,20 @@ export default function HeroSection() {
                     e.currentTarget.currentTime = 0;
                   }
                 }}
-                className="w-full aspect-video lg:aspect-[9/16] lg:h-[640px] lg:w-auto rounded-xl bg-black object-cover lg:object-contain"
+                className="absolute object-cover bg-black"
+                style={{ top: '2.29%', left: '4.32%', width: '91.36%', height: '95.41%', clipPath: 'url(#iphone-screen-clip)' }}
                 aria-label="Demonstração do Dominex"
               >
                 Seu navegador não suporta vídeo HTML5.
               </video>
+              {/* Moldura do iPhone por cima — pointer-events-none p/ liberar os controles do vídeo */}
+              <img
+                src={iphoneFrame}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                className="pointer-events-none select-none absolute inset-0 h-full w-full"
+              />
             </div>
           </div>
         </div>

@@ -8,7 +8,6 @@ export default function CtaFinalSection() {
 
   return (
     <section className="relative py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[hsl(0,0%,4%)] via-[hsl(220,60%,8%)] to-[hsl(0,0%,3%)]" />
       <div
         className="absolute inset-0 opacity-[0.04]"
         style={{

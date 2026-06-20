@@ -46,7 +46,7 @@ export default function FeaturesGrid() {
   const sectionRef = useScrollReveal();
 
   return (
-    <section id="features" className="py-24 bg-[hsl(0,0%,5%)]">
+    <section id="features" className="py-24">
       <div ref={sectionRef} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">

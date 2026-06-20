@@ -25,7 +25,7 @@ export default function SegmentsSection() {
   const ref = useScrollReveal();
 
   return (
-    <section id="segments" className="py-24 bg-[hsl(0,0%,4%)] overflow-hidden">
+    <section id="segments" className="py-24 overflow-hidden">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
           Para qualquer empresa com equipe em campo

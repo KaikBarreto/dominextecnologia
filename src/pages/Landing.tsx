@@ -13,6 +13,7 @@ import FaqSection from '@/components/landing/FaqSection';
 import CtaFinalSection from '@/components/landing/CtaFinalSection';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
+import DarkVeil from '@/components/ui/DarkVeil';
 import { captureUtmParams } from '@/lib/whatsapp';
 
 // A landing é página pública e NUNCA deve herdar o white-label do tenant logado.
@@ -36,20 +37,30 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[hsl(0,0%,4%)]" style={DOMINEX_BRAND_VARS}>
-      <LandingNavbar />
-      <HeroSection />
-      <LogosSection />
-      <ProblemSolutionSection />
-      <FeaturesGrid />
-      <HowItWorks />
-      <ProductMockup />
-      <TestimonialsSection />
-      <SegmentsSection />
-      <PricingSection />
-      <FaqSection />
-      <CtaFinalSection />
-      <LandingFooter />
+    <div className="relative min-h-screen" style={DOMINEX_BRAND_VARS}>
+      {/* Dark veil de fundo de TODA a landing — fixo, rola por baixo do conteúdo (igual login) */}
+      <div className="fixed inset-0 z-0 bg-[hsl(0,0%,4%)]">
+        <DarkVeil hueShift={53} speed={0.5} />
+        {/* abafador: deixa o veil DISCRETO. Ajustável: mais alpha = mais escuro/sutil */}
+        <div className="absolute inset-0 bg-[hsl(0,0%,4%)]/60 pointer-events-none" />
+      </div>
+
+      {/* Conteúdo por cima do veil */}
+      <div className="relative z-10">
+        <LandingNavbar />
+        <HeroSection />
+        <LogosSection />
+        <ProblemSolutionSection />
+        <FeaturesGrid />
+        <HowItWorks />
+        <ProductMockup />
+        <TestimonialsSection />
+        <SegmentsSection />
+        <PricingSection />
+        <FaqSection />
+        <CtaFinalSection />
+        <LandingFooter />
+      </div>
       <WhatsAppFloatingButton />
     </div>
   );

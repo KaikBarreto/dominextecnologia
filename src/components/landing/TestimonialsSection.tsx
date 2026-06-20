@@ -29,7 +29,7 @@ export default function TestimonialsSection() {
   const ref = useScrollReveal();
 
   return (
-    <section className="py-24 bg-[hsl(0,0%,5%)]">
+    <section className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
           Quem usa o Dominex, não volta para o improviso

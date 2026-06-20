@@ -24,8 +24,8 @@ const columns = [
 
 export default function LandingFooter() {
   return (
-    <footer className="bg-[hsl(0,0%,3%)] border-t border-white/5 pt-16 pb-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <footer className="relative border-t border-white/5 pt-16 pb-8">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* Brand */}
           <div>
