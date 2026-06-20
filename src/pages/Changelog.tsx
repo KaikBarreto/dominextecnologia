@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.0',
+    date: '20 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'PMOC com rotina por equipamento',
+        description: 'O contrato PMOC ficou muito mais fiel à realidade: agora cada equipamento tem a sua própria rotina. Para cada máquina você define se ela segue só a parte de ar-condicionado (split comum) ou toda a norma (grande porte, como VRF, Chiller e torres de resfriamento), e em qual visita do ciclo ela começa — por padrão na revisão anual completa, mas você pode escolher começar pelo mensal, trimestral ou semestral. Cada máquina pode ainda ter os seus próprios checklists, escolhidos do catálogo PMOC (com "marcar todos" por categoria). Tudo configurável tanto na criação quanto na edição do contrato (inclusive pela aba Ambientes).',
+        category: 'recurso',
+      },
+      {
+        title: 'Planilha PMOC com frequências por equipamento',
+        description: 'A Planilha PMOC em PDF passou a apresentar as rotinas e as frequências separadas por equipamento, mostrando o que cada máquina faz em cada visita do ano.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Contrato não perde mais o preenchimento',
+        description: 'Ao criar um contrato, o que você preenche (incluindo ambientes, equipamentos e a configuração de cada máquina) passa a ser guardado automaticamente. Se o app fechar sem querer, ao reabrir você retoma de onde parou.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Planilha PMOC: rodapé corrigido',
+        description: 'Corrigido um detalhe visual no rodapé da Planilha PMOC, onde uma linha aparecia sobre o logotipo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.13.16',
     date: '20 de junho de 2026',
     type: 'patch',

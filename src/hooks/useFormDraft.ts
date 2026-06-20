@@ -26,6 +26,9 @@ function isMeaningfulValue(v: any): boolean {
   if (v === '' || v === null || v === undefined || v === false) return false;
   if (typeof v === 'number' && v === 0) return false;
   if (Array.isArray(v) && v.length === 0) return false;
+  // Objeto vazio ({}) é estado default (ex.: Record de configs sem nenhuma
+  // entrada) — não conta como preenchimento real do usuário.
+  if (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) return false;
   return true;
 }
 

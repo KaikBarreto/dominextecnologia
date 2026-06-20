@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.13.16";
+export const APP_VERSION = "1.14.0";
 
-export const VERSION_NOTES = "Agora você edita tarefas (data e repetição) na agenda e na ficha do cliente, com as ocorrências futuras refeitas automaticamente. O Financeiro do cliente separa Tudo, A vencer e Pagas, com detalhes de cada lançamento. O campo Origem ficou padronizado entre Clientes e CRM, o CRM cria as colunas padrão com um clique e a oportunidade ganhou botão de WhatsApp. As telas vazias do sistema ficaram mais claras.";
+export const VERSION_NOTES = "O contrato PMOC agora tem rotina por equipamento: cada máquina segue só a parte de ar-condicionado ou toda a norma (grande porte, como VRF, Chiller e torres), começa na visita que você escolher (por padrão na revisão anual completa) e pode ter seus próprios checklists do catálogo PMOC. A Planilha PMOC passou a mostrar as rotinas e frequências separadas por equipamento, e o preenchimento do contrato agora é salvo automaticamente enquanto você monta.";

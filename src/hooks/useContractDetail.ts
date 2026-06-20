@@ -41,7 +41,7 @@ export function useContractDetail(contractId: string | undefined) {
           *,
           customers (id, name, document, phone),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
-          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
+          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
           contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, sort_order),
           service_orders (id, order_number, status, scheduled_date, equipment_id)
         `)

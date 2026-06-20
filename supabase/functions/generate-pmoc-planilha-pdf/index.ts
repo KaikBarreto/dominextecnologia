@@ -334,15 +334,16 @@ Deno.serve(async (req) => {
       supabase
         .from("contract_items")
         .select(
-          "id, environment_id, equipment_id, item_name, sort_order, equipment:equipment(name, brand, model, capacity, location, serial_number)",
+          "id, environment_id, equipment_id, item_name, sort_order, pmoc_scope, pmoc_start_visit, equipment:equipment(name, brand, model, capacity, location, serial_number)",
         )
         .eq("contract_id", contract.id)
         .order("sort_order", { ascending: true }),
-      // Plano de manutenção (atividades × frequência).
+      // Plano de manutenção (atividades × frequência). `contract_item_id` aponta a
+      // máquina dona (Fase 4); `applies_per_equipment` distingue local de legado.
       supabase
         .from("contract_plan_activities")
         .select(
-          "section, component, description, freq_code, freq_months, is_active, sort_order",
+          "section, component, description, freq_code, freq_months, is_active, sort_order, contract_item_id, applies_per_equipment",
         )
         .eq("contract_id", contract.id)
         .eq("company_id", contract.company_id)
@@ -433,9 +434,13 @@ Deno.serve(async (req) => {
     // ---- Equipamentos (relação climatizada). item_name é fallback do nome.
     //      environment_id liga cada equipamento ao seu ambiente.
     type ContractItemRow = {
+      id: string;
       environment_id: string | null;
       equipment_id: string | null;
       item_name: string | null;
+      sort_order: number | null;
+      pmoc_scope: string | null;
+      pmoc_start_visit: number | null;
       equipment:
         | {
             name: string | null;
@@ -457,8 +462,7 @@ Deno.serve(async (req) => {
       serial_number: ci.equipment?.serial_number ?? null,
     });
 
-    // ---- Plano (atividades ativas). Dedup por (section|component|description|
-    //      freq) pra não repetir a mesma atividade expandida por equipamento.
+    // ---- Plano (atividades ativas).
     type PlanRow = {
       section: string | null;
       component: string | null;
@@ -466,21 +470,136 @@ Deno.serve(async (req) => {
       freq_code: string | null;
       freq_months: number | null;
       is_active: boolean | null;
+      contract_item_id: string | null;
+      applies_per_equipment: boolean | null;
+      sort_order: number | null;
     };
+    const allPlanRows = ((planActivities ?? []) as PlanRow[]).filter(
+      (a) => a.is_active !== false,
+    );
+    const toActivity = (a: PlanRow): PlanilhaActivity => ({
+      section: a.section,
+      component: a.component,
+      description: a.description,
+      freq_code: a.freq_code,
+      freq_months: a.freq_months,
+    });
+
+    // Fallback LEGADO (`activities`): lista única do contrato, com dedup por
+    // (section|component|description|freq) — usada SÓ quando NENHUMA atividade
+    // tem `contract_item_id` (contrato no formato antigo). Mantém o PDF idêntico
+    // ao planilha_v8 pra esses contratos.
     const seen = new Set<string>();
     const activities: PlanilhaActivity[] = [];
-    for (const a of (planActivities ?? []) as PlanRow[]) {
-      if (a.is_active === false) continue;
+    for (const a of allPlanRows) {
       const key = `${a.section ?? ""}|${a.component ?? ""}|${a.description ?? ""}|${a.freq_code ?? ""}|${a.freq_months ?? ""}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      activities.push({
-        section: a.section,
-        component: a.component,
-        description: a.description,
-        freq_code: a.freq_code,
-        freq_months: a.freq_months,
-      });
+      activities.push(toActivity(a));
+    }
+
+    // ---- Plano POR EQUIPAMENTO (Fase 4) -------------------------------------
+    // Decisão de caminho: se QUALQUER atividade aponta uma máquina
+    // (`contract_item_id`), renderiza por equipamento; senão fica no legado.
+    const hasPerMachine = allPlanRows.some((a) => a.contract_item_id != null);
+
+    // Bucket de escopo: 'full' primeiro, depois 'ac' (default), depois local.
+    const normScope = (s: string | null): "ac" | "full" =>
+      s === "full" ? "full" : "ac";
+    const normStart = (n: number | null): number =>
+      Number.isFinite(n) && (n as number) >= 1 ? (n as number) : 12;
+
+    type MachineBlock = {
+      title: string;
+      scope: "ac" | "full" | null;
+      startVisit: number;
+      activities: PlanilhaActivity[];
+    };
+    let planMachines: MachineBlock[] = [];
+
+    if (hasPerMachine) {
+      // Mapa contract_item_id → máquina (nome/escopo/fase/ordem).
+      const itemById = new Map<string, ContractItemRow>();
+      for (const ci of itemRows) itemById.set(ci.id, ci);
+
+      // Atividades agrupadas pela máquina dona.
+      const byMachine = new Map<string, PlanRow[]>();
+      const localRows: PlanRow[] = []; // contract_item_id null + per_eq=false
+      const contratoRows: PlanRow[] = []; // contract_item_id null + per_eq=true (legado misto)
+      for (const a of allPlanRows) {
+        if (a.contract_item_id) {
+          const arr = byMachine.get(a.contract_item_id) ?? [];
+          arr.push(a);
+          byMachine.set(a.contract_item_id, arr);
+        } else if (a.applies_per_equipment === false) {
+          localRows.push(a);
+        } else {
+          contratoRows.push(a);
+        }
+      }
+
+      // Blocos de máquina ordenados: 'full' primeiro, depois 'ac'; dentro do
+      // bucket, mantém a ordem dos itens (sort_order). Igual o motor/checklist.
+      const machineEntries = Array.from(byMachine.entries())
+        .map(([itemId, rows]) => {
+          const ci = itemById.get(itemId);
+          const scope = normScope(ci?.pmoc_scope ?? null);
+          const startVisit = normStart(ci?.pmoc_start_visit ?? null);
+          const title =
+            ci?.equipment?.name ?? ci?.item_name ?? "Equipamento";
+          const sort = ci?.sort_order ?? 0;
+          return { itemId, rows, scope, startVisit, title, sort };
+        })
+        .sort((a, b) => {
+          const ba = a.scope === "full" ? 0 : 1;
+          const bb = b.scope === "full" ? 0 : 1;
+          return ba - bb || a.sort - b.sort;
+        });
+
+      planMachines = machineEntries.map((e) => ({
+        title: e.title,
+        scope: e.scope,
+        startVisit: e.startVisit,
+        activities: e.rows
+          .slice()
+          .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
+          .map(toActivity),
+      }));
+
+      // Bloco "Geral / Local": atividades de local (sem máquina, per_eq=false).
+      // Só aparece quando há ≥1 máquina 'full' (mesma regra do motor — locais
+      // entram ancorados na fase do grande porte de menor start_visit).
+      const fullStarts = machineEntries
+        .filter((e) => e.scope === "full")
+        .map((e) => e.startVisit);
+      const hasFull = fullStarts.length > 0;
+      const localActs = [...localRows, ...contratoRows]
+        .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
+        .map(toActivity);
+      if (hasFull && localActs.length > 0) {
+        const anchor = Math.min(...fullStarts);
+        planMachines.push({
+          title: "Geral / Local (torres, bombas, casa de máquinas)",
+          scope: null,
+          startVisit: anchor,
+          activities: localActs,
+        });
+      } else if (!hasFull && contratoRows.length > 0) {
+        // Sem máquina 'full' mas há atividades não amarradas (per_eq=true) →
+        // bloco "Contrato (geral)" com fase âncora = menor start entre TODAS as
+        // máquinas (ou 12). Locais puros (per_eq=false) sem 'full' não entram,
+        // espelhando o motor.
+        const allStarts = machineEntries.map((e) => e.startVisit);
+        const anchor = allStarts.length > 0 ? Math.min(...allStarts) : 12;
+        planMachines.push({
+          title: "Contrato (atividades gerais)",
+          scope: null,
+          startVisit: anchor,
+          activities: contratoRows
+            .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
+            .map(toActivity),
+        });
+      }
     }
 
     // Seção "Registro de Execução" removida (2026-06): dado dinâmico (visitas/
@@ -627,6 +746,8 @@ Deno.serve(async (req) => {
           (contract.frequency_type ?? null) as string | null,
         ),
       },
+      // Plano por equipamento (Fase 4); vazio → template usa `activities` (legado).
+      planMachines,
       activities,
       generated_at_extenso: dateToExtenso(new Date()),
       // Rodapé Dominex (linha + logo + dominex.app) em toda página — oculto em
@@ -651,7 +772,15 @@ Deno.serve(async (req) => {
       // (Identificação, Manutenção, Operação, Responsável Técnico etc.).
       // planilha_v8: removida a Seção 6 "Registro de Execução" (dado dinâmico
       // que congelava no PDF) e removida a linha separadora do rodapé Dominex.
-      v: "planilha_v8",
+      // planilha_v9: Seção 5 agora é POR EQUIPAMENTO — um bloco por máquina
+      // ('full' primeiro, depois 'ac', depois "Geral / Local"), com a matriz de
+      // 12 meses FASEADA pela `pmoc_start_visit` de cada máquina (espelha o
+      // motor de visitas). Contrato legado (atividades sem contract_item_id)
+      // mantém a lista única, idêntica ao v8.
+      // planilha_v10: rodapé Dominex (sem white-label) garantido SEM linha
+      // separadora cruzando o logo + "dominex.app" — força regeração dos PDFs
+      // que ainda traziam a linha do bundle antigo.
+      v: "planilha_v10",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
@@ -659,6 +788,7 @@ Deno.serve(async (req) => {
       rt: planilhaData.rt,
       contract: planilhaData.contract,
       ambientes,
+      planMachines,
       activities,
     });
     const contentHash = await sha256Hex(hashInput);
@@ -796,6 +926,7 @@ Deno.serve(async (req) => {
       ambientes: ambientes.length,
       equipments: itemRows.length,
       activities: activities.length,
+      plan_machines: planMachines.length,
       pdf_size_bytes: pdfBytes.length,
       duration_ms: Date.now() - t0,
     });

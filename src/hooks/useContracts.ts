@@ -182,6 +182,12 @@ export interface PlanActivityInput {
   // 1 linha sem equipamento. Atividade com `contract_item_id` específico
   // sempre resolve pro equipamento daquele item (ignora este flag).
   applies_per_equipment?: boolean;
+  // Referência client-side ao equipamento dono da atividade (Fase 3 — plano POR
+  // MÁQUINA). Na CRIAÇÃO os `contract_items` só ganham id após o insert, então a
+  // UI manda o `equipment_id` aqui e o hook resolve `contract_item_id` quando os
+  // itens existirem (mapa equipment_id → contract_item_id). Atividade de LOCAL
+  // (sem máquina) deixa `equipment_ref` vazio + `applies_per_equipment=false`.
+  equipment_ref?: string | null;
 }
 
 /** Mapeia o código de frequência da norma para o período em meses. */
@@ -243,6 +249,281 @@ export function generateGroupedVisits(
     visits.push({ date: addMonths(startDate, k), activityIndexes: due });
   }
   return visits;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// MOTOR DE VISITAS POR MÁQUINA (Fase 2 — PMOC por equipamento)
+// ──────────────────────────────────────────────────────────────────────────
+// Conceito do ciclo de 12 visitas (mensal), níveis acumulativos por POSIÇÃO:
+//   Mensal (M): toda posição (1..12)
+//   Trimestral (T): posições 3, 6, 9, 12 (pos % 3 == 0)
+//   Semestral (S): posições 6, 12 (pos % 6 == 0)
+//   Anual (A): posição 12
+// "Começar na visita N" = a 1ª visita da máquina cai na posição N; as seguintes
+// seguem N+1, N+2… (módulo 12). A fase fica em contract_items.pmoc_start_visit.
+
+/** Escopo da norma por máquina. 'ac' = só condicionadores; 'full' = toda a norma. */
+export type PmocScope = 'ac' | 'full';
+
+/**
+ * Seções da norma consideradas de CONDICIONADOR (escopo 'ac'). Máquinas 'ac' só
+ * recebem atividades dessas seções (+ medições/testes, que são por equipamento).
+ * Máquinas 'full' recebem todas as seções aplicáveis. Constante no código, não
+ * no banco (mapeamento seção→escopo do plano). Atividade sem `section` é tratada
+ * como aplicável a ambos os escopos (não filtra).
+ */
+export const PMOC_AC_SECTIONS = new Set<string>([
+  'condicionadores',
+  'medicoes',
+  'testes',
+]);
+
+/**
+ * Posição (1..12) de uma máquina no mês de índice k (0-based), dada a fase
+ * inicial `startVisit` (1/3/6/12). pos = ((startVisit - 1 + k) % 12) + 1.
+ * Função pura e testável.
+ */
+export function positionForMonth(startVisit: number, monthIndex: number): number {
+  const sv = Number.isFinite(startVisit) && startVisit >= 1 ? startVisit : 12;
+  return (((sv - 1 + monthIndex) % 12) + 12) % 12 + 1;
+}
+
+/**
+ * Níveis de frequência DEVIDOS numa posição do ciclo (1..12). M sempre; T se
+ * pos%3==0; S se pos%6==0; A se pos==12. Função PURA — base testável do motor.
+ */
+export function dueLevelsForPosition(pos: number): Set<FreqCode> {
+  const levels = new Set<FreqCode>(['M']);
+  if (pos % 3 === 0) levels.add('T');
+  if (pos % 6 === 0) levels.add('S');
+  if (pos === 12) levels.add('A');
+  return levels;
+}
+
+/**
+ * Decide se uma atividade (pela frequência) é devida no mês `monthIndex` para uma
+ * máquina cuja fase é `startVisit`. Atividade sem freq_code (genérica/freq_months)
+ * cai no comportamento modular global antigo (período divide o mês) pra não
+ * quebrar contratos não-PMOC com frequência livre. Função PURA.
+ */
+export function isActivityDueForMachine(
+  a: Pick<PlanActivityInput, 'freq_code' | 'freq_months'>,
+  startVisit: number,
+  monthIndex: number,
+): boolean {
+  if (a.freq_code && a.freq_code !== 'E') {
+    const pos = positionForMonth(startVisit, monthIndex);
+    return dueLevelsForPosition(pos).has(a.freq_code);
+  }
+  // Sem código de norma (eventual ou freq_months livre): cai no modular global.
+  return isActivityDueAtMonth(a, monthIndex);
+}
+
+/** Máquina do contrato pro motor (1 contract_item com escopo + fase). */
+export interface MachineInput {
+  /** id do contract_item (chave dona das atividades via contract_item_id). */
+  contractItemId: string;
+  /** equipamento do item (pode ser null pra item manual). */
+  equipmentId: string | null;
+  pmocScope: PmocScope;
+  pmocStartVisit: number;
+}
+
+/**
+ * Atividade do plano pro motor por máquina. `contractItemId` = máquina dona
+ * (null = nível contrato: local ou legado). `planActivityId` = linha persistida
+ * pra snapshot. `appliesPerEquipment` distingue local (false) de legado por-eq
+ * (true) quando `contractItemId` é null.
+ */
+export interface MachinePlanActivity {
+  input: PlanActivityInput;
+  planActivityId: string | null;
+  contractItemId: string | null;
+  appliesPerEquipment: boolean;
+}
+
+/**
+ * Emissão resolvida de uma atividade numa visita: já sabe o equipamento alvo e
+ * o "bucket" de ordenação (full primeiro, depois ac, depois local). É o que o
+ * persist grava como 1 linha de service_order_activities.
+ */
+export interface ResolvedEmission {
+  input: PlanActivityInput;
+  planActivityId: string | null;
+  equipmentId: string | null;
+  /** Bucket de ordenação: 0=full, 1=ac, 2=local. Menor sai primeiro. */
+  bucket: number;
+  /** Índice estável da máquina dentro do bucket (mantém máquinas agrupadas). */
+  machineRank: number;
+  /** Ordem da atividade dentro da máquina (sort_order do plano). */
+  activitySort: number;
+}
+
+/** Visita já resolvida por máquina: data + emissões prontas pro snapshot. */
+export interface ResolvedVisit {
+  date: Date;
+  emissions: ResolvedEmission[];
+}
+
+/**
+ * MOTOR POR MÁQUINA (Fase 2). Determinístico e PURO. Para cada mês k (0..horizonte)
+ * e cada máquina, calcula a posição no ciclo (com a fase da máquina) e seleciona
+ * as atividades devidas, resolvendo o equipamento alvo. Três fontes de atividade:
+ *
+ *  1) Atividade com `contractItemId` = X → pertence à máquina X; usa a fase e o
+ *     escopo de X; emite com o equipamento de X.
+ *  2) LOCAL (`contractItemId null` + `appliesPerEquipment=false`): só quando há
+ *     ≥1 máquina 'full'; fase âncora = menor pmoc_start_visit entre as 'full';
+ *     emite com equipment_id null. (bucket local)
+ *  3) LEGADO (`contractItemId null` + `appliesPerEquipment=true`): expande pra
+ *     TODAS as máquinas, cada uma com a sua fase/escopo. Mantém back-compat dos
+ *     contratos antigos (plano sem contract_item_id).
+ *
+ * Filtro por escopo: máquina 'ac' só recebe atividades cuja `section` ∈
+ * PMOC_AC_SECTIONS (ou sem section); 'full' recebe tudo. Aplica-se aos casos 1 e 3.
+ *
+ * Agrupamento: 1 visita (OS) por MÊS; mês sem nenhuma emissão NÃO vira visita.
+ * Ordem dentro da visita: 'full' primeiro, depois 'ac', depois local.
+ */
+export function buildPerMachineVisits(
+  startDate: Date,
+  horizonMonths: number,
+  machines: MachineInput[],
+  activities: MachinePlanActivity[],
+): ResolvedVisit[] {
+  // Rank estável de máquina por bucket (full antes de ac), pra agrupar a saída.
+  const bucketOf = (m: MachineInput): number => (m.pmocScope === 'full' ? 0 : 1);
+  const machinesSorted = machines
+    .map((m, originalIdx) => ({ m, originalIdx }))
+    .sort((a, b) => bucketOf(a.m) - bucketOf(b.m) || a.originalIdx - b.originalIdx);
+  const machineRank = new Map<string, number>();
+  machinesSorted.forEach(({ m }, rank) => machineRank.set(m.contractItemId, rank));
+
+  // Atividades indexadas por máquina dona (contractItemId).
+  const byMachine = new Map<string, MachinePlanActivity[]>();
+  const localActs: MachinePlanActivity[] = []; // contractItemId null + per_eq=false
+  const legacyActs: MachinePlanActivity[] = []; // contractItemId null + per_eq=true
+  activities.forEach((act) => {
+    if (act.contractItemId) {
+      const arr = byMachine.get(act.contractItemId) ?? [];
+      arr.push(act);
+      byMachine.set(act.contractItemId, arr);
+    } else if (act.appliesPerEquipment === false) {
+      localActs.push(act);
+    } else {
+      legacyActs.push(act);
+    }
+  });
+
+  // Âncora de fase dos locais = menor pmoc_start_visit entre as máquinas 'full'.
+  const fullMachines = machines.filter(m => m.pmocScope === 'full');
+  const hasFull = fullMachines.length > 0;
+  const localAnchorStart = hasFull
+    ? Math.min(...fullMachines.map(m => m.pmocStartVisit))
+    : 12;
+
+  // Escopo: máquina 'ac' só pega seções de condicionador (ou sem section).
+  const scopeAllows = (scope: PmocScope, section: string | null | undefined): boolean => {
+    if (scope === 'full') return true;
+    if (!section) return true;
+    return PMOC_AC_SECTIONS.has(section);
+  };
+
+  const visits: ResolvedVisit[] = [];
+
+  for (let k = 0; k <= horizonMonths && visits.length < 120; k++) {
+    const emissions: ResolvedEmission[] = [];
+
+    for (const m of machines) {
+      const bucket = bucketOf(m);
+      const rank = machineRank.get(m.contractItemId) ?? 0;
+
+      // Caso 1: atividades próprias da máquina.
+      const own = byMachine.get(m.contractItemId) ?? [];
+      own.forEach((act, actSort) => {
+        if (!scopeAllows(m.pmocScope, act.input.section)) return;
+        if (!isActivityDueForMachine(act.input, m.pmocStartVisit, k)) return;
+        emissions.push({
+          input: act.input,
+          planActivityId: act.planActivityId,
+          equipmentId: m.equipmentId,
+          bucket,
+          machineRank: rank,
+          activitySort: actSort,
+        });
+      });
+
+      // Caso 3: legado (sem contract_item_id, per_eq=true) → expande pra cada máquina.
+      // PRESERVAÇÃO: atividade legada NÃO sofre filtro de escopo (escopo é
+      // conceito do novo formato, Fase 3). Sem isso, um contrato antigo 'ac' com
+      // atividade de seção não-AC (ex.: dutos) perderia a atividade — divergindo
+      // do motor modular global anterior. Legado expande pra TODAS as máquinas.
+      legacyActs.forEach((act, actSort) => {
+        if (!isActivityDueForMachine(act.input, m.pmocStartVisit, k)) return;
+        emissions.push({
+          input: act.input,
+          planActivityId: act.planActivityId,
+          equipmentId: m.equipmentId,
+          bucket,
+          machineRank: rank,
+          activitySort: actSort,
+        });
+      });
+    }
+
+    // Caso 2: locais — só com ≥1 máquina 'full'; fase âncora; equipamento null.
+    if (hasFull) {
+      localActs.forEach((act, actSort) => {
+        if (!isActivityDueForMachine(act.input, localAnchorStart, k)) return;
+        emissions.push({
+          input: act.input,
+          planActivityId: act.planActivityId,
+          equipmentId: null,
+          bucket: 2, // local sempre por último
+          machineRank: machines.length, // depois de todas as máquinas
+          activitySort: actSort,
+        });
+      });
+    }
+
+    if (emissions.length === 0) continue;
+    visits.push({ date: addMonths(startDate, k), emissions });
+  }
+
+  return visits;
+}
+
+/**
+ * Linha de contract_items (forma mínima) pra montar as máquinas do motor por
+ * máquina. Escopo/fase têm default no banco ('ac' / 12), mas tratamos null aqui
+ * por robustez (contratos antigos antes do backfill, drift).
+ */
+export interface ContractItemMachineRow {
+  id: string;
+  equipment_id: string | null;
+  pmoc_scope?: string | null;
+  pmoc_start_visit?: number | null;
+  sort_order?: number | null;
+}
+
+/**
+ * Converte linhas de contract_items em MachineInput[] pro motor por máquina,
+ * preservando a ordem por sort_order (= ordem dos equipamentos, que o motor usa
+ * pra agrupar a saída). Escopo inválido cai em 'ac'; fase inválida cai em 12 —
+ * exatamente os defaults do banco, garantindo PRESERVAÇÃO do comportamento atual.
+ */
+export function machinesFromItemRows(rows: ContractItemMachineRow[]): MachineInput[] {
+  return [...rows]
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((it) => ({
+      contractItemId: it.id,
+      equipmentId: it.equipment_id ?? null,
+      pmocScope: (it.pmoc_scope === 'full' ? 'full' : 'ac') as PmocScope,
+      pmocStartVisit:
+        Number.isFinite(it.pmoc_start_visit) && (it.pmoc_start_visit as number) >= 1
+          ? (it.pmoc_start_visit as number)
+          : 12,
+    }));
 }
 
 /**
@@ -321,31 +602,82 @@ export interface BuildVisitsParams {
   planActivities: PlanActivityInput[];
   /** IDs das linhas contract_plan_activities, alinhados por índice a planActivities. */
   planActivityIds: (string | null)[];
+  /**
+   * Máquinas do contrato (contract_items com escopo + fase). Quando informado E
+   * há plano, ativa o MOTOR POR MÁQUINA (Fase 2): cada máquina segue a sua fase
+   * (pmoc_start_visit) e o seu escopo (pmoc_scope), e a visita carrega emissões
+   * JÁ resolvidas por equipamento. Quando ausente (undefined), cai no motor
+   * modular global legado (idêntico ao anterior) — não quebra contratos não-PMOC.
+   */
+  machines?: MachineInput[];
 }
 
 export interface BuiltVisit {
   date: Date;
   activities: { input: PlanActivityInput; planActivityId: string | null; sortOrder: number }[];
+  /**
+   * Emissões JÁ resolvidas por equipamento (motor por máquina, Fase 2). Quando
+   * presente, `persistContractVisit` grava 1 linha por emissão (equipamento e
+   * ordenação já decididos pelo motor) e ignora a expansão legada. Ausente =
+   * caminho legado (expande no persist via equipmentIds/applies_per_equipment).
+   */
+  emissions?: ResolvedEmission[];
 }
 
 /**
- * Motor compartilhado de geração de visitas. Bifurca por EXISTÊNCIA de plano
- * (igual à criação): qualquer atividade no plano → motor agrupado (1 OS/mês);
- * nenhuma → cadência única legado (generateOccurrences). Atividades sem período
- * de cronograma (eventuais) não geram visita, mas continuam persistidas.
+ * Motor compartilhado de geração de visitas. Bifurca em 3 caminhos:
+ *  1) `machines` informado + há plano → MOTOR POR MÁQUINA (Fase 2): cada máquina
+ *     com sua fase/escopo; a visita já vem com emissões resolvidas por equipamento.
+ *  2) há plano, sem `machines` → motor agrupado modular global (legado): 1 OS/mês.
+ *  3) sem plano → cadência única legado (generateOccurrences).
+ * Atividades sem período de cronograma (eventuais) não geram visita.
  *
  * `fromMonthStr` (opcional, YYYY-MM-DD) corta a série pra só datas >= esse dia —
  * usado na edição pra recriar apenas visitas futuras sem mexer no passado.
  */
 export function buildContractVisits(params: BuildVisitsParams, fromMonthStr?: string): BuiltVisit[] {
-  const { startDate, frequencyType, frequencyValue, horizonMonths, planActivities, planActivityIds } = params;
+  const { startDate, frequencyType, frequencyValue, horizonMonths, planActivities, planActivityIds, machines } = params;
   const validActivities = planActivities.filter(a => a.description?.trim());
+  const useGrouped = validActivities.length > 0;
 
+  const cut = (visits: BuiltVisit[]): BuiltVisit[] => {
+    if (!fromMonthStr) return visits;
+    return visits.filter(v => {
+      const y = v.date.getFullYear();
+      const m = String(v.date.getMonth() + 1).padStart(2, '0');
+      const d = String(v.date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}` >= fromMonthStr;
+    });
+  };
+
+  // Caminho 1 — motor por máquina (Fase 2). Só quando há máquinas E plano.
+  if (machines && machines.length > 0 && useGrouped) {
+    const machineActs: MachinePlanActivity[] = validActivities.map((a, idx) => ({
+      input: a,
+      planActivityId: planActivityIds[idx] ?? null,
+      contractItemId: a.contract_item_id ?? null,
+      appliesPerEquipment: a.applies_per_equipment !== false,
+    }));
+
+    const resolved = buildPerMachineVisits(startDate, horizonMonths, machines, machineActs);
+    const visits: BuiltVisit[] = resolved.map((rv) => ({
+      date: rv.date,
+      emissions: rv.emissions,
+      // `activities` derivado das emissões só pra prévia/contagem; o persist usa
+      // `emissions`. Mantém o shape sem duplicar a lógica de equipamento.
+      activities: rv.emissions.map((e, sortOrder) => ({
+        input: e.input,
+        planActivityId: e.planActivityId,
+        sortOrder,
+      })),
+    }));
+    return cut(visits);
+  }
+
+  // Caminho 2 — motor agrupado modular global (legado).
   const schedulable = validActivities
     .map((a, idx) => ({ a, planActivityId: planActivityIds[idx] ?? null }))
     .filter(({ a }) => activityPeriodMonths(a) > 0);
-
-  const useGrouped = validActivities.length > 0;
 
   let visits: BuiltVisit[];
   if (useGrouped) {
@@ -359,20 +691,12 @@ export function buildContractVisits(params: BuildVisitsParams, fromMonthStr?: st
       })),
     }));
   } else {
+    // Caminho 3 — cadência única (frequência do contrato), sem snapshot.
     const dates = generateOccurrences(startDate, frequencyType, frequencyValue, horizonMonths);
     visits = dates.map(date => ({ date, activities: [] }));
   }
 
-  if (fromMonthStr) {
-    visits = visits.filter(v => {
-      const y = v.date.getFullYear();
-      const m = String(v.date.getMonth() + 1).padStart(2, '0');
-      const d = String(v.date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}` >= fromMonthStr;
-    });
-  }
-
-  return visits;
+  return cut(visits);
 }
 
 /**
@@ -465,6 +789,38 @@ async function persistContractVisit(args: {
       args.assigneeUserIds.map(uid => ({ service_order_id: os.id, user_id: uid }))
     );
     if (assignErr) console.error('Error creating assignees:', assignErr);
+  }
+
+  // CAMINHO POR MÁQUINA (Fase 2). Quando a visita já vem com `emissions`
+  // resolvidas, o motor por máquina JÁ decidiu o equipamento e a ordenação
+  // (full → ac → local) de cada linha. Aqui só gravamos o snapshot sequencial,
+  // sem re-expandir por equipamento. Cada emissão = 1 linha.
+  if (visit.emissions && visit.emissions.length > 0) {
+    const ordered = [...visit.emissions].sort(
+      (x, y) =>
+        (x.bucket - y.bucket) ||
+        (x.machineRank - y.machineRank) ||
+        (x.activitySort - y.activitySort),
+    );
+    const emissionRows = ordered.map((e, idx) => ({
+      company_id: args.companyId,
+      service_order_id: os.id,
+      plan_activity_id: e.planActivityId,
+      equipment_id: e.equipmentId,
+      section: e.input.section ?? null,
+      component: e.input.component ?? null,
+      description: e.input.description.trim(),
+      guidance: e.input.guidance ?? null,
+      freq_code: e.input.freq_code ?? null,
+      is_measurement: e.input.is_measurement ?? false,
+      unit: e.input.unit ?? null,
+      expected_min: e.input.expected_min ?? null,
+      expected_max: e.input.expected_max ?? null,
+      sort_order: idx,
+    }));
+    const { error: actErr } = await supabase.from('service_order_activities').insert(emissionRows as any);
+    if (actErr) console.error('Error creating service order activities (per-machine):', actErr);
+    return true;
   }
 
   if (visit.activities.length > 0) {
@@ -655,7 +1011,7 @@ export function useContracts() {
           customers (id, name, document, address, city, state),
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
-          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
+          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
           contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, sort_order),
           service_orders (id, order_number, status, scheduled_date)
         `)
@@ -707,7 +1063,11 @@ export function useContracts() {
       pmoc_ocupantes_fixos?: number | null;
       pmoc_ocupantes_flutuantes?: number | null;
       pmoc_carga_termica_tr?: number | null;
-      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
+      // Itens/equipamentos do contrato. `pmoc_scope` ('ac'|'full') e
+      // `pmoc_start_visit` (1/3/6/12) são a rotina POR MÁQUINA (Fase 3): escopo da
+      // norma + posição inicial no ciclo de 12 visitas. Defaults do banco quando
+      // omitidos ('ac' / 12) — preserva o comportamento de "tudo na 1ª visita".
+      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
       // Ambientes climatizados (multi-ambiente PMOC). Quando definido, cada
       // ambiente vira uma linha em contract_environments e seus equipment_ids
       // recebem o environment_id correspondente em contract_items. Itens sem
@@ -836,8 +1196,16 @@ export function useContracts() {
       }
 
       // Create items. Capturamos os ids gerados pra montar o itemEquipmentMap
-      // (contract_item_id → equipment_id) usado na expansão por equipamento.
+      // (contract_item_id → equipment_id) usado na expansão por equipamento, e as
+      // máquinas (escopo + fase) pro motor por máquina (Fase 2). `pmoc_scope` e
+      // `pmoc_start_visit` (Fase 3) vêm da UI por equipamento; quando omitidos,
+      // os defaults do banco ('ac' / start_visit 12) assumem.
       const itemEquipmentMap: Record<string, string | null> = {};
+      // Mapa equipment_id → contract_item_id recém-criado: usado pra resolver o
+      // `contract_item_id` das atividades do plano POR MÁQUINA (a UI manda o
+      // equipment_id em `equipment_ref` porque os ids dos itens só nascem aqui).
+      const equipmentToItemId: Record<string, string> = {};
+      let createdMachines: MachineInput[] = [];
       if (input.items.length > 0) {
         const { data: insertedItems, error: itemError } = await supabase.from('contract_items').insert(
           input.items.map((item, i) => ({
@@ -849,20 +1217,38 @@ export function useContracts() {
             item_name: item.item_name,
             item_description: item.item_description || null,
             form_template_id: item.form_template_id || null,
+            // Rotina por máquina (Fase 3). Só envia quando informado pela UI; senão
+            // deixa o default do banco assumir (não envia chave undefined).
+            ...(item.pmoc_scope ? { pmoc_scope: item.pmoc_scope } : {}),
+            ...(item.pmoc_start_visit ? { pmoc_start_visit: item.pmoc_start_visit } : {}),
             sort_order: i,
           })) as any
-        ).select('id, equipment_id');
+        ).select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order');
         if (itemError) throw itemError;
-        for (const it of (insertedItems ?? []) as { id: string; equipment_id: string | null }[]) {
+        const insertedRows = (insertedItems ?? []) as ContractItemMachineRow[];
+        for (const it of insertedRows) {
           itemEquipmentMap[it.id] = it.equipment_id ?? null;
+          if (it.equipment_id) equipmentToItemId[it.equipment_id] = it.id;
         }
+        createdMachines = machinesFromItemRows(insertedRows);
       }
 
-      // Plano de serviços com frequência (Fase 1). Persistimos as atividades
-      // válidas (com período de cronograma > 0 OU eventual 'E', que fica
-      // registrada mas não gera OS). RLS de contract_plan_activities exige
-      // company_id no INSERT — sem isso o insert é bloqueado em silêncio.
-      const planActivities = (input.plan_activities ?? []).filter(a => a.description?.trim());
+      // Resolve o `contract_item_id` de uma atividade do plano por máquina:
+      //  - `equipment_ref` (equipment_id) → contract_item_id recém-criado;
+      //  - senão usa o `contract_item_id` explícito (raro no create);
+      //  - atividade de LOCAL fica null (applies_per_equipment=false).
+      const resolveContractItemId = (a: PlanActivityInput): string | null => {
+        if (a.equipment_ref && equipmentToItemId[a.equipment_ref]) return equipmentToItemId[a.equipment_ref];
+        return a.contract_item_id ?? null;
+      };
+
+      // Plano de serviços com frequência (Fase 1/3). Resolvemos o
+      // `contract_item_id` de cada atividade (via equipment_ref → item recém-criado)
+      // ANTES de persistir E de gerar visitas, pra o motor por máquina rotear as
+      // atividades pro equipamento certo (senão cairiam no caminho legado/global).
+      const planActivities = (input.plan_activities ?? [])
+        .filter(a => a.description?.trim())
+        .map(a => ({ ...a, contract_item_id: resolveContractItemId(a) }));
       let insertedPlanActivities: { id: string }[] = [];
       if (planActivities.length > 0) {
         const { data: planRows, error: planError } = await supabase
@@ -906,52 +1292,26 @@ export function useContracts() {
       if (input.status === 'active') {
         const startBase = new Date(input.start_date + 'T12:00:00');
 
-        // Atividades do plano que entram no cronograma automático (período > 0).
-        // Eventuais ('E') ou sem frequência ficam de fora da geração (mas já
-        // foram persistidas em contract_plan_activities acima).
-        const schedulableActivities = planActivities
-          .map((a, idx) => ({ a, planActivityId: insertedPlanActivities[idx]?.id ?? null }))
-          .filter(({ a }) => activityPeriodMonths(a) > 0);
-
         // Bifurcação por EXISTÊNCIA de plano, não por schedulable. Se o contrato
         // tem plano mas todas as atividades são Eventuais ('E') / sem período,
-        // `schedulableActivities` é 0 → o motor agrupado retorna [] visitas →
-        // 0 OS, batendo com a prévia do form. Bifurcar por `schedulableActivities`
-        // caía no legado e gerava OSs pela frequência única do contrato,
-        // divergindo da prévia. Contrato SEM plano → legado intacto.
+        // o motor agrupado retorna [] visitas → 0 OS, batendo com a prévia do
+        // form. Contrato SEM plano → legado intacto (cadência única).
         const useGroupedEngine = planActivities.length > 0;
 
         // visits: cada item é uma OS a gerar, com a lista de atividades (snapshot)
-        // que vencem naquela visita. No modo legado (sem plano), a lista fica
-        // vazia e o comportamento é exatamente o de frequência única atual.
-        type VisitPlan = { date: Date; activities: { input: PlanActivityInput; planActivityId: string | null; sortOrder: number }[] };
-        let visits: VisitPlan[];
-
-        if (useGroupedEngine) {
-          // Motor de visitas agrupadas: 1 OS/mês = união do que vence.
-          const grouped = generateGroupedVisits(
-            startBase,
-            input.horizon_months,
-            schedulableActivities.map(({ a }) => a),
-          );
-          visits = grouped.map(({ date, activityIndexes }) => ({
-            date,
-            activities: activityIndexes.map((ai, sortOrder) => ({
-              input: schedulableActivities[ai].a,
-              planActivityId: schedulableActivities[ai].planActivityId,
-              sortOrder,
-            })),
-          }));
-        } else {
-          // Legado: cadência única (frequência do contrato), sem snapshot de atividades.
-          const occurrenceDates = generateOccurrences(
-            startBase,
-            input.frequency_type as 'days' | 'months',
-            input.frequency_value,
-            input.horizon_months
-          );
-          visits = occurrenceDates.map(date => ({ date, activities: [] }));
-        }
+        // que vencem naquela visita. Motor único (buildContractVisits): quando há
+        // máquinas + plano, usa o motor POR MÁQUINA (fase/escopo por equipamento,
+        // Fase 2); senão cai no agrupado/legado. No modo legado (sem plano), a
+        // lista fica vazia e o comportamento é exatamente o de frequência única.
+        const visits = buildContractVisits({
+          startDate: startBase,
+          frequencyType: input.frequency_type as 'days' | 'months',
+          frequencyValue: input.frequency_value,
+          horizonMonths: input.horizon_months,
+          planActivities,
+          planActivityIds: insertedPlanActivities.map(r => r.id),
+          machines: createdMachines.length > 0 ? createdMachines : undefined,
+        });
 
         expectedOsCount = visits.length;
 
@@ -1107,7 +1467,10 @@ export function useContracts() {
       // contract_items (insere novos, apaga removidos, mantém iguais). Mudança no
       // conjunto de equipamentos conta como mudança de cronograma → re-expande as
       // visitas futuras pelo novo conjunto. `undefined` = não mexe nos itens.
-      items?: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
+      // `pmoc_scope`/`pmoc_start_visit` (Fase 3): rotina por máquina; mesmo quando
+      // o item já existe, esses campos são RE-APLICADOS (UPDATE) pra refletir
+      // mudança de escopo/fase sem precisar remover/recriar o equipamento.
+      items?: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
       // Ambientes climatizados (multi-ambiente PMOC). Quando definido, aplica
       // diff em contract_environments (insere/atualiza/remove) e seta o
       // environment_id dos contract_items pelos equipment_ids de cada ambiente.
@@ -1163,8 +1526,14 @@ export function useContracts() {
         payload.unidade_uf = null;
         payload.unidade_cep = null;
       }
-      const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
-      if (updErr) throw updErr;
+      // Só dispara o UPDATE quando há de fato algum campo de contrato a mudar.
+      // A aba Ambientes reusa este caminho passando SÓ items/plan/environments
+      // (sem campo de contrato) — nesse caso `payload` fica vazio e um update({})
+      // é inútil/arriscado (PostgREST/RLS). Itens+plano+visitas seguem normais.
+      if (Object.keys(payload).length > 0) {
+        const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
+        if (updErr) throw updErr;
+      }
 
       // 1.5) Propagar os responsáveis pela execução para as OSs ainda NÃO
       //      realizadas deste contrato (PMOC ou comum). Regra do CEO: ao editar
@@ -1208,26 +1577,130 @@ export function useContracts() {
         }
       }
 
-      // 2) Persistir o plano editado (substituição completa). Só quando
-      //    plan_activities foi informado. Eventuais ('E') ficam registrados mas
-      //    não geram visita. RLS exige company_id no INSERT.
+      // O plano (contract_plan_activities) é persistido em 2.7, DEPOIS do diff de
+      // itens (2.5) — assim o mapa equipment_id → contract_item_id já existe e o
+      // plano POR MÁQUINA (Fase 3) consegue resolver o `contract_item_id`.
       let planChanged = false;
       let insertedPlanRows: { id: string }[] = [];
       const newPlan = (plan_activities ?? []).filter(a => a.description?.trim());
 
+      // 2.5) Diff de equipamentos/itens do contrato (Fase 3). Só quando `items`
+      //      foi informado. Compara o conjunto atual vs. o novo por uma chave
+      //      estável (equipment_id || nome do item manual) e aplica:
+      //        - insere itens novos (que não existiam) com escopo/fase da UI;
+      //        - apaga itens removidos (com suas dependências);
+      //        - RE-APLICA escopo/fase (pmoc_scope/pmoc_start_visit) nos iguais
+      //          (idempotente no conjunto, mas reflete mudança de rotina por máquina).
+      //      Mudança no conjunto OU na rotina por máquina conta como mudança de
+      //      cronograma → as visitas futuras re-expandem pelo novo conjunto.
+      //      ⚠️ Roda ANTES da persistência do plano (2.x abaixo) pra que TODOS os
+      //      contract_items existam e o mapa equipment_id → contract_item_id esteja
+      //      pronto na hora de gravar o plano POR MÁQUINA.
+      let itemsChanged = false;
+      if (items !== undefined) {
+        const { data: existingItems } = await supabase
+          .from('contract_items')
+          .select('id, equipment_id, item_name, pmoc_scope, pmoc_start_visit')
+          .eq('contract_id', id);
+        const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
+          it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
+
+        const existingByKey = new Map<string, { id: string; pmoc_scope: string | null; pmoc_start_visit: number | null }>();
+        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; pmoc_scope: string | null; pmoc_start_visit: number | null }[]) {
+          existingByKey.set(itemKey(it), { id: it.id, pmoc_scope: it.pmoc_scope, pmoc_start_visit: it.pmoc_start_visit });
+        }
+        const newKeys = new Set(items.map(itemKey));
+
+        // Itens a inserir = chaves novas que não existem hoje.
+        const toInsert = items.filter(it => !existingByKey.has(itemKey(it)));
+        // Itens a remover = existentes cuja chave não está mais no conjunto novo.
+        const toRemoveIds = (existingItems ?? [])
+          .filter((it: any) => !newKeys.has(itemKey(it)))
+          .map((it: any) => it.id) as string[];
+
+        if (toRemoveIds.length > 0) {
+          // contract_items não tem dependentes fortes (snapshot já está na OS);
+          // delete direto. As OSs futuras são refeitas logo abaixo.
+          await supabase.from('contract_items').delete().in('id', toRemoveIds);
+          itemsChanged = true;
+        }
+        if (toInsert.length > 0) {
+          const baseSort = (existingItems ?? []).length;
+          const { error: insErr } = await supabase.from('contract_items').insert(
+            toInsert.map((item, i) => ({
+              contract_id: id,
+              equipment_id: item.equipment_id || null,
+              item_name: item.item_name,
+              item_description: item.item_description || null,
+              form_template_id: item.form_template_id || null,
+              ...(item.pmoc_scope ? { pmoc_scope: item.pmoc_scope } : {}),
+              ...(item.pmoc_start_visit ? { pmoc_start_visit: item.pmoc_start_visit } : {}),
+              sort_order: baseSort + i,
+            })) as any
+          );
+          if (insErr) throw insErr;
+          itemsChanged = true;
+        }
+        // Re-aplica escopo/fase nos itens que PERMANECERAM, quando a UI mandou
+        // valores diferentes do persistido (mudança de rotina por máquina). Sem
+        // diferença → não toca (evita marcar cronograma como mudado à toa).
+        for (const item of items) {
+          const existing = existingByKey.get(itemKey(item));
+          if (!existing) continue; // já tratado no insert acima
+          const wantScope = item.pmoc_scope;
+          const wantStart = item.pmoc_start_visit;
+          const scopeDiff = wantScope !== undefined && (existing.pmoc_scope ?? 'ac') !== wantScope;
+          const startDiff = wantStart !== undefined && (existing.pmoc_start_visit ?? 12) !== wantStart;
+          if (scopeDiff || startDiff) {
+            const upd: any = {};
+            if (scopeDiff) upd.pmoc_scope = wantScope;
+            if (startDiff) upd.pmoc_start_visit = wantStart;
+            await supabase.from('contract_items').update(upd).eq('id', existing.id);
+            itemsChanged = true;
+          }
+        }
+      }
+
+      // Mapa equipment_id → contract_item_id (pós-diff) pra resolver o
+      // `contract_item_id` das atividades do plano POR MÁQUINA. A UI manda o
+      // equipment_id em `equipment_ref`; aqui traduzimos pro id real do item.
+      const equipmentToItemId: Record<string, string> = {};
+      {
+        const { data: curItems } = await supabase
+          .from('contract_items')
+          .select('id, equipment_id')
+          .eq('contract_id', id);
+        for (const it of (curItems ?? []) as { id: string; equipment_id: string | null }[]) {
+          if (it.equipment_id) equipmentToItemId[it.equipment_id] = it.id;
+        }
+      }
+      const resolveContractItemId = (a: PlanActivityInput): string | null => {
+        if (a.equipment_ref && equipmentToItemId[a.equipment_ref]) return equipmentToItemId[a.equipment_ref];
+        return a.contract_item_id ?? null;
+      };
+
+      // 2.7) Persistir o plano editado (substituição completa). Só quando
+      //      plan_activities foi informado. Eventuais ('E') ficam registrados mas
+      //      não geram visita. RLS exige company_id no INSERT. Roda DEPOIS do diff
+      //      de itens (2.5) pra resolver `contract_item_id` por máquina via
+      //      `equipment_ref` (plano POR MÁQUINA, Fase 3).
       if (plan_activities !== undefined) {
-        // Compara plano novo vs. atual (descrição + frequência) pra saber se o
-        // cronograma mudou por causa do plano.
+        // Compara plano novo vs. atual (descrição + frequência + escopo + máquina)
+        // pra saber se o cronograma mudou por causa do plano.
         const { data: existingPlan } = await supabase
           .from('contract_plan_activities')
-          .select('description, freq_code, freq_months, applies_per_equipment')
+          .select('description, freq_code, freq_months, applies_per_equipment, contract_item_id')
           .eq('contract_id', id)
           .order('sort_order', { ascending: true });
-        const sig = (arr: any[]) =>
+        const sigExisting = (arr: any[]) =>
           (arr || [])
-            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}`)
+            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${a.contract_item_id ?? ''}`)
             .join('§');
-        planChanged = sig(existingPlan || []) !== sig(newPlan);
+        const sigNew = (arr: PlanActivityInput[]) =>
+          (arr || [])
+            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${resolveContractItemId(a) ?? ''}`)
+            .join('§');
+        planChanged = sigExisting(existingPlan || []) !== sigNew(newPlan);
 
         if (planChanged) {
           await supabase.from('contract_plan_activities').delete().eq('contract_id', id);
@@ -1238,7 +1711,7 @@ export function useContracts() {
                 newPlan.map((a, i) => ({
                   company_id: profile.company_id,
                   contract_id: id,
-                  contract_item_id: a.contract_item_id ?? null,
+                  contract_item_id: resolveContractItemId(a),
                   catalog_activity_id: a.catalog_activity_id ?? null,
                   section: a.section ?? null,
                   component: a.component ?? null,
@@ -1268,59 +1741,6 @@ export function useContracts() {
             .eq('contract_id', id)
             .order('sort_order', { ascending: true });
           insertedPlanRows = (planRows ?? []) as { id: string }[];
-        }
-      }
-
-      // 2.5) Diff de equipamentos/itens do contrato (Fase 3). Só quando `items`
-      //      foi informado. Compara o conjunto atual vs. o novo por uma chave
-      //      estável (equipment_id || nome do item manual) e aplica:
-      //        - insere itens novos (que não existiam);
-      //        - apaga itens removidos (com suas dependências);
-      //        - mantém intactos os iguais (idempotente: salvar 2x não recria).
-      //      Mudança no conjunto conta como mudança de cronograma → as visitas
-      //      futuras re-expandem pelo novo conjunto de aparelhos.
-      let itemsChanged = false;
-      if (items !== undefined) {
-        const { data: existingItems } = await supabase
-          .from('contract_items')
-          .select('id, equipment_id, item_name')
-          .eq('contract_id', id);
-        const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
-          it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
-
-        const existingByKey = new Map<string, { id: string }>();
-        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string }[]) {
-          existingByKey.set(itemKey(it), { id: it.id });
-        }
-        const newKeys = new Set(items.map(itemKey));
-
-        // Itens a inserir = chaves novas que não existem hoje.
-        const toInsert = items.filter(it => !existingByKey.has(itemKey(it)));
-        // Itens a remover = existentes cuja chave não está mais no conjunto novo.
-        const toRemoveIds = (existingItems ?? [])
-          .filter((it: any) => !newKeys.has(itemKey(it)))
-          .map((it: any) => it.id) as string[];
-
-        if (toRemoveIds.length > 0) {
-          // contract_items não tem dependentes fortes (snapshot já está na OS);
-          // delete direto. As OSs futuras são refeitas logo abaixo.
-          await supabase.from('contract_items').delete().in('id', toRemoveIds);
-          itemsChanged = true;
-        }
-        if (toInsert.length > 0) {
-          const baseSort = (existingItems ?? []).length;
-          const { error: insErr } = await supabase.from('contract_items').insert(
-            toInsert.map((item, i) => ({
-              contract_id: id,
-              equipment_id: item.equipment_id || null,
-              item_name: item.item_name,
-              item_description: item.item_description || null,
-              form_template_id: item.form_template_id || null,
-              sort_order: baseSort + i,
-            })) as any
-          );
-          if (insErr) throw insErr;
-          itemsChanged = true;
         }
       }
 
@@ -1421,7 +1841,27 @@ export function useContracts() {
 
       const useGroupedEngine = effPlan.length > 0;
 
-      // Gera só visitas do mês de hoje em diante (passado preservado).
+      // Itens/equipamentos e executores do contrato pra reidratar as OSs novas.
+      // Lê DEPOIS do diff (2.5) → já reflete o novo conjunto de equipamentos.
+      // Inclui escopo + fase (motor por máquina). Lê ANTES de buildContractVisits
+      // pra alimentar as máquinas do motor.
+      const { data: contractItemsRows } = await supabase
+        .from('contract_items')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
+        .eq('contract_id', id);
+      const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
+      const equipmentIds = itemRows
+        .map((i) => i.equipment_id)
+        .filter(Boolean) as string[];
+      // Mapa item→equipamento pra atividades amarradas a um item específico.
+      const itemEquipmentMap: Record<string, string | null> = {};
+      for (const it of itemRows) {
+        itemEquipmentMap[it.id] = it.equipment_id ?? null;
+      }
+      const machines = machinesFromItemRows(itemRows);
+
+      // Gera só visitas do mês de hoje em diante (passado preservado). Motor por
+      // máquina quando há máquinas + plano; senão agrupado/legado.
       const visits = buildContractVisits(
         {
           startDate: new Date(effStart + 'T12:00:00'),
@@ -1430,24 +1870,10 @@ export function useContracts() {
           horizonMonths: effHorizon,
           planActivities: effPlan,
           planActivityIds: effPlanIds,
+          machines: machines.length > 0 ? machines : undefined,
         },
         todayStr,
       );
-
-      // Itens/equipamentos e executores do contrato pra reidratar as OSs novas.
-      // Lê DEPOIS do diff (2.5) → já reflete o novo conjunto de equipamentos.
-      const { data: contractItemsRows } = await supabase
-        .from('contract_items')
-        .select('id, equipment_id')
-        .eq('contract_id', id);
-      const equipmentIds = (contractItemsRows ?? [])
-        .map((i: any) => i.equipment_id)
-        .filter(Boolean) as string[];
-      // Mapa item→equipamento pra atividades amarradas a um item específico.
-      const itemEquipmentMap: Record<string, string | null> = {};
-      for (const it of (contractItemsRows ?? []) as { id: string; equipment_id: string | null }[]) {
-        itemEquipmentMap[it.id] = it.equipment_id ?? null;
-      }
 
       const effTechnicianId = input.technician_id !== undefined ? input.technician_id : null;
       const effTeamId = input.team_id !== undefined ? input.team_id : null;
@@ -1639,6 +2065,23 @@ export function useContracts() {
       const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
 
       const useGroupedEngine = effPlan.length > 0;
+
+      // Lê os itens DEPOIS do diff → reflete o novo conjunto de equipamentos.
+      // Inclui escopo + fase (motor por máquina). Lê ANTES de buildContractVisits.
+      const { data: contractItemsRows } = await supabase
+        .from('contract_items')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
+        .eq('contract_id', id);
+      const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
+      const equipmentIds = itemRows
+        .map((i) => i.equipment_id)
+        .filter(Boolean) as string[];
+      const itemEquipmentMap: Record<string, string | null> = {};
+      for (const it of itemRows) {
+        itemEquipmentMap[it.id] = it.equipment_id ?? null;
+      }
+      const machines = machinesFromItemRows(itemRows);
+
       const visits = buildContractVisits(
         {
           startDate: new Date(current.start_date + 'T12:00:00'),
@@ -1647,22 +2090,10 @@ export function useContracts() {
           horizonMonths: current.horizon_months as number,
           planActivities: effPlan,
           planActivityIds: effPlanIds,
+          machines: machines.length > 0 ? machines : undefined,
         },
         todayStr,
       );
-
-      // Lê os itens DEPOIS do diff → reflete o novo conjunto de equipamentos.
-      const { data: contractItemsRows } = await supabase
-        .from('contract_items')
-        .select('id, equipment_id')
-        .eq('contract_id', id);
-      const equipmentIds = (contractItemsRows ?? [])
-        .map((i: any) => i.equipment_id)
-        .filter(Boolean) as string[];
-      const itemEquipmentMap: Record<string, string | null> = {};
-      for (const it of (contractItemsRows ?? []) as { id: string; equipment_id: string | null }[]) {
-        itemEquipmentMap[it.id] = it.equipment_id ?? null;
-      }
 
       const effTechnicianId = (current.technician_id as string | null) ?? null;
       const effTeamId = (current.team_id as string | null) ?? null;
@@ -1825,6 +2256,19 @@ export function useContracts() {
       }));
       const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
       const useGroupedEngine = effPlan.length > 0;
+
+      const { data: contractItemsRows } = await supabase
+        .from('contract_items')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
+        .eq('contract_id', id);
+      const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
+      const equipmentIds = itemRows.map((i) => i.equipment_id).filter(Boolean) as string[];
+      const itemEquipmentMap: Record<string, string | null> = {};
+      for (const it of itemRows) {
+        itemEquipmentMap[it.id] = it.equipment_id ?? null;
+      }
+      const machines = machinesFromItemRows(itemRows);
+
       const visits = buildContractVisits(
         {
           startDate: new Date(current.start_date + 'T12:00:00'),
@@ -1833,19 +2277,11 @@ export function useContracts() {
           horizonMonths: current.horizon_months as number,
           planActivities: effPlan,
           planActivityIds: effPlanIds,
+          machines: machines.length > 0 ? machines : undefined,
         },
         todayStr,
       );
 
-      const { data: contractItemsRows } = await supabase
-        .from('contract_items')
-        .select('id, equipment_id')
-        .eq('contract_id', id);
-      const equipmentIds = (contractItemsRows ?? []).map((i: any) => i.equipment_id).filter(Boolean) as string[];
-      const itemEquipmentMap: Record<string, string | null> = {};
-      for (const it of (contractItemsRows ?? []) as { id: string; equipment_id: string | null }[]) {
-        itemEquipmentMap[it.id] = it.equipment_id ?? null;
-      }
       const effTechnicianId = (current.technician_id as string | null) ?? null;
       const effTeamId = (current.team_id as string | null) ?? null;
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
@@ -1978,6 +2414,22 @@ export function useContracts() {
       const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
       const useGroupedEngine = effPlan.length > 0;
 
+      // Equipamentos / mapa item→equipamento + máquinas (escopo + fase) do
+      // contrato. Lê ANTES de buildContractVisits pra alimentar o motor por máquina.
+      const { data: contractItemsRows } = await supabase
+        .from('contract_items')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
+        .eq('contract_id', id);
+      const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
+      const equipmentIds = itemRows
+        .map((i) => i.equipment_id)
+        .filter(Boolean) as string[];
+      const itemEquipmentMap: Record<string, string | null> = {};
+      for (const it of itemRows) {
+        itemEquipmentMap[it.id] = it.equipment_id ?? null;
+      }
+      const machines = machinesFromItemRows(itemRows);
+
       // Constrói a série completa no NOVO horizonte e corta pra só o tail novo:
       // visitas com data ESTRITAMENTE depois da última existente. Sem última
       // visita (contrato sem OS), gera tudo a partir do start (corte só pelo
@@ -2001,22 +2453,10 @@ export function useContracts() {
           horizonMonths: newHorizon,
           planActivities: effPlan,
           planActivityIds: effPlanIds,
+          machines: machines.length > 0 ? machines : undefined,
         },
         fromStr,
       );
-
-      // Equipamentos / mapa item→equipamento do contrato.
-      const { data: contractItemsRows } = await supabase
-        .from('contract_items')
-        .select('id, equipment_id')
-        .eq('contract_id', id);
-      const equipmentIds = (contractItemsRows ?? [])
-        .map((i: any) => i.equipment_id)
-        .filter(Boolean) as string[];
-      const itemEquipmentMap: Record<string, string | null> = {};
-      for (const it of (contractItemsRows ?? []) as { id: string; equipment_id: string | null }[]) {
-        itemEquipmentMap[it.id] = it.equipment_id ?? null;
-      }
 
       // Índice base pra numerar as novas visitas em sequência às existentes.
       const baseIndex = (contractOss || []).length;

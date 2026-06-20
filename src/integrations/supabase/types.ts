@@ -1334,6 +1334,8 @@ export type Database = {
           id: string
           item_description: string | null
           item_name: string
+          pmoc_scope: string
+          pmoc_start_visit: number
           sort_order: number | null
         }
         Insert: {
@@ -1345,6 +1347,8 @@ export type Database = {
           id?: string
           item_description?: string | null
           item_name: string
+          pmoc_scope?: string
+          pmoc_start_visit?: number
           sort_order?: number | null
         }
         Update: {
@@ -1356,6 +1360,8 @@ export type Database = {
           id?: string
           item_description?: string | null
           item_name?: string
+          pmoc_scope?: string
+          pmoc_start_visit?: number
           sort_order?: number | null
         }
         Relationships: [

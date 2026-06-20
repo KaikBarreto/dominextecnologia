@@ -131,6 +131,21 @@ export interface PlanilhaActivity {
   freq_months: number | null; // caso genérico (não-PMOC)
 }
 
+// Um bloco de plano POR EQUIPAMENTO (Fase 4). Cada máquina (contract_item) tem a
+// sua própria rotina: escopo da norma ('ac'|'full'), em que visita começa
+// (`startVisit` 1/3/6/12) e as atividades DELA. A matriz de 12 meses é FASEADA
+// por `startVisit` — espelha o motor (`positionForMonth`/`dueLevelsForPosition`
+// de useContracts.ts) pra bater EXATAMENTE com as visitas geradas.
+export interface PlanilhaMachineBlock {
+  /** Nome da máquina (equipamento) — cabeçalho do bloco. */
+  title: string;
+  /** 'ac' (só ar-condicionado) | 'full' (toda a norma) | null (geral/local). */
+  scope: "ac" | "full" | null;
+  /** Posição inicial no ciclo de 12 visitas (1/3/6/12). Default 12 (anual). */
+  startVisit: number;
+  activities: PlanilhaActivity[];
+}
+
 export interface PlanilhaData {
   tenant: {
     name: string;
@@ -178,6 +193,15 @@ export interface PlanilhaData {
    * das colunas pmoc_* legadas (com todos os equipamentos sem environment_id).
    */
   ambientes: PlanilhaAmbienteBlock[];
+  /**
+   * Plano POR EQUIPAMENTO (Fase 4): um bloco por máquina ('full' primeiro,
+   * depois 'ac', depois um bloco "Geral / Local" no fim quando há ≥1 máquina
+   * 'full'). Quando presente (length > 0), a Seção 5 renderiza por máquina.
+   * Quando vazio/ausente → fallback LEGADO: lista única via `activities`
+   * (idêntico ao planilha_v8). Contrato sem `contract_item_id` nas atividades
+   * cai sempre no legado.
+   */
+  planMachines?: PlanilhaMachineBlock[];
   activities: PlanilhaActivity[];
   generated_at_extenso: string;
   /**
@@ -224,12 +248,69 @@ function humanize(key: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// ---------------------------------------------------------------------------
+// Lógica de FASE — espelhada do motor (useContracts.ts) pra a matriz da planilha
+// bater EXATAMENTE com as visitas reais geradas:
+//   positionForMonth(startVisit, k) = ((startVisit - 1 + k) % 12) + 1
+//   níveis devidos em `pos`: M sempre; T se pos%3==0; S se pos%6==0; A se pos==12.
+// ---------------------------------------------------------------------------
+
+// Posição (1..12) de uma máquina no mês de índice k (0-based), dada a fase
+// inicial `startVisit` (1/3/6/12). IDÊNTICA ao motor.
+function positionForMonth(startVisit: number, monthIndex: number): number {
+  const sv = Number.isFinite(startVisit) && startVisit >= 1 ? startVisit : 12;
+  return ((((sv - 1 + monthIndex) % 12) + 12) % 12) + 1;
+}
+
+// Conjunto de níveis (M/T/S/A) DEVIDOS numa posição do ciclo (1..12). IDÊNTICA
+// ao motor (`dueLevelsForPosition`).
+function dueLevelsForPosition(pos: number): Set<string> {
+  const levels = new Set<string>(["M"]);
+  if (pos % 3 === 0) levels.add("T");
+  if (pos % 6 === 0) levels.add("S");
+  if (pos === 12) levels.add("A");
+  return levels;
+}
+
 // Meses em que uma atividade cai, na janela de 12 meses (0-based).
-// M=todo mês; T a cada 3; S a cada 6; A no índice 0 (mês 12 do ciclo anterior =
-// início). Eventual (E) → nunca marca (entra sob demanda). Caso genérico usa
-// freq_months. Regra alinhada ao motor (`k % meses == 0`).
-function monthsHit(freqCode: string | null, freqMonths: number | null): boolean[] {
+//
+// DOIS MODOS — controlados por `startVisit`:
+//  - `startVisit` AUSENTE (undefined) → modo LEGADO (planilha_v8): M=todo mês;
+//    T a cada 3; S a cada 6; A no índice 0; genérico usa freq_months. Regra
+//    `k % step == 0`. **Não mexer — preserva o PDF de contratos antigos.**
+//  - `startVisit` PRESENTE (1/3/6/12) → modo POR MÁQUINA (Fase 4): matriz
+//    FASEADA pela posição inicial. Para cada mês k, pos=positionForMonth(...);
+//    a atividade bate se o nível do seu freq_code ∈ dueLevelsForPosition(pos).
+//    Espelha o motor → a planilha bate com as visitas geradas.
+//
+// Eventual (E) → nunca marca (entra sob demanda) em ambos os modos.
+function monthsHit(
+  freqCode: string | null,
+  freqMonths: number | null,
+  startVisit?: number,
+): boolean[] {
   const hit = new Array(12).fill(false);
+
+  // ---- Modo POR MÁQUINA (faseado) — só quando startVisit é fornecido.
+  if (startVisit !== undefined) {
+    if (freqCode === "E") return hit;
+    // Atividade da norma (M/T/S/A): segue a fase exatamente como o motor.
+    if (freqCode && FREQ_MONTHS[freqCode]) {
+      for (let k = 0; k < 12; k++) {
+        const pos = positionForMonth(startVisit, k);
+        if (dueLevelsForPosition(pos).has(freqCode)) hit[k] = true;
+      }
+      return hit;
+    }
+    // Sem código de norma (freq_months livre / genérico): cai no modular global
+    // ancorado em k=0 — mesma exceção do motor (`isActivityDueAtMonth`).
+    if (freqMonths && freqMonths > 0) {
+      for (let k = 0; k < 12; k++) if (k % freqMonths === 0) hit[k] = true;
+    }
+    return hit;
+  }
+
+  // ---- Modo LEGADO (planilha_v8) — comportamento original intacto.
   let step = 0;
   if (freqCode && FREQ_MONTHS[freqCode]) {
     step = FREQ_MONTHS[freqCode];
@@ -837,8 +918,319 @@ function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
 // Layout `table-layout: fixed`: larguras explícitas por coluna. ITEM | DESCRIÇÃO
 // | FREQ | J F M A M J J A S O N D. A célula de DESCRIÇÃO quebra linha (wrap +
 // quebra de palavra longa) e NUNCA invade a coluna de freq/meses.
+//
+// DOIS CAMINHOS (Fase 4):
+//  - `planMachines` presente (≥1 bloco) → renderiza POR EQUIPAMENTO: um
+//    cabeçalho por máquina (nome + selo de escopo + "começa na visita N") e a
+//    matriz FASEADA pela `startVisit` daquela máquina.
+//  - ausente/vazio → LEGADO: lista única agrupada por seção, matriz não-faseada
+//    (idêntico ao planilha_v8). Garante back-compat de contratos antigos.
 function drawPlanTable(ctx: Ctx): void {
+  const machines = ctx.data.planMachines ?? [];
+  if (machines.length > 0) {
+    drawPlanPerMachine(ctx, machines);
+  } else {
+    drawPlanLegacy(ctx);
+  }
+  drawPlanLegend(ctx);
+}
+
+// Geometria das colunas da tabela do plano (compartilhada entre os 2 caminhos).
+function planGeometry() {
+  const itemW = 26; // "Nº" do item
+  const freqW = 30; // sigla M/T/S/A/E
+  const matrixW = 12 * 13; // 12 meses × 13pt
+  const descW = CONTENT_W - itemW - freqW - matrixW; // resto pra descrição
+  const monthW = matrixW / 12;
+  const itemX = MARGIN_X;
+  const descX = itemX + itemW;
+  const freqX = descX + descW;
+  const matrixX = freqX + freqW;
+  return { itemW, freqW, descW, monthW, itemX, descX, freqX, matrixX, padCell: 4 };
+}
+
+const GEO = planGeometry;
+
+// Cabeçalho da matriz (ITEM | DESCRIÇÃO | FREQ | J..D) — cinza, estilo modelo.
+function drawMatrixHeader(ctx: Ctx): void {
+  const { helvBold } = ctx;
+  const g = GEO();
+  const rowH = 16;
+  ensureSpace(ctx, rowH + 4);
+  const { page } = ctx;
+  const drawHdrCell = (x: number, w: number, label: string, center = false) => {
+    page.drawRectangle({
+      x,
+      y: ctx.cursorY - rowH,
+      width: w,
+      height: rowH,
+      color: COLORS.headerBg,
+      borderColor: COLORS.border,
+      borderWidth: 0.6,
+    });
+    const lw = helvBold.widthOfTextAtSize(label, 7);
+    page.drawText(label, {
+      x: center ? x + (w - lw) / 2 : x + g.padCell,
+      y: ctx.cursorY - rowH + 5,
+      size: 7,
+      font: helvBold,
+      color: COLORS.headerText,
+    });
+  };
+  drawHdrCell(g.itemX, g.itemW, "ITEM", true);
+  drawHdrCell(g.descX, g.descW, "DESCRIÇÃO DO SERVIÇO");
+  drawHdrCell(g.freqX, g.freqW, "FREQ", true);
+  for (let m = 0; m < 12; m++) {
+    const mx = g.matrixX + m * g.monthW;
+    const lbl = MESES_ABBR[m].slice(0, 1);
+    page.drawRectangle({
+      x: mx,
+      y: ctx.cursorY - rowH,
+      width: g.monthW,
+      height: rowH,
+      color: COLORS.headerBg,
+      borderColor: COLORS.border,
+      borderWidth: 0.6,
+    });
+    const lw = helvBold.widthOfTextAtSize(lbl, 6.5);
+    page.drawText(lbl, {
+      x: mx + (g.monthW - lw) / 2,
+      y: ctx.cursorY - rowH + 5,
+      size: 6.5,
+      font: helvBold,
+      color: COLORS.headerText,
+    });
+  }
+  ctx.cursorY -= rowH;
+}
+
+// Desenha UMA linha de atividade (ITEM/DESCRIÇÃO/FREQ + matriz). `startVisit`
+// undefined → matriz legada; definido → matriz faseada (modo por máquina).
+// `redrawHeader` é chamado se a linha forçar quebra de página.
+function drawActivityRow(
+  ctx: Ctx,
+  a: PlanilhaActivity,
+  itemNum: number,
+  rowIdx: number,
+  startVisit: number | undefined,
+  redrawHeader: () => void,
+): void {
   const { helv, helvBold } = ctx;
+  const g = GEO();
+  const descText = safe(a.description ?? "");
+  const descLines = wrapText(helv, descText, 7.5, g.descW - 2 * g.padCell);
+  const thisRowH = Math.max(15, descLines.length * 9 + 6);
+  if (ctx.cursorY - thisRowH < FOOTER_RESERVED_H) {
+    newPage(ctx);
+    redrawHeader();
+  }
+  const p = ctx.page;
+  const drawRowCellBorder = (x: number, w: number) => {
+    if (rowIdx % 2 === 1) {
+      p.drawRectangle({
+        x,
+        y: ctx.cursorY - thisRowH,
+        width: w,
+        height: thisRowH,
+        color: COLORS.rowAlt,
+      });
+    }
+    p.drawRectangle({
+      x,
+      y: ctx.cursorY - thisRowH,
+      width: w,
+      height: thisRowH,
+      borderColor: COLORS.border,
+      borderWidth: 0.6,
+    });
+  };
+  // ITEM
+  drawRowCellBorder(g.itemX, g.itemW);
+  const itemLbl = String(itemNum);
+  const ilw = helv.widthOfTextAtSize(itemLbl, 7.5);
+  p.drawText(itemLbl, {
+    x: g.itemX + (g.itemW - ilw) / 2,
+    y: ctx.cursorY - thisRowH / 2 - 3,
+    size: 7.5,
+    font: helv,
+    color: COLORS.black,
+  });
+  // DESCRIÇÃO (multi-linha)
+  drawRowCellBorder(g.descX, g.descW);
+  let ly = ctx.cursorY - 10;
+  for (const ln of descLines) {
+    p.drawText(ln, {
+      x: g.descX + g.padCell,
+      y: ly,
+      size: 7.5,
+      font: helv,
+      color: COLORS.black,
+    });
+    ly -= 9;
+  }
+  // FREQ
+  drawRowCellBorder(g.freqX, g.freqW);
+  const fLabel = a.freq_code
+    ? a.freq_code
+    : a.freq_months
+      ? `${a.freq_months}m`
+      : "—";
+  const flw = helvBold.widthOfTextAtSize(fLabel, 7.5);
+  p.drawText(fLabel, {
+    x: g.freqX + (g.freqW - flw) / 2,
+    y: ctx.cursorY - thisRowH / 2 - 3,
+    size: 7.5,
+    font: helvBold,
+    color: COLORS.accent,
+  });
+  // Matriz de meses (faseada ou legada conforme startVisit).
+  const hits = monthsHit(a.freq_code, a.freq_months, startVisit);
+  for (let m = 0; m < 12; m++) {
+    const mx = g.matrixX + m * g.monthW;
+    drawRowCellBorder(mx, g.monthW);
+    if (hits[m]) {
+      p.drawCircle({
+        x: mx + g.monthW / 2,
+        y: ctx.cursorY - thisRowH / 2,
+        size: 2.2,
+        color: COLORS.mark,
+      });
+    }
+  }
+  ctx.cursorY -= thisRowH;
+}
+
+// Faixa de sub-cabeçalho (cinza claro, full width) — usada pra grupo de seção.
+function drawGroupBand(ctx: Ctx, label: string): void {
+  const g = GEO();
+  const groupH = 14;
+  if (ctx.cursorY - (groupH + 16) < FOOTER_RESERVED_H) {
+    newPage(ctx);
+    drawMatrixHeader(ctx);
+  }
+  const { page } = ctx;
+  page.drawRectangle({
+    x: MARGIN_X,
+    y: ctx.cursorY - groupH,
+    width: CONTENT_W,
+    height: groupH,
+    color: COLORS.lightGray,
+    borderColor: COLORS.border,
+    borderWidth: 0.6,
+  });
+  page.drawText(safe(label).toUpperCase(), {
+    x: MARGIN_X + g.padCell,
+    y: ctx.cursorY - groupH + 4,
+    size: 7.5,
+    font: ctx.helvBold,
+    color: COLORS.accent,
+  });
+  ctx.cursorY -= groupH;
+}
+
+// Rótulo PT-BR da fase "começa na visita N" (1/3/6/12 → nível alcançado).
+function startVisitLabel(sv: number): string {
+  const map: Record<number, string> = {
+    1: "começa na Visita 1 (Mensal)",
+    3: "começa na Visita 3 (Mensal + Trimestral)",
+    6: "começa na Visita 6 (+ Semestral)",
+    12: "começa na Visita 12 (revisão Anual completa)",
+  };
+  return map[sv] ?? `começa na Visita ${sv}`;
+}
+
+// Selo de escopo PT-BR da máquina.
+function scopeLabel(scope: "ac" | "full" | null): string {
+  if (scope === "full") return "Toda a norma";
+  if (scope === "ac") return "Só ar-condicionado";
+  return "Geral / Local";
+}
+
+// Cabeçalho de bloco de MÁQUINA: nome + selo de escopo + fase. Faixa escura
+// (accent) com texto branco pra separar visualmente cada equipamento.
+function drawMachineHeader(ctx: Ctx, b: PlanilhaMachineBlock): void {
+  const headH = 26;
+  // Mantém o cabeçalho da máquina junto de pelo menos o cabeçalho da matriz.
+  if (ctx.cursorY - (headH + 20) < FOOTER_RESERVED_H) {
+    newPage(ctx);
+  }
+  const { page, helv, helvBold } = ctx;
+  page.drawRectangle({
+    x: MARGIN_X,
+    y: ctx.cursorY - headH,
+    width: CONTENT_W,
+    height: headH,
+    color: COLORS.accent,
+  });
+  // Nome do equipamento (linha 1).
+  let title = safe(b.title || "Equipamento");
+  while (title.length > 1 && helvBold.widthOfTextAtSize(title, 9.5) > CONTENT_W - 12) {
+    title = title.slice(0, -2) + "…";
+  }
+  page.drawText(title, {
+    x: MARGIN_X + 6,
+    y: ctx.cursorY - 12,
+    size: 9.5,
+    font: helvBold,
+    color: COLORS.white,
+  });
+  // Selo de escopo + fase (linha 2).
+  const sub = `${scopeLabel(b.scope)}  ·  ${b.scope === null ? "segue a fase do grande porte" : startVisitLabel(b.startVisit)}`;
+  page.drawText(safe(sub), {
+    x: MARGIN_X + 6,
+    y: ctx.cursorY - 22,
+    size: 7,
+    font: helv,
+    color: COLORS.white,
+  });
+  ctx.cursorY -= headH + 4;
+}
+
+// CAMINHO POR MÁQUINA (Fase 4): um bloco por equipamento, matriz faseada.
+function drawPlanPerMachine(ctx: Ctx, machines: PlanilhaMachineBlock[]): void {
+  let itemNum = 0;
+  for (const b of machines) {
+    drawMachineHeader(ctx, b);
+    if (b.activities.length === 0) {
+      ensureSpace(ctx, 16);
+      ctx.page.drawText("Sem atividades configuradas para este equipamento.", {
+        x: MARGIN_X,
+        y: ctx.cursorY - 10,
+        size: 8,
+        font: ctx.helv,
+        color: COLORS.gray,
+      });
+      ctx.cursorY -= 18;
+      continue;
+    }
+    drawMatrixHeader(ctx);
+    // Agrupa as atividades DA MÁQUINA por seção/componente.
+    const bySection = new Map<string, PlanilhaActivity[]>();
+    for (const a of b.activities) {
+      const key = a.section ?? "outros";
+      const arr = bySection.get(key) ?? [];
+      arr.push(a);
+      bySection.set(key, arr);
+    }
+    let rowIdx = 0;
+    for (const [section, acts] of bySection) {
+      drawGroupBand(ctx, sectionLabel(section));
+      for (const a of acts) {
+        itemNum++;
+        drawActivityRow(ctx, a, itemNum, rowIdx, b.startVisit, () =>
+          drawMatrixHeader(ctx),
+        );
+        rowIdx++;
+      }
+    }
+    ctx.cursorY -= 8;
+  }
+}
+
+// CAMINHO LEGADO (planilha_v8): lista única agrupada por seção, matriz NÃO
+// faseada. Comportamento original preservado para contratos antigos.
+function drawPlanLegacy(ctx: Ctx): void {
+  const { helv } = ctx;
 
   if (ctx.data.activities.length === 0) {
     ensureSpace(ctx, 30);
@@ -855,71 +1247,6 @@ function drawPlanTable(ctx: Ctx): void {
     return;
   }
 
-  // -- Larguras FIXAS das colunas (somam CONTENT_W). ----
-  const itemW = 26; // "Nº" do item
-  const freqW = 30; // sigla M/T/S/A/E
-  const matrixW = 12 * 13; // 12 meses × 13pt
-  const descW = CONTENT_W - itemW - freqW - matrixW; // resto pra descrição
-  const monthW = matrixW / 12;
-  // Offsets das colunas.
-  const itemX = MARGIN_X;
-  const descX = itemX + itemW;
-  const freqX = descX + descW;
-  const matrixX = freqX + freqW;
-  const padCell = 4;
-
-  // Cabeçalho da matriz (cinza, estilo modelo).
-  const drawMatrixHeader = () => {
-    const rowH = 16;
-    ensureSpace(ctx, rowH + 4);
-    const { page } = ctx;
-    // fundo cinza completo + bordas por coluna
-    const drawHdrCell = (x: number, w: number, label: string, center = false) => {
-      page.drawRectangle({
-        x,
-        y: ctx.cursorY - rowH,
-        width: w,
-        height: rowH,
-        color: COLORS.headerBg,
-        borderColor: COLORS.border,
-        borderWidth: 0.6,
-      });
-      const lw = helvBold.widthOfTextAtSize(label, 7);
-      page.drawText(label, {
-        x: center ? x + (w - lw) / 2 : x + padCell,
-        y: ctx.cursorY - rowH + 5,
-        size: 7,
-        font: helvBold,
-        color: COLORS.headerText,
-      });
-    };
-    drawHdrCell(itemX, itemW, "ITEM", true);
-    drawHdrCell(descX, descW, "DESCRIÇÃO DO SERVIÇO");
-    drawHdrCell(freqX, freqW, "FREQ", true);
-    for (let m = 0; m < 12; m++) {
-      const mx = matrixX + m * monthW;
-      const lbl = MESES_ABBR[m].slice(0, 1);
-      page.drawRectangle({
-        x: mx,
-        y: ctx.cursorY - rowH,
-        width: monthW,
-        height: rowH,
-        color: COLORS.headerBg,
-        borderColor: COLORS.border,
-        borderWidth: 0.6,
-      });
-      const lw = helvBold.widthOfTextAtSize(lbl, 6.5);
-      page.drawText(lbl, {
-        x: mx + (monthW - lw) / 2,
-        y: ctx.cursorY - rowH + 5,
-        size: 6.5,
-        font: helvBold,
-        color: COLORS.headerText,
-      });
-    }
-    ctx.cursorY -= rowH;
-  };
-
   // Agrupa por seção/componente.
   const bySection = new Map<string, PlanilhaActivity[]>();
   for (const a of ctx.data.activities) {
@@ -929,128 +1256,25 @@ function drawPlanTable(ctx: Ctx): void {
     bySection.set(key, arr);
   }
 
-  drawMatrixHeader();
+  drawMatrixHeader(ctx);
   let itemNum = 0;
   let rowIdx = 0;
   for (const [section, acts] of bySection) {
-    // Sub-cabeçalho do componente (em maiúsculas, faixa cinza clara — full width).
-    const groupH = 14;
-    if (ctx.cursorY - (groupH + 16) < FOOTER_RESERVED_H) {
-      newPage(ctx);
-      drawMatrixHeader();
-    }
-    {
-      const { page } = ctx;
-      page.drawRectangle({
-        x: MARGIN_X,
-        y: ctx.cursorY - groupH,
-        width: CONTENT_W,
-        height: groupH,
-        color: COLORS.lightGray,
-        borderColor: COLORS.border,
-        borderWidth: 0.6,
-      });
-      page.drawText(safe(sectionLabel(section)).toUpperCase(), {
-        x: MARGIN_X + padCell,
-        y: ctx.cursorY - groupH + 4,
-        size: 7.5,
-        font: helvBold,
-        color: COLORS.accent,
-      });
-      ctx.cursorY -= groupH;
-    }
-
+    drawGroupBand(ctx, sectionLabel(section));
     for (const a of acts) {
       itemNum++;
-      // Componente humanizado como prefixo SÓ quando difere do grupo (raro). O
-      // grupo já é o componente; aqui mostramos só a descrição limpa.
-      const descText = safe(a.description ?? "");
-      const descLines = wrapText(helv, descText, 7.5, descW - 2 * padCell);
-      const thisRowH = Math.max(15, descLines.length * 9 + 6);
-      if (ctx.cursorY - thisRowH < FOOTER_RESERVED_H) {
-        newPage(ctx);
-        drawMatrixHeader();
-      }
-      const p = ctx.page;
-      // Fundo zebra (todas as colunas).
-      const drawRowCellBorder = (x: number, w: number) => {
-        if (rowIdx % 2 === 1) {
-          p.drawRectangle({
-            x,
-            y: ctx.cursorY - thisRowH,
-            width: w,
-            height: thisRowH,
-            color: COLORS.rowAlt,
-          });
-        }
-        p.drawRectangle({
-          x,
-          y: ctx.cursorY - thisRowH,
-          width: w,
-          height: thisRowH,
-          borderColor: COLORS.border,
-          borderWidth: 0.6,
-        });
-      };
-      // ITEM
-      drawRowCellBorder(itemX, itemW);
-      const itemLbl = String(itemNum);
-      const ilw = helv.widthOfTextAtSize(itemLbl, 7.5);
-      p.drawText(itemLbl, {
-        x: itemX + (itemW - ilw) / 2,
-        y: ctx.cursorY - thisRowH / 2 - 3,
-        size: 7.5,
-        font: helv,
-        color: COLORS.black,
-      });
-      // DESCRIÇÃO (multi-linha, dentro da célula)
-      drawRowCellBorder(descX, descW);
-      let ly = ctx.cursorY - 10;
-      for (const ln of descLines) {
-        p.drawText(ln, {
-          x: descX + padCell,
-          y: ly,
-          size: 7.5,
-          font: helv,
-          color: COLORS.black,
-        });
-        ly -= 9;
-      }
-      // FREQ
-      drawRowCellBorder(freqX, freqW);
-      const fLabel = a.freq_code
-        ? a.freq_code
-        : a.freq_months
-          ? `${a.freq_months}m`
-          : "—";
-      const flw = helvBold.widthOfTextAtSize(fLabel, 7.5);
-      p.drawText(fLabel, {
-        x: freqX + (freqW - flw) / 2,
-        y: ctx.cursorY - thisRowH / 2 - 3,
-        size: 7.5,
-        font: helvBold,
-        color: COLORS.accent,
-      });
-      // Matriz de meses (bordas + bolinha verde quando o mês cai).
-      const hits = monthsHit(a.freq_code, a.freq_months);
-      for (let m = 0; m < 12; m++) {
-        const mx = matrixX + m * monthW;
-        drawRowCellBorder(mx, monthW);
-        if (hits[m]) {
-          p.drawCircle({
-            x: mx + monthW / 2,
-            y: ctx.cursorY - thisRowH / 2,
-            size: 2.2,
-            color: COLORS.mark,
-          });
-        }
-      }
-      ctx.cursorY -= thisRowH;
+      // startVisit undefined → matriz legada (idêntica ao v8).
+      drawActivityRow(ctx, a, itemNum, rowIdx, undefined, () =>
+        drawMatrixHeader(ctx),
+      );
       rowIdx++;
     }
   }
+}
 
-  // Legenda de periodicidade.
+// Legenda de periodicidade (comum aos dois caminhos).
+function drawPlanLegend(ctx: Ctx): void {
+  const { helv } = ctx;
   ctx.cursorY -= 12;
   ensureSpace(ctx, 14);
   const legend = "M=Mensal  T=Trimestral  S=Semestral  A=Anual  E=Eventual   (bolinha verde = mes previsto)";

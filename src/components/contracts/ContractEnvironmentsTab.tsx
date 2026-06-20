@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
-import { ShieldCheck, Plus, Check, Trash2, Loader2, Wrench } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ShieldCheck, Plus, Check, Trash2, Loader2, Wrench, HelpCircle, CalendarCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +21,30 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useEquipment } from '@/hooks/useEquipment';
-import { useContracts, REGENERABLE_OS_STATUSES, type Contract } from '@/hooks/useContracts';
+import {
+  useContracts,
+  useContractPlanActivities,
+  REGENERABLE_OS_STATUSES,
+  type Contract,
+} from '@/hooks/useContracts';
+import { usePmocActivityCatalog } from '@/hooks/usePmocActivityCatalog';
+import {
+  type PmocMachineScope,
+  type MachineConfig,
+  type PlanActivityRow,
+  type MachineItemRef,
+  START_VISIT_OPTIONS,
+  startVisitLabel,
+  firstVisitContents,
+  catalogFreqCode,
+  catalogToPlanRow,
+  machineCatalogActivities,
+  reconstructMachineConfigs,
+  buildDefaultMachineConfig,
+  buildPmocPlanFromMachines,
+  buildPmocItemsWithScope,
+  planRowToInput,
+} from '@/components/contracts/pmocMachineRoutine';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -56,6 +84,16 @@ function parseIntOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Frequências por serviço (rótulos da norma PMOC) — usadas pra exibir o selo de
+// frequência default no picker do catálogo.
+const ACTIVITY_FREQ_OPTIONS: { code: string; label: string }[] = [
+  { code: 'M', label: 'Mensal' },
+  { code: 'T', label: 'Trimestral' },
+  { code: 'S', label: 'Semestral' },
+  { code: 'A', label: 'Anual' },
+  { code: 'E', label: 'Eventual' },
+];
+
 let envKeySeq = 0;
 function newEnvRow(): EnvRow {
   envKeySeq += 1;
@@ -74,16 +112,25 @@ function newEnvRow(): EnvRow {
 /**
  * Aba "Ambientes" da tela de detalhe (contrato PMOC). CRUD dos ambientes
  * climatizados + atribuição de equipamentos por ambiente (exclusivo entre
- * ambientes). Ao salvar, dispara `updateContractEnvironments` (diff de itens +
- * sync de ambientes + regeneração de visitas futuras quando o conjunto de
- * equipamentos muda) — nunca toca a linha do contrato. Mudança que refaz visitas
- * futuras passa pelo diálogo de confirmação.
+ * ambientes) + a ROTINA POR MÁQUINA (escopo da norma + começa-na-visita +
+ * checklists do catálogo PMOC), com paridade total ao formulário de contrato.
+ *
+ * Salvar usa LITERALMENTE o mesmo caminho do formulário: monta `items` (com
+ * pmoc_scope/pmoc_start_visit) e `plan_activities` (por máquina + bucket local)
+ * pelos builders compartilhados de `pmocMachineRoutine` e chama
+ * `updateContract.mutateAsync` — que persiste itens+plano por máquina e regenera
+ * as visitas futuras (preservando passadas/em-andamento/concluídas). Sem
+ * divergência de lógica com o ContractFormDialog.
  */
 export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabProps) {
   const { toast } = useToast();
-  const { updateContractEnvironments } = useContracts();
+  const { updateContract } = useContracts();
   const { equipment } = useEquipment(contract.customer_id || undefined);
   const activeEquipment = useMemo(() => equipment.filter((eq: any) => eq.status === 'active'), [equipment]);
+  const { data: existingPlan } = useContractPlanActivities(contract.id);
+  const { activities: catalogActivities, groups: catalogGroups, isLoading: catalogLoading } = usePmocActivityCatalog();
+
+  const isPmoc = !!contract.is_pmoc;
 
   // Conjunto inicial de ambientes a partir do que está persistido (+ agrupamento
   // de equipamentos por environment_id, lido dos contract_items).
@@ -113,6 +160,57 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const [regenCount, setRegenCount] = useState(0);
   const [saving, setSaving] = useState(false);
 
+  // Rotina POR MÁQUINA (Fase 5). Chave = equipment_id. Reconstruída do que está
+  // persistido (contract_items + contract_plan_activities) pela MESMA fonte única
+  // usada pelo formulário; auto-sincada com os equipamentos dos ambientes.
+  const [machineConfigs, setMachineConfigs] = useState<Record<string, MachineConfig>>({});
+  // Snapshot da reconstrução inicial — base pra detectar mudança de rotina.
+  const [initialMachineConfigs, setInitialMachineConfigs] = useState<Record<string, MachineConfig>>({});
+  const [machineConfigsLoaded, setMachineConfigsLoaded] = useState(false);
+
+  // Picker do catálogo PMOC POR MÁQUINA. `pickerMachineEqId` = equipamento alvo;
+  // ao confirmar, a seleção SUBSTITUI a listagem daquela máquina.
+  const [showCatalogPicker, setShowCatalogPicker] = useState(false);
+  const [pickerMachineEqId, setPickerMachineEqId] = useState<string | null>(null);
+  const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
+
+  // Reconstrói as configs por máquina ao carregar o contrato + o plano + o
+  // catálogo. Fonte ÚNICA compartilhada (mesma do form em edição). Só PMOC.
+  useEffect(() => {
+    if (!isPmoc) return;
+    if (catalogLoading || catalogActivities.length === 0) return;
+    if (existingPlan === undefined) return; // espera a query do plano resolver
+    if (machineConfigsLoaded) return;
+    const configs = reconstructMachineConfigs({
+      items: (contract.contract_items || []) as any[],
+      plan: (existingPlan ?? []) as any[],
+      catalogActivities,
+    });
+    setMachineConfigs(configs);
+    setInitialMachineConfigs(configs);
+    setMachineConfigsLoaded(true);
+  }, [isPmoc, contract.contract_items, existingPlan, catalogLoading, catalogActivities, machineConfigsLoaded]);
+
+  // Mantém os machineConfigs sincronizados com os equipamentos dos ambientes:
+  // cria config default pra máquina nova; remove a da máquina que saiu. Não toca
+  // em config existente (preserva escopo/fase/listagem). Só roda após a carga.
+  useEffect(() => {
+    if (!isPmoc || !machineConfigsLoaded) return;
+    if (catalogLoading || catalogActivities.length === 0) return;
+    const selectedIds = new Set<string>();
+    for (const env of envs) for (const id of env.equipment_ids) selectedIds.add(id);
+    setMachineConfigs((prev) => {
+      let changed = false;
+      const next: Record<string, MachineConfig> = {};
+      for (const id of selectedIds) {
+        if (prev[id]) next[id] = prev[id];
+        else { next[id] = buildDefaultMachineConfig(catalogActivities, id, 'ac'); changed = true; }
+      }
+      for (const id of Object.keys(prev)) if (!selectedIds.has(id)) changed = true;
+      return changed ? next : prev;
+    });
+  }, [isPmoc, machineConfigsLoaded, envs, catalogLoading, catalogActivities]);
+
   // Mapa equipment_id → key do ambiente que o reivindica (exclusividade).
   const equipmentOwnerEnvKey = useMemo(() => {
     const map = new Map<string, string>();
@@ -136,13 +234,34 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         ].join('|'),
       )
       .join('§');
-  const dirty = sigOf(initialEnvs) !== sigOf(envs);
 
-  // Conjunto de equipamentos mudou? (só ele dispara regeneração de visitas)
+  // Assinatura da rotina por máquina (escopo + fase + listagem do catálogo). É o
+  // que diferencia a rotina entre estados — usada pra detectar dirty e mudança de
+  // cronograma (escopo/fase/checklists re-expandem as visitas).
+  const machineSigOf = (cfgs: Record<string, MachineConfig>) =>
+    Object.keys(cfgs)
+      .sort()
+      .map((eqId) => {
+        const c = cfgs[eqId];
+        const acts = [...c.activities]
+          .map((a) => a.catalog_activity_id ?? a.description.trim())
+          .sort()
+          .join(',');
+        return `${eqId}:${c.scope}:${c.startVisit}:${acts}`;
+      })
+      .join('§');
+
+  const envsDirty = sigOf(initialEnvs) !== sigOf(envs);
+  const machineDirty = machineConfigsLoaded && machineSigOf(initialMachineConfigs) !== machineSigOf(machineConfigs);
+  const dirty = envsDirty || machineDirty;
+
+  // O cronograma muda quando o conjunto de equipamentos OU a rotina por máquina
+  // (escopo/fase/checklists) muda — ambos re-expandem as visitas futuras.
   const equipmentSetChanged = useMemo(() => {
     const flat = (rows: EnvRow[]) => [...new Set(rows.flatMap((e) => e.equipment_ids))].sort().join(',');
     return flat(initialEnvs) !== flat(envs);
   }, [initialEnvs, envs]);
+  const scheduleChanged = equipmentSetChanged || machineDirty;
 
   const totalEquipment = useMemo(
     () => new Set(envs.flatMap((e) => e.equipment_ids)).size,
@@ -175,6 +294,64 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     );
   };
 
+  // ---- Rotina por máquina (mesmos handlers do form) -------------------------
+  const setMachineScope = (eqId: string, scope: PmocMachineScope) => {
+    setMachineConfigs((prev) => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      const acts = machineCatalogActivities(catalogActivities, scope).map((a) => ({
+        ...catalogToPlanRow(a),
+        applies_per_equipment: true,
+        equipment_ref: eqId,
+      }));
+      return { ...prev, [eqId]: { ...cur, scope, activities: acts, customized: false } };
+    });
+  };
+  const setMachineStartVisit = (eqId: string, startVisit: number) => {
+    setMachineConfigs((prev) => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      return { ...prev, [eqId]: { ...cur, startVisit } };
+    });
+  };
+
+  // Picker do catálogo POR MÁQUINA: abre já marcado com a listagem atual; ao
+  // confirmar, a seleção SUBSTITUI a listagem daquela máquina (personaliza).
+  const openMachinePicker = (eqId: string) => {
+    setPickerMachineEqId(eqId);
+    const cfg = machineConfigs[eqId];
+    const current = new Set((cfg?.activities ?? []).map((a) => a.catalog_activity_id).filter(Boolean) as string[]);
+    setPickerSelection(current);
+    setShowCatalogPicker(true);
+  };
+  const togglePickerActivity = (id: string) =>
+    setPickerSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const confirmCatalogPicker = () => {
+    if (!pickerMachineEqId) { setShowCatalogPicker(false); return; }
+    const eqId = pickerMachineEqId;
+    const selected: PlanActivityRow[] = [];
+    for (const group of catalogGroups) {
+      for (const act of group.activities) {
+        if (pickerSelection.has(act.id)) {
+          selected.push({ ...catalogToPlanRow(act), applies_per_equipment: true, equipment_ref: eqId });
+        }
+      }
+    }
+    setMachineConfigs((prev) => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      return { ...prev, [eqId]: { ...cur, activities: selected, customized: true } };
+    });
+    toast({ title: `Checklists da máquina atualizados (${selected.length} item(ns))` });
+    setShowCatalogPicker(false);
+    setPickerMachineEqId(null);
+  };
+
   // Quantas OSs futuras não-realizadas seriam refeitas (preview do diálogo).
   const futureRegenerable = useMemo(() => {
     const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -191,22 +368,30 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
 
   const isActive = contract.status === 'active';
 
-  const buildPayload = () => {
+  // Equipamentos (contract_items) derivados dos ambientes — 1 por equipamento
+  // atribuído. Espelha o pmocDerivedItems do form.
+  const derivedItems = useMemo<MachineItemRef[]>(() => {
     const seen = new Set<string>();
-    const items: { equipment_id: string; item_name: string; item_description?: string | null }[] = [];
+    const out: MachineItemRef[] = [];
     for (const env of envs) {
       for (const eqId of env.equipment_ids) {
         if (seen.has(eqId)) continue;
         seen.add(eqId);
         const eq = activeEquipment.find((e: any) => e.id === eqId) || equipment.find((e: any) => e.id === eqId);
         if (!eq) continue;
-        items.push({
+        out.push({
           equipment_id: eq.id,
           item_name: eq.name,
           item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || null,
         });
       }
     }
+    return out;
+  }, [envs, activeEquipment, equipment]);
+
+  // Monta o payload do mesmo jeito que o form: itens com escopo/fase + plano por
+  // máquina (+ bucket local), ambientes. Tudo via builders compartilhados.
+  const buildPayload = () => {
     const environments = envs.map((e) => ({
       id: e.id,
       identificacao: e.identificacao.trim() || null,
@@ -217,15 +402,41 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       carga_termica_tr: parseDecimalBR(e.carga_termica_tr),
       equipment_ids: e.equipment_ids,
     }));
-    return { items, environments };
+
+    // Contrato não-PMOC: comportamento leve antigo (só itens básicos + ambientes,
+    // sem escopo/plano por máquina).
+    if (!isPmoc) {
+      const items = derivedItems.map((i) => ({
+        equipment_id: i.equipment_id,
+        item_name: i.item_name,
+        item_description: i.item_description,
+      }));
+      return { items, environments, plan_activities: undefined as any };
+    }
+
+    const items = buildPmocItemsWithScope({ items: derivedItems, machineConfigs });
+    const planRows = buildPmocPlanFromMachines({ items: derivedItems, machineConfigs, catalogActivities });
+    const plan_activities = planRows.map(planRowToInput);
+    return { items, environments, plan_activities };
   };
 
   const applySave = async () => {
     setShowRegenConfirm(false);
     setSaving(true);
     try {
-      const { items, environments } = buildPayload();
-      await updateContractEnvironments.mutateAsync({ id: contract.id, items, environments });
+      const { items, environments, plan_activities } = buildPayload();
+      // MESMO code path do formulário: updateContract persiste itens (com escopo/
+      // fase), plano por máquina (resolve contract_item_id via equipment_ref) e
+      // regenera as visitas futuras preservando passadas/em-andamento/concluídas.
+      await updateContract.mutateAsync({
+        id: contract.id,
+        items,
+        environments,
+        ...(isPmoc ? { plan_activities } : {}),
+      });
+      // Recarrega o snapshot da rotina (evita "dirty" após salvar). A query do
+      // plano/contrato é invalidada pelo hook; o efeito de reconstrução roda de novo.
+      setMachineConfigsLoaded(false);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
     } finally {
@@ -235,8 +446,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
 
   const handleSave = () => {
     if (!dirty) return;
-    // Só o conjunto de equipamentos refaz visitas — campos de ambiente não.
-    if (isActive && equipmentSetChanged && futureRegenerable > 0) {
+    if (isActive && scheduleChanged && futureRegenerable > 0) {
       setRegenCount(futureRegenerable);
       setShowRegenConfirm(true);
       return;
@@ -244,7 +454,10 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     void applySave();
   };
 
-  const handleReset = () => setEnvs(initialEnvs);
+  const handleReset = () => {
+    setEnvs(initialEnvs);
+    setMachineConfigs(initialMachineConfigs);
+  };
 
   return (
     <div className="space-y-6 min-w-0 w-full">
@@ -315,15 +528,45 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                       <Input inputMode="decimal" value={env.area_climatizada_m2} onChange={(e) => updateField(env.key, 'area_climatizada_m2', e.target.value)} placeholder="Ex: 120,5" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Carga térmica (TR)</Label>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs">Carga térmica (TR)</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que é TR?">
+                              <HelpCircle className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
+                        </Tooltip>
+                      </div>
                       <Input inputMode="decimal" value={env.carga_termica_tr} onChange={(e) => updateField(env.key, 'carga_termica_tr', e.target.value)} placeholder="Ex: 5,0" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Nº de ocupantes fixos</Label>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs">Nº de ocupantes fixos</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes fixos?">
+                              <HelpCircle className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local).</TooltipContent>
+                        </Tooltip>
+                      </div>
                       <Input inputMode="numeric" value={env.ocupantes_fixos} onChange={(e) => updateField(env.key, 'ocupantes_fixos', e.target.value)} placeholder="Ex: 12" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes flutuantes?">
+                              <HelpCircle className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes).</TooltipContent>
+                        </Tooltip>
+                      </div>
                       <Input inputMode="numeric" value={env.ocupantes_flutuantes} onChange={(e) => updateField(env.key, 'ocupantes_flutuantes', e.target.value)} placeholder="Ex: 30" />
                     </div>
                   </div>
@@ -336,33 +579,125 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     {activeEquipment.length === 0 ? (
                       <p className="text-xs text-muted-foreground">O cliente não tem equipamentos ativos cadastrados.</p>
                     ) : (
-                      <div className="max-h-44 divide-y overflow-y-auto rounded-md border">
+                      <div className="max-h-96 divide-y overflow-y-auto rounded-md border">
                         {activeEquipment.map((eq: any) => {
                           const checked = env.equipment_ids.includes(eq.id);
                           const ownerKey = equipmentOwnerEnvKey.get(eq.id);
                           const ownedByOther = !checked && ownerKey && ownerKey !== env.key;
+                          const cfg = machineConfigs[eq.id];
                           return (
-                            <label
-                              key={eq.id}
-                              className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors',
-                                ownedByOther ? 'opacity-50' : 'hover:bg-muted/50',
+                            <div key={eq.id} className={cn(ownedByOther && 'opacity-50')}>
+                              <label
+                                className={cn(
+                                  'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors',
+                                  !ownedByOther && 'hover:bg-muted/50',
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-border"
+                                  checked={checked}
+                                  onChange={() => toggleEquipment(env.key, eq.id)}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium">{eq.name}</p>
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                                    {ownedByOther && ' · já em outro ambiente'}
+                                  </p>
+                                </div>
+                              </label>
+
+                              {/* Rotina POR MÁQUINA (Fase 5) — paridade com o formulário.
+                                  Só PMOC e só quando o equipamento está marcado. Escopo +
+                                  começa-na-visita + checklists do catálogo. */}
+                              {isPmoc && checked && (
+                                <div className="px-3 pb-3 pt-1 space-y-2.5 bg-muted/20">
+                                  {/* 1) Escopo da norma */}
+                                  <div className="flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[11px] font-medium text-muted-foreground">Escopo da norma</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre o escopo">
+                                            <HelpCircle className="h-3.5 w-3.5" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs text-xs">
+                                          "Só ar-condicionado" cobre split/ACJ comum. "Toda a norma" inclui as seções de grande porte (VRF, Chiller, Torre, casa de máquinas…).
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                    <LabeledSwitch
+                                      value={cfg?.scope ?? 'ac'}
+                                      onChange={(v) => setMachineScope(eq.id, v as PmocMachineScope)}
+                                      off={{ value: 'ac', label: 'Só ar-condicionado' }}
+                                      on={{ value: 'full', label: 'Toda a norma (grande porte)' }}
+                                      size="default"
+                                      className="[&_button]:text-xs"
+                                      aria-label="Escopo da norma da máquina"
+                                    />
+                                  </div>
+
+                                  {/* 2) Começa na visita */}
+                                  <div className="flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                            <HelpCircle className="h-3.5 w-3.5" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs text-xs">
+                                          Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                    <Select
+                                      value={String(cfg?.startVisit ?? 12)}
+                                      onValueChange={(v) => setMachineStartVisit(eq.id, Number(v))}
+                                    >
+                                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {START_VISIT_OPTIONS.map((o) => (
+                                          <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {/* 3) Checklists da máquina */}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
+                                      {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs"
+                                      disabled={catalogLoading}
+                                      onClick={() => openMachinePicker(eq.id)}
+                                    >
+                                      <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
+                                      Checklists do catálogo PMOC
+                                    </Button>
+                                  </div>
+
+                                  {/* Preview: em que visita começa e o que inclui */}
+                                  {cfg && (
+                                    <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                      <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
+                                      <span>
+                                        Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                            >
-                              <input
-                                type="checkbox"
-                                className="rounded border-border"
-                                checked={checked}
-                                onChange={() => toggleEquipment(env.key, eq.id)}
-                              />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">{eq.name}</p>
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {[eq.brand, eq.model].filter(Boolean).join(' - ')}
-                                  {ownedByOther && ' · já em outro ambiente'}
-                                </p>
-                              </div>
-                            </label>
+                            </div>
                           );
                         })}
                       </div>
@@ -381,7 +716,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           {dirty && (
             <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                {equipmentSetChanged
+                {scheduleChanged
                   ? 'Alterações não salvas. Salvar recalcula as visitas futuras (realizadas e em andamento são preservadas).'
                   : 'Alterações não salvas nos dados dos ambientes.'}
               </p>
@@ -409,6 +744,124 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           )}
         </CardContent>
       </Card>
+
+      {/* Picker do catálogo PMOC por máquina (drawer no mobile, dialog no desktop). */}
+      <ResponsiveModal
+        open={showCatalogPicker}
+        onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) setPickerMachineEqId(null); }}
+        title="Checklists da máquina (catálogo PMOC)"
+        footer={
+          <div className="flex flex-row items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">{pickerSelection.size} selecionada(s)</span>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); }}>Cancelar</Button>
+              <Button onClick={confirmCatalogPicker}>Aplicar à máquina</Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Atividades de manutenção conforme a norma (Lei 13.589/2018). Marque as que se aplicam a esta máquina.
+            A frequência vem da norma como ponto de partida.
+          </p>
+          {catalogGroups.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              {catalogLoading ? 'Carregando catálogo...' : 'Nenhuma atividade no catálogo.'}
+            </p>
+          ) : (
+            <>
+              {(() => {
+                const allIds = catalogGroups.flatMap((g) => g.activities.map((a) => a.id));
+                const allChecked = allIds.length > 0 && allIds.every((id) => pickerSelection.has(id));
+                return (
+                  <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">Selecionar todas as seções</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs shrink-0"
+                      onClick={() => setPickerSelection(allChecked ? new Set() : new Set(allIds))}
+                    >
+                      {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
+                    </Button>
+                  </div>
+                );
+              })()}
+              <Accordion type="multiple" defaultValue={[catalogGroups[0]?.section]} className="w-full">
+                {catalogGroups.map((group) => {
+                  const selectedInGroup = group.activities.filter((a) => pickerSelection.has(a.id)).length;
+                  const groupIds = group.activities.map((a) => a.id);
+                  const groupAllChecked = groupIds.length > 0 && groupIds.every((id) => pickerSelection.has(id));
+                  const toggleGroup = () => setPickerSelection((prev) => {
+                    const next = new Set(prev);
+                    if (groupAllChecked) groupIds.forEach((id) => next.delete(id));
+                    else groupIds.forEach((id) => next.add(id));
+                    return next;
+                  });
+                  return (
+                    <AccordionItem key={group.section} value={group.section}>
+                      <AccordionTrigger className="text-sm">
+                        <span className="flex flex-1 items-center gap-2 text-left">
+                          {group.label}
+                          <Badge variant="outline" className="text-[10px] shrink-0">{group.activities.length}</Badge>
+                          {selectedInGroup > 0 && (
+                            <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
+                          )}
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="ml-auto mr-2 shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(); } }}
+                          >
+                            {groupAllChecked ? 'Desmarcar' : 'Marcar todos'}
+                          </span>
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-1">
+                          {group.activities.map((act) => {
+                            const checked = pickerSelection.has(act.id);
+                            const freqLabel = ACTIVITY_FREQ_OPTIONS.find((o) => o.code === catalogFreqCode(act.default_freq_code))?.label
+                              ?? act.default_freq_code;
+                            return (
+                              <label
+                                key={act.id}
+                                className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5 rounded border-border shrink-0"
+                                  checked={checked}
+                                  onChange={() => togglePickerActivity(act.id)}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-foreground">{act.description}</p>
+                                  {act.component && (
+                                    <p className="text-xs text-muted-foreground truncate">{act.component}</p>
+                                  )}
+                                </div>
+                                <Badge
+                                  variant={catalogFreqCode(act.default_freq_code) === 'E' ? 'outline' : 'info'}
+                                  className="shrink-0 text-[10px]"
+                                >
+                                  {freqLabel}
+                                </Badge>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </>
+          )}
+        </div>
+      </ResponsiveModal>
 
       {/* Confirmação de remoção de ambiente. */}
       <AlertDialog open={!!removingEnvKey} onOpenChange={(open) => { if (!open) setRemovingEnvKey(null); }}>
@@ -440,8 +893,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  Mudar os equipamentos dos ambientes vai <strong>refazer {regenCount} visita(s) futura(s)</strong> ainda
-                  não realizadas, atualizando o checklist por equipamento.
+                  Mudar os equipamentos ou a rotina (escopo, fase, checklists) vai{' '}
+                  <strong>refazer {regenCount} visita(s) futura(s)</strong> ainda não realizadas, atualizando o checklist
+                  por equipamento.
                 </p>
                 <p className="text-sm">
                   Visitas <strong>concluídas, em andamento</strong> e <strong>passadas</strong> são preservadas intactas.

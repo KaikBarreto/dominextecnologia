@@ -28,6 +28,23 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 import { usePmocActivityCatalog, type PmocCatalogActivity, PMOC_DEFAULT_SECTION } from '@/hooks/usePmocActivityCatalog';
+import {
+  type PmocMachineScope,
+  type PlanActivityRow,
+  type MachineConfig,
+  START_VISIT_OPTIONS,
+  startVisitLabel,
+  firstVisitContents,
+  machineCatalogActivities,
+  catalogFreqCode,
+  catalogToPlanRow,
+  planRowToInput,
+  planRowToFreqCode,
+  buildDefaultMachineConfig as buildDefaultMachineConfigShared,
+  reconstructMachineConfigs,
+  buildPmocPlanFromMachines,
+  buildPmocItemsWithScope,
+} from '@/components/contracts/pmocMachineRoutine';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
@@ -36,7 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -105,99 +122,13 @@ const ACTIVITY_FREQ_OPTIONS: { code: FreqCode; label: string }[] = [
   { code: 'E', label: 'Eventual' },
 ];
 
-// Seções da norma cujas atividades são de LOCAL (não se repetem por aparelho):
-// casa de máquinas, dutos, torres, bombas, etc. Tudo fora desse conjunto
-// (condicionadores, medições, testes…) é por equipamento por default.
-const LOCAL_SCOPE_SECTIONS = new Set<string>([
-  'casa_maquinas',
-  'dutos',
-  'tomada_ar_exterior',
-  'torres_resfriamento',
-  'bombas_agua',
-  'caixa_expansao',
-  'tratamento_quimico',
-  'quadros_eletricos',
-  'qualidade_ar',
-]);
-
-// Escopo default de uma atividade do catálogo a partir da seção. Atividade sem
-// seção (manual livre) é por equipamento por default.
-function defaultScopeForSection(section: string | null | undefined): boolean {
-  if (section && LOCAL_SCOPE_SECTIONS.has(section)) return false; // local
-  return true; // por equipamento
-}
-
-// Linha do editor de plano (estado de UI). Vira PlanActivityInput no submit.
-// Carrega os metadados do catálogo PMOC (section/component/medição) quando a
-// linha vem do picker; linhas manuais livres só têm description + freq_code.
-interface PlanActivityRow {
-  description: string;
-  guidance?: string | null;
-  freq_code: FreqCode;
-  section?: string | null;
-  component?: string | null;
-  is_measurement?: boolean;
-  unit?: string | null;
-  expected_min?: number | null;
-  expected_max?: number | null;
-  catalog_activity_id?: string | null;
-  // Escopo (Fase 3): true = por equipamento (default), false = geral/local.
-  applies_per_equipment?: boolean;
-}
-
-// Linha do editor → PlanActivityInput (preserva os metadados do catálogo).
-function planRowToInput(a: PlanActivityRow): PlanActivityInput {
-  return {
-    description: a.description,
-    guidance: a.guidance ?? null,
-    freq_code: a.freq_code,
-    section: a.section ?? null,
-    component: a.component ?? null,
-    is_measurement: a.is_measurement ?? false,
-    unit: a.unit ?? null,
-    expected_min: a.expected_min ?? null,
-    expected_max: a.expected_max ?? null,
-    catalog_activity_id: a.catalog_activity_id ?? null,
-    applies_per_equipment: a.applies_per_equipment ?? true,
-  };
-}
-
-// Normaliza o default_freq_code do catálogo (string) pro FreqCode do editor.
-function catalogFreqCode(code: string | null | undefined): FreqCode {
-  if (code && ['M', 'T', 'S', 'A', 'E'].includes(code)) return code as FreqCode;
-  return 'M';
-}
-
-// Atividade do catálogo PMOC → linha editável do plano (ponto de partida).
-function catalogToPlanRow(a: PmocCatalogActivity): PlanActivityRow {
-  return {
-    description: a.description,
-    guidance: a.guidance ?? null,
-    freq_code: catalogFreqCode(a.default_freq_code),
-    section: a.section,
-    component: a.component,
-    is_measurement: a.is_measurement,
-    unit: a.unit,
-    expected_min: a.expected_min,
-    expected_max: a.expected_max,
-    catalog_activity_id: a.id,
-    // Escopo default vem da seção da norma (aparelho vs. local).
-    applies_per_equipment: defaultScopeForSection(a.section),
-  };
-}
-
-// Mapeia uma linha persistida (freq_code OU freq_months) pro código que o editor
-// suporta (M/T/S/A/E). freq_code ganha; senão deriva de freq_months; default M.
-function planRowToFreqCode(row: { freq_code: string | null; freq_months: number | null }): FreqCode {
-  if (row.freq_code && ['M', 'T', 'S', 'A', 'E'].includes(row.freq_code)) return row.freq_code as FreqCode;
-  switch (row.freq_months) {
-    case 1: return 'M';
-    case 3: return 'T';
-    case 6: return 'S';
-    case 12: return 'A';
-    default: return 'M';
-  }
-}
+// Rotina POR MÁQUINA (escopo/fase/checklists do catálogo) e helpers do plano
+// vivem em @/components/contracts/pmocMachineRoutine (fonte ÚNICA compartilhada
+// com a aba Ambientes). Tipos PmocMachineScope/MachineConfig/PlanActivityRow,
+// constantes (LOCAL_SCOPE_SECTIONS, AC_EQUIPMENT_SECTIONS, START_VISIT_OPTIONS) e
+// funções (machineCatalogActivities, catalogToPlanRow, planRowToInput,
+// reconstructMachineConfigs, buildPmocPlanFromMachines, buildPmocItemsWithScope…)
+// são importados acima.
 
 // Parse de input numérico no padrão BR (vírgula decimal) → number | null.
 // String vazia/só espaço → null. Valor inválido → null (não trava o submit).
@@ -354,6 +285,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // equipamentos do cliente que pertencem a ele. Um equipamento pertence a UM
   // ambiente (exclusivo entre ambientes). Só aparece quando o contrato é PMOC.
   const [environments, setEnvironments] = useState<EnvRow[]>([]);
+  // Rotina POR MÁQUINA (Fase 3). Chave = equipment_id. Cada máquina selecionada
+  // num ambiente tem escopo da norma + posição inicial no ciclo de 12 visitas +
+  // sua listagem própria de atividades (checklists). Defaults bons: 'ac' /
+  // começa na 12 (anual) / segue a norma do escopo. Só usado em PMOC.
+  const [machineConfigs, setMachineConfigs] = useState<Record<string, MachineConfig>>({});
+  // Em edição, marca que as configs por máquina já foram reconstruídas do banco
+  // (evita o auto-sync sobrescrever com defaults antes de carregar o salvo).
+  const [machineConfigsLoaded, setMachineConfigsLoaded] = useState(false);
+  // Picker do catálogo POR MÁQUINA: quando aberto a partir de um equipamento,
+  // guarda o equipment_id alvo; ao confirmar, a seleção vira a listagem daquela
+  // máquina. `null` = picker do modo personalizado por contrato (legado).
+  const [pickerMachineEqId, setPickerMachineEqId] = useState<string | null>(null);
   // Em modo edição, guarda a chamada que ficou esperando confirmação do "desligar PMOC".
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
@@ -392,21 +335,42 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (step > STEPS.length - 1) setStep(STEPS.length - 1);
   }, [STEPS.length, step]);
 
-  // Rascunho (só em CRIAÇÃO). Persiste os campos das etapas em sessionStorage e,
-  // ao reabrir com rascunho salvo, oferece o DraftResumeDialog. Espelha o padrão
-  // do QuoteFormDialog (useFormDraft + DraftResumeDialog). Itens/plano ficam de
-  // fora pra evitar payload pesado — o que importa é não perder o preenchimento.
+  // Rascunho (só em CRIAÇÃO). Persiste TODO o estado de preenchimento das etapas
+  // em sessionStorage e, ao reabrir com rascunho salvo, oferece o DraftResumeDialog.
+  // Espelha o padrão do QuoteFormDialog (useFormDraft + DraftResumeDialog). Agora
+  // o rascunho cobre também a Unidade & RT, os Ambientes (com equipamentos), os
+  // itens do contrato comum e a config POR MÁQUINA (Fase 3 — escopo/começa-na-
+  // visita/checklists), pra não perder o trabalho ao fechar/recarregar o modal.
   type ContractDraft = {
     name: string; customerId: string; serviceTypeId: string; formTemplateId: string;
     notes: string; isActive: boolean; isPmoc: boolean; responsibleTechnicianId: string;
     freqType: 'months' | 'days'; freqValue: number; startDate: string; horizonMonths: number;
+    // Etapa atual (restaura onde parou).
+    step: number;
+    // Unidade & RT (Seção 1, só PMOC).
+    unidadeNome: string; unidadeEndereco: string; unidadeNumero: string;
+    unidadeComplemento: string; unidadeBairro: string; unidadeCidade: string;
+    unidadeUf: string; unidadeCep: string;
+    // Ambientes (PMOC) — strings cruas + equipamentos por ambiente.
+    environments: EnvRow[];
+    // Itens do contrato comum (não-PMOC).
+    selectedItems: { equipment_id?: string; item_name: string; item_description?: string; form_template_id?: string }[];
+    // Config por máquina (Fase 3). Guarda a config inteira: escopo, fase, flag
+    // de personalização e a listagem de atividades reidratável.
+    machineConfigs: Record<string, MachineConfig>;
   };
   const draft = useFormDraft<ContractDraft>({
     key: 'contract-form',
     isOpen: open,
     isEditing,
-    // start/horizonte têm default não-vazio; ignorá-los evita falso "rascunho".
-    ignoreKeys: ['isActive', 'freqType', 'freqValue', 'startDate', 'horizonMonths'],
+    // Campos com default não-vazio (que não representam preenchimento real do
+    // usuário) são ignorados na detecção de "tem rascunho" — evita falso prompt
+    // num form recém-aberto. step/arrays vazios também não contam.
+    ignoreKeys: [
+      'isActive', 'freqType', 'freqValue', 'startDate', 'horizonMonths', 'step',
+      'unidadeNome', 'unidadeEndereco', 'unidadeNumero', 'unidadeComplemento',
+      'unidadeBairro', 'unidadeCidade', 'unidadeUf', 'unidadeCep',
+    ],
   });
 
   // Persiste a cada mudança (só criação, e não enquanto o prompt de retomar está aberto).
@@ -414,10 +378,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (open && !isEditing && !draft.showResumePrompt) {
       draft.saveDraft({
         name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc,
-        responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths,
+        responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step,
+        unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento,
+        unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
+        environments, selectedItems, machineConfigs,
       });
     }
-  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, open, isEditing, draft.showResumePrompt]);
+  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, selectedItems, machineConfigs, open, isEditing, draft.showResumePrompt]);
 
   const applyContractDraft = (d: ContractDraft) => {
     setName(d.name || '');
@@ -432,6 +399,45 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setFreqValue(d.freqValue || 1);
     setStartDate(d.startDate || format(new Date(), 'yyyy-MM-dd'));
     setHorizonMonths(d.horizonMonths || 12);
+    // Unidade & RT.
+    setUnidadeNome(d.unidadeNome || '');
+    setUnidadeEndereco(d.unidadeEndereco || '');
+    setUnidadeNumero(d.unidadeNumero || '');
+    setUnidadeComplemento(d.unidadeComplemento || '');
+    setUnidadeBairro(d.unidadeBairro || '');
+    setUnidadeCidade(d.unidadeCidade || '');
+    setUnidadeUf(d.unidadeUf || '');
+    setUnidadeCep(d.unidadeCep || '');
+    // Ambientes — regenera a `key` (estável p/ React, mas não precisa sobreviver)
+    // preservando o resto. Sem `id` (rascunho é sempre contrato novo).
+    const restoredEnvs: EnvRow[] = (d.environments || []).map((e) => {
+      envKeySeq += 1;
+      return {
+        key: `env-${Date.now()}-${envKeySeq}`,
+        identificacao: e.identificacao || '',
+        tipo_atividade: e.tipo_atividade || '',
+        area_climatizada_m2: e.area_climatizada_m2 || '',
+        ocupantes_fixos: e.ocupantes_fixos || '',
+        ocupantes_flutuantes: e.ocupantes_flutuantes || '',
+        carga_termica_tr: e.carga_termica_tr || '',
+        equipment_ids: Array.isArray(e.equipment_ids) ? e.equipment_ids : [],
+      };
+    });
+    setEnvironments(restoredEnvs);
+    // Itens do contrato comum.
+    setSelectedItems(Array.isArray(d.selectedItems) ? d.selectedItems : []);
+    // Config por máquina (Fase 3) — restaura ANTES do auto-sync poder rodar e
+    // marca o guard pra que o efeito de auto-sync (que cria defaults) NÃO
+    // sobrescreva os configs restaurados; ele só ADICIONA default p/ equipamento
+    // novo sem config.
+    const restoredConfigs = (d.machineConfigs && typeof d.machineConfigs === 'object')
+      ? d.machineConfigs
+      : {};
+    setMachineConfigs(restoredConfigs);
+    setMachineConfigsLoaded(true);
+    // Restaura a etapa onde parou (clampa pro range válido — depende de isPmoc).
+    const stepsLen = (d.isPmoc ? STEPS_PMOC : STEPS_COMMON).length;
+    setStep(Math.min(Math.max(d.step ?? 0, 0), stepsLen - 1));
   };
 
   useEffect(() => {
@@ -440,6 +446,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
       setShowCatalogPicker(false); setPickerSelection(new Set()); setPmocDefaultSeeded(false);
       setPmocStandardOn(true); setPmocStandardScope('ac'); setShowAdvancedFrequency(false);
+      setMachineConfigs({}); setMachineConfigsLoaded(false); setPickerMachineEqId(null);
       return;
     }
 
@@ -577,6 +584,29 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setPmocStandardScope(hasNonCondicionadores ? 'all' : 'ac');
   }, [open, editContract, existingPlan]);
 
+  // Reconstrói as configs POR MÁQUINA (Fase 3) ao abrir um PMOC existente:
+  //  - escopo/fase de cada máquina vêm de contract_items (pmoc_scope/pmoc_start_visit);
+  //  - a listagem própria vem das contract_plan_activities agrupadas por
+  //    contract_item_id (→ equipment_id);
+  //  - LEGADO (plano sem contract_item_id): cada máquina recebe a config default
+  //    da norma (escopo inferido pelas seções; start 12 = tudo na 1ª visita) →
+  //    ao salvar migra pro formato por máquina SEM regredir as visitas.
+  useEffect(() => {
+    if (!open || !editContract || !isPmoc) return;
+    if (catalogLoading || catalogActivities.length === 0) return;
+    if (existingPlan === undefined) return; // espera a query do plano resolver
+    if (machineConfigsLoaded) return;
+
+    // Reconstrução via fonte ÚNICA compartilhada (mesma lógica usada pela aba).
+    const configs = reconstructMachineConfigs({
+      items: (editContract.contract_items || []) as any[],
+      plan: (existingPlan ?? []) as any[],
+      catalogActivities,
+    });
+    setMachineConfigs(configs);
+    setMachineConfigsLoaded(true);
+  }, [open, editContract, isPmoc, existingPlan, catalogLoading, catalogActivities.length, machineConfigsLoaded]);
+
   const customerOptions = useMemo(() =>
     customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
     [customers]
@@ -587,24 +617,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     [startDate, freqType, freqValue, horizonMonths]
   );
 
-  // Atividades do plano com frequência válida pra cronograma (exclui eventuais).
-  const schedulablePlan = useMemo(
-    () => planActivities.filter(a => activityPeriodMonths(a as PlanActivityInput) > 0),
-    [planActivities],
-  );
-  const usePlanEngine = schedulablePlan.length > 0;
-
-  // Quando há plano, a prévia/contagem de OS vem do motor de visitas agrupadas
-  // (1 OS/mês = união do que vence), não da cadência única.
-  const groupedVisits = useMemo(
-    () => usePlanEngine
-      ? generateGroupedVisits(new Date(startDate + 'T00:00:00'), horizonMonths, schedulablePlan as PlanActivityInput[])
-      : [],
-    [usePlanEngine, startDate, horizonMonths, schedulablePlan],
-  );
-
-  // Nº de OS que será gerado (prévia do botão/Revisão).
-  const visitCount = usePlanEngine ? groupedVisits.length : occurrences.length;
 
   const weekendDates = occurrences.filter(d => d.getDay() === 0 || d.getDay() === 6);
 
@@ -666,9 +678,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   //  - só PMOC, com o padrão ligado, catálogo carregado;
   //  - `pmocDefaultSeeded` impede re-empurrar na mesma abertura (ex: gestor que
   //    apagou tudo de propósito não vê reaparecer).
+  // Fase 3: o plano PMOC agora é POR MÁQUINA (montado em machineConfigs na etapa
+  // Ambientes), então NÃO seedamos mais o planActivities por contrato em PMOC. O
+  // seed só vale pra eventual uso futuro do modo manual em contrato comum — aqui
+  // fica desativado pra PMOC pra não criar plano-fantasma a nível de contrato.
   useEffect(() => {
     if (!open || isEditing) return; // só em contrato novo; edição não re-empurra
-    if (!isPmoc || !pmocStandardOn || pmocDefaultSeeded) return;
+    if (isPmoc) return; // PMOC usa plano por máquina (Fase 3)
+    if (!pmocStandardOn || pmocDefaultSeeded) return;
     if (catalogLoading || defaultSectionActivities.length === 0) return;
     applyStandardPlan(pmocStandardScope);
     setPmocDefaultSeeded(true);
@@ -696,10 +713,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Abre o picker do catálogo já com as linhas vindas do catálogo pré-marcadas
   // (evita duplicar uma atividade que o gestor já adicionou).
   const openCatalogPicker = () => {
+    setPickerMachineEqId(null);
     const existingCatalogIds = new Set(
       planActivities.map(a => a.catalog_activity_id).filter(Boolean) as string[],
     );
     setPickerSelection(existingCatalogIds);
+    setShowCatalogPicker(true);
+  };
+
+  // Picker POR MÁQUINA (Fase 3): abre o catálogo já marcado com a listagem atual
+  // daquela máquina. Ao confirmar, a seleção SUBSTITUI a listagem da máquina
+  // (permite remover/customizar — não seguir 100% da norma).
+  const openMachinePicker = (eqId: string) => {
+    setPickerMachineEqId(eqId);
+    const cfg = machineConfigs[eqId];
+    const current = new Set(
+      (cfg?.activities ?? []).map(a => a.catalog_activity_id).filter(Boolean) as string[],
+    );
+    setPickerSelection(current);
     setShowCatalogPicker(true);
   };
 
@@ -711,10 +742,35 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     });
   };
 
-  // Confirma o picker: adiciona as atividades novas (que ainda não estão no
-  // plano) como linhas editáveis. Não remove o que o gestor desmarcou aqui —
-  // remoção é pelo botão × da linha (o picker só ADICIONA).
+  // Confirma o picker. Dois modos:
+  //  - POR MÁQUINA (pickerMachineEqId definido): a seleção SUBSTITUI a listagem
+  //    daquela máquina (add+remove), marcando-a como personalizada.
+  //  - por contrato (legado): só ADICIONA as novas ao planActivities.
   const confirmCatalogPicker = () => {
+    if (pickerMachineEqId) {
+      const eqId = pickerMachineEqId;
+      const selected: PlanActivityRow[] = [];
+      for (const group of catalogGroups) {
+        for (const act of group.activities) {
+          if (pickerSelection.has(act.id)) {
+            selected.push({
+              ...catalogToPlanRow(act),
+              applies_per_equipment: true,
+              equipment_ref: eqId,
+            });
+          }
+        }
+      }
+      setMachineConfigs(prev => {
+        const cur = prev[eqId];
+        if (!cur) return prev;
+        return { ...prev, [eqId]: { ...cur, activities: selected, customized: true } };
+      });
+      toast({ title: `Checklists da máquina atualizados (${selected.length} item(ns))` });
+      setShowCatalogPicker(false);
+      setPickerMachineEqId(null);
+      return;
+    }
     const existingCatalogIds = new Set(
       planActivities.map(a => a.catalog_activity_id).filter(Boolean) as string[],
     );
@@ -832,6 +888,123 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // PMOC = derivado dos ambientes; comum = a lista flat de selectedItems.
   const effectiveItems = isPmoc ? pmocDerivedItems : selectedItems;
 
+  // ---- Rotina POR MÁQUINA (Fase 3) ------------------------------------------
+  // Config default de uma máquina: delega à fonte ÚNICA compartilhada (escopo
+  // dado, começa na 12, listagem = norma do escopo). `equipment_ref` amarra cada
+  // atividade ao seu equipamento.
+  const buildDefaultMachineConfig = (eqId: string, scope: PmocMachineScope): MachineConfig =>
+    buildDefaultMachineConfigShared(catalogActivities, eqId, scope);
+
+  // Mantém os machineConfigs sincronizados com os equipamentos selecionados nos
+  // ambientes: cria config default pra máquina nova; remove a da máquina que saiu.
+  // Não toca em config existente (preserva escopo/fase/listagem do gestor).
+  useEffect(() => {
+    if (!open || !isPmoc) return;
+    if (catalogLoading || catalogActivities.length === 0) return;
+    // Em edição, espera a reconstrução das configs do banco antes de auto-sincar
+    // (senão substituiria escopo/fase salvos por defaults).
+    if (isEditing && !machineConfigsLoaded) return;
+    // Conjunto autoritativo de máquinas = equipamentos atribuídos a algum
+    // ambiente. Usamos os equipment_ids dos ambientes (e não pmocDerivedItems)
+    // porque a derivação depende dos dados de equipamento já terem carregado;
+    // ao retomar um rascunho, os ambientes voltam na hora mas o useEquipment
+    // ainda está buscando — basear no equipment_ids evita podar configs
+    // restauradas durante essa janela de carga.
+    const selectedIds = new Set<string>();
+    for (const env of environments) for (const id of env.equipment_ids) selectedIds.add(id);
+    setMachineConfigs(prev => {
+      let changed = false;
+      const next: Record<string, MachineConfig> = {};
+      for (const id of selectedIds) {
+        if (prev[id]) { next[id] = prev[id]; }
+        else { next[id] = buildDefaultMachineConfig(id, 'ac'); changed = true; }
+      }
+      // Detecta remoção (chave que sumiu).
+      for (const id of Object.keys(prev)) if (!selectedIds.has(id)) changed = true;
+      return changed ? next : prev;
+    });
+  }, [open, isPmoc, environments, catalogLoading, catalogActivities.length, isEditing, machineConfigsLoaded]);
+
+  // Troca o escopo de uma máquina: recarrega a listagem da norma do novo escopo
+  // (a menos que o gestor já tenha personalizado — aí preserva e só filtra o que
+  // ainda cabe no escopo, mantendo a personalização). Para simplicidade e
+  // previsibilidade, ao trocar o escopo RECARREGAMOS a norma do escopo novo.
+  const setMachineScope = (eqId: string, scope: PmocMachineScope) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      const acts = machineCatalogActivities(catalogActivities, scope).map(a => ({
+        ...catalogToPlanRow(a),
+        applies_per_equipment: true,
+        equipment_ref: eqId,
+      }));
+      return { ...prev, [eqId]: { ...cur, scope, activities: acts, customized: false } };
+    });
+  };
+
+  const setMachineStartVisit = (eqId: string, startVisit: number) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      return { ...prev, [eqId]: { ...cur, startVisit } };
+    });
+  };
+
+  // Há ao menos uma máquina de grande porte ('full')? Gate do bucket local.
+  const hasFullMachine = useMemo(
+    () => Object.values(machineConfigs).some(c => c.scope === 'full'),
+    [machineConfigs],
+  );
+
+  // Plano completo (por máquina + local) que vai pro hook em PMOC, montado pela
+  // fonte ÚNICA compartilhada (mesma usada pela aba Ambientes). Cada atividade de
+  // máquina carrega `equipment_ref`; as locais ficam sem máquina + per_equip false.
+  const pmocPlanFromMachines = useMemo<PlanActivityRow[]>(
+    () => buildPmocPlanFromMachines({ items: pmocDerivedItems, machineConfigs, catalogActivities }),
+    [pmocDerivedItems, machineConfigs, catalogActivities],
+  );
+
+  // Plano efetivo enviado ao hook: PMOC = derivado das máquinas (por máquina +
+  // local); comum/legado = o planActivities da etapa de frequência.
+  const effectivePlanRows = isPmoc ? pmocPlanFromMachines : planActivities;
+
+  // Itens com escopo/fase por máquina (Fase 3). PMOC anexa pmoc_scope +
+  // pmoc_start_visit de cada máquina (via builder compartilhado); comum manda só
+  // o básico.
+  const effectiveItemsWithScope = useMemo(() => {
+    if (!isPmoc) {
+      return selectedItems.map((i: any) => ({
+        equipment_id: i.equipment_id || null,
+        item_name: i.item_name,
+        item_description: i.item_description || null,
+        form_template_id: i.form_template_id || null,
+      }));
+    }
+    return buildPmocItemsWithScope({ items: pmocDerivedItems, machineConfigs });
+  }, [isPmoc, selectedItems, pmocDerivedItems, machineConfigs]);
+
+  // Atividades do plano efetivo com frequência válida pra cronograma (exclui
+  // eventuais). PMOC usa o plano POR MÁQUINA; comum usa o planActivities.
+  const schedulablePlan = useMemo(
+    () => effectivePlanRows.filter(a => activityPeriodMonths(a as PlanActivityInput) > 0),
+    [effectivePlanRows],
+  );
+  const usePlanEngine = schedulablePlan.length > 0;
+
+  // Quando há plano, a prévia/contagem de OS vem do motor de visitas agrupadas
+  // (1 OS/mês = união do que vence), não da cadência única. Para PMOC, cada
+  // máquina pode estar em fase diferente, mas o nº de visitas/mês continua 1.
+  const groupedVisits = useMemo(
+    () => usePlanEngine
+      ? generateGroupedVisits(new Date(startDate + 'T00:00:00'), horizonMonths, schedulablePlan as PlanActivityInput[])
+      : [],
+    [usePlanEngine, startDate, horizonMonths, schedulablePlan],
+  );
+
+  // Nº de OS que será gerado (prévia do botão/Revisão).
+  const visitCount = usePlanEngine ? groupedVisits.length : occurrences.length;
+
+
   // Ambientes no formato de entrada do hook (parse dos números, equip vazio ok).
   const buildEnvironmentsInput = () => environments.map(e => ({
     id: e.id,
@@ -889,19 +1062,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       start_date: startDate,
       horizon_months: horizonMonths,
       billing_responsible_ids: billingUserIds,
-      // Plano de serviços com frequência (Fase 1/2). Sempre enviado em edição →
-      // substitui o plano persistido (add/remover/mudar frequência reflete).
-      // Preserva metadados do catálogo PMOC quando a linha veio do picker.
-      plan_activities: planActivities.map(planRowToInput),
+      // Plano de serviços com frequência (Fase 1/2/3). PMOC = plano POR MÁQUINA
+      // (cada atividade com equipment_ref + as locais); comum = planActivities.
+      // O hook resolve contract_item_id pelo equipment_ref.
+      plan_activities: effectivePlanRows.map(planRowToInput),
       // Equipamentos/itens (Fase 3). Sempre enviado em edição → o hook aplica
-      // diff (insere novos, apaga removidos); mudança re-expande as visitas.
-      // PMOC = itens derivados dos ambientes; comum = lista flat.
-      items: effectiveItems.map((i: any) => ({
-        equipment_id: i.equipment_id || null,
-        item_name: i.item_name,
-        item_description: i.item_description || null,
-        form_template_id: i.form_template_id || null,
-      })),
+      // diff (insere novos, apaga removidos) e RE-APLICA escopo/fase por máquina;
+      // mudança re-expande as visitas. PMOC = derivado dos ambientes c/ escopo+fase.
+      items: effectiveItemsWithScope,
       // Ambientes climatizados (multi-ambiente PMOC). PMOC envia os cards;
       // contrato comum envia [] (limpa qualquer ambiente legado e zera
       // environment_id dos itens).
@@ -1033,19 +1201,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           unidade_cidade: isPmoc ? (unidadeCidade.trim() || null) : null,
           unidade_uf: isPmoc ? (unidadeUf.trim() || null) : null,
           unidade_cep: isPmoc ? (unidadeCep.trim() || null) : null,
-          // Itens do contrato: PMOC = derivados dos ambientes; comum = lista flat.
-          items: effectiveItems.map((i: any) => ({
-            equipment_id: i.equipment_id || null,
-            item_name: i.item_name,
-            item_description: i.item_description || null,
-            form_template_id: i.form_template_id || null,
-          })),
+          // Itens do contrato: PMOC = derivados dos ambientes com escopo+fase por
+          // máquina (Fase 3); comum = lista flat.
+          items: effectiveItemsWithScope,
           // Ambientes climatizados (multi-ambiente PMOC). Cada ambiente vira uma
           // linha em contract_environments e amarra seus equipamentos.
           environments: isPmoc ? buildEnvironmentsInput() : undefined,
-          // Plano de serviços com frequência (Fase 1/2). Vazio = frequência única.
-          // Preserva metadados do catálogo PMOC quando a linha veio do picker.
-          plan_activities: planActivities.map(planRowToInput),
+          // Plano de serviços com frequência (Fase 1/2/3). PMOC = plano POR MÁQUINA
+          // (cada atividade com equipment_ref; o hook resolve contract_item_id após
+          // inserir os itens). Comum = planActivities. Vazio = frequência única.
+          plan_activities: effectivePlanRows.map(planRowToInput),
         });
 
         const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
@@ -1537,56 +1702,28 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 )
               )}
 
-              {/* Padrão PMOC da norma — caminho PRINCIPAL num contrato PMOC. Quando
-                  LIGADO, o contrato segue a norma (Lei 13.589/2018): as atividades
-                  do padrão ficam TRAVADAS (sem remover/editar item a item). Pra
-                  mexer à vontade, é só DESLIGAR (modo personalizado). A escolha do
-                  ESCOPO (só ar-condicionado / tudo da norma) é a forma legítima de
-                  dizer "qual padrão seguir". */}
+              {/* PMOC — a rotina da norma (escopo + checklists) agora é POR MÁQUINA
+                  e fica na etapa Ambientes (cada equipamento tem seu escopo, sua
+                  fase e sua listagem). Aqui só lembramos o gestor. O escopo POR
+                  CONTRATO foi removido (Fase 3). */}
               {isPmoc && (
-                <div className="rounded-lg border border-info/30 bg-info/5 p-3 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Switch
-                      checked={pmocStandardOn}
-                      onCheckedChange={handleStandardToggle}
-                      aria-label="Usar padrão PMOC da norma"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <Label className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                        Usar padrão PMOC da norma (atividades + checklists)
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {pmocStandardOn
-                          ? 'Seguindo a norma (Lei 13.589/2018): as atividades do padrão ficam travadas. Desligue para personalizar e editar item a item.'
-                          : 'Modo personalizado: edite e remova as atividades à vontade. Use "Adicionar do catálogo PMOC" para puxar atividades da norma.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {pmocStandardOn && (
-                    <div className="flex flex-col gap-2 pl-1 animate-in fade-in slide-in-from-top-1 duration-200 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">Qual padrão seguir</span>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <LabeledSwitch
-                          value={pmocStandardScope}
-                          onChange={handleStandardScope}
-                          off={{ value: 'ac', label: `Só ar-condicionado (${defaultSectionActivities.length || '~41'})` }}
-                          on={{ value: 'all', label: `Tudo da norma (${catalogActivities.length || '~149'})` }}
-                          size="default"
-                          aria-label="Escopo do padrão PMOC"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
+                  <ShieldCheck className="h-4 w-4 text-info" />
+                  <AlertTitle className="text-sm">Rotina por equipamento</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    Cada equipamento tem sua própria rotina da norma (escopo, em que visita começa e
+                    seus checklists), configurada na etapa <strong>Ambientes</strong>. Por padrão:
+                    só ar-condicionado, começando pela revisão anual e seguindo a norma — quem não
+                    quiser ajustar é só avançar.
+                  </AlertDescription>
+                </Alert>
               )}
 
-              {/* Opções avançadas — serviços com frequência própria. Recolhido por
-                  padrão pra não competir com o caminho principal. Aqui ficam o
-                  picker do catálogo, a adição manual e a lista editável de
-                  atividades. Em PMOC com padrão LIGADO, as linhas do catálogo
-                  aparecem travadas (Task 5). */}
+              {/* Opções avançadas — serviços com frequência própria. SÓ em contrato
+                  COMUM (não-PMOC): o PMOC monta o plano por máquina na etapa
+                  Ambientes. Aqui ficam o picker do catálogo, a adição manual e a
+                  lista editável de atividades. */}
+              {!isPmoc && (
               <Collapsible open={showAdvancedFrequency} onOpenChange={setShowAdvancedFrequency}>
                 <CollapsibleTrigger asChild>
                   <button
@@ -1712,6 +1849,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   </div>
                 </CollapsibleContent>
               </Collapsible>
+              )}
             </div>
           )}
 
@@ -1788,7 +1926,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-xs">Carga térmica (TR)</Label>
+                            <div className="flex items-center gap-1">
+                              <Label className="text-xs">Carga térmica (TR)</Label>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que é TR?">
+                                    <HelpCircle className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
+                              </Tooltip>
+                            </div>
                             <Input
                               inputMode="decimal"
                               value={env.carga_termica_tr}
@@ -1797,7 +1945,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-xs">Nº de ocupantes fixos</Label>
+                            <div className="flex items-center gap-1">
+                              <Label className="text-xs">Nº de ocupantes fixos</Label>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes fixos?">
+                                    <HelpCircle className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs">Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local).</TooltipContent>
+                              </Tooltip>
+                            </div>
                             <Input
                               inputMode="numeric"
                               value={env.ocupantes_fixos}
@@ -1806,7 +1964,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                            <div className="flex items-center gap-1">
+                              <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes flutuantes?">
+                                    <HelpCircle className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs">Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes).</TooltipContent>
+                              </Tooltip>
+                            </div>
                             <Input
                               inputMode="numeric"
                               value={env.ocupantes_flutuantes}
@@ -1827,33 +1995,126 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           ) : activeEquipment.length === 0 ? (
                             <p className="text-xs text-muted-foreground">O cliente não tem equipamentos ativos cadastrados.</p>
                           ) : (
-                            <div className="rounded-md border max-h-44 overflow-y-auto divide-y">
+                            <div className="rounded-md border divide-y">
                               {activeEquipment.map(eq => {
                                 const checked = env.equipment_ids.includes(eq.id);
                                 const ownerKey = equipmentOwnerEnvKey.get(eq.id);
                                 const ownedByOther = !checked && ownerKey && ownerKey !== env.key;
+                                const cfg = machineConfigs[eq.id];
                                 return (
-                                  <label
-                                    key={eq.id}
-                                    className={cn(
-                                      'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors',
-                                      ownedByOther ? 'opacity-50' : 'hover:bg-muted/50',
+                                  <div key={eq.id} className={cn(ownedByOther && 'opacity-50')}>
+                                    <label
+                                      className={cn(
+                                        'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors',
+                                        !ownedByOther && 'hover:bg-muted/50',
+                                      )}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        className="rounded border-border"
+                                        checked={checked}
+                                        onChange={() => toggleEnvEquipment(env.key, eq.id)}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{eq.name}</p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                                          {ownedByOther && ' · já em outro ambiente'}
+                                        </p>
+                                      </div>
+                                    </label>
+
+                                    {/* Rotina POR MÁQUINA (Fase 3) — só quando o equipamento
+                                        está selecionado. Compacto: escopo + começa-na-visita +
+                                        checklists próprios. Defaults bons (Só AC · Anual · norma)
+                                        — quem não quer configurar só avança. */}
+                                    {checked && (
+                                      <div className="px-3 pb-3 pt-1 space-y-2.5 bg-muted/20">
+                                        {/* 1) Escopo da norma */}
+                                        <div className="flex flex-col gap-1.5">
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-[11px] font-medium text-muted-foreground">Escopo da norma</span>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre o escopo">
+                                                  <HelpCircle className="h-3.5 w-3.5" />
+                                                </button>
+                                              </TooltipTrigger>
+                                              <TooltipContent className="max-w-xs text-xs">
+                                                "Só ar-condicionado" cobre split/ACJ comum. "Toda a norma" inclui as seções de grande porte (VRF, Chiller, Torre, casa de máquinas…).
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </div>
+                                          <LabeledSwitch
+                                            value={cfg?.scope ?? 'ac'}
+                                            onChange={(v) => setMachineScope(eq.id, v as PmocMachineScope)}
+                                            off={{ value: 'ac', label: 'Só ar-condicionado' }}
+                                            on={{ value: 'full', label: 'Toda a norma (grande porte)' }}
+                                            size="default"
+                                            className="[&_button]:text-xs"
+                                            aria-label="Escopo da norma da máquina"
+                                          />
+                                        </div>
+
+                                        {/* 2) Começa na visita */}
+                                        <div className="flex flex-col gap-1.5">
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                                  <HelpCircle className="h-3.5 w-3.5" />
+                                                </button>
+                                              </TooltipTrigger>
+                                              <TooltipContent className="max-w-xs text-xs">
+                                                Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </div>
+                                          <Select
+                                            value={String(cfg?.startVisit ?? 12)}
+                                            onValueChange={(v) => setMachineStartVisit(eq.id, Number(v))}
+                                          >
+                                            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              {START_VISIT_OPTIONS.map(o => (
+                                                <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+
+                                        {/* 3) Checklists da máquina */}
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-[11px] text-muted-foreground">
+                                            {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
+                                            {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
+                                          </span>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 text-xs"
+                                            disabled={catalogLoading}
+                                            onClick={() => openMachinePicker(eq.id)}
+                                          >
+                                            <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
+                                            Checklists do catálogo PMOC
+                                          </Button>
+                                        </div>
+
+                                        {/* Preview: em que visita começa e o que inclui */}
+                                        {cfg && (
+                                          <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                            <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
+                                            <span>
+                                              Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
                                     )}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      className="rounded border-border"
-                                      checked={checked}
-                                      onChange={() => toggleEnvEquipment(env.key, eq.id)}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">{eq.name}</p>
-                                      <p className="text-xs text-muted-foreground truncate">
-                                        {[eq.brand, eq.model].filter(Boolean).join(' - ')}
-                                        {ownedByOther && ' · já em outro ambiente'}
-                                      </p>
-                                    </div>
-                                  </label>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -2128,6 +2389,36 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 ) : (
                   <div className="flex justify-between"><span className="text-muted-foreground">Itens</span><span className="font-medium">{selectedItems.length}</span></div>
                 )}
+                {/* Preview da rotina POR MÁQUINA (Fase 3): em que visita começa
+                    cada equipamento e o que a 1ª visita inclui. */}
+                {isPmoc && pmocDerivedItems.length > 0 && (
+                  <div className="rounded-md border bg-muted/20 divide-y">
+                    {pmocDerivedItems.map((it) => {
+                      const cfg = machineConfigs[it.equipment_id];
+                      if (!cfg) return null;
+                      return (
+                        <div key={it.equipment_id} className="flex items-start justify-between gap-2 px-3 py-2 text-xs">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{it.item_name}</p>
+                            <p className="text-muted-foreground">
+                              {cfg.scope === 'full' ? 'Toda a norma' : 'Só ar-condicionado'} · {cfg.activities.length} checklist(s)
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-medium">{startVisitLabel(cfg.startVisit)}</p>
+                            <p className="text-muted-foreground">1ª: {firstVisitContents(cfg.startVisit)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {hasFullMachine && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 shrink-0" />
+                        Inclui as atividades de local da norma (torres, bombas, casa de máquinas…).
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={isActive ? 'success' : 'outline'}>{isActive ? 'Ativo' : 'Pausado'}</Badge></div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Tipo</span>
@@ -2272,16 +2563,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         plano (editável depois). */}
     <ResponsiveModal
       open={showCatalogPicker}
-      onOpenChange={setShowCatalogPicker}
-      title="Catálogo de atividades PMOC"
+      onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) setPickerMachineEqId(null); }}
+      title={pickerMachineEqId ? 'Checklists da máquina (catálogo PMOC)' : 'Catálogo de atividades PMOC'}
       footer={
         <div className="flex flex-row items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">
             {pickerSelection.size} selecionada(s)
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowCatalogPicker(false)}>Cancelar</Button>
-            <Button onClick={confirmCatalogPicker}>Adicionar ao plano</Button>
+            <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); }}>Cancelar</Button>
+            <Button onClick={confirmCatalogPicker}>{pickerMachineEqId ? 'Aplicar à máquina' : 'Adicionar ao plano'}</Button>
           </div>
         </div>
       }
@@ -2296,13 +2587,40 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             {catalogLoading ? 'Carregando catálogo...' : 'Nenhuma atividade no catálogo.'}
           </p>
         ) : (
+          <>
+          {(() => {
+            const allIds = catalogGroups.flatMap(g => g.activities.map(a => a.id));
+            const allChecked = allIds.length > 0 && allIds.every(id => pickerSelection.has(id));
+            return (
+              <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                <span className="text-xs text-muted-foreground">Selecionar todas as seções</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs shrink-0"
+                  onClick={() => setPickerSelection(allChecked ? new Set() : new Set(allIds))}
+                >
+                  {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
+                </Button>
+              </div>
+            );
+          })()}
           <Accordion type="multiple" defaultValue={[catalogGroups[0]?.section]} className="w-full">
             {catalogGroups.map(group => {
               const selectedInGroup = group.activities.filter(a => pickerSelection.has(a.id)).length;
+              const groupIds = group.activities.map(a => a.id);
+              const groupAllChecked = groupIds.length > 0 && groupIds.every(id => pickerSelection.has(id));
+              const toggleGroup = () => setPickerSelection(prev => {
+                const next = new Set(prev);
+                if (groupAllChecked) groupIds.forEach(id => next.delete(id));
+                else groupIds.forEach(id => next.add(id));
+                return next;
+              });
               return (
                 <AccordionItem key={group.section} value={group.section}>
                   <AccordionTrigger className="text-sm">
-                    <span className="flex items-center gap-2 text-left">
+                    <span className="flex flex-1 items-center gap-2 text-left">
                       {group.label}
                       <Badge variant="outline" className="text-[10px] shrink-0">
                         {group.activities.length}
@@ -2310,6 +2628,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       {selectedInGroup > 0 && (
                         <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
                       )}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="ml-auto mr-2 shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(); } }}
+                      >
+                        {groupAllChecked ? 'Desmarcar' : 'Marcar todos'}
+                      </span>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent>
@@ -2350,6 +2677,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               );
             })}
           </Accordion>
+          </>
         )}
       </div>
     </ResponsiveModal>
