@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.2',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção na geração de visitas do PMOC',
+        description: 'Corrigido um problema em contratos PMOC onde, ao editar o contrato, as visitas podiam ser geradas com atividades repetidas e com equipamentos faltando. Agora cada equipamento recebe exatamente a sua rotina, sem repetições. Além disso, o checklist de visitas grandes passou a mostrar todos os itens (antes podia cortar a lista em ordens muito extensas).',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.1',
     date: '20 de junho de 2026',
     type: 'patch',

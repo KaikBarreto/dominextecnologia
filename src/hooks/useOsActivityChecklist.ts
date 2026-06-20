@@ -126,13 +126,25 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('service_order_activities')
-        .select(SELECT)
-        .eq('service_order_id', serviceOrderId)
-        .order('sort_order', { ascending: true });
-      if (error) throw error;
-      const rows = (data ?? []) as ChecklistActivity[];
+      // PostgREST limita `.select()` a 1000 linhas por padrão. Uma OS PMOC com
+      // muitos equipamentos/atividades passa disso → sem paginar, o técnico veria
+      // o checklist TRUNCADO em 1000. Lê em páginas de 1000 via `.range()` até
+      // esgotar (página menor que o tamanho = fim).
+      const PAGE = 1000;
+      const rows: ChecklistActivity[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('service_order_activities')
+          .select(SELECT)
+          .eq('service_order_id', serviceOrderId)
+          .order('sort_order', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const page = (data ?? []) as ChecklistActivity[];
+        rows.push(...page);
+        if (page.length < PAGE) break;
+      }
       setActivities(rows);
 
       // Resolve nome dos equipamentos referenciados (null = atividade de local).

@@ -700,6 +700,56 @@ export function buildContractVisits(params: BuildVisitsParams, fromMonthStr?: st
 }
 
 /**
+ * Chave de identidade de uma atividade do plano pra dedup. Duas linhas com a
+ * MESMA máquina (contract_item_id), MESMA descrição, MESMA frequência, MESMA
+ * seção e MESMO escopo são a MESMA atividade — saves repetidos não devem
+ * acumular cópias. Função PURA/testável.
+ */
+function planActivityDedupKey(a: PlanActivityInput): string {
+  return [
+    a.contract_item_id ?? '',
+    (a.description ?? '').trim().toLowerCase(),
+    a.freq_code ?? '',
+    a.freq_months ?? '',
+    a.section ?? '',
+    a.applies_per_equipment === false ? '0' : '1',
+  ].join('|');
+}
+
+/**
+ * Remove atividades duplicadas do plano preservando a ordem da 1ª ocorrência.
+ * Idempotente: aplicar 2x dá o mesmo resultado. Garante que o plano persistido
+ * (e portanto as visitas geradas) nunca acumule a mesma atividade da mesma
+ * máquina em saves repetidos. Função PURA — base testável da dedup.
+ */
+export function dedupPlanActivities(activities: PlanActivityInput[]): PlanActivityInput[] {
+  const seen = new Set<string>();
+  const out: PlanActivityInput[] = [];
+  for (const a of activities) {
+    const key = planActivityDedupKey(a);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(a);
+  }
+  return out;
+}
+
+/**
+ * Insere `service_order_activities` em LOTES pra não estourar o payload (OS PMOC
+ * grande passa de mil linhas). Retorna o 1º erro encontrado (ou null). Mantém a
+ * ordem (sort_order já vem nas linhas). Idempotência fica a cargo do chamador
+ * (cada visita é recriada inteira, não há merge parcial).
+ */
+async function insertActivitiesBatched(rows: any[], batchSize = 500): Promise<any | null> {
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const chunk = rows.slice(i, i + batchSize);
+    const { error } = await supabase.from('service_order_activities').insert(chunk as any);
+    if (error) return error;
+  }
+  return null;
+}
+
+/**
  * Persiste UMA visita do contrato: service_order (status agendada, origin
  * contract) + junction de equipamentos + assignees + snapshot de atividades.
  * Compartilhado entre criação e regeneração na edição — fonte única do payload
@@ -818,7 +868,7 @@ async function persistContractVisit(args: {
       expected_max: e.input.expected_max ?? null,
       sort_order: idx,
     }));
-    const { error: actErr } = await supabase.from('service_order_activities').insert(emissionRows as any);
+    const actErr = await insertActivitiesBatched(emissionRows);
     if (actErr) console.error('Error creating service order activities (per-machine):', actErr);
     return true;
   }
@@ -889,7 +939,7 @@ async function persistContractVisit(args: {
       return { ...rest, sort_order: globalSort++ };
     });
 
-    const { error: actErr } = await supabase.from('service_order_activities').insert(finalRows as any);
+    const actErr = await insertActivitiesBatched(finalRows);
     if (actErr) console.error('Error creating service order activities:', actErr);
   }
 
@@ -1246,9 +1296,11 @@ export function useContracts() {
       // `contract_item_id` de cada atividade (via equipment_ref → item recém-criado)
       // ANTES de persistir E de gerar visitas, pra o motor por máquina rotear as
       // atividades pro equipamento certo (senão cairiam no caminho legado/global).
-      const planActivities = (input.plan_activities ?? [])
-        .filter(a => a.description?.trim())
-        .map(a => ({ ...a, contract_item_id: resolveContractItemId(a) }));
+      const planActivities = dedupPlanActivities(
+        (input.plan_activities ?? [])
+          .filter(a => a.description?.trim())
+          .map(a => ({ ...a, contract_item_id: resolveContractItemId(a) })),
+      );
       let insertedPlanActivities: { id: string }[] = [];
       if (planActivities.length > 0) {
         const { data: planRows, error: planError } = await supabase
@@ -1679,6 +1731,17 @@ export function useContracts() {
         return a.contract_item_id ?? null;
       };
 
+      // Plano novo JÁ com `contract_item_id` resolvido (via equipment_ref → item)
+      // e SEM duplicatas. ⚠️ Fonte ÚNICA do plano daqui pra frente: usado tanto na
+      // persistência (contract_plan_activities) quanto na GERAÇÃO de visitas
+      // (effPlan). Antes, `newPlan` (cru, com contract_item_id null porque a UI
+      // manda só equipment_ref) ia direto pro motor → toda atividade caía no
+      // ramo LEGADO de buildPerMachineVisits e era expandida pra TODAS as máquinas
+      // (×N equipamentos). Era a causa-raiz da explosão de service_order_activities.
+      const newPlanResolved = dedupPlanActivities(
+        newPlan.map(a => ({ ...a, contract_item_id: resolveContractItemId(a) })),
+      );
+
       // 2.7) Persistir o plano editado (substituição completa). Só quando
       //      plan_activities foi informado. Eventuais ('E') ficam registrados mas
       //      não geram visita. RLS exige company_id no INSERT. Roda DEPOIS do diff
@@ -1698,20 +1761,20 @@ export function useContracts() {
             .join('§');
         const sigNew = (arr: PlanActivityInput[]) =>
           (arr || [])
-            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${resolveContractItemId(a) ?? ''}`)
+            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${a.contract_item_id ?? ''}`)
             .join('§');
-        planChanged = sigExisting(existingPlan || []) !== sigNew(newPlan);
+        planChanged = sigExisting(existingPlan || []) !== sigNew(newPlanResolved);
 
         if (planChanged) {
           await supabase.from('contract_plan_activities').delete().eq('contract_id', id);
-          if (newPlan.length > 0) {
+          if (newPlanResolved.length > 0) {
             const { data: planRows, error: planErr } = await supabase
               .from('contract_plan_activities')
               .insert(
-                newPlan.map((a, i) => ({
+                newPlanResolved.map((a, i) => ({
                   company_id: profile.company_id,
                   contract_id: id,
-                  contract_item_id: resolveContractItemId(a),
+                  contract_item_id: a.contract_item_id ?? null,
                   catalog_activity_id: a.catalog_activity_id ?? null,
                   section: a.section ?? null,
                   component: a.component ?? null,
@@ -1808,8 +1871,11 @@ export function useContracts() {
       const effFreqValue = (input.frequency_value ?? current.frequency_value) as number;
       const effHorizon = (input.horizon_months ?? current.horizon_months) as number;
 
-      // Plano efetivo pra geração: o novo (se informado) ou o persistido atual.
-      let effPlan: PlanActivityInput[] = newPlan;
+      // Plano efetivo pra geração: o novo JÁ RESOLVIDO+DEDUPADO (se informado) ou
+      // o persistido atual. ⚠️ Tem que ser `newPlanResolved` (não `newPlan`): o
+      // motor por máquina roteia pela `contract_item_id`, que a UI não preenche
+      // (manda só equipment_ref). Sem isso, expande pra todas as máquinas (×N).
+      let effPlan: PlanActivityInput[] = newPlanResolved;
       let effPlanIds: (string | null)[] = insertedPlanRows.map(r => r.id);
       if (plan_activities === undefined) {
         // Plano não veio no input → usar o que já está no banco.

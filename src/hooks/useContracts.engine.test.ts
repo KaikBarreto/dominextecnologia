@@ -5,8 +5,10 @@ import {
   dueLevelsForPosition,
   isActivityDueForMachine,
   buildPerMachineVisits,
+  buildContractVisits,
   generateGroupedVisits,
   machinesFromItemRows,
+  dedupPlanActivities,
   type MachineInput,
   type MachinePlanActivity,
   type PlanActivityInput,
@@ -340,6 +342,111 @@ describe('machinesFromItemRows', () => {
     expect(machines.map(m => m.contractItemId)).toEqual(['a', 'b']); // ordenado por sort_order
     expect(machines[0]).toMatchObject({ pmocScope: 'full', pmocStartVisit: 3 });
     expect(machines[1]).toMatchObject({ pmocScope: 'ac', pmocStartVisit: 12 });
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// REGRESSÃO P0 — cross-multiplicação (×N equipamentos) no motor por máquina
+// Bug DA Luz (Glacial): 13 máquinas, plano POR MÁQUINA, mas as atividades
+// chegavam ao motor com contract_item_id NULL (a UI manda só equipment_ref) →
+// caíam no ramo LEGADO de buildPerMachineVisits e eram expandidas pra TODAS as
+// máquinas. 1ª OS ficou com 5980 atividades (442 distintas × 13) em vez de 728.
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('REGRESSÃO P0 — buildContractVisits NÃO multiplica plano por máquina por N equipamentos', () => {
+  const N = 13;
+  const ACTS_PER_MACHINE = 8;
+
+  // Máquinas (contract_items) e plano POR MÁQUINA já com contract_item_id
+  // resolvido (= o que o hook DEVE passar ao motor após resolver equipment_ref).
+  const machines: MachineInput[] = Array.from({ length: N }, (_, i) =>
+    machine(`item-${i}`, `eq-${i}`, 'ac', 12),
+  );
+  const planActivities: PlanActivityInput[] = [];
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < ACTS_PER_MACHINE; j++) {
+      planActivities.push({
+        description: `Ativ ${j}`,
+        freq_code: 'A', // anual → todas devidas no mês 0 com start=12
+        section: 'condicionadores',
+        contract_item_id: `item-${i}`, // resolvido (chave da máquina dona)
+        applies_per_equipment: true,
+      });
+    }
+  }
+  const planActivityIds = planActivities.map((_, idx) => `pa-${idx}`);
+
+  it('com contract_item_id resolvido: 1ª visita = soma dos planos (1× por máquina), NUNCA ×N', () => {
+    const visits = buildContractVisits({
+      startDate: START,
+      frequencyType: 'months',
+      frequencyValue: 1,
+      horizonMonths: 12,
+      planActivities,
+      planActivityIds,
+      machines,
+    });
+    const first = visits[0];
+    const emissions = first.emissions ?? [];
+    // Esperado: 13 × 8 = 104. O bug daria 104 × 13 = 1352.
+    expect(emissions.length).toBe(N * ACTS_PER_MACHINE);
+    // Cada atividade da máquina X sai SÓ com o equipamento de X.
+    for (let i = 0; i < N; i++) {
+      const ownEmissions = emissions.filter(e => e.equipmentId === `eq-${i}`);
+      expect(ownEmissions.length).toBe(ACTS_PER_MACHINE);
+    }
+  });
+
+  it('PROVA do bug: se o contract_item_id NÃO for resolvido (null), o motor expande ×N (regressão a evitar)', () => {
+    // Mesmo plano, mas SEM contract_item_id (o estado cru que vinha da UI).
+    const unresolved = planActivities.map(a => ({ ...a, contract_item_id: null }));
+    const visits = buildContractVisits({
+      startDate: START,
+      frequencyType: 'months',
+      frequencyValue: 1,
+      horizonMonths: 12,
+      planActivities: unresolved,
+      planActivityIds,
+      machines,
+    });
+    const emissions = visits[0].emissions ?? [];
+    // Documenta o comportamento ruim: legado expande pra TODAS as máquinas (×N).
+    // O hook NUNCA deve passar o plano nesse estado — por isso resolvemos antes.
+    expect(emissions.length).toBe(N * ACTS_PER_MACHINE * N);
+  });
+});
+
+describe('dedupPlanActivities', () => {
+  it('remove linhas iguais (mesma máquina+descrição+frequência+seção) preservando ordem', () => {
+    const acts: PlanActivityInput[] = [
+      { description: 'Limpar filtro', freq_code: 'M', section: 'condicionadores', contract_item_id: 'item-A' },
+      { description: 'Limpar filtro', freq_code: 'M', section: 'condicionadores', contract_item_id: 'item-A' }, // dup
+      { description: 'Limpar filtro', freq_code: 'M', section: 'condicionadores', contract_item_id: 'item-B' }, // outra máquina
+      { description: 'limpar FILTRO', freq_code: 'M', section: 'condicionadores', contract_item_id: 'item-A' }, // case-insensitive dup de A
+    ];
+    const out = dedupPlanActivities(acts);
+    expect(out.length).toBe(2);
+    expect(out[0].contract_item_id).toBe('item-A');
+    expect(out[1].contract_item_id).toBe('item-B');
+  });
+
+  it('é idempotente (aplicar 2x dá o mesmo resultado)', () => {
+    const acts: PlanActivityInput[] = [
+      { description: 'A', freq_code: 'M', contract_item_id: 'x' },
+      { description: 'A', freq_code: 'M', contract_item_id: 'x' },
+    ];
+    const once = dedupPlanActivities(acts);
+    const twice = dedupPlanActivities(once);
+    expect(twice).toEqual(once);
+    expect(twice.length).toBe(1);
+  });
+
+  it('atividade de local (per_eq=false) não colide com a por-equipamento de mesma descrição', () => {
+    const acts: PlanActivityInput[] = [
+      { description: 'Inspeção', freq_code: 'A', applies_per_equipment: true, contract_item_id: 'item-A' },
+      { description: 'Inspeção', freq_code: 'A', applies_per_equipment: false, contract_item_id: null },
+    ];
+    expect(dedupPlanActivities(acts).length).toBe(2);
   });
 });
 

@@ -44,13 +44,27 @@ export function useServiceOrderActivities(serviceOrderIds: string[]) {
     queryKey: ['service-order-activities', ids],
     enabled: ids.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_order_activities')
-        .select('id, service_order_id, description, section, component, freq_code, freq_months, sort_order')
-        .in('service_order_id', ids)
-        .order('sort_order', { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as ServiceOrderActivity[];
+      // Várias OSs de uma vez (aba de contrato) somam fácil mais de 1000
+      // atividades; o default do PostgREST trunca em 1000. Pagina via `.range()`
+      // até esgotar pra não perder atividade de OS nenhuma.
+      const PAGE = 1000;
+      const rows: ServiceOrderActivity[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('service_order_activities')
+          .select('id, service_order_id, description, section, component, freq_code, freq_months, sort_order')
+          .in('service_order_id', ids)
+          // sort_order repete entre OSs → ordenação secundária estável (id) pra
+          // a paginação por range não pular/repetir linha.
+          .order('sort_order', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const page = (data ?? []) as ServiceOrderActivity[];
+        rows.push(...page);
+        if (page.length < PAGE) break;
+      }
+      return rows;
     },
   });
 
