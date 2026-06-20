@@ -51,7 +51,7 @@ import type { LucideIcon } from 'lucide-react';
  * "inicio" (hub) NÃO é uma ferramenta — fica fora desta lista.
  */
 export type TechToolId =
-  | 'equipamentos'
+  | 'catalogo'
   | 'carga-termica'
   | 'conversao'
   | 'calculo-capacitor'
@@ -84,8 +84,8 @@ export interface TechTool {
 export const TECH_TOOLS_BY_SEGMENT: Partial<Record<string, TechTool[]>> = {
   refrigeracao: [
     {
-      id: 'equipamentos',
-      label: 'Catálogo de Equipamentos',
+      id: 'catalogo',
+      label: 'Catálogo',
       descricao: 'Consulte modelos, capacidades e códigos de erro.',
       icon: Boxes,
       accent: 'hsl(217 91% 60%)',

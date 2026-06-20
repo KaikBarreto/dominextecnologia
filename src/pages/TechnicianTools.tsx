@@ -1,4 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import {
+  Routes,
+  Route,
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+  Navigate,
+} from 'react-router-dom';
 import { Home, Lock, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
@@ -10,7 +19,7 @@ import { SegmentLockedScreen } from '@/components/technician-tools/SegmentLocked
 import { getTechToolsForSegment, getTeaserToolsForSegment } from '@/config/technicianTools';
 import { Inicio } from '@/components/technician-tools/Inicio';
 import { CargaTermica } from '@/components/technician-tools/CargaTermica';
-import { Conversao } from '@/components/technician-tools/Conversao';
+import { Conversao, type ConversaoInicial } from '@/components/technician-tools/Conversao';
 import { Equipamentos } from '@/components/technician-tools/Equipamentos';
 import { CalculoCapacitor } from '@/components/technician-tools/CalculoCapacitor';
 import { CaboEletrico } from '@/components/technician-tools/CaboEletrico';
@@ -21,17 +30,16 @@ import { CicloRefrigeracao } from '@/components/technician-tools/CicloRefrigerac
 import { DiluicaoProduto } from '@/components/technician-tools/DiluicaoProduto';
 import type { ConversaoCategoria } from '@/lib/conversoes';
 
-/**
- * Ferramentas cuja sub-tela tem navegação de "voltar" PRÓPRIA (lista ↔ detalhe).
- * Pra elas, o botão "Voltar" GLOBAL do container some — senão ficam dois botões
- * de voltar em duplicidade (régua CEO: nunca dois voltares juntos). A
- * interceptação do voltar do SISTEMA (popstate) continua valendo pra todas.
- */
-const TOOLS_WITH_OWN_BACK = new Set<string>(['equipamentos']);
+const TOOLS_BASE = '/ferramentas-tecnico';
+
+/** Ferramentas cuja sub-tela tem voltar PRÓPRIO (lista ↔ detalhe). O "Voltar" do
+ *  shell some pra elas pra evitar dois botões de voltar (régua CEO). Usado só no
+ *  modo EMBEDDED (no modo rota a decisão é por profundidade de rota). */
+const TOOLS_WITH_OWN_BACK = new Set<string>(['catalogo']);
 
 type ToolTab =
   | 'inicio'
-  | 'equipamentos'
+  | 'catalogo'
   | 'carga-termica'
   | 'conversao'
   | 'calculo-capacitor'
@@ -42,33 +50,63 @@ type ToolTab =
   | 'ciclo-refrigeracao'
   | 'diluicao-produto';
 
+/** Slugs de ferramenta válidos (sem 'inicio', que é o index). 'catalogo' tem rota
+ *  splat própria (`catalogo/*`), os demais são ferramentas simples. */
+const TOOL_SLUGS = new Set<string>([
+  'catalogo',
+  'carga-termica',
+  'conversao',
+  'calculo-capacitor',
+  'cabo-eletrico',
+  'superaquecimento',
+  'regua-gases',
+  'retrofit-gas',
+  'ciclo-refrigeracao',
+  'diluicao-produto',
+]);
+
 /** Alvo de deep-link ao trocar de aba a partir de Recentes/Favoritos do Início. */
 export type ToolNavPayload =
   | { tab: 'conversao'; inicial: { categoria: ConversaoCategoria; de: string; para: string } }
-  | { tab: 'equipamentos'; modeloInicialId: string };
+  | { tab: 'catalogo'; modeloInicialId: string };
+
+const VALID_CONVERSAO_CATS: ReadonlySet<string> = new Set<ConversaoCategoria>([
+  'pressao',
+  'temperatura',
+  'potencia',
+  'comprimento',
+]);
+
+interface TechnicianToolsProps {
+  /**
+   * `true` quando renderizado EMBUTIDO no overlay da OS (`/os-tecnico/:id`), onde
+   * NÃO existe `/ferramentas-tecnico/*` na URL. Nesse modo a navegação é por
+   * useState interno (comportamento legado, zero regressão). No modo default
+   * (rota) usa `<Routes>` + navigate.
+   */
+  embedded?: boolean;
+}
 
 /**
  * "Ferramentas do Técnico" — utilidades de campo 100% client-side / offline.
- * Navegação por abas (estado interno, sem sub-rotas): sidebar vertical no
- * desktop, pills roláveis no mobile. Aba default = Início.
- * É item-pai do menu (igual Operacional/Gestão), por isso o header não tem voltar.
+ * MODO DUPLO:
+ *  - rota (default): navegação por URL (`/ferramentas-tecnico/<tab>`, `?nicho`).
+ *  - embedded (overlay da OS): navegação por estado interno.
  */
-export default function TechnicianTools() {
+export default function TechnicianTools({ embedded = false }: TechnicianToolsProps) {
+  return embedded ? <EmbeddedTools /> : <RouteTools />;
+}
+
+// ---------------------------------------------------------------------------
+// Dados compartilhados de nicho/ferramentas (idêntico nos dois modos).
+// ---------------------------------------------------------------------------
+function useSegmentNav(selectedSegment: string | null) {
   const { settings } = useCompanySettings();
   const companySegment = settings?.segment ?? null;
-
-  // Nicho selecionado no seletor. Começa null pra acompanhar o segmento real da
-  // empresa enquanto `settings` carrega async (sem efeito extra). Só vira não-nulo
-  // quando o técnico escolhe algo no seletor.
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
   const effectiveSegment = selectedSegment ?? companySegment ?? null;
   const isOwnSegment = !!companySegment && effectiveSegment === companySegment;
-  // Nicho escolhido que a empresa NÃO contratou → vitrine de upsell (sidebar de teasers).
   const isLocked = !!effectiveSegment && !isOwnSegment;
 
-  // Navegação:
-  //  - nicho contratado → Início (hub, sempre) + ferramentas REAIS do segmento;
-  //  - nicho bloqueado  → só as ferramentas-teaser do nicho (sem Início).
   const tools = getTechToolsForSegment(companySegment);
   const teaserTools = getTeaserToolsForSegment(effectiveSegment);
   const navItems = isLocked
@@ -78,113 +116,46 @@ export default function TechnicianTools() {
         ...tools.map((t) => ({ value: t.id, label: t.label, icon: t.icon, locked: false })),
       ];
 
-  // `activeTab` é string crua: no modo locked guarda o slug do teaser (fora do union
-  // ToolTab); no modo contratado guarda um ToolTab. O switch de conteúdo real só
-  // roda quando NÃO está locked, então as comparações com ToolTab seguem válidas.
-  const [activeTab, setActiveTab] = useState<string>('inicio');
-  // Alvo pendente de deep-link, consumido pela aba destino na 1ª montagem.
-  const [pending, setPending] = useState<ToolNavPayload | null>(null);
+  return { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems };
+}
 
-  // --- Voltar do sistema (swipe mobile / botão do navegador) ---------------
-  // Navegamos por estado interno (sem rota), então o "voltar" nativo sairia da
-  // página inteira pra Agenda. Empurramos UMA entrada de history ao entrar numa
-  // ferramenta; o popstate a consome e cai no Início (sem prender o usuário).
-  const pushedRef = useRef(false); // já existe a entrada techTool no history?
-  const prevTabRef = useRef<string>('inicio'); // tab anterior, pra detectar transições
+// ---------------------------------------------------------------------------
+// SHELL — header + switcher + sidebar/pills. Renderiza `content` na área central.
+// ---------------------------------------------------------------------------
+interface ShellProps {
+  companySegment: string | null;
+  effectiveSegment: string | null;
+  isOwnSegment: boolean;
+  isLocked: boolean;
+  navItems: { value: string; label: string; icon: React.ComponentType<{ className?: string }>; locked: boolean }[];
+  activeTab: string;
+  /** Largura total (Início / Equipamentos) vs. coluna estreita centralizada. */
+  isFullWidthTool: boolean;
+  /** Mostra o botão "Voltar" do shell (só raiz de ferramenta, nunca catálogo). */
+  showBack: boolean;
+  onBack: () => void;
+  onSwitchTab: (tab: string) => void;
+  onSelectSegment: (value: string) => void;
+  content: React.ReactNode;
+}
 
-  useEffect(() => {
-    const prev = prevTabRef.current;
-    const wasInicio = prev === 'inicio';
-    const isInicio = activeTab === 'inicio';
-
-    if (wasInicio && !isInicio) {
-      // Início → ferramenta: empilha UMA entrada (só se ainda não houver).
-      if (!pushedRef.current) {
-        window.history.pushState({ techTool: true }, '');
-        pushedRef.current = true;
-      }
-    } else if (!wasInicio && !isInicio) {
-      // Ferramenta → ferramenta: mantém UMA entrada (não empilha de novo).
-      if (pushedRef.current) {
-        window.history.replaceState({ techTool: true }, '');
-      }
-    }
-    // Ferramenta → Início feito por código (botão Voltar/troca de nicho): a
-    // entrada techTool é consumida pelo próprio history.back()/popstate, então
-    // não mexemos no history aqui — só zeramos o flag no handler do popstate.
-
-    prevTabRef.current = activeTab;
-  }, [activeTab]);
-
-  useEffect(() => {
-    const onPopState = (e: PopStateEvent) => {
-      const state = e.state as { techTool?: boolean } | null;
-      // Voltou e a entrada techTool já não está ativa: consome o voltar caindo
-      // no Início (em vez de deixar sair pra Agenda).
-      if (!state?.techTool && prevTabRef.current !== 'inicio') {
-        pushedRef.current = false;
-        setPending(null);
-        setActiveTab('inicio');
-      }
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  /** Botão "Voltar" visível: consome a entrada do history (popstate leva ao Início). */
-  const handleBackToInicio = () => {
-    if (pushedRef.current) {
-      window.history.back();
-    } else {
-      setPending(null);
-      setActiveTab('inicio');
-    }
-  };
-
-  /** Início chama isso pra navegar (com ou sem payload de deep-link). */
-  const handleNavigate = (tab: ToolTab, payload?: ToolNavPayload) => {
-    setPending(payload && payload.tab === tab ? payload : null);
-    setActiveTab(tab);
-  };
-
-  // Trocar de aba por pills/sidebar (sem deep-link) limpa o alvo pendente.
-  const switchTab = (tab: string) => {
-    setPending(null);
-    setActiveTab(tab);
-  };
-
-  // Trocar de nicho no seletor: volta o conteúdo pro hub (Início) pra não cair
-  // numa aba que não existe no nicho escolhido.
-  const handleSelectSegment = (value: string) => {
-    // Voltando ao Início por código: se havia entrada techTool no history,
-    // neutraliza-a (replaceState) pra não deixar uma entrada órfã que faria o
-    // próximo "voltar" ficar preso numa transição vazia.
-    if (pushedRef.current) {
-      window.history.replaceState(null, '');
-      pushedRef.current = false;
-    }
-    setSelectedSegment(value);
-    setPending(null);
-    setActiveTab('inicio');
-  };
-
-  const conversaoInicial =
-    pending?.tab === 'conversao' && activeTab === 'conversao' ? pending.inicial : undefined;
-  const modeloInicialId =
-    pending?.tab === 'equipamentos' && activeTab === 'equipamentos'
-      ? pending.modeloInicialId
-      : undefined;
-
-  // Início (hub de cards) e Equipamentos (grade do catálogo) precisam de toda a
-  // largura no desktop. As demais ferramentas são formulários/visuais estreitos
-  // e ficam apertados no monitor largo — limitamos a largura e centralizamos.
-  const isFullWidthTool = activeTab === 'inicio' || activeTab === 'equipamentos';
-
+function ToolsShell({
+  companySegment,
+  effectiveSegment,
+  isOwnSegment,
+  isLocked,
+  navItems,
+  activeTab,
+  isFullWidthTool,
+  showBack,
+  onBack,
+  onSwitchTab,
+  onSelectSegment,
+  content,
+}: ShellProps) {
   return (
     <div className="space-y-6 lg:space-y-6">
-      {/* Header — hub raiz das Ferramentas (item-pai do menu), sem botão de voltar:
-          não há tela "anterior" pra onde retornar. As sub-telas do catálogo têm
-          o próprio voltar interno. */}
+      {/* Header — hub raiz das Ferramentas. */}
       <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
         <div className="flex items-center gap-2">
           <FerramentasTecnicoIcon className="h-6 w-6 text-foreground/70 shrink-0 lg:h-7 lg:w-7" />
@@ -194,13 +165,12 @@ export default function TechnicianTools() {
           <SegmentToolsSwitcher
             selected={effectiveSegment ?? ''}
             companySegment={companySegment}
-            onSelect={handleSelectSegment}
+            onSelect={onSelectSegment}
           />
         )}
       </div>
 
-      {/* Pills (mobile) — sempre no modo bloqueado (vitrine de teasers); no nicho
-          contratado, escondidas na aba Início onde os cards já navegam. */}
+      {/* Pills (mobile). */}
       {(isLocked || (isOwnSegment && activeTab !== 'inicio')) && (
         <div className="lg:hidden">
           <MobilePillTabs
@@ -210,94 +180,351 @@ export default function TechnicianTools() {
               icon: <t.icon className="h-4 w-4" />,
             }))}
             activeTab={activeTab}
-            onTabChange={(v) => switchTab(v)}
+            onTabChange={(v) => onSwitchTab(v)}
           />
         </div>
       )}
 
-      {/* Layout unificado: sidebar vertical + conteúdo. Serve o nicho contratado
-          (ferramentas reais) e o nicho bloqueado (teasers + gate de upsell). */}
       {(isOwnSegment || isLocked) && (
-      <div className="lg:flex lg:gap-6">
-        {/* Sidebar (desktop) */}
-        <nav className="hidden lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:gap-1">
-          {navItems.map((t) => {
-            const isActive = activeTab === t.value;
-            return (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => switchTab(t.value)}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                <t.icon className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 flex-1 break-words text-left leading-tight">{t.label}</span>
-                {t.locked && (
-                  <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="lg:flex lg:gap-6">
+          {/* Sidebar (desktop) */}
+          <nav className="hidden lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:gap-1">
+            {navItems.map((t) => {
+              const isActive = activeTab === t.value;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => onSwitchTab(t.value)}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  <t.icon className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 flex-1 break-words text-left leading-tight">{t.label}</span>
+                  {t.locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* Conteúdo. No modo bloqueado é sempre o gate de upsell (qualquer teaser
-            só destaca o item). No nicho contratado, formulários/visuais estreitos
-            ganham max-width centralizado; catálogo e Início ficam em largura total. */}
-        <div
-          className={cn(
-            'min-w-0 flex-1',
-            !isLocked && !isFullWidthTool && 'mx-auto w-full max-w-4xl',
-          )}
-        >
-          {isLocked ? (
-            <SegmentLockedScreen segment={effectiveSegment!} />
-          ) : (
-            <>
-              {/* Voltar pro Início das Ferramentas (visível só dentro de uma
-                  ferramenta). Consome a entrada de history pro voltar do sistema
-                  seguir coerente. Ferramentas com voltar próprio (catálogo de
-                  Equipamentos) não renderizam este botão pra evitar duplicidade. */}
-              {activeTab !== 'inicio' && !TOOLS_WITH_OWN_BACK.has(activeTab) && (
-                <div className="mb-3">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBackToInicio}
-                    className="-ml-2 h-9 gap-1 px-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Voltar
-                  </Button>
-                </div>
-              )}
-              {activeTab === 'inicio' && <Inicio onNavigate={handleNavigate} />}
-              {activeTab === 'equipamentos' && (
-                <Equipamentos key={modeloInicialId ?? 'browse'} modeloInicialId={modeloInicialId} />
-              )}
-              {activeTab === 'carga-termica' && <CargaTermica />}
-              {activeTab === 'conversao' && (
-                <Conversao key={conversaoInicial ? 'deep' : 'browse'} inicial={conversaoInicial} />
-              )}
-              {activeTab === 'calculo-capacitor' && <CalculoCapacitor />}
-              {activeTab === 'cabo-eletrico' && <CaboEletrico />}
-              {activeTab === 'superaquecimento' && (
-                <Superaquecimento onIrParaCiclo={() => switchTab('ciclo-refrigeracao')} />
-              )}
-              {activeTab === 'regua-gases' && <ReguaGases />}
-              {activeTab === 'retrofit-gas' && <RetrofitGas />}
-              {activeTab === 'ciclo-refrigeracao' && <CicloRefrigeracao />}
-              {activeTab === 'diluicao-produto' && <DiluicaoProduto />}
-            </>
-          )}
+          {/* Conteúdo */}
+          <div
+            className={cn(
+              'min-w-0 flex-1',
+              !isLocked && !isFullWidthTool && 'mx-auto w-full max-w-4xl',
+            )}
+          >
+            {isLocked ? (
+              <SegmentLockedScreen segment={effectiveSegment!} />
+            ) : (
+              <>
+                {showBack && (
+                  <div className="mb-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={onBack}
+                      className="-ml-2 h-9 gap-1 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Voltar
+                    </Button>
+                  </div>
+                )}
+                {content}
+              </>
+            )}
+          </div>
         </div>
-      </div>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MODO ROTA (default) — navegação por URL.
+// ---------------------------------------------------------------------------
+function RouteTools() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nicho = searchParams.get('nicho');
+  const selectedSegment = nicho;
+
+  const { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems } =
+    useSegmentNav(selectedSegment);
+
+  // Preserva ?nicho quando travado (vitrine de upsell navega entre teasers).
+  const withNicho = (path: string) =>
+    isLocked && nicho ? `${path}?nicho=${encodeURIComponent(nicho)}` : path;
+
+  const goTab = (tab: string, payload?: ToolNavPayload) => {
+    // Deep-link de modelo (Recentes/Favoritos) → abre direto o detalhe no catálogo.
+    if (payload?.tab === 'catalogo' && tab === 'catalogo') {
+      navigate(`${TOOLS_BASE}/catalogo/ar_condicionado/modelo/${payload.modeloInicialId}`);
+      return;
+    }
+    if (tab === 'inicio') {
+      navigate(withNicho(TOOLS_BASE));
+    } else {
+      navigate(withNicho(`${TOOLS_BASE}/${tab}`));
+    }
+  };
+
+  const handleSelectSegment = (value: string) => {
+    if (value === companySegment) navigate(TOOLS_BASE);
+    else navigate(`${TOOLS_BASE}?nicho=${encodeURIComponent(value)}`);
+  };
+
+  return (
+    <Routes>
+      <Route
+        index
+        element={
+          <RouteShellFrame
+            activeTab="inicio"
+            companySegment={companySegment}
+            effectiveSegment={effectiveSegment}
+            isOwnSegment={isOwnSegment}
+            isLocked={isLocked}
+            navItems={navItems}
+            onSwitchTab={goTab}
+            onSelectSegment={handleSelectSegment}
+            content={<Inicio onNavigate={(id, payload) => goTab(id, payload)} />}
+          />
+        }
+      />
+      <Route
+        path=":toolId/*"
+        element={
+          <RouteToolFrame
+            companySegment={companySegment}
+            effectiveSegment={effectiveSegment}
+            isOwnSegment={isOwnSegment}
+            isLocked={isLocked}
+            navItems={navItems}
+            onSwitchTab={goTab}
+            onSelectSegment={handleSelectSegment}
+            goTab={goTab}
+          />
+        }
+      />
+      {/* Rota desconhecida sob /ferramentas-tecnico → volta ao hub. */}
+      <Route path="*" element={<Navigate to={TOOLS_BASE} replace />} />
+    </Routes>
+  );
+}
+
+/** Frame do index (Início) e telas sem ferramenta específica. */
+function RouteShellFrame(props: {
+  activeTab: string;
+  companySegment: string | null;
+  effectiveSegment: string | null;
+  isOwnSegment: boolean;
+  isLocked: boolean;
+  navItems: ShellProps['navItems'];
+  onSwitchTab: (tab: string) => void;
+  onSelectSegment: (value: string) => void;
+  content: React.ReactNode;
+}) {
+  return (
+    <ToolsShell
+      companySegment={props.companySegment}
+      effectiveSegment={props.effectiveSegment}
+      isOwnSegment={props.isOwnSegment}
+      isLocked={props.isLocked}
+      navItems={props.navItems}
+      activeTab={props.activeTab}
+      isFullWidthTool={props.activeTab === 'inicio' || props.activeTab === 'catalogo'}
+      showBack={false}
+      onBack={() => {}}
+      onSwitchTab={props.onSwitchTab}
+      onSelectSegment={props.onSelectSegment}
+      content={props.content}
+    />
+  );
+}
+
+/** Frame de uma ferramenta (`:toolId`). Deriva o conteúdo do slug + query. */
+function RouteToolFrame(props: {
+  companySegment: string | null;
+  effectiveSegment: string | null;
+  isOwnSegment: boolean;
+  isLocked: boolean;
+  navItems: ShellProps['navItems'];
+  onSwitchTab: (tab: string) => void;
+  onSelectSegment: (value: string) => void;
+  goTab: (tab: string) => void;
+}) {
+  const { toolId } = useParams<{ toolId: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+
+  // Slug desconhecido → volta ao hub (preserva ?nicho se travado).
+  if (!toolId || !TOOL_SLUGS.has(toolId)) {
+    const nicho = searchParams.get('nicho');
+    const dest = props.isLocked && nicho ? `${TOOLS_BASE}?nicho=${encodeURIComponent(nicho)}` : TOOLS_BASE;
+    return <Navigate to={dest} replace />;
+  }
+
+  const activeTab = toolId;
+  const isFullWidthTool = activeTab === 'catalogo';
+
+  // Voltar do shell (régua CEO: nunca dois "Voltar"):
+  // - Ferramentas simples: mostra na raiz delas.
+  // - Catálogo: mostra SÓ na raiz (`catalogo` ou `catalogo/:tab`); nas telas
+  //   profundas (marca/modelo/gas) o próprio Header da tela já tem o voltar, então
+  //   o shell esconde o dele. Profundidade derivada do pathname.
+  let showBack = !props.isLocked;
+  if (activeTab === 'catalogo') {
+    // Segmentos após ".../catalogo": 0 = redirect, 1 = subaba (raiz), 2+ = profunda.
+    const afterCatalogo = location.pathname.split('/catalogo/')[1] ?? '';
+    const segs = afterCatalogo.split('/').filter(Boolean);
+    const isCatalogRoot = segs.length <= 1; // só a subaba (ou nada)
+    showBack = !props.isLocked && isCatalogRoot;
+  }
+
+  // Deep-link de conversão por query (?cat&de&para).
+  const cat = searchParams.get('cat');
+  const de = searchParams.get('de');
+  const para = searchParams.get('para');
+  const conversaoInicial: ConversaoInicial | undefined =
+    activeTab === 'conversao' && cat && VALID_CONVERSAO_CATS.has(cat) && de && para
+      ? { categoria: cat as ConversaoCategoria, de, para }
+      : undefined;
+
+  let content: React.ReactNode = null;
+  switch (activeTab) {
+    case 'catalogo':
+      content = <Equipamentos />;
+      break;
+    case 'carga-termica':
+      content = <CargaTermica />;
+      break;
+    case 'conversao':
+      content = (
+        <Conversao key={conversaoInicial ? 'deep' : 'browse'} inicial={conversaoInicial} />
+      );
+      break;
+    case 'calculo-capacitor':
+      content = <CalculoCapacitor />;
+      break;
+    case 'cabo-eletrico':
+      content = <CaboEletrico />;
+      break;
+    case 'superaquecimento':
+      content = (
+        <Superaquecimento onIrParaCiclo={() => navigate(`${TOOLS_BASE}/ciclo-refrigeracao`)} />
+      );
+      break;
+    case 'regua-gases':
+      content = <ReguaGases />;
+      break;
+    case 'retrofit-gas':
+      content = <RetrofitGas />;
+      break;
+    case 'ciclo-refrigeracao':
+      content = <CicloRefrigeracao />;
+      break;
+    case 'diluicao-produto':
+      content = <DiluicaoProduto />;
+      break;
+  }
+
+  return (
+    <ToolsShell
+      companySegment={props.companySegment}
+      effectiveSegment={props.effectiveSegment}
+      isOwnSegment={props.isOwnSegment}
+      isLocked={props.isLocked}
+      navItems={props.navItems}
+      activeTab={activeTab}
+      isFullWidthTool={isFullWidthTool}
+      showBack={showBack}
+      onBack={() => navigate(TOOLS_BASE)}
+      onSwitchTab={props.onSwitchTab}
+      onSelectSegment={props.onSelectSegment}
+      content={content}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MODO EMBEDDED (overlay da OS) — navegação por estado interno (legado).
+// NÃO usa Router (a URL é /os-tecnico/:id). Zero regressão.
+// ---------------------------------------------------------------------------
+function EmbeddedTools() {
+  const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
+  const { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems } =
+    useSegmentNav(selectedSegment);
+
+  const [activeTab, setActiveTab] = useState<string>('inicio');
+  const [pending, setPending] = useState<ToolNavPayload | null>(null);
+
+  const handleNavigate = (tab: ToolTab, payload?: ToolNavPayload) => {
+    setPending(payload && payload.tab === tab ? payload : null);
+    setActiveTab(tab);
+  };
+
+  const switchTab = (tab: string) => {
+    setPending(null);
+    setActiveTab(tab);
+  };
+
+  const handleSelectSegment = (value: string) => {
+    setSelectedSegment(value);
+    setPending(null);
+    setActiveTab('inicio');
+  };
+
+  const conversaoInicial =
+    pending?.tab === 'conversao' && activeTab === 'conversao' ? pending.inicial : undefined;
+  const modeloInicialId =
+    pending?.tab === 'catalogo' && activeTab === 'catalogo'
+      ? pending.modeloInicialId
+      : undefined;
+
+  const isFullWidthTool = activeTab === 'inicio' || activeTab === 'catalogo';
+  const showBack =
+    activeTab !== 'inicio' && !isLocked && !TOOLS_WITH_OWN_BACK.has(activeTab);
+
+  let content: React.ReactNode = null;
+  if (activeTab === 'inicio') content = <Inicio onNavigate={handleNavigate} />;
+  else if (activeTab === 'catalogo')
+    content = (
+      <Equipamentos key={modeloInicialId ?? 'browse'} embedded modeloInicialId={modeloInicialId} />
+    );
+  else if (activeTab === 'carga-termica') content = <CargaTermica />;
+  else if (activeTab === 'conversao')
+    content = <Conversao key={conversaoInicial ? 'deep' : 'browse'} inicial={conversaoInicial} />;
+  else if (activeTab === 'calculo-capacitor') content = <CalculoCapacitor />;
+  else if (activeTab === 'cabo-eletrico') content = <CaboEletrico />;
+  else if (activeTab === 'superaquecimento')
+    content = <Superaquecimento onIrParaCiclo={() => switchTab('ciclo-refrigeracao')} />;
+  else if (activeTab === 'regua-gases') content = <ReguaGases />;
+  else if (activeTab === 'retrofit-gas') content = <RetrofitGas />;
+  else if (activeTab === 'ciclo-refrigeracao') content = <CicloRefrigeracao />;
+  else if (activeTab === 'diluicao-produto') content = <DiluicaoProduto />;
+
+  return (
+    <ToolsShell
+      companySegment={companySegment}
+      effectiveSegment={effectiveSegment}
+      isOwnSegment={isOwnSegment}
+      isLocked={isLocked}
+      navItems={navItems}
+      activeTab={activeTab}
+      isFullWidthTool={isFullWidthTool}
+      showBack={showBack}
+      onBack={() => switchTab('inicio')}
+      onSwitchTab={switchTab}
+      onSelectSegment={handleSelectSegment}
+      content={content}
+    />
   );
 }

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode, type ComponentType } from 'react';
 import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
+import {
   ArrowLeft,
   Boxes,
   Search,
@@ -32,6 +40,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import {
   useEquipmentBrands,
+  useEquipmentBrand,
   useEquipmentModel,
   useEquipmentModelsByBrand,
   useEquipmentErrorCodes,
@@ -315,13 +324,258 @@ function DomainSelector({
   );
 }
 
+/** Subabas válidas do catálogo (params de rota). */
+const CATALOG_TABS: ReadonlySet<string> = new Set<CatalogTab>([
+  'ar_condicionado',
+  'compressor',
+  'linha_branca',
+  'controle_remoto',
+  'fluido_refrigerante',
+]);
+
+/** Subaba default ao entrar no catálogo sem subaba na URL. */
+const DEFAULT_CATALOG_TAB: CatalogTab = 'ar_condicionado';
+
 /**
- * Catálogo de equipamentos de ar-condicionado para consulta em campo.
- * Navegação interna por estado (igual padrão da Conversão): marcas → modelos →
- * códigos de erro. A busca do topo é GLOBAL (marca, modelo, código de erro) e
- * é resolvida client-side dentro da própria tela inicial.
+ * Catálogo de equipamentos para consulta em campo.
+ *
+ * MODO DUPLO:
+ *  - rota (default): a navegação é por URL relativa (`catalogo/:tab/...`), montada
+ *    pelo `RouteTools` em `catalogo/*`. Refresh cai na tela certa e os links
+ *    (gás por code, modelo por id) são compartilháveis.
+ *  - embedded (overlay da OS): navegação por estado interno (legado, zero
+ *    regressão) — não há `/ferramentas-tecnico/*` na URL nesse contexto.
  */
-export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) {
+export function Equipamentos({
+  embedded = false,
+  modeloInicialId,
+}: {
+  embedded?: boolean;
+  modeloInicialId?: string;
+}) {
+  return embedded ? (
+    <EquipamentosEmbedded modeloInicialId={modeloInicialId} />
+  ) : (
+    <EquipamentosRouted />
+  );
+}
+
+/** Qual tela de detalhe abrir ao tocar a ação primária do card, por domínio. */
+function detailKind(domain: EquipmentDomain): 'errors' | 'compressor' | 'remote' {
+  if (domain === 'compressor') return 'compressor';
+  if (domain === 'controle_remoto') return 'remote';
+  // ar_condicionado e linha_branca usam a tela de códigos de erro.
+  return 'errors';
+}
+
+/** Subaba → domínio real de equipment_models (fluido_refrigerante não tem um). */
+function tabToDomain(tab: CatalogTab): EquipmentDomain {
+  return tab === 'fluido_refrigerante' ? 'ar_condicionado' : tab;
+}
+
+/* ------------------------------------------------------------------ */
+/* MODO ROTA — <Routes> interno (catalogo/*)                           */
+/* ------------------------------------------------------------------ */
+
+function EquipamentosRouted() {
+  return (
+    <Routes>
+      {/* /catalogo → subaba default. */}
+      <Route index element={<Navigate to={DEFAULT_CATALOG_TAB} replace />} />
+      {/* /catalogo/:catalogTab → lista da subaba. */}
+      <Route path=":catalogTab" element={<CatalogTabScreen />} />
+      {/* /catalogo/:catalogTab/marca/:brandId → modelos da marca. */}
+      <Route path=":catalogTab/marca/:brandId" element={<CatalogBrandScreen />} />
+      {/* /catalogo/:catalogTab/modelo/:modelId → detalhe (?codigo= abre num erro). */}
+      <Route path=":catalogTab/modelo/:modelId" element={<CatalogModelScreen />} />
+      {/* /catalogo/fluido_refrigerante/gas/:gasCode → detalhe do fluido. */}
+      <Route path="fluido_refrigerante/gas/:gasCode" element={<CatalogGasScreen />} />
+      {/* Qualquer rota desconhecida sob catalogo → subaba default. */}
+      <Route path="*" element={<Navigate to={DEFAULT_CATALOG_TAB} replace />} />
+    </Routes>
+  );
+}
+
+/** Tela 0 — lista da subaba (marcas / controles / gases). */
+function CatalogTabScreen() {
+  const { catalogTab } = useParams<{ catalogTab: string }>();
+  const navigate = useNavigate();
+
+  // Subaba inválida → cai na default (replace, não polui o history).
+  if (!catalogTab || !CATALOG_TABS.has(catalogTab)) {
+    return <Navigate to={`../${DEFAULT_CATALOG_TAB}`} replace />;
+  }
+  const tab = catalogTab as CatalogTab;
+  const domain = tabToDomain(tab);
+
+  return (
+    <div className="space-y-4 pb-4">
+      <DomainSelector value={tab} onChange={(d) => navigate(`../${d}`)} />
+      {tab === 'fluido_refrigerante' ? (
+        <GasesList
+          onSelectGas={(gas) =>
+            navigate(`gas/${encodeURIComponent(gas.code)}`)
+          }
+        />
+      ) : tab === 'controle_remoto' ? (
+        <RemotesList onSelectDetail={(model) => navigate(`modelo/${model.id}`)} />
+      ) : (
+        <BrandsList
+          domain={domain}
+          onSelectBrand={(brand) => navigate(`marca/${brand.id}`)}
+          onSelectModelDetail={(model) => navigate(`modelo/${model.id}`)}
+          onSelectModelErrors={(model, initialCode) =>
+            navigate(
+              initialCode
+                ? `modelo/${model.id}?codigo=${encodeURIComponent(initialCode)}`
+                : `modelo/${model.id}`,
+            )
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+/** Tela 1 — modelos de uma marca (`/catalogo/:tab/marca/:brandId`). */
+function CatalogBrandScreen() {
+  const { catalogTab, brandId } = useParams<{ catalogTab: string; brandId: string }>();
+  const navigate = useNavigate();
+  const { data: brand, isLoading } = useEquipmentBrand(brandId);
+
+  if (!catalogTab || !CATALOG_TABS.has(catalogTab) || catalogTab === 'fluido_refrigerante') {
+    return <Navigate to={`/ferramentas-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
+  }
+  const tab = catalogTab as CatalogTab;
+  const domain = tabToDomain(tab);
+  // Caminho-pai da lista da subaba (volta sempre pra cá).
+  const tabPath = `/ferramentas-tecnico/catalogo/${tab}`;
+
+  if (isLoading) return <LoadingBlock />;
+  if (!brand) {
+    return (
+      <NotFoundCatalog
+        title="Marca não encontrada"
+        message="Essa marca não está mais disponível no catálogo."
+        backTo={tabPath}
+      />
+    );
+  }
+
+  return (
+    <ModelosList
+      brand={brand}
+      domain={domain}
+      onBack={() => navigate(tabPath)}
+      // Trocar de marca no carrossel: replace pra não inflar o history.
+      onSelectBrand={(b) => navigate(`/ferramentas-tecnico/catalogo/${tab}/marca/${b.id}`, { replace: true })}
+      onSelectDetail={(model) =>
+        navigate(`/ferramentas-tecnico/catalogo/${tab}/modelo/${model.id}?from=marca&brandId=${brand.id}`)
+      }
+    />
+  );
+}
+
+/** Tela 2 — detalhe de um modelo (`/catalogo/:tab/modelo/:modelId`). */
+function CatalogModelScreen() {
+  const { catalogTab, modelId } = useParams<{ catalogTab: string; modelId: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { data: model, isLoading } = useEquipmentModel(modelId);
+
+  if (!catalogTab || !CATALOG_TABS.has(catalogTab)) {
+    return <Navigate to={`/ferramentas-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
+  }
+  const tab = catalogTab as CatalogTab;
+  const tabPath = `/ferramentas-tecnico/catalogo/${tab}`;
+
+  // Voltar: se veio de uma marca, volta pra ela; senão pra lista da subaba.
+  const fromBrandId = searchParams.get('from') === 'marca' ? searchParams.get('brandId') : null;
+  const backTo = fromBrandId
+    ? `/ferramentas-tecnico/catalogo/${tab}/marca/${fromBrandId}`
+    : tabPath;
+  const onBack = () => navigate(backTo);
+
+  if (isLoading) return <LoadingBlock />;
+  if (!model) {
+    return (
+      <NotFoundCatalog
+        title="Modelo não encontrado"
+        message="Esse modelo não está mais disponível no catálogo."
+        backTo={tabPath}
+      />
+    );
+  }
+
+  // O componente de detalhe é escolhido pelo DOMÍNIO REAL do modelo, não pela
+  // subaba da URL — garante a tela certa mesmo em link cruzado/colado.
+  const kind = detailKind(model.domain as EquipmentDomain);
+  const initialCode = searchParams.get('codigo') ?? undefined;
+
+  if (kind === 'compressor') {
+    return <CompressorFicha model={model} onBack={onBack} />;
+  }
+  if (kind === 'remote') {
+    return <RemoteConfig model={model} onBack={onBack} />;
+  }
+  return <CodigosErro model={model} initialCode={initialCode} onBack={onBack} />;
+}
+
+/** Tela 3 — detalhe de um fluido refrigerante (`/catalogo/fluido_refrigerante/gas/:gasCode`). */
+function CatalogGasScreen() {
+  const { gasCode } = useParams<{ gasCode: string }>();
+  const navigate = useNavigate();
+  const { data: gases = [], isLoading } = useRefrigerantGases();
+  const fluidoPath = '/ferramentas-tecnico/catalogo/fluido_refrigerante';
+
+  const gas = useMemo(() => {
+    if (!gasCode) return null;
+    const alvo = decodeURIComponent(gasCode).toUpperCase();
+    return gases.find((g) => g.code.toUpperCase() === alvo) ?? null;
+  }, [gases, gasCode]);
+
+  if (isLoading) return <LoadingBlock />;
+  if (!gas) {
+    return (
+      <NotFoundCatalog
+        title="Fluido não encontrado"
+        message="Esse fluido refrigerante não está no catálogo."
+        backTo={fluidoPath}
+      />
+    );
+  }
+  return <GasDetail gas={gas} onBack={() => navigate(fluidoPath)} />;
+}
+
+/** Estado vazio amigável DENTRO das Ferramentas (não usa o NotFound global). */
+function NotFoundCatalog({
+  title,
+  message,
+  backTo,
+}: {
+  title: string;
+  message: string;
+  backTo: string;
+}) {
+  const navigate = useNavigate();
+  return (
+    <div className="space-y-4 pb-4">
+      <EmptyState title={title} message={message} />
+      <div className="flex justify-center">
+        <Button variant="outline" onClick={() => navigate(backTo)}>
+          <ArrowLeft className="h-4 w-4" />
+          Voltar ao catálogo
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* MODO EMBEDDED — máquina de estado interna (legado, overlay da OS)    */
+/* ------------------------------------------------------------------ */
+
+function EquipamentosEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
   const [tab, setTab] = useState<CatalogTab>('ar_condicionado');
   const [view, setView] = useState<View>({ kind: 'brands' });
 
@@ -333,8 +587,7 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
 
   // Em 'fluido_refrigerante' não existe domínio de equipment_models — as telas de
   // marca/modelo recebem só domínios reais. Fora dessa subaba, `domain` é o próprio tab.
-  const domain: EquipmentDomain =
-    tab === 'fluido_refrigerante' ? 'ar_condicionado' : tab;
+  const domain: EquipmentDomain = tabToDomain(tab);
 
   // Deep-link: abre direto na tela de detalhe do modelo recebido (Recentes/Favoritos).
   // O deep-link atual é só de AC (códigos de erro); mantém o comportamento.
@@ -413,9 +666,7 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
       {tab === 'fluido_refrigerante' ? (
         <GasesList onSelectGas={(gas) => setView({ kind: 'gas', gas })} />
       ) : tab === 'controle_remoto' ? (
-        <RemotesList
-          onSelectDetail={(model) => setView({ kind: 'remote', model })}
-        />
+        <RemotesList onSelectDetail={(model) => setView({ kind: 'remote', model })} />
       ) : (
         <BrandsList
           domain={domain}
@@ -428,14 +679,6 @@ export function Equipamentos({ modeloInicialId }: { modeloInicialId?: string }) 
       )}
     </div>
   );
-}
-
-/** Qual tela de detalhe abrir ao tocar a ação primária do card, por domínio. */
-function detailKind(domain: EquipmentDomain): 'errors' | 'compressor' | 'remote' {
-  if (domain === 'compressor') return 'compressor';
-  if (domain === 'controle_remoto') return 'remote';
-  // ar_condicionado e linha_branca usam a tela de códigos de erro.
-  return 'errors';
 }
 
 /* ------------------------------------------------------------------ */

@@ -461,7 +461,7 @@ const AppRoutes = () => (
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       {/* Ferramentas do Técnico — hub client-side/offline. Sub-rotas internas
          via <Routes> dentro da página, então registra com /* (wildcard). */}
-      <Route path="/ferramentas-tecnico" element={<PermissionRoute screenKey="screen:technician_tools"><TechnicianToolsRoute><TechnicianTools /></TechnicianToolsRoute></PermissionRoute>} />
+      <Route path="/ferramentas-tecnico/*" element={<PermissionRoute screenKey="screen:technician_tools"><TechnicianToolsRoute><TechnicianTools /></TechnicianToolsRoute></PermissionRoute>} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />
