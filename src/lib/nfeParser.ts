@@ -97,6 +97,17 @@ export function parseNfeXml(text: string): NfeParseResult {
 
   const infNFe = firstTag(doc, 'infNFe');
   if (!infNFe) {
+    // Mensagem específica quando o arquivo é de outro tipo de documento fiscal.
+    const isNfse =
+      firstTag(doc, 'CompNfse') !== null ||
+      firstTag(doc, 'Nfse') !== null ||
+      firstTag(doc, 'infNfse') !== null;
+    const isCte = firstTag(doc, 'infCte') !== null || firstTag(doc, 'CTe') !== null;
+    if (isNfse || isCte) {
+      throw new NfeParseError(
+        'Este XML é de NFS-e/CT-e, não de NF-e de produto.',
+      );
+    }
     throw new NfeParseError('XML de NF-e inválido. Não encontramos os dados da nota.');
   }
 

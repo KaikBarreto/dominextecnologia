@@ -113,7 +113,17 @@ export function useNfeImport() {
         : 'Importado de NF-e (XML)';
 
       // 2) Para cada linha incluída: casar ou criar item, e dar entrada via RPC.
+      //    Idempotente por linha: uma falha não derruba as outras.
       for (const line of payload.lines) {
+        // Segurança extra: nunca dar entrada de quantidade ≤ 0 (lixo no Kardex).
+        if (!(line.quantity > 0)) {
+          failed += 1;
+          console.error('Linha ignorada — quantidade não positiva:', line.name);
+          continue;
+        }
+
+        // Id do item criado NESTA iteração (para rollback se a RPC falhar).
+        let createdItemId: string | null = null;
         try {
           let inventoryId = line.matchInventoryId;
 
@@ -132,7 +142,7 @@ export function useNfeImport() {
               .single();
             if (itemErr) throw itemErr;
             inventoryId = newItem.id;
-            created += 1;
+            createdItemId = newItem.id;
           }
 
           const { error: rpcErr } = await supabase.rpc('register_inventory_movement', {
@@ -144,8 +154,22 @@ export function useNfeImport() {
             p_notes: notes,
           });
           if (rpcErr) throw rpcErr;
+
+          // Só conta "novo" depois que a entrada deu certo (M3/M4).
+          if (createdItemId) created += 1;
           imported += 1;
         } catch (err) {
+          // Rollback: se acabamos de criar o item e a entrada falhou, remove o
+          // item órfão (quantity 0, sem movimento) para não deixar lixo.
+          if (createdItemId) {
+            const { error: delErr } = await supabase
+              .from('inventory')
+              .delete()
+              .eq('id', createdItemId);
+            if (delErr) {
+              console.error('Falha ao remover item órfão da NF-e:', line.name, delErr);
+            }
+          }
           failed += 1;
           console.error('Falha ao importar item da NF-e:', line.name, err);
         }
