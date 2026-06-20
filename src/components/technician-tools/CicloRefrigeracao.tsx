@@ -11,6 +11,7 @@ import { useIsDark } from '@/hooks/useIsDark';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { CicloRefrigeracaoIlustracao } from './CicloRefrigeracaoIlustracao';
+import { ToolDisclaimer } from './ToolDisclaimer';
 
 type CicloView = 'ilustracao' | 'imagem';
 
@@ -124,6 +125,8 @@ export function CicloRefrigeracao() {
           ))}
         </Accordion>
       </section>
+
+      <ToolDisclaimer texto="Conteúdo de apoio e didático. Confira sempre os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
     </div>
   );
 }

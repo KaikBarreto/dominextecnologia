@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { ToolDisclaimer } from './ToolDisclaimer';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import {
@@ -318,7 +319,7 @@ const DOMAIN_OPTIONS: { value: CatalogTab; label: string; icon: ComponentType<{ 
  * Reusa o label de DOMAIN_OPTIONS pra não duplicar texto.
  */
 function tituloCatalogo(tab: CatalogTab): string {
-  const label = DOMAIN_OPTIONS.find((o) => o.value === tab)?.label ?? 'Equipamentos';
+  const label = DOMAIN_OPTIONS.find((o) => o.value === tab)?.label ?? 'Catálogo';
   return `Catálogo - ${label}`;
 }
 
@@ -381,7 +382,7 @@ const CATALOG_TABS: ReadonlySet<string> = new Set<CatalogTab>([
 const DEFAULT_CATALOG_TAB: CatalogTab = 'ar_condicionado';
 
 /**
- * Catálogo de equipamentos para consulta em campo.
+ * Catálogo para consulta em campo.
  *
  * MODO DUPLO:
  *  - rota (default): a navegação é por URL relativa (`catalogo/:tab/...`), montada
@@ -390,7 +391,7 @@ const DEFAULT_CATALOG_TAB: CatalogTab = 'ar_condicionado';
  *  - embedded (overlay da OS): navegação por estado interno (legado, zero
  *    regressão) — não há `/ferramentas-tecnico/*` na URL nesse contexto.
  */
-export function Equipamentos({
+export function Catalogo({
   embedded = false,
   modeloInicialId,
 }: {
@@ -398,9 +399,9 @@ export function Equipamentos({
   modeloInicialId?: string;
 }) {
   return embedded ? (
-    <EquipamentosEmbedded modeloInicialId={modeloInicialId} />
+    <CatalogoEmbedded modeloInicialId={modeloInicialId} />
   ) : (
-    <EquipamentosRouted />
+    <CatalogoRouted />
   );
 }
 
@@ -421,7 +422,7 @@ function tabToDomain(tab: CatalogTab): EquipmentDomain {
 /* MODO ROTA — <Routes> interno (catalogo/*)                           */
 /* ------------------------------------------------------------------ */
 
-function EquipamentosRouted() {
+function CatalogoRouted() {
   return (
     <Routes>
       {/* /catalogo → subaba default. */}
@@ -483,6 +484,7 @@ function CatalogTabScreen() {
           }
         />
       )}
+      <ToolDisclaimer texto="Conteúdo de apoio. Capacidades, consumo e códigos podem variar por versão — confira sempre a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
     </div>
   );
 }
@@ -745,7 +747,7 @@ function NotFoundCatalog({
 /* MODO EMBEDDED — máquina de estado interna (legado, overlay da OS)    */
 /* ------------------------------------------------------------------ */
 
-function EquipamentosEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
+function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
   const [tab, setTab] = useState<CatalogTab>('ar_condicionado');
   const [view, setView] = useState<View>({ kind: 'brands' });
 
@@ -1063,7 +1065,7 @@ function BrandsList({
         </div>
         {allModels.length > 0 && (
           <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
-            {allModels.length} equipamentos
+            {allModels.length} itens
           </span>
         )}
       </div>
@@ -1173,7 +1175,7 @@ function BrandsList({
           <div className="space-y-6">
             {modelHits.length > 0 && (
               <section className="space-y-3">
-                <SectionHeader label="Equipamentos" count={modelHits.length} />
+                <SectionHeader label="Catálogo" count={modelHits.length} />
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   {modelHits.map((model) => (
                     <ModelCard
@@ -1214,7 +1216,7 @@ function BrandsList({
           />
         ) : (
           <section className="space-y-3">
-            <SectionHeader label="Equipamentos" count={filteredModels.length} />
+            <SectionHeader label="Catálogo" count={filteredModels.length} />
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {filteredModels.map((model) => (
                 <ModelCard

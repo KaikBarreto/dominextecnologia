@@ -20,7 +20,7 @@ import { getTechToolsForSegment, getTeaserToolsForSegment } from '@/config/techn
 import { Inicio } from '@/components/technician-tools/Inicio';
 import { CargaTermica } from '@/components/technician-tools/CargaTermica';
 import { Conversao, type ConversaoInicial } from '@/components/technician-tools/Conversao';
-import { Equipamentos } from '@/components/technician-tools/Equipamentos';
+import { Catalogo } from '@/components/technician-tools/Catalogo';
 import { CalculoCapacitor } from '@/components/technician-tools/CalculoCapacitor';
 import { CaboEletrico } from '@/components/technician-tools/CaboEletrico';
 import { Superaquecimento } from '@/components/technician-tools/Superaquecimento';
@@ -129,7 +129,7 @@ interface ShellProps {
   isLocked: boolean;
   navItems: { value: string; label: string; icon: React.ComponentType<{ className?: string }>; locked: boolean }[];
   activeTab: string;
-  /** Largura total (Início / Equipamentos) vs. coluna estreita centralizada. */
+  /** Largura total (Início / Catálogo) vs. coluna estreita centralizada. */
   isFullWidthTool: boolean;
   /** Mostra o botão "Voltar" do shell (só raiz de ferramenta, nunca catálogo). */
   showBack: boolean;
@@ -401,7 +401,7 @@ function RouteToolFrame(props: {
   let content: React.ReactNode = null;
   switch (activeTab) {
     case 'catalogo':
-      content = <Equipamentos />;
+      content = <Catalogo />;
       break;
     case 'carga-termica':
       content = <CargaTermica />;
@@ -497,7 +497,7 @@ function EmbeddedTools() {
   if (activeTab === 'inicio') content = <Inicio onNavigate={handleNavigate} />;
   else if (activeTab === 'catalogo')
     content = (
-      <Equipamentos key={modeloInicialId ?? 'browse'} embedded modeloInicialId={modeloInicialId} />
+      <Catalogo key={modeloInicialId ?? 'browse'} embedded modeloInicialId={modeloInicialId} />
     );
   else if (activeTab === 'carga-termica') content = <CargaTermica />;
   else if (activeTab === 'conversao')

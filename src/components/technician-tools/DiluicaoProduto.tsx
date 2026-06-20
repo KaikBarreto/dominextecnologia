@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
+import { ToolDisclaimer } from './ToolDisclaimer';
 
 /** Modo da calculadora. */
 type Modo = 'preparar' | 'tenho';
@@ -48,12 +49,16 @@ function GarrafaDiluicao({
   agua,
   unidadeLabel,
   clipId,
+  legendaZerada = false,
 }: {
   produto: number;
   agua: number;
   unidadeLabel: string;
   /** Id base estável/único por instância (evita colisão entre os dois modos). */
   clipId: string;
+  /** Quando true, a legenda e o aria-label mostram 0/0 mesmo com o desenho cheio
+   *  (estado vazio: galão cheio de água só para ilustrar). */
+  legendaZerada?: boolean;
 }) {
   const total = produto + agua;
   const temLiquido = total > 0;
@@ -83,13 +88,18 @@ function GarrafaDiluicao({
 
   const clipBody = `${clipId}-corpo`;
 
+  // Valores exibidos na legenda/aria — zerados no estado vazio, mesmo com o
+  // desenho cheio de água apenas ilustrando.
+  const legProduto = legendaZerada ? 0 : produto;
+  const legAgua = legendaZerada ? 0 : agua;
+
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
       <svg
         viewBox="0 0 97 123"
         role="img"
-        aria-label={`Galão com ${fmt(produto)} ${unidadeLabel} de produto e ${fmt(
-          agua,
+        aria-label={`Galão com ${fmt(legProduto)} ${unidadeLabel} de produto e ${fmt(
+          legAgua,
         )} ${unidadeLabel} de água`}
         className="h-56 w-auto max-w-[8.5rem] text-border md:h-64"
       >
@@ -134,7 +144,7 @@ function GarrafaDiluicao({
             style={{ backgroundColor: sky }}
           />
           <span className="text-foreground">
-            Água {fmt(agua)} {unidadeLabel}
+            Água {fmt(legAgua)} {unidadeLabel}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -143,7 +153,7 @@ function GarrafaDiluicao({
             style={{ backgroundColor: produtoCor }}
           />
           <span className="text-foreground">
-            Produto {fmt(produto)} {unidadeLabel}
+            Produto {fmt(legProduto)} {unidadeLabel}
           </span>
         </div>
       </div>
@@ -218,21 +228,21 @@ export function DiluicaoProduto() {
           />
         </div>
 
-        {/* Proporção 1:N + presets */}
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Proporção 1:N</Label>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold text-muted-foreground">1 :</span>
+        {/* Proporção + presets — centralizado */}
+        <div className="flex flex-col items-center gap-2">
+          <Label className="text-base text-muted-foreground md:text-lg">Proporção</Label>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-bold text-muted-foreground">1 para</span>
             <Input
               type="number"
               inputMode="decimal"
               value={n}
               onChange={(e) => setN(e.target.value)}
-              placeholder="Ex: 10"
-              className="h-14 flex-1 text-lg md:h-14 md:text-lg"
+              placeholder="10"
+              className="h-16 w-32 text-2xl font-bold md:h-16 md:text-2xl"
             />
           </div>
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-wrap justify-center gap-2 pt-1">
             {PRESETS_N.map((p) => {
               const ativo = num(n) === p;
               return (
@@ -256,7 +266,7 @@ export function DiluicaoProduto() {
 
         {/* Campos por modo */}
         {modo === 'preparar' ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:max-w-md">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:mx-auto lg:max-w-md">
             <div className="space-y-1.5">
               <Label className="text-base text-muted-foreground md:text-lg">
                 Volume final desejado
@@ -285,7 +295,7 @@ export function DiluicaoProduto() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:max-w-md">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:mx-auto lg:max-w-md">
             <div className="space-y-1.5">
               <Label className="text-base text-muted-foreground md:text-lg">
                 Quantidade de produto
@@ -317,19 +327,19 @@ export function DiluicaoProduto() {
       </div>
 
       {/* Resultado ao vivo */}
-      <div className="mx-auto w-full max-w-2xl rounded-lg border border-border bg-background p-5">
+      <div className="rounded-lg border border-border bg-background p-5">
         {modo === 'preparar' ? (
           resultadoPreparar ? (
-            <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-center">
+            <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
               <GarrafaDiluicao
                 produto={resultadoPreparar.produto}
                 agua={resultadoPreparar.agua}
                 unidadeLabel={unidadeLabel}
                 clipId="galao-preparar"
               />
-              <div className="min-w-0 flex-1 space-y-4">
+              <div className="min-w-0 space-y-4">
                 {/* Caixa única com os dois valores (divisor vertical) */}
-                <div className="grid grid-cols-2 divide-x divide-border rounded-lg border border-border bg-muted/30 lg:grid-cols-1 lg:divide-x-0 lg:divide-y">
+                <div className="grid grid-cols-2 divide-x divide-border rounded-lg border border-border bg-muted/30 lg:mx-auto lg:grid-cols-1 lg:max-w-xs lg:divide-x-0 lg:divide-y">
                   <div className="p-3 text-center">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Produto
@@ -356,21 +366,32 @@ export function DiluicaoProduto() {
               </div>
             </div>
           ) : (
-            <p className="text-center text-sm text-muted-foreground">
-              Informe a proporção e o volume final para ver o quanto de produto e água usar.
-            </p>
+            <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
+              <GarrafaDiluicao
+                produto={0}
+                agua={1}
+                unidadeLabel={unidadeLabel}
+                clipId="galao-preparar-vazio"
+                legendaZerada
+              />
+              <div className="min-w-0">
+                <p className="text-center text-sm text-muted-foreground">
+                  Informe a proporção e o volume final para ver o quanto de produto e água usar.
+                </p>
+              </div>
+            </div>
           )
         ) : resultadoTenho ? (
-          <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-center">
+          <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
             <GarrafaDiluicao
               produto={resultadoTenho.produto}
               agua={resultadoTenho.agua}
               unidadeLabel={unidadeLabel}
               clipId="galao-tenho"
             />
-            <div className="min-w-0 flex-1 space-y-4">
+            <div className="min-w-0 space-y-4">
               {/* Caixa única com os dois valores (divisor vertical) */}
-              <div className="grid grid-cols-2 divide-x divide-border rounded-lg border border-border bg-muted/30 lg:grid-cols-1 lg:divide-x-0 lg:divide-y">
+              <div className="grid grid-cols-2 divide-x divide-border rounded-lg border border-border bg-muted/30 lg:mx-auto lg:grid-cols-1 lg:max-w-xs lg:divide-x-0 lg:divide-y">
                 <div className="p-3 text-center">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Água a adicionar
@@ -397,9 +418,20 @@ export function DiluicaoProduto() {
             </div>
           </div>
         ) : (
-          <p className="text-center text-sm text-muted-foreground">
-            Informe a proporção e a quantidade de produto para ver quanta água adicionar.
-          </p>
+          <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
+            <GarrafaDiluicao
+              produto={0}
+              agua={1}
+              unidadeLabel={unidadeLabel}
+              clipId="galao-tenho-vazio"
+              legendaZerada
+            />
+            <div className="min-w-0">
+              <p className="text-center text-sm text-muted-foreground">
+                Informe a proporção e a quantidade de produto para ver quanta água adicionar.
+              </p>
+            </div>
+          </div>
         )}
       </div>
 
@@ -411,6 +443,8 @@ export function DiluicaoProduto() {
           Proporção 1:N = 1 parte de produto para N partes de água.
         </p>
       </div>
+
+      <ToolDisclaimer texto="Ferramenta de apoio. Os valores são uma referência — confira sempre o rótulo do produto, a ficha técnica do fabricante e as normas de segurança aplicáveis antes de usar." />
     </div>
   );
 }

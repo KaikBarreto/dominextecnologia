@@ -18,6 +18,7 @@ import {
   type ConversaoCategoria,
   type ConversaoCategoriaNumerica,
 } from '@/lib/conversoes';
+import { ToolDisclaimer } from './ToolDisclaimer';
 import {
   registrarConversaoRecente,
   toggleConversaoFavorita,
@@ -574,6 +575,8 @@ function ConversaoNumericaView({
           </p>
         </div>
       )}
+
+      <ToolDisclaimer />
     </div>
   );
 }

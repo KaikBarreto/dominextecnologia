@@ -18,6 +18,7 @@ import {
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
 import { usePersistedState } from '@/hooks/usePersistedState';
+import { ToolDisclaimer } from './ToolDisclaimer';
 
 /** Bolinha de cor do gás (régua do projeto: refrigerante sempre com cor). */
 function BolinhaGas({ cor, className }: { cor: string; className?: string }) {
@@ -308,6 +309,8 @@ export function RetrofitGas() {
           </div>
         );
       })()}
+
+      <ToolDisclaimer texto="Ferramenta de apoio. As opções de drop-in são uma referência rápida — confira sempre a ficha técnica do gás e do compressor, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
     </div>
   );
 }

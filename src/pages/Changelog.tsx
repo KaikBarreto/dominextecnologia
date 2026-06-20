@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.15',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cálculo de Capacitor agora entende máquinas trifásicas',
+        description: 'Ao escolher "Trifásico", a ferramenta para de sugerir capacitor (que essas máquinas não usam) e passa a calcular a contatora certa e o ajuste do relé térmico, a partir da corrente do motor/compressor ou da potência em CV.',
+        category: 'recurso',
+      },
+      {
+        title: 'Foto do componente em tela cheia',
+        description: 'Nas ferramentas de Cálculo de Capacitor e Cabo Elétrico, basta tocar na foto do capacitor, da contatora ou do disjuntor para vê-la ampliada em tela cheia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aviso de apoio nas ferramentas de cálculo',
+        description: 'As ferramentas do técnico passaram a trazer um lembrete discreto no rodapé: os valores são estimativas de referência e devem ser conferidos com a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.14',
     date: '20 de junho de 2026',
     type: 'patch',

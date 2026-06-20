@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { AlertTriangle, Info, RefreshCcw } from 'lucide-react';
+import { Info, RefreshCcw } from 'lucide-react';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import {
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteOption } from '@/components/technician-tools/RefrigeranteOption';
 import { cn } from '@/lib/utils';
+import { ToolDisclaimer } from './ToolDisclaimer';
 import {
   MODELOS_SUPERAQUECIMENTO,
   MODELO_PADRAO_ID,
@@ -597,18 +598,7 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
         />
       )}
 
-      {/* Alerta sutil */}
-      <div className="flex gap-2.5 rounded-lg border border-border bg-muted p-3 text-muted-foreground">
-        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-        <p className="text-xs leading-relaxed">
-          <span className="font-semibold text-foreground">Atenção: </span>
-          estes valores são sempre uma estimativa de referência e não devem ser usados
-          isoladamente. Sempre confira o manual do fabricante do equipamento antes de tomar
-          decisões de carga ou diagnóstico. O superaquecimento usa a curva de vapor (dew) e o
-          subresfriamento a de líquido (bubble) — em refrigerantes com glide, como o R-404A, são
-          curvas distintas.
-        </p>
-      </div>
+      <ToolDisclaimer texto="Ferramenta de apoio. Os valores são estimativas de referência e não devem ser usados isoladamente — confira sempre o manual do fabricante antes de decidir carga ou diagnóstico. O superaquecimento usa a curva de vapor (dew) e o subresfriamento a de líquido (bubble); em refrigerantes com glide, como o R-404A, são curvas distintas." />
     </div>
   );
 }

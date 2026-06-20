@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { usePersistedState } from '@/hooks/usePersistedState';
@@ -13,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteOption } from '@/components/technician-tools/RefrigeranteOption';
+import { ToolDisclaimer } from './ToolDisclaimer';
 import { cn } from '@/lib/utils';
 import {
   REFRIGERANTES,
@@ -482,17 +482,12 @@ export function ReguaGases() {
       {/* Régua de escala dupla unificada (mobile + desktop) */}
       <ReguaUnificada unidade={unidade} setUnidade={setUnidade} />
 
-      {/* Alerta sutil */}
-      <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
-        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-        <p className="text-xs leading-relaxed">
-          <span className="font-semibold text-foreground">Atenção: </span>
-          estes valores são sempre uma estimativa de referência e não devem ser usados
-          isoladamente. Sempre confira o manual do fabricante do equipamento antes de tomar
-          decisões de carga ou diagnóstico. Os blends com glide ({GASES_COM_GLIDE}) têm curvas
-          bubble/dew diferentes; nos demais a curva é única.
-        </p>
-      </div>
+      <ToolDisclaimer>
+        Ferramenta de apoio. Os valores são estimativas de referência e não devem ser usados
+        isoladamente — confira sempre o manual do fabricante antes de decidir carga ou diagnóstico.
+        Os blends com glide ({GASES_COM_GLIDE}) têm curvas bubble/dew diferentes; nos demais a curva
+        é única.
+      </ToolDisclaimer>
     </div>
   );
 }

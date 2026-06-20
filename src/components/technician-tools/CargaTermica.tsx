@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { calcularCargaTermica, formatarBtus } from '@/lib/cargaTermica';
+import { ToolDisclaimer } from './ToolDisclaimer';
 
 /** Converte string crua de input numérico em number, com default seguro. */
 function num(str: string, def = 0): number {
@@ -44,6 +45,11 @@ export function CargaTermica() {
   const [ensolarado, setEnsolarado] = usePersistedState<boolean>(
     'tt:state:carga-termica:ensolarado',
     false,
+  );
+  // Unidade do resultado: BTU (padrão) ou TR (Tonelada de Refrigeração). 1 TR = 12.000 BTU/h.
+  const [unidadeResultado, setUnidadeResultado] = usePersistedState<'btu' | 'tr'>(
+    'tt:state:carga-termica:unidadeResultado',
+    'btu',
   );
 
   const setCampo = (id: string, v: string) => setValores((prev) => ({ ...prev, [id]: v }));
@@ -111,29 +117,44 @@ export function CargaTermica() {
 
       {/* Resultado ao vivo — card fixo no fim do conteúdo */}
       <div className="rounded-lg border border-border bg-background p-5 text-center">
+        {/* Switch BTU ↔ TR no canto */}
+        <div className="mb-1 flex justify-end">
+          <LabeledSwitch
+            value={unidadeResultado}
+            onChange={setUnidadeResultado}
+            off={{ value: 'btu', label: 'BTU' }}
+            on={{ value: 'tr', label: 'TR' }}
+            aria-label="Unidade do resultado: BTU ou Tonelada de Refrigeração"
+          />
+        </div>
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Capacidade necessária
         </p>
         <p className="mt-2 text-5xl font-bold leading-none text-primary sm:text-7xl">
-          {formatarBtus(temArea ? btus : 0)}
-          <span className="ml-2 text-2xl font-semibold sm:text-3xl">BTUs</span>
+          {unidadeResultado === 'btu' ? (
+            <>
+              {formatarBtus(temArea ? btus : 0)}
+              <span className="ml-2 text-2xl font-semibold sm:text-3xl">BTUs</span>
+            </>
+          ) : (
+            <>
+              {(temArea ? btus / 12000 : 0).toLocaleString('pt-BR', {
+                maximumFractionDigits: 2,
+              })}
+              <span className="ml-2 text-2xl font-semibold sm:text-3xl">TR</span>
+            </>
+          )}
         </p>
         {temArea && (
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            Recomenda-se não utilizar aparelhos de ar condicionado abaixo da potência indicada.
+            {unidadeResultado === 'tr'
+              ? '1 TR (Tonelada de Refrigeração) = 12.000 BTU/h. Recomenda-se não utilizar aparelhos abaixo da potência indicada.'
+              : 'Recomenda-se não utilizar aparelhos de ar condicionado abaixo da potência indicada.'}
           </p>
         )}
       </div>
 
-      {/* Alerta sutil — abaixo do resultado */}
-      <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
-        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-        <p className="text-xs leading-relaxed">
-          <span className="font-semibold text-foreground">Atenção: </span>
-          esta simulação é uma referência aproximada e não corresponde integralmente às diferentes
-          realidades do local onde o equipamento será instalado.
-        </p>
-      </div>
+      <ToolDisclaimer texto="Ferramenta de apoio. Esta simulação é uma referência aproximada e não corresponde integralmente às diferentes realidades do local de instalação — confira sempre a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
     </div>
   );
 }

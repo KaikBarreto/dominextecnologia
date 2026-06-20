@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Zap, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 export interface Spec {
   label: string;
@@ -34,9 +35,14 @@ export function SpecPhotoCard({
   className,
 }: SpecPhotoCardProps) {
   const [imgErro, setImgErro] = useState(false);
+  // Viewer dedicado em tela cheia (mesmo da OS). Nunca abre em nova aba.
+  const [ampliada, setAmpliada] = useState(false);
 
   // Reseta o erro de imagem se a foto (src) mudar.
   useEffect(() => setImgErro(false), [fotoSrc]);
+
+  // Só clicável quando há foto de verdade (não no fallback de ícone).
+  const fotoClicavel = !imgErro;
 
   return (
     <div className={cn('rounded-xl border border-border bg-card p-4', className)}>
@@ -52,11 +58,30 @@ export function SpecPhotoCard({
             <img
               src={fotoSrc}
               alt={fotoAlt}
-              className="h-full w-full object-contain"
+              role="button"
+              aria-label="Ampliar foto"
+              tabIndex={0}
+              onClick={() => fotoClicavel && setAmpliada(true)}
+              onKeyDown={(e) => {
+                if (fotoClicavel && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  setAmpliada(true);
+                }
+              }}
+              className="h-full w-full cursor-pointer object-contain"
               onError={() => setImgErro(true)}
             />
           )}
         </div>
+
+        {fotoClicavel && (
+          <ImagePreviewModal
+            src={fotoSrc}
+            alt={fotoAlt}
+            open={ampliada}
+            onClose={() => setAmpliada(false)}
+          />
+        )}
 
         {/* Specs */}
         <dl className="w-full space-y-1 lg:flex-1">

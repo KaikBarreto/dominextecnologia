@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { AlertTriangle, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -12,6 +12,7 @@ import {
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { SpecPhotoCard, type Spec } from './SpecPhotoCard';
+import { ToolDisclaimer } from './ToolDisclaimer';
 import {
   CABO,
   calcularCaboEletrico,
@@ -239,16 +240,7 @@ export function CaboEletrico() {
         )}
       </div>
 
-      {/* Alerta — abaixo do resultado */}
-      <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
-        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-        <p className="text-xs leading-relaxed">
-          <span className="font-semibold text-foreground">Atenção: </span>Estimativa de referência
-          baseada na NBR 5410. Sempre confira a corrente (A) na etiqueta do equipamento e valide com
-          um eletricista habilitado antes de executar. Cabo ou disjuntor subdimensionado é risco de
-          incêndio.
-        </p>
-      </div>
+      <ToolDisclaimer texto="Ferramenta de apoio. Estimativa de referência baseada na NBR 5410 — confira sempre a corrente (A) na etiqueta do equipamento e valide com um eletricista habilitado antes de executar. Cabo ou disjuntor subdimensionado é risco de incêndio." />
     </div>
   );
 }
