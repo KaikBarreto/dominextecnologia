@@ -29,13 +29,14 @@ import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 import { usePmocActivityCatalog, type PmocCatalogActivity, PMOC_DEFAULT_SECTION } from '@/hooks/usePmocActivityCatalog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
 import { autoGeneratePmocDocsV1 } from '@/hooks/useGeneratePmocDocument';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -319,6 +320,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   //  - pmocStandardScope: 'ac' = só condicionadores (~41) | 'all' = toda a norma (~149).
   const [pmocStandardOn, setPmocStandardOn] = useState(true);
   const [pmocStandardScope, setPmocStandardScope] = useState<'ac' | 'all'>('ac');
+  // "Opções avançadas — serviços com frequência própria": recolhido por padrão
+  // pra não competir com o caminho principal (cadência mensal pelo plano).
+  const [showAdvancedFrequency, setShowAdvancedFrequency] = useState(false);
 
   // Step 3
   const [selectedItems, setSelectedItems] = useState<{ equipment_id?: string; item_name: string; item_description?: string; form_template_id?: string }[]>([]);
@@ -435,7 +439,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setStep(0);
       setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
       setShowCatalogPicker(false); setPickerSelection(new Set()); setPmocDefaultSeeded(false);
-      setPmocStandardOn(true); setPmocStandardScope('ac');
+      setPmocStandardOn(true); setPmocStandardScope('ac'); setShowAdvancedFrequency(false);
       return;
     }
 
@@ -450,8 +454,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         // Add team members as selected users
         const team = teamsWithMembers.find(t => t.id === editContract.team_id);
         if (team) {
-          team.members.forEach(m => {
-            if (!editUserIds.includes(m.user_id)) editUserIds.push(m.user_id);
+          (team.members ?? []).forEach(m => {
+            if (m?.user_id && !editUserIds.includes(m.user_id)) editUserIds.push(m.user_id);
           });
         }
       }
@@ -850,13 +854,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         return true;
       case 'frequency':
         return freqValue > 0 && !!startDate;
-      case 'items':
       case 'team':
+        // Exige ao menos 1 responsável pela execução (técnico OU equipe).
+        return (selectedUserIds?.length ?? 0) > 0 || (selectedTeamIds?.length ?? 0) > 0;
+      case 'items':
       case 'review':
       default:
         return true;
     }
   };
+
+  // Há ao menos 1 técnico OU equipe executora? (gate da etapa Equipe + submit).
+  const hasExecutor = (selectedUserIds?.length ?? 0) > 0 || (selectedTeamIds?.length ?? 0) > 0;
 
   // Aplica de fato a edição (chamado direto ou após confirmar o recálculo).
   // Passa plan_activities (o updateContract substitui o plano e regenera as
@@ -930,6 +939,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   };
 
   const handleSubmit = async () => {
+    // Defesa em profundidade: nunca salvar sem responsável pela execução.
+    if (!hasExecutor) {
+      toast({
+        variant: 'destructive',
+        title: 'Sem responsável pela execução',
+        description: 'Selecione ao menos 1 técnico ou equipe para executar o contrato.',
+      });
+      setStep(STEPS.findIndex(s => s.key === 'team'));
+      return;
+    }
     setSubmitting(true);
     try {
       const actualTeamId = selectedTeamIds.length > 0 ? selectedTeamIds[0] : null;
@@ -1384,10 +1403,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               {usePlanEngine ? (
                 <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
                   <CalendarCheck className="h-4 w-4 text-info" />
-                  <AlertTitle className="text-sm">Cadência pelo plano de serviços</AlertTitle>
+                  <AlertTitle className="text-sm">Como serão as visitas</AlertTitle>
                   <AlertDescription className="text-xs">
-                    1 visita por mês, agrupando tudo que vence no plano. A frequência única
-                    fica desativada — ajuste as frequências por serviço na seção abaixo.
+                    1 visita por mês, agrupando tudo que vence no plano. É só escolher a
+                    data de início e por quantos meses o contrato vai rodar — o sistema
+                    monta o cronograma sozinho.
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -1517,146 +1537,181 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 )
               )}
 
-              {/* Plano de serviços com frequência (Fase 1). Cada serviço pode ter
-                  uma frequência própria; quando há ao menos um serviço com
-                  frequência de cronograma, o sistema gera 1 visita/mês agrupando
-                  tudo que vence — em vez da frequência única acima. */}
-              <div className="rounded-lg border p-3 space-y-3">
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <CalendarCheck className="h-4 w-4 text-primary shrink-0" />
-                    Serviços com frequência própria (opcional)
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Adicione serviços com frequências diferentes (ex: filtro mensal, serpentina trimestral).
-                    Quando houver serviços aqui, o sistema gera <strong>1 visita por mês</strong> agrupando tudo que vence,
-                    ignorando a frequência única acima.
-                  </p>
-                </div>
+              {/* Padrão PMOC da norma — caminho PRINCIPAL num contrato PMOC. Quando
+                  LIGADO, o contrato segue a norma (Lei 13.589/2018): as atividades
+                  do padrão ficam TRAVADAS (sem remover/editar item a item). Pra
+                  mexer à vontade, é só DESLIGAR (modo personalizado). A escolha do
+                  ESCOPO (só ar-condicionado / tudo da norma) é a forma legítima de
+                  dizer "qual padrão seguir". */}
+              {isPmoc && (
+                <div className="rounded-lg border border-info/30 bg-info/5 p-3 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Switch
+                      checked={pmocStandardOn}
+                      onCheckedChange={handleStandardToggle}
+                      aria-label="Usar padrão PMOC da norma"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <Label className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                        Usar padrão PMOC da norma (atividades + checklists)
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {pmocStandardOn
+                          ? 'Seguindo a norma (Lei 13.589/2018): as atividades do padrão ficam travadas. Desligue para personalizar e editar item a item.'
+                          : 'Modo personalizado: edite e remova as atividades à vontade. Use "Adicionar do catálogo PMOC" para puxar atividades da norma.'}
+                      </p>
+                    </div>
+                  </div>
 
-                {/* Controle explícito do padrão PMOC da norma (substitui a
-                    auto-carga silenciosa). Nível 1: ligar/desligar o padrão.
-                    Nível 2 (só quando ligado): escopo ar-condicionado vs. tudo. */}
-                {isPmoc && (
-                  <div className="rounded-lg border border-info/30 bg-info/5 p-3 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Switch
-                        checked={pmocStandardOn}
-                        onCheckedChange={handleStandardToggle}
-                        aria-label="Usar padrão PMOC da norma"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <Label className="flex items-center gap-2">
-                          <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                          Usar padrão PMOC da norma (atividades + checklists)
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Pré-carrega as atividades da norma (Lei 13.589/2018) como ponto de partida editável.
-                          Os serviços adicionados à mão são sempre preservados.
-                        </p>
+                  {pmocStandardOn && (
+                    <div className="flex flex-col gap-2 pl-1 animate-in fade-in slide-in-from-top-1 duration-200 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Qual padrão seguir</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <LabeledSwitch
+                          value={pmocStandardScope}
+                          onChange={handleStandardScope}
+                          off={{ value: 'ac', label: `Só ar-condicionado (${defaultSectionActivities.length || '~41'})` }}
+                          on={{ value: 'all', label: `Tudo da norma (${catalogActivities.length || '~149'})` }}
+                          size="default"
+                          aria-label="Escopo do padrão PMOC"
+                        />
                       </div>
                     </div>
-
-                    {pmocStandardOn && (
-                      <div className="flex flex-col gap-2 pl-1 animate-in fade-in slide-in-from-top-1 duration-200 sm:flex-row sm:items-center sm:justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">Escopo do padrão</span>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <LabeledSwitch
-                            value={pmocStandardScope}
-                            onChange={handleStandardScope}
-                            off={{ value: 'ac', label: `Só ar-condicionado (${defaultSectionActivities.length || '~41'})` }}
-                            on={{ value: 'all', label: `Tudo da norma (${catalogActivities.length || '~149'})` }}
-                            size="default"
-                            aria-label="Escopo do padrão PMOC"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Picker do catálogo PMOC (Fase 2). Disponível em qualquer
-                    contrato; a auto-carga só acontece no PMOC. */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={openCatalogPicker}
-                  disabled={catalogLoading}
-                >
-                  <ShieldCheck className="h-4 w-4 mr-2 text-info" />
-                  {catalogLoading ? 'Carregando catálogo...' : 'Adicionar do catálogo PMOC'}
-                </Button>
-
-                <div className="flex gap-2">
-                  <Input
-                    className="flex-1"
-                    placeholder="Ex: Limpeza de filtros"
-                    value={newActivityDesc}
-                    onChange={e => setNewActivityDesc(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPlanActivity(); } }}
-                  />
-                  <Select value={newActivityFreq} onValueChange={v => setNewActivityFreq(v as FreqCode)}>
-                    <SelectTrigger className="w-[130px] shrink-0"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ACTIVITY_FREQ_OPTIONS.map(o => (
-                        <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" variant="outline" size="icon" className="shrink-0 h-10 w-10" onClick={addPlanActivity} disabled={!newActivityDesc.trim()}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  )}
                 </div>
+              )}
 
-                {planActivities.length > 0 && (
-                  <div className="space-y-1.5">
-                    {planActivities.map((a, i) => {
-                      const freqLabel = ACTIVITY_FREQ_OPTIONS.find(o => o.code === a.freq_code)?.label ?? a.freq_code;
-                      const perEquip = a.applies_per_equipment !== false;
-                      return (
-                        <div key={i} className="flex flex-col gap-2 rounded border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0 flex items-center gap-2">
-                            <span className="font-medium truncate">{a.description}</span>
-                            <Badge variant={a.freq_code === 'E' ? 'outline' : 'info'} className="shrink-0 text-[10px]">{freqLabel}</Badge>
+              {/* Opções avançadas — serviços com frequência própria. Recolhido por
+                  padrão pra não competir com o caminho principal. Aqui ficam o
+                  picker do catálogo, a adição manual e a lista editável de
+                  atividades. Em PMOC com padrão LIGADO, as linhas do catálogo
+                  aparecem travadas (Task 5). */}
+              <Collapsible open={showAdvancedFrequency} onOpenChange={setShowAdvancedFrequency}>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left min-h-11 text-sm font-medium active:scale-[0.995] transition-transform"
+                  >
+                    <span className="flex items-center gap-2">
+                      <CalendarCheck className="h-4 w-4 text-primary shrink-0" />
+                      Opções avançadas — serviços com frequência própria
+                    </span>
+                    <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', showAdvancedFrequency && 'rotate-180')} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="rounded-lg border border-t-0 rounded-t-none p-3 space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Adicione serviços com frequências diferentes (ex: filtro mensal, serpentina trimestral).
+                      Quando houver serviços aqui, o sistema gera <strong>1 visita por mês</strong> agrupando tudo que vence.
+                    </p>
+
+                    {/* Picker do catálogo PMOC (Fase 2). Disponível em qualquer
+                        contrato; em PMOC com padrão LIGADO fica desabilitado
+                        (personalize desligando o padrão). */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={openCatalogPicker}
+                      disabled={catalogLoading || (isPmoc && pmocStandardOn)}
+                      title={isPmoc && pmocStandardOn ? 'Desligue o padrão PMOC para personalizar as atividades' : undefined}
+                    >
+                      <ShieldCheck className="h-4 w-4 mr-2 text-info" />
+                      {catalogLoading ? 'Carregando catálogo...' : 'Adicionar do catálogo PMOC'}
+                    </Button>
+
+                    <div className="flex gap-2">
+                      <Input
+                        className="flex-1"
+                        placeholder="Ex: Limpeza de filtros"
+                        value={newActivityDesc}
+                        onChange={e => setNewActivityDesc(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPlanActivity(); } }}
+                      />
+                      <Select value={newActivityFreq} onValueChange={v => setNewActivityFreq(v as FreqCode)}>
+                        <SelectTrigger className="w-[130px] shrink-0"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ACTIVITY_FREQ_OPTIONS.map(o => (
+                            <SelectItem key={o.code} value={o.code}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="outline" size="icon" className="shrink-0 h-10 w-10" onClick={addPlanActivity} disabled={!newActivityDesc.trim()}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {planActivities.length > 0 && (
+                      <div className="space-y-1.5">
+                        {planActivities.map((a, i) => {
+                          const freqLabel = ACTIVITY_FREQ_OPTIONS.find(o => o.code === a.freq_code)?.label ?? a.freq_code;
+                          const perEquip = a.applies_per_equipment !== false;
+                          // Task 5: linha do PADRÃO (vinda do catálogo) fica TRAVADA
+                          // quando o padrão PMOC está ligado. Linha manual (sem
+                          // catalog_activity_id) continua editável/removível.
+                          const isFromCatalog = !!a.catalog_activity_id;
+                          const locked = isPmoc && pmocStandardOn && isFromCatalog;
+                          return (
+                            <div key={i} className={cn(
+                              'flex flex-col gap-2 rounded border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between',
+                              locked && 'bg-muted/40',
+                            )}>
+                              <div className="min-w-0 flex items-center gap-2">
+                                {locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Travado pelo padrão da norma" />}
+                                <span className="font-medium truncate">{a.description}</span>
+                                <Badge variant={a.freq_code === 'E' ? 'outline' : 'info'} className="shrink-0 text-[10px]">{freqLabel}</Badge>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {/* Escopo da atividade (Fase 3): por equipamento ou geral (local). */}
+                                <button
+                                  type="button"
+                                  disabled={locked}
+                                  onClick={() => setPlanActivities(prev => prev.map((x, idx) => idx === i ? { ...x, applies_per_equipment: !perEquip } : x))}
+                                  className={cn(
+                                    'px-2 py-1 rounded-full text-[10px] font-medium border transition-colors whitespace-nowrap',
+                                    perEquip
+                                      ? 'bg-info/10 text-info border-info/30'
+                                      : 'bg-muted text-muted-foreground border-border',
+                                    locked && 'opacity-60 cursor-not-allowed',
+                                  )}
+                                  title={locked ? 'Travado pelo padrão da norma — desligue o padrão para editar' : 'Alterna entre repetir a atividade por equipamento ou tratá-la como geral (local)'}
+                                >
+                                  {perEquip ? 'Por equipamento' : 'Geral (local)'}
+                                </button>
+                                {!locked && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setPlanActivities(prev => prev.filter((_, idx) => idx !== i))}>
+                                    ×
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {isPmoc && pmocStandardOn && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                            <Lock className="h-3.5 w-3.5 shrink-0" />
+                            Atividades do padrão travadas pela norma. Desligue o padrão PMOC para personalizar.
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {/* Escopo da atividade (Fase 3): por equipamento ou geral (local). */}
-                            <button
-                              type="button"
-                              onClick={() => setPlanActivities(prev => prev.map((x, idx) => idx === i ? { ...x, applies_per_equipment: !perEquip } : x))}
-                              className={cn(
-                                'px-2 py-1 rounded-full text-[10px] font-medium border transition-colors whitespace-nowrap',
-                                perEquip
-                                  ? 'bg-info/10 text-info border-info/30'
-                                  : 'bg-muted text-muted-foreground border-border',
-                              )}
-                              title="Alterna entre repetir a atividade por equipamento ou tratá-la como geral (local)"
-                            >
-                              {perEquip ? 'Por equipamento' : 'Geral (local)'}
-                            </button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setPlanActivities(prev => prev.filter((_, idx) => idx !== i))}>
-                              ×
-                            </Button>
+                        )}
+                        {usePlanEngine ? (
+                          <div className="flex items-center gap-2 text-xs text-info pt-1">
+                            <Info className="h-3.5 w-3.5 shrink-0" />
+                            {groupedVisits.length} visita(s) serão geradas (1 por mês com serviços a vencer).
+                            Eventuais não entram no cronograma automático.
                           </div>
-                        </div>
-                      );
-                    })}
-                    {usePlanEngine ? (
-                      <div className="flex items-center gap-2 text-xs text-info pt-1">
-                        <Info className="h-3.5 w-3.5 shrink-0" />
-                        {groupedVisits.length} visita(s) serão geradas (1 por mês com serviços a vencer).
-                        Eventuais não entram no cronograma automático.
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-xs text-warning pt-1">
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                        Só há serviços eventuais — nenhuma visita será agendada automaticamente.
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-warning pt-1">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            Só há serviços eventuais — nenhuma visita será agendada automaticamente.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           )}
 
@@ -1953,12 +2008,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     selectedTeamIds={selectedTeamIds}
                     onChangeUsers={setSelectedUserIds}
                     onChangeTeams={setSelectedTeamIds}
-                    label="Técnicos Executores"
+                    label="Técnicos Executores *"
                   />
                   <p className="text-xs text-muted-foreground mt-1.5">
                     Técnicos ou equipes que vão a campo executar as ordens de serviço deste contrato.
                     {' '}Diferente do Responsável Técnico (RT) regulatório do PMOC.
                   </p>
+                  {!hasExecutor && (
+                    <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      Selecione ao menos 1 técnico ou equipe para executar.
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <AssigneeMultiSelect
@@ -2131,7 +2192,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       open={open}
       onOpenChange={onOpenChange}
       title={isEditing ? 'Editar Contrato' : 'Novo Contrato'}
-      className="sm:max-w-[700px]"
+      className="sm:max-w-[920px]"
       footer={wizardFooter}
     >
       {wizardContent}

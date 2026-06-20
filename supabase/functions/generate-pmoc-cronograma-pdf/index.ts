@@ -9,9 +9,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 import {
-  drawCronogramaMesPage,
-  CronogramaServiceOrder,
-} from "../_shared/pmoc-templates/cronograma-mes.ts";
+  drawCronogramaTabela,
+  CronogramaTabelaServiceOrder,
+} from "../_shared/pmoc-templates/cronograma-tabela.ts";
 import {
   TemplateContext,
   dateToExtenso,
@@ -98,6 +98,28 @@ async function sha256Hex(input: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", data);
   const arr = Array.from(new Uint8Array(buf));
   return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Reduz um PNG p/ no máx. `maxSide` px de lado mantendo proporção. Só age se a
+// imagem for maior que o limite. Best-effort: qualquer falha devolve os bytes
+// originais (o pior caso vira o comportamento antigo, não um erro). Evita que
+// logos gigantes (raster descomprimido de dezenas de MB por decode) estourem a
+// memória do worker (HTTP 546). Alinhado às demais edges PMOC (dossiê/planilha).
+async function downscalePngIfLarge(
+  bytes: Uint8Array,
+  maxSide: number,
+): Promise<Uint8Array> {
+  try {
+    const { Image } = await import("https://deno.land/x/imagescript@1.2.17/mod.ts");
+    const img = await Image.decode(bytes);
+    const longest = Math.max(img.width, img.height);
+    if (longest <= maxSide) return bytes;
+    const scale = maxSide / longest;
+    img.resize(Math.round(img.width * scale), Math.round(img.height * scale));
+    return await img.encode();
+  } catch {
+    return bytes;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -339,6 +361,12 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Onda Memória: downscale defensivo do logo (≤512px) p/ não estourar
+    //   o worker no decode/embed (HTTP 546). Best-effort — falha devolve original.
+    if (logoBytes && logoMime === "image/png") {
+      logoBytes = await downscalePngIfLarge(logoBytes, 512);
+    }
+
     // ---- Janela 12 meses a partir do mês atual
     const now = new Date();
     const startMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -349,18 +377,46 @@ Deno.serve(async (req) => {
 
     const { data: orders } = await supabase
       .from("service_orders")
-      .select("id, order_number, scheduled_date, status")
+      // technician_id guarda o auth uid (= profiles.user_id), não profiles.id.
+      .select("id, order_number, scheduled_date, status, technician_id")
       .eq("contract_id", contract.id)
       .eq("company_id", contract.company_id) // filtro defensivo
       .gte("scheduled_date", startIso)
       .lt("scheduled_date", endIso);
 
-    const serviceOrders: CronogramaServiceOrder[] = (orders ?? []).map((o) => ({
-      id: o.id,
-      order_number: o.order_number ?? null,
-      scheduled_date: o.scheduled_date ?? null,
-      status: o.status,
-    }));
+    // ---- Resolve nome do técnico responsável por OS.
+    //    technician_id → profiles.user_id (auth uid). Busca em lote os nomes
+    //    distintos pra evitar N+1. Ausente/sem técnico → "—" no PDF.
+    const techIds = Array.from(
+      new Set(
+        (orders ?? [])
+          .map((o) => (o as { technician_id?: string | null }).technician_id ?? null)
+          .filter((id): id is string => !!id),
+      ),
+    );
+    const techNameById = new Map<string, string>();
+    if (techIds.length > 0) {
+      const { data: techProfiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", techIds)
+        .eq("company_id", contract.company_id); // não vaza nome cross-tenant
+      for (const p of techProfiles ?? []) {
+        const name = (p as { full_name?: string | null }).full_name?.trim();
+        if (name) techNameById.set((p as { user_id: string }).user_id, name);
+      }
+    }
+
+    const serviceOrders: CronogramaTabelaServiceOrder[] = (orders ?? []).map((o) => {
+      const techId = (o as { technician_id?: string | null }).technician_id ?? null;
+      return {
+        id: o.id,
+        order_number: o.order_number ?? null,
+        scheduled_date: o.scheduled_date ?? null,
+        status: o.status,
+        technician_name: techId ? techNameById.get(techId) ?? null : null,
+      };
+    });
 
     // ---- Hash baseado em OSs + datas + statuses + janela.
     //    Onda E: bump pra cronograma_v2 (signature_image_url do RT entra no
@@ -369,8 +425,14 @@ Deno.serve(async (req) => {
     //    CEO).
     //    Remoção do selo (2026-06): bump pra cronograma_v4 — o selo "Conforme
     //    Lei 13.589/2018" saiu do rodapé do Cronograma.
+    //    Onda tabela (2026-06): bump pra cronograma_v5 — o calendário (12
+    //    páginas) virou TABELA-relatório (1 linha/visita, com técnico). O
+    //    técnico responsável entra no hash pra regenerar quando muda.
+    //    Onda à-prova-de-erros (2026-06): bump pra cronograma_v6 — downscale
+    //    defensivo do logo (≤512px) entrou; força regen p/ aplicar o novo
+    //    pipeline de imagem em quem já tinha cache do v5.
     const hashInput = JSON.stringify({
-      v: "cronograma_v4",
+      v: "cronograma_v6",
       tenant: tenantName,
       customer: customer?.name ?? "",
       window: { start: startIso, end: endIso },
@@ -380,6 +442,7 @@ Deno.serve(async (req) => {
           n: o.order_number,
           d: o.scheduled_date,
           s: o.status,
+          t: o.technician_name ?? null,
         }))
         .sort((a, b) => (a.d ?? "").localeCompare(b.d ?? "")),
     });
@@ -457,21 +520,17 @@ Deno.serve(async (req) => {
       generated_at_extenso: dateToExtenso(new Date()),
     };
 
-    // ---- Compor PDF: 12 páginas
+    // ---- Compor PDF: TABELA-relatório (1 linha por visita, paginação automática)
     const pdf = await PDFDocument.create();
     pdf.setTitle(`PMOC — Cronograma Anual — ${ctx.customer.name}`);
     pdf.setSubject("Cronograma de Manutenções — Lei 13.589/2018");
     pdf.setProducer("Dominex");
 
-    for (let i = 0; i < 12; i++) {
-      const month = new Date(Date.UTC(startMonth.getUTCFullYear(), startMonth.getUTCMonth() + i, 1));
-      await drawCronogramaMesPage({
-        pdf,
-        ctx,
-        month,
-        serviceOrders,
-      });
-    }
+    await drawCronogramaTabela({
+      pdf,
+      ctx,
+      serviceOrders,
+    });
 
     const pdfBytes = await pdf.save();
 

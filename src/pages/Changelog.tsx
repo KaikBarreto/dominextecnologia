@@ -40,6 +40,53 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.10',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ambientes do contrato voltam a aparecer',
+        description: 'Na tela do contrato PMOC, a aba Ambientes voltou a listar corretamente os ambientes cadastrados e os equipamentos vinculados a cada um.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cronograma anual em formato de relatório',
+        description: 'Ao imprimir o cronograma de 12 meses do contrato, o PDF agora vem como um relatório em tabela — data prevista, número da OS, situação e técnico de cada visita — bem mais fácil de ler e arquivar do que o calendário anterior.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criação de contrato mais clara',
+        description: 'A etapa de Frequência ficou mais simples de entender, a janela abre maior no computador, e agora é preciso indicar ao menos um técnico ou equipe responsável pela execução antes de salvar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Padrão da norma PMOC protegido',
+        description: 'Ao optar por seguir o padrão da norma, as atividades ficam travadas para garantir a conformidade. Para ajustar item a item, basta desativar o padrão e personalizar as atividades.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Checklist da visita organizado por equipamento',
+        description: 'Durante a visita PMOC, o checklist agora separa cada equipamento em um bloco que abre e fecha (o primeiro já vem aberto), com o nome em destaque e a foto do equipamento quando houver — fica mais rápido encontrar onde marcar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botão Voltar sempre à mão na Ordem de Serviço',
+        description: 'O cabeçalho com o número da OS agora fica fixo no topo ao rolar a tela, deixando o botão Voltar sempre acessível, tanto no celular quanto no computador.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Trocar o responsável do contrato atualiza as visitas pendentes',
+        description: 'Ao alterar o técnico ou a equipe responsável de um contrato, as ordens de serviço ainda não realizadas passam automaticamente para o novo responsável.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aviso mais claro do que falta para os documentos PMOC',
+        description: 'Quando faltam dados para gerar a Planilha PMOC, o sistema agora avisa também quando é preciso vincular o cliente ao contrato ou completar o CNPJ e o endereço dele.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.9',
     date: '20 de junho de 2026',
     type: 'patch',

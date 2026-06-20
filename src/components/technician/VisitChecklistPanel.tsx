@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
+import { SignedImg } from '@/components/ui/SignedImg';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   type ChecklistActivity,
   type ChecklistEquipmentGroup,
@@ -29,6 +31,8 @@ interface Props {
       activity_photos?: string | null;
     }
   ) => Promise<void>;
+  /** Abre a foto do equipamento em tela cheia (mesmo viewer da OS comum). */
+  onPreviewPhoto?: (url: string) => void;
 }
 
 /** Número PT-BR: aceita vírgula ou ponto; vazio = null. */
@@ -249,8 +253,23 @@ function ActivityRow({
  * equipamento; cada atividade tem conforme/não-conforme/N/A e, se for medição,
  * campo numérico com aviso de faixa.
  */
-export function VisitChecklistPanel({ serviceOrderId, groups, readOnly, onSave }: Props) {
+/** Chave estável do grupo no accordion. */
+function groupKey(group: ChecklistEquipmentGroup): string {
+  return group.equipmentId ?? '__local__';
+}
+
+export function VisitChecklistPanel({
+  serviceOrderId,
+  groups,
+  readOnly,
+  onSave,
+  onPreviewPhoto,
+}: Props) {
   if (groups.length === 0) return null;
+
+  // Requisito: 1º equipamento aberto, demais fechados, todos expansíveis.
+  // type="multiple" + defaultValue com a chave do primeiro grupo (igual à OS comum).
+  const firstKey = groupKey(groups[0]);
 
   return (
     <Card>
@@ -269,30 +288,99 @@ export function VisitChecklistPanel({ serviceOrderId, groups, readOnly, onSave }
             </p>
           </div>
         )}
-        <div className={cn('space-y-4', readOnly && 'opacity-60')}>
-          {groups.map((group) => (
-            <div key={group.equipmentId ?? '__local__'} className="rounded-lg border bg-muted/20">
-              <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/40">
-                <Wrench className="h-4 w-4 text-primary shrink-0" />
-                <p className="text-sm font-semibold truncate">{group.equipmentName}</p>
-                <span className="text-xs text-muted-foreground ml-auto shrink-0">
-                  {group.activities.length} item{group.activities.length > 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="px-3">
-                {group.activities.map((activity) => (
-                  <ActivityRow
-                    key={activity.id}
-                    serviceOrderId={serviceOrderId}
-                    activity={activity}
-                    readOnly={readOnly}
-                    onSave={onSave}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <Accordion
+          type="multiple"
+          defaultValue={[firstKey]}
+          className={cn('w-full', readOnly && 'opacity-60 cursor-not-allowed')}
+        >
+          {groups.map((group) => {
+            const total = group.activities.length;
+            const answered = group.activities.filter((a) => !!a.conformity_status).length;
+            const naoConforme = group.activities.filter(
+              (a) => a.conformity_status === 'nao_conforme'
+            ).length;
+            const pending = total - answered;
+            const photo = group.equipment?.photo_url || null;
+            const category = group.equipment?.category || null;
+            const brandModel = [group.equipment?.brand, group.equipment?.model]
+              .filter(Boolean)
+              .join(' ');
+
+            return (
+              <AccordionItem
+                key={groupKey(group)}
+                value={groupKey(group)}
+                className="border-b last:border-0"
+              >
+                <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                    {photo ? (
+                      <SignedImg
+                        src={photo}
+                        alt={group.equipmentName}
+                        className="h-12 w-12 rounded-md object-cover shrink-0 border cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPreviewPhoto?.(photo);
+                        }}
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <Wrench className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-semibold text-base truncate">{group.equipmentName}</p>
+                        {category && (
+                          <Badge
+                            className="text-[10px] shrink-0 text-white border-0"
+                            style={category.color ? { backgroundColor: category.color } : undefined}
+                          >
+                            {category.name}
+                          </Badge>
+                        )}
+                      </div>
+                      {brandModel && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{brandModel}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {total} item{total > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    {naoConforme > 0 ? (
+                      <Badge variant="destructive" className="gap-1 text-xs shrink-0">
+                        <X className="h-3 w-3" />
+                        {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
+                      </Badge>
+                    ) : pending === 0 ? (
+                      <Badge variant="success" className="gap-1 shrink-0">
+                        <Check className="h-3 w-3" /> Concluído
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        {pending} pendente{pending > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-1">
+                    {group.activities.map((activity) => (
+                      <ActivityRow
+                        key={activity.id}
+                        serviceOrderId={serviceOrderId}
+                        activity={activity}
+                        readOnly={readOnly}
+                        onSave={onSave}
+                      />
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
       </CardContent>
     </Card>
   );

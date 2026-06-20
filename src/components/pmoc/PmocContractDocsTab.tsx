@@ -391,6 +391,27 @@ export function PmocContractDocsTab({
     if (!templateContext?.rt_nome) list.push({ label: 'Nome do Responsável Técnico', href: '/responsaveis-tecnicos' });
     if (!templateContext?.rt_modalidade) list.push({ label: 'Modalidade do RT', href: '/responsaveis-tecnicos' });
     if (!templateContext?.rt_cft_crea) list.push({ label: 'CFT/CREA do RT', href: '/responsaveis-tecnicos' });
+    // Cliente vinculado ao contrato — a Planilha PMOC (Seção 2 "Proprietário")
+    // exige um cliente; sem ele a geração falha. Quando ausente, o nome do
+    // cliente chega vazio no contexto (ContractDetail manda `''`).
+    if (!templateContext?.customer_name?.trim()) {
+      list.push({
+        label: 'Cliente vinculado ao contrato — vincule um cliente na edição do contrato (botão Editar)',
+      });
+    } else {
+      // Cliente existe mas sem CNPJ/CPF ou endereço → Seção 2 "Proprietário"
+      // sai incompleta na Planilha PMOC. Avisa sem disparar query nova.
+      if (!templateContext?.customer_document?.trim()) {
+        list.push({
+          label: 'CNPJ/CPF do cliente — complete no cadastro do cliente',
+        });
+      }
+      if (!templateContext?.customer_address?.trim()) {
+        list.push({
+          label: 'Endereço do cliente — complete no cadastro do cliente',
+        });
+      }
+    }
     return list;
   }, [templateContext]);
 

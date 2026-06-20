@@ -1141,7 +1141,7 @@ export function useContracts() {
       // Contrato atual — base de comparação pra detectar mudança de cronograma.
       const { data: current, error: curErr } = await supabase
         .from('contracts')
-        .select('start_date, frequency_type, frequency_value, horizon_months, status, customer_id, name')
+        .select('start_date, frequency_type, frequency_value, horizon_months, status, customer_id, name, technician_id, team_id')
         .eq('id', id)
         .single();
       if (curErr) throw curErr;
@@ -1165,6 +1165,48 @@ export function useContracts() {
       }
       const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
       if (updErr) throw updErr;
+
+      // 1.5) Propagar os responsáveis pela execução para as OSs ainda NÃO
+      //      realizadas deste contrato (PMOC ou comum). Regra do CEO: ao editar
+      //      o técnico/equipe do contrato, toda OS não concluída/cancelada passa
+      //      a apontar pro novo responsável. A regra de negócio (quais OSs, quais
+      //      status) vive na RPC server-side `reassign_contract_pending_orders`.
+      //
+      //      ⚠️ SÓ propaga quando o responsável REALMENTE mudou. Antes a RPC
+      //      rodava em toda edição que tocasse technician_id/team_id no payload —
+      //      sobrescrevendo reatribuições manuais feitas em OSs específicas mesmo
+      //      quando o gestor não mexeu nos responsáveis do contrato. Comparamos
+      //      o valor novo (input) com o atual (current) normalizando null/''/
+      //      undefined pra "sem responsável".
+      //
+      //      Best-effort: se a RPC ainda não existir no banco, não derruba o save
+      //      (a edição do contrato já foi aplicada).
+      let reassignedCount = 0;
+      const norm = (v: string | null | undefined) => (v == null || v === '' ? null : v);
+      // Valor desejado: se o campo não veio no input (`undefined`), mantém o
+      // atual do contrato — ou seja, não houve intenção de mudar.
+      const nextTechnician = input.technician_id !== undefined ? norm(input.technician_id) : norm(current?.technician_id);
+      const nextTeam = input.team_id !== undefined ? norm(input.team_id) : norm(current?.team_id);
+      const responsibleChanged =
+        nextTechnician !== norm(current?.technician_id) || nextTeam !== norm(current?.team_id);
+
+      if (responsibleChanged) {
+        try {
+          const { data: reassigned, error: reassignErr } = await supabase.rpc(
+            'reassign_contract_pending_orders',
+            {
+              p_contract_id: id,
+              p_technician_id: nextTechnician,
+              p_team_id: nextTeam,
+            },
+          );
+          if (reassignErr) throw reassignErr;
+          reassignedCount = typeof reassigned === 'number' ? reassigned : 0;
+        } catch (e) {
+          // RPC ausente/falha → não interrompe o fluxo de edição do contrato.
+          console.warn('reassign_contract_pending_orders falhou (ignorado):', e);
+        }
+      }
 
       // 2) Persistir o plano editado (substituição completa). Só quando
       //    plan_activities foi informado. Eventuais ('E') ficam registrados mas
@@ -1308,7 +1350,7 @@ export function useContracts() {
 
       // Sem mudança de cronograma OU contrato inativo → para por aqui (legado).
       if (!scheduleChanged || newStatus !== 'active') {
-        return { regenerated: false, deletedCount: 0, createdCount: 0 };
+        return { regenerated: false, deletedCount: 0, createdCount: 0, reassignedCount };
       }
 
       // 4) Regenerar visitas futuras não-tocadas.
@@ -1437,18 +1479,24 @@ export function useContracts() {
         if (ok) createdCount++;
       }
 
-      return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
+      return { regenerated: true, deletedCount: regenerableIds.length, createdCount, reassignedCount };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['contract-plan-activities'] });
+      // Nota das OSs pendentes reatribuídas ao novo responsável (Task 6).
+      const reassignedNote = result?.reassignedCount
+        ? ` ${result.reassignedCount} ordem(ns) de serviço pendente(s) reatribuída(s).`
+        : '';
       if (result?.regenerated) {
         toast({
           title: 'Contrato atualizado!',
-          description: `${result.createdCount} visita(s) futura(s) recalculada(s). Realizadas e em andamento preservadas.`,
+          description: `${result.createdCount} visita(s) futura(s) recalculada(s). Realizadas e em andamento preservadas.${reassignedNote}`,
         });
+      } else if (reassignedNote) {
+        toast({ title: 'Contrato atualizado!', description: reassignedNote.trim() });
       } else {
         toast({ title: 'Contrato atualizado!' });
       }

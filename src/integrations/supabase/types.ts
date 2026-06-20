@@ -7534,6 +7534,14 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["inventory_movements"]["Row"]
       }
+      reassign_contract_pending_orders: {
+        Args: {
+          p_contract_id: string
+          p_team_id: string
+          p_technician_id: string
+        }
+        Returns: number
+      }
       register_manual_company_payment: {
         Args: {
           p_amount: number

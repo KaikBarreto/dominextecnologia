@@ -37,10 +37,28 @@ export interface ChecklistActivity {
   activity_photos: string | null;
 }
 
+/** Categoria do equipamento (cor + nome), pro badge no header do grupo. */
+export interface ChecklistEquipmentCategory {
+  name: string;
+  color: string | null;
+}
+
+/** Dados de exibição do equipamento resolvidos pra montar o header do grupo. */
+export interface ChecklistEquipmentInfo {
+  name: string;
+  /** URL (path no bucket) da foto do equipamento — usada com SignedImg. */
+  photo_url: string | null;
+  brand: string | null;
+  model: string | null;
+  category: ChecklistEquipmentCategory | null;
+}
+
 export interface ChecklistEquipmentGroup {
   equipmentId: string | null;
   /** Nome de exibição: nome do equipamento ou "Geral / Local". */
   equipmentName: string;
+  /** Foto/marca/modelo/categoria do equipamento (null em grupo "Geral / Local"). */
+  equipment: ChecklistEquipmentInfo | null;
   activities: ChecklistActivity[];
 }
 
@@ -97,7 +115,7 @@ export function isOutOfRange(
 
 export function useOsActivityChecklist(serviceOrderId: string | undefined) {
   const [activities, setActivities] = useState<ChecklistActivity[]>([]);
-  const [equipmentNames, setEquipmentNames] = useState<Record<string, string>>({});
+  const [equipmentInfo, setEquipmentInfo] = useState<Record<string, ChecklistEquipmentInfo>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchActivities = useCallback(async () => {
@@ -124,13 +142,24 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
       if (ids.length > 0) {
         const { data: eqs } = await supabase
           .from('equipment')
-          .select('id, name')
+          .select('id, name, photo_url, brand, model, category:equipment_categories(name, color)')
           .in('id', ids);
-        const map: Record<string, string> = {};
-        for (const e of eqs ?? []) map[(e as any).id] = (e as any).name;
-        setEquipmentNames(map);
+        const map: Record<string, ChecklistEquipmentInfo> = {};
+        for (const e of eqs ?? []) {
+          const row = e as any;
+          map[row.id] = {
+            name: row.name,
+            photo_url: row.photo_url ?? null,
+            brand: row.brand ?? null,
+            model: row.model ?? null,
+            category: row.category
+              ? { name: row.category.name, color: row.category.color ?? null }
+              : null,
+          };
+        }
+        setEquipmentInfo(map);
       } else {
-        setEquipmentNames({});
+        setEquipmentInfo({});
       }
     } catch {
       // Falha de leitura não trava a tela; o painel simplesmente não aparece.
@@ -187,11 +216,13 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
     if (idx === undefined) {
       idx = groups.length;
       groupIndex.set(key, idx);
+      const info = a.equipment_id ? equipmentInfo[a.equipment_id] ?? null : null;
       groups.push({
         equipmentId: a.equipment_id,
         equipmentName: a.equipment_id
-          ? equipmentNames[a.equipment_id] ?? 'Equipamento'
+          ? info?.name ?? 'Equipamento'
           : 'Geral / Local',
+        equipment: info,
         activities: [],
       });
     }
