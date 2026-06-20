@@ -64,7 +64,19 @@ interface OSReportProps {
    * MESMOS handlers (Baixar PDF / Imprimir / Copiar link). Mobile inalterado.
    */
   desktopActionFooter?: boolean;
+  /**
+   * RELATÓRIO PARCIAL (link público de OS PAUSADA). Quando true:
+   * - exibe SÓ os equipamentos/checklists cuja chave está em `visibleEquipmentKeys`
+   *   (os 100% preenchidos — cálculo de completude vive em TechnicianOS);
+   * - NÃO mostra data de conclusão (check-out), já que a OS não foi concluída.
+   * Chave = equipment_id; respostas/itens sem equipamento usam a chave especial
+   * `__geral__` (mesma convenção do cálculo em TechnicianOS).
+   */
+  partialReport?: boolean;
+  visibleEquipmentKeys?: Set<string>;
 }
+
+const GENERAL_KEY = '__geral__';
 
 // Helper to safely extract joined object (Supabase may return array for some joins)
 const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
@@ -94,7 +106,7 @@ function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: 
   );
 }
 
-export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys }: OSReportProps) {
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
   // (e nao como o usuario logado de outra empresa).
   const db = forceReadOnly ? supabaseAnon : supabase;
@@ -107,6 +119,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     form_template: rawServiceOrder.form_template || snapshot?.form_template || null,
     service_type: (rawServiceOrder as any).service_type || snapshot?.service_type || null,
   };
+
+  // Assinatura estável do conjunto de chaves visíveis (modo parcial) pra usar
+  // como dependência de efeito sem disparar refetch a cada render (Set é nova
+  // referência sempre). Ordenado pra ser determinístico.
+  const visibleKeysSig = visibleEquipmentKeys ? Array.from(visibleEquipmentKeys).sort().join(',') : '';
 
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
@@ -207,7 +224,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       fetchTechnician();
       if ((serviceOrder as any).contract_id) fetchContract((serviceOrder as any).contract_id);
     }
-  }, [serviceOrder.id, forceReadOnly]);
+    // visibleKeysSig: assinatura estável do conjunto de chaves visíveis no modo
+    // parcial — refaz o fetch/filtragem quando o cálculo de completude chega.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceOrder.id, forceReadOnly, partialReport, visibleKeysSig]);
 
   useEffect(() => {
     const validValues = responsesByTemplate
@@ -275,11 +295,17 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     // company white-label
     applyCompanyData(payload.company_settings || null);
 
+    // No relatório PARCIAL (OS pausada) só passam os equipamentos/checklists
+    // 100% preenchidos — a chave de pertencimento vem pronta de TechnicianOS.
+    const keep = (key: string) => !partialReport || (visibleEquipmentKeys?.has(key) ?? false);
+
     // form_responses + question(form_questions.*) join — mesmo formato do select direto
-    const responses = (payload.form_responses || []).map((r: any) => ({
-      ...r,
-      question: unwrapJoin(r.question),
-    }));
+    const responses = (payload.form_responses || [])
+      .filter((r: any) => keep(r.equipment_id ?? GENERAL_KEY))
+      .map((r: any) => ({
+        ...r,
+        question: unwrapJoin(r.question),
+      }));
     const sorted = responses.sort((a: any, b: any) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
     setFormResponses(sorted);
 
@@ -287,7 +313,9 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     setRatingData(payload.rating || null);
 
     // equipment_items (já com category aninhada no payload)
-    setEquipmentItems((payload.equipment_items || []) as unknown as EquipmentItem[]);
+    setEquipmentItems(
+      ((payload.equipment_items || []) as any[]).filter((it) => keep(it.equipment_id ?? GENERAL_KEY)) as unknown as EquipmentItem[]
+    );
 
     // technician (full_name, avatar_url) com fallback de snapshot
     if (payload.technician) {
@@ -523,7 +551,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           } : null}
           orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
           osType={getOsTypeLabel(serviceOrder)}
-          checkOutTime={serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
+          checkOutTime={!partialReport && serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
           config={headerConfig}
         />
 
@@ -649,7 +677,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                     );
                   })()}
                 </div>
-              ) : serviceOrder.equipment && (
+              ) : !partialReport && serviceOrder.equipment && (
               <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
@@ -721,7 +749,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                     </div>
                   </div>
                 )}
-                {serviceOrder.check_out_time && (
+                {!partialReport && serviceOrder.check_out_time && (
                   <div className="flex items-start gap-3">
                     {technicianInfo?.photo_url && (
                       <button
@@ -754,7 +782,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   </div>
                 )}
               </div>
-              {serviceOrder.check_in_time && serviceOrder.check_out_time && (
+              {!partialReport && serviceOrder.check_in_time && serviceOrder.check_out_time && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <p className="text-xs text-slate-500">
                     <strong>Duração:</strong>{' '}

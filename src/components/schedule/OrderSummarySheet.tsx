@@ -100,6 +100,9 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
           <Badge className={cn('text-xs shadow-sm shadow-black/15', statusBadge.className)}>{statusBadge.label}</Badge>
           <Badge variant="outline" className="text-xs">{getOsTypeLabel(order, osTypeLabels)}</Badge>
           <Badge variant="secondary" className="text-xs">OS #{order.order_number}</Badge>
+          {(order as any).contract?.is_pmoc === true && (
+            <Badge className="text-xs bg-blue-600 text-white hover:bg-blue-600">PMOC</Badge>
+          )}
         </div>
 
         {/* Schedule */}

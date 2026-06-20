@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.3',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Montar contrato PMOC ficou mais fácil e rápido',
+        description: 'Os checklists do catálogo aparecem separados por tipo (ar-condicionado e grande porte), conforme o tipo de cada equipamento. A etapa de ambientes ficou mais organizada: busca de equipamento, rolagem (sem lista gigante), um ambiente/equipamento aberto por vez, e equipamentos já usados não se repetem entre ambientes. Dá para navegar clicando direto nas etapas, o campo de data tem um seletor próprio e o salvamento ficou bem mais rápido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Edição de contrato puxando todos os dados',
+        description: 'Corrigido: ao editar um contrato, a carga térmica e o número de ocupantes dos ambientes voltam preenchidos com o que estava salvo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Selo de PMOC na agenda',
+        description: 'As ordens de serviço de contratos PMOC agora aparecem com um selo azul "PMOC" na agenda (no card, no resumo e no detalhe), facilitando identificar de relance.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Relatório do cliente em OS pausada',
+        description: 'Ao pausar uma ordem de serviço, o link do cliente já mostra o relatório dos equipamentos que foram concluídos (sem data de conclusão). Os equipamentos ainda não finalizados só aparecem quando o serviço é retomado e concluído.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.14.2',
     date: '20 de junho de 2026',
     type: 'patch',

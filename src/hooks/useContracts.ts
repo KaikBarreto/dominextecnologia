@@ -750,6 +750,32 @@ async function insertActivitiesBatched(rows: any[], batchSize = 500): Promise<an
 }
 
 /**
+ * Executa `tasks` com concorrência LIMITADA (default 4 em paralelo). Cada visita
+ * de contrato é independente (cria sua própria OS + filhos), então persistir
+ * várias ao mesmo tempo encurta MUITO a regeneração (antes era 1 round-trip
+ * sequencial por visita × inserts internos). O limite evita estourar a conexão.
+ * Preserva a corretude: nenhuma tarefa depende do resultado de outra.
+ */
+async function runWithConcurrency<T>(
+  items: T[],
+  worker: (item: T, index: number) => Promise<boolean>,
+  concurrency = 4,
+): Promise<number> {
+  let okCount = 0;
+  let cursor = 0;
+  const runNext = async (): Promise<void> => {
+    const i = cursor++;
+    if (i >= items.length) return;
+    const ok = await worker(items[i], i);
+    if (ok) okCount++;
+    await runNext();
+  };
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, () => runNext());
+  await Promise.all(runners);
+  return okCount;
+}
+
+/**
  * Persiste UMA visita do contrato: service_order (status agendada, origin
  * contract) + junction de equipamentos + assignees + snapshot de atividades.
  * Compartilhado entre criação e regeneração na edição — fonte única do payload
@@ -1376,15 +1402,15 @@ export function useContracts() {
           ? input.assignee_user_ids
           : (input.technician_id ? [input.technician_id] : []);
 
-        for (let i = 0; i < visits.length; i++) {
-          // persistContractVisit é a fonte única do payload da OS (mesma usada
-          // na regeneração da edição). RLS de service_orders exige company_id no
-          // INSERT (WITH CHECK get_user_company_id) — garantido lá dentro.
-          // A OS recorrente JÁ é a visita do contrato (sem tabela-sombra).
-          const ok = await persistContractVisit({
+        // persistContractVisit é a fonte única do payload da OS (mesma usada na
+        // regeneração da edição). RLS de service_orders exige company_id no INSERT
+        // (garantido lá dentro). Cada visita é independente → persiste EM PARALELO
+        // (concorrência limitada) preservando o visitIndex pra numeração/ordem.
+        osCreatedCount = await runWithConcurrency(visits, (visit, i) =>
+          persistContractVisit({
             companyId: profile.company_id,
             contractId: (contract as any).id,
-            visit: visits[i],
+            visit,
             visitIndex: i,
             contractName: input.name,
             useGroupedEngine,
@@ -1397,10 +1423,9 @@ export function useContracts() {
             itemEquipmentMap,
             assigneeUserIds,
             createdBy: user?.id || null,
-          });
-          if (ok) osCreatedCount++;
-          else osErrorCount++;
-        }
+          }),
+        );
+        osErrorCount = visits.length - osCreatedCount;
 
         if (osErrorCount > 0) {
           toast({ variant: 'destructive', title: `${osErrorCount} OS(s) falharam ao ser criadas`, description: `${osCreatedCount} de ${expectedOsCount} criadas com sucesso.` });
@@ -1949,12 +1974,14 @@ export function useContracts() {
 
       const effName = (input.name ?? current.name ?? '') || 'Contrato';
       const effCustomerId = (input.customer_id ?? current.customer_id) as string;
-      let createdCount = 0;
-      for (let i = 0; i < visits.length; i++) {
-        const ok = await persistContractVisit({
+      // Persiste as visitas EM PARALELO (concorrência limitada). Cada visita é
+      // uma OS independente — o índice original (visitIndex) é preservado pra
+      // numeração/ordenação não mudar. Reduz drasticamente o tempo de "Salvando".
+      const createdCount = await runWithConcurrency(visits, (visit, i) =>
+        persistContractVisit({
           companyId: profile.company_id,
           contractId: id,
-          visit: visits[i],
+          visit,
           visitIndex: i,
           contractName: effName,
           useGroupedEngine,
@@ -1967,9 +1994,8 @@ export function useContracts() {
           itemEquipmentMap,
           assigneeUserIds,
           createdBy: user?.id || null,
-        });
-        if (ok) createdCount++;
-      }
+        }),
+      );
 
       return { regenerated: true, deletedCount: regenerableIds.length, createdCount, reassignedCount };
     },
@@ -2166,12 +2192,13 @@ export function useContracts() {
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
       const effName = (current.name as string | null) || 'Contrato';
 
-      let createdCount = 0;
-      for (let i = 0; i < visits.length; i++) {
-        const ok = await persistContractVisit({
+      // Visitas independentes → persiste EM PARALELO (concorrência limitada),
+      // preservando o visitIndex pra numeração/ordenação.
+      const createdCount = await runWithConcurrency(visits, (visit, i) =>
+        persistContractVisit({
           companyId: profile.company_id,
           contractId: id,
-          visit: visits[i],
+          visit,
           visitIndex: i,
           contractName: effName,
           useGroupedEngine,
@@ -2184,9 +2211,8 @@ export function useContracts() {
           itemEquipmentMap,
           assigneeUserIds,
           createdBy: user?.id || null,
-        });
-        if (ok) createdCount++;
-      }
+        }),
+      );
 
       return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
     },
@@ -2353,12 +2379,13 @@ export function useContracts() {
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
       const effName = (current.name as string | null) || 'Contrato';
 
-      let createdCount = 0;
-      for (let i = 0; i < visits.length; i++) {
-        const ok = await persistContractVisit({
+      // Visitas independentes → persiste EM PARALELO (concorrência limitada),
+      // preservando o visitIndex pra numeração/ordenação.
+      const createdCount = await runWithConcurrency(visits, (visit, i) =>
+        persistContractVisit({
           companyId: profile.company_id,
           contractId: id,
-          visit: visits[i],
+          visit,
           visitIndex: i,
           contractName: effName,
           useGroupedEngine,
@@ -2371,9 +2398,8 @@ export function useContracts() {
           itemEquipmentMap,
           assigneeUserIds,
           createdBy: user?.id || null,
-        });
-        if (ok) createdCount++;
-      }
+        }),
+      );
 
       return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
     },
@@ -2532,12 +2558,13 @@ export function useContracts() {
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
       const effName = (current.name as string | null) || 'Contrato';
 
-      let addedCount = 0;
-      for (let i = 0; i < visits.length; i++) {
-        const ok = await persistContractVisit({
+      // Visitas independentes → persiste EM PARALELO (concorrência limitada). O
+      // índice de cada visita é baseIndex + posição no array (numeração contínua).
+      const addedCount = await runWithConcurrency(visits, (visit, i) =>
+        persistContractVisit({
           companyId: profile.company_id,
           contractId: id,
-          visit: visits[i],
+          visit,
           visitIndex: baseIndex + i,
           contractName: effName,
           useGroupedEngine,
@@ -2550,9 +2577,8 @@ export function useContracts() {
           itemEquipmentMap,
           assigneeUserIds,
           createdBy: user?.id || null,
-        });
-        if (ok) addedCount++;
-      }
+        }),
+      );
 
       // Data final do contrato após a renovação (maior data entre as novas).
       let newUntil: string | null = lastScheduled;

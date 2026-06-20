@@ -988,13 +988,79 @@ export default function TechnicianOS() {
   const isPmocPublic = publicContract?.is_pmoc === true;
   const showPmocSeal = isPublicMode ? isPmocPublic : isPmocOrder;
 
+  // RELATÓRIO PARCIAL (link público de OS PAUSADA).
+  // Quando a OS está pausada e o cliente abre o link, mostramos o relatório de
+  // serviço como se estivesse concluído — porém SEM data de conclusão e exibindo
+  // SÓ os equipamentos/checklists 100% preenchidos. Equipamento parcial ou em
+  // branco some inteiro; ao retomar e concluir, tudo volta a aparecer.
+  const isPausedPublicReport = isPublicMode && serviceOrder?.status === 'pausada';
+
+  // Conjunto de equipamentos 100% completos no modo parcial. Chave = equipment_id
+  // (atividade/resposta sem equipamento usa a chave especial '__geral__').
+  // Completo = TODAS as atividades do checklist da visita respondidas
+  // (conformity_status preenchido; e medição preenchida quando is_measurement)
+  // E TODAS as perguntas OBRIGATÓRIAS do formulário respondidas (valor ou foto).
+  // Itens opcionais não bloqueiam.
+  const GENERAL_KEY = '__geral__';
+  const partialCompleteKeys: Set<string> = (() => {
+    const keys = new Set<string>();
+    if (!isPausedPublicReport) return keys;
+
+    // Universo de chaves candidatas (equipamentos com checklist e/ou formulário).
+    const candidateKeys = new Set<string>();
+    for (const a of publicActivities) candidateKeys.add(a.equipment_id ?? GENERAL_KEY);
+    for (const r of publicFormResponses) candidateKeys.add(r.equipment_id ?? GENERAL_KEY);
+
+    for (const key of candidateKeys) {
+      const acts = publicActivities.filter((a) => (a.equipment_id ?? GENERAL_KEY) === key);
+      const resps = publicFormResponses.filter((r) => (r.equipment_id ?? GENERAL_KEY) === key);
+
+      // Sem nenhum item → não é "completo" (não aparece).
+      if (acts.length === 0 && resps.length === 0) continue;
+
+      // "Sem nenhuma resposta" também não aparece: exige ao menos UMA resposta
+      // de fato (conformidade marcada ou resposta de formulário preenchida).
+      const hasAnyAnswer =
+        acts.some((a) => !!a.conformity_status) ||
+        resps.some((r: any) => {
+          const val = typeof r.response_value === 'string' ? r.response_value.trim() : '';
+          return (val !== '' && val !== '-') || !!r.response_photo_url;
+        });
+      if (!hasAnyAnswer) continue;
+
+      // Checklist da visita: toda atividade precisa de conformidade; medição
+      // exige valor numérico quando a atividade é de medição.
+      const activitiesComplete = acts.every((a) => {
+        if (!a.conformity_status) return false;
+        if (a.is_measurement && (a.measured_value === null || a.measured_value === undefined)) return false;
+        return true;
+      });
+
+      // Formulário: só as perguntas OBRIGATÓRIAS travam. Resposta = valor não
+      // vazio OU foto. Perguntas opcionais são ignoradas.
+      const requiredFormComplete = resps.every((r: any) => {
+        const required = r.question?.is_required === true;
+        if (!required) return true;
+        const val = typeof r.response_value === 'string' ? r.response_value.trim() : '';
+        const hasValue = val !== '' && val !== '-';
+        const hasPhoto = !!r.response_photo_url;
+        return hasValue || hasPhoto;
+      });
+
+      if (activitiesComplete && requiredFormComplete) keys.add(key);
+    }
+    return keys;
+  })();
+
   // Checklist da visita normalizado pro RELATÓRIO (read-only). Os dois modos
   // convergem pro MESMO shape (ReportChecklistItem):
   // - anônimo: já vem pronto do payload (publicActivities);
   // - autenticado: adaptado de checklistGroups (equipmentName resolvido) +
   //   activity_photos (CSV → array).
   const reportChecklistItems: ReportChecklistItem[] = isPublicMode
-    ? publicActivities
+    ? (isPausedPublicReport
+        ? publicActivities.filter((a) => partialCompleteKeys.has(a.equipment_id ?? GENERAL_KEY))
+        : publicActivities)
     : checklistGroups.flatMap((group) =>
         group.activities.map((a) => ({
           id: a.id,
@@ -1116,8 +1182,10 @@ export default function TechnicianOS() {
     cancelada: 'destructive',
   };
 
-  // Show report mode for completed OS
-  if (serviceOrder.status === 'concluida') {
+  // Modo RELATÓRIO: OS concluída (qualquer modo) OU OS pausada vista pelo link
+  // público (relatório parcial — só equipamentos 100% prontos, sem data de
+  // conclusão). Técnico autenticado numa OS pausada continua no modo de execução.
+  if (serviceOrder.status === 'concluida' || isPausedPublicReport) {
     return (
       <div className="min-h-screen bg-background lg:flex lg:flex-col">
         <div
@@ -1185,7 +1253,14 @@ export default function TechnicianOS() {
                 )}
             </>
           )}
-          <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} desktopActionFooter />
+          <OSReport
+            serviceOrder={serviceOrder}
+            photos={photos}
+            forceReadOnly={forceReadOnly}
+            desktopActionFooter
+            partialReport={isPausedPublicReport}
+            visibleEquipmentKeys={partialCompleteKeys}
+          />
           {/* Checklist da visita (read-only). Aparece nos dois modos do relatório
               (técnico autenticado e cliente anônimo). Some quando não há atividades. */}
           <ReportChecklist

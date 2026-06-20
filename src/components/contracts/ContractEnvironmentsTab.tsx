@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +36,6 @@ import {
   START_VISIT_OPTIONS,
   startVisitLabel,
   firstVisitContents,
-  catalogFreqCode,
   catalogToPlanRow,
   machineCatalogActivities,
   reconstructMachineConfigs,
@@ -83,16 +82,6 @@ function parseIntOrNull(raw: string): number | null {
   const n = parseInt(t, 10);
   return Number.isFinite(n) ? n : null;
 }
-
-// Frequências por serviço (rótulos da norma PMOC) — usadas pra exibir o selo de
-// frequência default no picker do catálogo.
-const ACTIVITY_FREQ_OPTIONS: { code: string; label: string }[] = [
-  { code: 'M', label: 'Mensal' },
-  { code: 'T', label: 'Trimestral' },
-  { code: 'S', label: 'Semestral' },
-  { code: 'A', label: 'Anual' },
-  { code: 'E', label: 'Eventual' },
-];
 
 let envKeySeq = 0;
 function newEnvRow(): EnvRow {
@@ -172,6 +161,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   // ao confirmar, a seleção SUBSTITUI a listagem daquela máquina.
   const [showCatalogPicker, setShowCatalogPicker] = useState(false);
   const [pickerMachineEqId, setPickerMachineEqId] = useState<string | null>(null);
+  const [pickerMachineScope, setPickerMachineScope] = useState<PmocMachineScope | null>(null);
   const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
 
   // Reconstrói as configs por máquina ao carregar o contrato + o plano + o
@@ -320,17 +310,11 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const openMachinePicker = (eqId: string) => {
     setPickerMachineEqId(eqId);
     const cfg = machineConfigs[eqId];
+    setPickerMachineScope(cfg?.scope ?? 'ac');
     const current = new Set((cfg?.activities ?? []).map((a) => a.catalog_activity_id).filter(Boolean) as string[]);
     setPickerSelection(current);
     setShowCatalogPicker(true);
   };
-  const togglePickerActivity = (id: string) =>
-    setPickerSelection((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   const confirmCatalogPicker = () => {
     if (!pickerMachineEqId) { setShowCatalogPicker(false); return; }
     const eqId = pickerMachineEqId;
@@ -632,7 +616,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                                       value={cfg?.scope ?? 'ac'}
                                       onChange={(v) => setMachineScope(eq.id, v as PmocMachineScope)}
                                       off={{ value: 'ac', label: 'Só ar-condicionado' }}
-                                      on={{ value: 'full', label: 'Toda a norma (grande porte)' }}
+                                      on={{ value: 'full', label: 'Grande Porte (VRF/Chiller…)' }}
                                       size="default"
                                       className="[&_button]:text-xs"
                                       aria-label="Escopo da norma da máquina"
@@ -748,119 +732,25 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       {/* Picker do catálogo PMOC por máquina (drawer no mobile, dialog no desktop). */}
       <ResponsiveModal
         open={showCatalogPicker}
-        onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) setPickerMachineEqId(null); }}
+        onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) { setPickerMachineEqId(null); setPickerMachineScope(null); } }}
         title="Checklists da máquina (catálogo PMOC)"
         footer={
           <div className="flex flex-row items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">{pickerSelection.size} selecionada(s)</span>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); }}>Cancelar</Button>
+              <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>Cancelar</Button>
               <Button onClick={confirmCatalogPicker}>Aplicar à máquina</Button>
             </div>
           </div>
         }
       >
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Atividades de manutenção conforme a norma (Lei 13.589/2018). Marque as que se aplicam a esta máquina.
-            A frequência vem da norma como ponto de partida.
-          </p>
-          {catalogGroups.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              {catalogLoading ? 'Carregando catálogo...' : 'Nenhuma atividade no catálogo.'}
-            </p>
-          ) : (
-            <>
-              {(() => {
-                const allIds = catalogGroups.flatMap((g) => g.activities.map((a) => a.id));
-                const allChecked = allIds.length > 0 && allIds.every((id) => pickerSelection.has(id));
-                return (
-                  <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">Selecionar todas as seções</span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs shrink-0"
-                      onClick={() => setPickerSelection(allChecked ? new Set() : new Set(allIds))}
-                    >
-                      {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
-                    </Button>
-                  </div>
-                );
-              })()}
-              <Accordion type="multiple" defaultValue={[catalogGroups[0]?.section]} className="w-full">
-                {catalogGroups.map((group) => {
-                  const selectedInGroup = group.activities.filter((a) => pickerSelection.has(a.id)).length;
-                  const groupIds = group.activities.map((a) => a.id);
-                  const groupAllChecked = groupIds.length > 0 && groupIds.every((id) => pickerSelection.has(id));
-                  const toggleGroup = () => setPickerSelection((prev) => {
-                    const next = new Set(prev);
-                    if (groupAllChecked) groupIds.forEach((id) => next.delete(id));
-                    else groupIds.forEach((id) => next.add(id));
-                    return next;
-                  });
-                  return (
-                    <AccordionItem key={group.section} value={group.section}>
-                      <AccordionTrigger className="text-sm">
-                        <span className="flex flex-1 items-center gap-2 text-left">
-                          {group.label}
-                          <Badge variant="outline" className="text-[10px] shrink-0">{group.activities.length}</Badge>
-                          {selectedInGroup > 0 && (
-                            <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
-                          )}
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            className="ml-auto mr-2 shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(); }}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(); } }}
-                          >
-                            {groupAllChecked ? 'Desmarcar' : 'Marcar todos'}
-                          </span>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-1">
-                          {group.activities.map((act) => {
-                            const checked = pickerSelection.has(act.id);
-                            const freqLabel = ACTIVITY_FREQ_OPTIONS.find((o) => o.code === catalogFreqCode(act.default_freq_code))?.label
-                              ?? act.default_freq_code;
-                            return (
-                              <label
-                                key={act.id}
-                                className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="mt-0.5 rounded border-border shrink-0"
-                                  checked={checked}
-                                  onChange={() => togglePickerActivity(act.id)}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-foreground">{act.description}</p>
-                                  {act.component && (
-                                    <p className="text-xs text-muted-foreground truncate">{act.component}</p>
-                                  )}
-                                </div>
-                                <Badge
-                                  variant={catalogFreqCode(act.default_freq_code) === 'E' ? 'outline' : 'info'}
-                                  className="shrink-0 text-[10px]"
-                                >
-                                  {freqLabel}
-                                </Badge>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            </>
-          )}
-        </div>
+        <PmocChecklistPicker
+          catalogGroups={catalogGroups}
+          catalogLoading={catalogLoading}
+          scope={pickerMachineScope}
+          selection={pickerSelection}
+          onChange={setPickerSelection}
+        />
       </ResponsiveModal>
 
       {/* Confirmação de remoção de ambiente. */}

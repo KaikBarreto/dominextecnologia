@@ -139,6 +139,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   const taskTitle = (order as any).task_title;
   const isDone = order.status === 'concluida';
   const isResumedDisplay = !!(order as any)._resumedDisplay;
+  const isPmoc = (order as any).contract?.is_pmoc === true;
 
   if (compact) {
     return (
@@ -168,6 +169,9 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           <span className={cn('shrink-0 opacity-70 font-medium', isDone && 'line-through')}>
             #{(order as any).order_number}
           </span>
+        )}
+        {!isTask && isPmoc && (
+          <span className="shrink-0 rounded bg-blue-600 px-1 text-[9px] font-bold leading-4 text-white">PMOC</span>
         )}
         <span className={cn('truncate flex-1', isDone && 'line-through')}>
           {isTask ? (taskTitle || 'Tarefa') : (order.customer?.name || 'Cliente')}
@@ -220,6 +224,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           )}
         </div>
         <div className="flex items-center gap-1 flex-wrap justify-end">
+          {!isTask && isPmoc && (
+            <Badge className="text-[10px] px-1.5 h-5 shadow-sm shadow-black/20 bg-blue-600 text-white hover:bg-blue-600">
+              PMOC
+            </Badge>
+          )}
           {isResumedDisplay && (
             <Badge className={cn('text-[10px] px-1.5 h-5 shadow-sm shadow-black/20', 'bg-amber-500 text-white')}>
               Retomada

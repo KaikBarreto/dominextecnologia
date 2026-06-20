@@ -641,13 +641,42 @@ export default function ContractDetail() {
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm truncate">{contract.customers?.name || 'Cliente'}</p>
         </div>
+        {/* Ações do contrato. Desktop (lg+): botões inline visíveis (tem espaço,
+            melhora descoberta). Mobile: kebab de 3 pontinhos (espaço curto).
+            Mesmos handlers nos dois — só muda a apresentação por breakpoint.
+            Cores semânticas por variante do design system: editar=laranja
+            (edit-ghost), excluir=vermelho (destructive-ghost). */}
         <div className="shrink-0">
-          <RowActionsMenu
-            actions={[
-              { label: 'Editar contrato', icon: Pencil, variant: 'edit', onClick: () => setShowEditForm(true) },
-              { label: 'Excluir contrato', icon: Trash2, variant: 'delete', onClick: () => { setDeleteConfirmed(false); setShowDeleteDialog(true); } },
-            ]}
-          />
+          {/* Desktop: botões inline */}
+          <div className="hidden lg:flex items-center gap-2">
+            <Button
+              variant="edit-ghost"
+              size="sm"
+              className="active:scale-95 transition-transform"
+              onClick={() => setShowEditForm(true)}
+            >
+              <Pencil className="h-4 w-4 mr-1" />
+              Editar contrato
+            </Button>
+            <Button
+              variant="destructive-ghost"
+              size="sm"
+              className="active:scale-95 transition-transform"
+              onClick={() => { setDeleteConfirmed(false); setShowDeleteDialog(true); }}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Excluir contrato
+            </Button>
+          </div>
+          {/* Mobile: kebab de 3 pontinhos */}
+          <div className="lg:hidden">
+            <RowActionsMenu
+              actions={[
+                { label: 'Editar contrato', icon: Pencil, variant: 'edit', onClick: () => setShowEditForm(true) },
+                { label: 'Excluir contrato', icon: Trash2, variant: 'delete', onClick: () => { setDeleteConfirmed(false); setShowDeleteDialog(true); } },
+              ]}
+            />
+          </div>
         </div>
       </div>
 

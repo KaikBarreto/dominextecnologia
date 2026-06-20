@@ -46,6 +46,35 @@ export function defaultScopeForSection(section: string | null | undefined): bool
   return true; // por equipamento
 }
 
+// Ordena/particiona os grupos de seção do catálogo para o picker POR ESCOPO:
+//  - scope 'ac'   → só as seções de ar-condicionado (condicionadores/medições/
+//    testes), com Condicionadores (Split/ACJ) sempre PRIMEIRO.
+//  - scope 'full' → TODAS as seções: primeiro o bloco de ar-condicionado, depois
+//    as demais (grande porte: torres, bombas, casa de máquinas, dutos…).
+// Retorna a lista de seções (chave técnica) já na ordem desejada. Usado pra
+// montar o accordion seccionado do picker e pra saber o que vem pré-marcado.
+export const AC_PICKER_SECTION_ORDER = ['condicionadores', 'medicoes', 'testes'];
+
+export function isAcSection(section: string | null | undefined): boolean {
+  return !!section && AC_EQUIPMENT_SECTIONS.has(section);
+}
+
+// Dada a lista de seções existentes no catálogo, devolve {acSections, otherSections}
+// já ordenadas (condicionadores primeiro nas AC; as demais na ordem de entrada).
+export function partitionPickerSections(allSections: string[]): {
+  acSections: string[];
+  otherSections: string[];
+} {
+  const present = new Set(allSections);
+  const acSections = AC_PICKER_SECTION_ORDER.filter((s) => present.has(s));
+  // Qualquer AC presente que não esteja na ordem canônica entra no fim do bloco AC.
+  for (const s of allSections) {
+    if (isAcSection(s) && !acSections.includes(s)) acSections.push(s);
+  }
+  const otherSections = allSections.filter((s) => !isAcSection(s));
+  return { acSections, otherSections };
+}
+
 // As atividades do catálogo que se aplicam a UMA máquina, dado o escopo. Sempre
 // exclui seções de local (essas viram o bucket local do contrato).
 export function machineCatalogActivities(

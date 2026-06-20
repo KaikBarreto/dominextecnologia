@@ -157,6 +157,9 @@ function OrderDetail({
             {order.order_number > 0 && (
               <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : 'OS #'}{order.order_number}</Badge>
             )}
+            {!isTask && (order as any).contract?.is_pmoc === true && (
+              <Badge className="text-xs shrink-0 bg-blue-600 text-white hover:bg-blue-600">PMOC</Badge>
+            )}
           </div>
           {isTask && taskTitle && (
             <p className="text-sm font-medium">{taskTitle}</p>

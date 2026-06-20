@@ -36,7 +36,6 @@ import {
   startVisitLabel,
   firstVisitContents,
   machineCatalogActivities,
-  catalogFreqCode,
   catalogToPlanRow,
   planRowToInput,
   planRowToFreqCode,
@@ -45,7 +44,9 @@ import {
   buildPmocPlanFromMachines,
   buildPmocItemsWithScope,
 } from '@/components/contracts/pmocMachineRoutine';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
 import { autoGeneratePmocDocsV1 } from '@/hooks/useGeneratePmocDocument';
@@ -53,7 +54,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -203,6 +204,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const isEditing = !!editContract;
 
   const [step, setStep] = useState(0);
+  // Etapa mais avançada já visitada — libera o clique direto no cabeçalho do
+  // wizard pra navegar livremente (ida e volta) entre etapas já alcançadas, sem
+  // pular uma etapa obrigatória ainda não preenchida (item 5 do lote PMOC).
+  const [maxStepReached, setMaxStepReached] = useState(0);
   // PMOC organiza a etapa 3 por ambientes; comum mantém a lista flat. (isPmoc é
   // declarado mais abaixo; STEPS é derivado num useMemo após isPmoc existir.)
   const [submitting, setSubmitting] = useState(false);
@@ -285,6 +290,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // equipamentos do cliente que pertencem a ele. Um equipamento pertence a UM
   // ambiente (exclusivo entre ambientes). Só aparece quando o contrato é PMOC.
   const [environments, setEnvironments] = useState<EnvRow[]>([]);
+  // Accordion dos AMBIENTES: só um aberto por vez (item 2). Guarda a key do
+  // ambiente expandido; null = todos fechados.
+  const [openEnvKey, setOpenEnvKey] = useState<string | null>(null);
+  // Accordion da CONFIG por equipamento dentro do ambiente aberto: só um painel
+  // de máquina expandido por vez (item 2). Guarda o equipment_id aberto.
+  const [openMachineEqId, setOpenMachineEqId] = useState<string | null>(null);
+  // Busca por equipamento dentro de cada ambiente (item 2). Chave = env.key.
+  const [envEquipSearch, setEnvEquipSearch] = useState<Record<string, string>>({});
   // Rotina POR MÁQUINA (Fase 3). Chave = equipment_id. Cada máquina selecionada
   // num ambiente tem escopo da norma + posição inicial no ciclo de 12 visitas +
   // sua listagem própria de atividades (checklists). Defaults bons: 'ac' /
@@ -293,10 +306,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Em edição, marca que as configs por máquina já foram reconstruídas do banco
   // (evita o auto-sync sobrescrever com defaults antes de carregar o salvo).
   const [machineConfigsLoaded, setMachineConfigsLoaded] = useState(false);
+  // Em edição, marca que os AMBIENTES já foram reconstruídos do banco. Sem isso,
+  // o `refetchOnWindowFocus`/`refetchOnMount` do contrato troca a referência de
+  // `editContract` e o efeito reconstruiria os ambientes a cada foco — apagando
+  // o que o gestor digitou (carga térmica, ocupantes…) e/ou voltando ao salvo.
+  // Reconstrói só na 1ª vez que o contrato chega com os dados.
+  const [environmentsLoaded, setEnvironmentsLoaded] = useState(false);
   // Picker do catálogo POR MÁQUINA: quando aberto a partir de um equipamento,
   // guarda o equipment_id alvo; ao confirmar, a seleção vira a listagem daquela
   // máquina. `null` = picker do modo personalizado por contrato (legado).
   const [pickerMachineEqId, setPickerMachineEqId] = useState<string | null>(null);
+  // Escopo da máquina cujo picker está aberto — filtra as seções exibidas (item 1).
+  const [pickerMachineScope, setPickerMachineScope] = useState<PmocMachineScope | null>(null);
   // Em modo edição, guarda a chamada que ficou esperando confirmação do "desligar PMOC".
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
@@ -334,6 +355,34 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   useEffect(() => {
     if (step > STEPS.length - 1) setStep(STEPS.length - 1);
   }, [STEPS.length, step]);
+
+  // Mantém o "mais avançado já visitado" sempre ≥ etapa atual.
+  useEffect(() => {
+    setMaxStepReached(prev => (step > prev ? step : prev));
+  }, [step]);
+
+  // Em edição, todas as etapas já estão preenchidas (o contrato existe) → libera
+  // navegação livre por todas elas desde o início.
+  useEffect(() => {
+    if (open && isEditing) setMaxStepReached(STEPS.length - 1);
+  }, [open, isEditing, STEPS.length]);
+
+  // Ao chegar na etapa Ambientes sem nenhum ambiente aberto, expande o primeiro
+  // (accordion single-open) pra o gestor já ver os dados/equipamentos.
+  useEffect(() => {
+    if (open && currentStepKey === 'items' && isPmoc && environments.length > 0 && openEnvKey === null) {
+      setOpenEnvKey(environments[0].key);
+    }
+  }, [open, currentStepKey, isPmoc, environments, openEnvKey]);
+
+  // Navega para a etapa `target` clicando no cabeçalho. Permite ir a qualquer
+  // etapa já visitada (≤ maxStepReached). Avançar para uma etapa nova só é
+  // liberado quando a etapa atual está válida (canNext) — não pula obrigatória.
+  const goToStep = (target: number) => {
+    if (target === step) return;
+    if (target <= maxStepReached) { setStep(target); return; }
+    if (target === step + 1 && canNext()) setStep(target);
+  };
 
   // Rascunho (só em CRIAÇÃO). Persiste TODO o estado de preenchimento das etapas
   // em sessionStorage e, ao reabrir com rascunho salvo, oferece o DraftResumeDialog.
@@ -443,10 +492,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   useEffect(() => {
     if (!open) {
       setStep(0);
+      setMaxStepReached(0);
       setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
       setShowCatalogPicker(false); setPickerSelection(new Set()); setPmocDefaultSeeded(false);
       setPmocStandardOn(true); setPmocStandardScope('ac'); setShowAdvancedFrequency(false);
       setMachineConfigs({}); setMachineConfigsLoaded(false); setPickerMachineEqId(null);
+      setOpenEnvKey(null); setOpenMachineEqId(null); setEnvEquipSearch({});
+      setEnvironmentsLoaded(false);
       return;
     }
 
@@ -509,28 +561,46 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       initialIsPmocRef.value = editIsPmoc;
       // Ambientes climatizados (multi-ambiente). Reconstrói os cards a partir de
       // contract_environments + agrupa os equipamentos por environment_id (lido
-      // dos contract_items). Ambiente sem nenhum equipamento volta vazio.
-      const envRows: EnvRow[] = ((editContract.contract_environments || []) as any[])
-        .slice()
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((e) => {
-          envKeySeq += 1;
-          const eqIds = ((editContract.contract_items || []) as any[])
-            .filter((it) => it.environment_id === e.id && it.equipment_id)
-            .map((it) => it.equipment_id as string);
-          return {
-            id: e.id,
-            key: `env-${e.id}`,
-            identificacao: e.identificacao || '',
-            tipo_atividade: e.tipo_atividade || '',
-            area_climatizada_m2: numToStrBR(e.area_climatizada_m2),
-            ocupantes_fixos: numToStrBR(e.ocupantes_fixos),
-            ocupantes_flutuantes: numToStrBR(e.ocupantes_flutuantes),
-            carga_termica_tr: numToStrBR(e.carga_termica_tr),
-            equipment_ids: eqIds,
-          };
-        });
-      setEnvironments(envRows);
+      // dos contract_items), incluindo TODOS os campos da Seção 4 (carga térmica,
+      // ocupantes fixos/flutuantes, área). Ambiente sem nenhum equipamento volta
+      // vazio.
+      //
+      // Bug fix (item 7): a reconstrução acontece UMA vez por abertura (guard
+      // environmentsLoaded). Antes, o contrato é refeito a cada foco da janela
+      // (refetchOnWindowFocus/refetchOnMount no useContractDetail), trocando a
+      // referência de `editContract` e re-disparando este efeito — o que
+      // reescrevia os ambientes (apagando o que o gestor estava digitando, ou
+      // voltando ao valor salvo). Com o guard, os campos vêm preenchidos do banco
+      // na abertura e ficam estáveis durante a edição.
+      if (!environmentsLoaded) {
+        const envRows: EnvRow[] = ((editContract.contract_environments || []) as any[])
+          .slice()
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((e) => {
+            envKeySeq += 1;
+            const eqIds = ((editContract.contract_items || []) as any[])
+              .filter((it) => it.environment_id === e.id && it.equipment_id)
+              .map((it) => it.equipment_id as string);
+            return {
+              id: e.id,
+              key: `env-${e.id}`,
+              identificacao: e.identificacao || '',
+              tipo_atividade: e.tipo_atividade || '',
+              area_climatizada_m2: numToStrBR(e.area_climatizada_m2),
+              ocupantes_fixos: numToStrBR(e.ocupantes_fixos),
+              ocupantes_flutuantes: numToStrBR(e.ocupantes_flutuantes),
+              carga_termica_tr: numToStrBR(e.carga_termica_tr),
+              equipment_ids: eqIds,
+            };
+          });
+        // Só marca como carregado quando o contrato já trouxe os ambientes (a
+        // 1ª passagem pode chegar antes da relação resolver). Ambiente PMOC sem
+        // nenhum ambiente persistido também conclui (array vazio é resposta final).
+        setEnvironments(envRows);
+        if ((editContract.contract_environments || []).length > 0 || editContract.id) {
+          setEnvironmentsLoaded(true);
+        }
+      }
     } else {
       setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]);
       setBillingUserIds([]); setBillingTeamIds([]); setServiceTypeId('');
@@ -714,6 +784,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // (evita duplicar uma atividade que o gestor já adicionou).
   const openCatalogPicker = () => {
     setPickerMachineEqId(null);
+    setPickerMachineScope(null);
     const existingCatalogIds = new Set(
       planActivities.map(a => a.catalog_activity_id).filter(Boolean) as string[],
     );
@@ -727,19 +798,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const openMachinePicker = (eqId: string) => {
     setPickerMachineEqId(eqId);
     const cfg = machineConfigs[eqId];
+    setPickerMachineScope(cfg?.scope ?? 'ac');
     const current = new Set(
       (cfg?.activities ?? []).map(a => a.catalog_activity_id).filter(Boolean) as string[],
     );
     setPickerSelection(current);
     setShowCatalogPicker(true);
-  };
-
-  const togglePickerActivity = (id: string) => {
-    setPickerSelection(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
   };
 
   // Confirma o picker. Dois modos:
@@ -829,11 +893,27 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   }, [environments]);
 
   const addEnvironment = () => {
-    setEnvironments(prev => [...prev, newEnvRow()]);
+    const row = newEnvRow();
+    setEnvironments(prev => [...prev, row]);
+    // Abre o ambiente recém-criado (accordion single-open).
+    setOpenEnvKey(row.key);
+    setOpenMachineEqId(null);
   };
 
   const removeEnvironment = (key: string) => {
     setEnvironments(prev => prev.filter(e => e.key !== key));
+    setOpenEnvKey(prev => (prev === key ? null : prev));
+  };
+
+  // Accordion dos ambientes — abre o clicado e fecha os demais (single-open).
+  const toggleEnv = (key: string) => {
+    setOpenEnvKey(prev => (prev === key ? null : key));
+    setOpenMachineEqId(null);
+  };
+
+  // Accordion da config por máquina — abre a clicada e fecha as demais.
+  const toggleMachine = (eqId: string) => {
+    setOpenMachineEqId(prev => (prev === eqId ? null : eqId));
   };
 
   const updateEnvironmentField = (key: string, field: keyof EnvRow, value: string) => {
@@ -1488,25 +1568,43 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         <div className="space-y-3">
           <Progress value={progressPercent} className="h-1.5" />
           <div className="flex items-center gap-1">
-            {STEPS.map((s, i) => (
+            {STEPS.map((s, i) => {
+              // Clicável quando já visitada (≤ maxStepReached) ou é a próxima e a
+              // atual está válida. As demais ficam travadas (não pula obrigatória).
+              const clickable = i <= maxStepReached || (i === step + 1 && canNext());
+              return (
               <div key={s.key} className="flex items-center gap-1 flex-1">
                 <button
-                  onClick={() => i <= step && setStep(i)}
+                  type="button"
+                  onClick={() => goToStep(i)}
+                  disabled={!clickable}
+                  aria-current={i === step ? 'step' : undefined}
                   className={cn(
                     'flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold transition-colors shrink-0',
                     i < step ? 'bg-primary text-primary-foreground' :
                     i === step ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
-                    'bg-muted text-muted-foreground'
+                    'bg-muted text-muted-foreground',
+                    clickable ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-70',
                   )}
                 >
                   {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </button>
-                <span className={cn('text-xs hidden sm:inline truncate', i === step ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                <button
+                  type="button"
+                  onClick={() => goToStep(i)}
+                  disabled={!clickable}
+                  className={cn(
+                    'text-xs hidden sm:inline truncate text-left',
+                    i === step ? 'font-medium text-foreground' : 'text-muted-foreground',
+                    clickable ? 'cursor-pointer hover:text-foreground' : 'cursor-not-allowed',
+                  )}
+                >
                   {s.label}
-                </span>
+                </button>
                 {i < STEPS.length - 1 && <div className="flex-1 h-px bg-border mx-1" />}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -1630,7 +1728,32 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 )}
                 <div className="space-y-2">
                   <Label>Data de Início *</Label>
-                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  {/* Datepicker próprio do projeto (Calendar + Popover). O input
+                      nativo de data tinha ícone escuro/invisível no dark mode;
+                      aqui o CalendarIcon usa text-foreground (branco no dark). */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn('w-full justify-start text-left font-normal', !startDate && 'text-muted-foreground')}
+                      >
+                        <CalendarCheck className="mr-2 h-4 w-4 text-foreground shrink-0" />
+                        {startDate
+                          ? format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                          : 'Selecione a data'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate ? new Date(startDate + 'T00:00:00') : undefined}
+                        onSelect={(d) => { if (d) setStartDate(format(d, 'yyyy-MM-dd')); }}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-2">
                   <Label>Horizonte (meses)</Label>
@@ -1878,15 +2001,44 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <div className="space-y-4">
                   {environments.map((env, idx) => {
                     const envEquipmentCount = env.equipment_ids.length;
+                    const envOpen = openEnvKey === env.key;
+                    const search = (envEquipSearch[env.key] ?? '').toLowerCase().trim();
+                    // Equipamentos visíveis neste ambiente: oculta os já atribuídos
+                    // a OUTRO ambiente (item 2 — somem da lista, não esmaecem) e
+                    // aplica a busca por nome/marca/modelo. Os marcados aqui ficam
+                    // sempre visíveis (mesmo fora da busca, pra não "perder" config).
+                    const visibleEquipment = activeEquipment.filter(eq => {
+                      const checked = env.equipment_ids.includes(eq.id);
+                      const ownerKey = equipmentOwnerEnvKey.get(eq.id);
+                      const ownedByOther = !checked && ownerKey && ownerKey !== env.key;
+                      if (ownedByOther) return false;
+                      if (!search) return true;
+                      if (checked) return true;
+                      return (
+                        eq.name.toLowerCase().includes(search) ||
+                        (eq.brand?.toLowerCase().includes(search) ?? false) ||
+                        (eq.model?.toLowerCase().includes(search) ?? false)
+                      );
+                    });
                     return (
-                      <div key={env.key} className="rounded-lg border p-3 space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
+                      <div key={env.key} className="rounded-lg border">
+                        {/* Cabeçalho do ambiente — clicável (accordion single-open). */}
+                        <div className="flex items-center justify-between gap-2 p-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleEnv(env.key)}
+                            className="flex flex-1 items-center gap-2 min-w-0 text-left"
+                            aria-expanded={envOpen}
+                          >
+                            <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', envOpen && 'rotate-180')} />
                             <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
                             <span className="text-sm font-medium truncate">
                               {env.identificacao.trim() || 'Sem identificação'}
                             </span>
-                          </div>
+                            {envEquipmentCount > 0 && (
+                              <Badge variant="outline" className="shrink-0 text-[10px]">{envEquipmentCount} equip.</Badge>
+                            )}
+                          </button>
                           <Button
                             type="button"
                             variant="ghost"
@@ -1899,6 +2051,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           </Button>
                         </div>
 
+                        {envOpen && (
+                        <div className="p-3 pt-0 space-y-3">
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="space-y-1.5">
                             <Label className="text-xs">Identificação do ambiente</Label>
@@ -1995,40 +2149,69 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           ) : activeEquipment.length === 0 ? (
                             <p className="text-xs text-muted-foreground">O cliente não tem equipamentos ativos cadastrados.</p>
                           ) : (
-                            <div className="rounded-md border divide-y">
-                              {activeEquipment.map(eq => {
+                            <>
+                            {/* Busca por equipamento (item 2). */}
+                            <div className="relative">
+                              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="Buscar equipamento..."
+                                value={envEquipSearch[env.key] ?? ''}
+                                onChange={e => setEnvEquipSearch(prev => ({ ...prev, [env.key]: e.target.value }))}
+                                className="pl-8 h-9"
+                              />
+                            </div>
+                            {/* Lista com altura máxima + scroll (item 2). */}
+                            <div className="rounded-md border divide-y max-h-72 overflow-y-auto">
+                              {visibleEquipment.length === 0 ? (
+                                <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                                  Nenhum equipamento encontrado.
+                                </p>
+                              ) : visibleEquipment.map(eq => {
                                 const checked = env.equipment_ids.includes(eq.id);
-                                const ownerKey = equipmentOwnerEnvKey.get(eq.id);
-                                const ownedByOther = !checked && ownerKey && ownerKey !== env.key;
                                 const cfg = machineConfigs[eq.id];
+                                const cfgOpen = checked && openMachineEqId === eq.id;
                                 return (
-                                  <div key={eq.id} className={cn(ownedByOther && 'opacity-50')}>
-                                    <label
-                                      className={cn(
-                                        'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors',
-                                        !ownedByOther && 'hover:bg-muted/50',
-                                      )}
-                                    >
+                                  <div key={eq.id}>
+                                    <div className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/50">
                                       <input
                                         type="checkbox"
-                                        className="rounded border-border"
+                                        className="rounded border-border cursor-pointer"
                                         checked={checked}
-                                        onChange={() => toggleEnvEquipment(env.key, eq.id)}
+                                        onChange={() => {
+                                          const wasChecked = checked;
+                                          toggleEnvEquipment(env.key, eq.id);
+                                          // Ao marcar, abre a config dele (single-open); ao desmarcar, fecha.
+                                          setOpenMachineEqId(wasChecked ? null : eq.id);
+                                        }}
                                       />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{eq.name}</p>
-                                        <p className="text-xs text-muted-foreground truncate">
-                                          {[eq.brand, eq.model].filter(Boolean).join(' - ')}
-                                          {ownedByOther && ' · já em outro ambiente'}
-                                        </p>
-                                      </div>
-                                    </label>
+                                      <button
+                                        type="button"
+                                        className="flex flex-1 items-center gap-2 min-w-0 text-left"
+                                        onClick={() => {
+                                          if (checked) {
+                                            toggleMachine(eq.id);
+                                          } else {
+                                            toggleEnvEquipment(env.key, eq.id);
+                                            setOpenMachineEqId(eq.id);
+                                          }
+                                        }}
+                                      >
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium truncate">{eq.name}</p>
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                                          </p>
+                                        </div>
+                                        {checked && (
+                                          <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', cfgOpen && 'rotate-180')} />
+                                        )}
+                                      </button>
+                                    </div>
 
-                                    {/* Rotina POR MÁQUINA (Fase 3) — só quando o equipamento
-                                        está selecionado. Compacto: escopo + começa-na-visita +
-                                        checklists próprios. Defaults bons (Só AC · Anual · norma)
-                                        — quem não quer configurar só avança. */}
-                                    {checked && (
+                                    {/* Rotina POR MÁQUINA (Fase 3) — accordion single-open:
+                                        só aparece pro equipamento marcado E aberto. Compacto:
+                                        escopo + começa-na-visita + checklists próprios. */}
+                                    {cfgOpen && (
                                       <div className="px-3 pb-3 pt-1 space-y-2.5 bg-muted/20">
                                         {/* 1) Escopo da norma */}
                                         <div className="flex flex-col gap-1.5">
@@ -2049,7 +2232,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                             value={cfg?.scope ?? 'ac'}
                                             onChange={(v) => setMachineScope(eq.id, v as PmocMachineScope)}
                                             off={{ value: 'ac', label: 'Só ar-condicionado' }}
-                                            on={{ value: 'full', label: 'Toda a norma (grande porte)' }}
+                                            on={{ value: 'full', label: 'Grande Porte (VRF/Chiller…)' }}
                                             size="default"
                                             className="[&_button]:text-xs"
                                             aria-label="Escopo da norma da máquina"
@@ -2118,6 +2301,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 );
                               })}
                             </div>
+                            </>
                           )}
                           {/* Quick-create de equipamento: sempre disponível (inclusive sem
                               equipamentos). Abre o EquipmentFormDialog travado no cliente;
@@ -2133,6 +2317,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             <Plus className="h-3.5 w-3.5 mr-1.5" /> Cadastrar equipamento
                           </Button>
                         </div>
+                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -2470,7 +2656,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         </Button>
       ) : (
         <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
-          {submitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : `Criar Contrato (${visitCount} OSs)`}
+          {submitting ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando…</>
+          ) : isEditing ? 'Salvar Alterações' : `Criar Contrato (${visitCount} OSs)`}
         </Button>
       )}
     </div>
@@ -2563,7 +2751,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         plano (editável depois). */}
     <ResponsiveModal
       open={showCatalogPicker}
-      onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) setPickerMachineEqId(null); }}
+      onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) { setPickerMachineEqId(null); setPickerMachineScope(null); } }}
       title={pickerMachineEqId ? 'Checklists da máquina (catálogo PMOC)' : 'Catálogo de atividades PMOC'}
       footer={
         <div className="flex flex-row items-center justify-between gap-2">
@@ -2571,115 +2759,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             {pickerSelection.size} selecionada(s)
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); }}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>Cancelar</Button>
             <Button onClick={confirmCatalogPicker}>{pickerMachineEqId ? 'Aplicar à máquina' : 'Adicionar ao plano'}</Button>
           </div>
         </div>
       }
     >
-      <div className="space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Atividades de manutenção conforme a norma (Lei 13.589/2018). Marque as que se aplicam ao contrato.
-          A frequência vem da norma como ponto de partida e fica editável no plano.
-        </p>
-        {catalogGroups.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">
-            {catalogLoading ? 'Carregando catálogo...' : 'Nenhuma atividade no catálogo.'}
-          </p>
-        ) : (
-          <>
-          {(() => {
-            const allIds = catalogGroups.flatMap(g => g.activities.map(a => a.id));
-            const allChecked = allIds.length > 0 && allIds.every(id => pickerSelection.has(id));
-            return (
-              <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
-                <span className="text-xs text-muted-foreground">Selecionar todas as seções</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs shrink-0"
-                  onClick={() => setPickerSelection(allChecked ? new Set() : new Set(allIds))}
-                >
-                  {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
-                </Button>
-              </div>
-            );
-          })()}
-          <Accordion type="multiple" defaultValue={[catalogGroups[0]?.section]} className="w-full">
-            {catalogGroups.map(group => {
-              const selectedInGroup = group.activities.filter(a => pickerSelection.has(a.id)).length;
-              const groupIds = group.activities.map(a => a.id);
-              const groupAllChecked = groupIds.length > 0 && groupIds.every(id => pickerSelection.has(id));
-              const toggleGroup = () => setPickerSelection(prev => {
-                const next = new Set(prev);
-                if (groupAllChecked) groupIds.forEach(id => next.delete(id));
-                else groupIds.forEach(id => next.add(id));
-                return next;
-              });
-              return (
-                <AccordionItem key={group.section} value={group.section}>
-                  <AccordionTrigger className="text-sm">
-                    <span className="flex flex-1 items-center gap-2 text-left">
-                      {group.label}
-                      <Badge variant="outline" className="text-[10px] shrink-0">
-                        {group.activities.length}
-                      </Badge>
-                      {selectedInGroup > 0 && (
-                        <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
-                      )}
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className="ml-auto mr-2 shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(); } }}
-                      >
-                        {groupAllChecked ? 'Desmarcar' : 'Marcar todos'}
-                      </span>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-1">
-                      {group.activities.map(act => {
-                        const checked = pickerSelection.has(act.id);
-                        const freqLabel = ACTIVITY_FREQ_OPTIONS.find(o => o.code === catalogFreqCode(act.default_freq_code))?.label
-                          ?? act.default_freq_code;
-                        return (
-                          <label
-                            key={act.id}
-                            className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-0.5 rounded border-border shrink-0"
-                              checked={checked}
-                              onChange={() => togglePickerActivity(act.id)}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-foreground">{act.description}</p>
-                              {act.component && (
-                                <p className="text-xs text-muted-foreground truncate">{act.component}</p>
-                              )}
-                            </div>
-                            <Badge
-                              variant={catalogFreqCode(act.default_freq_code) === 'E' ? 'outline' : 'info'}
-                              className="shrink-0 text-[10px]"
-                            >
-                              {freqLabel}
-                            </Badge>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
-          </>
-        )}
-      </div>
+      <PmocChecklistPicker
+        catalogGroups={catalogGroups}
+        catalogLoading={catalogLoading}
+        scope={pickerMachineScope}
+        selection={pickerSelection}
+        onChange={setPickerSelection}
+      />
     </ResponsiveModal>
 
     {/* Confirmação antes de recalcular as visitas futuras (edição de cronograma).
@@ -2698,7 +2790,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             onClick={confirmRegenAndUpdate}
             disabled={submitting}
           >
-            {submitting ? 'Salvando...' : 'Recalcular visitas'}
+            {submitting ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando…</>
+            ) : 'Recalcular visitas'}
           </Button>
         </div>
       }

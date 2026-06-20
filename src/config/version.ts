@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.2";
+export const APP_VERSION = "1.14.3";
 
-export const VERSION_NOTES = "Correção em contratos PMOC: ao editar o contrato, as visitas podiam ser geradas com atividades repetidas e equipamentos faltando. Agora cada equipamento recebe exatamente a sua rotina, e o checklist de visitas grandes mostra todos os itens sem cortar.";
+export const VERSION_NOTES = "Montar contrato PMOC ficou mais claro e rápido: checklists separados por tipo (ar-condicionado / grande porte), ambientes e equipamentos organizados (busca, rolagem, um aberto por vez), seletor de data próprio e salvamento mais ágil. A edição voltou a puxar carga térmica e ocupantes. Na agenda, a OS de PMOC ganhou um selo azul. E ao pausar uma OS, o link do cliente já mostra o relatório dos equipamentos concluídos.";
