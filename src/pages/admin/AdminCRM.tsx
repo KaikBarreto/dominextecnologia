@@ -546,8 +546,16 @@ function CrmTab() {
                     <ScrollArea className={cn(isMobile ? 'h-[calc(100vh-420px)]' : 'h-[calc(100vh-360px)]')}>
                       <div className="space-y-2 sm:space-y-3 pr-2 p-1">
                         {stageLeads.length === 0 ? (
-                          <div className={cn('text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-lg transition-all', isDropTarget && 'border-primary bg-primary/5 text-primary')}>
-                            {isDropTarget ? 'Solte aqui para mover' : 'Nenhum lead'}
+                          <div className={cn('border-2 border-dashed rounded-lg transition-all', isDropTarget && 'border-primary bg-primary/5')}>
+                            {isDropTarget ? (
+                              <div className="text-center py-12 text-sm text-primary">Solte aqui para mover</div>
+                            ) : (
+                              <EmptyState
+                                size="compact"
+                                icon={<TrendingUp className="h-10 w-10" />}
+                                title="Sem leads"
+                              />
+                            )}
                           </div>
                         ) : stageLeads.map(lead => {
                           const originInfo = getOriginInfo(lead.source);

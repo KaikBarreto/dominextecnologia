@@ -13,8 +13,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useTableSort } from '@/hooks/useTableSort';
-import { Edit, Trash2, ChevronLeft, ChevronRight, CalendarIcon, Loader2, AlertTriangle, MessageCircle } from 'lucide-react';
+import { Edit, Trash2, ChevronLeft, ChevronRight, CalendarIcon, Loader2, AlertTriangle, MessageCircle, Building2 } from 'lucide-react';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -167,7 +168,14 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
           <TableBody>
             {paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma empresa encontrada</TableCell>
+                <TableCell colSpan={10} className="p-0">
+                  <EmptyState
+                    size="compact"
+                    icon={<Building2 className="h-10 w-10" />}
+                    title="Nenhuma empresa encontrada"
+                    description="Tente uma busca ou filtros diferentes."
+                  />
+                </TableCell>
               </TableRow>
             ) : (
               paginated.map((company) => {

@@ -10,7 +10,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AdminFinancialMovementModal } from '@/components/admin/AdminFinancialMovementModal';
-import { TrendingUp, TrendingDown, Wallet, Pencil, Trash2, Lock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Receipt, Pencil, Trash2, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -52,9 +52,10 @@ export function FinancialTransactionList({ transactions, categories, variant = '
   if (transactions.length === 0) {
     return (
       <EmptyState
-        icon={<Wallet className="h-12 w-12" />}
-        title="Nenhuma transação"
-        description="Não há lançamentos no período selecionado."
+        size="compact"
+        icon={<Receipt className="h-10 w-10" />}
+        title="Nenhum lançamento ainda"
+        description="Os lançamentos aparecem aqui conforme as vendas e movimentações forem registradas."
       />
     );
   }

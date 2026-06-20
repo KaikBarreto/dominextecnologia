@@ -611,22 +611,24 @@ export default function Contracts() {
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <ScrollText className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-medium">
-                  {search ? 'Nenhum contrato encontrado' : 'Nenhum contrato cadastrado'}
-                </h3>
-                <p className="text-muted-foreground mt-1">
-                  {search
-                    ? 'Tente outro termo de busca'
-                    : 'Crie seu primeiro contrato para gerar OSs automaticamente.'}
-                </p>
-                {!search && (
-                  <Button onClick={() => setDialogOpen(true)} className="mt-4 gap-2">
-                    <Plus className="h-4 w-4" /> Criar Contrato
-                  </Button>
-                )}
-              </div>
+              <EmptyState
+                icon={<ScrollText className="h-12 w-12" />}
+                title={
+                  search || structuredFilterCount > 0
+                    ? 'Nenhum contrato encontrado'
+                    : 'Nenhum contrato cadastrado'
+                }
+                description={
+                  search || structuredFilterCount > 0
+                    ? 'Tente outro termo ou ajuste os filtros'
+                    : 'Crie seu primeiro contrato para gerar OSs automaticamente.'
+                }
+                action={
+                  search || structuredFilterCount > 0
+                    ? undefined
+                    : { label: 'Novo Contrato', onClick: () => setDialogOpen(true) }
+                }
+              />
             ) : (
               <>
                 <div className="overflow-x-auto">

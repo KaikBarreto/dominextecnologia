@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import { Clock, Star } from 'lucide-react';
+import { CalendarDays, Star } from 'lucide-react';
 import { EventCard } from './EventCard';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import type { ServiceOrder } from '@/types/database';
@@ -26,7 +26,8 @@ export function MobileAgendaView({ currentDate, orders, onOrderSelect, holidayMa
   if (dayOrders.length === 0) {
     return (
       <EmptyState
-        icon={<Clock className="h-12 w-12" />}
+        size="compact"
+        icon={<CalendarDays className="h-10 w-10" />}
         title="Nenhum agendamento"
         description="Não há ordens de serviço para este dia"
       />

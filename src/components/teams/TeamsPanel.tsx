@@ -4,6 +4,7 @@ import { Search, Plus, Pencil, Trash2, UsersRound, Wrench, Zap, Shield, Truck, H
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -76,10 +77,21 @@ export function TeamsPanel() {
         </div>
       ) : filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-12">
-            <p className="text-center text-muted-foreground">
-              {searchQuery ? 'Nenhuma equipe encontrada' : 'Nenhuma equipe cadastrada'}
-            </p>
+          <CardContent className="py-6">
+            {searchQuery ? (
+              <EmptyState
+                icon={<UsersRound className="h-12 w-12" />}
+                title="Nenhuma equipe encontrada"
+                description="Tente outro termo de busca."
+              />
+            ) : (
+              <EmptyState
+                icon={<UsersRound className="h-12 w-12" />}
+                title="Nenhuma equipe"
+                description="Cadastre sua primeira equipe para organizar os técnicos."
+                action={{ label: 'Nova equipe', onClick: () => { setEditingTeam(null); setFormOpen(true); } }}
+              />
+            )}
           </CardContent>
         </Card>
       ) : (

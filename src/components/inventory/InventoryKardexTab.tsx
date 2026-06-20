@@ -236,13 +236,15 @@ export function InventoryKardexTab() {
 
       {isEmpty ? (
         <EmptyState
-          icon={<History className="h-12 w-12" />}
-          title="Nenhuma movimentação ainda"
+          size="compact"
+          icon={<History className="h-10 w-10" />}
+          title="Sem movimentações"
           description="As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."
         />
       ) : isFilteredEmpty ? (
         <EmptyState
-          icon={<History className="h-12 w-12" />}
+          size="compact"
+          icon={<History className="h-10 w-10" />}
           title="Nenhuma movimentação encontrada"
           description="Tente outro período ou filtro."
         />

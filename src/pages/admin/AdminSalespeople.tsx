@@ -310,8 +310,19 @@ export default function AdminSalespeople() {
                     onDelete={setDeleteId}
                   />
                 ) : (
-                  <div className="text-center py-12 border rounded-lg">
-                    <p className="text-muted-foreground">Nenhum vendedor encontrado.</p>
+                  <div className="rounded-lg border bg-card">
+                    <EmptyState
+                      icon={<Users className="h-12 w-12" />}
+                      title={search ? 'Nenhum vendedor encontrado' : 'Nenhum vendedor cadastrado'}
+                      description={
+                        search
+                          ? 'Tente uma busca diferente'
+                          : canSeeAll
+                              ? 'Clique em "Novo Vendedor" para começar'
+                            : 'Aguardando cadastro pela coordenação'
+                      }
+                      action={!search && canSeeAll ? { label: 'Novo Vendedor', onClick: openNew } : undefined}
+                    />
                   </div>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock, GripVertical, ChevronUp, ChevronDown, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -184,9 +184,14 @@ export function FinanceCategorias() {
     if (items.length === 0) {
       return (
         <EmptyState
-          icon={<SettingsIcon className="h-10 w-10" />}
+          size="compact"
+          icon={<Tag className="h-10 w-10" />}
           title={mobileGroup === 'receitas' ? 'Nenhuma categoria de receita' : 'Nenhuma categoria de despesa'}
-          description='Toque em "+" para criar a primeira'
+          description="Crie categorias para organizar suas entradas e saídas."
+          action={{
+            label: 'Nova categoria',
+            onClick: () => handleNew(mobileGroup === 'receitas' ? 'entrada' : 'saida'),
+          }}
         />
       );
     }
@@ -355,7 +360,13 @@ export function FinanceCategorias() {
               </Button>
             </div>
             {receitas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma categoria de receita</p>
+              <EmptyState
+                size="compact"
+                icon={<Tag className="h-10 w-10" />}
+                title="Nenhuma categoria de receita"
+                description="Crie categorias para organizar suas entradas."
+                action={{ label: 'Nova categoria', onClick: () => handleNew('entrada') }}
+              />
             ) : renderCategoryList(receitas)}
           </div>
 
@@ -376,7 +387,13 @@ export function FinanceCategorias() {
               </Button>
             </div>
             {despesas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma categoria de despesa</p>
+              <EmptyState
+                size="compact"
+                icon={<Tag className="h-10 w-10" />}
+                title="Nenhuma categoria de despesa"
+                description="Crie categorias para organizar suas saídas."
+                action={{ label: 'Nova categoria', onClick: () => handleNew('saida') }}
+              />
             ) : renderCategoryList(despesas)}
           </div>
         </div>

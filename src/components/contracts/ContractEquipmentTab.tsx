@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useContracts, REGENERABLE_OS_STATUSES, type Contract, type ContractItem } from '@/hooks/useContracts';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -213,20 +214,12 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
         </CardHeader>
         <CardContent className="min-w-0">
           {workingItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-                <Package className="h-7 w-7" aria-hidden="true" />
-              </div>
-              <p className="text-sm text-muted-foreground">Nenhum equipamento vinculado ao contrato.</p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="min-h-11 active:scale-[0.98] transition-transform rounded-xl"
-                onClick={openPicker}
-              >
-                <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
-              </Button>
-            </div>
+            <EmptyState
+              size="compact"
+              icon={<Package className="h-10 w-10" />}
+              title="Nenhum equipamento no contrato"
+              action={{ label: 'Adicionar equipamento', onClick: openPicker }}
+            />
           ) : (
             <div className="space-y-2 min-w-0">
               {workingItems.map((item) => (

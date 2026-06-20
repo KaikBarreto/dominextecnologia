@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { CompanyKanbanCard } from './CompanyKanbanCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { EmptyState } from '@/components/mobile/EmptyState';
+import { Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -113,8 +115,16 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
               <ScrollArea className="h-[calc(100vh-320px)]">
                 <div className="space-y-2 sm:space-y-3 pr-2 p-1">
                   {colCompanies.length === 0 ? (
-                    <div className={cn('text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-lg transition-all', isDragOver && 'border-primary bg-primary/5 text-primary')}>
-                      {isDragOver ? 'Solte aqui para mover' : 'Nenhuma empresa'}
+                    <div className={cn('border-2 border-dashed rounded-lg transition-all', isDragOver && 'border-primary bg-primary/5')}>
+                      {isDragOver ? (
+                        <div className="text-center py-12 text-sm text-primary">Solte aqui para mover</div>
+                      ) : (
+                        <EmptyState
+                          size="compact"
+                          icon={<Building2 className="h-10 w-10" />}
+                          title="Sem empresas"
+                        />
+                      )}
                     </div>
                   ) : (
                     colCompanies.map((company) => (

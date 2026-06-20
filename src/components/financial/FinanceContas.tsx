@@ -679,17 +679,30 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
         </div>
       ) : filtered.length === 0 && (searchActive || cardInvoices.length === 0 || categoryFilter.length > 0) ? (
-        <EmptyState
-          icon={<DollarSign className="h-12 w-12" />}
-          title="Nenhuma conta encontrada"
-          description={searchActive
-            ? `Nada encontrado para "${search.trim()}"`
-            : categoryFilter.length === 1
-              ? `Nenhum registro na categoria "${categoryFilter[0]}"`
-              : categoryFilter.length > 1
-                ? 'Nenhum registro nas categorias selecionadas'
-                : 'Nenhum registro para o filtro selecionado'}
-        />
+        (searchActive || categoryFilter.length > 0 || filter !== 'pendentes') ? (
+          <EmptyState
+            size="compact"
+            icon={<DollarSign className="h-10 w-10" />}
+            title="Nenhuma conta encontrada"
+            description={searchActive
+              ? `Nada encontrado para "${search.trim()}"`
+              : categoryFilter.length === 1
+                ? `Nenhum registro na categoria "${categoryFilter[0]}"`
+                : categoryFilter.length > 1
+                  ? 'Nenhum registro nas categorias selecionadas'
+                  : 'Nenhum registro para o filtro selecionado.'}
+          />
+        ) : (
+          <EmptyState
+            size="compact"
+            icon={subTab === 'receber' ? <ArrowUpCircle className="h-10 w-10" /> : <ArrowDownCircle className="h-10 w-10" />}
+            title={subTab === 'receber' ? 'Nenhuma conta a receber' : 'Nenhuma conta a pagar'}
+            description={subTab === 'receber'
+              ? 'Cadastre uma conta a receber para acompanhar os recebimentos.'
+              : 'Cadastre uma conta a pagar para acompanhar os vencimentos.'}
+            action={{ label: 'Nova conta', onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }}
+          />
+        )
       ) : filtered.length === 0 ? (
         // Só faturas (visíveis) — não mostra empty state nem a tabela vazia abaixo.
         null

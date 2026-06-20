@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, FileSpreadsheet, Eye, Check, X, PackagePlus, Trash2, Trophy, CheckCircle2,
-  ArrowLeft, Pencil, CheckCheck, XCircle, RotateCcw,
+  ArrowLeft, Pencil, CheckCheck, XCircle, RotateCcw, FileText,
 } from 'lucide-react';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -175,9 +176,13 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
         {isLoading ? (
           <p className="py-4 text-center text-sm text-muted-foreground">Carregando cotações...</p>
         ) : cotacoes.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-            Nenhuma cotação ainda. Toque em "Nova cotação" para começar a comparar preços.
-          </p>
+          <EmptyState
+            size="compact"
+            icon={<FileText className="h-10 w-10" />}
+            title="Nenhuma cotação"
+            description="Adicione cotações de fornecedores para comparar preços."
+            action={{ label: 'Nova cotação', onClick: () => setNewCotacaoOpen(true) }}
+          />
         ) : (
           <div className="space-y-2">
             {cotacoes.map((c) => {

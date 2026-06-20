@@ -195,8 +195,9 @@ export function MaterialPurchasesTab() {
         <Card>
           <CardContent className="p-0">
             <EmptyState
-              icon={<ShoppingCart className="h-8 w-8" />}
-              title={hasActiveFilter ? 'Nenhuma compra encontrada' : 'Nenhuma compra ainda'}
+              size="compact"
+              icon={<ShoppingCart className="h-10 w-10" />}
+              title={hasActiveFilter ? 'Nenhuma compra encontrada' : 'Nenhuma compra'}
               description={
                 hasActiveFilter
                   ? 'Tente outro termo de busca ou ajuste os filtros.'

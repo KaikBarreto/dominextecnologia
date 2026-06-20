@@ -1035,7 +1035,11 @@ export default function ServiceOrders() {
                             );
                           })}
                           {columnOrders.length === 0 && (
-                            <p className="text-xs text-muted-foreground text-center py-4">Nenhuma OS</p>
+                            <EmptyState
+                              size="compact"
+                              icon={<ClipboardList className="h-10 w-10" />}
+                              title="Nenhuma OS"
+                            />
                           )}
                         </div>
                       </div>

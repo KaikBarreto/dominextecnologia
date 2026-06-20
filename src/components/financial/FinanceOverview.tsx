@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown, Landmark, CreditCard, HelpCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown, Landmark, CreditCard, HelpCircle, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 // Tooltip do shadcn vem com alias pra não colidir com o <Tooltip> do recharts (acima).
 // O TooltipProvider global vive em App.tsx, então aqui só consumimos.
@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -382,7 +383,12 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           </CardHeader>
           <CardContent className={cn(isMobile && 'p-2')}>
             {chartData.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
+              <EmptyState
+                size="compact"
+                icon={<BarChart3 className="h-10 w-10" />}
+                title="Sem dados no período"
+                description="Nenhuma movimentação para distribuir por categoria neste período."
+              />
             ) : (
               <div className="flex flex-col items-center gap-4">
                 <ResponsiveContainer width="100%" height={200}>
@@ -450,7 +456,12 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           </CardHeader>
           <CardContent>
             {recentTransactions.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">Nenhuma movimentação</p>
+              <EmptyState
+                size="compact"
+                icon={<Wallet className="h-10 w-10" />}
+                title="Sem dados no período"
+                description="As movimentações deste período aparecem aqui."
+              />
             ) : (
               <div className="space-y-3">
                 {recentTransactions.map((t) => (

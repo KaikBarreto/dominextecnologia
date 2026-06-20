@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Download, Eye, Calendar as CalendarIcon } from 'lucide-react';
+import { Download, Eye, Clock } from 'lucide-react';
 import { useTimeHistory, formatMinutes, type TimeSheet } from '@/hooks/useTimeRecords';
 import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -188,9 +188,14 @@ export function TimeHistory() {
       {isMobile ? (
         sheets.length === 0 ? (
           <EmptyState
-            icon={<CalendarIcon className="h-12 w-12" />}
-            title="Nenhum registro encontrado"
-            description="Ajuste os filtros para visualizar registros de outro período."
+            size="compact"
+            icon={<Clock className="h-10 w-10" />}
+            title="Nenhum registro de ponto"
+            description={
+              activeFilterCount > 0
+                ? 'Ajuste os filtros para visualizar registros de outro período.'
+                : 'Ainda não há registros de ponto no período.'
+            }
           />
         ) : (
           <div className="rounded-xl border bg-card overflow-hidden">
@@ -274,7 +279,20 @@ export function TimeHistory() {
                     );
                   })}
                   {sortedItems.length === 0 && (
-                    <TableRow><TableCell colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
+                    <TableRow>
+                      <TableCell colSpan={8} className="p-0">
+                        <EmptyState
+                          size="compact"
+                          icon={<Clock className="h-10 w-10" />}
+                          title="Nenhum registro de ponto"
+                          description={
+                            activeFilterCount > 0
+                              ? 'Ajuste os filtros para visualizar registros de outro período.'
+                              : 'Ainda não há registros de ponto no período.'
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>

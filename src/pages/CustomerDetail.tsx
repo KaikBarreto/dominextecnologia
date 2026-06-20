@@ -49,6 +49,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
 
@@ -530,7 +531,13 @@ export default function CustomerDetail() {
               </Button>
             </div>
             {contacts.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic">Nenhum contato cadastrado</p>
+              <EmptyState
+                size="compact"
+                icon={<UserCircle className="h-10 w-10" />}
+                title="Nenhum contato cadastrado"
+                description="Cadastre quem falar no local deste cliente"
+                action={{ label: 'Adicionar contato', onClick: () => { setEditingContact(null); setContactFormOpen(true); } }}
+              />
             ) : (
               <div className="space-y-2">
                 {contacts.map((c) => {
@@ -607,13 +614,13 @@ export default function CustomerDetail() {
             </Button>
           </div>
           {customerEquipment.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <Package className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <p className="text-base font-medium leading-tight">Nenhum equipamento</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Cadastre o primeiro equipamento deste cliente</p>
-            </div>
+            <EmptyState
+              size="compact"
+              icon={<Package className="h-10 w-10" />}
+              title="Nenhum equipamento"
+              description="Cadastre o primeiro equipamento deste cliente"
+              action={{ label: 'Adicionar equipamento', onClick: () => { setEditingEquipment(null); setEquipFormOpen(true); } }}
+            />
           ) : isMobile ? (
             <div className="rounded-xl border bg-card overflow-hidden">
               {customerEquipment.map((eq) => {
@@ -766,13 +773,13 @@ export default function CustomerDetail() {
             </Button>
           </div>
           {customerOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <ClipboardList className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <p className="text-base font-medium leading-tight">Nenhuma OS registrada</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Crie a primeira ordem de serviço deste cliente</p>
-            </div>
+            <EmptyState
+              size="compact"
+              icon={<ClipboardList className="h-10 w-10" />}
+              title="Nenhuma OS registrada"
+              description="Crie a primeira ordem de serviço deste cliente"
+              action={{ label: 'Nova OS', onClick: () => setOsFormOpen(true) }}
+            />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -826,13 +833,13 @@ export default function CustomerDetail() {
             </Button>
           </div>
           {customerTasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <CheckSquare className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <p className="text-base font-medium leading-tight">Nenhuma tarefa</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Crie a primeira tarefa deste cliente</p>
-            </div>
+            <EmptyState
+              size="compact"
+              icon={<CheckSquare className="h-10 w-10" />}
+              title="Nenhuma tarefa"
+              description="Crie a primeira tarefa deste cliente"
+              action={{ label: 'Nova tarefa', onClick: () => setTaskFormOpen(true) }}
+            />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -892,15 +899,12 @@ export default function CustomerDetail() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Chamados do Portal</h2>
           </div>
           {portalTickets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <Megaphone className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <p className="text-base font-medium leading-tight">Nenhum chamado</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                {!portalLink ? 'Gere o link do portal para o cliente abrir chamados' : 'Nenhum chamado aberto pelo portal do cliente'}
-              </p>
-            </div>
+            <EmptyState
+              size="compact"
+              icon={<Megaphone className="h-10 w-10" />}
+              title="Nenhum chamado"
+              description={!portalLink ? 'Gere o link do portal para o cliente abrir chamados' : 'Nenhum chamado aberto pelo portal do cliente'}
+            />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -949,13 +953,13 @@ export default function CustomerDetail() {
             </Button>
           </div>
           {customerContracts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <FileText className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <p className="text-base font-medium leading-tight">Nenhum contrato</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Vincule o primeiro contrato a este cliente</p>
-            </div>
+            <EmptyState
+              size="compact"
+              icon={<FileText className="h-10 w-10" />}
+              title="Nenhum contrato"
+              description="Vincule o primeiro contrato a este cliente"
+              action={{ label: 'Novo contrato', onClick: () => setContractFormOpen(true) }}
+            />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -1011,13 +1015,12 @@ export default function CustomerDetail() {
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Transações do Cliente</h2>
           {customerTransactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <DollarSign className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <p className="text-base font-medium leading-tight">Nenhuma transação</p>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Nenhuma transação registrada para este cliente</p>
-            </div>
+            <EmptyState
+              size="compact"
+              icon={<DollarSign className="h-10 w-10" />}
+              title="Nenhuma transação"
+              description="Nenhuma transação registrada para este cliente"
+            />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">

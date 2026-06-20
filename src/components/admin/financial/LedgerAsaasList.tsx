@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
-import { TrendingUp, TrendingDown, Tag, Banknote } from 'lucide-react';
+import { TrendingUp, TrendingDown, Tag, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -37,8 +37,9 @@ export function LedgerAsaasList({ items, categories, onCategorize }: Props) {
   if (items.length === 0) {
     return (
       <EmptyState
-        icon={<Banknote className="h-12 w-12" />}
-        title="Nenhum movimento"
+        size="compact"
+        icon={<DollarSign className="h-10 w-10" />}
+        title="Nenhum movimento ainda"
         description="Sincronize com o Asaas para trazer o extrato."
       />
     );

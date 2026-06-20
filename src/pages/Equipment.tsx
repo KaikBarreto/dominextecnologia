@@ -17,6 +17,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState('equipamentos');
@@ -179,11 +180,13 @@ function CategoriesPanel() {
           </Card>
         ))}
         {categories.length === 0 && (
-          <div className="flex flex-col items-center py-12 text-center">
-            <Tag className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">Nenhuma categoria criada</h3>
-            <p className="text-muted-foreground">Crie categorias para organizar seus equipamentos</p>
-          </div>
+          <EmptyState
+            size="compact"
+            icon={<Tag className="h-10 w-10" />}
+            title="Nenhuma categoria criada"
+            description="Crie categorias para organizar seus equipamentos"
+            action={{ label: 'Nova categoria', onClick: () => setCreateOpen(true) }}
+          />
         )}
       </div>
 

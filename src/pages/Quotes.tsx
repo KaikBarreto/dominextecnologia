@@ -401,9 +401,21 @@ function QuotesList() {
           />
         ) : (
           <Card>
-            <CardContent className="p-12 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground">Nenhum orçamento encontrado</p>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={<FileText className="h-12 w-12" />}
+                title={search || statusFilter.length > 0 ? 'Nenhum orçamento encontrado' : 'Nenhum orçamento cadastrado'}
+                description={
+                  search || statusFilter.length > 0
+                    ? 'Tente outro termo ou ajuste os filtros'
+                    : 'Crie seu primeiro orçamento para começar'
+                }
+                action={
+                  search || statusFilter.length > 0
+                    ? undefined
+                    : { label: 'Novo Orçamento', onClick: () => { setEditQuote(null); setFormOpen(true); } }
+                }
+              />
             </CardContent>
           </Card>
         )

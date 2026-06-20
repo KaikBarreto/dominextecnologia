@@ -478,9 +478,11 @@ export default function CRM() {
                       </div>
                     ))}
                     {(leadsByStage[stage.id]?.length || 0) === 0 && (
-                      <div className="text-center py-8 text-muted-foreground text-sm">
-                        Arraste leads para cá
-                      </div>
+                      <EmptyState
+                        size="compact"
+                        icon={<TrendingUp className="h-10 w-10" />}
+                        title="Sem oportunidades"
+                      />
                     )}
                   </div>
                 </ScrollArea>

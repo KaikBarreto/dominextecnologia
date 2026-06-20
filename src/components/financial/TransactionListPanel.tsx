@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, User } from 'lucide-react';
+import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, User, ArrowLeftRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -459,11 +459,22 @@ export function TransactionListPanel({
       {isLoading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}</div>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<DollarSign className="h-12 w-12" />}
-          title="Nenhum registro"
-          description={search || activeFiltersCount > 0 ? 'Tente filtros diferentes' : 'Nenhuma movimentação encontrada'}
-        />
+        (search || activeFiltersCount > 0) ? (
+          <EmptyState
+            size="compact"
+            icon={<ArrowLeftRight className="h-10 w-10" />}
+            title="Nenhuma movimentação encontrada"
+            description="Tente ajustar a busca ou os filtros."
+          />
+        ) : (
+          <EmptyState
+            size="compact"
+            icon={<ArrowLeftRight className="h-10 w-10" />}
+            title="Nenhuma movimentação"
+            description="As entradas e saídas aparecem aqui assim que você registrar a primeira."
+            action={onNew ? { label: `Nova ${newLabel.toLowerCase()}`, onClick: onNew } : undefined}
+          />
+        )
       ) : isMobile ? (
         <div className="space-y-3">
           {type !== 'all' && (

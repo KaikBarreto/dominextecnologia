@@ -204,19 +204,20 @@ export default function QuestionnairesPage() {
         <Card>
           <CardContent className="p-0">
             {filteredTemplates.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-medium">
-                  {searchTerm
-                    ? 'Nenhum checklist encontrado'
-                    : 'Nenhum checklist criado'}
-                </h3>
-                <p className="text-muted-foreground">
-                  {searchTerm
-                    ? 'Tente uma busca diferente'
-                    : 'Clique em "Novo Checklist" para começar'}
-                </p>
-              </div>
+              searchTerm ? (
+                <EmptyState
+                  icon={<FileText className="h-12 w-12" />}
+                  title="Nenhum checklist encontrado"
+                  description="Tente uma busca diferente."
+                />
+              ) : (
+                <EmptyState
+                  icon={<FileText className="h-12 w-12" />}
+                  title="Nenhum checklist criado"
+                  description="Crie seu primeiro checklist para padronizar as inspeções em campo."
+                  action={{ label: 'Novo checklist', onClick: () => setCreateOpen(true) }}
+                />
+              )
             ) : (
               <>
                 <div className="overflow-x-auto">

@@ -685,7 +685,17 @@ export default function AdminCompanies() {
         isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Carregando...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">Nenhuma empresa encontrada</div>
+          <div className="rounded-md border bg-card">
+            <EmptyState
+              icon={<Building2 className="h-12 w-12" />}
+              title={search || activeFilterCount > 0 ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada'}
+              description={
+                search || activeFilterCount > 0
+                  ? 'Tente uma busca ou filtros diferentes'
+                  : 'Clique em "Nova Empresa" para começar'
+              }
+            />
+          </div>
         ) : viewMode === 'kanban' ? (
           <CompanyKanbanBoard
             companies={filtered}

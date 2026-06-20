@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Search, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Truck } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -62,8 +62,9 @@ export function SuppliersDialog({ open, onOpenChange }: SuppliersDialogProps) {
             <p className="py-8 text-center text-sm text-muted-foreground">Carregando...</p>
           ) : filtered.length === 0 ? (
             <EmptyState
-              icon={<Users className="h-8 w-8" />}
-              title={search ? 'Nenhum fornecedor encontrado' : 'Nenhum fornecedor cadastrado'}
+              size="compact"
+              icon={<Truck className="h-10 w-10" />}
+              title={search ? 'Nenhum fornecedor encontrado' : 'Nenhum fornecedor'}
               description={search ? 'Tente outro termo de busca.' : 'Cadastre fornecedores para usá-los nas cotações.'}
               action={search ? undefined : { label: 'Novo fornecedor', onClick: openNew }}
             />

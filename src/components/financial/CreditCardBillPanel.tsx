@@ -251,25 +251,19 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
       {isLoading ? (
         <p className="text-sm text-muted-foreground py-4 text-center">Carregando faturas...</p>
       ) : bills.length === 0 ? (
-        isMobile ? (
-          <EmptyState
-            icon={<Receipt className="h-10 w-10" />}
-            title="Nenhuma fatura registrada"
-            description="As faturas aparecem automaticamente quando você lança despesas neste cartão"
-          />
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <Receipt className="h-10 w-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Nenhuma fatura registrada</p>
-            <p className="text-xs mt-1">As faturas aparecem automaticamente quando você lança despesas neste cartão</p>
-          </div>
-        )
+        <EmptyState
+          size="compact"
+          icon={<CreditCard className="h-10 w-10" />}
+          title="Nenhuma fatura registrada"
+          description="As faturas aparecem automaticamente quando você lança despesas neste cartão."
+        />
       ) : isMobile ? (
         filteredBills.length === 0 ? (
           <EmptyState
-            icon={<Receipt className="h-10 w-10" />}
+            size="compact"
+            icon={<CreditCard className="h-10 w-10" />}
             title="Nenhuma fatura encontrada"
-            description="Ajuste o filtro para ver outras faturas"
+            description="Ajuste o filtro para ver outras faturas."
           />
         ) : (
           <div className="rounded-xl border bg-card overflow-hidden">
@@ -338,7 +332,11 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                   <CollapsibleContent>
                     <div className="border-t mx-4 mb-4">
                       {(bill.transactions ?? []).length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-3 text-center">Sem transações nesta fatura</p>
+                        <EmptyState
+                          size="compact"
+                          icon={<CreditCard className="h-10 w-10" />}
+                          title="Sem lançamentos nesta fatura"
+                        />
                       ) : (
                         <div className="space-y-1 pt-3">
                           {(bill.transactions ?? []).map(t => (
@@ -413,9 +411,13 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                   Lançamentos ({transactions.length})
                 </p>
                 {transactions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-3 text-center border rounded-lg">
-                    Sem lançamentos nesta fatura
-                  </p>
+                  <div className="border rounded-lg">
+                    <EmptyState
+                      size="compact"
+                      icon={<CreditCard className="h-10 w-10" />}
+                      title="Sem lançamentos nesta fatura"
+                    />
+                  </div>
                 ) : (
                   <div className="rounded-lg border bg-card overflow-hidden max-h-[40vh] overflow-y-auto">
                     {transactions.map(t => (
