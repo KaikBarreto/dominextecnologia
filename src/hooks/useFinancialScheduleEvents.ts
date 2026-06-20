@@ -3,6 +3,8 @@ import { useFinancial } from '@/hooks/useFinancial';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useAllCreditCardBills } from '@/hooks/useCreditCardBills';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 
 /**
  * Returns financial transactions (unpaid contas) as pseudo-ServiceOrders (entry_type: 'tarefa')
@@ -15,6 +17,8 @@ export function useFinancialScheduleEvents() {
   const canView = hasPermission('fn:view_financial_schedule') || hasRole('admin');
 
   const { transactions } = useFinancial();
+  const { bills } = useAllCreditCardBills();
+  const { accounts } = useFinancialAccounts();
 
   // Fetch contracts with billing visibility disabled + billing responsible ids
   const { data: contractsData = [] } = useQuery({
@@ -47,9 +51,13 @@ export function useFinancialScheduleEvents() {
   const financialEvents = useMemo(() => {
     if (!canView) return [];
 
-    return transactions
+    const transactionEvents = transactions
       .filter((t) => {
         if (t.is_paid || !t.due_date) return false;
+        // Despesas de cartão NÃO aparecem item-a-item: a fatura agregada (abaixo)
+        // é o item que vence e é pago. Regra: despesa de cartão nasce is_paid=false
+        // e quem fica paga é a fatura (credit_card_bills).
+        if ((t as any).credit_card_bill_date) return false;
         // Hide billing from contracts that have the toggle disabled
         if (t.contract_id && hiddenContractIds.includes(t.contract_id)) return false;
         return true;
@@ -89,7 +97,52 @@ export function useFinancialScheduleEvents() {
           service_type: null,
         } as any;
       });
-  }, [canView, transactions, hiddenContractIds, contractBillingMap]);
+
+    // Faturas de cartão em aberto → 1 item por fatura, no vencimento da fatura.
+    const accountNameById: Record<string, string> = {};
+    for (const acc of accounts) accountNameById[acc.id] = acc.name;
+
+    const billEvents = bills
+      .filter((bill) => {
+        if (bill.status === 'paid') return false;
+        const owed = Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
+        return owed > 0;
+      })
+      .map((bill) => {
+        const owed = Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
+        const amount = owed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const cardName = accountNameById[bill.account_id] || 'Cartão';
+        const label = `A Pagar: Fatura ${cardName} — ${amount}`;
+
+        return {
+          id: `bill-${bill.id}`,
+          order_number: 0,
+          customer_id: '',
+          os_type: 'visita_tecnica',
+          entry_type: 'tarefa',
+          task_title: label,
+          status: 'pendente',
+          scheduled_date: bill.due_date,
+          scheduled_time: '08:00',
+          description: label,
+          created_at: bill.due_date,
+          updated_at: bill.due_date,
+          customer: { id: '', name: 'A Pagar' },
+          equipment: null,
+          _isFinancialEvent: true,
+          _isCardBillEvent: true,
+          _billId: bill.id,
+          _financialType: 'saida',
+          _contractId: null,
+          _installmentGroupId: null,
+          _assignee_user_ids: [],
+          _assignees: [],
+          service_type: null,
+        } as any;
+      });
+
+    return [...transactionEvents, ...billEvents];
+  }, [canView, transactions, hiddenContractIds, contractBillingMap, bills, accounts]);
 
   return { financialEvents, canView };
 }
