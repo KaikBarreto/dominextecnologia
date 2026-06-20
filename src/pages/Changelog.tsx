@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.14',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca de código de erro no catálogo mais enxuta',
+        description: 'Ao pesquisar um código de erro que aparece em muitos modelos (por exemplo "F1"), o catálogo agora mostra as primeiras máquinas e um botão "+N mais" para abrir o restante quando você quiser — sem aquele paredão de itens de uma vez só.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.13',
     date: '20 de junho de 2026',
     type: 'patch',

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.13.13";
+export const APP_VERSION = "1.13.14";
 
-export const VERSION_NOTES = "O relatório de serviço agora mostra o checklist da visita com cada resposta (Conforme, Não-conforme, N/A), medições e fotos. O link da OS enviado ao cliente abre direto na visão dele, sem precisar de login. E a pesquisa de satisfação ficou mais clara, com uma dica para arrastar a nota.";
+export const VERSION_NOTES = "No catálogo de equipamentos, quando você busca um código de erro que aparece em muitos modelos, a lista de máquinas agora mostra as primeiras e um botão \"+N mais\" para ver o restante — a tela fica mais limpa e fácil de ler.";

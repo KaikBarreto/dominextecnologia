@@ -15,6 +15,8 @@ import {
   Download,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   PackageSearch,
   Star,
   SlidersHorizontal,
@@ -1295,6 +1297,11 @@ function ErrorCodeGroupCard({
   group: GroupedErrorCode;
   onSelectMachine: (occ: CodeOccurrence) => void;
 }) {
+  const LIMIT = 6;
+  const [expanded, setExpanded] = useState(false);
+  const visiveis = expanded ? group.occurrences : group.occurrences.slice(0, LIMIT);
+  const restantes = group.occurrences.length - LIMIT;
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-center gap-2">
@@ -1310,7 +1317,7 @@ function ErrorCodeGroupCard({
         {group.occurrences.length === 1 ? 'Máquina' : 'Máquinas'}
       </p>
       <div className="mt-1.5 flex flex-wrap gap-2">
-        {group.occurrences.map((occ) => (
+        {visiveis.map((occ) => (
           <button
             key={occ.errorCodeId}
             type="button"
@@ -1325,6 +1332,34 @@ function ErrorCodeGroupCard({
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </button>
         ))}
+
+        {restantes > 0 && !expanded && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className={cn(
+              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
+              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            )}
+          >
+            <span className="text-primary">+{restantes} mais</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary" />
+          </button>
+        )}
+
+        {restantes > 0 && expanded && (
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className={cn(
+              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
+              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            )}
+          >
+            <span className="text-primary">ver menos</span>
+            <ChevronUp className="h-3.5 w-3.5 shrink-0 text-primary" />
+          </button>
+        )}
       </div>
     </div>
   );
