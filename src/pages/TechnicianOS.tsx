@@ -1849,6 +1849,11 @@ export default function TechnicianOS() {
   // Itens da sidebar desktop (modo autenticado): um por checklist de equipamento
   // (mesma chave do accordion). Status: pendente até check-in; depois deriva das
   // validações do form + conformidade do checklist da visita por equipamento.
+  // Itens da junção que realmente carregam questionário (form template).
+  // Em visita PMOC os equipamentos vêm sem questionário (a rotina vem do
+  // "Checklist da visita"), então o card "Checklists" não deve aparecer.
+  const questionnaireItems = equipmentItems.filter((i) => i.form_template_id);
+
   const interactiveSidebarItems: OsSidebarItem[] = (() => {
     if (!isCheckedIn) return [];
     const items: OsSidebarItem[] = [];
@@ -2393,7 +2398,7 @@ export default function TechnicianOS() {
         )}
 
         {/* Checklists - Multi equipment from junction table (accordion) */}
-        {isCheckedIn && equipmentItems.length > 0 && (
+        {isCheckedIn && questionnaireItems.length > 0 && (
           <Card>
             <CardHeader className="pb-2 px-3 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold">
@@ -2522,7 +2527,7 @@ export default function TechnicianOS() {
         )}
 
         {/* Fallback: single checklist from OS (legacy / no junction data) */}
-        {isCheckedIn && equipmentItems.length === 0 && serviceOrder.form_template_id && (
+        {isCheckedIn && questionnaireItems.length === 0 && serviceOrder.form_template_id && (
           <Card>
             <CardHeader className="pb-3 px-3 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
