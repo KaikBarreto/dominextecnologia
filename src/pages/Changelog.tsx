@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.4',
+    date: '20 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Checklists personalizados por equipamento no PMOC',
+        description: 'Agora, além dos checklists da norma, cada equipamento do contrato PMOC pode ter os seus próprios checklists. No menu de checklists da máquina há uma aba "Personalizados" com os checklists que você cria em Checklists — marque os que quiser e eles passam a ser feitos em toda visita daquele equipamento, junto com os do PMOC. No app do técnico, as perguntas aparecem no mesmo estilo do checklist da norma (conformidade, medição, foto, etc.).',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.14.3',
     date: '20 de junho de 2026',
     type: 'patch',

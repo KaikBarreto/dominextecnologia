@@ -32,6 +32,12 @@ export interface ReportChecklistItem {
   sort_order: number;
   /** URLs públicas das fotos anexadas pelo técnico. */
   photos: string[];
+  /**
+   * Checklist personalizado por máquina (PMOC por equipamento): quando
+   * preenchido, este item não é de conformidade e sim um bloco de perguntas —
+   * é filtrado fora do relatório de conformidade.
+   */
+  form_template_id?: string | null;
 }
 
 interface ReportChecklistGroup {

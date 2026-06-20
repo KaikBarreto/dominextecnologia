@@ -249,6 +249,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // do plano. `pickerSelection` = ids do catálogo marcados no modal aberto.
   const [showCatalogPicker, setShowCatalogPicker] = useState(false);
   const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
+  // Seleção dos checklists PERSONALIZADOS (form_templates) no modal aberto, por
+  // máquina. Gerenciada à parte da seleção do catálogo da norma.
+  const [pickerTemplateSelection, setPickerTemplateSelection] = useState<Set<string>>(new Set());
   // Guarda contra re-empurrar o plano padrão PMOC mais de uma vez por abertura.
   const [pmocDefaultSeeded, setPmocDefaultSeeded] = useState(false);
   // Controle EXPLÍCITO do padrão PMOC da norma (substitui a auto-carga silenciosa).
@@ -494,7 +497,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setStep(0);
       setMaxStepReached(0);
       setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
-      setShowCatalogPicker(false); setPickerSelection(new Set()); setPmocDefaultSeeded(false);
+      setShowCatalogPicker(false); setPickerSelection(new Set()); setPickerTemplateSelection(new Set()); setPmocDefaultSeeded(false);
       setPmocStandardOn(true); setPmocStandardScope('ac'); setShowAdvancedFrequency(false);
       setMachineConfigs({}); setMachineConfigsLoaded(false); setPickerMachineEqId(null);
       setOpenEnvKey(null); setOpenMachineEqId(null); setEnvEquipSearch({});
@@ -803,6 +806,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       (cfg?.activities ?? []).map(a => a.catalog_activity_id).filter(Boolean) as string[],
     );
     setPickerSelection(current);
+    setPickerTemplateSelection(new Set(cfg?.customTemplateIds ?? []));
     setShowCatalogPicker(true);
   };
 
@@ -825,12 +829,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           }
         }
       }
+      const templateIds = [...pickerTemplateSelection];
       setMachineConfigs(prev => {
         const cur = prev[eqId];
         if (!cur) return prev;
-        return { ...prev, [eqId]: { ...cur, activities: selected, customized: true } };
+        return { ...prev, [eqId]: { ...cur, activities: selected, customized: true, customTemplateIds: templateIds } };
       });
-      toast({ title: `Checklists da máquina atualizados (${selected.length} item(ns))` });
+      const total = selected.length + templateIds.length;
+      toast({ title: `Checklists da máquina atualizados (${total} item(ns))` });
       setShowCatalogPicker(false);
       setPickerMachineEqId(null);
       return;
@@ -1036,12 +1042,28 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     [machineConfigs],
   );
 
+  // Checklists personalizados do tenant (form_templates ativos, não-pmoc-default)
+  // pro picker e pro plano. `templateNameById` rotula a linha de plano custom.
+  const customTemplateOptions = useMemo(
+    () =>
+      (templates ?? [])
+        .filter((t: any) => t.is_active && !t.is_pmoc_default)
+        .map((t: any) => ({ id: t.id, name: t.name, questionCount: (t.questions ?? []).length })),
+    [templates],
+  );
+  const templateNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t of customTemplateOptions) map[t.id] = t.name;
+    return map;
+  }, [customTemplateOptions]);
+
   // Plano completo (por máquina + local) que vai pro hook em PMOC, montado pela
   // fonte ÚNICA compartilhada (mesma usada pela aba Ambientes). Cada atividade de
   // máquina carrega `equipment_ref`; as locais ficam sem máquina + per_equip false.
+  // Templates personalizados viram 1 linha por máquina (form_template_id).
   const pmocPlanFromMachines = useMemo<PlanActivityRow[]>(
-    () => buildPmocPlanFromMachines({ items: pmocDerivedItems, machineConfigs, catalogActivities }),
-    [pmocDerivedItems, machineConfigs, catalogActivities],
+    () => buildPmocPlanFromMachines({ items: pmocDerivedItems, machineConfigs, catalogActivities, templateNameById }),
+    [pmocDerivedItems, machineConfigs, catalogActivities, templateNameById],
   );
 
   // Plano efetivo enviado ao hook: PMOC = derivado das máquinas (por máquina +
@@ -2756,7 +2778,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       footer={
         <div className="flex flex-row items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">
-            {pickerSelection.size} selecionada(s)
+            {pickerSelection.size + (pickerMachineEqId ? pickerTemplateSelection.size : 0)} selecionada(s)
           </span>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>Cancelar</Button>
@@ -2771,6 +2793,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         scope={pickerMachineScope}
         selection={pickerSelection}
         onChange={setPickerSelection}
+        customTemplates={pickerMachineEqId ? customTemplateOptions : []}
+        selectedTemplateIds={pickerTemplateSelection}
+        onChangeTemplates={pickerMachineEqId ? setPickerTemplateSelection : undefined}
       />
     </ResponsiveModal>
 

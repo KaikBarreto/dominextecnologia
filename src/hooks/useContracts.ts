@@ -176,6 +176,11 @@ export interface PlanActivityInput {
   expected_max?: number | null;
   contract_item_id?: string | null;
   catalog_activity_id?: string | null;
+  // Checklist personalizado (Fase 2). Quando setado, a atividade NÃO vem da norma
+  // PMOC: é um form_templates da empresa, feito em toda visita ALÉM do catálogo.
+  // Carrega-se intocada até o snapshot (service_order_activities.form_template_id);
+  // o render das perguntas do template fica pra Fase 3 (dev-os-campo).
+  form_template_id?: string | null;
   // Escopo da atividade (Fase 3 — checklist por equipamento). `true` (default) =
   // a atividade se aplica a CADA equipamento do contrato (ex.: limpar filtro de
   // cada split). `false` = atividade de LOCAL (ex.: casa de máquinas, dutos) →
@@ -423,7 +428,10 @@ export function buildPerMachineVisits(
     : 12;
 
   // Escopo: máquina 'ac' só pega seções de condicionador (ou sem section).
+  // Checklist PERSONALIZADO (section 'personalizados') vale pra QUALQUER escopo —
+  // é aditivo do gestor, não faz parte da norma, então nunca é filtrado por ac/full.
   const scopeAllows = (scope: PmocScope, section: string | null | undefined): boolean => {
+    if (section === 'personalizados') return true;
     if (scope === 'full') return true;
     if (!section) return true;
     return PMOC_AC_SECTIONS.has(section);
@@ -544,6 +552,7 @@ export interface ContractPlanActivityRow {
   expected_max: number | null;
   contract_item_id: string | null;
   catalog_activity_id: string | null;
+  form_template_id: string | null;
   applies_per_equipment: boolean;
   sort_order: number;
 }
@@ -560,7 +569,7 @@ export function useContractPlanActivities(contractId: string | null | undefined)
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, guidance, freq_code, freq_months, section, component, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, sort_order')
+        .select('id, description, guidance, freq_code, freq_months, section, component, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, form_template_id, applies_per_equipment, sort_order')
         .eq('contract_id', contractId as string)
         .order('sort_order', { ascending: true });
       if (error) throw error;
@@ -713,6 +722,10 @@ function planActivityDedupKey(a: PlanActivityInput): string {
     a.freq_months ?? '',
     a.section ?? '',
     a.applies_per_equipment === false ? '0' : '1',
+    // form_template_id entra na chave pra um checklist personalizado NÃO colidir
+    // com uma atividade do catálogo de mesma descrição, e pra 2 templates
+    // diferentes na mesma máquina não serem deduplicados.
+    a.form_template_id ?? '',
   ].join('|');
 }
 
@@ -892,6 +905,9 @@ async function persistContractVisit(args: {
       unit: e.input.unit ?? null,
       expected_min: e.input.expected_min ?? null,
       expected_max: e.input.expected_max ?? null,
+      // Checklist personalizado (Fase 2): preserva o vínculo ao form_templates pra
+      // a Fase 3 (dev-os-campo) renderizar as perguntas no checklist da visita.
+      form_template_id: e.input.form_template_id ?? null,
       sort_order: idx,
     }));
     const actErr = await insertActivitiesBatched(emissionRows);
@@ -936,6 +952,7 @@ async function persistContractVisit(args: {
       unit: a.unit ?? null,
       expected_min: a.expected_min ?? null,
       expected_max: a.expected_max ?? null,
+      form_template_id: a.form_template_id ?? null,
       _bucket: bucket,
       _actSort: actSort,
     });
@@ -1337,6 +1354,7 @@ export function useContracts() {
               contract_id: (contract as any).id,
               contract_item_id: a.contract_item_id ?? null,
               catalog_activity_id: a.catalog_activity_id ?? null,
+              form_template_id: a.form_template_id ?? null,
               section: a.section ?? null,
               component: a.component ?? null,
               description: a.description.trim(),
@@ -1777,16 +1795,16 @@ export function useContracts() {
         // pra saber se o cronograma mudou por causa do plano.
         const { data: existingPlan } = await supabase
           .from('contract_plan_activities')
-          .select('description, freq_code, freq_months, applies_per_equipment, contract_item_id')
+          .select('description, freq_code, freq_months, applies_per_equipment, contract_item_id, form_template_id')
           .eq('contract_id', id)
           .order('sort_order', { ascending: true });
         const sigExisting = (arr: any[]) =>
           (arr || [])
-            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${a.contract_item_id ?? ''}`)
+            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${a.contract_item_id ?? ''}|${a.form_template_id ?? ''}`)
             .join('§');
         const sigNew = (arr: PlanActivityInput[]) =>
           (arr || [])
-            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${a.contract_item_id ?? ''}`)
+            .map(a => `${(a.description || '').trim()}|${a.freq_code ?? ''}|${a.freq_months ?? ''}|${a.applies_per_equipment === false ? '0' : '1'}|${a.contract_item_id ?? ''}|${a.form_template_id ?? ''}`)
             .join('§');
         planChanged = sigExisting(existingPlan || []) !== sigNew(newPlanResolved);
 
@@ -1801,6 +1819,7 @@ export function useContracts() {
                   contract_id: id,
                   contract_item_id: a.contract_item_id ?? null,
                   catalog_activity_id: a.catalog_activity_id ?? null,
+                  form_template_id: a.form_template_id ?? null,
                   section: a.section ?? null,
                   component: a.component ?? null,
                   description: a.description.trim(),
@@ -1906,7 +1925,7 @@ export function useContracts() {
         // Plano não veio no input → usar o que já está no banco.
         const { data: persisted } = await supabase
           .from('contract_plan_activities')
-          .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+          .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, form_template_id')
           .eq('contract_id', id)
           .order('sort_order', { ascending: true });
         effPlan = (persisted ?? []).map((a: any) => ({
@@ -1923,6 +1942,7 @@ export function useContracts() {
           contract_item_id: a.contract_item_id,
           catalog_activity_id: a.catalog_activity_id,
           applies_per_equipment: a.applies_per_equipment,
+          form_template_id: a.form_template_id,
         }));
         effPlanIds = (persisted ?? []).map((a: any) => a.id);
       } else if (!planChanged) {
@@ -2136,7 +2156,7 @@ export function useContracts() {
       // Plano persistido atual (não muda na aba de equipamentos).
       const { data: persisted } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, form_template_id')
         .eq('contract_id', id)
         .order('sort_order', { ascending: true });
       const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
@@ -2153,6 +2173,7 @@ export function useContracts() {
         contract_item_id: a.contract_item_id,
         catalog_activity_id: a.catalog_activity_id,
         applies_per_equipment: a.applies_per_equipment,
+        form_template_id: a.form_template_id,
       }));
       const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
 
@@ -2336,7 +2357,7 @@ export function useContracts() {
 
       const { data: persisted } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, form_template_id')
         .eq('contract_id', id)
         .order('sort_order', { ascending: true });
       const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
@@ -2344,7 +2365,7 @@ export function useContracts() {
         freq_code: a.freq_code, freq_months: a.freq_months, is_measurement: a.is_measurement,
         unit: a.unit, expected_min: a.expected_min, expected_max: a.expected_max,
         contract_item_id: a.contract_item_id, catalog_activity_id: a.catalog_activity_id,
-        applies_per_equipment: a.applies_per_equipment,
+        applies_per_equipment: a.applies_per_equipment, form_template_id: a.form_template_id,
       }));
       const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
       const useGroupedEngine = effPlan.length > 0;
@@ -2485,7 +2506,7 @@ export function useContracts() {
       // Plano persistido do contrato (mesma forma do updateContractEquipment).
       const { data: persisted } = await supabase
         .from('contract_plan_activities')
-        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment')
+        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, form_template_id')
         .eq('contract_id', id)
         .order('sort_order', { ascending: true });
       const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
@@ -2502,6 +2523,7 @@ export function useContracts() {
         contract_item_id: a.contract_item_id,
         catalog_activity_id: a.catalog_activity_id,
         applies_per_equipment: a.applies_per_equipment,
+        form_template_id: a.form_template_id,
       }));
       const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
       const useGroupedEngine = effPlan.length > 0;

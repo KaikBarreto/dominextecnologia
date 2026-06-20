@@ -1416,6 +1416,7 @@ export type Database = {
           expected_min: number | null
           freq_code: string | null
           freq_months: number | null
+          form_template_id: string | null
           guidance: string | null
           id: string
           is_active: boolean
@@ -1438,6 +1439,7 @@ export type Database = {
           expected_min?: number | null
           freq_code?: string | null
           freq_months?: number | null
+          form_template_id?: string | null
           guidance?: string | null
           id?: string
           is_active?: boolean
@@ -1460,6 +1462,7 @@ export type Database = {
           expected_min?: number | null
           freq_code?: string | null
           freq_months?: number | null
+          form_template_id?: string | null
           guidance?: string | null
           id?: string
           is_active?: boolean
@@ -1489,6 +1492,13 @@ export type Database = {
             columns: ["contract_item_id"]
             isOneToOne: false
             referencedRelation: "contract_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_plan_activities_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -5757,6 +5767,7 @@ export type Database = {
           equipment_id: string | null
           expected_max: number | null
           expected_min: number | null
+          form_template_id: string | null
           freq_code: string | null
           guidance: string | null
           id: string
@@ -5779,6 +5790,7 @@ export type Database = {
           equipment_id?: string | null
           expected_max?: number | null
           expected_min?: number | null
+          form_template_id?: string | null
           freq_code?: string | null
           guidance?: string | null
           id?: string
@@ -5801,6 +5813,7 @@ export type Database = {
           equipment_id?: string | null
           expected_max?: number | null
           expected_min?: number | null
+          form_template_id?: string | null
           freq_code?: string | null
           guidance?: string | null
           id?: string
@@ -5819,6 +5832,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_activities_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
             referencedColumns: ["id"]
           },
           {

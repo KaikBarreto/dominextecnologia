@@ -16,6 +16,12 @@ import { PMOC_DEFAULT_SECTION } from '@/hooks/usePmocActivityCatalog';
 // uma vez quando há ≥1 máquina 'full'.
 export type PmocMachineScope = 'ac' | 'full';
 
+// Seção sintética das atividades de checklist PERSONALIZADO (form_templates da
+// empresa). Não vem do catálogo PMOC nem do banco — é uma marca de plano pra o
+// motor não filtrar por escopo (custom vale pra qualquer máquina) e pra a
+// Planilha/checklist saberem agrupar como "personalizados".
+export const PMOC_CUSTOM_SECTION = 'personalizados';
+
 // Seções da norma cujas atividades são de LOCAL (não se repetem por aparelho):
 // casa de máquinas, dutos, torres, bombas, etc. Tudo fora desse conjunto
 // (condicionadores, medições, testes…) é por equipamento por default.
@@ -130,6 +136,10 @@ export interface PlanActivityRow {
   expected_min?: number | null;
   expected_max?: number | null;
   catalog_activity_id?: string | null;
+  // Checklist personalizado (Fase 2): id de um form_templates da empresa. Linha
+  // custom = catalog_activity_id null + form_template_id setado + section
+  // 'personalizados'. Aditiva: feita ALÉM das atividades da norma, em toda visita.
+  form_template_id?: string | null;
   // Escopo (Fase 3): true = por equipamento (default), false = geral/local.
   applies_per_equipment?: boolean;
   // Plano POR MÁQUINA (Fase 3): equipment_id dono da atividade. O hook resolve
@@ -148,6 +158,10 @@ export interface MachineConfig {
   startVisit: number;
   activities: PlanActivityRow[];
   customized: boolean;
+  // Checklists personalizados (form_templates) escolhidos pra esta máquina. São
+  // feitos em TODA visita, ALÉM das atividades da norma. Independem do escopo
+  // ('ac'/'full'). Default [].
+  customTemplateIds: string[];
 }
 
 // Item/equipamento do contrato no formato mínimo usado pelos builders.
@@ -170,6 +184,7 @@ export function planRowToInput(a: PlanActivityRow): PlanActivityInput {
     expected_min: a.expected_min ?? null,
     expected_max: a.expected_max ?? null,
     catalog_activity_id: a.catalog_activity_id ?? null,
+    form_template_id: a.form_template_id ?? null,
     applies_per_equipment: a.applies_per_equipment ?? true,
     equipment_ref: a.equipment_ref ?? null,
     contract_item_id: a.contract_item_id ?? null,
@@ -226,7 +241,7 @@ export function buildDefaultMachineConfig(
     applies_per_equipment: true,
     equipment_ref: eqId,
   }));
-  return { scope, startVisit: 12, activities: acts, customized: false };
+  return { scope, startVisit: 12, activities: acts, customized: false, customTemplateIds: [] };
 }
 
 // Reconstrói as configs POR MÁQUINA a partir do que está PERSISTIDO (edição):
@@ -255,6 +270,7 @@ export interface PersistedPlanRow {
   expected_min?: number | null;
   expected_max?: number | null;
   catalog_activity_id?: string | null;
+  form_template_id?: string | null;
   contract_item_id?: string | null;
 }
 
@@ -282,9 +298,17 @@ export function reconstructMachineConfigs(args: {
   if (hasPerMachine) {
     // Formato novo: agrupa as atividades por máquina via contract_item_id.
     const byEquip: Record<string, PlanActivityRow[]> = {};
+    // Checklists personalizados por máquina (linhas com form_template_id) — não
+    // entram na listagem do catálogo; carregam o customTemplateIds da config.
+    const customByEquip: Record<string, string[]> = {};
     for (const r of plan) {
       const eqId = r.contract_item_id ? itemIdToEquip[r.contract_item_id] : null;
       if (!eqId) continue; // locais/legado tratados pelo bucket derivado
+      if (r.form_template_id) {
+        const arr = (customByEquip[eqId] ??= []);
+        if (!arr.includes(r.form_template_id)) arr.push(r.form_template_id);
+        continue; // linha custom não é atividade do catálogo
+      }
       const row: PlanActivityRow = {
         description: r.description,
         guidance: r.guidance ?? null,
@@ -314,6 +338,7 @@ export function reconstructMachineConfigs(args: {
           ? acts
           : machineCatalogActivities(catalogActivities, meta.scope).map(a => ({ ...catalogToPlanRow(a), applies_per_equipment: true, equipment_ref: it.equipment_id! })),
         customized: acts.length !== normaCount,
+        customTemplateIds: customByEquip[it.equipment_id] ?? [],
       };
     }
   } else {
@@ -331,6 +356,7 @@ export function reconstructMachineConfigs(args: {
         startVisit: meta?.startVisit ?? 12,
         activities: machineCatalogActivities(catalogActivities, useScope).map(a => ({ ...catalogToPlanRow(a), applies_per_equipment: true, equipment_ref: it.equipment_id! })),
         customized: false,
+        customTemplateIds: [],
       };
     }
   }
@@ -364,14 +390,37 @@ export function buildPmocPlanFromMachines(args: {
   items: MachineItemRef[];
   machineConfigs: Record<string, MachineConfig>;
   catalogActivities: PmocCatalogActivity[];
+  // Nome de cada form_template (id → nome), pra rotular a linha de plano custom.
+  // Template sem nome no mapa cai num rótulo genérico (não bloqueia o save).
+  templateNameById?: Record<string, string>;
 }): PlanActivityRow[] {
-  const { items, machineConfigs, catalogActivities } = args;
+  const { items, machineConfigs, catalogActivities, templateNameById = {} } = args;
   const rows: PlanActivityRow[] = [];
   for (const item of items) {
     const cfg = machineConfigs[item.equipment_id];
     if (!cfg) continue;
     for (const a of cfg.activities) {
       rows.push({ ...a, applies_per_equipment: true, equipment_ref: item.equipment_id });
+    }
+    // Uma linha de plano por checklist personalizado da máquina. Feita em TODA
+    // visita (freq Mensal) e ALÉM das atividades da norma. catalog_activity_id
+    // null + form_template_id setado + section 'personalizados'.
+    for (const templateId of cfg.customTemplateIds ?? []) {
+      rows.push({
+        description: templateNameById[templateId] ?? 'Checklist personalizado',
+        guidance: null,
+        freq_code: 'M',
+        section: PMOC_CUSTOM_SECTION,
+        component: null,
+        is_measurement: false,
+        unit: null,
+        expected_min: null,
+        expected_max: null,
+        catalog_activity_id: null,
+        form_template_id: templateId,
+        applies_per_equipment: true,
+        equipment_ref: item.equipment_id,
+      });
     }
   }
   rows.push(...buildLocalActivityRows(catalogActivities, machineConfigs));

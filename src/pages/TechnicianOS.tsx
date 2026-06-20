@@ -49,7 +49,7 @@ import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { RateServiceAffordance } from '@/components/technician/RateServiceAffordance';
 import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hooks/useServiceRatings';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
-import { useOsActivityChecklist } from '@/hooks/useOsActivityChecklist';
+import { useOsActivityChecklist, isTemplateActivityComplete } from '@/hooks/useOsActivityChecklist';
 import { VisitChecklistPanel } from '@/components/technician/VisitChecklistPanel';
 import { ReportChecklist, type ReportChecklistItem } from '@/components/technician/ReportChecklist';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
@@ -161,6 +161,9 @@ export default function TechnicianOS() {
     saveActivity: saveChecklistActivity,
     rollup: checklistRollup,
     refetch: refetchChecklist,
+    formQuestionsByTemplate: checklistFormQuestions,
+    getFormResponse: getChecklistFormResponse,
+    saveFormResponse: saveChecklistFormResponse,
   } = useOsActivityChecklist(isAuthenticated === true ? id : undefined);
   type PmocConformity = 'conforme' | 'parcial' | 'nao_conforme';
   const [conformityStatus, setConformityStatus] = useState<PmocConformity | ''>('');
@@ -477,6 +480,7 @@ export default function TechnicianOS() {
           expected_max: a.expected_max ?? null,
           sort_order: a.sort_order ?? 0,
           photos: Array.isArray(a.photos) ? a.photos.filter(Boolean) : [],
+          form_template_id: a.form_template_id ?? null,
         })) as ReportChecklistItem[]
       );
 
@@ -866,7 +870,20 @@ export default function TechnicianOS() {
     // Abre o modal mostrando quantos faltam (voltar e preencher OU marcar
     // restantes como Conforme e concluir). OS comum não passa por aqui.
     if (isPmocOrder && hasChecklist) {
-      const blanks = checklistActivities.filter((a) => !a.conformity_status).length;
+      // Atividades de conformidade ainda em branco.
+      const conformityBlanks = checklistActivities.filter(
+        (a) => !a.form_template_id && !a.conformity_status
+      ).length;
+      // Checklists personalizados (form_template) com perguntas OBRIGATÓRIAS
+      // ainda sem resposta — contam como pendência (não podem ser auto-marcadas).
+      const templateBlanks = checklistActivities.filter((a) => {
+        if (!a.form_template_id) return false;
+        const qs = checklistFormQuestions[a.form_template_id] ?? [];
+        return !isTemplateActivityComplete(qs, (qid) =>
+          getChecklistFormResponse(a.equipment_id ?? null, qid)
+        );
+      }).length;
+      const blanks = conformityBlanks + templateBlanks;
       if (blanks > 0) {
         setPendingChecklistCount(blanks);
         setChecklistGapOpen(true);
@@ -959,11 +976,15 @@ export default function TechnicianOS() {
     if (!id) return;
     setMarkingChecklist(true);
     try {
+      // Só atividades de CONFORMIDADE em branco viram 'conforme'. Atividades de
+      // checklist personalizado (form_template_id) não têm conformidade — não são
+      // tocadas (suas perguntas continuam por conta do técnico).
       const { error } = await supabase
         .from('service_order_activities')
         .update({ conformity_status: 'conforme' })
         .eq('service_order_id', id)
-        .is('conformity_status', null);
+        .is('conformity_status', null)
+        .is('form_template_id', null);
       if (error) throw error;
       // Recarrega o checklist pra o rollup refletir 'conforme' nas atividades
       // que estavam em branco (proceedFinishOS deriva pmoc_conformity_status do rollup).
@@ -1028,9 +1049,13 @@ export default function TechnicianOS() {
         });
       if (!hasAnyAnswer) continue;
 
-      // Checklist da visita: toda atividade precisa de conformidade; medição
-      // exige valor numérico quando a atividade é de medição.
+      // Checklist da visita: toda atividade de CONFORMIDADE precisa de status;
+      // medição exige valor numérico. Atividades de checklist PERSONALIZADO
+      // (form_template_id) NÃO têm conformidade — sua completude é avaliada pelas
+      // perguntas obrigatórias (requiredFormComplete abaixo), então são ignoradas
+      // aqui pra não bloquear o equipamento eternamente.
       const activitiesComplete = acts.every((a) => {
+        if ((a as any).form_template_id) return true;
         if (!a.conformity_status) return false;
         if (a.is_measurement && (a.measured_value === null || a.measured_value === undefined)) return false;
         return true;
@@ -1059,10 +1084,18 @@ export default function TechnicianOS() {
   //   activity_photos (CSV → array).
   const reportChecklistItems: ReportChecklistItem[] = isPublicMode
     ? (isPausedPublicReport
-        ? publicActivities.filter((a) => partialCompleteKeys.has(a.equipment_id ?? GENERAL_KEY))
-        : publicActivities)
+        ? publicActivities.filter(
+            (a) =>
+              !a.form_template_id && partialCompleteKeys.has(a.equipment_id ?? GENERAL_KEY)
+          )
+        : publicActivities.filter((a) => !a.form_template_id))
     : checklistGroups.flatMap((group) =>
-        group.activities.map((a) => ({
+        // Atividades de checklist PERSONALIZADO (form_template_id) não são itens
+        // de conformidade — saem do relatório de conformidade (suas respostas
+        // aparecem na seção de checklists/perguntas).
+        group.activities
+          .filter((a) => !a.form_template_id)
+          .map((a) => ({
           id: a.id,
           equipment_id: a.equipment_id,
           equipment_name: group.equipmentId ? group.equipmentName : null,
@@ -1973,8 +2006,28 @@ export default function TechnicianOS() {
         if (seen.has(groupKey)) return;
         seen.add(groupKey);
         const total = group.activities.length;
-        const answered = group.activities.filter((a) => !!a.conformity_status).length;
-        const naoConforme = group.activities.some((a) => a.conformity_status === 'nao_conforme');
+        // "Feita": conformidade marcada OU checklist personalizado com todas as
+        // perguntas obrigatórias respondidas.
+        const answered = group.activities.filter((a) => {
+          if (a.form_template_id) {
+            const qs = checklistFormQuestions[a.form_template_id] ?? [];
+            return isTemplateActivityComplete(qs, (qid) =>
+              getChecklistFormResponse(a.equipment_id ?? null, qid)
+            );
+          }
+          return !!a.conformity_status;
+        }).length;
+        const naoConforme = group.activities.some((a) => {
+          if (a.form_template_id) {
+            const qs = checklistFormQuestions[a.form_template_id] ?? [];
+            return qs.some(
+              (q) =>
+                q.question_type === 'boolean' &&
+                getChecklistFormResponse(a.equipment_id ?? null, q.id)?.response_value === 'false'
+            );
+          }
+          return a.conformity_status === 'nao_conforme';
+        });
         const status: OsSidebarStatus = naoConforme
           ? 'nao_conforme'
           : answered === total && total > 0
@@ -2598,6 +2651,9 @@ export default function TechnicianOS() {
             onPreviewPhoto={setPreviewPhoto}
             openKeys={openVisitKeys}
             onOpenChange={setOpenVisitKeys}
+            formQuestionsByTemplate={checklistFormQuestions}
+            getFormResponse={getChecklistFormResponse}
+            onSaveFormResponse={saveChecklistFormResponse}
           />
         )}
 

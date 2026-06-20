@@ -416,6 +416,117 @@ describe('REGRESSÃO P0 — buildContractVisits NÃO multiplica plano por máqui
   });
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// CHECKLISTS PERSONALIZADOS por máquina (Fase 2). Linha custom = catalog null +
+// form_template_id setado + section 'personalizados' + freq 'M' (toda visita).
+// Devem entrar na visita ALÉM do catálogo, 1× por máquina (NUNCA ×N), carregando
+// o form_template_id até a emissão; e nunca ser filtradas por escopo ('ac'/'full').
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('CHECKLISTS PERSONALIZADOS por máquina', () => {
+  it('máquina com 2 templates + catálogo: visita devida emite catálogo + 1 linha por template (com form_template_id), sem ×N', () => {
+    // 1 máquina 'ac' start=12; 2 atividades de catálogo + 2 checklists custom.
+    const machines: MachineInput[] = [machine('item-A', 'eq-A', 'ac', 12)];
+    const acts: MachinePlanActivity[] = [
+      ownAct(act('Limpar filtro', 'M', { section: 'condicionadores' }), 'item-A'),
+      ownAct(act('Revisão anual', 'A', { section: 'condicionadores' }), 'item-A'),
+      // Customs: section 'personalizados', freq 'M' → toda visita.
+      ownAct(act('Checklist X', 'M', { section: 'personalizados', form_template_id: 'tpl-1' }), 'item-A'),
+      ownAct(act('Checklist Y', 'M', { section: 'personalizados', form_template_id: 'tpl-2' }), 'item-A'),
+    ];
+
+    // Mês 0 (start=12 → posição 12 = anual): tudo devido.
+    const out = buildPerMachineVisits(START, 0, machines, acts);
+    const m0 = out[0].emissions;
+
+    // Exatamente 4 emissões (2 catálogo + 2 custom), todas no único equipamento.
+    expect(m0.length).toBe(4);
+    expect(m0.every(e => e.equipmentId === 'eq-A')).toBe(true);
+
+    const customEmissions = m0.filter(e => e.input.section === 'personalizados');
+    expect(customEmissions.map(e => e.input.form_template_id).sort()).toEqual(['tpl-1', 'tpl-2']);
+
+    // As atividades de catálogo NÃO carregam form_template_id.
+    const catalogEmissions = m0.filter(e => e.input.section === 'condicionadores');
+    expect(catalogEmissions.every(e => !e.input.form_template_id)).toBe(true);
+  });
+
+  it('checklist personalizado vale pra QUALQUER escopo (não filtra por ac/full)', () => {
+    // Máquina 'ac' com um custom — escopo 'ac' filtraria seções não-AC, mas
+    // 'personalizados' tem que passar sempre.
+    const machines: MachineInput[] = [machine('item-AC', 'eq-AC', 'ac', 1)];
+    const acts: MachinePlanActivity[] = [
+      ownAct(act('Checklist próprio', 'M', { section: 'personalizados', form_template_id: 'tpl-1' }), 'item-AC'),
+    ];
+    // start=1 → mensal devida em todo mês; mês 0 (posição 1) basta.
+    const out = buildPerMachineVisits(START, 0, machines, acts);
+    const m0 = out[0].emissions;
+    expect(m0.length).toBe(1);
+    expect(m0[0].input.form_template_id).toBe('tpl-1');
+  });
+
+  it('custom é por máquina: 2 máquinas, cada uma 1 template → 2 emissões (1 por máquina), nunca cruzado', () => {
+    const machines: MachineInput[] = [
+      machine('item-A', 'eq-A', 'ac', 12),
+      machine('item-B', 'eq-B', 'full', 12),
+    ];
+    const acts: MachinePlanActivity[] = [
+      ownAct(act('Checklist A', 'M', { section: 'personalizados', form_template_id: 'tpl-A' }), 'item-A'),
+      ownAct(act('Checklist B', 'M', { section: 'personalizados', form_template_id: 'tpl-B' }), 'item-B'),
+    ];
+    const out = buildPerMachineVisits(START, 0, machines, acts);
+    const m0 = out[0].emissions;
+    const byEq = (eq: string) => m0.filter(e => e.equipmentId === eq).map(e => e.input.form_template_id);
+    expect(byEq('eq-A')).toEqual(['tpl-A']);
+    expect(byEq('eq-B')).toEqual(['tpl-B']);
+    expect(m0.length).toBe(2);
+  });
+
+  it('buildContractVisits roteia custom por máquina sem multiplicar por N equipamentos', () => {
+    const N = 5;
+    const machines: MachineInput[] = Array.from({ length: N }, (_, i) =>
+      machine(`item-${i}`, `eq-${i}`, 'ac', 12),
+    );
+    // Cada máquina: 1 atividade de catálogo + 1 custom (resolvido com contract_item_id).
+    const planActivities: PlanActivityInput[] = [];
+    for (let i = 0; i < N; i++) {
+      planActivities.push({
+        description: `Cat ${i}`,
+        freq_code: 'A',
+        section: 'condicionadores',
+        contract_item_id: `item-${i}`,
+        applies_per_equipment: true,
+      });
+      planActivities.push({
+        description: `Custom ${i}`,
+        freq_code: 'M',
+        section: 'personalizados',
+        form_template_id: `tpl-${i}`,
+        contract_item_id: `item-${i}`,
+        applies_per_equipment: true,
+      });
+    }
+    const planActivityIds = planActivities.map((_, idx) => `pa-${idx}`);
+    const visits = buildContractVisits({
+      startDate: START,
+      frequencyType: 'months',
+      frequencyValue: 1,
+      horizonMonths: 12,
+      planActivities,
+      planActivityIds,
+      machines,
+    });
+    const first = visits[0].emissions ?? [];
+    // 5 máquinas × 2 (catálogo + custom) = 10. Bug daria 10 × 5 = 50.
+    expect(first.length).toBe(N * 2);
+    for (let i = 0; i < N; i++) {
+      const custom = first.filter(e => e.equipmentId === `eq-${i}` && e.input.section === 'personalizados');
+      expect(custom.length).toBe(1);
+      expect(custom[0].input.form_template_id).toBe(`tpl-${i}`);
+    }
+  });
+});
+
 describe('dedupPlanActivities', () => {
   it('remove linhas iguais (mesma máquina+descrição+frequência+seção) preservando ordem', () => {
     const acts: PlanActivityInput[] = [
@@ -445,6 +556,22 @@ describe('dedupPlanActivities', () => {
     const acts: PlanActivityInput[] = [
       { description: 'Inspeção', freq_code: 'A', applies_per_equipment: true, contract_item_id: 'item-A' },
       { description: 'Inspeção', freq_code: 'A', applies_per_equipment: false, contract_item_id: null },
+    ];
+    expect(dedupPlanActivities(acts).length).toBe(2);
+  });
+
+  it('checklist personalizado (form_template_id) não colide com atividade do catálogo de mesma descrição', () => {
+    const acts: PlanActivityInput[] = [
+      { description: 'Checklist', freq_code: 'M', section: 'condicionadores', contract_item_id: 'item-A' },
+      { description: 'Checklist', freq_code: 'M', section: 'personalizados', form_template_id: 'tpl-1', contract_item_id: 'item-A' },
+    ];
+    expect(dedupPlanActivities(acts).length).toBe(2);
+  });
+
+  it('2 templates personalizados diferentes na mesma máquina não são deduplicados', () => {
+    const acts: PlanActivityInput[] = [
+      { description: 'Checklist', freq_code: 'M', section: 'personalizados', form_template_id: 'tpl-1', contract_item_id: 'item-A' },
+      { description: 'Checklist', freq_code: 'M', section: 'personalizados', form_template_id: 'tpl-2', contract_item_id: 'item-A' },
     ];
     expect(dedupPlanActivities(acts).length).toBe(2);
   });

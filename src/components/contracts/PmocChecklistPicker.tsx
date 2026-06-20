@@ -25,6 +25,14 @@ const FREQ_LABELS: Record<string, string> = {
   E: 'Eventual',
 };
 
+// Checklist personalizado: um form_templates da empresa. Forma mínima usada pelo
+// picker (id + nome + nº de perguntas pro selo).
+export interface CustomChecklistOption {
+  id: string;
+  name: string;
+  questionCount?: number;
+}
+
 interface PmocChecklistPickerProps {
   catalogGroups: PmocCatalogSectionGroup[];
   catalogLoading: boolean;
@@ -33,6 +41,13 @@ interface PmocChecklistPickerProps {
   scope?: PmocMachineScope | null;
   selection: Set<string>;
   onChange: (next: Set<string>) => void;
+  // Checklists personalizados (form_templates ativos, não-pmoc-default) do tenant.
+  // A seção "Personalizados" é SEMPRE visível (independe do escopo): um checklist
+  // personalizado vale pra qualquer máquina. Default [].
+  customTemplates?: CustomChecklistOption[];
+  // Seleção dos templates personalizados, gerenciada à parte da do catálogo.
+  selectedTemplateIds?: Set<string>;
+  onChangeTemplates?: (next: Set<string>) => void;
 }
 
 export function PmocChecklistPicker({
@@ -41,15 +56,10 @@ export function PmocChecklistPicker({
   scope = null,
   selection,
   onChange,
+  customTemplates = [],
+  selectedTemplateIds = new Set(),
+  onChangeTemplates,
 }: PmocChecklistPickerProps) {
-  if (catalogGroups.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-6 text-center">
-        {catalogLoading ? 'Carregando catálogo...' : 'Nenhuma atividade no catálogo.'}
-      </p>
-    );
-  }
-
   // Filtra os grupos pelo escopo: 'ac' só mostra seções de ar-condicionado.
   const visibleGroups = catalogGroups.filter((g) => (scope === 'ac' ? isAcSection(g.section) : true));
 
@@ -76,6 +86,23 @@ export function PmocChecklistPicker({
     if (groupAllChecked) groupIds.forEach((id) => next.delete(id));
     else groupIds.forEach((id) => next.add(id));
     onChange(next);
+  };
+
+  // ---- Personalizados (form_templates) -------------------------------------
+  const templateIds = customTemplates.map((t) => t.id);
+  const selectedTemplateCount = templateIds.filter((id) => selectedTemplateIds.has(id)).length;
+  const allTemplatesChecked = templateIds.length > 0 && templateIds.every((id) => selectedTemplateIds.has(id));
+
+  const toggleTemplate = (id: string) => {
+    if (!onChangeTemplates) return;
+    const next = new Set(selectedTemplateIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChangeTemplates(next);
+  };
+  const toggleAllTemplates = () => {
+    if (!onChangeTemplates) return;
+    onChangeTemplates(allTemplatesChecked ? new Set() : new Set(templateIds));
   };
 
   // Render de uma seção (AccordionItem). Reaproveitado nos dois blocos.
@@ -149,15 +176,23 @@ export function PmocChecklistPicker({
         A frequência vem da norma como ponto de partida.
       </p>
 
-      <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
-        <span className="text-xs text-muted-foreground">Selecionar todas as seções</span>
-        <Button type="button" variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={toggleAll}>
-          {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
-        </Button>
-      </div>
+      {allIds.length > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+          <span className="text-xs text-muted-foreground">Selecionar todas as seções da norma</span>
+          <Button type="button" variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={toggleAll}>
+            {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
+          </Button>
+        </div>
+      )}
+
+      {allIds.length === 0 && (
+        <p className="text-xs text-muted-foreground py-2 text-center">
+          {catalogLoading ? 'Carregando catálogo da norma…' : 'Nenhuma atividade da norma para este escopo.'}
+        </p>
+      )}
 
       {/* Blocos de TOPO como chevrons single-open: abrir um fecha os outros.
-          Ordem: Ar-condicionado (Split/ACJ) → Grande Porte → (Personalizados, futuro).
+          Ordem: Ar-condicionado (Split/ACJ) → Grande Porte → Personalizados.
           Dentro de cada bloco, as sub-seções seguem como accordion próprio com
           "marcar todos" por categoria. */}
       <Accordion type="single" collapsible defaultValue="ac" className="w-full space-y-2">
@@ -186,6 +221,70 @@ export function PmocChecklistPicker({
             </AccordionContent>
           </AccordionItem>
         )}
+
+        {/* Personalizados — SEMPRE visível (independe do escopo da máquina). Lista
+            os checklists que a empresa cria em /checklists (form_templates). Feitos
+            em TODA visita da máquina, ALÉM dos da norma. */}
+        <AccordionItem value="custom" className="rounded-md border px-3">
+          <AccordionTrigger className="text-sm font-semibold">
+            <span className="flex flex-1 items-center gap-2 text-left">
+              Personalizados
+              {customTemplates.length > 0 && (
+                <Badge variant="outline" className="text-[10px] shrink-0">{customTemplates.length}</Badge>
+              )}
+              {selectedTemplateCount > 0 && (
+                <Badge variant="info" className="text-[10px] shrink-0">{selectedTemplateCount} ✓</Badge>
+              )}
+              {customTemplates.length > 0 && onChangeTemplates && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="ml-auto mr-2 shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleAllTemplates(); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleAllTemplates(); } }}
+                >
+                  {allTemplatesChecked ? 'Desmarcar' : 'Marcar todos'}
+                </span>
+              )}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            {customTemplates.length === 0 ? (
+              <p className="text-xs text-muted-foreground px-2 py-2">
+                Nenhum checklist personalizado. Crie em <span className="font-medium">Checklists</span> e ele aparece aqui
+                para anexar a esta máquina.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {customTemplates.map((tpl) => {
+                  const checked = selectedTemplateIds.has(tpl.id);
+                  return (
+                    <label
+                      key={tpl.id}
+                      className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 rounded border-border shrink-0"
+                        checked={checked}
+                        onChange={() => toggleTemplate(tpl.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground">{tpl.name}</p>
+                        {typeof tpl.questionCount === 'number' && (
+                          <p className="text-xs text-muted-foreground">
+                            {tpl.questionCount} pergunta{tpl.questionCount === 1 ? '' : 's'}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="info" className="shrink-0 text-[10px]">Toda visita</Badge>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
       </Accordion>
     </div>
   );

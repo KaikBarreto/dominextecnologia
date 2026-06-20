@@ -28,6 +28,7 @@ import {
   type Contract,
 } from '@/hooks/useContracts';
 import { usePmocActivityCatalog } from '@/hooks/usePmocActivityCatalog';
+import { useFormTemplates } from '@/hooks/useFormTemplates';
 import {
   type PmocMachineScope,
   type MachineConfig,
@@ -118,6 +119,22 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const activeEquipment = useMemo(() => equipment.filter((eq: any) => eq.status === 'active'), [equipment]);
   const { data: existingPlan } = useContractPlanActivities(contract.id);
   const { activities: catalogActivities, groups: catalogGroups, isLoading: catalogLoading } = usePmocActivityCatalog();
+  const { templates } = useFormTemplates();
+
+  // Checklists personalizados do tenant (ativos, não-pmoc-default) pro picker e o
+  // plano. `templateNameById` rotula a linha de plano custom.
+  const customTemplateOptions = useMemo(
+    () =>
+      (templates ?? [])
+        .filter((t: any) => t.is_active && !t.is_pmoc_default)
+        .map((t: any) => ({ id: t.id, name: t.name, questionCount: (t.questions ?? []).length })),
+    [templates],
+  );
+  const templateNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t of customTemplateOptions) map[t.id] = t.name;
+    return map;
+  }, [customTemplateOptions]);
 
   const isPmoc = !!contract.is_pmoc;
 
@@ -163,6 +180,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const [pickerMachineEqId, setPickerMachineEqId] = useState<string | null>(null);
   const [pickerMachineScope, setPickerMachineScope] = useState<PmocMachineScope | null>(null);
   const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
+  // Seleção dos checklists PERSONALIZADOS (form_templates) no modal aberto.
+  const [pickerTemplateSelection, setPickerTemplateSelection] = useState<Set<string>>(new Set());
 
   // Reconstrói as configs por máquina ao carregar o contrato + o plano + o
   // catálogo. Fonte ÚNICA compartilhada (mesma do form em edição). Só PMOC.
@@ -313,6 +332,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     setPickerMachineScope(cfg?.scope ?? 'ac');
     const current = new Set((cfg?.activities ?? []).map((a) => a.catalog_activity_id).filter(Boolean) as string[]);
     setPickerSelection(current);
+    setPickerTemplateSelection(new Set(cfg?.customTemplateIds ?? []));
     setShowCatalogPicker(true);
   };
   const confirmCatalogPicker = () => {
@@ -326,12 +346,13 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         }
       }
     }
+    const templateIds = [...pickerTemplateSelection];
     setMachineConfigs((prev) => {
       const cur = prev[eqId];
       if (!cur) return prev;
-      return { ...prev, [eqId]: { ...cur, activities: selected, customized: true } };
+      return { ...prev, [eqId]: { ...cur, activities: selected, customized: true, customTemplateIds: templateIds } };
     });
-    toast({ title: `Checklists da máquina atualizados (${selected.length} item(ns))` });
+    toast({ title: `Checklists da máquina atualizados (${selected.length + templateIds.length} item(ns))` });
     setShowCatalogPicker(false);
     setPickerMachineEqId(null);
   };
@@ -399,7 +420,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     }
 
     const items = buildPmocItemsWithScope({ items: derivedItems, machineConfigs });
-    const planRows = buildPmocPlanFromMachines({ items: derivedItems, machineConfigs, catalogActivities });
+    const planRows = buildPmocPlanFromMachines({ items: derivedItems, machineConfigs, catalogActivities, templateNameById });
     const plan_activities = planRows.map(planRowToInput);
     return { items, environments, plan_activities };
   };
@@ -736,7 +757,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         title="Checklists da máquina (catálogo PMOC)"
         footer={
           <div className="flex flex-row items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">{pickerSelection.size} selecionada(s)</span>
+            <span className="text-xs text-muted-foreground">{pickerSelection.size + pickerTemplateSelection.size} selecionada(s)</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>Cancelar</Button>
               <Button onClick={confirmCatalogPicker}>Aplicar à máquina</Button>
@@ -750,6 +771,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           scope={pickerMachineScope}
           selection={pickerSelection}
           onChange={setPickerSelection}
+          customTemplates={customTemplateOptions}
+          selectedTemplateIds={pickerTemplateSelection}
+          onChangeTemplates={setPickerTemplateSelection}
         />
       </ResponsiveModal>
 

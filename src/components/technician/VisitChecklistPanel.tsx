@@ -2,20 +2,27 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Wrench, Check, X, MinusCircle, AlertTriangle, Lock, Camera } from 'lucide-react';
+import { ListChecks, Wrench, Check, X, MinusCircle, AlertTriangle, Lock, Camera, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
+import { SignaturePad } from '@/components/SignaturePad';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import type { FormQuestion } from '@/types/database';
 import {
   type ChecklistActivity,
   type ChecklistEquipmentGroup,
+  type ChecklistFormResponse,
   type ActivityConformity,
   freqLabel,
   isOutOfRange,
+  isFormResponseAnswered,
+  isTemplateActivityComplete,
 } from '@/hooks/useOsActivityChecklist';
 
 interface Props {
@@ -33,6 +40,22 @@ interface Props {
   ) => Promise<void>;
   /** Abre a foto do equipamento em tela cheia (mesmo viewer da OS comum). */
   onPreviewPhoto?: (url: string) => void;
+  /**
+   * Checklists personalizados por máquina (PMOC por equipamento, Fase 3):
+   * perguntas por template_id, respostas já dadas e save (upsert) por
+   * (equipamento, pergunta). Quando uma atividade tem `form_template_id`, em vez
+   * do item de conformidade único renderizamos as PERGUNTAS do template.
+   */
+  formQuestionsByTemplate?: Record<string, FormQuestion[]>;
+  getFormResponse?: (
+    equipmentId: string | null,
+    questionId: string
+  ) => ChecklistFormResponse | undefined;
+  onSaveFormResponse?: (
+    equipmentId: string | null,
+    questionId: string,
+    patch: { response_value?: string | null; response_photo_url?: string | null }
+  ) => Promise<void>;
   /**
    * Accordion controlado (sidebar desktop): chaves abertas + callback de mudança.
    * Quando AMBOS vêm, o accordion vira controlado; senão mantém o comportamento
@@ -259,6 +282,318 @@ function ActivityRow({
 }
 
 /**
+ * Uma pergunta de checklist PERSONALIZADO (form_template) renderizada no MESMO
+ * estilo visual dos itens PMOC: numeração, título, obrigatória com asterisco e
+ * o controle conforme o tipo da pergunta.
+ *
+ * - `boolean` → conformidade Conforme/Não-conforme/N/A (mapeada p/ true/false/'na').
+ * - `number`/`pmoc_measurement` → entrada de medição com unidade e faixa esperada.
+ * - `text` → textarea. `select` → checkboxes das opções (multi). `photo` → foto
+ *   (respeita require_camera / allow_multiple_photos). `signature` → assinatura.
+ */
+function TemplateQuestionRow({
+  serviceOrderId,
+  equipmentId,
+  question,
+  index,
+  response,
+  readOnly,
+  onSaveResponse,
+}: {
+  serviceOrderId: string;
+  equipmentId: string | null;
+  question: FormQuestion;
+  index: number;
+  response: ChecklistFormResponse | undefined;
+  readOnly?: boolean;
+  onSaveResponse: NonNullable<Props['onSaveFormResponse']>;
+}) {
+  const { toast } = useToast();
+  const value = response?.response_value ?? '';
+  const photoCsv = response?.response_photo_url ?? null;
+
+  // Texto/medição: estado local pra digitar livre (vírgula) sem perder foco.
+  const [text, setText] = useState<string>(value);
+  const [saving, setSaving] = useState(false);
+
+  const save = async (patch: {
+    response_value?: string | null;
+    response_photo_url?: string | null;
+  }) => {
+    if (readOnly || saving) return;
+    setSaving(true);
+    try {
+      await onSaveResponse(equipmentId, question.id, patch);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível salvar a resposta',
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const type = question.question_type;
+
+  const renderInput = () => {
+    switch (type) {
+      case 'boolean': {
+        // 'true' = Conforme, 'false' = Não-conforme, 'na' = N/A.
+        const opts: { v: string; label: string; icon: typeof Check; active: string }[] = [
+          { v: 'true', label: 'Conforme', icon: Check, active: 'bg-success text-success-foreground border-success' },
+          { v: 'false', label: 'Não-conforme', icon: X, active: 'bg-destructive text-destructive-foreground border-destructive' },
+          { v: 'na', label: 'N/A', icon: MinusCircle, active: 'bg-muted text-muted-foreground border-border' },
+        ];
+        return (
+          <div className="grid grid-cols-3 gap-1.5">
+            {opts.map((o) => {
+              const Icon = o.icon;
+              const selected = value === o.v;
+              return (
+                <Button
+                  key={o.v}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={readOnly || saving}
+                  onClick={() => save({ response_value: selected ? null : o.v })}
+                  className={cn('h-9 gap-1.5 text-xs', selected ? o.active : 'text-muted-foreground')}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  {o.label}
+                </Button>
+              );
+            })}
+          </div>
+        );
+      }
+
+      case 'number':
+      case 'pmoc_measurement': {
+        const min = question.expected_min ?? null;
+        const max = question.expected_max ?? null;
+        const unit = question.unit ?? null;
+        const num = text.trim().replace(',', '.');
+        const parsed = num === '' ? null : parseFloat(num);
+        const outOfRange =
+          parsed !== null &&
+          !Number.isNaN(parsed) &&
+          isOutOfRange(parsed, min, max);
+        const rangeText = (() => {
+          const u = unit ? ` ${unit}` : '';
+          if (min !== null && max !== null) return `Faixa: ${min}–${max}${u}`;
+          if (min !== null) return `Mín: ${min}${u}`;
+          if (max !== null) return `Máx: ${max}${u}`;
+          return null;
+        })();
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="Valor medido"
+                value={text}
+                disabled={readOnly || saving}
+                onChange={(e) => setText(e.target.value)}
+                onBlur={() => {
+                  const v = text.trim();
+                  if ((v === '' ? null : v) !== (value === '' ? null : value)) {
+                    save({ response_value: v === '' ? null : v });
+                  }
+                }}
+                className={cn('h-9 text-sm', outOfRange && 'border-destructive focus-visible:ring-destructive')}
+              />
+              {unit && <span className="text-sm text-muted-foreground shrink-0">{unit}</span>}
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              {rangeText && <span className="text-[11px] text-muted-foreground">{rangeText}</span>}
+              {outOfRange && (
+                <span className="flex items-center gap-1 text-[11px] font-medium text-destructive ml-auto">
+                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                  Fora da faixa esperada
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      case 'text':
+        return (
+          <Textarea
+            placeholder="Digite sua resposta..."
+            value={text}
+            rows={2}
+            disabled={readOnly || saving}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={() => {
+              const v = text.trim();
+              if ((v === '' ? null : v) !== (value === '' ? null : value)) {
+                save({ response_value: v === '' ? null : v });
+              }
+            }}
+            className="text-sm"
+          />
+        );
+
+      case 'select': {
+        const options = (question.options as string[]) || [];
+        const selected = value ? value.split('|||').filter(Boolean) : [];
+        const toggle = (opt: string) => {
+          const next = selected.includes(opt)
+            ? selected.filter((v) => v !== opt)
+            : [...selected, opt];
+          save({ response_value: next.length ? next.join('|||') : null });
+        };
+        return (
+          <div className="space-y-1.5">
+            {options.map((opt, i) => (
+              <label
+                key={i}
+                className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+              >
+                <Checkbox
+                  checked={selected.includes(opt)}
+                  onCheckedChange={() => toggle(opt)}
+                  disabled={readOnly || saving}
+                />
+                {opt}
+              </label>
+            ))}
+            {selected.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {selected.length} selecionada{selected.length > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+        );
+      }
+
+      case 'photo': {
+        const cameraOnly = !!question.require_camera;
+        const allowMultiple = (question as any).allow_multiple_photos !== false;
+        return (
+          <OsPhotoField
+            serviceOrderId={serviceOrderId}
+            pathPrefix={`form-${question.id}`}
+            value={photoCsv}
+            onChange={(csv) => save({ response_photo_url: csv })}
+            readOnly={readOnly}
+            cameraOnly={cameraOnly}
+            allowMultiple={allowMultiple}
+          />
+        );
+      }
+
+      case 'signature':
+        return (
+          <SignaturePad
+            value={value || null}
+            onChange={(dataUrl) => save({ response_value: dataUrl })}
+            label={question.description || undefined}
+            disabled={readOnly || saving}
+          />
+        );
+
+      default:
+        return <p className="text-sm text-muted-foreground">Tipo não suportado</p>;
+    }
+  };
+
+  return (
+    <div className="space-y-2.5 p-3 rounded-lg bg-muted/30">
+      <div className="flex items-start gap-2">
+        <span className="font-bold text-muted-foreground text-sm leading-5">{index}.</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground break-words">
+            {question.question}
+            {question.is_required && <span className="text-destructive ml-1">*</span>}
+          </p>
+          {question.description && (
+            <p className="text-xs text-muted-foreground break-words mt-0.5">{question.description}</p>
+          )}
+        </div>
+      </div>
+      {renderInput()}
+    </div>
+  );
+}
+
+/**
+ * Bloco de uma atividade de checklist PERSONALIZADO dentro do grupo do
+ * equipamento: título com o nome do checklist + as perguntas do template.
+ */
+function TemplateActivityBlock({
+  serviceOrderId,
+  equipmentId,
+  activity,
+  questions,
+  getFormResponse,
+  readOnly,
+  onSaveResponse,
+}: {
+  serviceOrderId: string;
+  equipmentId: string | null;
+  activity: ChecklistActivity;
+  questions: FormQuestion[];
+  getFormResponse: NonNullable<Props['getFormResponse']>;
+  readOnly?: boolean;
+  onSaveResponse: NonNullable<Props['onSaveFormResponse']>;
+}) {
+  const complete = isTemplateActivityComplete(questions, (qid) =>
+    getFormResponse(equipmentId, qid)
+  );
+  const requiredCount = questions.filter((q) => q.is_required).length;
+  const requiredAnswered = questions.filter(
+    (q) => q.is_required && isFormResponseAnswered(getFormResponse(equipmentId, q.id))
+  ).length;
+
+  return (
+    <div className="rounded-lg border border-primary/30 bg-primary/[0.03] p-2.5 space-y-2.5">
+      <div className="flex items-center gap-2">
+        <ClipboardList className="h-4 w-4 text-primary shrink-0" />
+        <p className="text-sm font-semibold text-foreground flex-1 min-w-0 break-words">
+          {activity.description || 'Checklist personalizado'}
+        </p>
+        {questions.length > 0 &&
+          (complete ? (
+            <Badge variant="success" className="gap-1 shrink-0 text-[10px]">
+              <Check className="h-3 w-3" /> Concluído
+            </Badge>
+          ) : requiredCount > 0 ? (
+            <Badge variant="outline" className="shrink-0 text-[10px]">
+              {requiredAnswered}/{requiredCount}
+            </Badge>
+          ) : null)}
+      </div>
+      {questions.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Nenhuma pergunta configurada para este checklist.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {questions.map((q, idx) => (
+            <TemplateQuestionRow
+              key={q.id}
+              serviceOrderId={serviceOrderId}
+              equipmentId={equipmentId}
+              question={q}
+              index={idx + 1}
+              response={getFormResponse(equipmentId, q.id)}
+              readOnly={readOnly}
+              onSaveResponse={onSaveResponse}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Painel "Checklist da visita" — só renderiza quando a OS tem
  * `service_order_activities` (geradas por contrato com plano). Agrupado por
  * equipamento; cada atividade tem conforme/não-conforme/N/A e, se for medição,
@@ -277,8 +612,24 @@ export function VisitChecklistPanel({
   onPreviewPhoto,
   openKeys,
   onOpenChange,
+  formQuestionsByTemplate,
+  getFormResponse,
+  onSaveFormResponse,
 }: Props) {
   if (groups.length === 0) return null;
+
+  const questionsByTemplate = formQuestionsByTemplate ?? {};
+  // Suporte a checklist personalizado só quando o pai passa os 3 handlers.
+  const canRenderTemplates = !!getFormResponse && !!onSaveFormResponse;
+
+  /** Uma atividade de conformidade "respondida"? (pra contagem do header). */
+  const isConformityAnswered = (a: ChecklistActivity) => !!a.conformity_status;
+  /** Uma atividade de template "completa"? (todas as obrigatórias respondidas). */
+  const isTemplateDone = (a: ChecklistActivity): boolean => {
+    if (!canRenderTemplates || !a.form_template_id) return false;
+    const qs = questionsByTemplate[a.form_template_id] ?? [];
+    return isTemplateActivityComplete(qs, (qid) => getFormResponse!(a.equipment_id ?? null, qid));
+  };
 
   // Requisito: 1º equipamento aberto, demais fechados, todos expansíveis.
   // type="multiple" + defaultValue com a chave do primeiro grupo (igual à OS comum).
@@ -313,10 +664,25 @@ export function VisitChecklistPanel({
         >
           {groups.map((group) => {
             const total = group.activities.length;
-            const answered = group.activities.filter((a) => !!a.conformity_status).length;
-            const naoConforme = group.activities.filter(
-              (a) => a.conformity_status === 'nao_conforme'
+            // "Feita": conformidade marcada (atividade comum) OU todas as
+            // perguntas obrigatórias respondidas (atividade de checklist próprio).
+            const answered = group.activities.filter((a) =>
+              a.form_template_id ? isTemplateDone(a) : isConformityAnswered(a)
             ).length;
+            // Não-conforme conta tanto atividade comum quanto pergunta boolean
+            // 'false' (= não-conforme) de checklist personalizado.
+            const naoConforme = group.activities.filter((a) => {
+              if (a.form_template_id) {
+                if (!canRenderTemplates) return false;
+                const qs = questionsByTemplate[a.form_template_id] ?? [];
+                return qs.some(
+                  (q) =>
+                    q.question_type === 'boolean' &&
+                    getFormResponse!(a.equipment_id ?? null, q.id)?.response_value === 'false'
+                );
+              }
+              return a.conformity_status === 'nao_conforme';
+            }).length;
             const pending = total - answered;
             const photo = group.equipment?.photo_url || null;
             const category = group.equipment?.category || null;
@@ -385,16 +751,29 @@ export function VisitChecklistPanel({
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-4 pt-1">
-                    {group.activities.map((activity, idx) => (
-                      <ActivityRow
-                        key={activity.id}
-                        serviceOrderId={serviceOrderId}
-                        activity={activity}
-                        index={idx + 1}
-                        readOnly={readOnly}
-                        onSave={onSave}
-                      />
-                    ))}
+                    {group.activities.map((activity, idx) =>
+                      activity.form_template_id && canRenderTemplates ? (
+                        <TemplateActivityBlock
+                          key={activity.id}
+                          serviceOrderId={serviceOrderId}
+                          equipmentId={activity.equipment_id ?? null}
+                          activity={activity}
+                          questions={questionsByTemplate[activity.form_template_id] ?? []}
+                          getFormResponse={getFormResponse!}
+                          readOnly={readOnly}
+                          onSaveResponse={onSaveFormResponse!}
+                        />
+                      ) : (
+                        <ActivityRow
+                          key={activity.id}
+                          serviceOrderId={serviceOrderId}
+                          activity={activity}
+                          index={idx + 1}
+                          readOnly={readOnly}
+                          onSave={onSave}
+                        />
+                      )
+                    )}
                   </div>
                 </AccordionContent>
               </AccordionItem>
