@@ -2,6 +2,8 @@ import { ArrowLeft, Download, Droplet, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { idealForeground } from '@/lib/colorContrast';
 import type { RefrigerantGas } from '@/hooks/useEquipmentCatalog';
+import { GasBadge } from './GasBadge';
+import { explicacaoBadge } from './gasBadgeInfo';
 
 /** Cinza neutro pra gás sem cor cadastrada (régua: gás sempre com bolinha). */
 const COR_NEUTRA = '#6b7280';
@@ -61,14 +63,16 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
   const fg = idealForeground(cor);
   const inflamavel = gasInflamavel(gas.classe_seguranca);
 
-  const rows: { label: string; value: string | null }[] = [
+  // `explain` marca as linhas cujo valor é um badge com tooltip (tipo do gás e
+  // classe de segurança). Só vira tooltip se houver explicação no mapa.
+  const rows: { label: string; value: string | null; explain?: boolean }[] = [
     { label: 'Composição', value: gas.composicao },
-    { label: 'Tipo', value: gas.tipo },
+    { label: 'Tipo', value: gas.tipo, explain: true },
     { label: 'GWP', value: num(gas.gwp) },
     { label: 'ODP', value: num(gas.odp) },
     { label: 'Ponto de ebulição', value: num(gas.ponto_ebulicao_c) != null ? `${num(gas.ponto_ebulicao_c)} °C` : null },
     { label: 'Glide', value: num(gas.glide_k) != null ? `${num(gas.glide_k)} K` : null },
-    { label: 'Classe de segurança', value: gas.classe_seguranca },
+    { label: 'Classe de segurança', value: gas.classe_seguranca, explain: true },
     { label: 'Óleo', value: gas.oleo },
     { label: 'Substitui', value: gas.substitui },
     { label: 'Aplicação', value: gas.aplicacao },
@@ -127,7 +131,13 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
               <li key={r.label} className="flex items-start justify-between gap-3 px-4 py-3">
                 <span className="shrink-0 text-sm font-medium text-muted-foreground">{r.label}</span>
                 <span className="flex min-w-0 items-center justify-end gap-2 text-right text-sm font-semibold text-foreground">
-                  {r.value}
+                  {r.explain && r.value && explicacaoBadge(r.value) ? (
+                    <GasBadge rawText={r.value} className="font-semibold text-foreground">
+                      {r.value}
+                    </GasBadge>
+                  ) : (
+                    r.value
+                  )}
                   {r.label === 'Classe de segurança' && inflamavel && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-orange-600 dark:text-orange-400">
                       <Flame className="h-3 w-3 shrink-0" fill="currentColor" strokeWidth={2} aria-hidden />
@@ -141,24 +151,25 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
         </div>
       )}
 
-      {/* Downloads */}
-      <div className="space-y-2">
+      {/* Downloads — em destaque (botões preenchidos, maiores). Lado a lado no
+          desktop, empilhados no mobile. Se só um existir, ocupa a linha sozinho. */}
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         {gas.ficha_url && (
           <Button
-            variant="outline"
-            className="w-full"
+            size="lg"
+            className="h-12 w-full text-base"
             onClick={() =>
               baixarPdf(gas.ficha_url!, sanitizarNomeArquivo(`Ficha técnica ${gas.code}.pdf`))
             }
           >
-            <Download className="h-4 w-4 shrink-0" />
+            <Download className="h-5 w-5 shrink-0" />
             Ficha técnica
           </Button>
         )}
         {gas.guia_oficial_url && (
           <Button
-            variant="outline"
-            className="w-full"
+            size="lg"
+            className="h-12 w-full text-base"
             onClick={() =>
               baixarPdf(
                 gas.guia_oficial_url!,
@@ -166,7 +177,7 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
               )
             }
           >
-            <Download className="h-4 w-4 shrink-0" />
+            <Download className="h-5 w-5 shrink-0" />
             Guia do fabricante
           </Button>
         )}

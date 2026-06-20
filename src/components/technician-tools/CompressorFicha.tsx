@@ -282,11 +282,11 @@ export function CompressorFicha({
         </div>
       )}
 
-      {/* Datasheet (reusa manual_url) */}
+      {/* Datasheet (reusa manual_url) — em destaque (preenchido, maior, full-width) */}
       {temManual && (
         <Button
-          variant="outline"
-          className="w-full"
+          size="lg"
+          className="h-12 w-full text-base"
           onClick={() =>
             baixarDatasheet(
               model.manual_url!,
@@ -294,7 +294,7 @@ export function CompressorFicha({
             )
           }
         >
-          <Download className="h-4 w-4" />
+          <Download className="h-5 w-5" />
           {model.manual_type ? rotuloManual(model.manual_type) : 'Datasheet'}
         </Button>
       )}

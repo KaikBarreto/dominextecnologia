@@ -47,6 +47,7 @@ import {
 } from '@/hooks/useEquipmentCatalog';
 import { CompressorFicha } from './CompressorFicha';
 import { GasDetail } from './GasDetail';
+import { GasBadge } from './GasBadge';
 import { RemoteConfig } from './RemoteConfig';
 import { CatalogImage } from './CatalogImage';
 import {
@@ -1491,6 +1492,18 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
 
   const semResultado = !isLoading && gases.length > 0 && visiveis.length === 0;
 
+  // Separa em Puros × Misturas (blends): série 400/500 do código = blend.
+  // Respeita a busca (opera sobre `visiveis`) e a ordem de `sort` do hook.
+  const { puros, misturas } = useMemo(() => {
+    const puros: RefrigerantGas[] = [];
+    const misturas: RefrigerantGas[] = [];
+    for (const g of visiveis) {
+      if (/^R-?[45]/i.test(g.code)) misturas.push(g);
+      else puros.push(g);
+    }
+    return { puros, misturas };
+  }, [visiveis]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -1534,10 +1547,32 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
           message={`Não localizamos nada para "${termo}". Tente outro código ou nome.`}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {visiveis.map((gas) => (
-            <GasCard key={gas.id} gas={gas} onSelect={() => onSelectGas(gas)} />
-          ))}
+        <div className="space-y-5">
+          {/* Seções: Puros e Misturas (blends). Seção vazia não aparece. */}
+          {puros.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-base font-bold tracking-tight text-foreground md:text-lg">
+                Puros
+              </h3>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {puros.map((gas) => (
+                  <GasCard key={gas.id} gas={gas} onSelect={() => onSelectGas(gas)} />
+                ))}
+              </div>
+            </section>
+          )}
+          {misturas.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-base font-bold tracking-tight text-foreground md:text-lg">
+                Misturas (blends)
+              </h3>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {misturas.map((gas) => (
+                  <GasCard key={gas.id} gas={gas} onSelect={() => onSelectGas(gas)} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>
@@ -1545,8 +1580,33 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
 }
 
 /**
- * Card de um fluido refrigerante na lista global: bolinha de cor (régua: gás
- * sempre com cor), código em destaque, nome e badges de tipo e classe de segurança.
+ * Ícone de botijão de gás refrigerante (vetor próprio). Herda a cor via
+ * `currentColor`, então quem chama controla com `style={{ color }}`.
+ */
+function GasCylinderIcon({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <svg
+      viewBox="0 0 417 799"
+      fill="currentColor"
+      className={className}
+      style={style}
+      aria-hidden
+    >
+      <path d="M134.47 223.64H281.64V144.99C281.64 136.56 274.73 129.66 266.3 129.66H149.81C141.37 129.66 134.47 136.56 134.47 144.99V223.64ZM0 0H416.1V54.65H0V0ZM338.44 228.27C369.7 239.4 392.23 269.34 392.23 304.3V674.79H23.87V304.3C23.87 269.34 46.41 239.4 77.66 228.27V80.28H338.44V228.27ZM392.23 711.58V718.15C392.23 762.51 355.94 798.8 311.58 798.8H104.52C60.17 798.8 23.87 762.51 23.87 718.15V711.58H392.23Z" />
+    </svg>
+  );
+}
+
+/**
+ * Card de um fluido refrigerante na lista global: quadrado colorido com ícone
+ * de botijão (régua: gás sempre com cor; ícone na cor de contraste),
+ * código em destaque, nome e badges de tipo e classe de segurança.
  */
 function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void }) {
   const cor = gas.cor || GAS_COR_NEUTRA;
@@ -1556,17 +1616,23 @@ function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void 
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-all',
+        'flex items-stretch overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition-all',
         'hover:border-primary/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       )}
     >
-      {/* Bolinha de cor do gás (régua CEO: gás sempre com cor saturada). */}
+      {/* Faixa colorida full-height na cor saturada do gás (régua CEO: gás
+          sempre com cor) com ícone de botijão na cor de contraste. O
+          overflow-hidden + rounded-2xl do pai clipam o canto esquerdo ao
+          radius do card e deixam a direita reta. */}
       <span
-        className="h-5 w-5 shrink-0 rounded-full ring-1 ring-black/10"
+        className="flex w-16 shrink-0 items-center justify-center self-stretch"
         style={{ backgroundColor: cor }}
         aria-hidden
-      />
-      <div className="min-w-0 flex-1">
+      >
+        <GasCylinderIcon className="h-7 w-7" style={{ color: idealForeground(cor) }} />
+      </span>
+      <div className="flex min-w-0 flex-1 items-center gap-3 p-4">
+        <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <p className="text-base font-bold leading-tight tracking-tight text-foreground">
             {gas.code}
@@ -1584,12 +1650,18 @@ function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void 
         {(gas.tipo || gas.classe_seguranca) && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {gas.tipo && (
-              <span className="rounded-md bg-violet-500 px-2 py-0.5 text-xs font-semibold text-white">
+              <GasBadge
+                rawText={gas.tipo}
+                className="inline-flex items-center rounded-md bg-violet-500 px-2 py-0.5 text-xs font-semibold text-white"
+              >
                 {gas.tipo}
-              </span>
+              </GasBadge>
             )}
             {gas.classe_seguranca && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <GasBadge
+                rawText={gas.classe_seguranca}
+                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+              >
                 {inflamavel && (
                   <Flame
                     className="h-3 w-3 shrink-0 text-orange-500"
@@ -1599,12 +1671,13 @@ function GasCard({ gas, onSelect }: { gas: RefrigerantGas; onSelect: () => void 
                   />
                 )}
                 {gas.classe_seguranca}
-              </span>
+              </GasBadge>
             )}
           </div>
         )}
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
     </button>
   );
 }
