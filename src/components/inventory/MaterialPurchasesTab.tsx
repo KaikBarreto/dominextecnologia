@@ -207,7 +207,9 @@ export function MaterialPurchasesTab() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2.5">
+        // Apresentação responsiva fixa: 1 coluna no mobile (vira lista
+        // empilhada) e grade a partir do desktop (2 em lg, 3 em xl).
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {filtered.map((c) => {
             const meta = STATUS_META[c.status] ?? STATUS_META.aberta;
             return (
@@ -223,7 +225,7 @@ export function MaterialPurchasesTab() {
                   >
                     {/* Código + título da compra em destaque + status */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-base font-semibold leading-tight">
+                      <span className="min-w-0 truncate text-base font-semibold leading-tight">
                         <span className="mr-1.5 font-mono text-sm font-medium text-muted-foreground">#{c.numero}</span>
                         {c.title}
                       </span>
@@ -236,7 +238,7 @@ export function MaterialPurchasesTab() {
                         {formatDate(c.created_at)} • {c.cotacao_count} {c.cotacao_count === 1 ? 'cotação' : 'cotações'}
                       </p>
                       {c.accepted_supplier_name && (
-                        <Badge variant="success" className="text-[10px]">
+                        <Badge variant="success" className="max-w-full truncate text-[10px]">
                           Aceita: {c.accepted_supplier_name}
                         </Badge>
                       )}
