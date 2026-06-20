@@ -40,6 +40,8 @@ import {
   Droplets,
   CalendarClock,
   Waves,
+  Car,
+  DollarSign,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -57,7 +59,8 @@ export type TechToolId =
   | 'superaquecimento'
   | 'regua-gases'
   | 'retrofit-gas'
-  | 'ciclo-refrigeracao';
+  | 'ciclo-refrigeracao'
+  | 'diluicao-produto';
 
 export interface TechTool {
   id: TechToolId;
@@ -142,6 +145,22 @@ export const TECH_TOOLS_BY_SEGMENT: Partial<Record<string, TechTool[]>> = {
       descricao: 'Entenda o ciclo básico e os termos técnicos.',
       icon: RefreshCcw,
       accent: 'hsl(174 72% 40%)',
+    },
+    {
+      id: 'diluicao-produto',
+      label: 'Diluição de Produto',
+      descricao: 'Calcule produto + água pela proporção e volume final.',
+      icon: FlaskConical,
+      accent: 'hsl(173 80% 40%)',
+    },
+  ],
+  estetica_automotiva: [
+    {
+      id: 'diluicao-produto',
+      label: 'Diluição de Produto',
+      descricao: 'Calcule produto + água pela proporção e volume final.',
+      icon: FlaskConical,
+      accent: 'hsl(173 80% 40%)',
     },
   ],
 };
@@ -244,6 +263,12 @@ export const TEASER_TOOLS_BY_SEGMENT: Record<string, TeaserTool[]> = {
     { id: 'dimensionar-bomba', label: 'Dimensionar Bomba', icon: Waves },
     { id: 'carga-hidraulica', label: 'Carga Hidráulica', icon: Gauge },
     { id: 'checklist-ativo', label: 'Checklist por Ativo', icon: ClipboardCheck },
+  ],
+  estetica_automotiva: [
+    { id: 'diluicao-produto', label: 'Diluição de Produto', icon: FlaskConical },
+    { id: 'custo-aplicacao', label: 'Custo por Aplicação', icon: DollarSign },
+    { id: 'rendimento-veiculo', label: 'Rendimento por Veículo', icon: Car },
+    { id: 'cronograma-servicos', label: 'Cronograma de Serviços', icon: CalendarClock },
   ],
 };
 

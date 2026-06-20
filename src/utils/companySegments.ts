@@ -1,6 +1,6 @@
 import {
   Snowflake, Zap, Sun, Radio, Camera, HardHat, Cog, ArrowUpDown,
-  Bot, Sparkles, Bug, Wrench, MoreHorizontal, type LucideIcon,
+  Bot, Sparkles, Bug, Wrench, SprayCan, MoreHorizontal, type LucideIcon,
 } from 'lucide-react';
 
 export interface CompanySegment {
@@ -18,11 +18,12 @@ export const COMPANY_SEGMENTS: CompanySegment[] = [
   { value: 'cftv',             label: 'CFTV e Segurança Eletrônica', color: '#6366f1', icon: Camera },
   { value: 'construcao',       label: 'Construção Civil',            color: '#a16207', icon: HardHat },
   { value: 'engenharia',       label: 'Engenharia',                  color: '#0ea5e9', icon: Cog },
-  { value: 'elevadores',       label: 'Elevadores',                  color: '#64748b', icon: ArrowUpDown },
+  { value: 'elevadores',       label: 'Elevadores',                  color: '#ef4444', icon: ArrowUpDown },
   { value: 'automacao',        label: 'Automação Industrial',        color: '#8b5cf6', icon: Bot },
   { value: 'limpeza',          label: 'Limpeza e Conservação',       color: '#10b981', icon: Sparkles },
   { value: 'dedetizacao',      label: 'Dedetização',                 color: '#65a30d', icon: Bug },
   { value: 'manutencao',       label: 'Manutenção Predial',          color: '#ec4899', icon: Wrench },
+  { value: 'estetica_automotiva', label: 'Estética Automotiva',      color: '#14b8a6', icon: SprayCan },
   { value: 'outro',            label: 'Outro',                       color: '#6b7280', icon: MoreHorizontal },
 ];
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Home, Lock } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Home, Lock, ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,16 @@ import { Superaquecimento } from '@/components/technician-tools/Superaquecimento
 import { ReguaGases } from '@/components/technician-tools/ReguaGases';
 import { RetrofitGas } from '@/components/technician-tools/RetrofitGas';
 import { CicloRefrigeracao } from '@/components/technician-tools/CicloRefrigeracao';
+import { DiluicaoProduto } from '@/components/technician-tools/DiluicaoProduto';
 import type { ConversaoCategoria } from '@/lib/conversoes';
+
+/**
+ * Ferramentas cuja sub-tela tem navegação de "voltar" PRÓPRIA (lista ↔ detalhe).
+ * Pra elas, o botão "Voltar" GLOBAL do container some — senão ficam dois botões
+ * de voltar em duplicidade (régua CEO: nunca dois voltares juntos). A
+ * interceptação do voltar do SISTEMA (popstate) continua valendo pra todas.
+ */
+const TOOLS_WITH_OWN_BACK = new Set<string>(['equipamentos']);
 
 type ToolTab =
   | 'inicio'
@@ -29,7 +39,8 @@ type ToolTab =
   | 'superaquecimento'
   | 'regua-gases'
   | 'retrofit-gas'
-  | 'ciclo-refrigeracao';
+  | 'ciclo-refrigeracao'
+  | 'diluicao-produto';
 
 /** Alvo de deep-link ao trocar de aba a partir de Recentes/Favoritos do Início. */
 export type ToolNavPayload =
@@ -74,6 +85,62 @@ export default function TechnicianTools() {
   // Alvo pendente de deep-link, consumido pela aba destino na 1ª montagem.
   const [pending, setPending] = useState<ToolNavPayload | null>(null);
 
+  // --- Voltar do sistema (swipe mobile / botão do navegador) ---------------
+  // Navegamos por estado interno (sem rota), então o "voltar" nativo sairia da
+  // página inteira pra Agenda. Empurramos UMA entrada de history ao entrar numa
+  // ferramenta; o popstate a consome e cai no Início (sem prender o usuário).
+  const pushedRef = useRef(false); // já existe a entrada techTool no history?
+  const prevTabRef = useRef<string>('inicio'); // tab anterior, pra detectar transições
+
+  useEffect(() => {
+    const prev = prevTabRef.current;
+    const wasInicio = prev === 'inicio';
+    const isInicio = activeTab === 'inicio';
+
+    if (wasInicio && !isInicio) {
+      // Início → ferramenta: empilha UMA entrada (só se ainda não houver).
+      if (!pushedRef.current) {
+        window.history.pushState({ techTool: true }, '');
+        pushedRef.current = true;
+      }
+    } else if (!wasInicio && !isInicio) {
+      // Ferramenta → ferramenta: mantém UMA entrada (não empilha de novo).
+      if (pushedRef.current) {
+        window.history.replaceState({ techTool: true }, '');
+      }
+    }
+    // Ferramenta → Início feito por código (botão Voltar/troca de nicho): a
+    // entrada techTool é consumida pelo próprio history.back()/popstate, então
+    // não mexemos no history aqui — só zeramos o flag no handler do popstate.
+
+    prevTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      const state = e.state as { techTool?: boolean } | null;
+      // Voltou e a entrada techTool já não está ativa: consome o voltar caindo
+      // no Início (em vez de deixar sair pra Agenda).
+      if (!state?.techTool && prevTabRef.current !== 'inicio') {
+        pushedRef.current = false;
+        setPending(null);
+        setActiveTab('inicio');
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  /** Botão "Voltar" visível: consome a entrada do history (popstate leva ao Início). */
+  const handleBackToInicio = () => {
+    if (pushedRef.current) {
+      window.history.back();
+    } else {
+      setPending(null);
+      setActiveTab('inicio');
+    }
+  };
+
   /** Início chama isso pra navegar (com ou sem payload de deep-link). */
   const handleNavigate = (tab: ToolTab, payload?: ToolNavPayload) => {
     setPending(payload && payload.tab === tab ? payload : null);
@@ -89,6 +156,13 @@ export default function TechnicianTools() {
   // Trocar de nicho no seletor: volta o conteúdo pro hub (Início) pra não cair
   // numa aba que não existe no nicho escolhido.
   const handleSelectSegment = (value: string) => {
+    // Voltando ao Início por código: se havia entrada techTool no history,
+    // neutraliza-a (replaceState) pra não deixar uma entrada órfã que faria o
+    // próximo "voltar" ficar preso numa transição vazia.
+    if (pushedRef.current) {
+      window.history.replaceState(null, '');
+      pushedRef.current = false;
+    }
     setSelectedSegment(value);
     setPending(null);
     setActiveTab('inicio');
@@ -184,6 +258,24 @@ export default function TechnicianTools() {
             <SegmentLockedScreen segment={effectiveSegment!} />
           ) : (
             <>
+              {/* Voltar pro Início das Ferramentas (visível só dentro de uma
+                  ferramenta). Consome a entrada de history pro voltar do sistema
+                  seguir coerente. Ferramentas com voltar próprio (catálogo de
+                  Equipamentos) não renderizam este botão pra evitar duplicidade. */}
+              {activeTab !== 'inicio' && !TOOLS_WITH_OWN_BACK.has(activeTab) && (
+                <div className="mb-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBackToInicio}
+                    className="-ml-2 h-9 gap-1 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Voltar
+                  </Button>
+                </div>
+              )}
               {activeTab === 'inicio' && <Inicio onNavigate={handleNavigate} />}
               {activeTab === 'equipamentos' && (
                 <Equipamentos key={modeloInicialId ?? 'browse'} modeloInicialId={modeloInicialId} />
@@ -200,6 +292,7 @@ export default function TechnicianTools() {
               {activeTab === 'regua-gases' && <ReguaGases />}
               {activeTab === 'retrofit-gas' && <RetrofitGas />}
               {activeTab === 'ciclo-refrigeracao' && <CicloRefrigeracao />}
+              {activeTab === 'diluicao-produto' && <DiluicaoProduto />}
             </>
           )}
         </div>
