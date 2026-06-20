@@ -31,7 +31,7 @@ const TIPO_REGRAS: { match: string[]; explicacao: string }[] = [
   {
     match: ['HFO'],
     explicacao:
-      'Hidrofluorolefina: 4ª geração, efeito estufa baixíssimo, levemente inflamável (A2L). Ex.: R-1234yf.',
+      'Hidrofluorolefina: 4ª geração, efeito estufa baixíssimo. A inflamabilidade varia conforme o gás (veja a classe de segurança) — puras são A2L (ex.: R-1234yf), em misturas pode ser A1.',
   },
   {
     match: ['HFC'],

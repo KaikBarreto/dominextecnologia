@@ -31,7 +31,7 @@ import {
   Video,
   Crown,
 } from 'lucide-react';
-import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
+import { FerramentasTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,7 +75,7 @@ const tenantMenuItems: MenuItem[] = [
   { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
   {
     title: 'Operacional',
-    icon: Wrench,
+    icon: OperacionalIcon,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
       { title: 'Ferramentas do Técnico', icon: FerramentasTecnicoIcon, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools' },

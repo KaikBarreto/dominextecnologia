@@ -53,6 +53,19 @@ function num(v: number | null | undefined): string | null {
   return v.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
 }
 
+/** Escurece um hex (#rgb ou #rrggbb) multiplicando os canais por (1-amount). */
+function darken(hex: string, amount = 0.18): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  if (!Number.isFinite(n)) return hex;
+  const f = Math.max(0, 1 - amount);
+  const r = Math.round(((n >> 16) & 255) * f);
+  const g = Math.round(((n >> 8) & 255) * f);
+  const b = Math.round((n & 255) * f);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
 /**
  * Detalhe de um fluido refrigerante: cabeçalho colorido com o código em destaque
  * + tabela de specs (só linhas preenchidas) + downloads (ficha nossa sempre,
@@ -80,6 +93,43 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
   ];
   const visibleRows = rows.filter((r) => r.value && r.value.trim().length > 0);
 
+  const temDownloads = Boolean(gas.ficha_url || gas.guia_oficial_url);
+  // Botões num tom levemente mais escuro que a cor do card, pra "pertencerem" a ele.
+  const corBotao = darken(cor, 0.3);
+  const downloadButtons = (
+    <>
+      {gas.ficha_url && (
+        <Button
+          size="lg"
+          className="h-12 w-full border-0 text-base hover:opacity-90"
+          style={{ backgroundColor: corBotao, color: fg }}
+          onClick={() =>
+            baixarPdf(gas.ficha_url!, sanitizarNomeArquivo(`Ficha técnica ${gas.code}.pdf`))
+          }
+        >
+          <Download className="h-5 w-5 shrink-0" />
+          Ficha técnica
+        </Button>
+      )}
+      {gas.guia_oficial_url && (
+        <Button
+          size="lg"
+          className="h-12 w-full border-0 text-base hover:opacity-90"
+          style={{ backgroundColor: corBotao, color: fg }}
+          onClick={() =>
+            baixarPdf(
+              gas.guia_oficial_url!,
+              sanitizarNomeArquivo(`Guia do fabricante ${gas.code}.pdf`),
+            )
+          }
+        >
+          <Download className="h-5 w-5 shrink-0" />
+          Guia do fabricante
+        </Button>
+      )}
+    </>
+  );
+
   return (
     <div className="space-y-6 pb-8">
       {/* Header com voltar */}
@@ -97,31 +147,43 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
 
       {/* Cabeçalho colorido — cor do gás como fundo, código em destaque */}
       <div
-        className="flex items-center gap-3 rounded-2xl p-5 shadow-sm"
+        className="rounded-2xl p-5 shadow-sm"
         style={{ backgroundColor: cor, color: fg }}
       >
-        <span
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-2 ring-white/40"
-          style={{ backgroundColor: cor === COR_NEUTRA ? '#9ca3af' : cor }}
-        >
-          <Droplet className="h-6 w-6" style={{ color: fg }} />
-        </span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-2xl font-extrabold leading-none tracking-tight">{gas.code}</p>
-            {inflamavel && (
-              <Flame
-                className="h-6 w-6 shrink-0"
-                style={{ color: fg }}
-                fill="currentColor"
-                strokeWidth={2}
-                aria-label="Gás inflamável"
-              />
-            )}
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-2 ring-white/40"
+            style={{ backgroundColor: cor === COR_NEUTRA ? '#9ca3af' : cor }}
+          >
+            <Droplet className="h-6 w-6" style={{ color: fg }} />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-extrabold leading-none tracking-tight">{gas.code}</p>
+              {inflamavel && (
+                <Flame
+                  className="h-6 w-6 shrink-0"
+                  style={{ color: fg }}
+                  fill="currentColor"
+                  strokeWidth={2}
+                  aria-label="Gás inflamável"
+                />
+              )}
+            </div>
+            <p className="mt-1 truncate text-sm font-medium opacity-90">{gas.name}</p>
           </div>
-          <p className="mt-1 truncate text-sm font-medium opacity-90">{gas.name}</p>
         </div>
+
+        {/* Downloads dentro do card — só desktop, tom levemente mais escuro que o card */}
+        {temDownloads && (
+          <div className="mt-4 hidden gap-2 lg:grid lg:grid-cols-2">{downloadButtons}</div>
+        )}
       </div>
+
+      {/* Downloads abaixo do card — só mobile */}
+      {temDownloads && (
+        <div className="grid grid-cols-1 gap-2 lg:hidden">{downloadButtons}</div>
+      )}
 
       {/* Tabela de specs (só linhas preenchidas) */}
       {visibleRows.length > 0 && (
@@ -150,38 +212,6 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
           </ul>
         </div>
       )}
-
-      {/* Downloads — em destaque (botões preenchidos, maiores). Lado a lado no
-          desktop, empilhados no mobile. Se só um existir, ocupa a linha sozinho. */}
-      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-        {gas.ficha_url && (
-          <Button
-            size="lg"
-            className="h-12 w-full text-base"
-            onClick={() =>
-              baixarPdf(gas.ficha_url!, sanitizarNomeArquivo(`Ficha técnica ${gas.code}.pdf`))
-            }
-          >
-            <Download className="h-5 w-5 shrink-0" />
-            Ficha técnica
-          </Button>
-        )}
-        {gas.guia_oficial_url && (
-          <Button
-            size="lg"
-            className="h-12 w-full text-base"
-            onClick={() =>
-              baixarPdf(
-                gas.guia_oficial_url!,
-                sanitizarNomeArquivo(`Guia do fabricante ${gas.code}.pdf`),
-              )
-            }
-          >
-            <Download className="h-5 w-5 shrink-0" />
-            Guia do fabricante
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

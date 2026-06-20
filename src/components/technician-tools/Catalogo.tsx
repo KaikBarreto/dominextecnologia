@@ -2498,7 +2498,24 @@ function ModelCard({
   const mostraGasBadge = Boolean(
     mostraGas && model.refrigerant && !model.refrigerant.includes(','),
   );
-  const temBadges = (mostraBtu && btu) || categoria || mostraGasBadge || model.code;
+
+  // Badge do TIPO de manual: só nos domínios que baixam "manual" (AC + linha
+  // branca), quando há manual e o tipo é conhecido. Datasheet (compressor) já
+  // se identifica no próprio botão. Cor por tipo sinaliza utilidade pro técnico:
+  // instalação/serviço (úteis) em destaque; usuário/guia esmaecidos.
+  const mostraManualBadge = Boolean(
+    segundoBotao === 'manual' && temManual && model.manual_type,
+  );
+  const manualBadgeClass =
+    {
+      instalacao: 'bg-sky-500 text-white',
+      servico: 'bg-amber-500 text-white',
+      usuario: 'bg-muted text-muted-foreground',
+      guia: 'bg-teal-500/15 text-teal-700 dark:text-teal-300',
+    }[model.manual_type ?? ''] ?? 'bg-muted text-muted-foreground';
+
+  const temBadges =
+    (mostraBtu && btu) || categoria || mostraGasBadge || model.code || mostraManualBadge;
 
   return (
     <div
@@ -2578,6 +2595,17 @@ function ModelCard({
                 Cód.: {model.code}
               </span>
             )}
+            {mostraManualBadge && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold',
+                  manualBadgeClass,
+                )}
+              >
+                <FileText className="h-3 w-3 shrink-0" />
+                {rotuloManual(model.manual_type)}
+              </span>
+            )}
           </div>
         )}
 
@@ -2617,7 +2645,7 @@ function ModelCard({
                 className="w-full"
               >
                 <Download className="h-4 w-4 shrink-0" />
-                <span className="truncate">{rotuloManual(model.manual_type)}</span>
+                <span className="truncate">Baixar manual</span>
               </Button>
             ) : (
               <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
