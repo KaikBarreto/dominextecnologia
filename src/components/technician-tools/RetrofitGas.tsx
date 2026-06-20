@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Star } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -237,14 +237,27 @@ export function RetrofitGas() {
           return (
             <div
               key={op.gasNovo}
-              className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+              className={cn(
+                'rounded-2xl border bg-card p-4 shadow-sm',
+                op.recomendado ? 'border-transparent ring-2' : 'border-border',
+              )}
+              style={op.recomendado ? { ['--tw-ring-color' as string]: op.cor } : undefined}
             >
-              {/* Header: cor + nome do gás novo + fogo de inflamabilidade */}
-              <div className="flex items-center gap-2">
+              {/* Header: cor + nome do gás novo + fogo + badge MAIS INDICADO */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <BolinhaGas cor={op.cor} />
                 <span className="text-lg font-bold text-foreground">{op.gasNovo}</span>
                 {classeInflamavel && (
                   <RefrigeranteInflamavel classe={classeInflamavel} size={16} />
+                )}
+                {op.recomendado && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                    style={{ backgroundColor: op.cor }}
+                  >
+                    <Star className="h-3 w-3 fill-current" aria-hidden />
+                    Mais indicado
+                  </span>
                 )}
               </div>
 
@@ -284,9 +297,14 @@ export function RetrofitGas() {
           );
         };
 
+        // Recomendado primeiro (ordenação estável preserva a ordem dos demais).
+        const opcoesOrdenadas = [...gas.opcoes].sort(
+          (a, b) => (b.recomendado ? 1 : 0) - (a.recomendado ? 1 : 0),
+        );
+
         return (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {gas.opcoes.map(renderOpcao)}
+            {opcoesOrdenadas.map(renderOpcao)}
           </div>
         );
       })()}

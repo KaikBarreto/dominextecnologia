@@ -51,6 +51,8 @@ export interface OpcaoRetrofit {
    * chama: âmbar p/ 'leve' A2L, vermelho p/ 'alta' A3). Ausente = não inflamável.
    */
   inflamavel?: NivelInflamavelRetrofit;
+  /** Marca o substituto MAIS INDICADO do gás de saída (vai pro topo, com badge + realce). */
+  recomendado?: boolean;
 }
 
 /** Um gás de saída e suas opções de substituição. */
@@ -108,6 +110,7 @@ export const RETROFIT_GASES: GasSaida[] = [
         refrigeranteId: 'R-438A',
         gasNovo: 'R-438A (MO99)',
         cor: '#B5651D',
+        recomendado: true,
         tipo: 'drop-in',
         tipoLabel: 'Drop-in (retrofit no mesmo equipamento)',
         oleo: 'Tolera óleo mineral existente (substituto direto do R-22)',
@@ -161,6 +164,7 @@ export const RETROFIT_GASES: GasSaida[] = [
         refrigeranteId: 'R-449A',
         gasNovo: 'R-449A',
         cor: '#558B2F',
+        recomendado: true,
         tipo: 'drop-in',
         tipoLabel: 'Drop-in (retrofit no mesmo equipamento)',
         oleo: 'POE (confirmar compatibilidade na ficha do gás)',
@@ -184,6 +188,7 @@ export const RETROFIT_GASES: GasSaida[] = [
         refrigeranteId: 'R-134a',
         gasNovo: 'R-134a',
         cor: '#56B4E9',
+        recomendado: true,
         tipo: 'drop-in',
         tipoLabel: 'Drop-in (retrofit no mesmo equipamento)',
         oleo: 'Mineral → POE (troca obrigatória)',
@@ -232,6 +237,7 @@ export const RETROFIT_GASES: GasSaida[] = [
         refrigeranteId: 'R-404A',
         gasNovo: 'R-404A',
         cor: '#F97316',
+        recomendado: true,
         tipo: 'drop-in',
         tipoLabel: 'Drop-in (retrofit no mesmo equipamento)',
         oleo: 'POE (confirmar compatibilidade)',

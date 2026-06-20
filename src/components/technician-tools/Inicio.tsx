@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Search,
   Ruler,
+  Snowflake,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -20,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { GLOSSARIO } from '@/lib/glossario';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { GLOSSARIO_ELETRICA } from '@/lib/glossarioEletrica';
+import { GLOSSARIO_GASES } from '@/lib/glossarioGases';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getTechToolsForSegment, type TechToolId } from '@/config/technicianTools';
 import type { ToolNavPayload } from '@/pages/TechnicianTools';
@@ -56,6 +58,12 @@ const GLOSSARIO_SECOES: SecaoGlossario[] = [
     rotulo: 'Elétrica e Instalação',
     icon: Cable,
     termos: GLOSSARIO_ELETRICA,
+  },
+  {
+    id: 'gases',
+    rotulo: 'Gases e Nomenclatura',
+    icon: Snowflake,
+    termos: GLOSSARIO_GASES,
   },
 ];
 

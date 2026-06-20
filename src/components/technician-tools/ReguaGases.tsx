@@ -16,12 +16,12 @@ import { RefrigeranteOption } from '@/components/technician-tools/RefrigeranteOp
 import { cn } from '@/lib/utils';
 import {
   REFRIGERANTES,
-  agruparRefrigerantesEmSecoes,
   tempParaPressao,
   pressaoParaTempSat,
   sugerirOutraUnidade,
   formatarPressao,
   getRefrigerante,
+  type Refrigerante,
   type UnidadePressao,
   type Curva,
 } from '@/lib/refrigerantes';
@@ -43,6 +43,25 @@ const GASES_COM_GLIDE = REFRIGERANTES.filter((r) => r.temGlide)
 
 /** Fórmula escolhida na UI → curva da tabela. */
 type Formula = 'bubble' | 'dew';
+
+/**
+ * Um gás é MISTURA (blend) se o número for da série 400 ou 500 (id começa por
+ * "R-4" ou "R-5"); senão é PURO (uma molécula só, inclui isômeros R-134a/R-600a).
+ * Regra por série é a fonte primária e cobre todo o catálogo.
+ */
+function ehMistura(r: Refrigerante): boolean {
+  return /^R-?[45]/i.test(r.id);
+}
+
+/** Seções rotuladas da listagem de gases: Puros primeiro, depois Misturas. */
+function secoesPurosEMisturas(): { label: string; refrigerantes: Refrigerante[] }[] {
+  const puros = REFRIGERANTES.filter((r) => !ehMistura(r));
+  const misturas = REFRIGERANTES.filter((r) => ehMistura(r));
+  return [
+    { label: 'Puros', refrigerantes: puros },
+    { label: 'Misturas (blends)', refrigerantes: misturas },
+  ].filter((s) => s.refrigerantes.length > 0);
+}
 
 /** Curto rótulo da unidade gauge na régua. */
 function rotuloUnidade(u: UnidadePressao): string {
@@ -312,8 +331,8 @@ function ReguaUnificada({
         ? formatarPressao(pressao, unidade)
         : '';
 
-  // Gases agrupados pro select (independe da ordem do catálogo).
-  const secoes = useMemo(() => agruparRefrigerantesEmSecoes(), []);
+  // Gases agrupados pro select em 2 seções rotuladas: Puros / Misturas (blends).
+  const secoes = useMemo(() => secoesPurosEMisturas(), []);
 
   return (
     <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 lg:gap-6">
@@ -352,19 +371,14 @@ function ReguaUnificada({
               <SelectValue placeholder="Gás" />
             </SelectTrigger>
             <SelectContent>
-              {secoes.map((sec) =>
-                sec.label === null ? (
-                  // Atuais — no topo, sem cabeçalho (padrão do projeto pra default)
-                  sec.refrigerantes.map((r) => <RefrigeranteOption key={r.id} refrig={r} />)
-                ) : (
-                  <SelectGroup key={sec.label}>
-                    <SelectSectionLabel>{sec.label}</SelectSectionLabel>
-                    {sec.refrigerantes.map((r) => (
-                      <RefrigeranteOption key={r.id} refrig={r} />
-                    ))}
-                  </SelectGroup>
-                ),
-              )}
+              {secoes.map((sec) => (
+                <SelectGroup key={sec.label}>
+                  <SelectSectionLabel>{sec.label}</SelectSectionLabel>
+                  {sec.refrigerantes.map((r) => (
+                    <RefrigeranteOption key={r.id} refrig={r} />
+                  ))}
+                </SelectGroup>
+              ))}
             </SelectContent>
           </Select>
         </div>
