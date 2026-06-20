@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Plus, FileSpreadsheet, Check, X, PackagePlus, Trash2, Trophy, CheckCircle2,
+  Plus, FileSpreadsheet, Eye, Check, X, PackagePlus, Trash2, Trophy, CheckCircle2,
   ArrowLeft, Pencil, CheckCheck, XCircle, RotateCcw,
 } from 'lucide-react';
 import {
@@ -35,10 +35,6 @@ const COTACAO_STATUS: Record<string, { label: string; variant: 'muted' | 'succes
   aceita: { label: 'Aceita', variant: 'success' },
   recusada: { label: 'Recusada', variant: 'destructive' },
 };
-
-/** Classe de hover saturado para ações destrutivas (fundo vermelho + texto/ícone brancos). */
-const DESTRUCTIVE_HOVER =
-  'text-destructive hover:bg-destructive hover:text-white focus-visible:bg-destructive focus-visible:text-white';
 
 export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewProps) {
   const { suppliers } = useSuppliers();
@@ -109,31 +105,41 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   ];
 
   return (
-    <div className="space-y-5">
-      {/* Voltar */}
-      <Button variant="ghost" className="gap-1.5 px-2" onClick={onBack}>
-        <ArrowLeft className="h-4 w-4" /> Voltar para compras
-      </Button>
+    <div className="space-y-6">
+      {/* Cabeçalho da compra */}
+      <div className="space-y-2">
+        {/* Breadcrumb discreto acima do título */}
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Voltar para compras
+        </button>
 
-      {/* Header da compra */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-lg font-semibold">{compra.title}</h2>
-            <Badge variant={meta.variant}>{meta.label}</Badge>
+        {/* Título principal da tela: nome da compra + status */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-base font-medium text-muted-foreground sm:text-lg">#{compra.numero}</span>
+              <h1 className="text-xl font-bold leading-tight sm:text-2xl">{compra.title}</h1>
+              <Badge variant={meta.variant}>{meta.label}</Badge>
+            </div>
+            {compra.notes && (
+              <p className="mt-1.5 text-sm text-muted-foreground">{compra.notes}</p>
+            )}
           </div>
-          {compra.notes && (
-            <p className="mt-1 text-sm text-muted-foreground">{compra.notes}</p>
-          )}
-        </div>
-        <div className="shrink-0">
-          <RowActionsMenu actions={compraActions} />
+          <div className="shrink-0">
+            <RowActionsMenu actions={compraActions} label="Ações" />
+          </div>
         </div>
       </div>
 
       {/* Materiais da compra */}
-      <section className="space-y-2">
-        <h3 className="text-sm font-semibold">Materiais</h3>
+      <section className="space-y-2.5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Materiais
+        </h2>
         {materials.length === 0 ? (
           <p className="text-sm text-muted-foreground">Carregando materiais...</p>
         ) : (
@@ -158,7 +164,9 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       {/* Cotações por fornecedor */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">Cotações</h3>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Cotações
+          </h2>
           <Button size="sm" className="gap-1.5" onClick={() => setNewCotacaoOpen(true)}>
             <Plus className="h-4 w-4" /> Nova cotação
           </Button>
@@ -175,22 +183,76 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
             {cotacoes.map((c) => {
               const cmeta = COTACAO_STATUS[c.status] ?? COTACAO_STATUS.pendente;
               const isAccepted = c.status === 'aceita';
+              const isRefused = c.status === 'recusada';
+              const isPending = c.status === 'pendente';
               const isCheapest = c.id === cheapestId;
+
+              const cotacaoActions: RowAction[] = [
+                {
+                  label: isRefused ? 'Ver preços' : 'Editar preços',
+                  icon: isRefused ? Eye : FileSpreadsheet,
+                  onClick: () => setSheetFor(c),
+                },
+                {
+                  label: 'Aceitar',
+                  icon: Check,
+                  variant: 'default',
+                  onClick: () => decideCotacao.mutate({ cotacaoId: c.id, status: 'aceita' }),
+                  disabled: c.total <= 0 || decideCotacao.isPending,
+                  hidden: !isPending,
+                },
+                {
+                  label: 'Registrar entrada no estoque',
+                  icon: PackagePlus,
+                  onClick: () => setToRegister(c),
+                  hidden: !isAccepted,
+                },
+                {
+                  label: 'Desfazer aceite',
+                  icon: RotateCcw,
+                  onClick: () => decideCotacao.mutate({ cotacaoId: c.id, status: 'pendente' }),
+                  disabled: decideCotacao.isPending,
+                  hidden: !isAccepted,
+                },
+                {
+                  label: 'Reabrir',
+                  icon: RotateCcw,
+                  onClick: () => decideCotacao.mutate({ cotacaoId: c.id, status: 'pendente' }),
+                  disabled: decideCotacao.isPending,
+                  hidden: !isRefused,
+                },
+                {
+                  label: 'Recusar',
+                  icon: X,
+                  variant: 'delete',
+                  onClick: () => setToRefuse(c),
+                  hidden: !isPending,
+                },
+                {
+                  label: 'Excluir',
+                  icon: Trash2,
+                  variant: 'delete',
+                  onClick: () => setToDelete(c),
+                },
+              ];
+
               return (
                 <div
                   key={c.id}
                   className={cn(
-                    'space-y-2 rounded-lg border p-3',
+                    'space-y-2 rounded-lg border p-3 transition-colors',
                     isAccepted && 'border-success ring-1 ring-success',
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold">{c.supplier_name}</span>
-                        <Badge variant={cmeta.variant}>{cmeta.label}</Badge>
+                        <span className="text-base font-semibold leading-tight">
+                          {c.supplier_name}
+                        </span>
+                        <Badge variant={cmeta.variant} className="text-[10px]">{cmeta.label}</Badge>
                         {isCheapest && (
-                          <Badge variant="success" className="gap-1">
+                          <Badge variant="success" className="gap-1 text-[10px]">
                             <Trophy className="h-3 w-3" /> Mais barata
                           </Badge>
                         )}
@@ -199,72 +261,12 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                         {c.priced_count}/{materials.length} materiais com preço
                       </p>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <span className="font-semibold">R$ {formatBRL(c.total)}</span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <div className="text-right">
+                        <span className="text-base font-bold">R$ {formatBRL(c.total)}</span>
+                      </div>
+                      <RowActionsMenu actions={cotacaoActions} label="Ações" />
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={() => setSheetFor(c)}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" />
-                      {c.status === 'recusada' ? 'Ver preços' : 'Editar preços'}
-                    </Button>
-
-                    {c.status !== 'aceita' && (
-                      <Button
-                        size="sm"
-                        className="gap-1.5 bg-success text-white hover:bg-success/90"
-                        onClick={() => decideCotacao.mutate({ cotacaoId: c.id, status: 'aceita' })}
-                        disabled={c.total <= 0 || decideCotacao.isPending}
-                      >
-                        <Check className="h-4 w-4" /> Aceitar
-                      </Button>
-                    )}
-                    {c.status === 'aceita' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5"
-                        onClick={() => decideCotacao.mutate({ cotacaoId: c.id, status: 'pendente' })}
-                        disabled={decideCotacao.isPending}
-                      >
-                        <X className="h-4 w-4" /> Desfazer aceite
-                      </Button>
-                    )}
-                    {c.status !== 'recusada' && c.status !== 'aceita' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className={cn('gap-1.5', DESTRUCTIVE_HOVER)}
-                        onClick={() => setToRefuse(c)}
-                      >
-                        <X className="h-4 w-4" /> Recusar
-                      </Button>
-                    )}
-
-                    {isAccepted && (
-                      <Button
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={() => setToRegister(c)}
-                      >
-                        <PackagePlus className="h-4 w-4" /> Registrar entrada
-                      </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className={cn('gap-1.5', DESTRUCTIVE_HOVER)}
-                      onClick={() => setToDelete(c)}
-                    >
-                      <Trash2 className="h-4 w-4" /> Excluir
-                    </Button>
                   </div>
 
                   {isAccepted && (

@@ -1100,6 +1100,7 @@ export type Database = {
           created_by: string | null
           id: string
           notes: string | null
+          numero: number
           status: string
           title: string
           updated_at: string
@@ -1110,6 +1111,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          numero?: number
           status?: string
           title: string
           updated_at?: string
@@ -1120,11 +1122,35 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          numero?: number
           status?: string
           title?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      compras_number_counters: {
+        Row: {
+          company_id: string
+          next_value: number
+        }
+        Insert: {
+          company_id: string
+          next_value?: number
+        }
+        Update: {
+          company_id?: string
+          next_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compras_number_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       compressor_specs: {
         Row: {
@@ -7404,6 +7430,10 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      next_compra_numero: {
+        Args: { p_company_id: string }
+        Returns: number
+      }
       next_equipment_identifier: {
         Args: { p_company_id: string }
         Returns: string

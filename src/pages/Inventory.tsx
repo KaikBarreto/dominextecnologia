@@ -291,10 +291,13 @@ export default function Inventory() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       >
-        {/* Título da aba ativa, no topo do conteúdo (cada aba tem seu título). */}
-        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
-          {inventoryTabs.find((t) => t.value === activeTab)?.label}
-        </h2>
+        {/* Título da aba ativa, no topo do conteúdo. A aba 'compras' renderiza o
+            próprio título (só na lista; o detalhe usa o nome da compra). */}
+        {activeTab !== 'compras' && (
+          <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+            {inventoryTabs.find((t) => t.value === activeTab)?.label}
+          </h2>
+        )}
 
         {/* ===================== ABA: ESTOQUE ATUAL ===================== */}
         {activeTab === 'estoque' && (

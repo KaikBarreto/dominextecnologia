@@ -10,11 +10,18 @@ export type CompraMaterial = Tables<'compra_materiais'>;
 
 export type CompraStatus = 'aberta' | 'concluida' | 'cancelada';
 
-/** Linha enriquecida para a listagem (nº de cotações + menor total disponível). */
+/**
+ * Linha enriquecida para a listagem (nº de cotações + menor total disponível).
+ * Herda `numero` (código sequencial por empresa, exibido como "#N") de `Compra`.
+ */
 export interface CompraListRow extends Compra {
   cotacao_count: number;
   /** Menor total entre as cotações da compra; null se nenhuma cotação tem preço. */
   lowest_total: number | null;
+  /** Nome do fornecedor da cotação aceita (status='aceita'); null se não há aceita. */
+  accepted_supplier_name: string | null;
+  /** Total da cotação aceita; null se não há aceita ou ela não tem preço. */
+  accepted_total: number | null;
 }
 
 /**
@@ -47,7 +54,7 @@ export function useCompras() {
     queryFn: async (): Promise<CompraListRow[]> => {
       const { data: rows, error } = await supabase
         .from('compras')
-        .select('*')
+        .select('*') // inclui `numero` (código sequencial por empresa)
         .order('created_at', { ascending: false });
       if (error) throw error;
       const compras = (rows ?? []) as Compra[];
@@ -55,21 +62,32 @@ export function useCompras() {
 
       const ids = compras.map((c) => c.id);
 
-      // Carrega materiais, cotações e preços de todas as compras de uma vez.
-      const [matsRes, cotsRes, pricesRes] = await Promise.all([
+      // Carrega materiais, cotações, preços e fornecedores de todas as compras
+      // de uma vez. Fornecedores servem para nomear a cotação aceita.
+      const [matsRes, cotsRes, pricesRes, supsRes] = await Promise.all([
         supabase.from('compra_materiais').select('*').in('compra_id', ids),
         supabase.from('compra_cotacoes').select('*').in('compra_id', ids),
         supabase.from('compra_cotacao_precos').select('*').in('company_id', companyId ? [companyId] : []),
+        supabase.from('suppliers').select('id, name'),
       ]);
       if (matsRes.error) throw matsRes.error;
       if (cotsRes.error) throw cotsRes.error;
       if (pricesRes.error) throw pricesRes.error;
+      if (supsRes.error) throw supsRes.error;
 
       const mats = (matsRes.data ?? []) as CompraMaterial[];
       const cots = (cotsRes.data ?? []) as Tables<'compra_cotacoes'>[];
       const prices = (pricesRes.data ?? []) as Tables<'compra_cotacao_precos'>[];
+      const sups = (supsRes.data ?? []) as Pick<Tables<'suppliers'>, 'id' | 'name'>[];
 
       const qtyByMaterial = new Map<string, number>(mats.map((m) => [m.id, m.quantity]));
+      const supplierName = new Map<string, string>(sups.map((s) => [s.id, s.name]));
+
+      // Total de uma cotação a partir dos preços (qtd × preço unitário).
+      const cotacaoTotal = (cotacaoId: string): number =>
+        prices
+          .filter((p) => p.cotacao_id === cotacaoId)
+          .reduce((acc, p) => acc + (qtyByMaterial.get(p.compra_material_id) ?? 0) * p.unit_price, 0);
 
       return compras.map((c) => {
         const cCots = cots.filter((q) => q.compra_id === c.id);
@@ -77,13 +95,24 @@ export function useCompras() {
         for (const cot of cCots) {
           const cotPrices = prices.filter((p) => p.cotacao_id === cot.id);
           if (cotPrices.length === 0) continue;
-          const total = cotPrices.reduce(
-            (acc, p) => acc + (qtyByMaterial.get(p.compra_material_id) ?? 0) * p.unit_price,
-            0,
-          );
+          const total = cotacaoTotal(cot.id);
           if (total > 0 && (lowest === null || total < lowest)) lowest = total;
         }
-        return { ...c, cotacao_count: cCots.length, lowest_total: lowest };
+
+        // Cotação aceita (se houver): nome do fornecedor + total.
+        const accepted = cCots.find((q) => q.status === 'aceita') ?? null;
+        const accepted_supplier_name = accepted
+          ? supplierName.get(accepted.supplier_id) ?? null
+          : null;
+        const accepted_total = accepted ? cotacaoTotal(accepted.id) || null : null;
+
+        return {
+          ...c,
+          cotacao_count: cCots.length,
+          lowest_total: lowest,
+          accepted_supplier_name,
+          accepted_total,
+        };
       });
     },
   });

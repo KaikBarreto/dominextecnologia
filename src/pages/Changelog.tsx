@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.7',
+    date: '19 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de Compras repaginada',
+        description: 'A tela de uma compra ficou com hierarquia mais clara (nome da compra em destaque, seções organizadas) e, em cada cotação, o fornecedor aparece em destaque e as ações ficam reunidas num menu "Ações". A lista de compras também ganhou um layout mais limpo, mostrando o fornecedor aceito quando houver.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Filtro por situação e código das compras',
+        description: 'A lista de Compras de Material agora pode ser filtrada por situação (aberta, concluída, cancelada) e cada compra passou a ter um código sequencial próprio (#1, #2, #3...), que também serve para busca.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.6',
     date: '19 de junho de 2026',
     type: 'patch',

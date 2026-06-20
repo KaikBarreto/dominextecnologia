@@ -12,9 +12,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { fuzzyIncludes } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
-import { useCompras, type CompraListRow } from '@/hooks/useCompras';
+import { useCompras, type CompraListRow, type CompraStatus } from '@/hooks/useCompras';
 import { SuppliersDialog } from './SuppliersDialog';
 import { CompraEditorDialog } from './CompraEditorDialog';
 import { CompraDetailView } from './CompraDetailView';
@@ -25,14 +29,24 @@ const STATUS_META: Record<string, { label: string; variant: 'info' | 'success' |
   cancelada: { label: 'Cancelada', variant: 'destructive' },
 };
 
+// Opções do filtro de status (ordem fixa: Aberta → Concluída → Cancelada).
+const STATUS_FILTER_OPTIONS: { value: CompraStatus; label: string }[] = [
+  { value: 'aberta', label: 'Aberta' },
+  { value: 'concluida', label: 'Concluída' },
+  { value: 'cancelada', label: 'Cancelada' },
+];
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
 export function MaterialPurchasesTab() {
+  const isMobile = useIsMobile();
   const { compras, isLoading, setStatus, deleteCompra } = useCompras();
 
   const [search, setSearch] = useState('');
+  // Filtro de status multi-seleção. Vazio = mostra todas (régua do projeto).
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [suppliersOpen, setSuppliersOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<CompraListRow | null>(null);
@@ -53,13 +67,39 @@ export function MaterialPurchasesTab() {
   }, [selectedCompraId, isLoading, selectedCompra]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return compras;
-    return compras.filter((c) =>
-      fuzzyIncludes(c.title, search) ||
-      fuzzyIncludes(STATUS_META[c.status]?.label ?? '', search) ||
-      fuzzyIncludes(c.notes ?? '', search),
-    );
-  }, [compras, search]);
+    const term = search.trim();
+    return compras.filter((c) => {
+      // Status: vazio = todas; senão precisa estar na seleção.
+      const matchesStatus =
+        statusFilter.length === 0 || statusFilter.includes(c.status);
+      if (!matchesStatus) return false;
+
+      if (!term) return true;
+      // Busca por código (#3 ou 3), título, status e observações.
+      const codeStr = `#${c.numero}`;
+      const matchesSearch =
+        fuzzyIncludes(codeStr, term) ||
+        fuzzyIncludes(String(c.numero), term) ||
+        fuzzyIncludes(c.title, term) ||
+        fuzzyIncludes(STATUS_META[c.status]?.label ?? '', term) ||
+        fuzzyIncludes(c.notes ?? '', term);
+      return matchesSearch;
+    });
+  }, [compras, search, statusFilter]);
+
+  // Conteúdo do filtro de status (compartilhado por FilterButton/FilterSheet).
+  const statusFilterContent = (
+    <FilterCheckboxGroup
+      label="Status"
+      options={STATUS_FILTER_OPTIONS}
+      selected={statusFilter}
+      onChange={setStatusFilter}
+      emptyLabel="Todos os status"
+    />
+  );
+
+  // Há algum filtro aplicado? (usado pro estado vazio amigável)
+  const hasActiveFilter = search.trim().length > 0 || statusFilter.length > 0;
 
   const openNew = () => { setEditing(null); setEditorOpen(true); };
   const openEdit = (c: CompraListRow) => { setEditing(c); setEditorOpen(true); };
@@ -103,16 +143,41 @@ export function MaterialPurchasesTab() {
 
   return (
     <div className="space-y-4">
+      {/* Título da aba (só na lista; o detalhe usa o nome da compra). Mesmo
+          estilo dos títulos das outras abas do Estoque. */}
+      <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+        Compras de Material
+      </h2>
+
       {/* Cabeçalho de ações */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder="Buscar compra..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        {/* Busca + filtro de status (mobile = FilterSheet; desktop = FilterButton). */}
+        <div className="flex items-center gap-2 flex-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Buscar por código ou título..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {isMobile ? (
+            <FilterSheet
+              triggerLabel="Filtros"
+              activeCount={statusFilter.length > 0 ? 1 : 0}
+              onClear={() => setStatusFilter([])}
+            >
+              {statusFilterContent}
+            </FilterSheet>
+          ) : (
+            <FilterButton
+              activeCount={statusFilter.length > 0 ? 1 : 0}
+              onClear={() => setStatusFilter([])}
+            >
+              {statusFilterContent}
+            </FilterButton>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-1.5" onClick={() => setSuppliersOpen(true)}>
@@ -131,37 +196,55 @@ export function MaterialPurchasesTab() {
           <CardContent className="p-0">
             <EmptyState
               icon={<ShoppingCart className="h-8 w-8" />}
-              title={search ? 'Nenhuma compra encontrada' : 'Nenhuma compra ainda'}
+              title={hasActiveFilter ? 'Nenhuma compra encontrada' : 'Nenhuma compra ainda'}
               description={
-                search
-                  ? 'Tente outro termo de busca.'
+                hasActiveFilter
+                  ? 'Tente outro termo de busca ou ajuste os filtros.'
                   : 'Crie uma compra, liste os materiais e compare cotações de fornecedores.'
               }
-              action={search ? undefined : { label: 'Nova compra', onClick: openNew }}
+              action={hasActiveFilter ? undefined : { label: 'Nova compra', onClick: openNew }}
             />
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {filtered.map((c) => {
             const meta = STATUS_META[c.status] ?? STATUS_META.aberta;
             return (
-              <Card key={c.id} className="overflow-hidden">
-                <CardContent className="flex items-center justify-between gap-3 p-3 sm:p-4">
+              <Card
+                key={c.id}
+                className="overflow-hidden transition-colors hover:border-primary/40 hover:bg-muted/40"
+              >
+                <CardContent className="flex items-start justify-between gap-3 p-3 sm:p-4">
                   <button
                     type="button"
-                    className="min-w-0 flex-1 text-left"
+                    className="min-w-0 flex-1 space-y-1.5 text-left"
                     onClick={() => setSelectedCompraId(c.id)}
                   >
+                    {/* Código + título da compra em destaque + status */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate font-semibold">{c.title}</span>
-                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                      <span className="truncate text-base font-semibold leading-tight">
+                        <span className="mr-1.5 font-mono text-sm font-medium text-muted-foreground">#{c.numero}</span>
+                        {c.title}
+                      </span>
+                      <Badge variant={meta.variant} className="text-[10px]">{meta.label}</Badge>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatDate(c.created_at)} • {c.cotacao_count} {c.cotacao_count === 1 ? 'cotação' : 'cotações'}
-                    </p>
+
+                    {/* Linha secundária: data + nº de cotações + fornecedor aceito */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(c.created_at)} • {c.cotacao_count} {c.cotacao_count === 1 ? 'cotação' : 'cotações'}
+                      </p>
+                      {c.accepted_supplier_name && (
+                        <Badge variant="success" className="text-[10px]">
+                          Aceita: {c.accepted_supplier_name}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Menor cotação em destaque, quando houver */}
                     {c.lowest_total != null && (
-                      <p className="mt-1 text-sm">
+                      <p className="text-sm">
                         <span className="text-muted-foreground">Menor cotação: </span>
                         <span className="font-semibold text-success">R$ {formatBRL(c.lowest_total)}</span>
                       </p>
