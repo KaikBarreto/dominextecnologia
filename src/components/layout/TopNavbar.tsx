@@ -30,8 +30,8 @@ import {
   Clapperboard,
   Video,
   Crown,
-  Calculator,
 } from 'lucide-react';
+import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,7 +78,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
-      { title: 'Ferramentas do Técnico', icon: Calculator, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools' },
+      { title: 'Ferramentas do Técnico', icon: FerramentasTecnicoIcon, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],

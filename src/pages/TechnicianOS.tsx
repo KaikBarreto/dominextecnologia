@@ -64,7 +64,7 @@ import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import TechnicianTools from '@/pages/TechnicianTools';
-import { Calculator } from 'lucide-react';
+import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 interface OSPhoto {
@@ -197,7 +197,7 @@ export default function TechnicianOS() {
     },
     ...(showTools
       ? [{
-          icon: Calculator,
+          icon: FerramentasTecnicoIcon,
           label: 'Ferramentas do Técnico',
           onClick: () => setToolsOpen(true),
         } as SpeedDialAction]
@@ -862,7 +862,10 @@ export default function TechnicianOS() {
   if (serviceOrder.status === 'concluida') {
     return (
       <div className="min-h-screen bg-background">
-        <div className="z-10 bg-primary text-primary-foreground p-3 sm:p-4 shadow-lg print:hidden">
+        <div
+          className="sticky top-0 z-20 bg-primary text-primary-foreground p-3 sm:p-4 shadow-lg print:hidden"
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+        >
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
@@ -1577,8 +1580,11 @@ export default function TechnicianOS() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-primary text-primary-foreground">
+      {/* Header fixo no topo: o botão Voltar fica sempre acessível ao rolar */}
+      <div
+        className="sticky top-0 z-20 bg-primary text-primary-foreground shadow-md"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-2xl mx-auto p-3 sm:p-4">
           <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0" onClick={() => navigate(-1)}>
@@ -2006,6 +2012,7 @@ export default function TechnicianOS() {
             groups={checklistGroups}
             readOnly={isPaused}
             onSave={saveChecklistActivity}
+            onPreviewPhoto={setPreviewPhoto}
           />
         )}
 

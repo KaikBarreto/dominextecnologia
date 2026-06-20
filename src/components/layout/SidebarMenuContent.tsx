@@ -34,7 +34,7 @@ import {
   Video,
   Crown,
 } from 'lucide-react';
-import { OperacionalIcon } from '@/components/icons/MenuIcons';
+import { OperacionalIcon, FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -55,6 +55,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { segmentHasTechTools } from '@/config/technicianTools';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -73,6 +74,8 @@ interface MenuItem {
   screenKey?: string;
   moduleKey?: ModuleCode;
   requiresSegment?: string;
+  /** Gate dedicado: libera só se o segmento da empresa tem Ferramentas do Técnico. */
+  requiresTechTools?: boolean;
   children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
 
@@ -89,7 +92,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
-  { title: 'Ferramentas do Técnico', icon: Wrench, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresSegment: 'refrigeracao' },
+  { title: 'Ferramentas do Técnico', icon: FerramentasTecnicoIcon, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresTechTools: true },
   { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
   {
     title: 'Gestão',
@@ -220,11 +223,12 @@ export function SidebarMenuContent() {
   const isCompanyAdmin = roles.includes('admin');
   const showLogoLoading = logoLoading && !isAdminUser;
 
-  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }>(items: T[]): T[] => {
+  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean }>(items: T[]): T[] => {
     return items.filter(item => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
       if (item.requiresSegment && settings?.segment !== item.requiresSegment) return false;
+      if (item.requiresTechTools && !segmentHasTechTools(settings?.segment)) return false;
       return true;
     });
   };

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { segmentHasTechTools } from "@/config/technicianTools";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
 import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
@@ -283,6 +284,19 @@ function SegmentRoute({ segment, children }: { segment: string; children: React.
   return <>{children}</>;
 }
 
+// Ferramentas do Técnico — libera quando o segmento da empresa tem ferramentas
+// no registro (`@/config/technicianTools`). Hoje só refrigeração → comportamento
+// idêntico ao SegmentRoute("refrigeracao"); ao adicionar um segmento ao registro,
+// a rota passa a liberar sozinha.
+function TechnicianToolsRoute({ children }: { children: React.ReactNode }) {
+  const { settings, isLoading } = useCompanySettings();
+
+  if (isLoading) return null;
+  if (!segmentHasTechTools(settings?.segment)) return <Navigate to="/" replace />;
+
+  return <>{children}</>;
+}
+
 // Admin-screen-gated route — protege rotas /admin/* via admin_permissions.
 // super_admin sempre passa (hasAdminScreenAccess retorna true). Vendedor admin
 // só passa se a screenKey estiver listada em admin_permissions.
@@ -447,7 +461,7 @@ const AppRoutes = () => (
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       {/* Ferramentas do Técnico — hub client-side/offline. Sub-rotas internas
          via <Routes> dentro da página, então registra com /* (wildcard). */}
-      <Route path="/ferramentas-tecnico" element={<PermissionRoute screenKey="screen:technician_tools"><SegmentRoute segment="refrigeracao"><TechnicianTools /></SegmentRoute></PermissionRoute>} />
+      <Route path="/ferramentas-tecnico" element={<PermissionRoute screenKey="screen:technician_tools"><TechnicianToolsRoute><TechnicianTools /></TechnicianToolsRoute></PermissionRoute>} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />

@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.13.9',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ferramentas do Técnico com o segmento da empresa',
+        description: 'As Ferramentas do Técnico agora exibem, ao lado do título, o segmento da sua empresa. Tocando nele, abre um seletor com os demais segmentos da plataforma, para você conhecer o que mais dá para contratar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Escolha de tensão mais rápida nas calculadoras',
+        description: 'Nas calculadoras de Cálculo de Capacitor e Cabo Elétrico, a tensão (110V/220V) virou uma alavanca: um toque para alternar, em vez de abrir uma lista.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.13.8',
     date: '19 de junho de 2026',
     type: 'patch',

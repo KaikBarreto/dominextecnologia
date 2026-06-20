@@ -1,12 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Boxes,
-  Thermometer,
-  ArrowLeftRight,
-  Zap,
   Cable,
-  Snowflake,
-  Replace,
   RefreshCcw,
   BookOpen,
   ChevronRight,
@@ -26,96 +20,12 @@ import { cn } from '@/lib/utils';
 import { GLOSSARIO } from '@/lib/glossario';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { GLOSSARIO_ELETRICA } from '@/lib/glossarioEletrica';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { getTechToolsForSegment, type TechToolId } from '@/config/technicianTools';
 import type { ToolNavPayload } from '@/pages/TechnicianTools';
 
-/** Ids das abas — devem bater com os de TechnicianTools.tsx. */
-export type ToolNavId =
-  | 'equipamentos'
-  | 'carga-termica'
-  | 'conversao'
-  | 'calculo-capacitor'
-  | 'cabo-eletrico'
-  | 'superaquecimento'
-  | 'regua-gases'
-  | 'retrofit-gas'
-  | 'ciclo-refrigeracao';
-
-interface AtalhoFerramenta {
-  id: ToolNavId;
-  label: string;
-  descricao: string;
-  icon: LucideIcon;
-  /** Cor de destaque do ícone (HSL via token quando possível). */
-  accent: string;
-}
-
-const ATALHOS: AtalhoFerramenta[] = [
-  {
-    id: 'equipamentos',
-    label: 'Catálogo de Equipamentos',
-    descricao: 'Consulte modelos, capacidades e códigos de erro.',
-    icon: Boxes,
-    accent: 'hsl(217 91% 60%)',
-  },
-  {
-    id: 'carga-termica',
-    label: 'Carga Térmica',
-    descricao: 'Calcule os BTUs ideais para o ambiente.',
-    icon: Thermometer,
-    accent: 'hsl(0 84% 60%)',
-  },
-  {
-    id: 'conversao',
-    label: 'Conversão',
-    descricao: 'Converta pressão, temperatura, potência e medidas.',
-    icon: ArrowLeftRight,
-    accent: 'hsl(142 71% 45%)',
-  },
-  {
-    id: 'calculo-capacitor',
-    label: 'Cálculo de Capacitor',
-    descricao: 'Encontre o capacitor certo pelo BTU e tensão.',
-    icon: Zap,
-    accent: 'hsl(38 92% 50%)',
-  },
-  {
-    id: 'cabo-eletrico',
-    label: 'Cabo Elétrico',
-    descricao: 'Bitola do cabo e disjuntor pelo BTU, tensão e distância.',
-    icon: Cable,
-    accent: 'hsl(24 95% 53%)',
-  },
-  {
-    id: 'superaquecimento',
-    label: 'Superaquecimento',
-    descricao: 'Calcule SH e SC pela pressão e temperatura.',
-    icon: Snowflake,
-    accent: 'hsl(190 90% 42%)',
-  },
-  {
-    id: 'regua-gases',
-    label: 'Régua de Gases',
-    descricao: 'Pressão de saturação dos gases por temperatura.',
-    icon: Ruler,
-    accent: 'hsl(262 83% 58%)',
-  },
-  {
-    id: 'retrofit-gas',
-    label: 'Retrofit de Gás',
-    descricao: 'Gases drop-in para trocar o refrigerante.',
-    icon: Replace,
-    accent: 'hsl(173 58% 39%)',
-  },
-  {
-    id: 'ciclo-refrigeracao',
-    label: 'Ciclo de Refrigeração',
-    descricao: 'Entenda o ciclo básico e os termos técnicos.',
-    icon: RefreshCcw,
-    accent: 'hsl(174 72% 40%)',
-  },
-];
-// NOTE: ATALHOS deve espelhar as abas de TechnicianTools.tsx (menos "inicio").
-// Ao adicionar uma aba nova lá, adicione o card aqui também.
+/** Ids das abas — fonte única em `@/config/technicianTools`. */
+export type ToolNavId = TechToolId;
 
 interface SecaoGlossario {
   /** Id da seção — usado como prefixo dos value dos AccordionItem (globalmente únicos). */
@@ -168,6 +78,9 @@ function semAcento(s: string): string {
 }
 
 export function Inicio({ onNavigate }: InicioProps) {
+  const { settings } = useCompanySettings();
+  // Cards = ferramentas do segmento da empresa (fonte única do config).
+  const atalhos = getTechToolsForSegment(settings?.segment);
   const [buscaGlossario, setBuscaGlossario] = useState('');
   const secoesFiltradas = useMemo(() => {
     const q = semAcento(buscaGlossario);
@@ -196,7 +109,7 @@ export function Inicio({ onNavigate }: InicioProps) {
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
           <div className="flex gap-3 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {ATALHOS.map((a) => (
+            {atalhos.map((a) => (
               <button
                 key={a.id}
                 type="button"
@@ -216,7 +129,7 @@ export function Inicio({ onNavigate }: InicioProps) {
 
         {/* Desktop: grid de cards */}
         <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-4">
-          {ATALHOS.map((a) => (
+          {atalhos.map((a) => (
             <button
               key={a.id}
               type="button"

@@ -9,11 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { SpecPhotoCard, type Spec } from './SpecPhotoCard';
 import {
   CABO,
-  TENSOES_CABO,
   calcularCaboEletrico,
   formatarCaboNumero,
   type TensaoCaboValue,
@@ -106,18 +106,16 @@ export function CaboEletrico() {
 
           <div className="space-y-1.5">
             <Label className="text-base text-muted-foreground md:text-lg">Selecione a tensão</Label>
-            <Select value={tensao} onValueChange={(v) => setTensao(v as TensaoCaboValue)}>
-              <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-                <SelectValue placeholder="Tensão" />
-              </SelectTrigger>
-              <SelectContent>
-                {TENSOES_CABO.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.rotulo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
+              <LabeledSwitch
+                value={tensao}
+                onChange={(v) => setTensao(v as TensaoCaboValue)}
+                off={{ value: '127', label: '110V' }}
+                on={{ value: '220', label: '220V' }}
+                size="lg"
+                aria-label="Tensão da rede"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5 md:col-span-2">

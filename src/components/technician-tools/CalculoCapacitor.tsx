@@ -14,7 +14,6 @@ import { usePersistedState } from '@/hooks/usePersistedState';
 import { SpecPhotoCard, type Spec } from './SpecPhotoCard';
 import {
   BTUS_PADRAO,
-  TENSOES,
   calcularCapacitor,
   calcularCapacitorPorLRA,
   formatarNumero,
@@ -123,18 +122,16 @@ export function CalculoCapacitor() {
               <Label className="text-base text-muted-foreground md:text-lg">
                 Selecione a tensão
               </Label>
-              <Select value={tensao} onValueChange={setTensao}>
-                <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-                  <SelectValue placeholder="Tensão" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TENSOES.map((t) => (
-                    <SelectItem key={t} value={String(t)}>
-                      {t}V
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
+                <LabeledSwitch
+                  value={tensao}
+                  onChange={setTensao}
+                  off={{ value: '110', label: '110V' }}
+                  on={{ value: '220', label: '220V' }}
+                  size="lg"
+                  aria-label="Tensão da rede"
+                />
+              </div>
             </div>
           </div>
         ) : (
