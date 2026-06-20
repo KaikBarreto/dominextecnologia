@@ -40,7 +40,6 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import {
   useEquipmentBrands,
-  useEquipmentBrand,
   useEquipmentModel,
   useEquipmentModelsByBrand,
   useEquipmentErrorCodes,
@@ -77,6 +76,7 @@ import {
 import { getRefrigerante, REFRIGERANTES } from '@/lib/refrigerantes';
 import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
+import { slugify } from '@/lib/slugify';
 
 /**
  * Marcas mais conhecidas de COMPRESSORES, em ordem de prioridade.
@@ -95,6 +95,17 @@ function norm(s: string | null | undefined): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
+}
+
+/**
+ * Slug legível da marca a partir do NOME (não do UUID), pra usar na URL:
+ * "GREE"→"gree", "Fujitsu"→"fujitsu", "LG Electronics"→"lg-electronics".
+ * Reaproveita o slugify do projeto e ainda tira hífens das pontas (defesa contra
+ * nomes que começam/terminam com caractere inválido).
+ * Internamente a tela continua usando o `id` real da marca — slug é só pra URL.
+ */
+function brandSlug(name: string | null | undefined): string {
+  return slugify(name ?? '').replace(/^-+|-+$/g, '');
 }
 
 /**
@@ -384,8 +395,8 @@ function EquipamentosRouted() {
       <Route index element={<Navigate to={DEFAULT_CATALOG_TAB} replace />} />
       {/* /catalogo/:catalogTab → lista da subaba. */}
       <Route path=":catalogTab" element={<CatalogTabScreen />} />
-      {/* /catalogo/:catalogTab/marca/:brandId → modelos da marca. */}
-      <Route path=":catalogTab/marca/:brandId" element={<CatalogBrandScreen />} />
+      {/* /catalogo/:catalogTab/marca/:brandSlug → modelos da marca (slug do nome). */}
+      <Route path=":catalogTab/marca/:brandSlug" element={<CatalogBrandScreen />} />
       {/* /catalogo/:catalogTab/modelo/:modelId → detalhe (?codigo= abre num erro). */}
       <Route path=":catalogTab/modelo/:modelId" element={<CatalogModelScreen />} />
       {/* /catalogo/fluido_refrigerante/gas/:gasCode → detalhe do fluido. */}
@@ -422,7 +433,7 @@ function CatalogTabScreen() {
       ) : (
         <BrandsList
           domain={domain}
-          onSelectBrand={(brand) => navigate(`marca/${brand.id}`)}
+          onSelectBrand={(brand) => navigate(`marca/${brandSlug(brand.name)}`)}
           onSelectModelDetail={(model) => navigate(`modelo/${model.id}`)}
           onSelectModelErrors={(model, initialCode) =>
             navigate(
@@ -437,17 +448,36 @@ function CatalogTabScreen() {
   );
 }
 
-/** Tela 1 — modelos de uma marca (`/catalogo/:tab/marca/:brandId`). */
+/**
+ * Tela 1 — modelos de uma marca (`/catalogo/:tab/marca/:brandSlug`).
+ * A URL traz o SLUG do NOME da marca (legível); aqui carregamos a lista de marcas
+ * do domínio e achamos a marca cujo `brandSlug(nome)` casa com o param. O `id` real
+ * dessa marca é que alimenta a lista de modelos (mesma lógica de sempre).
+ */
 function CatalogBrandScreen() {
-  const { catalogTab, brandId } = useParams<{ catalogTab: string; brandId: string }>();
+  const { catalogTab, brandSlug: slugParam } = useParams<{ catalogTab: string; brandSlug: string }>();
   const navigate = useNavigate();
-  const { data: brand, isLoading } = useEquipmentBrand(brandId);
 
-  if (!catalogTab || !CATALOG_TABS.has(catalogTab) || catalogTab === 'fluido_refrigerante') {
+  const tabValido =
+    !!catalogTab && CATALOG_TABS.has(catalogTab) && catalogTab !== 'fluido_refrigerante';
+  const tab = (tabValido ? catalogTab : DEFAULT_CATALOG_TAB) as CatalogTab;
+  const domain = tabToDomain(tab);
+
+  // Lista de marcas do domínio (mesmo hook do BrandsList) pra resolver o slug → marca.
+  // enabled implicitamente sempre; o hook não depende do slug.
+  const { data: brands = [], isLoading } = useEquipmentBrands(domain);
+
+  // Marca cujo slug do nome casa com o param da URL. Empate de slug (raro): 1ª marca.
+  const brand = useMemo(() => {
+    if (!slugParam) return null;
+    const alvo = decodeURIComponent(slugParam).toLowerCase();
+    return brands.find((b) => brandSlug(b.name) === alvo) ?? null;
+  }, [brands, slugParam]);
+
+  if (!tabValido) {
     return <Navigate to={`/ferramentas-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
   }
-  const tab = catalogTab as CatalogTab;
-  const domain = tabToDomain(tab);
+
   // Caminho-pai da lista da subaba (volta sempre pra cá).
   const tabPath = `/ferramentas-tecnico/catalogo/${tab}`;
 
@@ -467,10 +497,14 @@ function CatalogBrandScreen() {
       brand={brand}
       domain={domain}
       onBack={() => navigate(tabPath)}
-      // Trocar de marca no carrossel: replace pra não inflar o history.
-      onSelectBrand={(b) => navigate(`/ferramentas-tecnico/catalogo/${tab}/marca/${b.id}`, { replace: true })}
+      // Trocar de marca no carrossel: replace pra não inflar o history. URL por slug.
+      onSelectBrand={(b) =>
+        navigate(`/ferramentas-tecnico/catalogo/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
+      }
       onSelectDetail={(model) =>
-        navigate(`/ferramentas-tecnico/catalogo/${tab}/modelo/${model.id}?from=marca&brandId=${brand.id}`)
+        navigate(
+          `/ferramentas-tecnico/catalogo/${tab}/modelo/${model.id}?from=marca&marca=${brandSlug(brand.name)}`,
+        )
       }
     />
   );
@@ -489,10 +523,11 @@ function CatalogModelScreen() {
   const tab = catalogTab as CatalogTab;
   const tabPath = `/ferramentas-tecnico/catalogo/${tab}`;
 
-  // Voltar: se veio de uma marca, volta pra ela; senão pra lista da subaba.
-  const fromBrandId = searchParams.get('from') === 'marca' ? searchParams.get('brandId') : null;
-  const backTo = fromBrandId
-    ? `/ferramentas-tecnico/catalogo/${tab}/marca/${fromBrandId}`
+  // Voltar: se veio de uma marca, volta pra ela (pela slug do nome); senão pra lista
+  // da subaba. Sem navigate(-1) pra não quebrar link direto/colado.
+  const fromBrandSlug = searchParams.get('from') === 'marca' ? searchParams.get('marca') : null;
+  const backTo = fromBrandSlug
+    ? `/ferramentas-tecnico/catalogo/${tab}/marca/${encodeURIComponent(fromBrandSlug)}`
     : tabPath;
   const onBack = () => navigate(backTo);
 
