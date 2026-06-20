@@ -109,6 +109,37 @@ function brandSlug(name: string | null | undefined): string {
 }
 
 /**
+ * Caminho RELATIVO (a partir de `/catalogo/:tab`) pra tela de detalhe de um modelo,
+ * com a URL inteira por SLUG legível (nunca UUID).
+ *
+ * Todo modelo pertence a uma marca, então o detalhe fica ninhado sob ela:
+ *   marca/<brandSlug(nome da marca)>/modelo/<slugify(nome do modelo)>
+ * A marca sai do próprio modelo (`model.brand?.name`) — disponível em busca/grade
+ * (hidratado por join) e na tela da marca (passamos a marca conhecida via opts).
+ *
+ * Opções:
+ *  - `brandName`: força o nome da marca quando o modelo não traz `brand` hidratado
+ *    (ex.: lista de modelos de uma marca, que vem sem join).
+ *  - `from`: origem pra montar o "voltar" (`'catalogo'` ou `'marca'`). Default 'catalogo'.
+ *  - `codigo`: abre a tela de erros já num código específico.
+ */
+function modelPath(
+  tab: CatalogTab,
+  model: EquipmentModel,
+  opts?: { brandName?: string; from?: 'catalogo' | 'marca'; codigo?: string },
+): string {
+  const nomeMarca = opts?.brandName ?? model.brand?.name ?? '';
+  const bSlug = brandSlug(nomeMarca);
+  const mSlug = slugify(model.name);
+  const from = opts?.from ?? 'catalogo';
+  const params = new URLSearchParams();
+  if (from === 'marca') params.set('from', 'marca');
+  if (opts?.codigo) params.set('codigo', opts.codigo);
+  const qs = params.toString();
+  return `marca/${bSlug}/modelo/${mSlug}${qs ? `?${qs}` : ''}`;
+}
+
+/**
  * Ordena as marcas de um domínio para exibição (grid e carrossel).
  * Nos domínios 'compressor' e 'linha_branca' as marcas mais conhecidas vêm
  * primeiro, na ordem de MARCAS_PRIORITARIAS_COMPRESSOR / MARCAS_PRIORITARIAS_LINHA_BRANCA;
@@ -397,8 +428,15 @@ function EquipamentosRouted() {
       <Route path=":catalogTab" element={<CatalogTabScreen />} />
       {/* /catalogo/:catalogTab/marca/:brandSlug → modelos da marca (slug do nome). */}
       <Route path=":catalogTab/marca/:brandSlug" element={<CatalogBrandScreen />} />
-      {/* /catalogo/:catalogTab/modelo/:modelId → detalhe (?codigo= abre num erro). */}
-      <Route path=":catalogTab/modelo/:modelId" element={<CatalogModelScreen />} />
+      {/* /catalogo/:catalogTab/marca/:brandSlug/modelo/:modelSlug → detalhe do modelo
+          (slug do NOME, ninhado sob a marca). ?codigo= abre num erro. */}
+      <Route
+        path=":catalogTab/marca/:brandSlug/modelo/:modelSlug"
+        element={<CatalogModelScreen />}
+      />
+      {/* /catalogo/controle_remoto/modelo/:modelSlug → detalhe do controle (sem marca
+          na URL: a lista de controles é global, sem etapa de marca). */}
+      <Route path="controle_remoto/modelo/:modelSlug" element={<CatalogRemoteModelScreen />} />
       {/* /catalogo/fluido_refrigerante/gas/:gasCode → detalhe do fluido. */}
       <Route path="fluido_refrigerante/gas/:gasCode" element={<CatalogGasScreen />} />
       {/* Qualquer rota desconhecida sob catalogo → subaba default. */}
@@ -429,18 +467,17 @@ function CatalogTabScreen() {
           }
         />
       ) : tab === 'controle_remoto' ? (
-        <RemotesList onSelectDetail={(model) => navigate(`modelo/${model.id}`)} />
+        // Controle remoto: lista global, sem etapa de marca → URL flat por slug do nome.
+        <RemotesList onSelectDetail={(model) => navigate(`modelo/${slugify(model.name)}`)} />
       ) : (
         <BrandsList
           domain={domain}
           onSelectBrand={(brand) => navigate(`marca/${brandSlug(brand.name)}`)}
-          onSelectModelDetail={(model) => navigate(`modelo/${model.id}`)}
+          // Modelo abre ninhado sob a marca DO PRÓPRIO modelo (todo modelo tem marca).
+          // Veio da busca/grade da subaba → ?from=catalogo pra voltar pra cá.
+          onSelectModelDetail={(model) => navigate(modelPath(tab, model))}
           onSelectModelErrors={(model, initialCode) =>
-            navigate(
-              initialCode
-                ? `modelo/${model.id}?codigo=${encodeURIComponent(initialCode)}`
-                : `modelo/${model.id}`,
-            )
+            navigate(modelPath(tab, model, { codigo: initialCode }))
           }
         />
       )}
@@ -502,34 +539,141 @@ function CatalogBrandScreen() {
         navigate(`/ferramentas-tecnico/catalogo/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
       }
       onSelectDetail={(model) =>
+        // Ninhado sob a marca atual (modelo da lista não traz brand hidratado → passamos
+        // o nome da marca conhecida). from=marca pra voltar pra esta tela de marca.
         navigate(
-          `/ferramentas-tecnico/catalogo/${tab}/modelo/${model.id}?from=marca&marca=${brandSlug(brand.name)}`,
+          `/ferramentas-tecnico/catalogo/${tab}/${modelPath(tab, model, {
+            brandName: brand.name,
+            from: 'marca',
+          })}`,
         )
       }
     />
   );
 }
 
-/** Tela 2 — detalhe de um modelo (`/catalogo/:tab/modelo/:modelId`). */
+/**
+ * Renderiza a tela de detalhe certa pelo DOMÍNIO REAL do modelo (não pela subaba
+ * da URL) — garante a tela certa mesmo em link cruzado/colado. Reaproveitado pelas
+ * duas telas de modelo (ninhada sob marca e flat de controle remoto).
+ */
+function ModelDetailByDomain({
+  model,
+  initialCode,
+  onBack,
+}: {
+  model: EquipmentModel;
+  initialCode?: string;
+  onBack: () => void;
+}) {
+  const kind = detailKind(model.domain as EquipmentDomain);
+  if (kind === 'compressor') {
+    return <CompressorFicha model={model} onBack={onBack} />;
+  }
+  if (kind === 'remote') {
+    return <RemoteConfig model={model} onBack={onBack} />;
+  }
+  return <CodigosErro model={model} initialCode={initialCode} onBack={onBack} />;
+}
+
+/**
+ * Tela 2 — detalhe de um modelo, ninhado sob a marca:
+ * `/catalogo/:tab/marca/:brandSlug/modelo/:modelSlug`.
+ *
+ * Resolução por SLUG (nunca UUID): pelo `:brandSlug` acha a marca do domínio
+ * (useEquipmentBrands→find) e, dela, lista os modelos (useEquipmentModelsByBrand) e
+ * acha aquele cujo `slugify(nome)` casa com `:modelSlug`. Colisão de slug DENTRO da
+ * marca (raro): usa o primeiro (.find). O modelo da lista vem sem `brand` hidratado,
+ * então anexamos a marca encontrada pros componentes de detalhe (header).
+ */
 function CatalogModelScreen() {
-  const { catalogTab, modelId } = useParams<{ catalogTab: string; modelId: string }>();
+  const { catalogTab, brandSlug: brandSlugParam, modelSlug } = useParams<{
+    catalogTab: string;
+    brandSlug: string;
+    modelSlug: string;
+  }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { data: model, isLoading } = useEquipmentModel(modelId);
 
-  if (!catalogTab || !CATALOG_TABS.has(catalogTab)) {
-    return <Navigate to={`/ferramentas-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
-  }
-  const tab = catalogTab as CatalogTab;
+  const tabValido = !!catalogTab && CATALOG_TABS.has(catalogTab);
+  const tab = (tabValido ? catalogTab : DEFAULT_CATALOG_TAB) as CatalogTab;
+  const domain = tabToDomain(tab);
+
+  const { data: brands = [], isLoading: loadingBrands } = useEquipmentBrands(domain);
+
+  const brand = useMemo(() => {
+    if (!brandSlugParam) return null;
+    const alvo = decodeURIComponent(brandSlugParam).toLowerCase();
+    return brands.find((b) => brandSlug(b.name) === alvo) ?? null;
+  }, [brands, brandSlugParam]);
+
+  const { data: models = [], isLoading: loadingModels } = useEquipmentModelsByBrand(
+    brand?.id,
+    domain,
+  );
+
+  const model = useMemo<EquipmentModel | null>(() => {
+    if (!brand || !modelSlug) return null;
+    const alvo = decodeURIComponent(modelSlug).toLowerCase();
+    const found = models.find((m) => slugify(m.name) === alvo);
+    if (!found) return null;
+    // Anexa a marca encontrada (a lista por marca não hidrata `brand`).
+    return found.brand
+      ? found
+      : { ...found, brand: { id: brand.id, name: brand.name, logo_url: brand.logo_url } };
+  }, [models, modelSlug, brand]);
+
   const tabPath = `/ferramentas-tecnico/catalogo/${tab}`;
 
-  // Voltar: se veio de uma marca, volta pra ela (pela slug do nome); senão pra lista
-  // da subaba. Sem navigate(-1) pra não quebrar link direto/colado.
-  const fromBrandSlug = searchParams.get('from') === 'marca' ? searchParams.get('marca') : null;
-  const backTo = fromBrandSlug
-    ? `/ferramentas-tecnico/catalogo/${tab}/marca/${encodeURIComponent(fromBrandSlug)}`
-    : tabPath;
+  if (!tabValido) {
+    return <Navigate to={`/ferramentas-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
+  }
+
+  // Voltar: se veio de uma marca, volta pra ela; senão pra lista da subaba.
+  // Sem navigate(-1) pra não quebrar link direto/colado.
+  const fromMarca = searchParams.get('from') === 'marca';
+  const brandPath = brand
+    ? `/ferramentas-tecnico/catalogo/${tab}/marca/${brandSlug(brand.name)}`
+    : brandSlugParam
+      ? `/ferramentas-tecnico/catalogo/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
+      : tabPath;
+  const backTo = fromMarca ? brandPath : tabPath;
   const onBack = () => navigate(backTo);
+
+  if (loadingBrands || (brand && loadingModels)) return <LoadingBlock />;
+  if (!model) {
+    return (
+      <NotFoundCatalog
+        title="Modelo não encontrado"
+        message="Esse modelo não está mais disponível no catálogo."
+        backTo={tabPath}
+      />
+    );
+  }
+
+  const initialCode = searchParams.get('codigo') ?? undefined;
+  return <ModelDetailByDomain model={model} initialCode={initialCode} onBack={onBack} />;
+}
+
+/**
+ * Tela 2 (controle remoto) — detalhe por slug, FLAT (sem marca na URL):
+ * `/catalogo/controle_remoto/modelo/:modelSlug`.
+ *
+ * A lista de controles é global (sem etapa de marca), então resolvemos o slug sobre
+ * TODOS os controles do domínio (`useAllModelsWithBrand`, já com marca hidratada) e
+ * achamos por `slugify(nome)`. Voltar cai sempre na lista da subaba.
+ */
+function CatalogRemoteModelScreen() {
+  const { modelSlug } = useParams<{ modelSlug: string }>();
+  const navigate = useNavigate();
+  const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
+  const tabPath = '/ferramentas-tecnico/catalogo/controle_remoto';
+
+  const model = useMemo<EquipmentModel | null>(() => {
+    if (!modelSlug) return null;
+    const alvo = decodeURIComponent(modelSlug).toLowerCase();
+    return models.find((m) => slugify(m.name) === alvo) ?? null;
+  }, [models, modelSlug]);
 
   if (isLoading) return <LoadingBlock />;
   if (!model) {
@@ -542,18 +686,7 @@ function CatalogModelScreen() {
     );
   }
 
-  // O componente de detalhe é escolhido pelo DOMÍNIO REAL do modelo, não pela
-  // subaba da URL — garante a tela certa mesmo em link cruzado/colado.
-  const kind = detailKind(model.domain as EquipmentDomain);
-  const initialCode = searchParams.get('codigo') ?? undefined;
-
-  if (kind === 'compressor') {
-    return <CompressorFicha model={model} onBack={onBack} />;
-  }
-  if (kind === 'remote') {
-    return <RemoteConfig model={model} onBack={onBack} />;
-  }
-  return <CodigosErro model={model} initialCode={initialCode} onBack={onBack} />;
+  return <ModelDetailByDomain model={model} onBack={() => navigate(tabPath)} />;
 }
 
 /** Tela 3 — detalhe de um fluido refrigerante (`/catalogo/fluido_refrigerante/gas/:gasCode`). */
