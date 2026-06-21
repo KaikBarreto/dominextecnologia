@@ -113,7 +113,7 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
       {/* Card de entrada — linha de controles (Fase + Cálculo) no topo + campos abaixo */}
       <div className="space-y-4 rounded-lg border border-border bg-card p-4">
         {/* Dois switches lado a lado, na mesma linha, cada um com seu rótulo */}
-        <div className="grid grid-cols-2 gap-3 border-b border-border pb-4">
+        <div className="grid grid-cols-1 gap-4 border-b border-border pb-4 sm:grid-cols-2">
           <div className="flex flex-col items-center gap-1.5">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Fase</Label>
             <LabeledSwitch
@@ -365,7 +365,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
       {/* Card de entrada — linha de controles (Fase + Entrada) no topo + campos abaixo */}
       <div className="space-y-4 rounded-lg border border-border bg-card p-4">
         {/* Dois switches lado a lado, na mesma linha, cada um com seu rótulo */}
-        <div className="grid grid-cols-2 gap-3 border-b border-border pb-4">
+        <div className="grid grid-cols-1 gap-4 border-b border-border pb-4 sm:grid-cols-2">
           <div className="flex flex-col items-center gap-1.5">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Fase</Label>
             <LabeledSwitch

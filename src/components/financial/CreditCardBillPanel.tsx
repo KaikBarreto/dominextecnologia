@@ -16,7 +16,7 @@ import {
   CreditCard, ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowLeft,
 } from 'lucide-react';
 import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
-import { useCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
@@ -70,7 +70,8 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
   const filteredBills = statusFilter.length === 0
     ? bills
-    : bills.filter(b => statusFilter.includes(b.status));
+    // Filtra pelo status EXIBIDO (fatura fechada lê "closed" mesmo gravada "open").
+    : bills.filter(b => statusFilter.includes(effectiveBillStatus(b)));
 
   const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
 
@@ -150,7 +151,8 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
   );
 
   // Filtro por status — só faz sentido mostrar quando há ≥2 status entre as faturas.
-  const distinctStatuses = new Set(bills.map(b => b.status));
+  // Usa o status EXIBIDO (open vencido conta como "closed").
+  const distinctStatuses = new Set(bills.map(b => effectiveBillStatus(b)));
   const showFilter = distinctStatuses.size > 1;
 
   const filterContent = (
@@ -170,7 +172,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
   // Renderiza linha de fatura — usado em mobile (MobileListItem) e detalhe.
   const renderBillMobile = (bill: CreditCardBillWithTransactions) => {
-    const statusCfg = BILL_STATUS_CONFIG[bill.status] ?? BILL_STATUS_CONFIG.open;
+    const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(bill)] ?? BILL_STATUS_CONFIG.open;
     const StatusIcon = statusCfg.icon;
     const itemActions: ItemAction[] = [];
     if (bill.status !== 'paid') {
@@ -275,7 +277,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
         // sua coluna — não esticam pra full-width. CEO aprovou densidade extra.
         <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
           {bills.map(bill => {
-            const statusCfg = BILL_STATUS_CONFIG[bill.status] ?? BILL_STATUS_CONFIG.open;
+            const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(bill)] ?? BILL_STATUS_CONFIG.open;
             const StatusIcon = statusCfg.icon;
             const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
             const isExpanded = expandedBill === bill.id;
@@ -370,7 +372,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
         className="sm:max-w-[480px]"
       >
         {detailBill && (() => {
-          const statusCfg = BILL_STATUS_CONFIG[detailBill.status] ?? BILL_STATUS_CONFIG.open;
+          const statusCfg = BILL_STATUS_CONFIG[effectiveBillStatus(detailBill)] ?? BILL_STATUS_CONFIG.open;
           const StatusIcon = statusCfg.icon;
           const billTotal = detailBill.total_amount ?? 0;
           const alreadyPaid = Number(detailBill.amount_paid ?? 0);

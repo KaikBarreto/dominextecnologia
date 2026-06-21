@@ -22,7 +22,7 @@ import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatBRL } from '@/utils/currency';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
-import { useCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 
 const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -66,7 +66,10 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const alreadyPaid = Number(invoice.amount_paid ?? 0);
   const remaining = billTotal - alreadyPaid;
   const txnCount = invoice.transactions?.length ?? 0;
-  const statusCfg = BILL_STATUS_CONFIG[invoice.status] ?? BILL_STATUS_CONFIG.open;
+  // Status EXIBIDO: fatura `open` com fechamento já passado vira "Fechada"
+  // (o banco não transiciona sozinho). `paid`/`partial` seguem do agregado.
+  const displayStatus = effectiveBillStatus(invoice);
+  const statusCfg = BILL_STATUS_CONFIG[displayStatus] ?? BILL_STATUS_CONFIG.open;
   const StatusIcon = statusCfg.icon;
   const isPaid = invoice.status === 'paid';
 

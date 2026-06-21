@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.10',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Status correto das faturas de cartão de crédito',
+        description: 'Faturas cujo dia de fechamento já passou agora aparecem como "Fechada". Antes elas continuavam marcadas como "Aberta" mesmo depois de fechar. A fatura do mês atual, em andamento, segue como "Aberta", como esperado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Ajustes visuais no app pelo celular',
+        description: 'A aba selecionada de contas e cartões agora fica destacada na cor da própria conta, ficando mais fácil de identificar qual está aberta. E, na calculadora de capacitor, os seletores passaram a ficar um abaixo do outro no celular, sem texto sobreposto.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.9',
     date: '21 de junho de 2026',
     type: 'patch',

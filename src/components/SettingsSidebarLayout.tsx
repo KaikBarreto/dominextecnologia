@@ -89,7 +89,7 @@ export function SettingsSidebarLayout({
     return (
       <div className="space-y-4">
         <MobilePillTabs
-          tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" />, sublabel: t.mobileSublabel ?? t.sublabel, accentColor: t.accentColor }))}
+          tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" />, sublabel: t.mobileSublabel ?? t.sublabel, accentColor: t.accentColor, useColorBackground: t.useColorBackground }))}
           activeTab={activeTab}
           onTabChange={onTabChange}
         />

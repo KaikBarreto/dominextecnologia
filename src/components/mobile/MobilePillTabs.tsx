@@ -14,6 +14,13 @@ export interface PillTab {
    * seguem o padrão primary.
    */
   accentColor?: string;
+  /**
+   * Quando true (e com `accentColor`), o pill ATIVO usa a cor SATURADA da conta
+   * como fundo + texto contrastante (igual ao card-herói da conta e ao sidebar
+   * do desktop). Opt-in: sem isso, `accentColor` mantém o estilo translúcido
+   * sutil; pills sem cor mantêm o padrão primary.
+   */
+  useColorBackground?: boolean;
 }
 
 interface MobilePillTabsProps {
@@ -44,15 +51,24 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: Mobi
           const isActive = activeTab === tab.value;
           const rgb = hexToRgbTriplet(tab.accentColor);
           const accented = !!rgb;
+          // SATURADO (opt-in): com cor + useColorBackground, o ativo fica com a
+          // cor cheia de fundo + texto contrastante (igual ao card da conta e ao
+          // sidebar do desktop). Sem isso, accentColor mantém o estilo sutil.
+          const colorBg = accented && !!tab.useColorBackground;
 
-          // Pill com cor própria (conta financeira): ativo = fundo translúcido
-          // da cor + texto/ícone na cor + borda sutil. Inativo segue o muted.
-          // Sem cor → mantém o padrão primary.
-          // Cor de texto: a própria cor da conta, EXCETO quando ela é muito clara
-          // (ex: #ffffff) — aí cai no token escuro pra não sumir sobre o fundo
-          // translúcido claro.
+          // Pill com cor própria (conta financeira):
+          // - colorBg + ativo → fundo SATURADO na cor + texto via idealForeground.
+          // - sutil + ativo → fundo translúcido da cor + texto na cor + borda.
+          // - inativo → muted; sem cor → padrão primary.
+          // No estilo sutil, a cor de texto é a própria cor da conta, EXCETO
+          // quando muito clara (ex: #ffffff) — aí cai no token escuro pra não
+          // sumir sobre o fundo translúcido claro.
           const pillTextColor = idealForeground(tab.accentColor) === '#0f172a' ? '#0f172a' : `rgb(${rgb})`;
-          const accentStyle: React.CSSProperties = accented
+          const accentStyle: React.CSSProperties = colorBg
+            ? isActive
+              ? { backgroundColor: `rgb(${rgb})`, color: idealForeground(tab.accentColor) }
+              : {}
+            : accented
             ? isActive
               ? { backgroundColor: `rgba(${rgb}, 0.16)`, color: pillTextColor, boxShadow: `inset 0 0 0 1px rgba(${rgb}, 0.4)` }
               : {}
@@ -80,9 +96,14 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: Mobi
               <span className="whitespace-nowrap">{tab.label}</span>
               {tab.sublabel && (
                 <span
+                  // No estilo saturado, o sublabel herda a cor contrastante do pai
+                  // (via currentColor) e só aplica opacidade — sem cor hardcoded.
+                  style={colorBg && isActive ? { opacity: 0.85 } : undefined}
                   className={cn(
                     'whitespace-nowrap text-xs font-semibold tabular-nums',
-                    accented
+                    colorBg
+                      ? isActive ? '' : 'text-muted-foreground/70'
+                      : accented
                       ? isActive ? 'opacity-80' : 'text-muted-foreground/70'
                       : isActive ? 'text-primary-foreground/80' : 'text-muted-foreground/70',
                   )}
