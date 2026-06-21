@@ -834,7 +834,11 @@ function assertAllVisitsPersisted(createdCount: number, expected: number): void 
  * contract) + junction de equipamentos + assignees + snapshot de atividades.
  * Compartilhado entre criação e regeneração na edição — fonte única do payload
  * da OS pra criação e edição não divergirem. Todo INSERT carrega company_id
- * (RLS multi-tenant bloqueia em silêncio sem ele). Retorna sucesso/erro.
+ * (RLS multi-tenant bloqueia em silêncio sem ele).
+ *
+ * Retorna `{ id, scheduledDate }` da OS criada em sucesso, ou `null` em falha
+ * (engole o erro e loga). O id+data permite ao chamador casar a OS nova com a
+ * antiga do mesmo mês pra preservar o `public_short_code` (link público).
  */
 async function persistContractVisit(args: {
   companyId: string;
@@ -857,7 +861,7 @@ async function persistContractVisit(args: {
   itemEquipmentMap?: Record<string, string | null>;
   assigneeUserIds: string[];
   createdBy: string | null;
-}): Promise<boolean> {
+}): Promise<{ id: string; scheduledDate: string } | null> {
   const { visit, visitIndex } = args;
   const date = visit.date;
   // Date parts diretos — evita o shift de timezone do toISOString().
@@ -900,7 +904,7 @@ async function persistContractVisit(args: {
 
   if (osError) {
     console.error(`Error creating contract OS #${visitIndex + 1}:`, osError);
-    return false;
+    return null;
   }
 
   if (args.equipmentIds.length > 0) {
@@ -953,7 +957,7 @@ async function persistContractVisit(args: {
     }));
     const actErr = await insertActivitiesBatched(emissionRows);
     if (actErr) console.error('Error creating service order activities (per-machine):', actErr);
-    return true;
+    return { id: os.id, scheduledDate: dateStr };
   }
 
   if (visit.activities.length > 0) {
@@ -1027,7 +1031,7 @@ async function persistContractVisit(args: {
     if (actErr) console.error('Error creating service order activities:', actErr);
   }
 
-  return true;
+  return { id: os.id, scheduledDate: dateStr };
 }
 
 /**
@@ -1170,6 +1174,88 @@ export function itemsRemovedByEnvironmentRemoval(
 }
 
 /**
+ * Mês (YYYY-MM) de uma data no formato YYYY-MM-DD. Tolerante a null/'' (retorna
+ * null). Usa só o prefixo da string — não constrói Date (evita shift de TZ).
+ */
+function monthKeyFromDateStr(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  // 'YYYY-MM-DD' → 'YYYY-MM'. Aceita também 'YYYY-MM-DDThh:mm' por segurança.
+  const m = /^(\d{4})-(\d{2})/.exec(dateStr);
+  return m ? `${m[1]}-${m[2]}` : null;
+}
+
+/** OS antiga (a apagar) com o código público a preservar. */
+export interface OldOsForPreserve {
+  scheduled_date: string | null;
+  public_short_code: string | null;
+}
+
+/** OS nova (recém-criada) que pode herdar um código antigo. */
+export interface NewOsForPreserve {
+  id: string;
+  scheduled_date: string | null;
+}
+
+/** Par a aplicar: a OS NOVA `id` deve receber o `public_short_code` antigo. */
+export interface CodeReuseAssignment {
+  newId: string;
+  code: string;
+}
+
+/**
+ * 🔗 PRESERVAÇÃO DE LINK PÚBLICO POR MÊS (pura/testável).
+ *
+ * Como há 1 OS por mês por contrato, casamos o `public_short_code` das OSs
+ * ANTIGAS (que serão apagadas) com as OSs NOVAS pelo mês (YYYY-MM da
+ * scheduled_date). Assim o link amigável já compartilhado (`/os-tecnico/<slug>-
+ * <codigo>`) sobrevive à edição do contrato: o código migra pra OS nova do
+ * mesmo mês e o `get_public_os_by_code` resolve pra ela.
+ *
+ * Regras:
+ *  - mês casa (antigo + novo) → reusa o código antigo na OS nova;
+ *  - mês NOVO sem antigo (horizonte aumentou) → mantém o código do trigger
+ *    (não entra no resultado);
+ *  - mês ANTIGO sem novo (visita saiu do cronograma) → código descartado (o
+ *    link daquele mês morre — aceitável, a visita mudou);
+ *  - sem duplicação: cada código antigo é reusado no máximo 1×; se 2 OSs novas
+ *    caírem no mesmo mês (não deveria — 1 OS/mês), só a 1ª herda;
+ *  - idempotente: aplicar 2× dá o mesmo conjunto de pares.
+ *
+ * ⚠️ O caller só deve aplicar estes UPDATEs DEPOIS de apagar as OSs antigas —
+ * `public_short_code` é UNIQUE GLOBAL e o código está "em uso" pela antiga até
+ * o delete.
+ */
+export function preserveCodesByMonth(
+  oldOss: OldOsForPreserve[],
+  newOss: NewOsForPreserve[],
+): CodeReuseAssignment[] {
+  // Mapa mês → código antigo (1 código por mês; 1ª ocorrência ganha, ignora
+  // antigos sem código). Vários antigos no mesmo mês não deveriam existir.
+  const codeByMonth = new Map<string, string>();
+  for (const o of oldOss) {
+    const key = monthKeyFromDateStr(o.scheduled_date);
+    if (!key) continue;
+    const code = o.public_short_code;
+    if (!code) continue;
+    if (!codeByMonth.has(key)) codeByMonth.set(key, code);
+  }
+
+  const out: CodeReuseAssignment[] = [];
+  const usedCode = new Set<string>(); // não aplicar o mesmo código a 2 OSs
+  const claimedMonth = new Set<string>(); // 1 OS nova por mês herda
+  for (const n of newOss) {
+    const key = monthKeyFromDateStr(n.scheduled_date);
+    if (!key || claimedMonth.has(key)) continue;
+    const code = codeByMonth.get(key);
+    if (!code || usedCode.has(code)) continue;
+    out.push({ newId: n.id, code });
+    usedCode.add(code);
+    claimedMonth.add(key);
+  }
+  return out;
+}
+
+/**
  * Cascata de exclusão de OSs regeneráveis de um contrato (dependentes → OS).
  * Fonte ÚNICA da sequência de limpeza — usada pela regeneração (após gerar as
  * novas, P0) e pela exclusão de contrato. financial_transactions NÃO são
@@ -1198,6 +1284,13 @@ interface RegenerateFutureVisitsArgs {
   visits: BuiltVisit[];
   /** ids das OSs futuras regeneráveis (agendada/pendente, scheduled_date >= hoje). */
   oldRegenerableIds: string[];
+  /**
+   * OSs futuras regeneráveis com mês + `public_short_code` — pra preservar o link
+   * público por mês (migra o código pra OS nova do mesmo mês, após o delete).
+   * Opcional/back-compat: sem ela, nenhum código é preservado (comportamento
+   * antigo). A renovação (deleteOld=false) não precisa.
+   */
+  oldRegenerableOss?: OldOsForPreserve[];
   contractName: string;
   useGroupedEngine: boolean;
   customerId: string;
@@ -1236,6 +1329,13 @@ export async function orchestrateRegeneration(deps: {
   deleteOld: () => Promise<void>;
   shouldDeleteOld: boolean;
   oldCount: number;
+  /**
+   * Pós-delete OPCIONAL (preservação do `public_short_code` por mês). Roda só
+   * DEPOIS do delete das antigas — porque o código é UNIQUE GLOBAL e a antiga
+   * ainda o ocupa até ser apagada. Falha aqui NÃO derruba a regeneração (o link
+   * antigo morre, mas as visitas novas já estão válidas) — o caller engole.
+   */
+  afterDelete?: () => Promise<void>;
 }): Promise<{ createdCount: number; deletedCount: number }> {
   // PASSO 1 — gera/persiste as novas visitas (antes de apagar qualquer coisa).
   const createdCount = await deps.persist();
@@ -1244,6 +1344,9 @@ export async function orchestrateRegeneration(deps: {
   // PASSO 3 — só agora apaga as antigas (geração confirmada).
   if (deps.shouldDeleteOld) {
     await deps.deleteOld();
+    // PASSO 4 — só após liberar os códigos antigos (delete), migra-os pras OSs
+    // novas do mesmo mês (UNIQUE GLOBAL exige que a antiga não exista mais).
+    if (deps.afterDelete) await deps.afterDelete();
   }
   return { createdCount, deletedCount: deps.shouldDeleteOld ? deps.oldCount : 0 };
 }
@@ -1277,13 +1380,17 @@ async function regenerateFutureVisits(
   const baseIndex = args.baseVisitIndex ?? 0;
   const deleteOld = args.deleteOld ?? true;
 
+  // Coleta as OSs NOVAS (id + data) conforme são criadas, pra casar com as
+  // antigas do mesmo mês e migrar o `public_short_code` (link público).
+  const newOss: NewOsForPreserve[] = [];
+
   return orchestrateRegeneration({
     shouldDeleteOld: deleteOld,
     oldCount: args.oldRegenerableIds.length,
     // PASSO 1 — gera/persiste as novas visitas (antes de apagar qualquer coisa).
     persist: () =>
-      runWithConcurrency(args.visits, (visit, i) =>
-        persistContractVisit({
+      runWithConcurrency(args.visits, async (visit, i) => {
+        const created = await persistContractVisit({
           companyId: args.companyId,
           contractId: args.contractId,
           visit,
@@ -1299,14 +1406,41 @@ async function regenerateFutureVisits(
           itemEquipmentMap: args.itemEquipmentMap,
           assigneeUserIds: args.assigneeUserIds,
           createdBy: args.createdBy,
-        }),
-      ),
+        });
+        if (!created) return false;
+        newOss.push({ id: created.id, scheduled_date: created.scheduledDate });
+        return true;
+      }),
     // PASSO 2 — valida (erro não-silencioso). Se incompleto, lança e o passo 3
     // (apagar) nunca roda → as antigas permanecem.
     validate: (createdCount) => assertAllVisitsPersisted(createdCount, args.visits.length),
     // PASSO 3 — apaga as antigas só após a validação (geração confirmada).
     deleteOld: () => deleteRegenerableOrders(args.oldRegenerableIds),
+    // PASSO 4 — preserva o link público por mês: migra o public_short_code das
+    // OSs antigas (já apagadas → código liberado) pras novas do mesmo mês.
+    afterDelete: () => reapplyPreservedCodes(args.oldRegenerableOss ?? [], newOss),
   });
+}
+
+/**
+ * Aplica os pares mês→código (preserveCodesByMonth) nas OSs novas via UPDATE
+ * individual de `public_short_code`. Só roda DEPOIS do delete das antigas (o
+ * código é UNIQUE GLOBAL). Erros são engolidos por par (logados): no pior caso
+ * o link daquele mês morre, mas a visita nova continua válida — não derruba a
+ * regeneração. No-op quando não há código a reusar.
+ */
+async function reapplyPreservedCodes(
+  oldOss: OldOsForPreserve[],
+  newOss: NewOsForPreserve[],
+): Promise<void> {
+  const assignments = preserveCodesByMonth(oldOss, newOss);
+  for (const { newId, code } of assignments) {
+    const { error } = await supabase
+      .from('service_orders')
+      .update({ public_short_code: code } as any)
+      .eq('id', newId);
+    if (error) console.error('Falha ao preservar link público da visita:', newId, error);
+  }
 }
 
 export function getFrequencyLabel(type: string, value: number): string {
@@ -1653,8 +1787,8 @@ export function useContracts() {
         // regeneração da edição). RLS de service_orders exige company_id no INSERT
         // (garantido lá dentro). Cada visita é independente → persiste EM PARALELO
         // (concorrência limitada) preservando o visitIndex pra numeração/ordem.
-        osCreatedCount = await runWithConcurrency(visits, (visit, i) =>
-          persistContractVisit({
+        osCreatedCount = await runWithConcurrency(visits, async (visit, i) => {
+          const created = await persistContractVisit({
             companyId: profile.company_id,
             contractId: (contract as any).id,
             visit,
@@ -1670,8 +1804,9 @@ export function useContracts() {
             itemEquipmentMap,
             assigneeUserIds,
             createdBy: user?.id || null,
-          }),
-        );
+          });
+          return created != null;
+        });
         osErrorCount = visits.length - osCreatedCount;
 
         if (osErrorCount > 0) {
@@ -2134,7 +2269,7 @@ export function useContracts() {
 
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('id, scheduled_date, status')
+        .select('id, scheduled_date, status, public_short_code')
         .eq('contract_id', id);
 
       const hasFutureVisits = (contractOss || []).some(
@@ -2152,13 +2287,18 @@ export function useContracts() {
       // ⚠️ NÃO apaga aqui (P0 "gerar antes de apagar"). Os ids são capturados e
       // só serão removidos por regenerateFutureVisits DEPOIS de gerar+validar as
       // novas — evitando a janela em que o contrato ficaria sem visita futura.
-      const regenerableIds = (contractOss || [])
-        .filter(o =>
-          REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
-          (o.scheduled_date ?? '') >= todayStr
-        )
+      const regenerableOss = (contractOss || []).filter(o =>
+        REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
+        (o.scheduled_date ?? '') >= todayStr
+      );
+      const regenerableIds = regenerableOss
         .map(o => o.id)
         .filter(Boolean) as string[];
+      // Mês + código público das antigas → preservar o link compartilhado por mês.
+      const regenerableOldOss: OldOsForPreserve[] = regenerableOss.map(o => ({
+        scheduled_date: o.scheduled_date ?? null,
+        public_short_code: (o as any).public_short_code ?? null,
+      }));
 
       // Parâmetros efetivos (input quando veio, senão o atual).
       const effStart = (input.start_date ?? current.start_date) as string;
@@ -2253,6 +2393,7 @@ export function useContracts() {
         contractId: id,
         visits,
         oldRegenerableIds: regenerableIds,
+        oldRegenerableOss: regenerableOldOss,
         contractName: effName,
         useGroupedEngine,
         customerId: effCustomerId,
@@ -2376,7 +2517,7 @@ export function useContracts() {
 
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('id, scheduled_date, status')
+        .select('id, scheduled_date, status, public_short_code')
         .eq('contract_id', id);
 
       const hasFutureVisits = (contractOss || []).some(
@@ -2391,13 +2532,18 @@ export function useContracts() {
 
       // ⚠️ Captura os ids regeneráveis mas NÃO apaga aqui (P0 "gerar antes de
       // apagar"): regenerateFutureVisits remove só após gerar+validar as novas.
-      const regenerableIds = (contractOss || [])
-        .filter(o =>
-          REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
-          (o.scheduled_date ?? '') >= todayStr
-        )
+      const regenerableOss = (contractOss || []).filter(o =>
+        REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
+        (o.scheduled_date ?? '') >= todayStr
+      );
+      const regenerableIds = regenerableOss
         .map(o => o.id)
         .filter(Boolean) as string[];
+      // Mês + código público das antigas → preservar o link compartilhado por mês.
+      const regenerableOldOss: OldOsForPreserve[] = regenerableOss.map(o => ({
+        scheduled_date: o.scheduled_date ?? null,
+        public_short_code: (o as any).public_short_code ?? null,
+      }));
 
       // Plano persistido atual (não muda na aba de equipamentos).
       const { data: persisted } = await supabase
@@ -2465,6 +2611,7 @@ export function useContracts() {
         contractId: id,
         visits,
         oldRegenerableIds: regenerableIds,
+        oldRegenerableOss: regenerableOldOss,
         contractName: effName,
         useGroupedEngine,
         customerId: current.customer_id as string,

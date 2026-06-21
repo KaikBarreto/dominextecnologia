@@ -12,6 +12,7 @@ import {
   shouldRegenerateVisits,
   orchestrateRegeneration,
   itemsRemovedByEnvironmentRemoval,
+  preserveCodesByMonth,
   type MachineInput,
   type MachinePlanActivity,
   type PlanActivityInput,
@@ -819,6 +820,84 @@ describe('itemsRemovedByEnvironmentRemoval — excluir ambiente remove equipamen
 
   it('ambiente excluído sem equipamentos → não remove nada', () => {
     expect(itemsRemovedByEnvironmentRemoval(items, ['env-vazio'])).toEqual([]);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// preserveCodesByMonth — preservação do link público (public_short_code) por mês
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('preserveCodesByMonth', () => {
+  const old = (date: string, code: string | null) => ({ scheduled_date: date, public_short_code: code });
+  const nu = (id: string, date: string) => ({ id, scheduled_date: date });
+
+  it('mês casa → reusa o código antigo na OS nova daquele mês', () => {
+    const r = preserveCodesByMonth(
+      [old('2026-02-10', 'AAA'), old('2026-03-10', 'BBB')],
+      [nu('new-feb', '2026-02-15'), nu('new-mar', '2026-03-15')],
+    );
+    expect(r).toEqual([
+      { newId: 'new-feb', code: 'AAA' },
+      { newId: 'new-mar', code: 'BBB' },
+    ]);
+  });
+
+  it('casa pelo MÊS mesmo que o DIA da visita mude', () => {
+    const r = preserveCodesByMonth([old('2026-02-28', 'AAA')], [nu('new-feb', '2026-02-03')]);
+    expect(r).toEqual([{ newId: 'new-feb', code: 'AAA' }]);
+  });
+
+  it('mês NOVO sem antigo (horizonte aumentou) → mantém o código do trigger (não entra)', () => {
+    const r = preserveCodesByMonth(
+      [old('2026-02-10', 'AAA')],
+      [nu('new-feb', '2026-02-15'), nu('new-mar', '2026-03-15')],
+    );
+    expect(r).toEqual([{ newId: 'new-feb', code: 'AAA' }]);
+    expect(r.find((x) => x.newId === 'new-mar')).toBeUndefined();
+  });
+
+  it('mês ANTIGO sem novo (visita saiu do cronograma) → código descartado', () => {
+    const r = preserveCodesByMonth(
+      [old('2026-02-10', 'AAA'), old('2026-03-10', 'BBB')],
+      [nu('new-feb', '2026-02-15')],
+    );
+    expect(r).toEqual([{ newId: 'new-feb', code: 'AAA' }]);
+  });
+
+  it('não duplica: cada código é aplicado a no máximo 1 OS nova', () => {
+    // 2 OSs novas no mesmo mês (cenário anômalo) → só a 1ª herda o código.
+    const r = preserveCodesByMonth(
+      [old('2026-02-10', 'AAA')],
+      [nu('new-feb-1', '2026-02-15'), nu('new-feb-2', '2026-02-20')],
+    );
+    expect(r).toEqual([{ newId: 'new-feb-1', code: 'AAA' }]);
+    const codes = r.map((x) => x.code);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it('antigo sem código (null) é ignorado', () => {
+    const r = preserveCodesByMonth([old('2026-02-10', null)], [nu('new-feb', '2026-02-15')]);
+    expect(r).toEqual([]);
+  });
+
+  it('datas null não casam e não quebram', () => {
+    const r = preserveCodesByMonth(
+      [{ scheduled_date: null, public_short_code: 'AAA' }],
+      [{ id: 'new-x', scheduled_date: null }],
+    );
+    expect(r).toEqual([]);
+  });
+
+  it('idempotente: rodar 2× dá o mesmo conjunto de pares', () => {
+    const oldOss = [old('2026-02-10', 'AAA'), old('2026-03-10', 'BBB')];
+    const newOss = [nu('new-feb', '2026-02-15'), nu('new-mar', '2026-03-15')];
+    expect(preserveCodesByMonth(oldOss, newOss)).toEqual(preserveCodesByMonth(oldOss, newOss));
+  });
+
+  it('listas vazias → sem pares', () => {
+    expect(preserveCodesByMonth([], [])).toEqual([]);
+    expect(preserveCodesByMonth([old('2026-02-10', 'AAA')], [])).toEqual([]);
+    expect(preserveCodesByMonth([], [nu('new-feb', '2026-02-15')])).toEqual([]);
   });
 });
 

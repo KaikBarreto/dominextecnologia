@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.8";
+export const APP_VERSION = "1.14.9";
 
-export const VERSION_NOTES = "Correção: ao abrir uma ordem de serviço pelo novo link curto, o técnico voltou a conseguir fazer check-in, marcar 'a caminho', pausar/retomar e finalizar normalmente (antes dava 'formato inválido'). As respostas de checklist e a avaliação do cliente por esses links também voltaram a salvar.";
+export const VERSION_NOTES = "Os links de ordem de serviço já compartilhados com o cliente continuam funcionando mesmo depois de você editar o contrato: ao recalcular as visitas, o link de cada mês é preservado e passa a apontar para a visita atualizada daquele mês.";

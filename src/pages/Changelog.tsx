@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.9',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Link da OS sobrevive à edição do contrato',
+        description: 'Antes, ao editar um contrato, as visitas eram recriadas com links novos e os links que você já tinha enviado ao cliente paravam de funcionar. Agora o link de cada mês é preservado: ao recalcular as visitas, o mesmo link passa a apontar para a visita atualizada daquele mês. (Links antigos no formato comprido/UUID seguem a visita antiga; use os links atuais.)',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.8',
     date: '21 de junho de 2026',
     type: 'patch',
