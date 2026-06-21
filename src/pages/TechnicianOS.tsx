@@ -2139,6 +2139,8 @@ export default function TechnicianOS() {
   // Mantido pra compat com referências antigas no JSX abaixo.
   const custLat = destLat;
   const custLng = destLng;
+  // Só há rota pra mostrar se existe um destino (coord do cliente/OS ou endereço).
+  const hasRouteDestination = hasCustomerCoords || !!destAddress;
 
   const openWaze = () => {
     const url = hasCustomerCoords
@@ -2322,10 +2324,10 @@ export default function TechnicianOS() {
         {showPmocSeal && (
           <PmocComplianceBadge variant="ribbon" withTooltip />
         )}
-        {/* Rota até o cliente — só quando "a caminho" */}
-        {isACaminho && (
-          <Card className="border-indigo-200 overflow-hidden">
-            <div className="bg-indigo-50 border-b border-indigo-100 px-3 py-2 flex items-center gap-2 text-sm font-medium text-indigo-700">
+        {/* Rota até o cliente — só quando "a caminho" e há destino (coord ou endereço) */}
+        {isACaminho && hasRouteDestination && (
+          <Card className="border-indigo-600/30 overflow-hidden">
+            <div className="bg-indigo-600 border-b border-indigo-700 px-3 py-2 flex items-center gap-2 text-sm font-medium text-white">
               <MapPinned className="h-4 w-4 shrink-0" />
               Rota até o cliente
             </div>
@@ -2354,7 +2356,7 @@ export default function TechnicianOS() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  className="w-full border-transparent bg-indigo-600 text-white hover:bg-indigo-700"
                   onClick={openWaze}
                 >
                   <Navigation className="h-4 w-4 mr-2" />
@@ -2363,7 +2365,7 @@ export default function TechnicianOS() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  className="w-full border-transparent bg-indigo-600 text-white hover:bg-indigo-700"
                   onClick={openGoogleMaps}
                 >
                   <MapIcon className="h-4 w-4 mr-2" />
@@ -2375,7 +2377,7 @@ export default function TechnicianOS() {
         )}
 
         {/* Mapa da rota em tela cheia — preview maior, navegação segue no Waze/Google */}
-        {isACaminho && routeFullscreen && (
+        {isACaminho && hasRouteDestination && routeFullscreen && (
           <div
             className="fixed inset-0 z-[3000] bg-background flex flex-col"
             role="dialog"
@@ -2420,7 +2422,7 @@ export default function TechnicianOS() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                className="w-full border-transparent bg-indigo-600 text-white hover:bg-indigo-700"
                 onClick={openWaze}
               >
                 <Navigation className="h-4 w-4 mr-2" />
@@ -2429,7 +2431,7 @@ export default function TechnicianOS() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                className="w-full border-transparent bg-indigo-600 text-white hover:bg-indigo-700"
                 onClick={openGoogleMaps}
               >
                 <MapIcon className="h-4 w-4 mr-2" />
