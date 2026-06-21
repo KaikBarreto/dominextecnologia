@@ -98,6 +98,14 @@ export default function TechnicianOS() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any }) | null>(null);
+  // UUID REAL da OS — fonte ÚNICA e estável pra TODA escrita/consulta keyed por
+  // id da OS (`.eq('id', ...)`, `service_order_id`, RPCs por uuid). A URL pode vir
+  // como slug amigável (`slug-do-nome-<codigo>`) — só o CARREGAMENTO resolve o slug
+  // (via get_public_os_by_code / public_short_code). As mutações NÃO podem usar o
+  // `id` cru (slug) ou o Postgres rejeita com 22P02. Após o load, a OS traz o uuid
+  // real no payload; quando a URL já é UUID, vale de imediato. Null = OS ainda não
+  // carregada → ações de escrita ficam gated (já dependem da OS carregada).
+  const resolvedOsId = serviceOrder?.id ?? (isUuid(id ?? '') ? id ?? null : null);
   const [rating, setRating] = useState<PublicOsRating | null>(null);
   // Config de NPS + flag de habilitação vindas de get_public_os (modo cliente).
   const [surveyEnabled, setSurveyEnabled] = useState(false);
@@ -152,7 +160,7 @@ export default function TechnicianOS() {
   // Onda D v1.9.x — classificação de conformidade PMOC.
   // Só aparece quando a OS é PMOC (`useIsPmocOrder`). Notas são obrigatórias
   // se status é 'parcial' ou 'nao_conforme'.
-  const { isPmoc: isPmocOrder } = useIsPmocOrder(id);
+  const { isPmoc: isPmocOrder } = useIsPmocOrder(resolvedOsId);
   // Checklist da visita (snapshot do plano PMOC/manutenção). Só preenche quando
   // a OS foi gerada por contrato com plano; OS avulsa volta vazia (RLS anon
   // também devolve vazio no modo cliente → painel não aparece).
@@ -166,7 +174,7 @@ export default function TechnicianOS() {
     formQuestionsByTemplate: checklistFormQuestions,
     getFormResponse: getChecklistFormResponse,
     saveFormResponse: saveChecklistFormResponse,
-  } = useOsActivityChecklist(isAuthenticated === true ? id : undefined);
+  } = useOsActivityChecklist(isAuthenticated === true ? resolvedOsId ?? undefined : undefined);
   type PmocConformity = 'conforme' | 'parcial' | 'nao_conforme';
   const [conformityStatus, setConformityStatus] = useState<PmocConformity | ''>('');
   const [conformityNotes, setConformityNotes] = useState<string>('');
@@ -319,11 +327,11 @@ export default function TechnicianOS() {
   }, [forceReadOnly, searchParams, navigate]);
 
   const fetchFormResponses = async () => {
-    if (!id) return;
+    if (!resolvedOsId) return;
     const { data } = await db
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(id, question, question_type, options, description, position, template_id)')
-      .eq('service_order_id', id);
+      .eq('service_order_id', resolvedOsId);
     if (data) {
       // Normalize: unwrap question join (may be array in some PostgREST versions)
       const normalized = (data as any[]).map(r => ({
@@ -335,15 +343,15 @@ export default function TechnicianOS() {
   };
 
   const fetchTechnicianProfile = useCallback(async () => {
-    if (!id) return;
+    if (!resolvedOsId) return;
     // Try technician_id first, then fall back to first assignee
-    const { data: so } = await db.from('service_orders').select('technician_id').eq('id', id).maybeSingle();
+    const { data: so } = await db.from('service_orders').select('technician_id').eq('id', resolvedOsId).maybeSingle();
     let userId = (so as any)?.technician_id;
     if (!userId) {
       const { data: assignees } = await db
         .from('service_order_assignees')
         .select('user_id')
-        .eq('service_order_id', id)
+        .eq('service_order_id', resolvedOsId)
         .limit(1);
       userId = (assignees as any)?.[0]?.user_id;
     }
@@ -351,8 +359,9 @@ export default function TechnicianOS() {
       const { data: profile } = await db.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
       if (profile) setTechnicianProfile(profile);
     }
-  }, [id]);
+  }, [resolvedOsId, db]);
   const fetchEquipmentItems = async () => {
+    if (!resolvedOsId) return;
     try {
       const { data, error } = await db
         .from('service_order_equipment')
@@ -362,8 +371,8 @@ export default function TechnicianOS() {
           equipment:equipment(id, name, brand, model, location, photo_url, category:equipment_categories(id, name, color)),
           form_template:form_templates(id, name)
         `)
-        .eq('service_order_id', id);
-      
+        .eq('service_order_id', resolvedOsId);
+
       if (error) throw error;
       setEquipmentItems((data || []) as unknown as EquipmentItem[]);
     } catch (error) {
@@ -620,18 +629,33 @@ export default function TechnicianOS() {
       // Modo cliente/público (anon): UMA RPC SECURITY DEFINER carrega tudo.
       fetchPublicOS();
     } else {
-      // Modo autenticado (técnico): leituras diretas, como antes.
+      // Modo autenticado (técnico): só o carregamento da OS aqui — ele resolve o
+      // slug amigável e seta o uuid real (serviceOrder.id). As leituras laterais
+      // (fotos/equipamentos/respostas/perfil) são keyed por uuid e rodam no efeito
+      // abaixo, disparado quando `resolvedOsId` fica disponível (UUID antigo já
+      // vale de imediato; slug só após a OS carregar).
       fetchServiceOrder();
-      fetchPhotos();
-      fetchEquipmentItems();
-      fetchFormResponses();
-      fetchTechnicianProfile();
     }
     return () => {
       document.documentElement.style.removeProperty('--primary');
       document.documentElement.style.removeProperty('--ring');
     };
-  }, [id, isAuthenticated, fetchPublicOS, fetchServiceOrder, fetchTechnicianProfile]);
+  }, [id, isAuthenticated, fetchPublicOS, fetchServiceOrder]);
+
+  // Leituras laterais do modo autenticado, keyed pelo UUID REAL da OS. Roda assim
+  // que `resolvedOsId` existe (imediato pra UUID; pós-load pra slug amigável),
+  // evitando o 22P02 que ocorreria se consultassem o slug cru.
+  useEffect(() => {
+    if (isAuthenticated !== true || !resolvedOsId) return;
+    fetchPhotos();
+    fetchEquipmentItems();
+    fetchFormResponses();
+    fetchTechnicianProfile();
+    // fetchPhotos/fetchEquipmentItems/fetchFormResponses são estáveis o bastante
+    // (sem deps externas que mudem fora de resolvedOsId/db); fetchTechnicianProfile
+    // já depende de resolvedOsId.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, resolvedOsId, fetchTechnicianProfile]);
 
   // Modo cliente (anon): sem realtime (as policies anon caem). Atualização "ao
   // vivo" via polling leve da RPC a cada ~20s, só enquanto a aba está visível.
@@ -666,43 +690,45 @@ export default function TechnicianOS() {
   }, [id, isAuthenticated, fetchPublicOS]);
 
   // Modo autenticado: realtime nativo (técnico logado lê as tabelas direto).
+  // Os filtros são por coluna UUID — precisam do uuid REAL da OS (slug amigável
+  // nunca casaria o filtro). Por isso o canal só sobe quando `resolvedOsId` existe.
   useEffect(() => {
-    if (!id || isAuthenticated !== true) return;
+    if (!resolvedOsId || isAuthenticated !== true) return;
 
     const channel = db
-      .channel(`os-realtime-${id}`)
+      .channel(`os-realtime-${resolvedOsId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'service_orders', filter: `id=eq.${id}` },
+        { event: '*', schema: 'public', table: 'service_orders', filter: `id=eq.${resolvedOsId}` },
         () => { fetchServiceOrder(); fetchTechnicianProfile(); }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'form_responses', filter: `service_order_id=eq.${id}` },
+        { event: '*', schema: 'public', table: 'form_responses', filter: `service_order_id=eq.${resolvedOsId}` },
         () => { fetchFormResponses(); }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'os_photos', filter: `service_order_id=eq.${id}` },
+        { event: '*', schema: 'public', table: 'os_photos', filter: `service_order_id=eq.${resolvedOsId}` },
         () => { fetchPhotos(); }
       )
       .subscribe();
 
     return () => { db.removeChannel(channel); };
-  }, [id, isAuthenticated, fetchServiceOrder, fetchTechnicianProfile]);
+  }, [resolvedOsId, isAuthenticated, fetchServiceOrder, fetchTechnicianProfile]);
 
   // Reflete o rollup de conformidade do checklist da visita na OS em tempo real,
   // conforme o técnico marca conforme/não-conforme. Idempotente: só grava quando
   // o rollup difere do que já está em service_orders.pmoc_conformity_status.
   // Não roda se a OS já foi concluída (status final não se reabre por aqui).
   useEffect(() => {
-    if (isAuthenticated !== true || !id || !hasChecklist || !checklistRollup) return;
+    if (isAuthenticated !== true || !resolvedOsId || !hasChecklist || !checklistRollup) return;
     if (serviceOrder?.status === 'concluida' || serviceOrder?.status === 'cancelada') return;
     if ((serviceOrder as any)?.pmoc_conformity_status === checklistRollup) return;
     supabase
       .from('service_orders')
       .update({ pmoc_conformity_status: checklistRollup })
-      .eq('id', id)
+      .eq('id', resolvedOsId)
       .then(({ error }) => {
         if (!error) {
           setServiceOrder((prev) =>
@@ -711,14 +737,15 @@ export default function TechnicianOS() {
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isAuthenticated, hasChecklist, checklistRollup, serviceOrder?.status, (serviceOrder as any)?.pmoc_conformity_status]);
+  }, [resolvedOsId, isAuthenticated, hasChecklist, checklistRollup, serviceOrder?.status, (serviceOrder as any)?.pmoc_conformity_status]);
 
   const fetchPhotos = async () => {
+    if (!resolvedOsId) return;
     try {
       const { data, error } = await db
         .from('os_photos')
         .select('*')
-        .eq('service_order_id', id)
+        .eq('service_order_id', resolvedOsId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -815,7 +842,7 @@ export default function TechnicianOS() {
   }, []);
 
   // Reusa o watcher de tracking pra alimentar a origem ao vivo (sem 2º GPS watch).
-  useGeoTracking(id, isTracking, handleLivePosition);
+  useGeoTracking(resolvedOsId ?? undefined, isTracking, handleLivePosition);
 
   // Seed inicial da origem ao entrar em "a_caminho" (o watchPosition do tracking
   // pode levar alguns segundos pro 1º tick). Falha de GPS/permissão não bloqueia:
@@ -857,12 +884,12 @@ export default function TechnicianOS() {
           check_in_location: location,
           status: 'em_andamento',
         })
-        .eq('id', id);
+        .eq('id', resolvedOsId);
 
       if (error) throw error;
 
-      if (id) {
-        recordLocationEvent(id, location.lat, location.lng, 'check_in');
+      if (resolvedOsId) {
+        recordLocationEvent(resolvedOsId, location.lat, location.lng, 'check_in');
       }
 
       setCheckInTime(now);
@@ -982,17 +1009,17 @@ export default function TechnicianOS() {
       const { error } = await supabase
         .from('service_orders')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', resolvedOsId);
 
       if (error) throw error;
 
       // Instrumentação MVP — fire-and-forget, não bloqueia UX
-      trackUsage('os_completion', { os_id: id });
+      trackUsage('os_completion', { os_id: resolvedOsId });
 
-      if (id) {
+      if (resolvedOsId) {
         const { error: ratingError } = await supabase
           .from('service_ratings')
-          .insert({ service_order_id: id })
+          .insert({ service_order_id: resolvedOsId })
           .select('id')
           .maybeSingle();
 
@@ -1001,8 +1028,8 @@ export default function TechnicianOS() {
         }
       }
 
-      if (id) {
-        recordLocationEvent(id, location.lat, location.lng, 'check_out');
+      if (resolvedOsId) {
+        recordLocationEvent(resolvedOsId, location.lat, location.lng, 'check_out');
       }
 
       setCheckOutTime(now);
@@ -1025,7 +1052,7 @@ export default function TechnicianOS() {
   // update server-side, idempotente) e então conclui a OS. O conteúdo é de
   // responsabilidade do técnico/RT — facilidade de preenchimento, não auditoria.
   const handleMarkRestAndFinish = async () => {
-    if (!id) return;
+    if (!resolvedOsId) return;
     setMarkingChecklist(true);
     try {
       // Só atividades de CONFORMIDADE em branco viram 'conforme'. Atividades de
@@ -1034,7 +1061,7 @@ export default function TechnicianOS() {
       const { error } = await supabase
         .from('service_order_activities')
         .update({ conformity_status: 'conforme' })
-        .eq('service_order_id', id)
+        .eq('service_order_id', resolvedOsId)
         .is('conformity_status', null)
         .is('form_template_id', null);
       if (error) throw error;
@@ -1317,7 +1344,7 @@ export default function TechnicianOS() {
           {forceReadOnly && id && rating && rating.is_concluded && surveyEnabled && (
             <>
               <OSRatingSurvey
-                osId={id}
+                osId={resolvedOsId ?? id!}
                 rating={rating}
                 npsConfig={npsConfig}
                 criteria={npsCriteria}
@@ -1984,7 +2011,7 @@ export default function TechnicianOS() {
       const { error } = await supabase
         .from('service_orders')
         .update({ status: 'pausada' } as any)
-        .eq('id', id);
+        .eq('id', resolvedOsId);
       if (error) throw error;
       setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
       toast({ title: 'OS pausada com sucesso!' });
@@ -1997,7 +2024,7 @@ export default function TechnicianOS() {
       const { error } = await supabase
         .from('service_orders')
         .update({ status: 'em_andamento' })
-        .eq('id', id);
+        .eq('id', resolvedOsId);
       if (error) throw error;
       setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
       toast({ title: 'OS retomada com sucesso!' });
@@ -2106,14 +2133,14 @@ export default function TechnicianOS() {
       const location = await getCurrentLocation();
       
       // Record location FIRST so the tracking map can find it
-      if (id) {
-        await recordLocationEvent(id, location.lat, location.lng, 'en_route');
+      if (resolvedOsId) {
+        await recordLocationEvent(resolvedOsId, location.lat, location.lng, 'en_route');
       }
 
       const { error } = await supabase
         .from('service_orders')
         .update({ status: 'a_caminho' })
-        .eq('id', id);
+        .eq('id', resolvedOsId);
 
       if (error) throw error;
 
@@ -2679,7 +2706,7 @@ export default function TechnicianOS() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <DynamicFormQuestions
-                          serviceOrderId={id!}
+                          serviceOrderId={resolvedOsId!}
                           templateId={item.form_template_id!}
                           equipmentId={item.equipment_id || undefined}
                           readOnly={isPaused}
@@ -2745,7 +2772,7 @@ export default function TechnicianOS() {
               )}
               <div className={isPaused ? 'opacity-60 cursor-not-allowed' : ''}>
                 <DynamicFormQuestions
-                  serviceOrderId={id!}
+                  serviceOrderId={resolvedOsId!}
                   templateId={serviceOrder.form_template_id}
                   readOnly={isPaused}
                   onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}

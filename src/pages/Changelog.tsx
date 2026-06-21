@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.8',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Check-in pelo link curto da OS corrigido',
+        description: 'Corrigido um erro ("formato inválido") que impedia o técnico de fazer check-in (e marcar "a caminho", pausar, retomar e finalizar) ao abrir a ordem de serviço pelo novo link curto. As respostas dos checklists e a avaliação do cliente abertas por esses links também voltaram a salvar corretamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.7',
     date: '20 de junho de 2026',
     type: 'patch',

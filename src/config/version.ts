@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.7";
+export const APP_VERSION = "1.14.8";
 
-export const VERSION_NOTES = "Os links de contratos, ordens de serviço, clientes e equipamentos ficaram mais curtos e legíveis: agora mostram o nome de quem se referem em vez de um código comprido — mais fáceis de reconhecer ao compartilhar. Todos os links antigos que você já enviou ou imprimiu (incluindo QR Codes) continuam funcionando normalmente.";
+export const VERSION_NOTES = "Correção: ao abrir uma ordem de serviço pelo novo link curto, o técnico voltou a conseguir fazer check-in, marcar 'a caminho', pausar/retomar e finalizar normalmente (antes dava 'formato inválido'). As respostas de checklist e a avaliação do cliente por esses links também voltaram a salvar.";
