@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Info } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -233,11 +233,10 @@ export function DiluicaoProduto() {
           <Label className="text-base text-muted-foreground md:text-lg">Proporção</Label>
           <div className="flex items-center gap-3">
             <span className="text-2xl font-bold text-muted-foreground">1 para</span>
-            <Input
-              type="number"
-              inputMode="decimal"
+            <NumericInput
+              decimal
               value={n}
-              onChange={(e) => setN(e.target.value)}
+              onValueChange={setN}
               placeholder="10"
               className="h-16 w-32 text-2xl font-bold md:h-16 md:text-2xl"
             />
@@ -271,11 +270,10 @@ export function DiluicaoProduto() {
               <Label className="text-base text-muted-foreground md:text-lg">
                 Volume final desejado
               </Label>
-              <Input
-                type="number"
-                inputMode="decimal"
+              <NumericInput
+                decimal
                 value={volumeFinal}
-                onChange={(e) => setVolumeFinal(e.target.value)}
+                onValueChange={setVolumeFinal}
                 placeholder="Ex: 500"
                 className="h-14 text-lg md:h-14 md:text-lg"
               />
@@ -300,11 +298,10 @@ export function DiluicaoProduto() {
               <Label className="text-base text-muted-foreground md:text-lg">
                 Quantidade de produto
               </Label>
-              <Input
-                type="number"
-                inputMode="decimal"
+              <NumericInput
+                decimal
                 value={produtoQtd}
-                onChange={(e) => setProdutoQtd(e.target.value)}
+                onValueChange={setProdutoQtd}
                 placeholder="Ex: 50"
                 className="h-14 text-lg md:h-14 md:text-lg"
               />

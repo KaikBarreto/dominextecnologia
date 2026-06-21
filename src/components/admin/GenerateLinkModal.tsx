@@ -20,6 +20,7 @@ import {
   Unlock, Lock, Sparkles,
 } from 'lucide-react';
 import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, BASE_MODULE_CODES } from './ModuleGrid';
+import { NumericInput } from '@/components/ui/numeric-input';
 
 interface Props {
   open: boolean;
@@ -461,12 +462,10 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                       {!isPermanent && (
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Por quantos meses?</Label>
-                          <Input
-                            type="number"
-                            min="1"
+                          <NumericInput
                             placeholder="3"
                             value={customPriceMonths}
-                            onChange={(e) => setCustomPriceMonths(e.target.value)}
+                            onValueChange={setCustomPriceMonths}
                             className="h-8 text-sm w-24"
                           />
                           {customPriceValue && selectedPlan && (
@@ -514,11 +513,9 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Máx. Usuários</Label>
-                <Input
-                  type="number"
-                  min="1"
+                <NumericInput
                   value={customMaxUsers}
-                  onChange={(e) => setCustomMaxUsers(e.target.value)}
+                  onValueChange={setCustomMaxUsers}
                   className="w-24"
                 />
               </div>
@@ -577,12 +574,10 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                       {!isPermanent && (
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Por quantos meses?</Label>
-                          <Input
-                            type="number"
-                            min="1"
+                          <NumericInput
                             placeholder="3"
                             value={customPriceMonths}
-                            onChange={(e) => setCustomPriceMonths(e.target.value)}
+                            onValueChange={setCustomPriceMonths}
                             className="h-8 text-sm w-24"
                           />
                           {customPriceValue && (

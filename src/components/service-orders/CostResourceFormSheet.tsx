@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -307,7 +308,7 @@ export function CostResourceFormSheet({
           {!isGift && (
             <div className="space-y-2">
               <Label>Horas de uso mensal (para rateio)</Label>
-              <Input type="number" min={1} value={monthlyHours} onChange={e => setMonthlyHours(Number(e.target.value) || 176)} />
+              <NumericInput value={String(monthlyHours ?? '')} onValueChange={v => setMonthlyHours(Number(v) || 176)} />
               <p className="text-xs text-muted-foreground">Padrão: 176h (22 dias × 8h)</p>
             </div>
           )}
@@ -422,13 +423,10 @@ export function CostResourceFormSheet({
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Unidades no lote</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            step="1"
+                          <NumericInput
                             placeholder="500"
-                            value={item.total_units ?? ''}
-                            onChange={e => handleItemChange(index, 'total_units', Number(e.target.value) || 1)}
+                            value={item.total_units != null ? String(item.total_units) : ''}
+                            onValueChange={v => handleItemChange(index, 'total_units', Number(v) || 1)}
                           />
                         </div>
                       </div>
@@ -444,13 +442,10 @@ export function CostResourceFormSheet({
 
                       <div className="space-y-1">
                         <Label className="text-xs">Quantidade por brinde</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          step="1"
+                        <NumericInput
                           placeholder="1"
-                          value={item.qty_per_gift ?? ''}
-                          onChange={e => handleItemChange(index, 'qty_per_gift', Number(e.target.value) || 1)}
+                          value={item.qty_per_gift != null ? String(item.qty_per_gift) : ''}
+                          onValueChange={v => handleItemChange(index, 'qty_per_gift', Number(v) || 1)}
                         />
                       </div>
 

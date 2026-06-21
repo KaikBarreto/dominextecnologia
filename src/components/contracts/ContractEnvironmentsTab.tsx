@@ -3,6 +3,7 @@ import { ShieldCheck, Plus, Check, Trash2, Loader2, Wrench, HelpCircle, Calendar
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
@@ -538,7 +539,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Área climatizada (m²)</Label>
-                      <Input inputMode="decimal" value={env.area_climatizada_m2} onChange={(e) => updateField(env.key, 'area_climatizada_m2', e.target.value)} placeholder="Ex: 120,5" />
+                      <NumericInput decimal value={env.area_climatizada_m2} onValueChange={(v) => updateField(env.key, 'area_climatizada_m2', v)} placeholder="Ex: 120,5" />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1">
@@ -552,7 +553,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                           <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
                         </Tooltip>
                       </div>
-                      <Input inputMode="decimal" value={env.carga_termica_tr} onChange={(e) => updateField(env.key, 'carga_termica_tr', e.target.value)} placeholder="Ex: 5,0" />
+                      <NumericInput decimal value={env.carga_termica_tr} onValueChange={(v) => updateField(env.key, 'carga_termica_tr', v)} placeholder="Ex: 5,0" />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1">
@@ -566,7 +567,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                           <TooltipContent className="max-w-xs text-xs">Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local).</TooltipContent>
                         </Tooltip>
                       </div>
-                      <Input inputMode="numeric" value={env.ocupantes_fixos} onChange={(e) => updateField(env.key, 'ocupantes_fixos', e.target.value)} placeholder="Ex: 12" />
+                      <NumericInput value={env.ocupantes_fixos} onValueChange={(v) => updateField(env.key, 'ocupantes_fixos', v)} placeholder="Ex: 12" />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1">
@@ -580,7 +581,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                           <TooltipContent className="max-w-xs text-xs">Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes).</TooltipContent>
                         </Tooltip>
                       </div>
-                      <Input inputMode="numeric" value={env.ocupantes_flutuantes} onChange={(e) => updateField(env.key, 'ocupantes_flutuantes', e.target.value)} placeholder="Ex: 30" />
+                      <NumericInput value={env.ocupantes_flutuantes} onValueChange={(v) => updateField(env.key, 'ocupantes_flutuantes', v)} placeholder="Ex: 30" />
                     </div>
                   </div>
 

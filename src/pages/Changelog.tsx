@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.12',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Campos de número mais corretos em todo o sistema',
+        description: 'Campos que devem conter apenas números (quantidades, medidas, área, carga térmica, ocupantes, distância, etc.) não aceitam mais texto. E foi corrigido o "0 grudado": ao apagar o conteúdo, o campo fica realmente vazio — antes sobrava um "0" que não dava para remover e fazia o valor virar, por exemplo, "048". Aplicado em todo o sistema (contratos, ambientes, estoque, orçamentos, ferramentas do técnico e mais).',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.11',
     date: '21 de junho de 2026',
     type: 'patch',

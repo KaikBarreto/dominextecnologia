@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -255,28 +255,20 @@ export function CompanyPmocTemplatesTab() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="termo-validity">Validade do TRT (meses)</Label>
-              <Input
+              <NumericInput
                 id="termo-validity"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
                 value={termoMonths}
-                onChange={(e) => setTermoMonths(e.target.value)}
+                onValueChange={setTermoMonths}
                 placeholder={String(DEFAULT_DOC_VALIDITY_MONTHS)}
                 className="min-h-11"
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="cert-validity">Validade do Certificado (meses)</Label>
-              <Input
+              <NumericInput
                 id="cert-validity"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
                 value={certMonths}
-                onChange={(e) => setCertMonths(e.target.value)}
+                onValueChange={setCertMonths}
                 placeholder={String(DEFAULT_DOC_VALIDITY_MONTHS)}
                 className="min-h-11"
               />

@@ -18,6 +18,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -1418,7 +1419,7 @@ export default function ContractDetail() {
           {recFrequency !== 'unica' && (
             <div>
               <Label>Quantidade de parcelas</Label>
-              <Input type="number" min="1" max="60" value={recInstallments} onChange={e => setRecInstallments(e.target.value)} placeholder="12" />
+              <NumericInput value={recInstallments} onValueChange={setRecInstallments} placeholder="12" />
             </div>
           )}
           <Button className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>

@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import {
   Table,
@@ -100,7 +101,7 @@ export function ServiceMaterialsList({ serviceId }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Quantidade</Label>
-            <Input type="number" min={0} step="0.01" value={quantity} onChange={(e) => setQuantity(Number(e.target.value) || 0)} />
+            <NumericInput decimal value={String(quantity ?? '')} onValueChange={(v) => setQuantity(Number(v.replace(',', '.')) || 0)} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Custo unit. (R$)</Label>
@@ -148,12 +149,10 @@ export function ServiceMaterialsList({ serviceId }: Props) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={Number(m.quantity ?? 0)}
-                        onChange={(e) => updateMaterial.mutate({ id: m.id, quantity: Number(e.target.value) || 0 } as any)}
+                      <NumericInput
+                        decimal
+                        value={m.quantity != null ? String(m.quantity) : ''}
+                        onValueChange={(v) => updateMaterial.mutate({ id: m.id, quantity: Number(v.replace(',', '.')) || 0 } as any)}
                       />
                     </TableCell>
                     <TableCell>

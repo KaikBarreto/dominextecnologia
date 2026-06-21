@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.11";
+export const APP_VERSION = "1.14.12";
 
-export const VERSION_NOTES = "Relatório de serviço mais organizado: o checklist da visita PMOC agora aparece junto com o restante do relatório (não mais numa seção separada à parte) e cada checklist personalizado é mostrado com o seu próprio nome, em vez de tudo agrupado como 'Outros'. Os campos de assinatura também passaram a ficar centralizados, no app e no relatório.";
+export const VERSION_NOTES = "Campos que são de número agora só aceitam números (chega de digitar texto onde devia ser quantidade/medida) e não travam mais com um '0' à esquerda: ao apagar o conteúdo o campo fica vazio de verdade, sem aquele zero grudado que virava '048'. Vale em todo o sistema — contratos, ambientes, estoque, orçamentos, ferramentas e mais.";

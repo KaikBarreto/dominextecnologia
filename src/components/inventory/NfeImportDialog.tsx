@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -408,13 +409,12 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                     <div className="mt-2 grid grid-cols-3 gap-2 pl-7">
                       <div>
                         <Label className="text-[11px] text-muted-foreground">Qtd</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={line.quantity}
-                          onChange={(e) =>
+                        <NumericInput
+                          decimal
+                          value={line.quantity ? String(line.quantity) : ''}
+                          onValueChange={(v) =>
                             updateLine(line.key, {
-                              quantity: Number(String(e.target.value).replace(',', '.')) || 0,
+                              quantity: Number(v.replace(',', '.')) || 0,
                             })
                           }
                           disabled={!line.include}

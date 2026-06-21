@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calculator, Save } from 'lucide-react';
@@ -161,7 +162,7 @@ export function PricingConfigForm() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Parcelas (cartão)</Label>
-              <Input type="number" min={1} step="1" value={cardInstallments} onChange={(e) => setCardInstallments(e.target.value)} />
+              <NumericInput value={cardInstallments} onValueChange={(v) => setCardInstallments(v)} />
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { Calculator, Save, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -202,7 +203,7 @@ export function ServiceCostsTab() {
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">Horas</Label>
-                          <Input type="number" min={0} step="0.25" value={hours} onChange={(e) => setHours(Number(e.target.value) || 0)} />
+                          <NumericInput decimal value={String(hours ?? '')} onValueChange={(v) => setHours(Number(v.replace(',', '.')) || 0)} />
                         </div>
                       </div>
                       <div className="rounded-lg border border-border p-3 bg-muted/30">

@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { NumericInput } from '@/components/ui/numeric-input';
 
 interface Props {
   open: boolean;
@@ -42,7 +43,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     email: '',
     phone: '',
     salary: 0,
-    monthly_goal: 30,
+    monthly_goal: '30',
     is_active: true,
     no_commission: false,
     notes: '',
@@ -76,7 +77,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         email: editingSalesperson.email || '',
         phone: editingSalesperson.phone || '',
         salary: Number(editingSalesperson.salary) || 0,
-        monthly_goal: editingSalesperson.monthly_goal || 30,
+        monthly_goal: String(editingSalesperson.monthly_goal ?? 30),
         is_active: editingSalesperson.is_active ?? true,
         no_commission: editingSalesperson.no_commission ?? false,
         notes: editingSalesperson.notes || '',
@@ -85,7 +86,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
       });
       setPhotoUrl(editingSalesperson.photo_url || null);
     } else {
-      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: 30, is_active: true, no_commission: false, notes: '', user_id: 'none', role: 'closer' });
+      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: '30', is_active: true, no_commission: false, notes: '', user_id: 'none', role: 'closer' });
       setPhotoUrl(null);
     }
   }, [editingSalesperson, open]);
@@ -214,7 +215,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
         salary: formData.salary,
-        monthly_goal: formData.monthly_goal,
+        monthly_goal: parseInt(formData.monthly_goal, 10) || 0,
         is_active: formData.is_active,
         no_commission: formData.no_commission,
         notes: formData.notes.trim() || null,
@@ -312,7 +313,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           </div>
           <div className="space-y-2">
             <Label htmlFor="sp-goal">Meta Mensal (vendas)</Label>
-            <Input id="sp-goal" type="number" min="0" value={formData.monthly_goal} onChange={(e) => setFormData({ ...formData, monthly_goal: parseInt(e.target.value) || 0 })} />
+            <NumericInput id="sp-goal" value={formData.monthly_goal} onValueChange={(v) => setFormData({ ...formData, monthly_goal: v })} />
           </div>
           <div className="sm:col-span-2 space-y-2">
             <Label>Tipo</Label>

@@ -30,6 +30,7 @@ import { GenerateLinkModal } from './GenerateLinkModal';
 import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, BASE_MODULE_CODES } from './ModuleGrid';
 import { useNfseTiers } from '@/hooks/useNfseTiers';
 import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
+import { NumericInput } from '@/components/ui/numeric-input';
 
 interface Props {
   open: boolean;
@@ -751,7 +752,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Máx. Usuários</Label>
-                      <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                      <NumericInput value={formData.max_users} onValueChange={v => updateField('max_users', v)} />
                     </div>
                   </div>
 
@@ -770,12 +771,10 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     {!formData.custom_price_permanent && (
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Por quantos meses?</Label>
-                        <Input
-                          type="number"
-                          min="1"
+                        <NumericInput
                           placeholder="3"
                           value={formData.custom_price_months}
-                          onChange={(e) => setFormData(prev => ({ ...prev, custom_price_months: e.target.value }))}
+                          onValueChange={(v) => setFormData(prev => ({ ...prev, custom_price_months: v }))}
                           className="w-24"
                         />
                         {referencePlanPrice != null && formData.subscription_value && (
@@ -804,7 +803,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Máx. Usuários</Label>
-                    <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                    <NumericInput value={formData.max_users} onValueChange={v => updateField('max_users', v)} />
                   </div>
                 </div>
               )}

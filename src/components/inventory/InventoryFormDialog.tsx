@@ -3,6 +3,7 @@ import { Wand2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -134,7 +135,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Quantidade</Label>
-            <Input type="number" min="0" step="0.01" value={formData.quantity || 0} onChange={(e) => handleChange('quantity', parseFloat(e.target.value) || 0)} />
+            <NumericInput decimal value={formData.quantity ? String(formData.quantity) : ''} onValueChange={(v) => handleChange('quantity', parseFloat(v.replace(',', '.')) || 0)} />
           </div>
           <div className="space-y-2">
             <Label>Unidade</Label>

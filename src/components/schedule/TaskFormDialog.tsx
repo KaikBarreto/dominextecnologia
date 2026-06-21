@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -220,7 +221,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           </div>
           <div className="space-y-2">
             <Label>Duração (min)</Label>
-            <Input type="number" min={15} step={15} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
+            <NumericInput value={String(duration ?? '')} onValueChange={(v) => setDuration(Number(v) || 0)} />
           </div>
         </div>
 
@@ -264,7 +265,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
                 <div className="space-y-1.5">
                   <Label className="text-xs">A cada</Label>
                   <div className="flex items-center gap-1.5">
-                    <Input type="number" min={1} max={12} value={recurrenceInterval} onChange={(e) => setRecurrenceInterval(Number(e.target.value))} />
+                    <NumericInput value={String(recurrenceInterval ?? '')} onValueChange={(v) => setRecurrenceInterval(Number(v) || 0)} />
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {recurrenceType === 'daily' ? 'dia(s)' :
                        recurrenceType === 'monthly' ? 'mês(es)' :

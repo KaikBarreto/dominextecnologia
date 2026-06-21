@@ -5,6 +5,7 @@ import domiflixLogoLight from "@/assets/domiflix-logo-horizontal.png";
 import { typography } from "@/lib/typography";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -704,12 +705,10 @@ function SeasonFormDialog({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Número</Label>
-            <Input
-              type="number"
-              min={1}
-              value={form.season_number}
-              onChange={(e) =>
-                setForm({ ...form, season_number: parseInt(e.target.value) || 1 })
+            <NumericInput
+              value={String(form.season_number ?? "")}
+              onValueChange={(v) =>
+                setForm({ ...form, season_number: parseInt(v) || 1 })
               }
             />
           </div>

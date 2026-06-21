@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Calculator, Plus, Trash2, Users, Check, ChevronsUpDown } from 'lucide-react';
@@ -210,19 +211,18 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Horas mensais base</Label>
-              <Input
-                type="number" min={1} step="1"
-                value={monthlyHours}
-                onChange={e => setMonthlyHours(Number(e.target.value) || 0)}
+              <NumericInput
+                value={String(monthlyHours ?? '')}
+                onValueChange={v => setMonthlyHours(Number(v) || 0)}
               />
               <p className="text-[11px] text-muted-foreground">Padrão: 176h/mês (22d × 8h)</p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Horas padrão neste serviço</Label>
-              <Input
-                type="number" min={0} step="0.25"
-                value={defaultServiceHours}
-                onChange={e => handleDefaultHoursChange(Number(e.target.value) || 0)}
+              <NumericInput
+                decimal
+                value={String(defaultServiceHours ?? '')}
+                onValueChange={v => handleDefaultHoursChange(Number(v.replace(',', '.')) || 0)}
               />
               <p className="text-[11px] text-muted-foreground">Aplica a todos não editados</p>
             </div>
@@ -324,10 +324,10 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px]">Horas neste serviço</Label>
-                        <Input
-                          type="number" min={0} step="0.25"
-                          value={w.hours}
-                          onChange={e => updateWorker(w.id, { hours: Number(e.target.value) || 0, hoursEdited: true })}
+                        <NumericInput
+                          decimal
+                          value={String(w.hours ?? '')}
+                          onValueChange={v => updateWorker(w.id, { hours: Number(v.replace(',', '.')) || 0, hoursEdited: true })}
                           className="h-8 text-sm"
                         />
                       </div>

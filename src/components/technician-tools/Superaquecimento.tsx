@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Info, RefreshCcw } from 'lucide-react';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -149,12 +150,11 @@ function CardCalculo({
           <Label className="text-base text-muted-foreground md:text-lg">
             {labelPressao} ({unidade})
           </Label>
-          <Input
-            type="text"
-            inputMode="decimal"
+          <NumericInput
+            decimal
             placeholder={unidade === 'bar' ? 'Ex: 8,3' : 'Ex: 120'}
             value={pressao}
-            onChange={(e) => setPressao(e.target.value)}
+            onValueChange={setPressao}
             className="h-14 text-lg"
           />
         </div>

@@ -4,6 +4,11 @@ import { SignedImg } from '@/components/ui/SignedImg';
 import { cn } from '@/lib/utils';
 import type { ReportChecklistItem } from './ReportChecklist';
 
+/** Chave estável do grupo no accordion (espelha a sidebar desktop). */
+function groupKeyForName(equipmentName: string | null): string {
+  return equipmentName ?? '__geral__';
+}
+
 /**
  * Versão CLARA (tema slate do relatório branco) do checklist de conformidade
  * PMOC. Renderiza DENTRO do card branco do OSReport como a seção "Checklists da

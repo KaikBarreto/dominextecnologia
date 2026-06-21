@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -2097,10 +2098,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-xs">Área climatizada (m²)</Label>
-                            <Input
-                              inputMode="decimal"
+                            <NumericInput
+                              decimal
                               value={env.area_climatizada_m2}
-                              onChange={e => updateEnvironmentField(env.key, 'area_climatizada_m2', e.target.value)}
+                              onValueChange={v => updateEnvironmentField(env.key, 'area_climatizada_m2', v)}
                               placeholder="Ex: 120,5"
                             />
                           </div>
@@ -2116,10 +2117,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
                               </Tooltip>
                             </div>
-                            <Input
-                              inputMode="decimal"
+                            <NumericInput
+                              decimal
                               value={env.carga_termica_tr}
-                              onChange={e => updateEnvironmentField(env.key, 'carga_termica_tr', e.target.value)}
+                              onValueChange={v => updateEnvironmentField(env.key, 'carga_termica_tr', v)}
                               placeholder="Ex: 5,0"
                             />
                           </div>
@@ -2135,10 +2136,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 <TooltipContent className="max-w-xs text-xs">Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local).</TooltipContent>
                               </Tooltip>
                             </div>
-                            <Input
-                              inputMode="numeric"
+                            <NumericInput
                               value={env.ocupantes_fixos}
-                              onChange={e => updateEnvironmentField(env.key, 'ocupantes_fixos', e.target.value)}
+                              onValueChange={v => updateEnvironmentField(env.key, 'ocupantes_fixos', v)}
                               placeholder="Ex: 12"
                             />
                           </div>
@@ -2154,10 +2154,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 <TooltipContent className="max-w-xs text-xs">Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes).</TooltipContent>
                               </Tooltip>
                             </div>
-                            <Input
-                              inputMode="numeric"
+                            <NumericInput
                               value={env.ocupantes_flutuantes}
-                              onChange={e => updateEnvironmentField(env.key, 'ocupantes_flutuantes', e.target.value)}
+                              onValueChange={v => updateEnvironmentField(env.key, 'ocupantes_flutuantes', v)}
                               placeholder="Ex: 30"
                             />
                           </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -101,7 +102,7 @@ export function TimeSettingsPanel() {
             </div>
             <div className="space-y-2">
               <Label>Intervalo (min)</Label>
-              <Input type="number" value={form.default_break_min} onChange={e => setForm(f => ({ ...f, default_break_min: +e.target.value }))} />
+              <NumericInput value={String(form.default_break_min ?? '')} onValueChange={v => setForm(f => ({ ...f, default_break_min: v === '' ? 0 : parseInt(v, 10) }))} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -117,12 +118,12 @@ export function TimeSettingsPanel() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Raio máximo (metros)</Label>
-              <Input type="number" value={form.max_radius_meters} onChange={e => setForm(f => ({ ...f, max_radius_meters: +e.target.value }))} />
+              <NumericInput value={String(form.max_radius_meters ?? '')} onValueChange={v => setForm(f => ({ ...f, max_radius_meters: v === '' ? 0 : parseInt(v, 10) }))} />
               <p className="text-xs text-muted-foreground">0 = sem restrição</p>
             </div>
             <div className="space-y-2">
               <Label>Tolerância atraso (min)</Label>
-              <Input type="number" value={form.late_tolerance_min} onChange={e => setForm(f => ({ ...f, late_tolerance_min: +e.target.value }))} />
+              <NumericInput value={String(form.late_tolerance_min ?? '')} onValueChange={v => setForm(f => ({ ...f, late_tolerance_min: v === '' ? 0 : parseInt(v, 10) }))} />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <Label>Permitir fora do horário</Label>

@@ -3,6 +3,7 @@ import { Plus, Trash2, PackageSearch, PencilLine } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -276,14 +277,11 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
                       <div className="flex items-end gap-2 pl-6">
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Quantidade</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputMode="decimal"
+                          <NumericInput
+                            decimal
                             className="h-8 w-24"
-                            value={r.quantity}
-                            onChange={(e) => patchItem(r.key, { quantity: parseFloat(e.target.value) || 0 })}
+                            value={r.quantity ? String(r.quantity) : ''}
+                            onValueChange={(v) => patchItem(r.key, { quantity: parseFloat(v.replace(',', '.')) || 0 })}
                           />
                         </div>
                         <div className="space-y-1">

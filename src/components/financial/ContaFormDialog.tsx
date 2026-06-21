@@ -16,6 +16,7 @@ import { useContracts } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
+import { NumericInput } from '@/components/ui/numeric-input';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -40,7 +41,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [category, setCategory] = useState('');
   const [dueDate, setDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [recurrence, setRecurrence] = useState<Recurrence>('unica');
-  const [occurrences, setOccurrences] = useState(12);
+  const [occurrences, setOccurrences] = useState('12');
   const [notes, setNotes] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [contractId, setContractId] = useState('');
@@ -64,7 +65,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setCustomerId(editingTransaction.customer_id || '');
         setAccountId((editingTransaction as any).account_id || '');
         setRecurrence('unica');
-        setOccurrences(12);
+        setOccurrences('12');
         const empMatch = editingTransaction.notes?.match(/\[funcionario:([^\]]+)\]/);
         setEmployeeId(empMatch ? empMatch[1] : '');
       } else {
@@ -74,7 +75,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setCategory('');
         setDueDate(format(new Date(), 'yyyy-MM-dd'));
         setRecurrence('unica');
-        setOccurrences(12);
+        setOccurrences('12');
         setNotes('');
         setEmployeeId('');
         setContractId('');
@@ -139,7 +140,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         await updateTransaction.mutateAsync(input);
       } else {
         const baseDate = new Date(dueDate + 'T12:00:00');
-        const count = recurrence === 'unica' ? 1 : occurrences;
+        const count = recurrence === 'unica' ? 1 : Math.min(60, Math.max(2, parseInt(occurrences, 10) || 2));
 
         for (let i = 0; i < count; i++) {
           let date: Date;
@@ -323,7 +324,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               {recurrence !== 'unica' && (
                 <div className="space-y-1.5">
                   <Label>Parcelas</Label>
-                  <Input type="number" min={2} max={60} value={occurrences} onChange={(e) => setOccurrences(Number(e.target.value) || 2)} />
+                  <NumericInput value={occurrences} onValueChange={setOccurrences} placeholder="12" />
                 </div>
               )}
             </div>

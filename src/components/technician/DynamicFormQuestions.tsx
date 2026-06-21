@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -278,13 +279,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
       case 'number':
         return (
-          <Input
-            type="number"
+          <NumericInput
+            decimal
             placeholder="Digite o valor..."
             value={value}
-            onChange={(e) => setResponses((prev) => ({
+            onValueChange={(v) => setResponses((prev) => ({
               ...prev,
-              [question.id]: { ...prev[question.id], question_id: question.id, response_value: e.target.value, response_photo_url: prev[question.id]?.response_photo_url || null },
+              [question.id]: { ...prev[question.id], question_id: question.id, response_value: v, response_photo_url: prev[question.id]?.response_photo_url || null },
             }))}
             onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
             disabled={isSaving}
@@ -413,13 +414,21 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       }
 
       case 'signature':
+        // Assinatura sempre centralizada (título + pad), desktop e mobile. O
+        // título da pergunta vem centralizado aqui; o pad ocupa a largura do
+        // wrapper e o botão Limpar/legenda ficam centrados.
         return (
-          <SignaturePad
-            value={value || null}
-            onChange={(dataUrl) => saveResponse(question.id, dataUrl)}
-            label={question.description || undefined}
-            disabled={isSaving}
-          />
+          <div className="flex flex-col items-center text-center w-full">
+            <p className="text-sm font-medium text-foreground break-words mb-2">{question.question}</p>
+            <div className="w-full max-w-md mx-auto [&_button]:mx-auto">
+              <SignaturePad
+                value={value || null}
+                onChange={(dataUrl) => saveResponse(question.id, dataUrl)}
+                label={question.description || undefined}
+                disabled={isSaving}
+              />
+            </div>
+          </div>
         );
 
       default:

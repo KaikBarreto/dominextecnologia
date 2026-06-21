@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Calculator, Clock } from 'lucide-react';
 import { formatBRL } from '@/utils/currency';
@@ -303,10 +304,9 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           <div className="space-y-1">
             <Label className="text-xs">Horas trabalhadas por mês</Label>
             <div className="relative">
-              <Input
-                type="number" min={1} step={1}
-                value={bd.monthlyHours || ''}
-                onChange={e => setBd(prev => ({ ...prev, monthlyHours: Number(e.target.value) || 0 }))}
+              <NumericInput
+                value={bd.monthlyHours ? String(bd.monthlyHours) : ''}
+                onValueChange={v => setBd(prev => ({ ...prev, monthlyHours: Number(v) || 0 }))}
                 placeholder="176"
                 className="h-8 text-sm pr-8"
               />

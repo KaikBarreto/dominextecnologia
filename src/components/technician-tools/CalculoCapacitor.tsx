@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CircuitBoard, Settings2, Zap } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -155,11 +155,9 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
                 </SelectContent>
               </Select>
               {isPersonalizado && (
-                <Input
-                  type="number"
-                  inputMode="numeric"
+                <NumericInput
                   value={btuPersonalizado}
-                  onChange={(e) => setBtuPersonalizado(e.target.value)}
+                  onValueChange={setBtuPersonalizado}
                   placeholder="Ex: 27000"
                   className="mt-2 h-14 text-lg md:h-14 md:text-lg"
                 />
@@ -188,11 +186,10 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
             <Label className="text-base text-muted-foreground md:text-lg">
               LRA (Locked Rotor Amps)
             </Label>
-            <Input
-              type="number"
-              inputMode="decimal"
+            <NumericInput
+              decimal
               value={lra}
-              onChange={(e) => setLra(e.target.value)}
+              onValueChange={setLra}
               placeholder="Ex: 40"
               className="h-14 text-lg md:h-14 md:text-lg"
             />
@@ -393,11 +390,10 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
             <Label className="text-base text-muted-foreground md:text-lg">
               Corrente nominal (A) — do motor/compressor
             </Label>
-            <Input
-              type="number"
-              inputMode="decimal"
+            <NumericInput
+              decimal
               value={correnteStr}
-              onChange={(e) => setCorrenteStr(e.target.value)}
+              onValueChange={setCorrenteStr}
               placeholder="Ex: 2,9"
               className="h-14 text-lg md:h-14 md:text-lg"
             />
@@ -410,11 +406,10 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-base text-muted-foreground md:text-lg">Potência (CV)</Label>
-                <Input
-                  type="number"
-                  inputMode="decimal"
+                <NumericInput
+                  decimal
                   value={cvStr}
-                  onChange={(e) => setCvStr(e.target.value)}
+                  onValueChange={setCvStr}
                   placeholder="Ex: 1"
                   className="h-14 text-lg md:h-14 md:text-lg"
                 />
@@ -450,24 +445,20 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
                 <div className="mt-3 grid grid-cols-1 gap-4 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label className="text-sm text-muted-foreground">Rendimento (η)</Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.001"
+                    <NumericInput
+                      decimal
                       value={rendimentoStr}
-                      onChange={(e) => setRendimentoStr(e.target.value)}
+                      onValueChange={setRendimentoStr}
                       placeholder={String(RENDIMENTO_PADRAO)}
                       className="h-12 text-base"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-sm text-muted-foreground">Fator de potência (cosφ)</Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
+                    <NumericInput
+                      decimal
                       value={cosphiStr}
-                      onChange={(e) => setCosphiStr(e.target.value)}
+                      onValueChange={setCosphiStr}
                       placeholder={String(COSPHI_PADRAO)}
                       className="h-12 text-base"
                     />

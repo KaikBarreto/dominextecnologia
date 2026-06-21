@@ -7,6 +7,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -399,7 +400,12 @@ export function EquipmentFormDialog({
                         {fc.field_type === 'date' ? (
                           <Input type="date" {...field} value={field.value ?? ''} />
                         ) : fc.field_type === 'number' ? (
-                          <Input type="number" placeholder={fc.label} {...field} />
+                          <NumericInput
+                            decimal
+                            placeholder={fc.label}
+                            value={field.value ?? ''}
+                            onValueChange={field.onChange}
+                          />
                         ) : (
                           <Input placeholder={fc.label} {...field} />
                         )}
@@ -430,11 +436,11 @@ export function EquipmentFormDialog({
                       onChange={(e) => setCustom(e.target.value)}
                     />
                   ) : fc.field_type === 'number' ? (
-                    <Input
-                      type="number"
+                    <NumericInput
+                      decimal
                       placeholder={fc.label}
                       value={customFieldValues[fc.field_key] ?? ''}
-                      onChange={(e) => setCustom(e.target.value)}
+                      onValueChange={setCustom}
                     />
                   ) : fc.field_type === 'boolean' ? (
                     <Select

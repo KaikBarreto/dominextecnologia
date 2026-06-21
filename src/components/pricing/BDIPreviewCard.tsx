@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -73,12 +74,10 @@ export function BDIPreviewCard() {
               <Route size={12} className="text-muted-foreground" />
               Distância (KM)
             </Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.1"
-              value={Number.isFinite(distanceKm) ? distanceKm : 0}
-              onChange={(e) => setDistanceKm(Number(e.target.value) || 0)}
+            <NumericInput
+              decimal
+              value={Number.isFinite(distanceKm) && distanceKm ? String(distanceKm) : ''}
+              onValueChange={(v) => setDistanceKm(Number(v.replace(',', '.')) || 0)}
             />
           </div>
         </div>

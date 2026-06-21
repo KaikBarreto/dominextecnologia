@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { Zap } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -90,11 +90,9 @@ export function CaboEletrico() {
             </Select>
             {isPersonalizado && (
               <div className="relative mt-2">
-                <Input
-                  type="number"
-                  inputMode="numeric"
+                <NumericInput
                   value={btuPersonalizado}
-                  onChange={(e) => setBtuPersonalizado(e.target.value)}
+                  onValueChange={setBtuPersonalizado}
                   placeholder="Ex: 22000"
                   className="h-14 pr-16 text-lg md:h-14 md:text-lg"
                 />
@@ -124,11 +122,10 @@ export function CaboEletrico() {
               Distância do quadro elétrico (m)
             </Label>
             <div className="relative">
-              <Input
-                type="number"
-                inputMode="decimal"
+              <NumericInput
+                decimal
                 value={distancia}
-                onChange={(e) => setDistancia(e.target.value)}
+                onValueChange={setDistancia}
                 placeholder="Ex: 40"
                 className="h-14 pr-10 text-lg md:h-14 md:text-lg"
               />

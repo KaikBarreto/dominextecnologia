@@ -5,6 +5,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } f
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -741,8 +742,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Label className="text-xs whitespace-nowrap">Qtd:</Label>
-            <Input type="number" min={1} value={addSvcQty}
-              onChange={e => setAddSvcQty(Math.max(1, Number(e.target.value) || 1))}
+            <NumericInput value={String(addSvcQty ?? '')}
+              onValueChange={v => setAddSvcQty(Math.max(1, Number(v) || 1))}
               className="h-9 w-16 text-sm" />
             <Button size="sm" onClick={handleAddService} disabled={!addSvcId || isFetchingSvc} className="h-9 shrink-0">
               {isFetchingSvc ? '…' : <><Plus className="h-3.5 w-3.5 mr-1" />Adicionar</>}
@@ -794,8 +795,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               </>
             )}
             <Label className="text-xs whitespace-nowrap">Qtd:</Label>
-            <Input type="number" min={1} value={addMatQty}
-              onChange={e => setAddMatQty(Math.max(1, Number(e.target.value) || 1))}
+            <NumericInput value={String(addMatQty ?? '')}
+              onValueChange={v => setAddMatQty(Math.max(1, Number(v) || 1))}
               className="h-9 w-16 text-sm" />
             <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId && !addMatManualName.trim()} className="h-9 shrink-0">
               <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
@@ -867,8 +868,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             <div className="space-y-2">
               <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
               <div className="flex items-center gap-2 flex-wrap">
-                <Input type="number" min={0} step="1" value={distanceKm || ''}
-                  onChange={e => setDistanceKm(Number(e.target.value) || 0)}
+                <NumericInput value={distanceKm ? String(distanceKm) : ''}
+                  onValueChange={v => setDistanceKm(Number(v) || 0)}
                   className="h-9 w-28" placeholder="0 km" />
                 {bdi.displacementCost > 0 && (
                   <span className="text-xs text-muted-foreground">

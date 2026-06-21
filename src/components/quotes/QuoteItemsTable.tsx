@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Trash2, Wrench, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -72,13 +73,12 @@ function ServiceInputRow({
         />
       </TableCell>
       <TableCell>
-        <Input
-          type="number"
+        <NumericInput
+          decimal
           placeholder="0"
           value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
+          onValueChange={(v) => setQuantity(v)}
           className="h-8 text-xs bg-background w-20"
-          min={0}
         />
       </TableCell>
       <TableCell>
@@ -178,13 +178,12 @@ function MaterialInputRow({
         />
       </TableCell>
       <TableCell>
-        <Input
-          type="number"
+        <NumericInput
+          decimal
           placeholder="0"
           value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
+          onValueChange={(v) => setQuantity(v)}
           className="h-8 text-xs bg-background w-20"
-          min={0}
         />
       </TableCell>
       <TableCell>
