@@ -1148,6 +1148,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const doUpdate = async ({ actualTechnicianId, actualTeamId }: { actualTechnicianId: string | null; actualTeamId: string | null }) => {
     await updateContract.mutateAsync({
       id: editContract.id,
+      // Lock otimista (concorrência): manda o updated_at que o form carregou. Se
+      // outra aba/sessão salvou no meio, o hook aborta com erro amigável.
+      expectedUpdatedAt: editContract.updated_at ?? null,
       name,
       customer_id: customerId,
       technician_id: actualTechnicianId,

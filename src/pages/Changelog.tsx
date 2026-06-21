@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.6',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição e exclusão de contratos PMOC mais seguras',
+        description: 'Ao editar um contrato e recalcular as visitas, as novas passam a ser geradas antes de remover as antigas — assim o contrato nunca fica sem visitas se algo der errado no meio. Excluir um ambiente agora remove os equipamentos dele do contrato e das próximas visitas (com confirmação antes). E, se o mesmo contrato for alterado em outra aba ao mesmo tempo, o sistema avisa para você recarregar em vez de sobrescrever.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.5',
     date: '20 de junho de 2026',
     type: 'patch',

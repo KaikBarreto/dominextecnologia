@@ -10,6 +10,8 @@ import {
   machinesFromItemRows,
   dedupPlanActivities,
   shouldRegenerateVisits,
+  orchestrateRegeneration,
+  itemsRemovedByEnvironmentRemoval,
   type MachineInput,
   type MachinePlanActivity,
   type PlanActivityInput,
@@ -713,6 +715,110 @@ describe('CENÁRIO DA LUZ — geração de visitas (auto-heal pela tela)', () =>
   it('todas as 13 máquinas aparecem em pelo menos uma visita do horizonte', () => {
     const allEqs = new Set(visits.flatMap(v => (v.emissions ?? []).map(e => e.equipmentId)));
     for (let i = 0; i < N; i++) expect(allEqs.has(`eq-${i}`)).toBe(true);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// P0 — REGENERAÇÃO SEGURA: "GERAR ANTES DE APAGAR" (orchestrateRegeneration).
+// A invariante crítica: numa falha de geração/validação, as OSs antigas NUNCA
+// são apagadas (sem janela de perda). Em sucesso, apaga POR ÚLTIMO. Renovação
+// (shouldDeleteOld=false) nunca apaga.
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('orchestrateRegeneration — gerar antes de apagar (P0)', () => {
+  it('SUCESSO: ordem é persist → validate → deleteOld (apaga por ÚLTIMO)', async () => {
+    const calls: string[] = [];
+    const res = await orchestrateRegeneration({
+      shouldDeleteOld: true,
+      oldCount: 3,
+      persist: async () => { calls.push('persist'); return 5; },
+      validate: (c) => { calls.push(`validate:${c}`); /* ok */ },
+      deleteOld: async () => { calls.push('deleteOld'); },
+    });
+    expect(calls).toEqual(['persist', 'validate:5', 'deleteOld']);
+    expect(res).toEqual({ createdCount: 5, deletedCount: 3 });
+  });
+
+  it('FALHA na validação: deleteOld NUNCA é chamado (antigas preservadas)', async () => {
+    const calls: string[] = [];
+    await expect(
+      orchestrateRegeneration({
+        shouldDeleteOld: true,
+        oldCount: 3,
+        persist: async () => { calls.push('persist'); return 2; },
+        validate: (c) => {
+          calls.push(`validate:${c}`);
+          throw new Error(`Falha ao gerar as visitas do contrato: ${c} de 5`);
+        },
+        deleteOld: async () => { calls.push('deleteOld'); },
+      }),
+    ).rejects.toThrow(/Falha ao gerar as visitas/);
+    // persist e validate rodaram; deleteOld NÃO.
+    expect(calls).toEqual(['persist', 'validate:2']);
+    expect(calls).not.toContain('deleteOld');
+  });
+
+  it('FALHA na geração (persist lança): nem valida nem apaga', async () => {
+    const calls: string[] = [];
+    await expect(
+      orchestrateRegeneration({
+        shouldDeleteOld: true,
+        oldCount: 4,
+        persist: async () => { calls.push('persist'); throw new Error('insert OS falhou'); },
+        validate: () => { calls.push('validate'); },
+        deleteOld: async () => { calls.push('deleteOld'); },
+      }),
+    ).rejects.toThrow('insert OS falhou');
+    expect(calls).toEqual(['persist']);
+  });
+
+  it('RENOVAÇÃO (shouldDeleteOld=false): gera+valida mas NUNCA apaga; deletedCount=0', async () => {
+    const calls: string[] = [];
+    const res = await orchestrateRegeneration({
+      shouldDeleteOld: false,
+      oldCount: 0,
+      persist: async () => { calls.push('persist'); return 7; },
+      validate: (c) => { calls.push(`validate:${c}`); },
+      deleteOld: async () => { calls.push('deleteOld'); },
+    });
+    expect(calls).toEqual(['persist', 'validate:7']);
+    expect(res).toEqual({ createdCount: 7, deletedCount: 0 });
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// P2a — EXCLUIR AMBIENTE REMOVE OS EQUIPAMENTOS DO CONTRATO
+// (itemsRemovedByEnvironmentRemoval). Os equipamentos do ambiente excluído saem
+// de contract_items (em vez do antigo FK SET NULL que deixava órfãos). Item sem
+// ambiente (environment_id null) nunca é afetado.
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('itemsRemovedByEnvironmentRemoval — excluir ambiente remove equipamentos (P2a)', () => {
+  const items = [
+    { id: 'item-1', environment_id: 'env-A' },
+    { id: 'item-2', environment_id: 'env-A' },
+    { id: 'item-3', environment_id: 'env-B' },
+    { id: 'item-4', environment_id: null }, // sem ambiente — nunca removido
+  ];
+
+  it('remove TODOS os equipamentos do ambiente excluído', () => {
+    expect(itemsRemovedByEnvironmentRemoval(items, ['env-A']).sort()).toEqual(['item-1', 'item-2']);
+  });
+
+  it('remove de múltiplos ambientes excluídos de uma vez', () => {
+    expect(itemsRemovedByEnvironmentRemoval(items, ['env-A', 'env-B']).sort()).toEqual(['item-1', 'item-2', 'item-3']);
+  });
+
+  it('item SEM ambiente (environment_id null) NUNCA é removido', () => {
+    expect(itemsRemovedByEnvironmentRemoval(items, ['env-A', 'env-B'])).not.toContain('item-4');
+  });
+
+  it('nenhum ambiente removido → não remove nada', () => {
+    expect(itemsRemovedByEnvironmentRemoval(items, [])).toEqual([]);
+  });
+
+  it('ambiente excluído sem equipamentos → não remove nada', () => {
+    expect(itemsRemovedByEnvironmentRemoval(items, ['env-vazio'])).toEqual([]);
   });
 });
 

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.5";
+export const APP_VERSION = "1.14.6";
 
-export const VERSION_NOTES = "Correção em contratos PMOC: se um contrato ativo ficar sem visitas agendadas, basta salvar que as visitas são geradas automaticamente. E falhas ao gerar visitas deixam de passar despercebidas — o sistema avisa em vez de salvar pela metade em silêncio.";
+export const VERSION_NOTES = "Editar e excluir contratos PMOC ficou mais seguro: ao recalcular as visitas, as novas são geradas antes de remover as antigas (nunca fica sem visitas se algo falhar); excluir um ambiente agora remove os equipamentos dele das próximas visitas (com confirmação); e o sistema avisa se o contrato foi alterado em outra aba ao mesmo tempo.";

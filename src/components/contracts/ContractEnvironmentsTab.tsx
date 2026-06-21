@@ -373,6 +373,14 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
 
   const isActive = contract.status === 'active';
 
+  // Quantos equipamentos saem do contrato ao remover o ambiente em confirmação
+  // (P2a): excluir o ambiente também remove seus equipamentos do contrato e das
+  // próximas visitas. Usado pra alertar o gestor antes de confirmar.
+  const removingEnvEquipCount = useMemo(
+    () => (removingEnvKey ? (envs.find((e) => e.key === removingEnvKey)?.equipment_ids.length ?? 0) : 0),
+    [removingEnvKey, envs],
+  );
+
   // Equipamentos (contract_items) derivados dos ambientes — 1 por equipamento
   // atribuído. Espelha o pmocDerivedItems do form.
   const derivedItems = useMemo<MachineItemRef[]>(() => {
@@ -777,14 +785,16 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         />
       </ResponsiveModal>
 
-      {/* Confirmação de remoção de ambiente. */}
+      {/* Confirmação de remoção de ambiente. Excluir o ambiente também remove os
+          equipamentos dele do contrato e das próximas visitas (P2a). */}
       <AlertDialog open={!!removingEnvKey} onOpenChange={(open) => { if (!open) setRemovingEnvKey(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remover ambiente?</AlertDialogTitle>
             <AlertDialogDescription>
-              O ambiente sairá do contrato. Os equipamentos dele ficam sem ambiente (não são excluídos). A mudança só é
-              aplicada ao salvar.
+              {removingEnvEquipCount > 0
+                ? `Os ${removingEnvEquipCount} equipamento(s) deste ambiente serão removidos do contrato e das próximas visitas. Visitas já realizadas e em andamento são preservadas. A mudança só é aplicada ao salvar. Continuar?`
+                : 'O ambiente sairá do contrato. A mudança só é aplicada ao salvar.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

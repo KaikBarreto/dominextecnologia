@@ -1034,17 +1034,21 @@ async function persistContractVisit(args: {
  * Sincroniza os ambientes climatizados (contract_environments) de um contrato
  * com o conjunto desejado, e religa cada equipamento ao seu ambiente via
  * contract_items.environment_id. Fonte única do diff de ambientes, usada por
- * updateContract e updateContractEnvironments (criar usa o caminho próprio).
+ * updateContract (criar usa o caminho próprio).
  *
  *  - ambiente com `id` existente → UPDATE dos campos;
  *  - ambiente sem `id` (novo) → INSERT (company_id obrigatório p/ RLS);
- *  - ambiente persistido que sumiu do conjunto → DELETE (FK em contract_items é
- *    ON DELETE SET NULL → os itens daquele ambiente ficam com environment_id null);
+ *  - ambiente persistido que sumiu do conjunto → DELETE do ambiente E dos seus
+ *    equipamentos (P2a): os contract_items daquele ambiente saem do contrato
+ *    (em vez do antigo FK SET NULL, que deixava equipamentos órfãos no contrato
+ *    e ainda nas visitas). Removidos os itens, a regeneração tira esses
+ *    equipamentos das próximas visitas. OS passada/concluída é preservada pela
+ *    cascata de regen (só OSs futuras agendada/pendente são refeitas);
  *  - depois, para CADA contract_item, seta environment_id pelo ambiente que
  *    reivindica seu equipment_id (um equipamento pertence a UM ambiente).
  *
- * Retorna se houve alguma mudança estrutural (insert/delete de ambiente ou
- * religação de algum item) — sinaliza pro chamador re-expandir visitas.
+ * Retorna se houve alguma mudança estrutural (insert/delete de ambiente ou de
+ * item, ou religação) — sinaliza pro chamador re-expandir visitas.
  */
 async function syncContractEnvironments(args: {
   companyId: string;
@@ -1078,7 +1082,8 @@ async function syncContractEnvironments(args: {
     };
     let envId = env.id && existingIds.has(env.id) ? env.id : null;
     if (envId) {
-      await supabase.from('contract_environments').update(row as any).eq('id', envId);
+      // P3: filtra por company_id além do id (defesa em profundidade).
+      await supabase.from('contract_environments').update(row as any).eq('id', envId).eq('company_id', companyId);
     } else {
       const { data: inserted, error: insErr } = await supabase
         .from('contract_environments')
@@ -1094,18 +1099,42 @@ async function syncContractEnvironments(args: {
     }
   }
 
-  // Remove ambientes que sumiram do conjunto (FK SET NULL desliga os itens).
+  // Ambientes que sumiram do conjunto desejado.
   const keepIds = new Set(
     environments.map(e => e.id).filter((x): x is string => !!x && existingIds.has(x)),
   );
   const toRemove = [...existingIds].filter(id => !keepIds.has(id));
+
   if (toRemove.length > 0) {
-    await supabase.from('contract_environments').delete().in('id', toRemove);
+    // P2a: excluir um ambiente também REMOVE do contrato os equipamentos
+    // (contract_items) que pertenciam a ele. Capturamos os itens ANTES de
+    // apagar os ambientes (depois do DELETE do env o environment_id viraria
+    // null por FK e não daria mais pra identificá-los). Apagar o item dispara a
+    // cascata no plano (contract_plan_activities via FK) e a regeneração tira o
+    // equipamento das próximas visitas. OS passada/concluída é preservada (a
+    // regen só refaz OSs futuras agendada/pendente).
+    const { data: itemsForRemoval } = await supabase
+      .from('contract_items')
+      .select('id, environment_id')
+      .eq('contract_id', contractId);
+    const orphanItemIds = itemsRemovedByEnvironmentRemoval(
+      (itemsForRemoval ?? []) as { id: string; environment_id: string | null }[],
+      toRemove,
+    );
+    if (orphanItemIds.length > 0) {
+      // contract_items não tem company_id → escopo por contract_id (fronteira do
+      // tenant via RLS do contrato).
+      await supabase.from('contract_items').delete().in('id', orphanItemIds).eq('contract_id', contractId);
+      changed = true;
+    }
+    // contract_environments TEM company_id → defesa em profundidade (P3).
+    await supabase.from('contract_environments').delete().in('id', toRemove).eq('company_id', companyId);
     changed = true;
   }
 
   // Religa cada contract_item ao ambiente do seu equipamento. Só faz UPDATE
-  // quando o vínculo realmente muda (idempotente).
+  // quando o vínculo realmente muda (idempotente). Lê DEPOIS da remoção acima
+  // pra não reprocessar itens já excluídos.
   const { data: itemRows } = await supabase
     .from('contract_items')
     .select('id, equipment_id, environment_id')
@@ -1113,12 +1142,171 @@ async function syncContractEnvironments(args: {
   for (const it of (itemRows ?? []) as { id: string; equipment_id: string | null; environment_id: string | null }[]) {
     const desired = it.equipment_id ? (equipmentToEnv[it.equipment_id] ?? null) : null;
     if ((it.environment_id ?? null) !== desired) {
-      await supabase.from('contract_items').update({ environment_id: desired } as any).eq('id', it.id);
+      // P3: filtra por contract_id além do id (contract_items não tem
+      // company_id; contract_id é a fronteira do tenant via RLS).
+      await supabase.from('contract_items').update({ environment_id: desired } as any).eq('id', it.id).eq('contract_id', contractId);
       changed = true;
     }
   }
 
   return changed;
+}
+
+/**
+ * P2a (pura/testável): dado o conjunto de contract_items (cada um com seu
+ * `environment_id`) e os ids dos ambientes REMOVIDOS, retorna os ids dos itens
+ * que saem do contrato — exatamente os equipamentos daqueles ambientes. Excluir
+ * um ambiente também remove seus equipamentos (em vez de deixá-los órfãos via FK
+ * SET NULL). Item sem ambiente (environment_id null) nunca é afetado.
+ */
+export function itemsRemovedByEnvironmentRemoval(
+  items: { id: string; environment_id: string | null }[],
+  removedEnvIds: string[],
+): string[] {
+  const removed = new Set(removedEnvIds);
+  return items
+    .filter((it) => it.environment_id != null && removed.has(it.environment_id))
+    .map((it) => it.id);
+}
+
+/**
+ * Cascata de exclusão de OSs regeneráveis de um contrato (dependentes → OS).
+ * Fonte ÚNICA da sequência de limpeza — usada pela regeneração (após gerar as
+ * novas, P0) e pela exclusão de contrato. financial_transactions NÃO são
+ * tocadas (billing mensal é separado). No-op pra lista vazia.
+ */
+async function deleteRegenerableOrders(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await supabase.from('service_order_assignees').delete().in('service_order_id', ids);
+  await supabase.from('service_order_equipment').delete().in('service_order_id', ids);
+  await supabase.from('form_responses').delete().in('service_order_id', ids);
+  await supabase.from('os_photos').delete().in('service_order_id', ids);
+  await supabase.from('service_ratings').delete().in('service_order_id', ids);
+  await supabase.from('service_order_activities').delete().in('service_order_id', ids);
+  await supabase.from('service_orders').delete().in('id', ids);
+}
+
+/**
+ * Parâmetros da regeneração compartilhada (P0/P1). Reúne tudo que
+ * `persistContractVisit` precisa, mais o conjunto de OSs antigas a apagar e as
+ * visitas já calculadas. `oldRegenerableIds` é capturado pelo chamador ANTES de
+ * mexer (mas NÃO apagado por ele — o apaga sai daqui, só após o sucesso).
+ */
+interface RegenerateFutureVisitsArgs {
+  companyId: string;
+  contractId: string;
+  visits: BuiltVisit[];
+  /** ids das OSs futuras regeneráveis (agendada/pendente, scheduled_date >= hoje). */
+  oldRegenerableIds: string[];
+  contractName: string;
+  useGroupedEngine: boolean;
+  customerId: string;
+  technicianId: string | null;
+  teamId: string | null;
+  serviceTypeId: string | null;
+  formTemplateId: string | null;
+  equipmentIds: string[];
+  itemEquipmentMap?: Record<string, string | null>;
+  assigneeUserIds: string[];
+  createdBy: string | null;
+  /** Índice base da numeração das visitas (default 0). renew usa baseIndex>0. */
+  baseVisitIndex?: number;
+  /**
+   * Quando `true` (default), APAGA as `oldRegenerableIds` — só DEPOIS de gerar e
+   * validar as novas. `false` = só gera o tail (renovação) sem apagar nada.
+   */
+  deleteOld?: boolean;
+}
+
+/**
+ * ⚠️ ORQUESTRAÇÃO PURA da regeneração segura "GERAR ANTES DE APAGAR" (P0).
+ *
+ * Função sem I/O acoplado: recebe callbacks (`persist`, `validate`, `deleteOld`)
+ * e impõe a ORDEM correta — gerar → validar → (só então) apagar. É a unidade
+ * testável da invariante: numa falha de geração/validação, `deleteOld` NUNCA é
+ * chamado (as OSs antigas permanecem; sem janela de perda). Em sucesso, apaga
+ * por último. `shouldDeleteOld=false` (renovação) nunca apaga.
+ *
+ * Retorna { createdCount, deletedCount }. `persist` devolve quantas visitas
+ * foram criadas; `validate(createdCount)` lança se faltou alguma.
+ */
+export async function orchestrateRegeneration(deps: {
+  persist: () => Promise<number>;
+  validate: (createdCount: number) => void;
+  deleteOld: () => Promise<void>;
+  shouldDeleteOld: boolean;
+  oldCount: number;
+}): Promise<{ createdCount: number; deletedCount: number }> {
+  // PASSO 1 — gera/persiste as novas visitas (antes de apagar qualquer coisa).
+  const createdCount = await deps.persist();
+  // PASSO 2 — valida ANTES de apagar. Lança se incompleto → não chega no passo 3.
+  deps.validate(createdCount);
+  // PASSO 3 — só agora apaga as antigas (geração confirmada).
+  if (deps.shouldDeleteOld) {
+    await deps.deleteOld();
+  }
+  return { createdCount, deletedCount: deps.shouldDeleteOld ? deps.oldCount : 0 };
+}
+
+/**
+ * ⚠️ REGENERAÇÃO SEGURA — fonte ÚNICA (P0/P1). "GERAR ANTES DE APAGAR".
+ *
+ * Hoje a edição precisa trocar as OSs futuras regeneráveis pelas recalculadas.
+ * A ordem importa: se apagássemos primeiro e a geração falhasse no meio, o
+ * contrato ficaria SEM nenhuma visita futura. Por isso a ordem é imposta pela
+ * função pura `orchestrateRegeneration`:
+ *
+ *   1) GERA/persiste as novas visitas (persistContractVisit em paralelo);
+ *   2) VALIDA com assertAllVisitsPersisted (createdCount === visits.length) —
+ *      se faltou alguma, LANÇA erro e NÃO apaga as antigas (estado preservado);
+ *   3) só com sucesso, APAGA as antigas (deleteRegenerableOrders).
+ *
+ * Custo aceito e documentado: numa falha rara de DELETE pós-geração (passo 3),
+ * podem coexistir OSs antigas + novas (duplicado VISÍVEL e corrigível pela tela)
+ * — MUITO melhor que o contrato ficar com ZERO visitas. A propagação do erro do
+ * passo 2 cai no `onError` da mutation (toast destrutivo PT-BR).
+ *
+ * Usado por updateContract, updateContractEquipment e (com deleteOld=false) pela
+ * renovação — sem duplicar a ordem gerar→validar→apagar em 4 lugares.
+ *
+ * Retorna { createdCount, deletedCount }.
+ */
+async function regenerateFutureVisits(
+  args: RegenerateFutureVisitsArgs,
+): Promise<{ createdCount: number; deletedCount: number }> {
+  const baseIndex = args.baseVisitIndex ?? 0;
+  const deleteOld = args.deleteOld ?? true;
+
+  return orchestrateRegeneration({
+    shouldDeleteOld: deleteOld,
+    oldCount: args.oldRegenerableIds.length,
+    // PASSO 1 — gera/persiste as novas visitas (antes de apagar qualquer coisa).
+    persist: () =>
+      runWithConcurrency(args.visits, (visit, i) =>
+        persistContractVisit({
+          companyId: args.companyId,
+          contractId: args.contractId,
+          visit,
+          visitIndex: baseIndex + i,
+          contractName: args.contractName,
+          useGroupedEngine: args.useGroupedEngine,
+          customerId: args.customerId,
+          technicianId: args.technicianId,
+          teamId: args.teamId,
+          serviceTypeId: args.serviceTypeId,
+          formTemplateId: args.formTemplateId,
+          equipmentIds: args.equipmentIds,
+          itemEquipmentMap: args.itemEquipmentMap,
+          assigneeUserIds: args.assigneeUserIds,
+          createdBy: args.createdBy,
+        }),
+      ),
+    // PASSO 2 — valida (erro não-silencioso). Se incompleto, lança e o passo 3
+    // (apagar) nunca roda → as antigas permanecem.
+    validate: (createdCount) => assertAllVisitsPersisted(createdCount, args.visits.length),
+    // PASSO 3 — apaga as antigas só após a validação (geração confirmada).
+    deleteOld: () => deleteRegenerableOrders(args.oldRegenerableIds),
+  });
 }
 
 export function getFrequencyLabel(type: string, value: number): string {
@@ -1582,6 +1770,11 @@ export function useContracts() {
   const updateContract = useMutation({
     mutationFn: async (input: {
       id: string;
+      // Lock otimista (P2b — concorrência). Quando informado, é o `updated_at`
+      // que o formulário CARREGOU. Antes de salvar, comparamos com o `updated_at`
+      // ATUAL no banco; se divergir, alguém salvou no meio → abortamos com erro
+      // amigável PT-BR. Best-effort: se não vier, não trava (compat).
+      expectedUpdatedAt?: string | null;
       name?: string;
       customer_id?: string;
       technician_id?: string | null;
@@ -1627,7 +1820,7 @@ export function useContracts() {
       unidade_uf?: string | null;
       unidade_cep?: string | null;
     }) => {
-      const { id, assignee_user_ids, plan_activities, items, environments, ...rest } = input;
+      const { id, assignee_user_ids, plan_activities, items, environments, expectedUpdatedAt, ...rest } = input;
 
       // Empresa do usuário (RLS exige company_id em todo INSERT novo).
       const { data: profile } = await supabase
@@ -1638,12 +1831,27 @@ export function useContracts() {
       if (!profile?.company_id) throw new Error('Empresa não encontrada');
 
       // Contrato atual — base de comparação pra detectar mudança de cronograma.
+      // `updated_at` alimenta o lock otimista (P2b).
       const { data: current, error: curErr } = await supabase
         .from('contracts')
-        .select('start_date, frequency_type, frequency_value, horizon_months, status, customer_id, name, technician_id, team_id')
+        .select('start_date, frequency_type, frequency_value, horizon_months, status, customer_id, name, technician_id, team_id, updated_at')
         .eq('id', id)
         .single();
       if (curErr) throw curErr;
+
+      // Lock otimista (P2b — concorrência). Se o form carregou um `updated_at` e
+      // o atual no banco é diferente, outra aba/sessão salvou no meio. Abortamos
+      // ANTES de qualquer escrita pra não atropelar a edição alheia. Best-effort:
+      // sem `expectedUpdatedAt` (compat / chamadas internas) não trava.
+      if (
+        expectedUpdatedAt != null &&
+        current?.updated_at != null &&
+        current.updated_at !== expectedUpdatedAt
+      ) {
+        throw new Error(
+          'Este contrato foi alterado em outra aba/sessão. Recarregue antes de salvar.',
+        );
+      }
 
       // 1) UPDATE da linha do contrato. Os 6 campos pmoc_* únicos viraram legado
       //    (caracterização migrou pra contract_environments) e NÃO são mais
@@ -1791,7 +1999,11 @@ export function useContracts() {
             const upd: any = {};
             if (scopeDiff) upd.pmoc_scope = wantScope;
             if (startDiff) upd.pmoc_start_visit = wantStart;
-            await supabase.from('contract_items').update(upd).eq('id', existing.id);
+            // Defesa em profundidade (P3): filtra por contract_id além do id. (A
+            // tabela contract_items NÃO tem company_id — o tenant é herdado do
+            // contrato via RLS; contract_id é a fronteira correta aqui.) Permite
+            // detectar 0-rows e barra cruzar item de outro contrato.
+            await supabase.from('contract_items').update(upd).eq('id', existing.id).eq('contract_id', id);
             itemsChanged = true;
           }
         }
@@ -1937,6 +2149,9 @@ export function useContracts() {
       }
 
       // Regeneráveis: status agendada/pendente E futuras (scheduled_date >= hoje).
+      // ⚠️ NÃO apaga aqui (P0 "gerar antes de apagar"). Os ids são capturados e
+      // só serão removidos por regenerateFutureVisits DEPOIS de gerar+validar as
+      // novas — evitando a janela em que o contrato ficaria sem visita futura.
       const regenerableIds = (contractOss || [])
         .filter(o =>
           REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
@@ -1944,18 +2159,6 @@ export function useContracts() {
         )
         .map(o => o.id)
         .filter(Boolean) as string[];
-
-      if (regenerableIds.length > 0) {
-        // Mesma sequência de limpeza do executeDeleteContract (dependentes →
-        // OS). financial_transactions NÃO são tocadas.
-        await supabase.from('service_order_assignees').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_order_equipment').delete().in('service_order_id', regenerableIds);
-        await supabase.from('form_responses').delete().in('service_order_id', regenerableIds);
-        await supabase.from('os_photos').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_ratings').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_order_activities').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_orders').delete().in('id', regenerableIds);
-      }
 
       // Parâmetros efetivos (input quando veio, senão o atual).
       const effStart = (input.start_date ?? current.start_date) as string;
@@ -2042,35 +2245,28 @@ export function useContracts() {
 
       const effName = (input.name ?? current.name ?? '') || 'Contrato';
       const effCustomerId = (input.customer_id ?? current.customer_id) as string;
-      // Persiste as visitas EM PARALELO (concorrência limitada). Cada visita é
-      // uma OS independente — o índice original (visitIndex) é preservado pra
-      // numeração/ordenação não mudar. Reduz drasticamente o tempo de "Salvando".
-      const createdCount = await runWithConcurrency(visits, (visit, i) =>
-        persistContractVisit({
-          companyId: profile.company_id,
-          contractId: id,
-          visit,
-          visitIndex: i,
-          contractName: effName,
-          useGroupedEngine,
-          customerId: effCustomerId,
-          technicianId: effTechnicianId,
-          teamId: effTeamId,
-          serviceTypeId: input.service_type_id ?? null,
-          formTemplateId: input.form_template_id ?? null,
-          equipmentIds,
-          itemEquipmentMap,
-          assigneeUserIds,
-          createdBy: user?.id || null,
-        }),
-      );
+      // Regeneração SEGURA (P0/P1): gera+valida as novas e SÓ DEPOIS apaga as
+      // antigas (regenerableIds). Fonte única compartilhada com as outras
+      // mutations de edição. Erro de geração propaga (toast) sem apagar nada.
+      const { createdCount, deletedCount } = await regenerateFutureVisits({
+        companyId: profile.company_id,
+        contractId: id,
+        visits,
+        oldRegenerableIds: regenerableIds,
+        contractName: effName,
+        useGroupedEngine,
+        customerId: effCustomerId,
+        technicianId: effTechnicianId,
+        teamId: effTeamId,
+        serviceTypeId: input.service_type_id ?? null,
+        formTemplateId: input.form_template_id ?? null,
+        equipmentIds,
+        itemEquipmentMap,
+        assigneeUserIds,
+        createdBy: user?.id || null,
+      });
 
-      // Erro NÃO-silencioso: persistContractVisit engole falhas (retorna false).
-      // Se geramos menos OSs do que as visitas calculadas, NÃO reportar sucesso —
-      // o contrato ficaria salvo com 0/parcial sem ninguém saber.
-      assertAllVisitsPersisted(createdCount, visits.length);
-
-      return { regenerated: true, deletedCount: regenerableIds.length, createdCount, reassignedCount };
+      return { regenerated: true, deletedCount, createdCount, reassignedCount };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
@@ -2193,6 +2389,8 @@ export function useContracts() {
         return { regenerated: false, deletedCount: 0, createdCount: 0 };
       }
 
+      // ⚠️ Captura os ids regeneráveis mas NÃO apaga aqui (P0 "gerar antes de
+      // apagar"): regenerateFutureVisits remove só após gerar+validar as novas.
       const regenerableIds = (contractOss || [])
         .filter(o =>
           REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
@@ -2200,16 +2398,6 @@ export function useContracts() {
         )
         .map(o => o.id)
         .filter(Boolean) as string[];
-
-      if (regenerableIds.length > 0) {
-        await supabase.from('service_order_assignees').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_order_equipment').delete().in('service_order_id', regenerableIds);
-        await supabase.from('form_responses').delete().in('service_order_id', regenerableIds);
-        await supabase.from('os_photos').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_ratings').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_order_activities').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_orders').delete().in('id', regenerableIds);
-      }
 
       // Plano persistido atual (não muda na aba de equipamentos).
       const { data: persisted } = await supabase
@@ -2271,31 +2459,26 @@ export function useContracts() {
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
       const effName = (current.name as string | null) || 'Contrato';
 
-      // Visitas independentes → persiste EM PARALELO (concorrência limitada),
-      // preservando o visitIndex pra numeração/ordenação.
-      const createdCount = await runWithConcurrency(visits, (visit, i) =>
-        persistContractVisit({
-          companyId: profile.company_id,
-          contractId: id,
-          visit,
-          visitIndex: i,
-          contractName: effName,
-          useGroupedEngine,
-          customerId: current.customer_id as string,
-          technicianId: effTechnicianId,
-          teamId: effTeamId,
-          serviceTypeId: (current.service_type_id as string | null) ?? null,
-          formTemplateId: (current.form_template_id as string | null) ?? null,
-          equipmentIds,
-          itemEquipmentMap,
-          assigneeUserIds,
-          createdBy: user?.id || null,
-        }),
-      );
+      // Regeneração SEGURA (P0/P1): gera+valida antes de apagar as antigas.
+      const { createdCount, deletedCount } = await regenerateFutureVisits({
+        companyId: profile.company_id,
+        contractId: id,
+        visits,
+        oldRegenerableIds: regenerableIds,
+        contractName: effName,
+        useGroupedEngine,
+        customerId: current.customer_id as string,
+        technicianId: effTechnicianId,
+        teamId: effTeamId,
+        serviceTypeId: (current.service_type_id as string | null) ?? null,
+        formTemplateId: (current.form_template_id as string | null) ?? null,
+        equipmentIds,
+        itemEquipmentMap,
+        assigneeUserIds,
+        createdBy: user?.id || null,
+      });
 
-      assertAllVisitsPersisted(createdCount, visits.length);
-
-      return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
+      return { regenerated: true, deletedCount, createdCount };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
@@ -2313,200 +2496,6 @@ export function useContracts() {
     },
     onError: (e: Error) =>
       toast({ variant: 'destructive', title: 'Erro ao atualizar equipamentos', description: getErrorMessage(e) }),
-  });
-
-  /**
-   * Atualiza os AMBIENTES (e seus equipamentos) de um contrato PMOC pela aba
-   * "Ambientes" da tela de detalhe. Espelha o updateContractEquipment, mas:
-   *  - recebe `environments` (cada um com seus equipment_ids) ALÉM dos `items`;
-   *  - aplica o diff de contract_items (insere novos, apaga removidos);
-   *  - sincroniza contract_environments (insere/atualiza/remove) e religa
-   *    environment_id dos itens;
-   *  - regenera as visitas futuras SÓ quando o CONJUNTO de equipamentos muda
-   *    (mover equipamento entre ambientes não muda o cronograma);
-   *  - nunca dispara UPDATE na linha `contracts` (sem update vazio).
-   * Idempotente: salvar a mesma configuração não recria visitas.
-   */
-  const updateContractEnvironments = useMutation({
-    mutationFn: async (input: {
-      id: string;
-      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
-      environments: ContractEnvironmentInput[];
-    }) => {
-      const { id, items, environments } = input;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('user_id', user?.id || '')
-        .single();
-      if (!profile?.company_id) throw new Error('Empresa não encontrada');
-
-      const { data: current, error: curErr } = await supabase
-        .from('contracts')
-        .select('start_date, frequency_type, frequency_value, horizon_months, status, customer_id, name, technician_id, team_id, service_type_id, form_template_id')
-        .eq('id', id)
-        .single();
-      if (curErr) throw curErr;
-
-      // 1) Diff de contract_items (mesma chave estável: equipment_id || nome manual).
-      const { data: existingItems } = await supabase
-        .from('contract_items')
-        .select('id, equipment_id, item_name')
-        .eq('contract_id', id);
-      const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
-        it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
-      const existingByKey = new Map<string, { id: string }>();
-      for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string }[]) {
-        existingByKey.set(itemKey(it), { id: it.id });
-      }
-      const newKeys = new Set(items.map(itemKey));
-      const toInsert = items.filter(it => !existingByKey.has(itemKey(it)));
-      const toRemoveIds = (existingItems ?? [])
-        .filter((it: any) => !newKeys.has(itemKey(it)))
-        .map((it: any) => it.id) as string[];
-
-      let itemsChanged = false;
-      if (toRemoveIds.length > 0) {
-        await supabase.from('contract_items').delete().in('id', toRemoveIds);
-        itemsChanged = true;
-      }
-      if (toInsert.length > 0) {
-        const baseSort = (existingItems ?? []).length;
-        const { error: insErr } = await supabase.from('contract_items').insert(
-          toInsert.map((item, i) => ({
-            contract_id: id,
-            equipment_id: item.equipment_id || null,
-            item_name: item.item_name,
-            item_description: item.item_description || null,
-            form_template_id: item.form_template_id || null,
-            sort_order: baseSort + i,
-          })) as any
-        );
-        if (insErr) throw insErr;
-        itemsChanged = true;
-      }
-
-      // 2) Sincroniza ambientes + religa environment_id dos itens (após o diff).
-      await syncContractEnvironments({ companyId: profile.company_id, contractId: id, environments });
-
-      // 3) Carrega OSs ANTES do gate (auto-heal precisa saber de visita futura).
-      const todayStr = todayStrSaoPaulo();
-      const { data: contractOss } = await supabase
-        .from('service_orders')
-        .select('id, scheduled_date, status')
-        .eq('contract_id', id);
-      const hasFutureVisits = (contractOss || []).some(
-        o => (o.scheduled_date ?? '') >= todayStr,
-      );
-
-      // Gate único: ativo regenera quando itens/ambientes mudaram OU está sem
-      // visita futura (auto-heal). Inativo ou ativo-saudável-sem-mudança → no-op.
-      if (!shouldRegenerateVisits({ newStatus: current.status as string, scheduleChanged: itemsChanged, hasFutureVisits })) {
-        return { regenerated: false, deletedCount: 0, createdCount: 0 };
-      }
-
-      const regenerableIds = (contractOss || [])
-        .filter(o => REGENERABLE_OS_STATUSES.has(o.status ?? '') && (o.scheduled_date ?? '') >= todayStr)
-        .map(o => o.id)
-        .filter(Boolean) as string[];
-      if (regenerableIds.length > 0) {
-        await supabase.from('service_order_assignees').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_order_equipment').delete().in('service_order_id', regenerableIds);
-        await supabase.from('form_responses').delete().in('service_order_id', regenerableIds);
-        await supabase.from('os_photos').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_ratings').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_order_activities').delete().in('service_order_id', regenerableIds);
-        await supabase.from('service_orders').delete().in('id', regenerableIds);
-      }
-
-      const { data: persisted } = await supabase
-        .from('contract_plan_activities')
-        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, form_template_id')
-        .eq('contract_id', id)
-        .order('sort_order', { ascending: true });
-      const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
-        description: a.description, guidance: a.guidance, section: a.section, component: a.component,
-        freq_code: a.freq_code, freq_months: a.freq_months, is_measurement: a.is_measurement,
-        unit: a.unit, expected_min: a.expected_min, expected_max: a.expected_max,
-        contract_item_id: a.contract_item_id, catalog_activity_id: a.catalog_activity_id,
-        applies_per_equipment: a.applies_per_equipment, form_template_id: a.form_template_id,
-      }));
-      const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
-      const useGroupedEngine = effPlan.length > 0;
-
-      const { data: contractItemsRows } = await supabase
-        .from('contract_items')
-        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
-        .eq('contract_id', id);
-      const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
-      const equipmentIds = itemRows.map((i) => i.equipment_id).filter(Boolean) as string[];
-      const itemEquipmentMap: Record<string, string | null> = {};
-      for (const it of itemRows) {
-        itemEquipmentMap[it.id] = it.equipment_id ?? null;
-      }
-      const machines = machinesFromItemRows(itemRows);
-
-      const visits = buildContractVisits(
-        {
-          startDate: new Date(current.start_date + 'T12:00:00'),
-          frequencyType: current.frequency_type as 'days' | 'months',
-          frequencyValue: current.frequency_value as number,
-          horizonMonths: current.horizon_months as number,
-          planActivities: effPlan,
-          planActivityIds: effPlanIds,
-          machines: machines.length > 0 ? machines : undefined,
-        },
-        todayStr,
-      );
-
-      const effTechnicianId = (current.technician_id as string | null) ?? null;
-      const effTeamId = (current.team_id as string | null) ?? null;
-      const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
-      const effName = (current.name as string | null) || 'Contrato';
-
-      // Visitas independentes → persiste EM PARALELO (concorrência limitada),
-      // preservando o visitIndex pra numeração/ordenação.
-      const createdCount = await runWithConcurrency(visits, (visit, i) =>
-        persistContractVisit({
-          companyId: profile.company_id,
-          contractId: id,
-          visit,
-          visitIndex: i,
-          contractName: effName,
-          useGroupedEngine,
-          customerId: current.customer_id as string,
-          technicianId: effTechnicianId,
-          teamId: effTeamId,
-          serviceTypeId: (current.service_type_id as string | null) ?? null,
-          formTemplateId: (current.form_template_id as string | null) ?? null,
-          equipmentIds,
-          itemEquipmentMap,
-          assigneeUserIds,
-          createdBy: user?.id || null,
-        }),
-      );
-
-      assertAllVisitsPersisted(createdCount, visits.length);
-
-      return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
-    },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
-      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['contract-plan-activities'] });
-      if (result?.regenerated) {
-        toast({
-          title: 'Ambientes atualizados!',
-          description: `${result.createdCount} visita(s) futura(s) recalculada(s). Realizadas e em andamento preservadas.`,
-        });
-      } else {
-        toast({ title: 'Ambientes atualizados!' });
-      }
-    },
-    onError: (e: Error) =>
-      toast({ variant: 'destructive', title: 'Erro ao atualizar ambientes', description: getErrorMessage(e) }),
   });
 
   /**
@@ -2647,29 +2636,29 @@ export function useContracts() {
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
       const effName = (current.name as string | null) || 'Contrato';
 
-      // Visitas independentes → persiste EM PARALELO (concorrência limitada). O
-      // índice de cada visita é baseIndex + posição no array (numeração contínua).
-      const addedCount = await runWithConcurrency(visits, (visit, i) =>
-        persistContractVisit({
-          companyId: profile.company_id,
-          contractId: id,
-          visit,
-          visitIndex: baseIndex + i,
-          contractName: effName,
-          useGroupedEngine,
-          customerId: current.customer_id as string,
-          technicianId: effTechnicianId,
-          teamId: effTeamId,
-          serviceTypeId: (current.service_type_id as string | null) ?? null,
-          formTemplateId: (current.form_template_id as string | null) ?? null,
-          equipmentIds,
-          itemEquipmentMap,
-          assigneeUserIds,
-          createdBy: user?.id || null,
-        }),
-      );
-
-      assertAllVisitsPersisted(addedCount, visits.length);
+      // Reusa a fonte única de persistência (P1) com deleteOld=false: a
+      // renovação SÓ gera o tail novo (numerado a partir de baseIndex) e NÃO
+      // apaga nenhuma OS existente. A validação assertAllVisitsPersisted está
+      // embutida em regenerateFutureVisits.
+      const { createdCount: addedCount } = await regenerateFutureVisits({
+        companyId: profile.company_id,
+        contractId: id,
+        visits,
+        oldRegenerableIds: [],
+        baseVisitIndex: baseIndex,
+        deleteOld: false,
+        contractName: effName,
+        useGroupedEngine,
+        customerId: current.customer_id as string,
+        technicianId: effTechnicianId,
+        teamId: effTeamId,
+        serviceTypeId: (current.service_type_id as string | null) ?? null,
+        formTemplateId: (current.form_template_id as string | null) ?? null,
+        equipmentIds,
+        itemEquipmentMap,
+        assigneeUserIds,
+        createdBy: user?.id || null,
+      });
 
       // Data final do contrato após a renovação (maior data entre as novas).
       let newUntil: string | null = lastScheduled;
@@ -2899,7 +2888,6 @@ export function useContracts() {
     createContract,
     updateContract,
     updateContractEquipment,
-    updateContractEnvironments,
     updateContractStatus,
     applyFinancialLinksToContractParcels,
     renewContract,
