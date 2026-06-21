@@ -17,7 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
-import { ReportPmocChecklist } from './ReportPmocChecklist';
+import { ReportPmocChecklist, pmocGroupKeysFor } from './ReportPmocChecklist';
 import type { ReportChecklistItem } from './ReportChecklist';
 import { OsActionFooter } from './OsDesktopShell';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
@@ -97,6 +97,13 @@ interface OSReportProps {
    * poderem forçar tudo aberto sem depender da página.
    */
   registerPmocOpener?: (open: (groupKey: string) => void) => void;
+  /**
+   * Offset (px) do header fixo da tela de OS. Quando definido, o cabeçalho de
+   * cada equipamento do checklist PMOC vira `sticky` e gruda logo ABAIXO do
+   * header laranja "OS #..." ao rolar (espelha o `VisitChecklistPanel` da
+   * execução). Sem valor = sem sticky (comportamento antigo).
+   */
+  stickyTopPx?: number;
 }
 
 const GENERAL_KEY = '__geral__';
@@ -129,7 +136,7 @@ function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: 
   );
 }
 
-export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup, registerPmocOpener }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup, registerPmocOpener, stickyTopPx }: OSReportProps) {
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
   // (e nao como o usuario logado de outra empresa).
   const db = forceReadOnly ? supabaseAnon : supabase;
@@ -161,18 +168,31 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
   const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
-  const [openChecklistItems, setOpenChecklistItems] = useState<string[]>([]);
-  const printRestoreRef = useRef<string[] | null>(null);
-  const pmocPrintRestoreRef = useRef<string[] | null>(null);
+  // Single-open UNIFICADO no relatório: uma só chave aberta cruzando os DOIS
+  // accordions (checklist PMOC + checklists personalizados). As chaves são
+  // únicas entre os grupos: PMOC usa `equipmentName ?? '__geral__'`,
+  // personalizados usam `checklist-${gi}`. Abrir qualquer um fecha o anterior.
+  // `null` = tudo fechado. Espelha o `openExecKey` da execução (TechnicianOS).
+  const [openReportKey, setOpenReportKey] = useState<string | null>(null);
+  // PDF/Imprimir: quando true, os DOIS accordions abrem TODAS as suas chaves
+  // direto (ignora o single-open), pra a saída sair completa. Restaurado depois.
+  const [forcedAllOpen, setForcedAllOpen] = useState(false);
+  // Restore do force-open do PDF/Imprimir (guarda a única chave aberta).
+  const printRestoreRef = useRef<string | null>(null);
+  const printRestoreSetRef = useRef<boolean>(false);
   const { toast } = useToast();
 
   // Chaves de grupo do checklist PMOC (equipmentName ?? '__geral__'), mesma
   // convenção da sidebar. Foto do equipamento por nome — vem de equipmentItems
   // (carregado nos DOIS modos: autenticado via service_order_equipment, anônimo
   // via payload.equipment_items, ambos com photo_url). Sem foto → ícone Wrench.
-  const pmocGroupKeys = Array.from(
-    new Set((pmocChecklistItems ?? []).map((it) => it.equipment_name ?? GENERAL_KEY))
-  );
+  // Deriva as chaves de grupo PMOC da MESMA fonte/ordem que o
+  // `ReportPmocChecklist` usa pra renderizar (groupItems: ordena por sort_order e
+  // empurra "Geral" pro fim). Assim `pmocGroupKeys[0]` é IDÊNTICO ao `value` do
+  // primeiro `AccordionItem` renderizado — sem isso o default (single-open) não
+  // casava com o item renderizado e nada abria. Continua sendo só o conjunto de
+  // chaves (PMOC abre/fecha pelo `value`), mas agora na ordem real de render.
+  const pmocGroupKeys = pmocGroupKeysFor(pmocChecklistItems ?? []);
   const pmocPhotoByName = (() => {
     const map = new Map<string, string | null>();
     for (const it of equipmentItems) {
@@ -184,28 +204,17 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const pmocPhotoUrlForGroup = (equipmentName: string | null): string | null =>
     equipmentName ? pmocPhotoByName.get(equipmentName) ?? null : null;
 
-  // Accordion PMOC controlado AQUI: nasce com tudo aberto (igual ao antigo
-  // defaultValue). A sidebar desktop abre o grupo via registerPmocOpener; a
-  // impressão força tudo aberto (PDF clona+força [data-state]=open, então PDF é
-  // seguro independente disto). Reabre p/ todas quando a lista de grupos muda.
-  const [openPmocKeys, setOpenPmocKeys] = useState<string[]>([]);
   const pmocKeysSig = pmocGroupKeys.join('|');
-  const pmocInitSigRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (pmocInitSigRef.current === pmocKeysSig) return;
-    pmocInitSigRef.current = pmocKeysSig;
-    setOpenPmocKeys(pmocGroupKeys);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pmocKeysSig]);
+  const isPmocKey = (key: string) => pmocGroupKeys.includes(key);
 
-  // Expõe o opener pra a página (sidebar desktop): abre o grupo e mantém os já
-  // abertos. Registrado uma vez por instância.
+  // Expõe o opener pra a página (sidebar desktop): SETA a chave aberta (não
+  // acumula) pro grupo clicado, fechando o que estava aberto. Single-open.
   const registeredOpenerRef = useRef(false);
   useEffect(() => {
     if (registeredOpenerRef.current || !registerPmocOpener) return;
     registeredOpenerRef.current = true;
     registerPmocOpener((groupKey: string) => {
-      setOpenPmocKeys((prev) => (prev.includes(groupKey) ? prev : [...prev, groupKey]));
+      setOpenReportKey(groupKey);
     });
   }, [registerPmocOpener]);
 
@@ -331,36 +340,45 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceOrder.id, forceReadOnly, partialReport, visibleKeysSig]);
 
-  useEffect(() => {
-    const validValues = responsesByTemplate
-      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
-      .filter(Boolean) as string[];
+  // Chaves dos checklists PERSONALIZADOS renderizados (grupos com ≥1 resposta
+  // não-vazia). O índice da chave acompanha a lista FILTRADA (`validGroups`),
+  // que é exatamente a que vira `value={`checklist-${gi}`}` no render — assim a
+  // chave aberta sempre casa com um item existente.
+  const checklistKeys = responsesByTemplate
+    .filter(group => group.responses.some(r => !isResponseEmpty(r)))
+    .map((_group, gi) => `checklist-${gi}`);
 
-    if (validValues.length > 0 && openChecklistItems.length === 0) {
-      setOpenChecklistItems(validValues);
-    }
-  }, [formResponses, equipmentItems.length]);
+  // Default UNIFICADO: abre o PRIMEIRO grupo do relatório (primeiro PMOC se
+  // houver, senão o primeiro personalizado). Reaplica quando a composição de
+  // grupos muda (nova chave inicial) e ainda nada foi aberto manualmente.
+  const firstReportKey = pmocGroupKeys[0] ?? checklistKeys[0] ?? null;
+  const reportInitSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    const sig = `${pmocKeysSig}#${checklistKeys.join('|')}`;
+    if (reportInitSigRef.current === sig) return;
+    reportInitSigRef.current = sig;
+    if (firstReportKey) setOpenReportKey(firstReportKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pmocKeysSig, checklistKeys.join('|')]);
 
   useEffect(() => {
     const openAllForPrint = () => {
-      printRestoreRef.current = openChecklistItems;
-      const validValues = responsesByTemplate
-        .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
-        .filter(Boolean) as string[];
-      setOpenChecklistItems(validValues);
-      // PMOC: abre TODOS os grupos pra a impressão capturar o checklist inteiro.
-      pmocPrintRestoreRef.current = openPmocKeys;
-      setOpenPmocKeys(pmocGroupKeys);
+      // Guarda a única chave aberta e força TODOS os accordions (PMOC +
+      // personalizados) abertos — a saída impressa sai completa. O flag evita
+      // sobrescrever o restore se beforeprint disparar mais de uma vez.
+      if (!printRestoreSetRef.current) {
+        printRestoreRef.current = openReportKey;
+        printRestoreSetRef.current = true;
+      }
+      setForcedAllOpen(true);
     };
 
     const restoreAfterPrint = () => {
-      if (printRestoreRef.current) {
-        setOpenChecklistItems(printRestoreRef.current);
+      if (printRestoreSetRef.current) {
+        setForcedAllOpen(false);
+        setOpenReportKey(printRestoreRef.current);
         printRestoreRef.current = null;
-      }
-      if (pmocPrintRestoreRef.current) {
-        setOpenPmocKeys(pmocPrintRestoreRef.current);
-        pmocPrintRestoreRef.current = null;
+        printRestoreSetRef.current = false;
       }
     };
 
@@ -370,7 +388,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       window.removeEventListener('beforeprint', openAllForPrint);
       window.removeEventListener('afterprint', restoreAfterPrint);
     };
-  }, [openChecklistItems, openPmocKeys, pmocKeysSig, formResponses, equipmentItems.length]);
+  }, [openReportKey]);
 
   // Aplica o branding white-label (estado + header config) a partir do registro
   // de company_settings. Reusado pelo modo autenticado e pelo modo público.
@@ -550,15 +568,13 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   };
 
   const handlePrint = () => {
-    printRestoreRef.current = openChecklistItems;
-    const allValues = responsesByTemplate
-      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
-      .filter(Boolean) as string[];
-    setOpenChecklistItems(allValues);
-    // PMOC: garante todos os grupos abertos pra impressão (o beforeprint também
-    // faz isso, mas abrir aqui evita corrida com o render).
-    pmocPrintRestoreRef.current = openPmocKeys;
-    setOpenPmocKeys(pmocGroupKeys);
+    // Força todos os accordions (PMOC + personalizados) abertos pra impressão.
+    // O beforeprint também faz isso, mas abrir aqui evita corrida com o render.
+    if (!printRestoreSetRef.current) {
+      printRestoreRef.current = openReportKey;
+      printRestoreSetRef.current = true;
+    }
+    setForcedAllOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   };
 
@@ -566,15 +582,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     if (!reportRef.current) return;
     setGenerating(true);
 
-    // Open all checklist accordions so content is in the DOM before cloning
-    const prevOpen = openChecklistItems;
-    const allValues = responsesByTemplate
-      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
-      .filter(Boolean) as string[];
-    setOpenChecklistItems(allValues);
-    // PMOC: abre todos os grupos pro conteúdo entrar no DOM antes do clone.
-    const prevPmocOpen = openPmocKeys;
-    setOpenPmocKeys(pmocGroupKeys);
+    // Abre TODOS os accordions (PMOC + personalizados) pro conteúdo entrar no
+    // DOM antes do clone. Guarda a única chave aberta pra restaurar depois.
+    const prevOpen = openReportKey;
+    setForcedAllOpen(true);
 
     // Wait for React to render the open accordions
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200))));
@@ -588,8 +599,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       console.error('PDF generation error:', err);
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
-      setOpenChecklistItems(prevOpen);
-      setOpenPmocKeys(prevPmocOpen);
+      setForcedAllOpen(false);
+      setOpenReportKey(prevOpen);
       setGenerating(false);
     }
   };
@@ -663,19 +674,29 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   return (
     <>
     <div className="space-y-4">
-      {/* Report content */}
-      <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-        <ReportHeader
-          company={company ? {
-            ...company,
-            icon_url: isWhiteLabel ? (company as any).white_label_icon_url : undefined,
-            logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
-          } : null}
-          orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
-          osType={getOsTypeLabel(serviceOrder)}
-          checkOutTime={!partialReport && serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
-          config={headerConfig}
-        />
+      {/* Report content.
+          IMPORTANTE: o `reportRef` NÃO pode ter `overflow-hidden` — um ancestral
+          com overflow:hidden vira o contêiner de recorte do `position: sticky` e
+          quebra os cabeçalhos grudentos dos checklists (PMOC + personalizados). O
+          arredondamento das pontas vem do `rounded-lg` (canto externo) + um
+          wrapper de clip SÓ no cabeçalho colorido (sibling do conteúdo, não
+          ancestral do sticky). PDF/Imprimir não dependem de sticky. */}
+      <div ref={reportRef} className="bg-white text-black rounded-lg print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+        {/* Wrapper de clip do cabeçalho: arredonda só as pontas de cima sem criar
+            um overflow-clip que alcance o conteúdo (sticky) abaixo. */}
+        <div className="overflow-hidden rounded-t-lg">
+          <ReportHeader
+            company={company ? {
+              ...company,
+              icon_url: isWhiteLabel ? (company as any).white_label_icon_url : undefined,
+              logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
+            } : null}
+            orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
+            osType={getOsTypeLabel(serviceOrder)}
+            checkOutTime={!partialReport && serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
+            config={headerConfig}
+          />
+        </div>
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Contract info */}
@@ -957,8 +978,22 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               items={pmocChecklistItems}
               anchorIdForGroup={pmocAnchorIdForGroup}
               photoUrlForGroup={pmocPhotoUrlForGroup}
-              openKeys={openPmocKeys}
-              onOpenChange={setOpenPmocKeys}
+              stickyTopPx={stickyTopPx}
+              openKeys={
+                forcedAllOpen
+                  ? pmocGroupKeys
+                  : openReportKey && isPmocKey(openReportKey)
+                    ? [openReportKey]
+                    : []
+              }
+              onOpenChange={(keys) => {
+                // Single-open unificado: a chave recém-aberta é a que não estava
+                // antes; se nada, fechou tudo (null). Como o accordion é
+                // `type="multiple"` mas só passamos 0-1 chave PMOC, `keys` traz
+                // a nova seleção — pegamos a última (a que abriu).
+                const next = keys.find((k) => k !== openReportKey) ?? (keys.length ? keys[keys.length - 1] : null);
+                setOpenReportKey(next);
+              }}
               onPreviewPhoto={(url, images, index) => {
                 setGalleryImages(images && images.length > 1 ? images : []);
                 setGalleryIndex(index ?? 0);
@@ -974,15 +1009,46 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             return (
               <Accordion
                 type="multiple"
-                value={openChecklistItems}
-                onValueChange={setOpenChecklistItems}
+                value={
+                  forcedAllOpen
+                    ? checklistKeys
+                    : openReportKey && !isPmocKey(openReportKey)
+                      ? [openReportKey]
+                      : []
+                }
+                onValueChange={(keys) => {
+                  // Single-open unificado (cruza com o accordion PMOC): a chave
+                  // recém-aberta é a que não estava antes; se nada, fechou (null).
+                  const next = keys.find((k) => k !== openReportKey) ?? (keys.length ? keys[keys.length - 1] : null);
+                  setOpenReportKey(next);
+                }}
                 className="w-full space-y-2"
               >
                 {validGroups.map((group, gi) => {
                   const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
                   return (
-                    <AccordionItem key={gi} value={`checklist-${gi}`} className="border border-slate-200 rounded-lg overflow-hidden" data-pdf-section>
-                      <AccordionTrigger className="hover:no-underline px-3 sm:px-4 py-3">
+                    <AccordionItem
+                      key={gi}
+                      value={`checklist-${gi}`}
+                      className={cn(
+                        'border border-slate-200 rounded-lg',
+                        // `overflow-hidden` clipa o cabeçalho sticky; só mantém
+                        // quando NÃO há sticky (PDF/impressão e modo sem offset).
+                        stickyTopPx === undefined && 'overflow-hidden',
+                      )}
+                      data-pdf-section
+                    >
+                      <AccordionTrigger
+                        // Documento SEMPRE claro: fundo branco fixo + texto slate,
+                        // nunca tokens de tema (bg-card escurece no dark mode).
+                        className="hover:no-underline px-3 sm:px-4 py-3 bg-white text-slate-900 rounded-t-lg"
+                        // Cabeçalho do checklist fixo no topo ao rolar o conteúdo
+                        // aberto (espelha a seção PMOC). Sticky no WRAPPER (Header),
+                        // fundo branco sólido pra o conteúdo não vazar atrás.
+                        // `print:static` volta ao fluxo normal na impressão.
+                        headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white rounded-t-lg print:static')}
+                        headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
+                      >
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
                           <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
                           {(group as any).categoryBadge && (

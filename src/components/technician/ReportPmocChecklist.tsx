@@ -6,8 +6,19 @@ import { visitTypeFromFreqs } from '@/hooks/useOsActivityChecklist';
 import type { ReportChecklistItem } from './ReportChecklist';
 
 /** Chave estável do grupo no accordion (espelha a sidebar desktop). */
-function groupKeyForName(equipmentName: string | null): string {
+export function groupKeyForName(equipmentName: string | null): string {
   return equipmentName ?? '__geral__';
+}
+
+/**
+ * Chaves dos grupos PMOC na MESMA ORDEM em que o `ReportPmocChecklist` os
+ * renderiza (passa pelo `groupItems`, que ordena por `sort_order` e empurra o
+ * grupo "Geral" pro fim). O OSReport usa isto pra que `pmocGroupKeys[0]` seja
+ * idêntico ao `value` do PRIMEIRO `AccordionItem` renderizado — senão o
+ * single-open (`value={[openReportKey]}`) não casa com nenhum item e nada abre.
+ */
+export function pmocGroupKeysFor(items: ReportChecklistItem[]): string[] {
+  return groupItems(items).map((g) => groupKeyForName(g.equipmentName));
 }
 
 /**
@@ -48,6 +59,14 @@ interface Props {
    */
   openKeys?: string[];
   onOpenChange?: (keys: string[]) => void;
+  /**
+   * Offset (px) do header fixo da tela de OS. Quando definido, o cabeçalho de
+   * cada equipamento vira `sticky` e gruda logo abaixo do header laranja "OS
+   * #..." ao rolar (espelha o `VisitChecklistPanel` da execução). O sticky vai
+   * no WRAPPER (Header) do `AccordionTrigger`; o item perde o `overflow-hidden`
+   * (que clipa sticky) quando este offset existe. Sem valor = sem sticky.
+   */
+  stickyTopPx?: number;
 }
 
 const CONFORMITY_META: Record<
@@ -83,7 +102,7 @@ function formatNumber(n: number): string {
 }
 
 /** Agrupa por equipment_name preservando sort_order; null (geral) por último. */
-function groupItems(items: ReportChecklistItem[]): ReportPmocChecklistGroup[] {
+export function groupItems(items: ReportChecklistItem[]): ReportPmocChecklistGroup[] {
   const sorted = [...items].sort((a, b) => {
     if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
     return (a.section || '').localeCompare(b.section || '');
@@ -119,6 +138,7 @@ export function ReportPmocChecklist({
   photoUrlForGroup,
   openKeys,
   onOpenChange,
+  stickyTopPx,
 }: Props) {
   if (!items || items.length === 0) return null;
 
@@ -138,7 +158,7 @@ export function ReportPmocChecklist({
         {...(controlled
           ? { value: openKeys, onValueChange: onOpenChange }
           : { defaultValue: allKeys })}
-        className="w-full space-y-2"
+        className="w-full"
       >
         {groups.map((group) => {
           const groupKey = groupKeyForName(group.equipmentName);
@@ -157,9 +177,28 @@ export function ReportPmocChecklist({
               value={groupKey}
               id={anchorIdForGroup?.(group.equipmentName)}
               data-pdf-section
-              className="border border-slate-200 rounded-lg overflow-hidden scroll-mt-24"
+              className={cn(
+                // Sem caixa por equipamento: lista limpa separada por um divisor
+                // leve (some no último). Visual de lista, não de cards.
+                'border-b border-slate-200 last:border-0 scroll-mt-24',
+                // `overflow-hidden` clipa o cabeçalho sticky; só mantém quando
+                // não há sticky (PDF/impressão e modo sem offset).
+                stickyTopPx === undefined && 'overflow-hidden',
+              )}
             >
-              <AccordionTrigger className="hover:no-underline px-3 sm:px-4 py-3 gap-2 min-w-0 overflow-hidden">
+              <AccordionTrigger
+                // Relatório é documento SEMPRE claro (reportRef é bg-white): fundo
+                // branco fixo + texto slate, nunca tokens de tema (bg-card/text-
+                // foreground viram escuros no dark mode). `text-slate-900` garante
+                // o chevron e qualquer texto não estilizado legíveis sobre o branco.
+                className="hover:no-underline px-1 py-3 gap-2 min-w-0 overflow-hidden bg-white text-slate-900"
+                // Cabeçalho do equipamento fixo no topo enquanto rola o conteúdo
+                // aberto (logo abaixo do header laranja "OS #..."). Sticky no
+                // WRAPPER (Header), fundo branco sólido pra o conteúdo não passar
+                // atrás, z abaixo do header da tela.
+                headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white print:static')}
+                headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
+              >
                 <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                   {photoUrl ? (
                     <SignedImg
@@ -210,7 +249,7 @@ export function ReportPmocChecklist({
                   )}
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-3 sm:px-4 pb-3">
+              <AccordionContent className="px-1 pb-3">
                 <div className="space-y-3 pt-1">
                   {group.items.map((item, idx) => (
                     <div key={item.id} className="space-y-2 p-3 rounded-lg bg-slate-50 border border-slate-100">

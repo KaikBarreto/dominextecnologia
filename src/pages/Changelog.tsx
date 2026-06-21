@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.14',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist do relatório mais fácil de ler',
+        description: 'No relatório da ordem de serviço, agora vem aberto por padrão apenas o primeiro equipamento, e abrir outro fecha o anterior — um de cada vez, para você não se perder. O nome do equipamento (ou do checklist) em foco fica fixo no topo enquanto você rola a tela. E a seção da visita PMOC ficou mais limpa, sem caixas em volta de cada equipamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.13',
     date: '21 de junho de 2026',
     type: 'patch',

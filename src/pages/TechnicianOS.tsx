@@ -1398,6 +1398,7 @@ export default function TechnicianOS() {
             pmocChecklistItems={reportChecklistItems}
             pmocAnchorIdForGroup={reportGroupAnchorId}
             registerPmocOpener={(open) => { reportPmocOpenerRef.current = open; }}
+            stickyTopPx={headerHeight}
           />
           {isPublicMode && isPmocPublic && (
             <PmocComplianceBadge variant="footer" className="pt-2" />
