@@ -554,6 +554,12 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         </Tooltip>
                       </div>
                       <NumericInput decimal value={env.carga_termica_tr} onValueChange={(v) => updateField(env.key, 'carga_termica_tr', v)} placeholder="Ex: 5,0" />
+                      {(() => {
+                        const tr = parseDecimalBR(env.carga_termica_tr);
+                        return tr && tr > 0 ? (
+                          <span className="block text-xs text-muted-foreground">= {(tr * 12000).toLocaleString('pt-BR')} BTUs</span>
+                        ) : null;
+                      })()}
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1">
