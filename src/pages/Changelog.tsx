@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.13',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist da visita PMOC mais claro no relatório',
+        description: 'Os selos de Conforme, Não Conforme e N/A de cada item ficaram mais nítidos e compactos. Cada equipamento agora mostra a sua própria foto no checklist (toque para ampliar), com nome maior e em destaque. E, no computador, ao clicar num equipamento na lista lateral, o checklist dele já abre automaticamente — tanto na ordem de serviço quanto no relatório.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Preenchimento da ordem de serviço mais prático',
+        description: 'Ao preencher uma ordem de serviço, abrir o checklist de um equipamento agora fecha os outros, para você focar em um de cada vez, e o nome do equipamento fica fixo no topo enquanto você desce pela lista. No celular, uma barra fixa na parte de baixo traz o botão "Finalizar OS" sempre à mão, com um menu de três pontinhos para pausar, retomar e outras ações.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.12',
     date: '21 de junho de 2026',
     type: 'patch',

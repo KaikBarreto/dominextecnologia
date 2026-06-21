@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Wrench, Check, X, MinusCircle, AlertTriangle, Lock, Camera, ClipboardList } from 'lucide-react';
+import { ListChecks, Wrench, Check, X, MinusCircle, AlertTriangle, Lock, Camera, ClipboardList, CalendarClock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -23,6 +23,7 @@ import {
   isOutOfRange,
   isFormResponseAnswered,
   isTemplateActivityComplete,
+  visitTypeFromFreqs,
 } from '@/hooks/useOsActivityChecklist';
 
 interface Props {
@@ -57,12 +58,18 @@ interface Props {
     patch: { response_value?: string | null; response_photo_url?: string | null }
   ) => Promise<void>;
   /**
-   * Accordion controlado (sidebar desktop): chaves abertas + callback de mudança.
-   * Quando AMBOS vêm, o accordion vira controlado; senão mantém o comportamento
-   * não-controlado (1º grupo aberto por defaultValue) pra retrocompat.
+   * Accordion controlado SINGLE-OPEN (sidebar desktop): chave aberta única +
+   * callback. Abrir um equipamento fecha os demais. Quando AMBOS vêm, o accordion
+   * vira controlado; senão mantém o comportamento não-controlado (1º grupo aberto
+   * por defaultValue) pra retrocompat.
    */
-  openKeys?: string[];
-  onOpenChange?: (keys: string[]) => void;
+  openKey?: string | null;
+  onOpenChange?: (key: string | null) => void;
+  /**
+   * Offset (px) do topo pro cabeçalho sticky do equipamento aberto — respeita a
+   * altura do header fixo da tela de OS. Quando ausente, o header não fica sticky.
+   */
+  stickyTopPx?: number;
 }
 
 /** Número PT-BR: aceita vírgula ou ponto; vazio = null. */
@@ -616,8 +623,9 @@ export function VisitChecklistPanel({
   readOnly,
   onSave,
   onPreviewPhoto,
-  openKeys,
+  openKey,
   onOpenChange,
+  stickyTopPx,
   formQuestionsByTemplate,
   getFormResponse,
   onSaveFormResponse,
@@ -637,12 +645,13 @@ export function VisitChecklistPanel({
     return isTemplateActivityComplete(qs, (qid) => getFormResponse!(a.equipment_id ?? null, qid));
   };
 
-  // Requisito: 1º equipamento aberto, demais fechados, todos expansíveis.
-  // type="multiple" + defaultValue com a chave do primeiro grupo (igual à OS comum).
+  // Requisito: 1º equipamento aberto, demais fechados, single-open (abrir um
+  // fecha os outros). type="single" collapsible + defaultValue com a chave do
+  // primeiro grupo.
   const firstKey = groupKey(groups[0]);
-  // Controlado só quando a página passa openKeys + onOpenChange (sidebar desktop).
+  // Controlado só quando a página passa openKey + onOpenChange (sidebar desktop).
   // Senão mantém o uso não-controlado original (defaultValue).
-  const controlled = openKeys !== undefined && onOpenChange !== undefined;
+  const controlled = openKey !== undefined && onOpenChange !== undefined;
 
   return (
     <Card>
@@ -662,10 +671,14 @@ export function VisitChecklistPanel({
           </div>
         )}
         <Accordion
-          type="multiple"
+          type="single"
+          collapsible
           {...(controlled
-            ? { value: openKeys, onValueChange: onOpenChange }
-            : { defaultValue: [firstKey] })}
+            ? {
+                value: openKey ?? '',
+                onValueChange: (v: string) => onOpenChange!(v || null),
+              }
+            : { defaultValue: firstKey })}
           className={cn('w-full', readOnly && 'opacity-60 cursor-not-allowed')}
         >
           {groups.map((group) => {
@@ -690,6 +703,13 @@ export function VisitChecklistPanel({
               return a.conformity_status === 'nao_conforme';
             }).length;
             const pending = total - answered;
+            // Tipo de visita + checklists exibidos, derivados das frequências das
+            // atividades DESTE equipamento (atividade de checklist personalizado
+            // acrescenta o nível "personalizado" sem mudar o tipo da visita).
+            const visit = visitTypeFromFreqs(
+              group.activities.map((a) => a.freq_code),
+              { hasTemplate: group.activities.some((a) => !!a.form_template_id) }
+            );
             const photo = group.equipment?.photo_url || null;
             const category = group.equipment?.category || null;
             const brandModel = [group.equipment?.brand, group.equipment?.model]
@@ -703,26 +723,36 @@ export function VisitChecklistPanel({
                 id={`os-pmoc-${groupKey(group)}`}
                 className="border-b last:border-0 scroll-mt-28"
               >
-                <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
+                <AccordionTrigger
+                  className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card"
+                  // Cabeçalho fixo no topo enquanto o técnico rola o conteúdo do
+                  // equipamento aberto — sempre saber qual está preenchendo. O
+                  // sticky vai no WRAPPER (Header): no botão ele nunca descola
+                  // (o Header tem só a altura do botão). Fundo sólido (bg-card)
+                  // pra o conteúdo não passar por trás. O `top` (offset do header
+                  // fixo da tela) vai via arbitrary value no próprio Header.
+                  headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-card')}
+                  headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
+                >
                   <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                     {photo ? (
                       <SignedImg
                         src={photo}
                         alt={group.equipmentName}
-                        className="h-10 w-10 rounded-md object-cover shrink-0 border cursor-pointer"
+                        className="h-14 w-14 rounded-md object-cover shrink-0 border cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           onPreviewPhoto?.(photo);
                         }}
                       />
                     ) : (
-                      <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Wrench className="h-5 w-5 text-muted-foreground" />
+                      <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <Wrench className="h-6 w-6 text-muted-foreground" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-medium text-sm truncate">{group.equipmentName}</p>
+                        <p className="font-bold text-base truncate">{group.equipmentName}</p>
                         {category && (
                           <Badge
                             className="text-[10px] shrink-0 text-white border-0"
@@ -735,6 +765,14 @@ export function VisitChecklistPanel({
                       {brandModel && (
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{brandModel}</p>
                       )}
+                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 min-w-0">
+                        <CalendarClock className="h-3 w-3 shrink-0 text-primary" />
+                        <span className="truncate">
+                          <span className="font-medium text-foreground">Visita {visit.tipo}</span>
+                          {' · '}
+                          {visit.niveis.join(' + ')}
+                        </span>
+                      </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {total} item{total > 1 ? 's' : ''}
                       </p>
@@ -745,9 +783,9 @@ export function VisitChecklistPanel({
                         {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
                       </Badge>
                     ) : pending === 0 ? (
-                      <Badge variant="success" className="gap-1 shrink-0">
-                        <Check className="h-3 w-3" /> Concluído
-                      </Badge>
+                      <span title="Concluído" aria-label="Concluído" className="shrink-0">
+                        <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                      </span>
                     ) : (
                       <Badge variant="outline" className="text-xs shrink-0">
                         {pending} pendente{pending > 1 ? 's' : ''}

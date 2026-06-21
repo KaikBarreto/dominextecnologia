@@ -19,6 +19,12 @@ interface SpeedDialFABProps {
   /** Lado do FAB. Default 'left' (canto inferior esquerdo). */
   side?: 'left' | 'right';
   className?: string;
+  /**
+   * Offset extra (px) acima do canto inferior — pra o FAB não ser coberto por um
+   * rodapé fixo (ex.: a faixa preta de ações da OS no mobile). Soma ao 1rem +
+   * safe-area padrão. Default 0.
+   */
+  bottomOffsetPx?: number;
 }
 
 /**
@@ -32,7 +38,7 @@ interface SpeedDialFABProps {
  * `transform` (RouteTransition / MobilePullToRefresh viram containing block e
  * quebrariam `position: fixed`).
  */
-export function SpeedDialFAB({ actions, side = 'left', className }: SpeedDialFABProps) {
+export function SpeedDialFAB({ actions, side = 'left', className, bottomOffsetPx = 0 }: SpeedDialFABProps) {
   const [open, setOpen] = useState(false);
 
   // Esc fecha (desktop).
@@ -65,7 +71,7 @@ export function SpeedDialFAB({ actions, side = 'left', className }: SpeedDialFAB
           sideClass,
           className,
         )}
-        style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+        style={{ bottom: `calc(1rem + env(safe-area-inset-bottom) + ${bottomOffsetPx}px)` }}
       >
         {/* Ações — sobem ancoradas acima do FAB */}
         {open && (

@@ -16,9 +16,20 @@ AccordionItem.displayName = "AccordionItem";
 
 const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> & {
+    /**
+     * Classes aplicadas ao WRAPPER `<Header>` (não ao botão). Necessário pra
+     * `position: sticky` funcionar: a stickiness é limitada pelo bloco contêiner
+     * (o Header), então o sticky tem que viver no Header — no botão ele nunca
+     * "descola" porque o Header tem só a altura do próprio botão. Opcional;
+     * default mantém só `flex`.
+     */
+    headerClassName?: string;
+    /** Estilo inline no WRAPPER `<Header>` — ex.: `top` dinâmico do sticky. */
+    headerStyle?: React.CSSProperties;
+  }
+>(({ className, headerClassName, headerStyle, children, ...props }, ref) => (
+  <AccordionPrimitive.Header className={cn("flex", headerClassName)} style={headerStyle}>
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(

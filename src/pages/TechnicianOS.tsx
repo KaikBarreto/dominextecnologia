@@ -27,6 +27,7 @@ import {
   Map as MapIcon,
   Maximize2,
   X,
+  MoreVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,7 +65,14 @@ import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { cn } from '@/lib/utils';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarStatus } from '@/components/technician/OsDesktopShell';
 import TechnicianTools from '@/pages/TechnicianTools';
@@ -211,30 +219,30 @@ export default function TechnicianOS() {
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
   const [toolsOpen, setToolsOpen] = useState(false);
   const [routeFullscreen, setRouteFullscreen] = useState(false);
-  // Accordion de checklists (autenticado) controlado pra a sidebar desktop poder
-  // abrir o equipamento ao navegar. Default: nada aberto (igual ao mobile).
-  const [openChecklistKeys, setOpenChecklistKeys] = useState<string[]>([]);
-  // Accordion da VISITA PMOC (checklistGroups) — separado do de questionários.
-  // Controlado pra a sidebar desktop poder abrir o equipamento ao navegar.
-  // Inicia com a 1ª chave aberta (replica o defaultValue do VisitChecklistPanel).
-  const [openVisitKeys, setOpenVisitKeys] = useState<string[]>([]);
+  // Accordion da EXECUÇÃO (single-open): UMA chave aberta por vez, COMPARTILHADA
+  // entre o accordion de "Checklists" (questionários) e o da "Visita PMOC". Abrir
+  // um equipamento/checklist fecha todos os outros (decisão CEO 1.14.x). As chaves
+  // são únicas entre os dois accordions, então um único estado coordena ambos.
+  // Default: nada aberto (igual ao mobile) — depois inicializado com o 1º grupo PMOC.
+  const [openExecKey, setOpenExecKey] = useState<string | null>(null);
+  // Opener do accordion PMOC do RELATÓRIO (vive dentro do OSReport). A sidebar
+  // desktop do relatório o chama pra abrir o equipamento ao navegar. Registrado
+  // pelo OSReport via registerPmocOpener. Só desktop.
+  const reportPmocOpenerRef = useRef<((groupKey: string) => void) | null>(null);
   // Navega (scroll suave) até a seção do equipamento clicada na sidebar desktop
   // e abre o accordion correspondente quando a chave bate com um item.
   const scrollToAnchor = useCallback((anchorId: string, accordionKey?: string) => {
     const el = document.getElementById(anchorId);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (accordionKey) {
-      setOpenChecklistKeys((prev) => (prev.includes(accordionKey) ? prev : [...prev, accordionKey]));
-    }
+    // Single-open: abrir esse fecha os demais (questionários + visita PMOC).
+    if (accordionKey) setOpenExecKey(accordionKey);
   }, []);
-  // Navega até a seção da visita PMOC e abre o accordion próprio (openVisitKeys),
-  // que é separado do accordion de questionários.
+  // Navega até a seção da visita PMOC e abre o accordion (single-open: fecha os
+  // demais). Compartilha o mesmo estado do accordion de questionários.
   const scrollToVisitAnchor = useCallback((anchorId: string, accordionKey?: string) => {
     const el = document.getElementById(anchorId);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (accordionKey) {
-      setOpenVisitKeys((prev) => (prev.includes(accordionKey) ? prev : [...prev, accordionKey]));
-    }
+    if (accordionKey) setOpenExecKey(accordionKey);
   }, []);
   // Inicializa o accordion da visita PMOC com o 1º equipamento aberto (demais
   // fechados) — replica o defaultValue do VisitChecklistPanel. Só seta a primeira
@@ -244,7 +252,7 @@ export default function TechnicianOS() {
     if (visitKeysInitRef.current) return;
     if (checklistGroups.length === 0) return;
     visitKeysInitRef.current = true;
-    setOpenVisitKeys([checklistGroups[0].equipmentId ?? '__local__']);
+    setOpenExecKey(checklistGroups[0].equipmentId ?? '__local__');
   }, [checklistGroups]);
   // Copia o link público de acompanhamento e mostra toast (link gerado já copia no ato).
   const handleCopyTrackingLink = async () => {
@@ -527,6 +535,10 @@ export default function TechnicianOS() {
           expected_min: a.expected_min ?? null,
           expected_max: a.expected_max ?? null,
           sort_order: a.sort_order ?? 0,
+          // Forward-compat: o payload público ainda não traz freq_code (precisa de
+          // migration no get_public_os). Sem ele, o cabeçalho de tipo de visita
+          // simplesmente não aparece no modo cliente — sem quebrar.
+          freq_code: a.freq_code ?? null,
           photos: Array.isArray(a.photos) ? a.photos.filter(Boolean) : [],
           form_template_id: a.form_template_id ?? null,
         })) as ReportChecklistItem[]
@@ -1189,6 +1201,7 @@ export default function TechnicianOS() {
           expected_min: a.expected_min,
           expected_max: a.expected_max,
           sort_order: a.sort_order,
+          freq_code: a.freq_code,
           photos: (a.activity_photos || '').split(',').map((u) => u.trim()).filter(Boolean),
         }))
       );
@@ -1321,7 +1334,12 @@ export default function TechnicianOS() {
         <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_20rem] lg:gap-4 lg:px-8 lg:w-full lg:max-w-screen-2xl lg:mx-auto lg:items-start lg:pt-4">
           <OsEquipmentSidebar
             items={reportSidebarItems}
-            onNavigate={(item) => scrollToAnchor(item.anchorId)}
+            onNavigate={(item) => {
+              scrollToAnchor(item.anchorId);
+              // Abre o accordion do equipamento no relatório (sidebar desktop).
+              // item.key = equipment_name ?? '__geral__' = groupKey do PMOC.
+              reportPmocOpenerRef.current?.(item.key);
+            }}
             topPx={headerHeight + 16}
           />
         <main
@@ -1379,6 +1397,7 @@ export default function TechnicianOS() {
             visibleEquipmentKeys={partialCompleteKeys}
             pmocChecklistItems={reportChecklistItems}
             pmocAnchorIdForGroup={reportGroupAnchorId}
+            registerPmocOpener={(open) => { reportPmocOpenerRef.current = open; }}
           />
           {isPublicMode && isPmocPublic && (
             <PmocComplianceBadge variant="footer" className="pt-2" />
@@ -2343,7 +2362,15 @@ export default function TechnicianOS() {
           topPx={headerHeight + 16}
           header={sidebarContextBlocks}
         />
-      <main className="w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 lg:pb-24">
+      <main
+        className={cn(
+          'w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 lg:pb-24',
+          // Reserva espaço no MOBILE pro rodapé fixo (faixa preta) não cobrir o
+          // conteúdo — só quando o rodapé existe (execução/pausada). No desktop
+          // o lg:pb-24 prevalece (rodapé desktop é o OsActionFooter).
+          (isCheckedIn || isPaused) && 'pb-[calc(5.5rem_+_env(safe-area-inset-bottom))]',
+        )}
+      >
         {showPmocSeal && (
           <PmocComplianceBadge variant="ribbon" withTooltip />
         )}
@@ -2511,10 +2538,7 @@ export default function TechnicianOS() {
               <p className="text-sm text-muted-foreground">
                 Esta OS foi pausada. Retome o atendimento para continuar o preenchimento.
               </p>
-              <Button className="w-full lg:hidden" size="lg" onClick={handleResumeOS}>
-                <Play className="h-4 w-4 mr-2" />
-                Retomar OS
-              </Button>
+              {/* Retomar no mobile vive no rodapé fixo (faixa preta) abaixo. */}
             </CardContent>
           </Card>
         )}
@@ -2621,9 +2645,10 @@ export default function TechnicianOS() {
                 </div>
               )}
               <Accordion
-                type="multiple"
-                value={openChecklistKeys}
-                onValueChange={setOpenChecklistKeys}
+                type="single"
+                collapsible
+                value={openExecKey ?? ''}
+                onValueChange={(v) => setOpenExecKey(v || null)}
                 className={`w-full ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {equipmentItems.map((item, idx) => {
@@ -2726,8 +2751,9 @@ export default function TechnicianOS() {
             readOnly={isPaused}
             onSave={saveChecklistActivity}
             onPreviewPhoto={setPreviewPhoto}
-            openKeys={openVisitKeys}
-            onOpenChange={setOpenVisitKeys}
+            openKey={openExecKey}
+            onOpenChange={setOpenExecKey}
+            stickyTopPx={headerHeight}
             formQuestionsByTemplate={checklistFormQuestions}
             getFormResponse={getChecklistFormResponse}
             onSaveFormResponse={saveChecklistFormResponse}
@@ -2888,29 +2914,8 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Finish & Pause OS buttons (mobile/tablet; desktop usa o rodapé fixo) */}
-        {isCheckedIn && !isPaused && (
-          <div className="pb-6 space-y-2 lg:hidden">
-            <Button
-              className="w-full bg-success hover:bg-success/90 text-success-foreground"
-              size="lg"
-              onClick={handleFinishOS}
-              disabled={finishing}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              {finishing ? 'Finalizando...' : 'Finalizar OS'}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
-              size="lg"
-              onClick={handlePauseOS}
-            >
-              <Pause className="h-4 w-4 mr-2" />
-              Pausar OS
-            </Button>
-          </div>
-        )}
+        {/* Finalizar/Pausar no mobile: consolidados no rodapé fixo abaixo
+            (faixa preta). Nada inline aqui pra não duplicar a mesma ação. */}
       </main>
       {/* Spacer (col 3): equilibra a sidebar à esquerda pra o main centralizar no viewport. */}
       <div className="hidden lg:block" aria-hidden />
@@ -2958,6 +2963,80 @@ export default function TechnicianOS() {
             Pausar OS
           </Button>
         </OsActionFooter>
+      )}
+
+      {/* Rodapé fixo MOBILE (faixa preta, estilo do header) — só na execução
+          (em andamento) ou pausada. Ação primária + menu de 3 pontinhos com as
+          demais. Reusa os handlers existentes (idempotentes). Some no desktop
+          (lg:hidden) e nunca no relatório/modo cliente (este return é só o
+          caminho autenticado/execução). */}
+      {(isCheckedIn || isPaused) && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 lg:hidden bg-zinc-900 text-white border-t border-zinc-800 shadow-[0_-4px_16px_rgba(0,0,0,0.25)]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            {isPaused ? (
+              <Button
+                className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+                size="lg"
+                onClick={handleResumeOS}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Retomar OS
+              </Button>
+            ) : (
+              <Button
+                className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+                size="lg"
+                onClick={handleFinishOS}
+                disabled={finishing}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {finishing ? 'Finalizando...' : 'Finalizar OS'}
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-11 w-11 text-white hover:bg-white/10"
+                  aria-label="Mais ações"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
+                {!isPaused ? (
+                  <DropdownMenuItem onClick={handlePauseOS} className="text-amber-600 focus:text-amber-600">
+                    <Pause className="h-4 w-4 mr-2" />
+                    Pausar OS
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={handleFinishOS}
+                    disabled={finishing}
+                    className="text-success focus:text-success"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Finalizar OS
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleCopyTrackingLink}>
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Copiar link do cliente
+                </DropdownMenuItem>
+                {showTools && (
+                  <DropdownMenuItem onClick={() => setToolsOpen(true)}>
+                    <FerramentasTecnicoIcon className="h-4 w-4 mr-2" />
+                    Ferramentas do Técnico
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
       )}
 
       {/* Equipment photo preview */}
@@ -3015,8 +3094,14 @@ export default function TechnicianOS() {
         </div>
       </ResponsiveModal>
 
-      {/* FAB speed-dial (canto inferior esquerdo) — atalho pras Ferramentas do Técnico */}
-      <SpeedDialFAB actions={speedDialActions} side="left" />
+      {/* FAB speed-dial (canto inferior esquerdo) — atalho pras Ferramentas do
+          Técnico. Sobe acima do rodapé fixo mobile (faixa preta) quando ele
+          aparece (execução/pausada) pra não ser coberto. */}
+      <SpeedDialFAB
+        actions={speedDialActions}
+        side="left"
+        bottomOffsetPx={isCheckedIn || isPaused ? 60 : 0}
+      />
 
       {/* Overlay fullscreen: mesmo componente da tela de Ferramentas do Técnico.
           A OS continua montada por baixo (toolsOpen é estado local), então o

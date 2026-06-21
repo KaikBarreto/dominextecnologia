@@ -1,7 +1,8 @@
-import { ListChecks, Wrench, Check, X, MinusCircle, HelpCircle, Gauge } from 'lucide-react';
+import { ListChecks, Wrench, Check, X, MinusCircle, HelpCircle, Gauge, CalendarClock, CheckCircle2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { cn } from '@/lib/utils';
+import { visitTypeFromFreqs } from '@/hooks/useOsActivityChecklist';
 import type { ReportChecklistItem } from './ReportChecklist';
 
 /** Chave estável do grupo no accordion (espelha a sidebar desktop). */
@@ -33,21 +34,35 @@ interface Props {
    * (ou null pro grupo "Geral"). Só desktop — não afeta o mobile.
    */
   anchorIdForGroup?: (equipmentName: string | null) => string | undefined;
+  /**
+   * Foto do equipamento (path no bucket) por nome de equipamento. Renderizada
+   * (clicável → onPreviewPhoto) no header do grupo no lugar do ícone de chave
+   * inglesa. Sem foto → fallback pro ícone Wrench.
+   */
+  photoUrlForGroup?: (equipmentName: string | null) => string | null | undefined;
+  /**
+   * Accordion controlado (sidebar desktop): chaves abertas + callback de
+   * mudança. Quando AMBOS vêm, o accordion vira controlado (a sidebar pode abrir
+   * o equipamento ao navegar). Senão mantém o comportamento não-controlado (tudo
+   * aberto via defaultValue) pra retrocompat e pra impressão.
+   */
+  openKeys?: string[];
+  onOpenChange?: (keys: string[]) => void;
 }
 
 const CONFORMITY_META: Record<
   'conforme' | 'nao_conforme' | 'na',
   { label: string; icon: typeof Check; className: string }
 > = {
-  conforme: { label: 'Conforme', icon: Check, className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  nao_conforme: { label: 'Não-conforme', icon: X, className: 'bg-red-100 text-red-700 border-red-200' },
-  na: { label: 'N/A', icon: MinusCircle, className: 'bg-slate-100 text-slate-500 border-slate-200' },
+  conforme: { label: 'Conforme', icon: Check, className: 'bg-emerald-600 text-white' },
+  nao_conforme: { label: 'Não-conforme', icon: X, className: 'bg-red-600 text-white' },
+  na: { label: 'N/A', icon: MinusCircle, className: 'bg-slate-500 text-white' },
 };
 
 function ConformityBadge({ status }: { status: ReportChecklistItem['conformity_status'] }) {
   if (!status) {
     return (
-      <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+      <span className="inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-500 text-white">
         <HelpCircle className="h-3 w-3 shrink-0" />
         Não respondido
       </span>
@@ -56,7 +71,7 @@ function ConformityBadge({ status }: { status: ReportChecklistItem['conformity_s
   const meta = CONFORMITY_META[status];
   const Icon = meta.icon;
   return (
-    <span className={cn('inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full border', meta.className)}>
+    <span className={cn('inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full', meta.className)}>
       <Icon className="h-3 w-3 shrink-0" />
       {meta.label}
     </span>
@@ -97,23 +112,45 @@ function groupItems(items: ReportChecklistItem[]): ReportPmocChecklistGroup[] {
  * Seção "Checklists da Visita PMOC" do relatório branco. Agrupa a conformidade
  * por equipamento em acordeões claros. Não renderiza nada quando não há itens.
  */
-export function ReportPmocChecklist({ items, onPreviewPhoto, anchorIdForGroup }: Props) {
+export function ReportPmocChecklist({
+  items,
+  onPreviewPhoto,
+  anchorIdForGroup,
+  photoUrlForGroup,
+  openKeys,
+  onOpenChange,
+}: Props) {
   if (!items || items.length === 0) return null;
 
   const groups = groupItems(items);
+  const allKeys = groups.map((g) => groupKeyForName(g.equipmentName));
+  // Controlado só quando a página passa openKeys + onOpenChange (sidebar
+  // desktop). Senão segue não-controlado com tudo aberto (defaultValue).
+  const controlled = openKeys !== undefined && onOpenChange !== undefined;
 
   return (
     <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
       <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
         <ListChecks className="h-3.5 w-3.5" /> Checklists da Visita PMOC
       </h3>
-      <Accordion type="multiple" defaultValue={groups.map((g) => g.equipmentName ?? '__geral__')} className="w-full space-y-2">
+      <Accordion
+        type="multiple"
+        {...(controlled
+          ? { value: openKeys, onValueChange: onOpenChange }
+          : { defaultValue: allKeys })}
+        className="w-full space-y-2"
+      >
         {groups.map((group) => {
-          const groupKey = group.equipmentName ?? '__geral__';
+          const groupKey = groupKeyForName(group.equipmentName);
+          const photoUrl = photoUrlForGroup?.(group.equipmentName) || null;
           const total = group.items.length;
           const answered = group.items.filter((a) => !!a.conformity_status).length;
           const naoConforme = group.items.filter((a) => a.conformity_status === 'nao_conforme').length;
           const pending = total - answered;
+          // Tipo de visita + checklists exibidos. Só renderiza quando há alguma
+          // freq_code (modo cliente anônimo ainda não recebe esse campo).
+          const hasFreq = group.items.some((a) => !!a.freq_code);
+          const visit = hasFreq ? visitTypeFromFreqs(group.items.map((a) => a.freq_code)) : null;
           return (
             <AccordionItem
               key={groupKey}
@@ -124,13 +161,35 @@ export function ReportPmocChecklist({ items, onPreviewPhoto, anchorIdForGroup }:
             >
               <AccordionTrigger className="hover:no-underline px-3 sm:px-4 py-3 gap-2 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                  <div className="h-9 w-9 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
-                    <Wrench className="h-4 w-4 text-slate-500" />
-                  </div>
+                  {photoUrl ? (
+                    <SignedImg
+                      src={photoUrl}
+                      alt={group.equipmentName ?? 'Equipamento'}
+                      className="h-14 w-14 rounded-md object-cover border border-slate-200 shrink-0 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPreviewPhoto?.(photoUrl);
+                      }}
+                    />
+                  ) : (
+                    <div className="h-14 w-14 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
+                      <Wrench className="h-6 w-6 text-slate-500" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-slate-800 truncate">
+                    <p className="font-bold text-base text-slate-800 truncate">
                       {group.equipmentName ?? 'Geral / Local'}
                     </p>
+                    {visit && (
+                      <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 min-w-0">
+                        <CalendarClock className="h-3 w-3 shrink-0 text-slate-400" />
+                        <span className="truncate normal-case">
+                          <span className="font-medium text-slate-700">Visita {visit.tipo}</span>
+                          {' · '}
+                          {visit.niveis.join(' + ')}
+                        </span>
+                      </p>
+                    )}
                     <p className="text-xs text-slate-400 mt-0.5">
                       {total} item{total > 1 ? 's' : ''}
                     </p>
@@ -141,8 +200,8 @@ export function ReportPmocChecklist({ items, onPreviewPhoto, anchorIdForGroup }:
                       {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
                     </span>
                   ) : pending === 0 ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0">
-                      <Check className="h-3 w-3" /> Concluído
+                    <span title="Concluído" aria-label="Concluído" className="shrink-0">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                     </span>
                   ) : (
                     <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">

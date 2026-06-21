@@ -30,6 +30,12 @@ export interface ReportChecklistItem {
   expected_min: number | null;
   expected_max: number | null;
   sort_order: number;
+  /**
+   * Frequência PMOC da atividade (M/T/S/A/E). Usada pra derivar o "Tipo de
+   * Visita" no cabeçalho do grupo. Opcional: o modo cliente (anônimo) ainda não
+   * recebe esse campo do payload público, então o cabeçalho some sem quebrar.
+   */
+  freq_code?: string | null;
   /** URLs públicas das fotos anexadas pelo técnico. */
   photos: string[];
   /**

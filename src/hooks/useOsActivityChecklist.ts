@@ -102,6 +102,58 @@ export function freqLabel(freqCode: string | null | undefined): string | null {
 }
 
 /**
+ * Tipo de visita + checklists exibidos, derivados das `freq_code` das atividades
+ * de UM equipamento. Pura/testável — não toca em estado nem em rede.
+ *
+ * - `tipo`: o nível mais alto presente. A > S > T > M. Se só houver M/E (ou só
+ *   atividades de checklist personalizado), o tipo é "Mensal".
+ * - `niveis`: os rótulos PMOC presentes, em ordem fixa (mensal → trimestral →
+ *   semestral → anual), seguidos de "personalizado" quando há checklist próprio.
+ *   É a lista que o cabeçalho mostra como "checklist exibido".
+ * - `tipoCode`: o código (A/S/T/M) do tipo, útil pra estilização.
+ *
+ * `E` (eventual) e atividades sem freq não elevam o tipo — entram só como piso
+ * mensal. Atividades de checklist personalizado (`hasTemplate`) acrescentam o
+ * nível "personalizado" sem alterar o tipo da visita.
+ */
+export interface VisitTypeInfo {
+  tipo: string;
+  tipoCode: 'M' | 'T' | 'S' | 'A';
+  niveis: string[];
+}
+
+const FREQ_ORDER: { code: 'M' | 'T' | 'S' | 'A'; label: string; nivel: string }[] = [
+  { code: 'M', label: 'Mensal', nivel: 'mensal' },
+  { code: 'T', label: 'Trimestral', nivel: 'trimestral' },
+  { code: 'S', label: 'Semestral', nivel: 'semestral' },
+  { code: 'A', label: 'Anual', nivel: 'anual' },
+];
+
+export function visitTypeFromFreqs(
+  freqCodes: (string | null | undefined)[],
+  options?: { hasTemplate?: boolean }
+): VisitTypeInfo {
+  const present = new Set(
+    freqCodes
+      .map((c) => (c ? c.toUpperCase() : c))
+      .filter((c): c is string => !!c)
+  );
+
+  // Níveis PMOC presentes, na ordem fixa. M é o piso quando nada se aplica
+  // (só E/sem-freq, ou só checklist personalizado) — toda visita exibe ao menos
+  // o checklist mensal.
+  const matched = FREQ_ORDER.filter((f) => present.has(f.code));
+  const niveis = matched.map((f) => f.nivel);
+  if (niveis.length === 0) niveis.push('mensal');
+  if (options?.hasTemplate) niveis.push('personalizado');
+
+  // Tipo = nível mais alto presente (A > S > T > M). Sem nenhum → Mensal.
+  const highest = [...matched].reverse()[0] ?? FREQ_ORDER[0];
+
+  return { tipo: highest.label, tipoCode: highest.code, niveis };
+}
+
+/**
  * Rollup de conformidade da OS a partir das atividades:
  * - 'nao_conforme' se qualquer atividade for não-conforme;
  * - 'conforme' se TODAS as atividades já têm resposta E nenhuma é não-conforme;

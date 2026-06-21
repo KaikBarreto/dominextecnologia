@@ -89,6 +89,14 @@ interface OSReportProps {
    * sidebar EQUIPAMENTOS do desktop pra rolar até cada equipamento.
    */
   pmocAnchorIdForGroup?: (equipmentName: string | null) => string | undefined;
+  /**
+   * Registra (uma vez) o opener do accordion PMOC pra a página: a sidebar
+   * desktop chama `open(groupKey)` ao navegar pra um equipamento, abrindo o
+   * accordion dele. groupKey = equipmentName ?? '__geral__' (mesma chave da
+   * sidebar). Só desktop. O estado do accordion vive AQUI pra a impressão/PDF
+   * poderem forçar tudo aberto sem depender da página.
+   */
+  registerPmocOpener?: (open: (groupKey: string) => void) => void;
 }
 
 const GENERAL_KEY = '__geral__';
@@ -121,7 +129,7 @@ function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: 
   );
 }
 
-export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup, registerPmocOpener }: OSReportProps) {
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
   // (e nao como o usuario logado de outra empresa).
   const db = forceReadOnly ? supabaseAnon : supabase;
@@ -155,7 +163,51 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
   const [openChecklistItems, setOpenChecklistItems] = useState<string[]>([]);
   const printRestoreRef = useRef<string[] | null>(null);
+  const pmocPrintRestoreRef = useRef<string[] | null>(null);
   const { toast } = useToast();
+
+  // Chaves de grupo do checklist PMOC (equipmentName ?? '__geral__'), mesma
+  // convenção da sidebar. Foto do equipamento por nome — vem de equipmentItems
+  // (carregado nos DOIS modos: autenticado via service_order_equipment, anônimo
+  // via payload.equipment_items, ambos com photo_url). Sem foto → ícone Wrench.
+  const pmocGroupKeys = Array.from(
+    new Set((pmocChecklistItems ?? []).map((it) => it.equipment_name ?? GENERAL_KEY))
+  );
+  const pmocPhotoByName = (() => {
+    const map = new Map<string, string | null>();
+    for (const it of equipmentItems) {
+      const name = it.equipment?.name;
+      if (name && !map.has(name)) map.set(name, it.equipment?.photo_url ?? null);
+    }
+    return map;
+  })();
+  const pmocPhotoUrlForGroup = (equipmentName: string | null): string | null =>
+    equipmentName ? pmocPhotoByName.get(equipmentName) ?? null : null;
+
+  // Accordion PMOC controlado AQUI: nasce com tudo aberto (igual ao antigo
+  // defaultValue). A sidebar desktop abre o grupo via registerPmocOpener; a
+  // impressão força tudo aberto (PDF clona+força [data-state]=open, então PDF é
+  // seguro independente disto). Reabre p/ todas quando a lista de grupos muda.
+  const [openPmocKeys, setOpenPmocKeys] = useState<string[]>([]);
+  const pmocKeysSig = pmocGroupKeys.join('|');
+  const pmocInitSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (pmocInitSigRef.current === pmocKeysSig) return;
+    pmocInitSigRef.current = pmocKeysSig;
+    setOpenPmocKeys(pmocGroupKeys);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pmocKeysSig]);
+
+  // Expõe o opener pra a página (sidebar desktop): abre o grupo e mantém os já
+  // abertos. Registrado uma vez por instância.
+  const registeredOpenerRef = useRef(false);
+  useEffect(() => {
+    if (registeredOpenerRef.current || !registerPmocOpener) return;
+    registeredOpenerRef.current = true;
+    registerPmocOpener((groupKey: string) => {
+      setOpenPmocKeys((prev) => (prev.includes(groupKey) ? prev : [...prev, groupKey]));
+    });
+  }, [registerPmocOpener]);
 
   const beforePhotos = photos.filter(p => p.photo_type === 'antes');
   const duringPhotos = photos.filter(p => p.photo_type === 'durante');
@@ -296,12 +348,19 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
         .filter(Boolean) as string[];
       setOpenChecklistItems(validValues);
+      // PMOC: abre TODOS os grupos pra a impressão capturar o checklist inteiro.
+      pmocPrintRestoreRef.current = openPmocKeys;
+      setOpenPmocKeys(pmocGroupKeys);
     };
 
     const restoreAfterPrint = () => {
       if (printRestoreRef.current) {
         setOpenChecklistItems(printRestoreRef.current);
         printRestoreRef.current = null;
+      }
+      if (pmocPrintRestoreRef.current) {
+        setOpenPmocKeys(pmocPrintRestoreRef.current);
+        pmocPrintRestoreRef.current = null;
       }
     };
 
@@ -311,7 +370,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       window.removeEventListener('beforeprint', openAllForPrint);
       window.removeEventListener('afterprint', restoreAfterPrint);
     };
-  }, [openChecklistItems, formResponses, equipmentItems.length]);
+  }, [openChecklistItems, openPmocKeys, pmocKeysSig, formResponses, equipmentItems.length]);
 
   // Aplica o branding white-label (estado + header config) a partir do registro
   // de company_settings. Reusado pelo modo autenticado e pelo modo público.
@@ -496,6 +555,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
       .filter(Boolean) as string[];
     setOpenChecklistItems(allValues);
+    // PMOC: garante todos os grupos abertos pra impressão (o beforeprint também
+    // faz isso, mas abrir aqui evita corrida com o render).
+    pmocPrintRestoreRef.current = openPmocKeys;
+    setOpenPmocKeys(pmocGroupKeys);
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   };
 
@@ -509,6 +572,9 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
       .filter(Boolean) as string[];
     setOpenChecklistItems(allValues);
+    // PMOC: abre todos os grupos pro conteúdo entrar no DOM antes do clone.
+    const prevPmocOpen = openPmocKeys;
+    setOpenPmocKeys(pmocGroupKeys);
 
     // Wait for React to render the open accordions
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200))));
@@ -523,6 +589,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
       setOpenChecklistItems(prevOpen);
+      setOpenPmocKeys(prevPmocOpen);
       setGenerating(false);
     }
   };
@@ -889,6 +956,9 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             <ReportPmocChecklist
               items={pmocChecklistItems}
               anchorIdForGroup={pmocAnchorIdForGroup}
+              photoUrlForGroup={pmocPhotoUrlForGroup}
+              openKeys={openPmocKeys}
+              onOpenChange={setOpenPmocKeys}
               onPreviewPhoto={(url, images, index) => {
                 setGalleryImages(images && images.length > 1 ? images : []);
                 setGalleryIndex(index ?? 0);
