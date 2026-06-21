@@ -51,7 +51,7 @@ import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hook
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { useOsActivityChecklist, isTemplateActivityComplete } from '@/hooks/useOsActivityChecklist';
 import { VisitChecklistPanel } from '@/components/technician/VisitChecklistPanel';
-import { ReportChecklist, type ReportChecklistItem } from '@/components/technician/ReportChecklist';
+import { type ReportChecklistItem } from '@/components/technician/ReportChecklist';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
@@ -1365,6 +1365,11 @@ export default function TechnicianOS() {
                 )}
             </>
           )}
+          {/* O checklist de conformidade PMOC (read-only) agora vive DENTRO do
+              card branco do relatório, como a seção "Checklists da Visita PMOC".
+              Threade os itens + âncora pro OSReport (vale nos dois modos: técnico
+              autenticado e cliente anônimo). Foto abre no viewer interno do
+              OSReport, nunca em nova aba. */}
           <OSReport
             serviceOrder={serviceOrder}
             photos={photos}
@@ -1372,17 +1377,8 @@ export default function TechnicianOS() {
             desktopActionFooter
             partialReport={isPausedPublicReport}
             visibleEquipmentKeys={partialCompleteKeys}
-          />
-          {/* Checklist da visita (read-only). Aparece nos dois modos do relatório
-              (técnico autenticado e cliente anônimo). Some quando não há atividades. */}
-          <ReportChecklist
-            items={reportChecklistItems}
-            anchorIdForGroup={reportGroupAnchorId}
-            onPreviewPhoto={(url, images, index) => {
-              setGalleryImages(images && images.length > 1 ? images : []);
-              setGalleryIndex(index ?? 0);
-              setPreviewPhoto(url);
-            }}
+            pmocChecklistItems={reportChecklistItems}
+            pmocAnchorIdForGroup={reportGroupAnchorId}
           />
           {isPublicMode && isPmocPublic && (
             <PmocComplianceBadge variant="footer" className="pt-2" />
@@ -2792,21 +2788,26 @@ export default function TechnicianOS() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Assinaturas sempre centralizadas (título + pad), desktop e mobile. */}
               {(serviceOrder as any)?.require_tech_signature && (
-                <SignaturePad
-                  value={techSignature}
-                  onChange={setTechSignature}
-                  label="Assinatura do Técnico"
-                  disabled={isPaused}
-                />
+                <div className="w-full max-w-md mx-auto text-center [&_p]:text-center [&_button]:mx-auto">
+                  <SignaturePad
+                    value={techSignature}
+                    onChange={setTechSignature}
+                    label="Assinatura do Técnico"
+                    disabled={isPaused}
+                  />
+                </div>
               )}
               {(serviceOrder as any)?.require_client_signature && (
-                <SignaturePad
-                  value={clientSignature}
-                  onChange={setClientSignature}
-                  label="Assinatura do Cliente"
-                  disabled={isPaused}
-                />
+                <div className="w-full max-w-md mx-auto text-center [&_p]:text-center [&_button]:mx-auto">
+                  <SignaturePad
+                    value={clientSignature}
+                    onChange={setClientSignature}
+                    label="Assinatura do Cliente"
+                    disabled={isPaused}
+                  />
+                </div>
               )}
             </CardContent>
           </Card>

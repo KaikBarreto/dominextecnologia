@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.10";
+export const APP_VERSION = "1.14.11";
 
-export const VERSION_NOTES = "Correção: faturas de cartão de crédito que já passaram da data de fechamento agora aparecem como 'Fechada' (antes ficavam sempre 'Aberta'); o ciclo do mês atual segue como 'Aberta'. Também, pequenos ajustes visuais no celular: a aba ativa de contas e cartões fica destacada na cor da própria conta, e os seletores da calculadora de capacitor passaram a ficar um abaixo do outro, sem texto sobreposto.";
+export const VERSION_NOTES = "Relatório de serviço mais organizado: o checklist da visita PMOC agora aparece junto com o restante do relatório (não mais numa seção separada à parte) e cada checklist personalizado é mostrado com o seu próprio nome, em vez de tudo agrupado como 'Outros'. Os campos de assinatura também passaram a ficar centralizados, no app e no relatório.";

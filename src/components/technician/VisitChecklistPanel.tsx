@@ -489,13 +489,19 @@ function TemplateQuestionRow({
       }
 
       case 'signature':
+        // Assinatura sempre centralizada (título + pad), desktop e mobile.
         return (
-          <SignaturePad
-            value={value || null}
-            onChange={(dataUrl) => save({ response_value: dataUrl })}
-            label={question.description || undefined}
-            disabled={readOnly || saving}
-          />
+          <div className="flex flex-col items-center text-center w-full">
+            <p className="text-sm font-medium text-foreground break-words mb-2">{question.question}</p>
+            <div className="w-full max-w-md mx-auto [&_button]:mx-auto">
+              <SignaturePad
+                value={value || null}
+                onChange={(dataUrl) => save({ response_value: dataUrl })}
+                label={question.description || undefined}
+                disabled={readOnly || saving}
+              />
+            </div>
+          </div>
         );
 
       default:

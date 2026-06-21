@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.11',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de serviço mais organizado',
+        description: 'No relatório da ordem de serviço, o checklist da visita PMOC agora aparece junto com o restante do relatório, e não mais numa seção separada à parte. Cada checklist personalizado passa a ser mostrado com o seu próprio nome, em vez de tudo aparecer agrupado como "Outros". E os campos de assinatura ficaram centralizados, tanto no preenchimento quanto no relatório.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.10',
     date: '21 de junho de 2026',
     type: 'patch',

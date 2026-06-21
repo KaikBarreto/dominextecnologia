@@ -17,6 +17,8 @@ import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
+import { ReportPmocChecklist } from './ReportPmocChecklist';
+import type { ReportChecklistItem } from './ReportChecklist';
 import { OsActionFooter } from './OsDesktopShell';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
@@ -74,6 +76,19 @@ interface OSReportProps {
    */
   partialReport?: boolean;
   visibleEquipmentKeys?: Set<string>;
+  /**
+   * Itens do checklist de CONFORMIDADE PMOC (service_order_activities), já
+   * normalizados em TechnicianOS pros dois modos (técnico autenticado e cliente
+   * anônimo). Renderizados como a seção CLARA "Checklists da Visita PMOC" DENTRO
+   * do card branco, antes dos checklists personalizados. Vazio/ausente = seção
+   * não aparece.
+   */
+  pmocChecklistItems?: ReportChecklistItem[];
+  /**
+   * Âncora (scroll target) por grupo de equipamento da seção PMOC. Usada pela
+   * sidebar EQUIPAMENTOS do desktop pra rolar até cada equipamento.
+   */
+  pmocAnchorIdForGroup?: (equipmentName: string | null) => string | undefined;
 }
 
 const GENERAL_KEY = '__geral__';
@@ -106,7 +121,7 @@ function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: 
   );
 }
 
-export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup }: OSReportProps) {
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
   // (e nao como o usuario logado de outra empresa).
   const db = forceReadOnly ? supabaseAnon : supabase;
@@ -204,7 +219,42 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
     const matchedIds = new Set(groups.flatMap(g => g.responses.map(r => r.id)));
     const unmatched = otherResponses.filter(r => !matchedIds.has(r.id));
-    if (unmatched.length > 0) groups.push({ label: 'Outros', responses: unmatched });
+    if (unmatched.length > 0) {
+      // Em vez de um balde "Outros" genérico, nomeia cada checklist pelo NOME do
+      // template. O nome vem do mapa template_id → name (montado dos equipamentos)
+      // com fallback pra qualquer form_template já visto. Respostas sem template
+      // identificável caem num "Outros" residual no fim.
+      const templateNames = new Map<string, string>();
+      for (const item of equipmentItems) {
+        if (item.form_template?.id && item.form_template?.name) {
+          templateNames.set(item.form_template.id, item.form_template.name);
+        }
+      }
+      // Respostas avulsas (não casadas com equipamento) costumam pertencer ao
+      // checklist GERAL da OS (serviceOrder.form_template) — que não está no mapa
+      // acima (esse só varre equipamentos). Sem isso, o nome real some e cai no
+      // fallback 'Checklist'. Disponível nos dois modos: autenticado (select) e
+      // anônimo (payload de get_public_os via form_template).
+      const osTemplate = (serviceOrder.form_template as { id?: string; name?: string } | null) || null;
+      if (osTemplate?.id && osTemplate?.name) {
+        templateNames.set(osTemplate.id, osTemplate.name);
+      }
+      const byTemplate = new Map<string, FormResponseData[]>();
+      const residual: FormResponseData[] = [];
+      for (const r of unmatched) {
+        const tplId = r.question?.template_id;
+        if (tplId) {
+          if (!byTemplate.has(tplId)) byTemplate.set(tplId, []);
+          byTemplate.get(tplId)!.push(r);
+        } else {
+          residual.push(r);
+        }
+      }
+      for (const [tplId, responses] of byTemplate.entries()) {
+        groups.push({ label: templateNames.get(tplId) || 'Checklist', responses });
+      }
+      if (residual.length > 0) groups.push({ label: 'Outros', responses: residual });
+    }
     return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
   })();
 
@@ -832,6 +882,21 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             </div>
           )}
 
+          {/* Checklists da Visita PMOC (conformidade) — seção clara, antes dos
+              checklists personalizados. Abre a foto no viewer interno (gallery
+              state deste componente), nunca em nova aba. */}
+          {pmocChecklistItems && pmocChecklistItems.length > 0 && (
+            <ReportPmocChecklist
+              items={pmocChecklistItems}
+              anchorIdForGroup={pmocAnchorIdForGroup}
+              onPreviewPhoto={(url, images, index) => {
+                setGalleryImages(images && images.length > 1 ? images : []);
+                setGalleryIndex(index ?? 0);
+                setPreviewImage(url);
+              }}
+            />
+          )}
+
           {/* Checklist Responses - grouped by equipment (accordions) */}
           {responsesByTemplate.length > 0 && (() => {
             const validGroups = responsesByTemplate.filter(group => group.responses.some(r => !isResponseEmpty(r)));
@@ -933,24 +998,25 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <PenTool className="h-3.5 w-3.5" /> Assinaturas
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
                 {(serviceOrder as any).tech_signature && (
-                  <div className="text-center">
+                  <div className="flex flex-col items-center text-center">
                     <img src={(serviceOrder as any).tech_signature} alt="Assinatura Técnico" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
                     <p className="text-xs text-slate-500 font-semibold">Assinatura do Técnico</p>
                   </div>
                 )}
                 {(serviceOrder as any).client_signature && (
-                  <div className="text-center">
+                  <div className="flex flex-col items-center text-center">
                     <img src={(serviceOrder as any).client_signature} alt="Assinatura Cliente" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
                     <p className="text-xs text-slate-500 font-semibold">Assinatura do Cliente</p>
                   </div>
                 )}
                 {signatureResponses.map(response => (
                   response.response_value && (
-                    <div key={response.id} className="text-center">
+                    <div key={response.id} className="flex flex-col items-center text-center">
+                      <p className="text-sm font-medium text-slate-700 break-words mb-1.5">{response.question?.question}</p>
                       <img src={response.response_value} alt={response.question?.question} className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
-                      <p className="text-xs text-slate-500 font-semibold">{response.question?.question}</p>
+                      <p className="text-xs text-slate-500 font-semibold">Assinatura</p>
                     </div>
                   )
                 ))}
