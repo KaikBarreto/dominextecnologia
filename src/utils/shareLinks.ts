@@ -1,6 +1,36 @@
-export function buildServiceOrderShareLink(osId: string) {
-  // Direct friendly URL on custom domain
-  return `https://dominex.app/os-tecnico/${osId}?modo=cliente`;
+import { buildSlugSegment } from '@/utils/prettyLinks';
+
+interface ServiceOrderShareLinkParams {
+  /** Código curto público (`public_short_code`). Quando presente, gera URL bonita. */
+  shortCode?: string | null;
+  customerName?: string | null;
+  serviceName?: string | null;
+  /** UUID antigo — fallback retrocompatível quando não há `shortCode`. */
+  osId?: string | null;
+}
+
+/**
+ * Monta o link público de acompanhamento da OS (modo cliente).
+ *
+ * Retrocompatível: aceita tanto a string `osId` antiga quanto um objeto
+ * `{ shortCode, customerName, serviceName, osId }`.
+ *
+ * - Com `shortCode`: gera `…/os-tecnico/cliente-servico-<codigo>?modo=cliente`.
+ * - Sem `shortCode`: cai no `osId` (UUID), que continua resolvendo nos dois modos.
+ */
+export function buildServiceOrderShareLink(
+  arg: string | ServiceOrderShareLinkParams,
+): string {
+  const params: ServiceOrderShareLinkParams =
+    typeof arg === 'string' ? { osId: arg } : arg;
+
+  const { shortCode, customerName, serviceName, osId } = params;
+
+  const segment = shortCode
+    ? buildSlugSegment([customerName, serviceName], shortCode, 'os')
+    : osId ?? '';
+
+  return `https://dominex.app/os-tecnico/${segment}?modo=cliente`;
 }
 
 /**

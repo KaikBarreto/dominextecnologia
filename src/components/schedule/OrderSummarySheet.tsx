@@ -50,7 +50,12 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
   const [linkCopied, setLinkCopied] = useState(false);
 
   const handleCopyTrackingLink = async () => {
-    const link = buildServiceOrderShareLink(order.id);
+    const link = buildServiceOrderShareLink({
+      shortCode: (order as any).public_short_code,
+      customerName: order.customer?.name,
+      serviceName: order.service_type?.name,
+      osId: order.id,
+    });
     await navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);

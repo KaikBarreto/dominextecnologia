@@ -53,6 +53,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { CustomerTransactionDetailModal } from '@/components/financial/CustomerTransactionDetailModal';
 import { parseISO } from 'date-fns';
 import type { FinancialTransaction } from '@/types/database';
+import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
 
@@ -71,7 +72,10 @@ function formatCurrency(value: number) {
 }
 
 export default function CustomerDetail() {
-  const { id } = useParams<{ id: string }>();
+  // O param da rota pode ser UUID antigo OU `slug-do-nome-<codigo>` (link
+  // amigável). Resolvemos o cliente pela lista (já carregada com RLS), casando
+  // por id (UUID) ou por `public_short_code`. `id` abaixo é sempre o id real.
+  const { id: routeParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isAdminOrGestor, hasPermission } = useAuth();
@@ -81,6 +85,20 @@ export default function CustomerDetail() {
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
   const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
+
+  // Resolve o cliente a partir do param da rota (UUID antigo OU código curto).
+  // A lista já vem com RLS aplicada; casamos por id ou por public_short_code.
+  const paramShortCode = isUuid(routeParam) ? null : extractShortCode(routeParam);
+  const customer = customers.find((c) =>
+    isUuid(routeParam)
+      ? c.id === routeParam
+      : paramShortCode
+        ? (c as any).public_short_code === paramShortCode
+        : c.id === routeParam,
+  );
+  // id real do cliente (alimenta os hooks abaixo).
+  const id = customer?.id ?? (isUuid(routeParam) ? routeParam : undefined);
+
   const { serviceOrders, createServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { submitTask } = useTaskSubmit();
   const { transactions } = useFinancial();
@@ -115,7 +133,17 @@ export default function CustomerDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const customer = customers.find(c => c.id === id);
+  // Auto-canonical: depois que o cliente carrega, normaliza a URL pro formato
+  // bonito (`slug-<codigo>`) sem recarregar. Links antigos (UUID) continuam
+  // abrindo — só reescrevemos a barra de endereço.
+  useEffect(() => {
+    const shortCode = (customer as any)?.public_short_code as string | undefined;
+    if (!customer || !shortCode) return;
+    const pretty = buildSlugSegment([customer.name], shortCode, 'cliente');
+    if (routeParam !== pretty) {
+      navigate(`/clientes/${pretty}`, { replace: true });
+    }
+  }, [customer, routeParam, navigate]);
 
   const getCategoryName = (categoryId?: string | null) =>
     categoryId ? categories.find(c => c.id === categoryId)?.name : undefined;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   ClipboardList, 
   MapPin, 
@@ -61,6 +61,7 @@ import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -93,6 +94,7 @@ export default function TechnicianOS() {
   // mesmo que haja sessão de outro usuário/empresa persistida no navegador.
   const db = forceReadOnly ? supabaseAnon : supabase;
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any }) | null>(null);
@@ -240,7 +242,12 @@ export default function TechnicianOS() {
   const handleCopyTrackingLink = async () => {
     if (!id) return;
     try {
-      const link = buildServiceOrderShareLink(id);
+      const link = buildServiceOrderShareLink({
+        shortCode: (serviceOrder as any)?.public_short_code,
+        customerName: serviceOrder?.customer?.name,
+        serviceName: (serviceOrder as any)?.service_type?.name,
+        osId: serviceOrder?.id ?? id,
+      });
       await navigator.clipboard.writeText(link);
       setTrackingLinkCopied(true);
       toast({ title: 'Link copiado!' });
@@ -415,13 +422,35 @@ export default function TechnicianOS() {
     applyCompany(data || null);
   }, [applyCompany, db]);
 
+  // "Embeleza" a barra de endereço: se a OS foi aberta por UUID antigo (ou slug
+  // diferente), reescreve a URL para `slug-do-nome-<codigo>` preservando a query
+  // (`?modo=cliente` etc.) sem recarregar a página. Só roda quando temos o
+  // `public_short_code` em mãos; nunca inventa. UUID antigo continua resolvendo.
+  const canonicalizeUrl = useCallback(
+    (shortCode?: string | null, customerName?: string | null, serviceName?: string | null) => {
+      if (!shortCode) return;
+      const segment = buildSlugSegment([customerName, serviceName], shortCode, 'os');
+      const target = `/os-tecnico/${segment}`;
+      if (location.pathname === target) return;
+      navigate(`${target}${location.search}`, { replace: true });
+    },
+    [navigate, location.pathname, location.search],
+  );
+
   // MODO CLIENTE (anon): toda a leitura passa por UMA RPC SECURITY DEFINER
   // (`get_public_os`) que recebe só o id e devolve aquela OS. Substitui as
   // leituras anon diretas que enumeravam todas as OSs de todas as empresas.
   const fetchPublicOS = useCallback(async (opts?: { isPoll?: boolean }): Promise<void> => {
     if (!id) return;
     try {
-      const { data, error } = await supabaseAnon.rpc('get_public_os', { p_os_id: id });
+      // Resolve por UUID antigo OU por código curto do slug amigável.
+      // get_public_os_by_code casa pela coluna `public_short_code` e delega pro
+      // mesmo payload de get_public_os; ambos retornam NULL se não encontrar.
+      const { data, error } = isUuid(id)
+        ? await supabaseAnon.rpc('get_public_os', { p_os_id: id })
+        : await supabaseAnon.rpc('get_public_os_by_code', {
+            p_code: extractShortCode(id) ?? '',
+          });
       if (error) throw error;
       if (!data) {
         setServiceOrder(null);
@@ -438,6 +467,16 @@ export default function TechnicianOS() {
         service_type: payload.service_type || null,
       };
       setServiceOrder(so as any);
+      // Auto-canonical: o payload (to_jsonb da OS) já traz `public_short_code`,
+      // e customer/service_type vêm nos joins — então embelezamos a URL também
+      // no modo anônimo. Só na carga inicial pra não brigar com o poll.
+      if (!opts?.isPoll) {
+        canonicalizeUrl(
+          so.public_short_code,
+          payload.customer?.name,
+          payload.service_type?.name,
+        );
+      }
       // Contrato (pra selo de conformidade PMOC no modo público). Backend
       // adiciona is_pmoc + pmoc_legal_compliance_text ao objeto contract.
       // `payload` já é `any`, então o acesso não introduz novo cast.
@@ -509,21 +548,27 @@ export default function TechnicianOS() {
     } finally {
       setLoading(false);
     }
-  }, [id, toast, applyCompany]);
+  }, [id, toast, applyCompany, canonicalizeUrl]);
 
   const fetchServiceOrder = useCallback(async () => {
     try {
-      const { data, error } = await db
+      // Resolve por UUID antigo (`id`) OU por código curto do slug amigável
+      // (`public_short_code`). `public_short_code` entra no select pra termos o
+      // código em mãos no auto-canonical abaixo.
+      let query = db
         .from('service_orders')
         .select(`
           *,
+          public_short_code,
           customer:customers(id, name, phone, address, city, state, document, photo_url, latitude, longitude),
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name),
           service_type:service_types(id, name, color)
-        `)
-        .eq('id', id)
-        .maybeSingle();
+        `);
+      query = isUuid(id)
+        ? query.eq('id', id!)
+        : query.eq('public_short_code', extractShortCode(id) ?? '');
+      const { data, error } = await query.maybeSingle();
 
       // PGRST116 with "0 rows" leaks through some supabase-js versions despite
       // .maybeSingle() — treat it as a clean not-found, never as a UI error.
@@ -534,6 +579,13 @@ export default function TechnicianOS() {
       }
 
       setServiceOrder(data as any);
+      // Auto-canonical: embeleza a barra de endereço pra slug-<codigo>,
+      // preservando a query string. UUID antigo continua resolvendo a OS.
+      canonicalizeUrl(
+        (data as any).public_short_code,
+        (data as any).customer?.name,
+        (data as any).service_type?.name,
+      );
       setCheckInTime(data.check_in_time);
       setCheckOutTime(data.check_out_time);
       setCheckInLocation(data.check_in_location as any);
@@ -559,7 +611,7 @@ export default function TechnicianOS() {
     } finally {
       setLoading(false);
     }
-  }, [id, toast, fetchCompany]);
+  }, [id, toast, fetchCompany, db, canonicalizeUrl]);
 
   useEffect(() => {
     // Espera a resolução do estado de auth pra escolher o caminho de leitura.

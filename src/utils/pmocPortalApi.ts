@@ -1,5 +1,6 @@
 import type { PortalPayload } from '@/types/pmocPortal';
 import { supabase } from '@/integrations/supabase/client';
+import { buildSlugSegment } from '@/utils/prettyLinks';
 
 /**
  * Cliente do Portal do Contrato (PMOC e não-PMOC).
@@ -362,8 +363,32 @@ function buildMockPayload(_token: string): PortalPayload {
   };
 }
 
-/** URL pública canônica do Portal do Contrato — usada em UI interna e QR Code. */
-export function buildPmocPortalUrl(token: string, origin?: string): string {
+/**
+ * URL pública canônica do Portal do Contrato — usada em UI interna e QR Code.
+ *
+ * Retrocompatível com as duas formas de chamada:
+ *  - `buildPmocPortalUrl(token)` (assinatura antiga, ainda funciona).
+ *  - `buildPmocPortalUrl({ shortCode, name, token })` → link amigável
+ *    `…/contrato/unidade/<slug-do-nome>-<codigo>`. Sem `shortCode`, cai pro
+ *    `token` (32hex) antigo — links antigos abrem PRA SEMPRE.
+ */
+export function buildPmocPortalUrl(
+  tokenOrArgs:
+    | string
+    | { shortCode?: string | null; name?: string | null; token?: string | null },
+  origin?: string,
+): string {
   const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://dominex.app');
-  return `${base}/contrato/unidade/${token}`;
+
+  if (typeof tokenOrArgs === 'string') {
+    return `${base}/contrato/unidade/${tokenOrArgs}`;
+  }
+
+  const { shortCode, name, token } = tokenOrArgs;
+  if (shortCode) {
+    const segment = buildSlugSegment([name], shortCode, 'contrato');
+    return `${base}/contrato/unidade/${segment}`;
+  }
+  // Fallback retrocompat: sem código curto, usa o token antigo.
+  return `${base}/contrato/unidade/${token ?? ''}`;
 }

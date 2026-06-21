@@ -113,6 +113,9 @@ export interface ServiceOrder {
   form_template_id?: string;
   created_at: string;
   updated_at: string;
+  // Código curto público (base32, 12 chars) usado nos links amigáveis da OS.
+  // Sempre preenchido por trigger no banco.
+  public_short_code?: string | null;
   // Timestamps de auditoria (preenchidos por trigger BEFORE UPDATE)
   started_at?: string | null;
   paused_at?: string | null;

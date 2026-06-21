@@ -94,7 +94,12 @@ function OrderDetail({
   const teamInfo = (order as any)._team as { id: string; name: string; color: string; photo_url?: string | null; icon_name?: string | null } | undefined;
 
   const handleCopyTrackingLink = async () => {
-    const link = buildServiceOrderShareLink(order.id);
+    const link = buildServiceOrderShareLink({
+      shortCode: (order as any).public_short_code,
+      customerName: order.customer?.name,
+      serviceName: order.service_type?.name,
+      osId: order.id,
+    });
     await navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);

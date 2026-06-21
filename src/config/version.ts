@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.6";
+export const APP_VERSION = "1.14.7";
 
-export const VERSION_NOTES = "Editar e excluir contratos PMOC ficou mais seguro: ao recalcular as visitas, as novas são geradas antes de remover as antigas (nunca fica sem visitas se algo falhar); excluir um ambiente agora remove os equipamentos dele das próximas visitas (com confirmação); e o sistema avisa se o contrato foi alterado em outra aba ao mesmo tempo.";
+export const VERSION_NOTES = "Os links de contratos, ordens de serviço, clientes e equipamentos ficaram mais curtos e legíveis: agora mostram o nome de quem se referem em vez de um código comprido — mais fáceis de reconhecer ao compartilhar. Todos os links antigos que você já enviou ou imprimiu (incluindo QR Codes) continuam funcionando normalmente.";

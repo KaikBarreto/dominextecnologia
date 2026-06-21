@@ -32,6 +32,10 @@ const corsHeaders = {
 };
 
 const TOKEN_REGEX = /^[0-9a-f]{32}$/;
+// Links amigáveis (2026-06-20): o param pode chegar como `slug-do-nome-<codigo>`.
+// O código curto é base32 sem ambíguos, 12 chars, sempre o último segmento.
+// Como é Deno, replicamos a deteção inline (não dá pra importar @/utils/prettyLinks).
+const SHORT_CODE_REGEX = /^[a-hj-np-z2-9]{12}$/;
 const HISTORY_LIMIT = 20;
 const SCHEDULE_LIMIT = 50;
 const DESCRIPTION_MAX = 200;
@@ -179,22 +183,40 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const token = url.searchParams.get("token");
+    const param = url.searchParams.get("token");
 
-    if (!token) {
+    if (!param) {
       return jsonResponse({ error: "token_required" }, 400);
     }
 
-    if (!TOKEN_REGEX.test(token)) {
-      return jsonResponse({ error: "invalid_token_format" }, 400);
+    // Resolução dupla (retrocompat — links antigos abrem PRA SEMPRE):
+    //   - token antigo (32 hex)        → .eq("public_pmoc_token", param)
+    //   - link amigável slug-<codigo>  → extrai o código (último segmento) e
+    //                                     .eq("public_short_code", codigo)
+    // Qualquer outro formato → erro de formato inválido (igual hoje).
+    let lookupColumn: "public_pmoc_token" | "public_short_code";
+    let lookupValue: string;
+    if (TOKEN_REGEX.test(param)) {
+      lookupColumn = "public_pmoc_token";
+      lookupValue = param;
+    } else {
+      const code = param.split("-").pop() ?? "";
+      if (SHORT_CODE_REGEX.test(code)) {
+        lookupColumn = "public_short_code";
+        lookupValue = code;
+      } else {
+        return jsonResponse({ error: "invalid_token_format" }, 400);
+      }
     }
+    // Mantém o nome `token` pros logs/máscara já existentes abaixo.
+    const token = lookupValue;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // -------------------------------------------------------------------------
-    // 1) Lookup do contrato pelo token. Projeção mínima.
+    // 1) Lookup do contrato pelo token/código curto. Projeção mínima.
     //    is_pmoc=false / status='cancelled' / 'inactive' → 404.
     // -------------------------------------------------------------------------
     const { data: contract, error: contractErr } = await supabase
@@ -217,7 +239,7 @@ Deno.serve(async (req) => {
           "portal_is_public",
         ].join(","),
       )
-      .eq("public_pmoc_token", token)
+      .eq(lookupColumn, lookupValue)
       .maybeSingle();
 
     if (contractErr) {

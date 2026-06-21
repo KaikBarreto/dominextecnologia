@@ -1530,6 +1530,7 @@ export type Database = {
           portal_documents_released: boolean
           portal_is_public: boolean
           public_pmoc_token: string | null
+          public_short_code: string | null
           responsible_technician_id: string | null
           service_type_id: string | null
           show_billing_in_schedule: boolean
@@ -1573,6 +1574,7 @@ export type Database = {
           portal_documents_released?: boolean
           portal_is_public?: boolean
           public_pmoc_token?: string | null
+          public_short_code?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
           show_billing_in_schedule?: boolean
@@ -1616,6 +1618,7 @@ export type Database = {
           portal_documents_released?: boolean
           portal_is_public?: boolean
           public_pmoc_token?: string | null
+          public_short_code?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
           show_billing_in_schedule?: boolean
@@ -2082,6 +2085,7 @@ export type Database = {
           origin: string | null
           phone: string | null
           photo_url: string | null
+          public_short_code: string | null
           state: string | null
           street_number: string | null
           updated_at: string
@@ -2114,6 +2118,7 @@ export type Database = {
           origin?: string | null
           phone?: string | null
           photo_url?: string | null
+          public_short_code?: string | null
           state?: string | null
           street_number?: string | null
           updated_at?: string
@@ -2146,6 +2151,7 @@ export type Database = {
           origin?: string | null
           phone?: string | null
           photo_url?: string | null
+          public_short_code?: string | null
           state?: string | null
           street_number?: string | null
           updated_at?: string
@@ -2683,6 +2689,7 @@ export type Database = {
           name: string
           notes: string | null
           photo_url: string | null
+          public_short_code: string | null
           serial_number: string | null
           status: string
           updated_at: string
@@ -2704,6 +2711,7 @@ export type Database = {
           name: string
           notes?: string | null
           photo_url?: string | null
+          public_short_code?: string | null
           serial_number?: string | null
           status?: string
           updated_at?: string
@@ -2725,6 +2733,7 @@ export type Database = {
           name?: string
           notes?: string | null
           photo_url?: string | null
+          public_short_code?: string | null
           serial_number?: string | null
           status?: string
           updated_at?: string
@@ -5964,6 +5973,7 @@ export type Database = {
           paused_at: string | null
           pmoc_conformity_notes: string | null
           pmoc_conformity_status: string | null
+          public_short_code: string | null
           recurrence_end_date: string | null
           recurrence_group_id: string | null
           recurrence_interval: number | null
@@ -6025,6 +6035,7 @@ export type Database = {
           paused_at?: string | null
           pmoc_conformity_notes?: string | null
           pmoc_conformity_status?: string | null
+          public_short_code?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_interval?: number | null
@@ -6086,6 +6097,7 @@ export type Database = {
           paused_at?: string | null
           pmoc_conformity_notes?: string | null
           pmoc_conformity_status?: string | null
+          public_short_code?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_interval?: number | null
@@ -7356,6 +7368,10 @@ export type Database = {
         Returns: number
       }
       generate_pmoc_token: { Args: never; Returns: string }
+      generate_public_short_code: {
+        Args: { p_len?: number }
+        Returns: string
+      }
       get_company_health_scores: {
         Args: never
         Returns: {
@@ -7417,6 +7433,7 @@ export type Database = {
       get_portal_data: { Args: { p_token: string }; Returns: Json }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
+      get_public_os_by_code: { Args: { p_code: string }; Returns: Json }
       get_quote_by_token: {
         Args: { _token: string }
         Returns: {

@@ -427,7 +427,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   };
 
   const handleCopyLink = () => {
-    const url = buildServiceOrderShareLink(serviceOrder.id);
+    const url = buildServiceOrderShareLink({
+      shortCode: (serviceOrder as any).public_short_code,
+      customerName: serviceOrder.customer?.name,
+      serviceName: (serviceOrder as any).service_type?.name,
+      osId: serviceOrder.id,
+    });
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: 'Link copiado!' });
     }).catch(() => {

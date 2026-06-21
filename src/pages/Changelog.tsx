@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.7',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Links mais curtos e fáceis de reconhecer',
+        description: 'Os links de contratos, ordens de serviço, clientes e equipamentos agora trazem o nome de quem se referem — o cliente, o serviço, o contrato ou o equipamento — no lugar de um código comprido e sem sentido. Ficam mais bonitos e fáceis de identificar na hora de compartilhar pelo WhatsApp. E o mais importante: todos os links antigos que você já enviou ou imprimiu, incluindo os QR Codes, continuam funcionando normalmente.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.6',
     date: '20 de junho de 2026',
     type: 'patch',

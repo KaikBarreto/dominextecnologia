@@ -45,6 +45,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
+import { useEffect } from 'react';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
@@ -55,17 +57,33 @@ const LABEL_SIZES = [
 ] as const;
 
 export default function EquipmentDetail() {
-  const { id } = useParams<{ id: string }>();
+  // O param da rota pode ser UUID antigo OU `slug-do-nome-<codigo>` (link
+  // amigável). Resolvemos o equipamento pela lista (já carregada com RLS),
+  // casando por id (UUID) ou por `public_short_code`. `id` é sempre o id real.
+  const { id: routeParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const navState = location.state as { from?: string; customerId?: string } | null;
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
-  const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
-  const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
   const isMobile = useIsMobile();
   const { settings: companySettings } = useCompanySettings();
   const { equipment: allEquipment, isLoading: eqLoading } = useEquipment();
+
+  // Resolve o equipamento a partir do param (UUID antigo OU código curto).
+  const paramShortCode = isUuid(routeParam) ? null : extractShortCode(routeParam);
+  const equipment = allEquipment.find((eq) =>
+    isUuid(routeParam)
+      ? eq.id === routeParam
+      : paramShortCode
+        ? (eq as any).public_short_code === paramShortCode
+        : eq.id === routeParam,
+  );
+  // id real do equipamento (alimenta os hooks abaixo).
+  const id = equipment?.id ?? (isUuid(routeParam) ? routeParam : undefined);
+
+  const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
+  const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
   const { serviceOrders } = useServiceOrders();
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
@@ -83,7 +101,18 @@ export default function EquipmentDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
-  const equipment = allEquipment.find(eq => eq.id === id);
+  // Auto-canonical: depois que o equipamento carrega, normaliza a URL pro
+  // formato bonito (`slug-<codigo>`) sem recarregar. Links antigos (UUID)
+  // continuam abrindo — só reescrevemos a barra de endereço.
+  useEffect(() => {
+    const shortCode = (equipment as any)?.public_short_code as string | undefined;
+    if (!equipment || !shortCode) return;
+    const pretty = buildSlugSegment([equipment.name], shortCode, 'equipamento');
+    if (routeParam !== pretty) {
+      navigate(`/equipamentos/${pretty}`, { replace: true });
+    }
+  }, [equipment, routeParam, navigate]);
+
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
   const { sortedItems: sortedEqOrders, sortConfig: eqOsSortConfig, handleSort: handleEqOsSort } = useTableSort(equipmentOrders);
   const ordersPagination = useDataPagination(sortedEqOrders);

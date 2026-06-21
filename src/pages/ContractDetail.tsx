@@ -4,8 +4,9 @@ import { useTheme } from 'next-themes';
 import { QRCodeSVG } from 'qrcode.react';
 import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useContractPublicToken, useRegeneratePmocToken } from '@/hooks/usePmocPortal';
+import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
+import { isUuid, buildSlugSegment } from '@/utils/prettyLinks';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,8 +90,11 @@ const FREQUENCY_OPTIONS = [
 export default function ContractDetail() {
   const isMobile = useIsMobile();
   const { resolvedTheme } = useTheme();
-  const { id } = useParams<{ id: string }>();
+  // O param da rota pode ser UUID antigo OU `slug-do-nome-<codigo>` (link
+  // amigável). `useResolveContractId` devolve sempre o id real do contrato.
+  const { id: routeParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
   const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
   const { accounts } = useFinancialAccounts();
@@ -153,7 +157,26 @@ export default function ContractDetail() {
   const regenerateToken = useRegeneratePmocToken();
   const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
   const [downloadingQr, setDownloadingQr] = useState(false);
-  const portalUrl = publicToken ? buildPmocPortalUrl(publicToken) : null;
+  // Link amigável do portal: `…/contrato/unidade/<slug>-<codigo>`. Fallback pro
+  // token antigo (32hex) quando o código curto ainda não estiver disponível.
+  const portalUrl = publicToken?.shortCode
+    ? buildPmocPortalUrl({ shortCode: publicToken.shortCode, name: publicToken.name })
+    : publicToken?.token
+      ? buildPmocPortalUrl(publicToken.token)
+      : null;
+
+  // Auto-canonical: assim que o contrato carrega, se a URL interna não estiver
+  // no formato bonito (`slug-<codigo>`), reescreve a barra de endereço sem
+  // recarregar. Faz QUALQUER link antigo (UUID) virar bonito, sem caçar todos
+  // os navigate() espalhados. Links antigos continuam ABRINDO — só normalizamos.
+  useEffect(() => {
+    const shortCode = (contract as any)?.public_short_code as string | undefined;
+    if (!contract || !shortCode || isResolvingId) return;
+    const pretty = buildSlugSegment([(contract as any)?.name], shortCode, 'contrato');
+    if (routeParam !== pretty) {
+      navigate(`/contratos/${pretty}`, { replace: true });
+    }
+  }, [contract, routeParam, isResolvingId, navigate]);
 
   // Toggle "Portal Público" (público/privado) — espelha o CustomerDetail.
   // Lê/grava contracts.portal_is_public (cast `as any`: types.ts não regenerado).
