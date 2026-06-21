@@ -586,6 +586,31 @@ export function useContractPlanActivities(contractId: string | null | undefined)
  */
 export const REGENERABLE_OS_STATUSES = new Set(['agendada', 'pendente']);
 
+/**
+ * Decide se as visitas futuras de um contrato devem ser regeneradas ao salvar.
+ *
+ * Regra (pura, testável):
+ *  - Contrato INATIVO → NUNCA regenera (`false`). Só vira visita quando ativo.
+ *  - Contrato ATIVO regenera quando:
+ *      (1) o cronograma MUDOU (datas/frequência/horizonte, plano ou conjunto de
+ *          equipamentos) — comportamento clássico; OU
+ *      (2) AUTO-HEAL: o contrato está ATIVO mas SEM nenhuma visita futura
+ *          (`hasFutureVisits === false`), mesmo sem mudança. Isso cura um
+ *          contrato que ficou em 0 ocorrências (ex.: uma limpeza apagou as OSs)
+ *          no próximo "salvar" pela tela, e cobre a REATIVAÇÃO (inativo→ativo,
+ *          que costuma chegar sem visita futura).
+ *  - ⚠️ Não-regressão: contrato ATIVO SAUDÁVEL (tem visita futura) + SEM mudança
+ *    → `false` (no-op). Evita recriar OSs à toa e resetar reatribuições.
+ */
+export function shouldRegenerateVisits(args: {
+  newStatus: string;
+  scheduleChanged: boolean;
+  hasFutureVisits: boolean;
+}): boolean {
+  if (args.newStatus !== 'active') return false;
+  return args.scheduleChanged || !args.hasFutureVisits;
+}
+
 /** Data de hoje (America/Sao_Paulo) como string YYYY-MM-DD, sem shift de TZ. */
 function todayStrSaoPaulo(): string {
   const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -786,6 +811,22 @@ async function runWithConcurrency<T>(
   const runners = Array.from({ length: Math.min(concurrency, items.length) }, () => runNext());
   await Promise.all(runners);
   return okCount;
+}
+
+/**
+ * Falha alta quando nem todas as visitas calculadas viraram OS. Como
+ * `persistContractVisit` engole erros (retorna false e só loga no console), sem
+ * essa checagem um contrato poderia ser "salvo" com 0 ou parciais visitas e o
+ * usuário receber toast de sucesso. Aqui propagamos um erro PT-BR que o
+ * `onError` do mutation transforma em toast destrutivo.
+ */
+function assertAllVisitsPersisted(createdCount: number, expected: number): void {
+  if (createdCount >= expected) return;
+  const faltam = expected - createdCount;
+  throw new Error(
+    `Falha ao gerar as visitas do contrato: ${createdCount} de ${expected} criada(s) ` +
+      `(${faltam} não foram salvas). Tente salvar novamente; se persistir, contate o suporte.`,
+  );
 }
 
 /**
@@ -1875,18 +1916,25 @@ export function useContracts() {
       const newStatus = (input.status ?? current.status) as string;
       const scheduleChanged = scheduleFieldChanged || planChanged || itemsChanged;
 
-      // Sem mudança de cronograma OU contrato inativo → para por aqui (legado).
-      if (!scheduleChanged || newStatus !== 'active') {
-        return { regenerated: false, deletedCount: 0, createdCount: 0, reassignedCount };
-      }
-
-      // 4) Regenerar visitas futuras não-tocadas.
+      // 4) Carrega as OSs do contrato ANTES do gate: precisamos saber se há
+      //    visita futura pra decidir o auto-heal (contrato ativo zerado/reativado).
       const todayStr = todayStrSaoPaulo();
 
       const { data: contractOss } = await supabase
         .from('service_orders')
         .select('id, scheduled_date, status')
         .eq('contract_id', id);
+
+      const hasFutureVisits = (contractOss || []).some(
+        o => (o.scheduled_date ?? '') >= todayStr,
+      );
+
+      // Gate único (pure helper): contrato ativo regenera quando o cronograma
+      // mudou OU quando está sem visita futura (auto-heal / reativação). Contrato
+      // inativo ou ativo-saudável-sem-mudança → no-op.
+      if (!shouldRegenerateVisits({ newStatus, scheduleChanged, hasFutureVisits })) {
+        return { regenerated: false, deletedCount: 0, createdCount: 0, reassignedCount };
+      }
 
       // Regeneráveis: status agendada/pendente E futuras (scheduled_date >= hoje).
       const regenerableIds = (contractOss || [])
@@ -2017,6 +2065,11 @@ export function useContracts() {
         }),
       );
 
+      // Erro NÃO-silencioso: persistContractVisit engole falhas (retorna false).
+      // Se geramos menos OSs do que as visitas calculadas, NÃO reportar sucesso —
+      // o contrato ficaria salvo com 0/parcial sem ninguém saber.
+      assertAllVisitsPersisted(createdCount, visits.length);
+
       return { regenerated: true, deletedCount: regenerableIds.length, createdCount, reassignedCount };
     },
     onSuccess: (result) => {
@@ -2122,18 +2175,23 @@ export function useContracts() {
         itemsChanged = true;
       }
 
-      // Nada mudou OU contrato inativo → para por aqui (sem regerar, sem UPDATE).
-      if (!itemsChanged || current.status !== 'active') {
-        return { regenerated: false, deletedCount: 0, createdCount: 0 };
-      }
-
-      // 2) Regenerar visitas futuras não-tocadas (mesma regra do updateContract).
+      // 2) Carrega OSs ANTES do gate (auto-heal precisa saber de visita futura).
       const todayStr = todayStrSaoPaulo();
 
       const { data: contractOss } = await supabase
         .from('service_orders')
         .select('id, scheduled_date, status')
         .eq('contract_id', id);
+
+      const hasFutureVisits = (contractOss || []).some(
+        o => (o.scheduled_date ?? '') >= todayStr,
+      );
+
+      // Gate único: contrato ativo regenera quando os itens mudaram OU está sem
+      // visita futura (auto-heal). Inativo ou ativo-saudável-sem-mudança → no-op.
+      if (!shouldRegenerateVisits({ newStatus: current.status as string, scheduleChanged: itemsChanged, hasFutureVisits })) {
+        return { regenerated: false, deletedCount: 0, createdCount: 0 };
+      }
 
       const regenerableIds = (contractOss || [])
         .filter(o =>
@@ -2235,6 +2293,8 @@ export function useContracts() {
         }),
       );
 
+      assertAllVisitsPersisted(createdCount, visits.length);
+
       return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
     },
     onSuccess: (result) => {
@@ -2330,17 +2390,22 @@ export function useContracts() {
       // 2) Sincroniza ambientes + religa environment_id dos itens (após o diff).
       await syncContractEnvironments({ companyId: profile.company_id, contractId: id, environments });
 
-      // Conjunto de equipamentos não mudou OU contrato inativo → não regerar.
-      if (!itemsChanged || current.status !== 'active') {
-        return { regenerated: false, deletedCount: 0, createdCount: 0 };
-      }
-
-      // 3) Regenerar visitas futuras (mesma regra do updateContractEquipment).
+      // 3) Carrega OSs ANTES do gate (auto-heal precisa saber de visita futura).
       const todayStr = todayStrSaoPaulo();
       const { data: contractOss } = await supabase
         .from('service_orders')
         .select('id, scheduled_date, status')
         .eq('contract_id', id);
+      const hasFutureVisits = (contractOss || []).some(
+        o => (o.scheduled_date ?? '') >= todayStr,
+      );
+
+      // Gate único: ativo regenera quando itens/ambientes mudaram OU está sem
+      // visita futura (auto-heal). Inativo ou ativo-saudável-sem-mudança → no-op.
+      if (!shouldRegenerateVisits({ newStatus: current.status as string, scheduleChanged: itemsChanged, hasFutureVisits })) {
+        return { regenerated: false, deletedCount: 0, createdCount: 0 };
+      }
+
       const regenerableIds = (contractOss || [])
         .filter(o => REGENERABLE_OS_STATUSES.has(o.status ?? '') && (o.scheduled_date ?? '') >= todayStr)
         .map(o => o.id)
@@ -2421,6 +2486,8 @@ export function useContracts() {
           createdBy: user?.id || null,
         }),
       );
+
+      assertAllVisitsPersisted(createdCount, visits.length);
 
       return { regenerated: true, deletedCount: regenerableIds.length, createdCount };
     },
@@ -2601,6 +2668,8 @@ export function useContracts() {
           createdBy: user?.id || null,
         }),
       );
+
+      assertAllVisitsPersisted(addedCount, visits.length);
 
       // Data final do contrato após a renovação (maior data entre as novas).
       let newUntil: string | null = lastScheduled;

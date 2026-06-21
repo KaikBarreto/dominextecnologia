@@ -9,6 +9,7 @@ import {
   generateGroupedVisits,
   machinesFromItemRows,
   dedupPlanActivities,
+  shouldRegenerateVisits,
   type MachineInput,
   type MachinePlanActivity,
   type PlanActivityInput,
@@ -574,6 +575,144 @@ describe('dedupPlanActivities', () => {
       { description: 'Checklist', freq_code: 'M', section: 'personalizados', form_template_id: 'tpl-2', contract_item_id: 'item-A' },
     ];
     expect(dedupPlanActivities(acts).length).toBe(2);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// AUTO-HEAL do gate de regeneração (shouldRegenerateVisits).
+// Bug DA Luz (Glacial): contrato ATIVO ficou com 0 ocorrências (uma limpeza
+// apagou as OSs) e um "salvar" SEM mudança não regenerava (scheduleChanged=false
+// → no-op). O auto-heal regenera quando o ativo está SEM visita futura, e o
+// guard mantém o no-op pra contrato saudável sem mudança (não recriar à toa).
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('shouldRegenerateVisits — gate de regeneração / auto-heal', () => {
+  it('AUTO-HEAL: contrato ATIVO sem visita futura → regenera mesmo SEM mudança', () => {
+    expect(
+      shouldRegenerateVisits({ newStatus: 'active', scheduleChanged: false, hasFutureVisits: false }),
+    ).toBe(true);
+  });
+
+  it('GUARD não-regressão: contrato ATIVO saudável (tem visita futura) + SEM mudança → NÃO regenera', () => {
+    expect(
+      shouldRegenerateVisits({ newStatus: 'active', scheduleChanged: false, hasFutureVisits: true }),
+    ).toBe(false);
+  });
+
+  it('contrato ATIVO com mudança de cronograma → regenera (mesmo com visita futura)', () => {
+    expect(
+      shouldRegenerateVisits({ newStatus: 'active', scheduleChanged: true, hasFutureVisits: true }),
+    ).toBe(true);
+  });
+
+  it('REATIVAÇÃO: status virou active e está sem visita futura → regenera', () => {
+    expect(
+      shouldRegenerateVisits({ newStatus: 'active', scheduleChanged: false, hasFutureVisits: false }),
+    ).toBe(true);
+  });
+
+  it('contrato INATIVO nunca regenera, mesmo sem visita futura ou com mudança', () => {
+    expect(
+      shouldRegenerateVisits({ newStatus: 'inactive', scheduleChanged: true, hasFutureVisits: false }),
+    ).toBe(false);
+    expect(
+      shouldRegenerateVisits({ newStatus: 'inactive', scheduleChanged: false, hasFutureVisits: false }),
+    ).toBe(false);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// CENÁRIO DA LUZ — verificação por teste de que, com os dados reais do contrato
+// (13 máquinas 'ac', plano M/T/S/A por máquina, fases mistas 1/3/12, horizonte
+// 24, start 2026-06-22), o motor produz visitas > 0 e a 1ª visita traz cada
+// atividade 1× por máquina (sem ×N, ≤ total do plano). Reproduz o estado em que
+// o DALUZ será curado no próximo "salvar" pela tela (com o auto-heal no ar).
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('CENÁRIO DA LUZ — geração de visitas (auto-heal pela tela)', () => {
+  const N = 13;
+  const HORIZON = 24;
+  const DALUZ_START = new Date('2026-06-22T12:00:00');
+  // Fases mistas como no contrato real (start_visit 1/3/12), distribuídas.
+  const startVisitFor = (i: number): number => [1, 3, 12][i % 3];
+
+  // Plano POR MÁQUINA com os 4 níveis de frequência (M/T/S/A), contract_item_id
+  // já resolvido (= o que o hook passa ao motor após resolver equipment_ref).
+  const FREQ: FreqCode[] = ['M', 'T', 'S', 'A'];
+  const machines: MachineInput[] = Array.from({ length: N }, (_, i) =>
+    machine(`item-${i}`, `eq-${i}`, 'ac', startVisitFor(i)),
+  );
+  const planActivities: PlanActivityInput[] = [];
+  for (let i = 0; i < N; i++) {
+    for (const f of FREQ) {
+      planActivities.push({
+        description: `Ativ ${f}`,
+        freq_code: f,
+        section: 'condicionadores',
+        contract_item_id: `item-${i}`,
+        applies_per_equipment: true,
+      });
+    }
+  }
+  const planActivityIds = planActivities.map((_, idx) => `pa-${idx}`);
+  // "Scheduláveis" = tudo menos eventual ('E'); aqui são todas (M/T/S/A).
+  const SCHEDULABLE = planActivities.length; // 13 × 4 = 52 (teto por visita)
+
+  const visits = buildContractVisits({
+    startDate: DALUZ_START,
+    frequencyType: 'months',
+    frequencyValue: 1,
+    horizonMonths: HORIZON,
+    planActivities,
+    planActivityIds,
+    machines,
+  });
+
+  it('gera visitas > 0 (cura o contrato zerado)', () => {
+    expect(visits.length).toBeGreaterThan(0);
+  });
+
+  it('1ª visita: cada atividade DEVIDA sai 1× por máquina (sem ×N) e ≤ teto do plano', () => {
+    const first = visits[0].emissions ?? [];
+    // Nunca pode explodir além do plano scheduláveis (×N seria 52 × 13 = 676).
+    expect(first.length).toBeLessThanOrEqual(SCHEDULABLE);
+    expect(first.length).toBeGreaterThan(0);
+
+    // Cada (equipamento, descrição, freq) aparece no MÁXIMO 1 vez na 1ª visita.
+    const seen = new Map<string, number>();
+    for (const e of first) {
+      const key = `${e.equipmentId}|${e.input.description}|${e.input.freq_code}`;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+    for (const [, count] of seen) expect(count).toBe(1);
+
+    // Toda emissão pertence ao equipamento da SUA máquina (sem cruzamento ×N).
+    for (const e of first) {
+      const ownIdx = Number(String(e.equipmentId).replace('eq-', ''));
+      const ownItem = `item-${ownIdx}`;
+      expect(e.input.contract_item_id).toBe(ownItem);
+    }
+  });
+
+  it('máquinas start=1 fazem só a mensal no 1º mês; start=12 fazem todos os níveis', () => {
+    const first = visits[0].emissions ?? [];
+    // start=1 (posição 1 no mês 0) → só M.
+    for (let i = 0; i < N; i++) {
+      if (startVisitFor(i) !== 1) continue;
+      const descs = first.filter(e => e.equipmentId === `eq-${i}`).map(e => e.input.freq_code).sort();
+      expect(descs).toEqual(['M']);
+    }
+    // start=12 (posição 12 no mês 0) → M+T+S+A (todos os níveis).
+    for (let i = 0; i < N; i++) {
+      if (startVisitFor(i) !== 12) continue;
+      const codes = [...new Set(first.filter(e => e.equipmentId === `eq-${i}`).map(e => e.input.freq_code))].sort();
+      expect(codes).toEqual(['A', 'M', 'S', 'T']);
+    }
+  });
+
+  it('todas as 13 máquinas aparecem em pelo menos uma visita do horizonte', () => {
+    const allEqs = new Set(visits.flatMap(v => (v.emissions ?? []).map(e => e.equipmentId)));
+    for (let i = 0; i < N; i++) expect(allEqs.has(`eq-${i}`)).toBe(true);
   });
 });
 

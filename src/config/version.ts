@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.4";
+export const APP_VERSION = "1.14.5";
 
-export const VERSION_NOTES = "Cada máquina do contrato PMOC pode ter seus próprios checklists, além dos da norma: na aba 'Personalizados', escolha os checklists que você criou em /Checklists para serem feitos em toda visita daquela máquina. No app do técnico, as perguntas aparecem no mesmo estilo do checklist do PMOC (conformidade, medição, foto…).";
+export const VERSION_NOTES = "Correção em contratos PMOC: se um contrato ativo ficar sem visitas agendadas, basta salvar que as visitas são geradas automaticamente. E falhas ao gerar visitas deixam de passar despercebidas — o sistema avisa em vez de salvar pela metade em silêncio.";

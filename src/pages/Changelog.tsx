@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.5',
+    date: '20 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contrato PMOC sem visitas se conserta ao salvar',
+        description: 'Corrigido: se um contrato PMOC ativo ficar sem visitas agendadas, agora basta abrir e salvar que as visitas são geradas automaticamente. E se algo falhar ao gerar as visitas, o sistema avisa, em vez de concluir o salvamento em silêncio com visitas faltando.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.4',
     date: '20 de junho de 2026',
     type: 'minor',
