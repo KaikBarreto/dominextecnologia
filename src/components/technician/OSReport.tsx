@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, MoreVertical, ShieldCheck } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +25,7 @@ import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
 import { ReportPmocChecklist, pmocGroupKeysFor } from './ReportPmocChecklist';
+import { ContractInfoCard } from './ContractInfoCard';
 import type { ReportChecklistItem } from './ReportChecklist';
 import { OsActionFooter } from './OsDesktopShell';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
@@ -245,6 +246,20 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   })();
   const environmentForGroup = (equipmentName: string | null): string | null =>
     equipmentName ? environmentByName.get(equipmentName) ?? null : null;
+
+  // Tipo/categoria do equipamento por NOME (groupKey). Vem de equipmentItems nos
+  // DOIS modos (category aninhada no equipment). Renderiza o badge saturado no
+  // cabeçalho do grupo, igual ao preenchimento. Sem categoria → não mostra badge.
+  const categoryByName = (() => {
+    const map = new Map<string, { name: string; color: string | null } | null>();
+    for (const it of equipmentItems) {
+      const name = it.equipment?.name;
+      if (name && !map.has(name)) map.set(name, it.equipment?.category ?? null);
+    }
+    return map;
+  })();
+  const categoryForGroup = (equipmentName: string | null): { name: string; color: string | null } | null =>
+    equipmentName ? categoryByName.get(equipmentName) ?? null : null;
 
   // Resolve o id de âncora (scroll target) de uma chave de grupo do relatório.
   // Agora TODO grupo (PMOC e/ou personalizado) é um AccordionItem do
@@ -827,18 +842,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               secundária discreta (sem fundo azul). Substituiu os dois cards
               azuis antigos (banner do topo + card de contrato). Entra no PDF. */}
           {contractInfo && (
-            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <FileSignature className="h-3.5 w-3.5" /> Contrato
-              </h3>
-              <p className="font-semibold text-slate-900">{contractInfo.name}</p>
-              {isPmoc && (
-                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  Conforme Lei Federal 13.589/2018
-                </p>
-              )}
-            </div>
+            <ContractInfoCard name={contractInfo.name} isPmoc={isPmoc} tone="document" />
           )}
 
           {/* Client & Equipment */}
@@ -1115,6 +1119,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               anchorIdForGroup={pmocAnchorIdForGroup}
               photoUrlForGroup={pmocPhotoUrlForGroup}
               environmentForGroup={environmentForGroup}
+              categoryForGroup={categoryForGroup}
               stickyTopPx={stickyTopPx}
               forceAllSectionsOpen={forcedAllOpen}
               openKeys={

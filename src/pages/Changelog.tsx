@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.23',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cabeçalho do equipamento mais polido nas telas de OS',
+        description: 'O cabeçalho de cada equipamento (foto, nome e tipo) ficou no mesmo formato em todas as telas de OS — preenchimento, relatório e resumo — e fixa de forma mais suave ao rolar, ocupando a largura toda da tela. A foto ficou padronizada e ajustada ao conteúdo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Informações do contrato em card padronizado',
+        description: 'As informações do contrato agora aparecem em um card limpo e consistente também na execução e no acompanhamento da OS (antes só no relatório), com a referência à Lei Federal 13.589/2018 quando a OS é PMOC.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.22',
     date: '22 de junho de 2026',
     type: 'patch',

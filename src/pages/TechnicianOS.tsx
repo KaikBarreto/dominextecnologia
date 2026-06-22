@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   ClipboardList, 
@@ -46,6 +46,7 @@ import { DynamicFormQuestions, type FormValidationResult } from '@/components/te
 import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
+import { ContractInfoCard } from '@/components/technician/ContractInfoCard';
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { RateServiceAffordance } from '@/components/technician/RateServiceAffordance';
 import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hooks/useServiceRatings';
@@ -55,6 +56,9 @@ import { VisitChecklistPanel } from '@/components/technician/VisitChecklistPanel
 import {
   EquipmentChecklistHeader,
   equipmentChecklistHeaderClasses,
+  useStickyHeaderHeight,
+  useFollowStickyTop,
+  StickyFullBleedBg,
 } from '@/components/technician/EquipmentChecklistHeader';
 import { type ReportChecklistItem } from '@/components/technician/ReportChecklist';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
@@ -144,17 +148,38 @@ function OsEquipmentAccordionItem({
   // SÓ o equipamento ABERTO fica sticky (mesmo critério do PMOC) — evita
   // empilhamento de cabeçalhos sobrepostos e briga de z-index.
   const stickyOn = isOpen && stickyTopPx !== undefined;
-  const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
-  // Mesmo padrão visual do PMOC (foto colada/altura cheia, tipografia, full-bleed
-  // no stuck): cabeçalho compartilhado + classes compartilhadas.
+  // Mede a altura do cabeçalho ANTES do useStickyStuck — o hook precisa dela pra
+  // saber onde fica a linha de BAIXO (sticky + altura) que detecta quando o item
+  // passou do fim e o cabeçalho desgruda.
+  const { triggerRef, height: headerHeight } = useStickyHeaderHeight();
+  const { sentinelRef, bottomSentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined, headerHeight);
+  // Mesmo MECANISMO do relatório (foto NÃO cortada, fundo 100vw colado no header
+  // laranja, conteúdo alinhado à coluna): cabeçalho compartilhado + fundo `fixed`
+  // medido. Único delta vs. relatório: a cor do fundo é `bg-card` (segue o tema).
   const headerCls = equipmentChecklistHeaderClasses(stickyOn, isStuck);
+  // Monta o fundo enquanto sticky/aberto e com altura medida (evita flash 0px). A
+  // visibilidade/posição (fundo SEGUE o topo real do cabeçalho) vêm de
+  // `useFollowStickyTop` — sem a janela transparente da soltura.
+  const mountStuckBg = stickyOn && stickyTopPx !== undefined && headerHeight > 0;
+  const { followTop, visible: bgVisible } = useFollowStickyTop(
+    triggerRef,
+    (stickyTopPx ?? 0) - 1,
+    headerHeight,
+    mountStuckBg,
+  );
   const brandModel = [item.equipment?.brand, item.equipment?.model].filter(Boolean).join(' ');
 
   return (
-    <AccordionItem value={itemKey} id={`os-eq-${itemKey}`} className="border-b last:border-0 scroll-mt-28">
+    <AccordionItem value={itemKey} id={`os-eq-${itemKey}`} className="border-0 scroll-mt-28">
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
+      {/* Fundo do cabeçalho grudado (full-bleed da viewport interna) — cor `bg-card`
+          (tema). Mecanismo IDÊNTICO ao relatório; foto não é cortada (sem overflow). */}
+      {mountStuckBg && (
+        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-card" visible={bgVisible} />
+      )}
       <AccordionTrigger
+        ref={triggerRef}
         className={headerCls.trigger}
         headerClassName={headerCls.header}
         // `-1px` no top: gruda 1px ATRÁS do header laranja (z-20 cobre o equipamento
@@ -192,6 +217,10 @@ function OsEquipmentAccordionItem({
           onValidationChange={onValidationChange}
         />
       </AccordionContent>
+      {/* Sentinel da BASE: 0px logo após o conteúdo. Marca o fim do item — quando
+          ele cruza a linha (sticky + altura do cabeçalho), o cabeçalho desgruda e
+          o fundo/sombra some (não fica mais preso no topo passando do fim). */}
+      <div ref={bottomSentinelRef} aria-hidden className="h-0" />
     </AccordionItem>
   );
 }
@@ -207,7 +236,7 @@ export default function TechnicianOS() {
   const location = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any }) | null>(null);
+  const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any; contract?: any }) | null>(null);
   // UUID REAL da OS — fonte ÚNICA e estável pra TODA escrita/consulta keyed por
   // id da OS (`.eq('id', ...)`, `service_order_id`, RPCs por uuid). A URL pode vir
   // como slug amigável (`slug-do-nome-<codigo>`) — só o CARREGAMENTO resolve o slug
@@ -304,28 +333,58 @@ export default function TechnicianOS() {
   const lastOriginRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastOriginAtRef = useRef<number>(0);
 
-  // Altura REAL do header sticky (desktop), medida via ref. A sidebar de
-  // equipamentos usa essa altura como offset de topo pra começar logo ABAIXO do
-  // header e nunca ser coberta por ele (o header é z-20; a sidebar fica abaixo
-  // disso no fluxo). ResizeObserver acompanha mudança de altura (ex.: logo carrega,
-  // status muda de linha). Default 96px = palpite seguro antes da 1ª medição.
+  // Altura REAL do header laranja FIXO do topo (a barra "OS #… / status" que é
+  // `sticky top-0 z-20`). É a base onde o cabeçalho de cada equipamento gruda
+  // (`top: headerHeight - 1`) e o offset de topo da sidebar desktop. O VALOR TEM
+  // QUE refletir a altura RENDERIZADA, atual e exata do header em QUALQUER
+  // empresa/modo — senão o cabeçalho do equipamento sobra (vão, se mediu DEMAIS)
+  // ou passa por baixo do laranja (invasão, se mediu de MENOS).
+  //
+  // Por que isso varia: o header tem dois layouts (RELATÓRIO vs PREENCHIMENTO,
+  // montados em returns distintos por status), o nome/logo da empresa (carrega
+  // async, pode mudar a altura), o badge de status e o `env(safe-area-inset-top)`.
+  // O `headerRef` está SEMPRE no MESMO elemento exato: o container `sticky top-0
+  // z-20` INCLUINDO o `paddingTop: env(safe-area-inset-top)` e todo o conteúdo —
+  // `getBoundingClientRect().height` já é border-box (inclui padding).
   const headerRef = useRef<HTMLDivElement | null>(null);
-  const [headerHeight, setHeaderHeight] = useState(96);
-  useEffect(() => {
+  // Default = 0 (não 96): com 0 o equipamento NÃO renderiza sticky com offset
+  // ainda (os itens só ficam sticky depois que a altura > 0 chega — useStickyStuck
+  // recebe headerHeight e o item suprime o fundo enquanto 0). Assim nunca há um
+  // frame pintado com offset 96 estranho. A 1ª medição (useLayoutEffect, antes do
+  // paint) já chega com a altura real.
+  const [headerHeight, setHeaderHeight] = useState(0);
+  // useLayoutEffect mede SÍNCRONO após o layout e ANTES do paint: o primeiro frame
+  // visível já usa a altura real (sem flash com default). ResizeObserver com box
+  // 'border-box' remede a CADA mudança de altura — logo/nome async, quebra de
+  // linha, troca de modo, fonte, safe-area. Lê do entry quando disponível
+  // (borderBoxSize é a altura renderizada exata, mais firme que rect em transições).
+  useLayoutEffect(() => {
     const el = headerRef.current;
     if (!el) return;
-    // Mede com getBoundingClientRect().height (fracionário) e arredonda pra CIMA.
-    // `offsetHeight` trunca pra inteiro: se o header laranja renderiza 60,5px (comum
-    // com env(safe-area-inset-top) + line-heights), offsetHeight=60 e o cabeçalho do
-    // equipamento grudava 0,5px ABAIXO da base real → vão sub-pixel visível no mobile.
-    // `ceil` garante que o `top` nunca cai DENTRO do laranja (sem vão, sem invasão).
-    const measure = () => setHeaderHeight(Math.ceil(el.getBoundingClientRect().height));
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
+    // `ceil` da altura fracionária (border-box). `offsetHeight` truncaria: header
+    // de 60,5px viraria 60 e o cabeçalho do equipamento grudaria 0,5px ABAIXO da
+    // base real → vão sub-pixel. `ceil` garante que o `top` nunca cai DENTRO do
+    // laranja (1px de overlap intencional via `top: headerHeight - 1`).
+    const readHeight = (entry?: ResizeObserverEntry) => {
+      const bb = entry?.borderBoxSize?.[0];
+      const h = bb ? bb.blockSize : el.getBoundingClientRect().height;
+      return Math.ceil(h);
+    };
+    const apply = (entry?: ResizeObserverEntry) => {
+      const h = readHeight(entry);
+      // Só atualiza quando muda de verdade (evita re-render redundante e loop com
+      // o ResizeObserver).
+      setHeaderHeight((prev) => (prev === h ? prev : h));
+    };
+    apply();
+    const ro = new ResizeObserver((entries) => apply(entries[0]));
+    ro.observe(el, { box: 'border-box' });
     return () => ro.disconnect();
-    // Remede ao trocar de modo (report/público/autenticado montam headers distintos).
-  }, [serviceOrder?.status, isAuthenticated]);
+    // Re-mede ao trocar de MODO (report ↔ preenchimento montam headers distintos,
+    // ref novo) e quando a EMPRESA resolve (logo/nome async mudam a altura). O
+    // ResizeObserver pega mudanças contínuas; estas deps garantem re-attach quando
+    // o ELEMENTO em si é remontado/trocado.
+  }, [serviceOrder?.status, isAuthenticated, company, loading]);
 
   // Overlay fullscreen das Ferramentas do Técnico (atalho a partir do FAB).
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
@@ -759,7 +818,8 @@ export default function TechnicianOS() {
           customer:customers(id, name, phone, address, city, state, document, photo_url, latitude, longitude),
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name),
-          service_type:service_types(id, name, color)
+          service_type:service_types(id, name, color),
+          contract:contracts(id, name)
         `);
       query = isUuid(id)
         ? query.eq('id', id!)
@@ -1688,8 +1748,11 @@ export default function TechnicianOS() {
             topPx={16}
           />
         <main className="w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 lg:pb-24">
-          {showPmocSeal && (
-            <PmocComplianceBadge variant="ribbon" withTooltip />
+          {/* Card neutro de contrato (mesmo do relatório), no lugar do antigo selo
+              azul PMOC. Aparece sempre que houver contrato; a linha da lei só quando
+              PMOC. No modo público o contrato vem de get_public_os (publicContract). */}
+          {publicContract?.name && (
+            <ContractInfoCard name={publicContract.name} isPmoc={isPmocPublic} tone="app" />
           )}
           {/* Realtime indicator */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
@@ -2016,7 +2079,7 @@ export default function TechnicianOS() {
                       <ClipboardCheck className="h-4 w-4 text-primary" />
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Checklists</span>
                     </div>
-                    <Accordion type="multiple" className="w-full">
+                    <Accordion type="multiple" className="w-full space-y-3">
                       {groups.map(([groupKey, group]) => {
                         const answered = group.responses.filter(r => r.response_value || r.response_photo_url).length;
                         const total = group.totalQuestions;
@@ -2028,50 +2091,19 @@ export default function TechnicianOS() {
                           ? equipmentItems.filter(i => i.equipment_id === eqId).length
                           : 0;
                         const hasMultipleOnSameEquip = sameEquipCount > 1;
+                        const eqCategory = (group.equipment?.equipment as any)?.category;
                         return (
-                          <AccordionItem key={groupKey} value={groupKey} className="border-b last:border-0">
-                            <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
-                              <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                                {group.equipment?.equipment?.photo_url ? (
-                                  <SignedImg
-                                    src={group.equipment.equipment.photo_url}
-                                    alt={group.equipment.equipment.name}
-                                    className="h-8 w-8 rounded-md object-cover shrink-0 border"
-                                  />
-                                ) : (
-                                  <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-                                    <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium text-sm truncate">
-                                      {group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Checklist'}
-                                    </p>
-                                    {(group.equipment?.equipment as any)?.category && (
-                                      <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: (group.equipment!.equipment as any).category.color }}>
-                                        {(group.equipment!.equipment as any).category.name}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {hasMultipleOnSameEquip && group.equipment?.form_template?.name && (
-                                    <p className="text-xs font-medium text-primary truncate">
-                                      {group.equipment.form_template.name}
-                                    </p>
-                                  )}
-                                  {group.equipment?.equipment?.brand && (
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {group.equipment.equipment.brand} {group.equipment.equipment.model}
-                                    </p>
-                                  )}
-                                  {group.equipment?.equipment?.location && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                      <MapPinned className="h-3 w-3 shrink-0" />
-                                      <span className="truncate">{group.equipment.equipment.location}</span>
-                                    </p>
-                                  )}
-                                </div>
-                                {isComplete ? (
+                          <AccordionItem key={groupKey} value={groupKey} className="border-0">
+                            <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0">
+                              <EquipmentChecklistHeader
+                                photo={group.equipment?.equipment?.photo_url ?? null}
+                                name={group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Checklist'}
+                                category={eqCategory ? { name: eqCategory.name, color: eqCategory.color } : null}
+                                brandModel={[group.equipment?.equipment?.brand, group.equipment?.equipment?.model].filter(Boolean).join(' ') || undefined}
+                                environmentName={group.equipment?.equipment?.location ?? null}
+                                subtitle={hasMultipleOnSameEquip ? group.equipment?.form_template?.name : undefined}
+                                onPreviewPhoto={setPreviewPhoto}
+                                statusBadge={isComplete ? (
                                   <Badge variant="success" className="gap-1 shrink-0 text-xs">
                                     <Check className="h-3 w-3" /> {answered}/{total}
                                   </Badge>
@@ -2080,7 +2112,7 @@ export default function TechnicianOS() {
                                     {answered}/{total}
                                   </Badge>
                                 )}
-                              </div>
+                              />
                             </AccordionTrigger>
                             <AccordionContent>
                               <div className="space-y-3 pt-1">
@@ -2616,8 +2648,11 @@ export default function TechnicianOS() {
           (isCheckedIn || isPaused) && 'pb-[calc(5.5rem_+_env(safe-area-inset-bottom))]',
         )}
       >
-        {showPmocSeal && (
-          <PmocComplianceBadge variant="ribbon" withTooltip />
+        {/* Card neutro de contrato (mesmo do relatório), no lugar do antigo selo
+            azul PMOC. Nome do contrato vem do join `contract:contracts` do fetch
+            autenticado (RLS isola por empresa); a linha da lei só quando PMOC. */}
+        {serviceOrder?.contract?.name && (
+          <ContractInfoCard name={serviceOrder.contract.name} isPmoc={isPmocOrder} tone="app" />
         )}
         {/* Rota até o cliente — só quando "a caminho" e há destino (coord ou endereço) */}
         {isACaminho && hasRouteDestination && (
@@ -2894,7 +2929,7 @@ export default function TechnicianOS() {
                 collapsible
                 value={openExecKey ?? ''}
                 onValueChange={(v) => handleExecUserOpen(v || null)}
-                className={`w-full ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full space-y-3 ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {equipmentItems.map((item, idx) => {
                   if (!item.form_template_id) return null;

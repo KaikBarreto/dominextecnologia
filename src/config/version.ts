@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.22";
+export const APP_VERSION = "1.14.23";
 
-export const VERSION_NOTES = "O preenchimento de qualquer OS ficou mais consistente: o cabeçalho do equipamento agora segue o mesmo padrão em todo tipo de OS e ocupa a largura toda ao rolar. O relatório de serviço também ficou mais limpo, com as informações do contrato reunidas em um único card (com a referência à Lei 13.589/2018 quando for PMOC). No cadastro de contrato, o botão de checklists de cada equipamento virou \"Checklists da Máquina\", separando catálogo PMOC e personalizados. E corrigimos o seletor de segmento das Ferramentas do Técnico, que não abria pela tela da OS.";
+export const VERSION_NOTES = "O cabeçalho do equipamento nas telas de OS (preenchimento, relatório e resumo) ficou padronizado e mais polido — foto, nome e tipo no mesmo formato — e fixa de forma mais suave ao rolar, ocupando a largura toda da tela. As informações do contrato agora aparecem em um card limpo e consistente também na execução e no acompanhamento da OS (antes só no relatório), com a referência à Lei 13.589/2018 quando for PMOC.";

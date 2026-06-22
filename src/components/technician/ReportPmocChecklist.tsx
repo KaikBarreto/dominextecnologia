@@ -1,11 +1,18 @@
-import type { ReactNode } from 'react';
-import { ListChecks, Wrench, Check, X, MinusCircle, HelpCircle, Gauge, CalendarClock, CheckCircle2, ClipboardCheck } from 'lucide-react';
+import { type ReactNode } from 'react';
+import { ListChecks, Check, X, MinusCircle, HelpCircle, Gauge, CheckCircle2, ClipboardCheck } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { cn } from '@/lib/utils';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { visitTypeFromFreqs } from '@/hooks/useOsActivityChecklist';
 import { sectionLabel } from '@/utils/sectionLabel';
+import {
+  EquipmentChecklistHeader,
+  equipmentChecklistHeaderClasses,
+  useStickyHeaderHeight,
+  useFollowStickyTop,
+  StickyFullBleedBg,
+} from './EquipmentChecklistHeader';
 import type { ReportChecklistItem } from './ReportChecklist';
 
 /**
@@ -87,6 +94,12 @@ interface Props {
    * equipamento, em fonte mais leve (" | 1º Andar"). null/ausente = não mostra.
    */
   environmentForGroup?: (equipmentName: string | null) => string | null | undefined;
+  /**
+   * TIPO/categoria do equipamento ({ name, color }) por nome de equipamento.
+   * Renderizado como badge saturado no cabeçalho do grupo (mesmo do preenchimento).
+   * null/ausente = não mostra badge.
+   */
+  categoryForGroup?: (equipmentName: string | null) => { name: string; color: string | null } | null | undefined;
   /**
    * Accordion controlado (sidebar desktop): chaves abertas + callback de
    * mudança. Quando AMBOS vêm, o accordion vira controlado (a sidebar pode abrir
@@ -304,8 +317,9 @@ function sectionGroups(items: ReportChecklistItem[]): { section: string; items: 
  * sentinel (0px) fica logo acima do `AccordionTrigger`: ao sair por cima, o
  * cabeçalho grudou (`isStuck`) → sombra forte + cantos retos no topo; senão sem
  * sombra + cantos arredondados (visual de card). PDF/Imprimir: estático e sem
- * sombra. A foto do equipamento fica colada na borda esquerda em altura cheia,
- * com os cantos da ESQUERDA arredondados acompanhando o cabeçalho.
+ * sombra. O cabeçalho em si (foto QUADRADA + nome + badge de tipo + status) é o
+ * `EquipmentChecklistHeader` compartilhado na variante 'document' — MESMO do
+ * preenchimento, só com a paleta clara do relatório.
  */
 function ReportPmocItem({
   groupKey,
@@ -313,6 +327,7 @@ function ReportPmocItem({
   personalized,
   displayName,
   environmentName,
+  category,
   photoUrl,
   anchorId,
   onPreviewPhoto,
@@ -327,6 +342,8 @@ function ReportPmocItem({
   displayName: string;
   /** Nome do ambiente do equipamento (fonte leve, " | …"). null = não mostra. */
   environmentName: string | null;
+  /** Tipo/categoria do equipamento (badge). null = não mostra. */
+  category: { name: string; color: string | null } | null;
   photoUrl: string | null;
   anchorId?: string;
   onPreviewPhoto?: Props['onPreviewPhoto'];
@@ -341,7 +358,26 @@ function ReportPmocItem({
 }) {
   // Sticky só no equipamento ABERTO. Fechado desativa o observer.
   const stickyOn = isOpen && stickyTopPx !== undefined;
-  const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
+
+  // Altura REAL do cabeçalho grudado (o `AccordionTrigger`) via hook compartilhado
+  // (ResizeObserver). Usada como `height` do fundo branco `fixed` (ver JSX abaixo)
+  // E como linha de BAIXO no useStickyStuck (por isso medida ANTES dele).
+  const { triggerRef, height: headerHeight } = useStickyHeaderHeight();
+  const { sentinelRef, bottomSentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined, headerHeight);
+
+  // Monta o fundo branco enquanto o cabeçalho está sticky/aberto e com altura já
+  // medida (evita flash de barra 0px). A VISIBILIDADE (fade) é controlada por
+  // `bgVisible` (o fundo SEGUE o topo real do cabeçalho via `useFollowStickyTop`)
+  // — fica montado pra animar entrada E saída.
+  const mountStuckBg = stickyOn && stickyTopPx !== undefined && headerHeight > 0;
+  // O fundo `fixed` SEGUE o topo REAL do cabeçalho (sobe junto na soltura) — sem
+  // a janela transparente que o `isStuck` causava ao apagar cedo demais.
+  const { followTop, visible: bgVisible } = useFollowStickyTop(
+    triggerRef,
+    (stickyTopPx ?? 0) - 1,
+    headerHeight,
+    mountStuckBg,
+  );
 
   const total = pmocItems.length;
   const answered = pmocItems.filter((a) => !!a.conformity_status).length;
@@ -351,6 +387,18 @@ function ReportPmocItem({
   const visit = hasFreq ? visitTypeFromFreqs(pmocItems.map((a) => a.freq_code)) : null;
   const personalizedCount = personalized.reduce((n, b) => n + b.responses.length, 0);
   const hasPmoc = total > 0;
+
+  // Rótulo de contagem (itens PMOC + respostas personalizadas), mesmo texto do
+  // cabeçalho antigo do relatório. Passado ao `itemsLabel` do header compartilhado.
+  const itemsLabel = [
+    hasPmoc ? `${total} item${total > 1 ? 's' : ''}` : '',
+    personalizedCount > 0 ? `${personalizedCount} resposta${personalizedCount > 1 ? 's' : ''}` : '',
+  ].filter(Boolean).join(' · ') || undefined;
+
+  // Classes compartilhadas (sticky + full-bleed no stuck) na variante 'document'
+  // (documento branco, padding de full-bleed 29/41px, print estático). MESMA fonte
+  // que o preenchimento — só muda a paleta.
+  const headerCls = equipmentChecklistHeaderClasses(stickyOn, isStuck, 'document');
 
   return (
     <AccordionItem
@@ -369,80 +417,50 @@ function ReportPmocItem({
     >
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
+      {/* Fundo branco do cabeçalho grudado (full-bleed da viewport interna) via
+          componente compartilhado. No relatório a cor é `bg-white` (documento claro);
+          o mecanismo é IDÊNTICO ao do preenchimento (que usa `bg-card`). */}
+      {mountStuckBg && (
+        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-white" visible={bgVisible} />
+      )}
       <AccordionTrigger
-        // Documento SEMPRE claro (bg-white). O trigger herda o branco de trás
-        // (sem card flutuante). Sem padding à ESQUERDA: a foto encosta na borda.
-        className="hover:no-underline pl-0 pr-1 py-0 gap-2 min-w-0 overflow-hidden text-slate-900"
-        // Cabeçalho do equipamento sticky no WRAPPER (Header). Fundo branco SÓLIDO
-        // (mesma cor do documento). Sombra SÓ quando grudado (isStuck); fora disso
-        // cantos arredondados (card) e sem sombra. `top` = altura exata do header
-        // da tela → gruda rente, sem vão. Rótulos de seção NÃO são sticky → nunca
-        // empurram o cabeçalho do EQUIPAMENTO, que é o único sticky do bloco.
-        headerClassName={cn(
-          stickyOn && 'sticky z-10 bg-white print:static print:shadow-none transition-shadow overflow-hidden',
-          stickyOn && (isStuck
-            ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
-            : 'shadow-none rounded-lg'),
-        )}
+        ref={triggerRef}
+        // MESMO cabeçalho do preenchimento (EquipmentChecklistHeader), só que na
+        // variante 'document' (documento branco, slate, print estático). Classes
+        // sticky + full-bleed vêm da fonte ÚNICA compartilhada.
+        className={headerCls.trigger}
+        headerClassName={headerCls.header}
         // `-1px` no top: gruda 1px ATRÁS do header laranja (z-20 cobre o equipamento
         // z-10) pra fechar qualquer costura sub-pixel entre as duas barras. Sem isso,
         // arredondamento fracionário deixa um fio do fundo da página aparecendo (vão).
         headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
-        <div className="flex items-stretch gap-3 flex-1 min-w-0 text-left min-h-14">
-          {photoUrl ? (
-            <SignedImg
-              src={photoUrl}
-              alt={displayName}
-              className="self-stretch w-16 rounded-l-lg object-cover shrink-0 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPreviewPhoto?.(photoUrl);
-              }}
-            />
-          ) : (
-            <div className="self-stretch w-16 rounded-l-lg bg-slate-100 flex items-center justify-center shrink-0">
-              <Wrench className="h-6 w-6 text-slate-500" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0 self-center">
-            <p className="text-base text-slate-800 truncate min-w-0">
-              <span className="font-bold">{displayName}</span>
-              {environmentName && (
-                <span className="font-normal text-slate-500"> | {environmentName}</span>
-              )}
-            </p>
-            {visit && (
-              <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 min-w-0">
-                <CalendarClock className="h-3 w-3 shrink-0 text-slate-400" />
-                <span className="truncate normal-case">
-                  <span className="font-medium text-slate-700">Visita {visit.tipo}</span>
-                  {' · '}
-                  {visit.niveis.join(' + ')}
-                </span>
-              </p>
-            )}
-            <p className="text-xs text-slate-400 mt-0.5">
-              {hasPmoc && `${total} item${total > 1 ? 's' : ''}`}
-              {hasPmoc && personalizedCount > 0 && ' · '}
-              {personalizedCount > 0 && `${personalizedCount} resposta${personalizedCount > 1 ? 's' : ''}`}
-            </p>
-          </div>
-          {naoConforme > 0 ? (
-            <span className="self-center inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 shrink-0">
-              <X className="h-3 w-3" />
-              {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
-            </span>
-          ) : hasPmoc && pending === 0 ? (
-            <span title="Concluído" aria-label="Concluído" className="self-center shrink-0">
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-            </span>
-          ) : hasPmoc ? (
-            <span className="self-center inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
-              {pending} sem resposta
-            </span>
-          ) : null}
-        </div>
+        <EquipmentChecklistHeader
+          tone="document"
+          photo={photoUrl}
+          name={displayName}
+          category={category}
+          environmentName={environmentName}
+          visit={visit ?? undefined}
+          itemsLabel={itemsLabel}
+          onPreviewPhoto={onPreviewPhoto ? (url) => onPreviewPhoto(url) : undefined}
+          statusBadge={
+            naoConforme > 0 ? (
+              <span className="self-center inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-600 text-white shrink-0">
+                <X className="h-3 w-3" />
+                {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
+              </span>
+            ) : hasPmoc && pending === 0 ? (
+              <span title="Concluído" aria-label="Concluído" className="self-center shrink-0">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              </span>
+            ) : hasPmoc ? (
+              <span className="self-center inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-500 text-white shrink-0">
+                {pending} sem resposta
+              </span>
+            ) : null
+          }
+        />
       </AccordionTrigger>
       <AccordionContent className="px-1 pb-3">
         {/* Seções do equipamento: cada uma é um accordion próprio (nested) ABERTO
@@ -487,6 +505,10 @@ function ReportPmocItem({
           )}
         </div>
       </AccordionContent>
+      {/* Sentinel da BASE: 0px logo após o conteúdo. Marca o fim do item — quando
+          ele cruza a linha (sticky + altura do cabeçalho), o cabeçalho desgruda e
+          o fundo/sombra some (não fica mais preso no topo passando do fim). */}
+      <div ref={bottomSentinelRef} aria-hidden className="h-0" />
     </AccordionItem>
   );
 }
@@ -507,6 +529,7 @@ export function ReportPmocChecklist({
   anchorIdForGroup,
   photoUrlForGroup,
   environmentForGroup,
+  categoryForGroup,
   openKeys,
   onOpenChange,
   stickyTopPx,
@@ -556,6 +579,7 @@ export function ReportPmocChecklist({
           const equipmentName = equipmentNameForKey(groupKey);
           const photoUrl = photoUrlForGroup?.(equipmentName) || null;
           const environmentName = environmentForGroup?.(equipmentName) || null;
+          const category = categoryForGroup?.(equipmentName) || null;
 
           // SÓ o equipamento aberto é sticky. No force-open do PDF/Imprimir todos
           // ficam "abertos", mas aí desligamos o sticky (a saída é estática).
@@ -569,6 +593,7 @@ export function ReportPmocChecklist({
               personalized={personalized}
               displayName={displayName(groupKey)}
               environmentName={environmentName}
+              category={category}
               photoUrl={photoUrl}
               anchorId={anchorIdForGroup?.(equipmentName)}
               onPreviewPhoto={onPreviewPhoto}

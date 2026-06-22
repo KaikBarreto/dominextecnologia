@@ -17,6 +17,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import {
   EquipmentChecklistHeader,
   equipmentChecklistHeaderClasses,
+  useStickyHeaderHeight,
+  useFollowStickyTop,
+  StickyFullBleedBg,
 } from '@/components/technician/EquipmentChecklistHeader';
 import type { FormQuestion } from '@/types/database';
 import {
@@ -670,21 +673,42 @@ function VisitChecklistItem({
   // undefined) pra não medir/atualizar à toa. Elimina o empilhamento de vários
   // cabeçalhos sticky sobrepostos (e a invasão do header do topo).
   const stickyOn = isOpen && stickyTopPx !== undefined;
-  const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
   const { total, naoConforme, pending, visit, photo, category, brandModel, environmentName } = header;
-  // Classes compartilhadas (sticky + full-bleed no stuck) — fonte única com a OS normal.
+  // Mede a altura do cabeçalho ANTES do useStickyStuck — o hook usa essa altura pra
+  // saber onde fica a linha de BAIXO (sticky + altura) que detecta quando o item
+  // passou do fim e o cabeçalho desgruda.
+  const { triggerRef, height: headerHeight } = useStickyHeaderHeight();
+  const { sentinelRef, bottomSentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined, headerHeight);
+  // MESMO mecanismo do relatório/OS normal: cabeçalho compartilhado + fundo `fixed`
+  // medido (foto não cortada, full-bleed da viewport). Cor `bg-card` (segue o tema).
   const headerCls = equipmentChecklistHeaderClasses(stickyOn, isStuck);
+  // Monta o fundo enquanto sticky/aberto e com altura medida (evita flash 0px). A
+  // visibilidade/posição (fundo SEGUE o topo real do cabeçalho) vêm de
+  // `useFollowStickyTop` — sem a janela transparente da soltura.
+  const mountStuckBg = stickyOn && stickyTopPx !== undefined && headerHeight > 0;
+  const { followTop, visible: bgVisible } = useFollowStickyTop(
+    triggerRef,
+    (stickyTopPx ?? 0) - 1,
+    headerHeight,
+    mountStuckBg,
+  );
 
   return (
     <AccordionItem
       key={groupKey(group)}
       value={groupKey(group)}
       id={`os-pmoc-${groupKey(group)}`}
-      className="border-b last:border-0 scroll-mt-28"
+      className="border-0 scroll-mt-28"
     >
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
+      {/* Fundo do cabeçalho grudado (full-bleed da viewport interna) — cor `bg-card`
+          (tema). Mecanismo IDÊNTICO ao relatório; foto não é cortada (sem overflow). */}
+      {mountStuckBg && (
+        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-card" visible={bgVisible} />
+      )}
       <AccordionTrigger
+        ref={triggerRef}
         className={headerCls.trigger}
         headerClassName={headerCls.header}
         // `-1px` no top: gruda 1px ATRÁS do header laranja (z-20 cobre o equipamento
@@ -721,6 +745,10 @@ function VisitChecklistItem({
       <AccordionContent>
         <div className="space-y-4 pt-1">{children}</div>
       </AccordionContent>
+      {/* Sentinel da BASE: 0px logo após o conteúdo. Marca o fim do item — quando
+          ele cruza a linha (sticky + altura do cabeçalho), o cabeçalho desgruda e
+          o fundo/sombra some (não fica mais preso no topo passando do fim). */}
+      <div ref={bottomSentinelRef} aria-hidden className="h-0" />
     </AccordionItem>
   );
 }
@@ -792,7 +820,7 @@ export function VisitChecklistPanel({
                 onValueChange: (v: string) => onOpenChange!(v || null),
               }
             : { defaultValue: firstKey })}
-          className={cn('w-full', readOnly && 'opacity-60 cursor-not-allowed')}
+          className={cn('w-full space-y-3', readOnly && 'opacity-60 cursor-not-allowed')}
         >
           {groups.map((group) => {
             const total = group.activities.length;

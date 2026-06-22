@@ -229,6 +229,48 @@ export function OsPhotoField({
     }
   };
 
+  // Botões de captura (câmera + galeria). Reutilizados tanto DENTRO do card
+  // vazio (quando ainda não há foto) quanto soltos (quando já há fotos).
+  const captureButtons = (
+    <div className={cameraOnly ? 'w-full' : 'grid grid-cols-2 gap-2 w-full'}>
+      <label className={photoDisabled ? 'pointer-events-none' : 'cursor-pointer'}>
+        <input
+          type="file"
+          accept="image/*"
+          multiple={allowMultiple}
+          capture="environment"
+          className="hidden"
+          onChange={(e) => handlePhotoUpload(e, true)}
+          disabled={photoDisabled}
+        />
+        <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
+          <span>
+            <Camera className="h-3 w-3 mr-1" />
+            {uploading ? 'Enviando...' : 'Tirar Foto'}
+          </span>
+        </Button>
+      </label>
+      {!cameraOnly && (
+        <label className={photoDisabled ? 'pointer-events-none' : 'cursor-pointer'}>
+          <input
+            type="file"
+            accept="image/*"
+            multiple={allowMultiple}
+            className="hidden"
+            onChange={(e) => handlePhotoUpload(e)}
+            disabled={photoDisabled}
+          />
+          <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
+            <span>
+              <ImageIcon className="h-3 w-3 mr-1" />
+              {uploading ? 'Enviando...' : 'Galeria'}
+            </span>
+          </Button>
+        </label>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-2">
       {photoUrls.length > 0 ? (
@@ -266,48 +308,18 @@ export function OsPhotoField({
           )}
         />
       ) : showEmptyPlaceholder ? (
-        <div className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-          <Camera className="h-8 w-8 text-muted-foreground/50" />
+        // Estado VAZIO compacto: card pontilhado baixo com o ícone de câmera em
+        // cima e os botões Tirar Foto / Galeria empilhados logo abaixo, tudo dentro.
+        <div className="rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-3 px-3 py-4">
+          <Camera className="h-7 w-7 text-muted-foreground/50" />
+          {captureButtons}
         </div>
-      ) : null}
+      ) : (
+        captureButtons
+      )}
 
-      <div className={cameraOnly ? '' : 'grid grid-cols-2 gap-2'}>
-        <label className={photoDisabled ? 'pointer-events-none' : 'cursor-pointer'}>
-          <input
-            type="file"
-            accept="image/*"
-            multiple={allowMultiple}
-            capture="environment"
-            className="hidden"
-            onChange={(e) => handlePhotoUpload(e, true)}
-            disabled={photoDisabled}
-          />
-          <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
-            <span>
-              <Camera className="h-3 w-3 mr-1" />
-              {uploading ? 'Enviando...' : 'Tirar Foto'}
-            </span>
-          </Button>
-        </label>
-        {!cameraOnly && (
-          <label className={photoDisabled ? 'pointer-events-none' : 'cursor-pointer'}>
-            <input
-              type="file"
-              accept="image/*"
-              multiple={allowMultiple}
-              className="hidden"
-              onChange={(e) => handlePhotoUpload(e)}
-              disabled={photoDisabled}
-            />
-            <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
-              <span>
-                <ImageIcon className="h-3 w-3 mr-1" />
-                {uploading ? 'Enviando...' : 'Galeria'}
-              </span>
-            </Button>
-          </label>
-        )}
-      </div>
+      {/* Quando JÁ há fotos, os botões de adicionar mais ficam soltos abaixo do carrossel. */}
+      {photoUrls.length > 0 && captureButtons}
 
       {photoUrls.length > 0 && (
         <p className="text-xs text-muted-foreground text-center">
