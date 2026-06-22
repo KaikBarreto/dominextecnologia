@@ -46,6 +46,9 @@ import {
   buildPmocItemsWithScope,
 } from '@/components/contracts/pmocMachineRoutine';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
+import { AreaCalculatorModal } from '@/components/contracts/AreaCalculatorModal';
+import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -55,7 +58,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2, Calculator } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -334,6 +337,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // exatamente naquele ambiente.
   const [showQuickEquip, setShowQuickEquip] = useState(false);
   const [quickEquipEnvKey, setQuickEquipEnvKey] = useState<string | null>(null);
+  // Calculadora de área (largura × comprimento → m²): guarda a key do ambiente alvo.
+  const [areaCalcEnvKey, setAreaCalcEnvKey] = useState<string | null>(null);
+  // Viewer da foto do equipamento (ampliada). null = fechado.
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Abre o EquipmentFormDialog travado no cliente do contrato, lembrando o ambiente.
   const openQuickEquip = (envKey: string) => {
@@ -2047,9 +2054,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       );
                     });
                     return (
-                      <div key={env.key} className="rounded-lg border">
+                      <div key={env.key} className={cn('overflow-hidden rounded-2xl border-2 bg-card shadow-sm transition-colors', envOpen && 'border-info/40')}>
                         {/* Cabeçalho do ambiente — clicável (accordion single-open). */}
-                        <div className="flex items-center justify-between gap-2 p-3">
+                        <div className={cn('flex items-center justify-between gap-2 p-3', envOpen && 'border-b bg-muted/40')}>
                           <button
                             type="button"
                             onClick={() => toggleEnv(env.key)}
@@ -2098,12 +2105,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-xs">Área climatizada (m²)</Label>
-                            <NumericInput
-                              decimal
-                              value={env.area_climatizada_m2}
-                              onValueChange={v => updateEnvironmentField(env.key, 'area_climatizada_m2', v)}
-                              placeholder="Ex: 120,5"
-                            />
+                            <div className="flex items-center gap-2">
+                              <NumericInput
+                                decimal
+                                value={env.area_climatizada_m2}
+                                onValueChange={v => updateEnvironmentField(env.key, 'area_climatizada_m2', v)}
+                                placeholder="Ex: 120,5"
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-10 shrink-0 px-3"
+                                onClick={() => setAreaCalcEnvKey(env.key)}
+                              >
+                                <Calculator className="h-4 w-4 sm:mr-1.5" />
+                                <span className="hidden sm:inline">Calcular</span>
+                              </Button>
+                            </div>
                           </div>
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1">
@@ -2176,10 +2196,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           </div>
                         </div>
 
-                        {/* Equipamentos deste ambiente (exclusivos entre ambientes). */}
-                        <div className="space-y-1.5">
-                          <Label className="text-xs flex items-center gap-1.5">
-                            <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                        {/* Equipamentos deste ambiente (exclusivos entre ambientes).
+                            Bloco aninhado/subordinado ao ambiente (borda lateral + recuo). */}
+                        <div className="ml-2 space-y-1.5 border-l-2 border-info/30 pl-3">
+                          <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                            <Wrench className="h-3.5 w-3.5 text-info" />
                             Equipamentos deste ambiente ({envEquipmentCount})
                           </Label>
                           {!customerId ? (
@@ -2199,7 +2220,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               />
                             </div>
                             {/* Lista com altura máxima + scroll (item 2). */}
-                            <div className="rounded-md border divide-y max-h-72 overflow-y-auto">
+                            <div className="rounded-lg border bg-muted/20 divide-y max-h-72 overflow-y-auto">
                               {visibleEquipment.length === 0 ? (
                                 <p className="px-3 py-4 text-center text-xs text-muted-foreground">
                                   Nenhum equipamento encontrado.
@@ -2221,6 +2242,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                           // Ao marcar, abre a config dele (single-open); ao desmarcar, fecha.
                                           setOpenMachineEqId(wasChecked ? null : eq.id);
                                         }}
+                                      />
+                                      <EquipmentAvatar
+                                        photoUrl={eq.photo_url}
+                                        name={eq.name}
+                                        onPreview={() => setPreviewPhoto({ src: eq.photo_url ?? '', alt: eq.name || 'Equipamento' })}
                                       />
                                       <button
                                         type="button"
@@ -2277,45 +2303,39 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                           />
                                         </div>
 
-                                        {/* 2) Começa na visita */}
-                                        <div className="flex flex-col gap-1.5">
-                                          <div className="flex items-center gap-1">
-                                            <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
-                                                  <HelpCircle className="h-3.5 w-3.5" />
-                                                </button>
-                                              </TooltipTrigger>
-                                              <TooltipContent className="max-w-xs text-xs">
-                                                Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
-                                              </TooltipContent>
-                                            </Tooltip>
+                                        {/* 2) Começa na visita + Checklists (lado a lado; empilha no mobile) */}
+                                        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
+                                          <div className="flex flex-1 flex-col gap-1.5">
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                  <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                                    <HelpCircle className="h-3.5 w-3.5" />
+                                                  </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-xs text-xs">
+                                                  Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            </div>
+                                            <Select
+                                              value={String(cfg?.startVisit ?? 12)}
+                                              onValueChange={(v) => setMachineStartVisit(eq.id, Number(v))}
+                                            >
+                                              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                              <SelectContent>
+                                                {START_VISIT_OPTIONS.map(o => (
+                                                  <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
                                           </div>
-                                          <Select
-                                            value={String(cfg?.startVisit ?? 12)}
-                                            onValueChange={(v) => setMachineStartVisit(eq.id, Number(v))}
-                                          >
-                                            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                              {START_VISIT_OPTIONS.map(o => (
-                                                <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-
-                                        {/* 3) Checklists da máquina */}
-                                        <div className="flex items-center justify-between gap-2">
-                                          <span className="text-[11px] text-muted-foreground">
-                                            {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
-                                            {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
-                                          </span>
                                           <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            className="h-8 text-xs"
+                                            className="h-9 w-full text-xs sm:w-auto"
                                             disabled={catalogLoading}
                                             onClick={() => openMachinePicker(eq.id)}
                                           >
@@ -2323,6 +2343,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                             Checklists do catálogo PMOC
                                           </Button>
                                         </div>
+
+                                        {/* Resumo dos checklists da máquina */}
+                                        <span className="block text-[11px] text-muted-foreground">
+                                          {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
+                                          {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
+                                        </span>
 
                                         {/* Preview: em que visita começa e o que inclui */}
                                         {cfg && (
@@ -2815,6 +2841,21 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         onChangeTemplates={pickerMachineEqId ? setPickerTemplateSelection : undefined}
       />
     </ResponsiveModal>
+
+    {/* Calculadora de área (largura × comprimento → m²). */}
+    <AreaCalculatorModal
+      open={!!areaCalcEnvKey}
+      onOpenChange={(v) => { if (!v) setAreaCalcEnvKey(null); }}
+      onApply={(areaBR) => { if (areaCalcEnvKey) updateEnvironmentField(areaCalcEnvKey, 'area_climatizada_m2', areaBR); }}
+    />
+
+    {/* Viewer da foto do equipamento (ampliada). */}
+    <ImagePreviewModal
+      open={!!previewPhoto}
+      src={previewPhoto?.src ?? ''}
+      alt={previewPhoto?.alt}
+      onClose={() => setPreviewPhoto(null)}
+    />
 
     {/* Confirmação antes de recalcular as visitas futuras (edição de cronograma).
         ResponsiveModal = drawer de baixo no mobile, dialog no desktop. */}

@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.16',
+    date: '21 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Catálogo de Checklists ao criar um checklist',
+        description: 'Na tela de Serviços, ao montar um checklist, há agora um botão "Catálogo de Checklists" com modelos prontos para importar e ajustar. Para empresas de refrigeração/climatização, inclui os checklists do catálogo PMOC (por seção da norma) e modelos de serviço como Instalação de Split, Higienização de Split, Manutenção Preventiva e Carga de Gás — já com perguntas e descrições de exemplo. Um aviso lembra que são apenas sugestões, para cada empresa adequar aos seus processos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Etapa de Ambientes do contrato mais prática',
+        description: 'No cadastro de contrato PMOC: o campo de Área climatizada ganhou uma calculadora (largura × comprimento); cada equipamento aparece com a sua foto em círculo (toque para ampliar); e o botão de checklists do equipamento ficou ao lado de "Começa na visita". A separação entre ambientes e seus equipamentos também ficou mais clara.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.15',
     date: '21 de junho de 2026',
     type: 'patch',

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ShieldCheck, Plus, Check, Trash2, Loader2, Wrench, HelpCircle, CalendarCheck } from 'lucide-react';
+import { ShieldCheck, Plus, Check, Trash2, Loader2, Wrench, HelpCircle, CalendarCheck, Calculator } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { AreaCalculatorModal } from '@/components/contracts/AreaCalculatorModal';
+import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import {
   AlertDialog,
@@ -166,6 +169,10 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const [showRegenConfirm, setShowRegenConfirm] = useState(false);
   const [regenCount, setRegenCount] = useState(0);
   const [saving, setSaving] = useState(false);
+  // Calculadora de área: guarda a key do ambiente alvo (null = fechada).
+  const [areaCalcEnvKey, setAreaCalcEnvKey] = useState<string | null>(null);
+  // Viewer da foto do equipamento (ampliada). null = fechado.
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Rotina POR MÁQUINA (Fase 5). Chave = equipment_id. Reconstruída do que está
   // persistido (contract_items + contract_plan_activities) pela MESMA fonte única
@@ -509,11 +516,11 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           ) : (
             <div className="space-y-4">
               {envs.map((env, idx) => (
-                <div key={env.key} className="rounded-xl border p-3 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
+                <div key={env.key} className="overflow-hidden rounded-2xl border-2 bg-card shadow-sm">
+                  <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-2">
                       <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
-                      <span className="truncate text-sm font-medium">
+                      <span className="truncate text-sm font-semibold">
                         {env.identificacao.trim() || 'Sem identificação'}
                       </span>
                     </div>
@@ -528,6 +535,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </Button>
                   </div>
 
+                  <div className="space-y-3 p-3">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Identificação do ambiente</Label>
@@ -539,7 +547,25 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Área climatizada (m²)</Label>
-                      <NumericInput decimal value={env.area_climatizada_m2} onValueChange={(v) => updateField(env.key, 'area_climatizada_m2', v)} placeholder="Ex: 120,5" />
+                      <div className="flex items-center gap-2">
+                        <NumericInput
+                          decimal
+                          value={env.area_climatizada_m2}
+                          onValueChange={(v) => updateField(env.key, 'area_climatizada_m2', v)}
+                          placeholder="Ex: 120,5"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-10 shrink-0 px-3"
+                          onClick={() => setAreaCalcEnvKey(env.key)}
+                        >
+                          <Calculator className="h-4 w-4 sm:mr-1.5" />
+                          <span className="hidden sm:inline">Calcular</span>
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1">
@@ -604,15 +630,15 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5 text-xs">
-                      <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="ml-2 space-y-1.5 border-l-2 border-info/30 pl-3">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Wrench className="h-3.5 w-3.5 text-info" />
                       Equipamentos deste ambiente ({env.equipment_ids.length})
                     </Label>
                     {activeEquipment.length === 0 ? (
                       <p className="text-xs text-muted-foreground">O cliente não tem equipamentos ativos cadastrados.</p>
                     ) : (
-                      <div className="max-h-96 divide-y overflow-y-auto rounded-md border">
+                      <div className="max-h-96 divide-y overflow-y-auto rounded-lg border bg-muted/20">
                         {activeEquipment.map((eq: any) => {
                           const checked = env.equipment_ids.includes(eq.id);
                           const ownerKey = equipmentOwnerEnvKey.get(eq.id);
@@ -631,6 +657,11 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                                   className="rounded border-border"
                                   checked={checked}
                                   onChange={() => toggleEquipment(env.key, eq.id)}
+                                />
+                                <EquipmentAvatar
+                                  photoUrl={eq.photo_url}
+                                  name={eq.name}
+                                  onPreview={() => setPreviewPhoto({ src: eq.photo_url, alt: eq.name || 'Equipamento' })}
                                 />
                                 <div className="min-w-0 flex-1">
                                   <p className="truncate text-sm font-medium">{eq.name}</p>
@@ -672,45 +703,39 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                                     />
                                   </div>
 
-                                  {/* 2) Começa na visita */}
-                                  <div className="flex flex-col gap-1.5">
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
-                                            <HelpCircle className="h-3.5 w-3.5" />
-                                          </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs text-xs">
-                                          Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
-                                        </TooltipContent>
-                                      </Tooltip>
+                                  {/* 2) Começa na visita + Checklists (lado a lado; empilha no mobile) */}
+                                  <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
+                                    <div className="flex flex-1 flex-col gap-1.5">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                              <HelpCircle className="h-3.5 w-3.5" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="max-w-xs text-xs">
+                                            Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </div>
+                                      <Select
+                                        value={String(cfg?.startVisit ?? 12)}
+                                        onValueChange={(v) => setMachineStartVisit(eq.id, Number(v))}
+                                      >
+                                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {START_VISIT_OPTIONS.map((o) => (
+                                            <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
                                     </div>
-                                    <Select
-                                      value={String(cfg?.startVisit ?? 12)}
-                                      onValueChange={(v) => setMachineStartVisit(eq.id, Number(v))}
-                                    >
-                                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                                      <SelectContent>
-                                        {START_VISIT_OPTIONS.map((o) => (
-                                          <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-
-                                  {/* 3) Checklists da máquina */}
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[11px] text-muted-foreground">
-                                      {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
-                                      {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
-                                    </span>
                                     <Button
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      className="h-8 text-xs"
+                                      className="h-9 w-full text-xs sm:w-auto"
                                       disabled={catalogLoading}
                                       onClick={() => openMachinePicker(eq.id)}
                                     >
@@ -718,6 +743,12 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                                       Checklists do catálogo PMOC
                                     </Button>
                                   </div>
+
+                                  {/* Resumo dos checklists da máquina */}
+                                  <span className="block text-[11px] text-muted-foreground">
+                                    {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
+                                    {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
+                                  </span>
 
                                   {/* Preview: em que visita começa e o que inclui */}
                                   {cfg && (
@@ -735,6 +766,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         })}
                       </div>
                     )}
+                  </div>
                   </div>
                 </div>
               ))}
@@ -856,6 +888,21 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Calculadora de área (largura × comprimento → m²). */}
+      <AreaCalculatorModal
+        open={!!areaCalcEnvKey}
+        onOpenChange={(v) => { if (!v) setAreaCalcEnvKey(null); }}
+        onApply={(areaBR) => { if (areaCalcEnvKey) updateField(areaCalcEnvKey, 'area_climatizada_m2', areaBR); }}
+      />
+
+      {/* Viewer da foto do equipamento (ampliada). */}
+      <ImagePreviewModal
+        open={!!previewPhoto}
+        src={previewPhoto?.src ?? ''}
+        alt={previewPhoto?.alt}
+        onClose={() => setPreviewPhoto(null)}
+      />
     </div>
   );
 }

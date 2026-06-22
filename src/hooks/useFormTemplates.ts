@@ -21,6 +21,9 @@ export interface FormQuestionInsert {
   description?: string;
   require_camera?: boolean;
   answer_types?: string[] | null;
+  unit?: string | null;
+  expected_min?: number | null;
+  expected_max?: number | null;
 }
 
 export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[] = [
@@ -146,6 +149,27 @@ export function useFormTemplates() {
     },
   });
 
+  const createQuestionsBatch = useMutation({
+    mutationFn: async (questions: FormQuestionInsert[]) => {
+      if (questions.length === 0) return [];
+      const { data, error } = await supabase
+        .from('form_questions')
+        .insert(questions)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['form-templates'] });
+      const count = Array.isArray(data) ? data.length : 0;
+      toast({ title: count === 1 ? 'Pergunta importada!' : `${count} perguntas importadas!` });
+    },
+    onError: (error) => {
+      toast({ title: 'Erro ao importar perguntas', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+
   const updateQuestion = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FormQuestion> & { id: string }) => {
       const { data, error } = await supabase
@@ -230,6 +254,7 @@ export function useFormTemplates() {
     updateTemplate,
     deleteTemplate,
     createQuestion,
+    createQuestionsBatch,
     updateQuestion,
     deleteQuestion,
     reorderQuestions,

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Pencil, Trash2, GripVertical, X,
   CheckSquare, Type, Hash, Camera, ListChecks,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
 
 const getQTypeIcon = (type: string) => {
   const found = QUESTION_TYPES.find(t => t.value === type);
@@ -56,6 +57,9 @@ export default function ChecklistDetail() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
+
+  // Catalog modal state
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   // Question modal state (create or edit)
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
@@ -345,9 +349,21 @@ export default function ChecklistDetail() {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Perguntas</h2>
         {!isMobile && (
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Pergunta
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              Catálogo de Checklists
+            </Button>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Pergunta
+            </Button>
+          </div>
+        )}
+        {isMobile && (
+          <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
+            <BookOpen className="mr-1.5 h-4 w-4" />
+            Catálogo
           </Button>
         )}
       </div>
@@ -458,6 +474,15 @@ export default function ChecklistDetail() {
           })}
         </div>
       )}
+
+      {/* Catalog modal */}
+      <ChecklistCatalogModal
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        templateId={template.id}
+        existingCount={sortedQuestions.length}
+        existingQuestions={sortedQuestions.map(q => q.question)}
+      />
 
       {/* Question modal (create or edit) */}
       <ResponsiveModal open={questionModalOpen} onOpenChange={(o) => { setQuestionModalOpen(o); if (!o) resetQuestionForm(); }} title={editingQuestion ? 'Editar Pergunta' : 'Nova Pergunta'}>
