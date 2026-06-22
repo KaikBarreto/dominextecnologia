@@ -3161,8 +3161,9 @@ export default function TechnicianOS() {
               </Button>
             ) : (
               <>
+                {/* Ação primária: ocupa mais espaço (flex-[2]) e size lg. */}
                 <Button
-                  className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+                  className="flex-[2] bg-success hover:bg-success/90 text-success-foreground"
                   size="lg"
                   onClick={handleFinishOS}
                   disabled={finishing}
@@ -3170,14 +3171,16 @@ export default function TechnicianOS() {
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   {finishing ? 'Finalizando...' : 'Finalizar OS'}
                 </Button>
+                {/* Ação secundária: menor/menos proeminente que "Finalizar OS"
+                    (flex-1 + size sm), mas ainda legível e tocável. */}
                 <Button
-                  className="flex-1 bg-warning hover:bg-warning/90 text-white"
-                  size="lg"
+                  variant="outline"
+                  className="flex-1 border-warning text-warning hover:bg-warning/10 hover:text-warning"
+                  size="sm"
                   onClick={() => setPartialConfirmOpen(true)}
                   disabled={finishingPartial}
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Parcial
+                  Finalizar Parcial
                 </Button>
               </>
             )}

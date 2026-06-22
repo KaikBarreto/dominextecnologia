@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.20',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório com botões fixos e preenchimento mais polido',
+        description: 'No relatório de serviço, os botões agora ficam num rodapé fixo sempre acessível — "Baixar PDF" em destaque e "Imprimir"/"Copiar link" no menu de opções. E ao preencher a ordem de serviço, apenas o cabeçalho do equipamento aberto fica fixo no topo de cada vez (com uma leve sombra ao grudar), e o botão de Ferramentas do Técnico ganhou um lugar próprio que não atrapalha o rodapé.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Nomes das seções do checklist com acento',
+        description: 'Corrigimos os nomes das seções do checklist PMOC que apareciam sem acento (por exemplo, "Medições" aparecia como "Medicoes").',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.19',
     date: '21 de junho de 2026',
     type: 'patch',

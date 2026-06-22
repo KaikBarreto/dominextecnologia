@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { MoreVertical, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+type IconType = ComponentType<{ className?: string }>;
+
 export interface SpeedDialAction {
   icon: ComponentType<{ className?: string }>;
   label: string;
@@ -25,6 +27,18 @@ interface SpeedDialFABProps {
    * safe-area padrão. Default 0.
    */
   bottomOffsetPx?: number;
+  /**
+   * Ícone do botão principal. Default `MoreVertical` (3 pontinhos). Passe um ícone
+   * próprio (ex.: ferramenta) quando o FAB representa UMA função específica.
+   */
+  mainIcon?: IconType;
+  /** Rótulo de acessibilidade do FAB (default genérico de "menu de ferramentas"). */
+  ariaLabel?: string;
+  /**
+   * Quando há UMA única ação, o toque no FAB a dispara DIRETO (sem abrir o
+   * speed-dial). Ideal pra FAB de função única. Default false (sempre speed-dial).
+   */
+  directWhenSingle?: boolean;
 }
 
 /**
@@ -38,8 +52,18 @@ interface SpeedDialFABProps {
  * `transform` (RouteTransition / MobilePullToRefresh viram containing block e
  * quebrariam `position: fixed`).
  */
-export function SpeedDialFAB({ actions, side = 'left', className, bottomOffsetPx = 0 }: SpeedDialFABProps) {
+export function SpeedDialFAB({
+  actions,
+  side = 'left',
+  className,
+  bottomOffsetPx = 0,
+  mainIcon: MainIcon = MoreVertical,
+  ariaLabel,
+  directWhenSingle = false,
+}: SpeedDialFABProps) {
   const [open, setOpen] = useState(false);
+  // FAB de função única: o toque dispara a ação direto, sem speed-dial.
+  const isDirect = directWhenSingle && actions.length === 1;
 
   // Esc fecha (desktop).
   useEffect(() => {
@@ -56,7 +80,7 @@ export function SpeedDialFAB({ actions, side = 'left', className, bottomOffsetPx
   const content = (
     <>
       {/* Backdrop com blur + escurecimento */}
-      {open && (
+      {open && !isDirect && (
         <button
           type="button"
           aria-label="Fechar menu"
@@ -74,7 +98,7 @@ export function SpeedDialFAB({ actions, side = 'left', className, bottomOffsetPx
         style={{ bottom: `calc(1rem + env(safe-area-inset-bottom) + ${bottomOffsetPx}px)` }}
       >
         {/* Ações — sobem ancoradas acima do FAB */}
-        {open && (
+        {open && !isDirect && (
           <div className={cn('flex flex-col gap-2.5', side === 'left' ? 'items-start' : 'items-end')}>
             {actions.map((action, i) => {
               const Icon = action.icon;
@@ -104,15 +128,34 @@ export function SpeedDialFAB({ actions, side = 'left', className, bottomOffsetPx
           </div>
         )}
 
-        {/* FAB principal (3 pontinhos) */}
+        {/* FAB principal. Função única (isDirect) → dispara a ação direto e mostra
+            o ícone próprio (ex.: ferramenta). Senão → speed-dial (abre/fecha). */}
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-label={open ? 'Fechar menu' : 'Abrir menu de ferramentas'}
-          aria-expanded={open}
+          onClick={() => {
+            if (isDirect) {
+              actions[0].onClick();
+              return;
+            }
+            setOpen((v) => !v);
+          }}
+          aria-label={
+            isDirect
+              ? actions[0].label
+              : open
+                ? 'Fechar menu'
+                : ariaLabel ?? 'Abrir menu de ferramentas'
+          }
+          aria-expanded={isDirect ? undefined : open}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-90"
         >
-          {open ? <X className="h-6 w-6" /> : <MoreVertical className="h-6 w-6" />}
+          {isDirect ? (
+            <MainIcon className="h-6 w-6" />
+          ) : open ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <MainIcon className="h-6 w-6" />
+          )}
         </button>
       </div>
     </>

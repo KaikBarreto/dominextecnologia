@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.19";
+export const APP_VERSION = "1.14.20";
 
-export const VERSION_NOTES = "Agora o técnico pode \"Finalizar Parcialmente\" uma OS quando não consegue concluir tudo na visita — ela fica como \"Parcialmente Concluída\" e aparece nas OS pausadas da agenda até ser concluída de vez. Ao preencher a OS, o cabeçalho do equipamento aberto passou a ficar fixo no topo enquanto você rola as perguntas. Na criação de contrato, a prévia das visitas ganhou uma visão de calendário, a etapa de revisão agora explica em texto toda a dinâmica do contrato, e a foto do ambiente virou o primeiro campo. E no Catálogo de Checklists, ao criar um checklist a partir de um modelo, o nome já vem sugerido.";
+export const VERSION_NOTES = "No relatório de serviço, os botões agora ficam fixos num rodapé sempre à mão (Baixar PDF em destaque, e Imprimir/Copiar link no menu). Ao preencher a OS: só o cabeçalho do equipamento aberto fica fixo no topo de cada vez (com leve sombra ao grudar) e o botão de Ferramentas do Técnico ganhou lugar próprio. Também corrigimos os nomes das seções do checklist, que apareciam sem acento (ex.: \"Medições\").";

@@ -5,6 +5,7 @@ import { SignedImg } from '@/components/ui/SignedImg';
 import { cn } from '@/lib/utils';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { visitTypeFromFreqs } from '@/hooks/useOsActivityChecklist';
+import { sectionLabel } from '@/utils/sectionLabel';
 import type { ReportChecklistItem } from './ReportChecklist';
 
 /**
@@ -310,6 +311,7 @@ function ReportPmocItem({
   onPreviewPhoto,
   renderResponse,
   stickyTopPx,
+  isOpen,
   forceAllSectionsOpen,
 }: {
   groupKey: string;
@@ -321,9 +323,16 @@ function ReportPmocItem({
   onPreviewPhoto?: Props['onPreviewPhoto'];
   renderResponse?: Props['renderResponse'];
   stickyTopPx?: number;
+  /**
+   * Single-open: SÓ o equipamento ABERTO fixa o cabeçalho. Fechados ficam em
+   * fluxo normal — sem empilhamento de cabeçalhos sticky sobrepostos.
+   */
+  isOpen: boolean;
   forceAllSectionsOpen?: boolean;
 }) {
-  const { sentinelRef, isStuck } = useStickyStuck(stickyTopPx);
+  // Sticky só no equipamento ABERTO. Fechado desativa o observer.
+  const stickyOn = isOpen && stickyTopPx !== undefined;
+  const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
 
   const total = pmocItems.length;
   const answered = pmocItems.filter((a) => !!a.conformity_status).length;
@@ -344,9 +353,9 @@ function ReportPmocItem({
         // Sem caixa por equipamento: lista limpa, SEM fundo próprio — herda o
         // branco do documento de trás. Mais espaço VERTICAL entre equipamentos.
         'border-0 scroll-mt-24 pt-6 first:pt-0',
-        // `overflow-hidden` clipa o cabeçalho sticky; só mantém quando não há
-        // sticky (PDF/impressão e modo sem offset).
-        stickyTopPx === undefined && 'overflow-hidden',
+        // `overflow-hidden` clipa o cabeçalho sticky; só mantém quando ESTE item
+        // não está sticky (fechado, PDF/impressão, ou modo sem offset).
+        !stickyOn && 'overflow-hidden',
       )}
     >
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
@@ -361,12 +370,12 @@ function ReportPmocItem({
         // da tela → gruda rente, sem vão. Rótulos de seção NÃO são sticky → nunca
         // empurram o cabeçalho do EQUIPAMENTO, que é o único sticky do bloco.
         headerClassName={cn(
-          stickyTopPx !== undefined && 'sticky z-10 bg-white print:static print:shadow-none transition-shadow overflow-hidden',
-          stickyTopPx !== undefined && (isStuck
+          stickyOn && 'sticky z-10 bg-white print:static print:shadow-none transition-shadow overflow-hidden',
+          stickyOn && (isStuck
             ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
             : 'shadow-none rounded-lg'),
         )}
-        headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
+        headerStyle={stickyOn ? { top: stickyTopPx } : undefined}
       >
         <div className="flex items-stretch gap-3 flex-1 min-w-0 text-left min-h-14">
           {photoUrl ? (
@@ -427,7 +436,7 @@ function ReportPmocItem({
               key={`sec-${sec.section}`}
               sectionKey={`sec-${groupKey}-${sec.section}`}
               icon={ListChecks}
-              label={sec.section}
+              label={sectionLabel(sec.section) || sec.section}
               forceOpen={forceAllSectionsOpen}
             >
               <div className="space-y-3">
@@ -529,6 +538,10 @@ export function ReportPmocChecklist({
           const equipmentName = equipmentNameForKey(groupKey);
           const photoUrl = photoUrlForGroup?.(equipmentName) || null;
 
+          // SÓ o equipamento aberto é sticky. No force-open do PDF/Imprimir todos
+          // ficam "abertos", mas aí desligamos o sticky (a saída é estática).
+          const itemOpen = !forceAllSectionsOpen && (openKeys?.includes(groupKey) ?? false);
+
           return (
             <ReportPmocItem
               key={groupKey}
@@ -541,6 +554,7 @@ export function ReportPmocChecklist({
               onPreviewPhoto={onPreviewPhoto}
               renderResponse={renderResponse}
               stickyTopPx={stickyTopPx}
+              isOpen={itemOpen}
               forceAllSectionsOpen={forceAllSectionsOpen}
             />
           );

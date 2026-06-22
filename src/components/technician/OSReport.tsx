@@ -1,5 +1,12 @@
 import { useRef, useState, useEffect } from 'react';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { cn } from '@/lib/utils';
@@ -1197,22 +1204,75 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         </div>
       </div>
 
-      {/* Action buttons at the bottom (mobile/tablet). No desktop com rodapé
-          fixo ligado, esconde estes inline pra não duplicar (lg:hidden). */}
-      <div className={cn('flex flex-col sm:flex-row gap-2 print:hidden', desktopActionFooter && 'lg:hidden')}>
-        <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
-          <Download className="h-4 w-4 mr-2" />
-          {generating ? 'Gerando PDF...' : 'Baixar PDF'}
-        </Button>
-        <Button variant="outline" onClick={handlePrint}>
-          <Printer className="h-4 w-4 mr-2" />
-          Imprimir
-        </Button>
-        <Button variant="outline" onClick={handleCopyLink}>
-          <Link2 className="h-4 w-4 mr-2" />
-          Copiar Link
-        </Button>
-      </div>
+      {/* Ações do relatório (mobile/tablet). Quando NÃO há rodapé fixo desktop
+          ligado (uso fora da tela de OS), mantém os botões inline. Com o rodapé
+          fixo ligado (tela de OS), o mobile usa o rodapé FIXO abaixo (lg:hidden
+          aqui evita duplicar). */}
+      {!desktopActionFooter && (
+        <div className="flex flex-col sm:flex-row gap-2 print:hidden">
+          <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
+            <Download className="h-4 w-4 mr-2" />
+            {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+          </Button>
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
+          <Button variant="outline" onClick={handleCopyLink}>
+            <Link2 className="h-4 w-4 mr-2" />
+            Copiar Link
+          </Button>
+        </div>
+      )}
+
+      {/* Rodapé FIXO MOBILE do relatório (faixa baixa, mesmo padrão do rodapé de
+          execução): "Baixar PDF" em destaque verde + 3-pontinhos com Imprimir e
+          Copiar Link. Via portal pra `position: fixed` não ancorar sob ancestral
+          transformado. lg:hidden (no desktop vale o OsActionFooter). Sem ações de
+          Finalizar/Pausar — relatório é só leitura, vale também no modo cliente. */}
+      {desktopActionFooter && createPortal(
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 lg:hidden bg-zinc-900 text-white border-t border-zinc-800 shadow-[0_-4px_16px_rgba(0,0,0,0.25)] print:hidden"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <Button
+              className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+              size="lg"
+              onClick={handleDownloadPDF}
+              disabled={generating}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+            </Button>
+            {/* modal={false}: não trava o scroll do body (consistente com o rodapé
+                de execução; evita qualquer salto de layout ao abrir). */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-11 w-11 text-white hover:bg-white/10"
+                  aria-label="Mais ações"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
+                <DropdownMenuItem onClick={handleCopyLink}>
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Copiar Link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePrint}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* Rodapé de ações fixo (desktop) — MESMOS handlers, sem duplicar lógica. */}
       {desktopActionFooter && (

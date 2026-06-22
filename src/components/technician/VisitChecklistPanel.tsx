@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
+import { sectionLabel } from '@/utils/sectionLabel';
 import { SignaturePad } from '@/components/SignaturePad';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -176,7 +177,7 @@ function ActivityRow({
         <div className="flex-1 min-w-0">
           {activity.section && (
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-              {activity.section}
+              {sectionLabel(activity.section) || activity.section}
               {activity.component ? ` · ${activity.component}` : ''}
             </p>
           )}
@@ -628,12 +629,18 @@ function groupKey(group: ChecklistEquipmentGroup): string {
 function VisitChecklistItem({
   group,
   stickyTopPx,
+  isOpen,
   onPreviewPhoto,
   header,
   children,
 }: {
   group: ChecklistEquipmentGroup;
   stickyTopPx?: number;
+  /**
+   * Single-open: SÓ o equipamento ABERTO fixa o cabeçalho no topo. Fechados ficam
+   * em fluxo normal (sem sticky) — assim nunca empilham nem brigam por z-index.
+   */
+  isOpen: boolean;
   onPreviewPhoto?: Props['onPreviewPhoto'];
   header: {
     total: number;
@@ -646,7 +653,11 @@ function VisitChecklistItem({
   };
   children: ReactNode;
 }) {
-  const { sentinelRef, isStuck } = useStickyStuck(stickyTopPx);
+  // SÓ o equipamento ABERTO fica sticky. Fechado → desativa o observer (passa
+  // undefined) pra não medir/atualizar à toa. Elimina o empilhamento de vários
+  // cabeçalhos sticky sobrepostos (e a invasão do header do topo).
+  const stickyOn = isOpen && stickyTopPx !== undefined;
+  const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
   const { total, naoConforme, pending, visit, photo, category, brandModel } = header;
 
   return (
@@ -659,19 +670,25 @@ function VisitChecklistItem({
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
       <AccordionTrigger
-        className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card"
+        className={cn(
+          'hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card',
+          // Não-stuck: arredonda o card pra combinar com os cantos da foto
+          // (rounded-l-md). Stuck (grudado no topo) fica reto.
+          stickyOn && !isStuck && 'rounded-lg',
+        )}
         // Cabeçalho fixo no topo enquanto o técnico rola o conteúdo do equipamento
-        // aberto. Sticky no WRAPPER (Header). Fundo sólido (bg-card). Sombra SÓ
-        // quando grudado (isStuck); fora disso cantos arredondados (card) e sem
-        // sombra. `top` = altura exata do header da tela → gruda rente, sem vão.
+        // ABERTO. Sticky no WRAPPER (Header). Fundo sólido (bg-card). z-10 < z-20 do
+        // header da tela (laranja), que sempre fica ACIMA. Sombra SÓ quando grudado
+        // (isStuck); fora disso cantos arredondados e sem sombra. `top` = altura
+        // exata do header da tela → gruda rente, sem vão e sem invadir.
         // PDF/Imprimir: estático e sem sombra.
         headerClassName={cn(
-          stickyTopPx !== undefined && 'sticky z-10 bg-card print:static print:shadow-none transition-shadow',
-          stickyTopPx !== undefined && (isStuck
+          stickyOn && 'sticky z-10 bg-card print:static print:shadow-none transition-shadow',
+          stickyOn && (isStuck
             ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
             : 'shadow-none rounded-lg'),
         )}
-        headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
+        headerStyle={stickyOn ? { top: stickyTopPx } : undefined}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
           {photo ? (
@@ -774,6 +791,10 @@ export function VisitChecklistPanel({
   // Controlado só quando a página passa openKey + onOpenChange (sidebar desktop).
   // Senão mantém o uso não-controlado original (defaultValue).
   const controlled = openKey !== undefined && onOpenChange !== undefined;
+  // Chave do equipamento ABERTO pra decidir QUEM fica sticky. Controlado → openKey;
+  // não-controlado → o 1º grupo (defaultValue). É o melhor palpite estável no modo
+  // não-controlado; o execution flow sempre passa controlado.
+  const effectiveOpenKey = controlled ? (openKey ?? null) : firstKey;
 
   return (
     <Card>
@@ -843,6 +864,7 @@ export function VisitChecklistPanel({
                 key={groupKey(group)}
                 group={group}
                 stickyTopPx={stickyTopPx}
+                isOpen={groupKey(group) === effectiveOpenKey}
                 onPreviewPhoto={onPreviewPhoto}
                 header={{ total, naoConforme, pending, visit, photo, category, brandModel }}
               >
