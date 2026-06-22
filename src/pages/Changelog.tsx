@@ -40,6 +40,38 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.18',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novo tipo de resposta "Conformidade" nos checklists',
+        description: 'As perguntas de checklist agora podem ser respondidas como Conforme, Não Conforme ou N/A. Os itens importados do catálogo PMOC já chegam nesse formato, em vez de "verdadeiro/falso".',
+        category: 'melhoria',
+      },
+      {
+        title: 'Foto do ambiente nos contratos',
+        description: 'Cada ambiente do contrato passou a aceitar uma foto, tanto na criação quanto na edição — útil para registrar e identificar o local atendido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Catálogo de Checklists mais acessível',
+        description: 'O botão "Catálogo de Checklists" agora também aparece na lista de checklists: dá para escolher os modelos, dar um nome e já criar um checklist novo pronto. O visual do catálogo ficou mais claro, e a lista de checklists ganhou título e descrição.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Local do equipamento na lista do contrato',
+        description: 'Na lista de equipamentos de um ambiente, o local de cada equipamento aparece ao lado do nome, facilitando identificar qual é.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Foto ampliada não fechava ao clicar fora',
+        description: 'Ao ampliar uma foto, clicar fora da imagem (ou apertar Esc) volta a fechar a visualização normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.17',
     date: '21 de junho de 2026',
     type: 'patch',

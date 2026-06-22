@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Trash2, Search, Pencil } from 'lucide-react';
+import { Plus, FileText, Trash2, Search, Pencil, BookOpen } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
 
 type TemplateWithServiceIds = { service_type_ids?: string[] };
 
@@ -39,6 +40,7 @@ export default function ChecklistsPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [createOpen, setCreateOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
@@ -95,14 +97,25 @@ export default function ChecklistsPage() {
         subtitle="Gerencie modelos e perguntas por tipo de serviço"
         icon={FileText}
         actions={
-          isMobile ? undefined : (
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => setCreateOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Checklist
+          isMobile ? (
+            <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
+              <BookOpen className="mr-1.5 h-4 w-4" />
+              Catálogo
             </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+                <BookOpen className="mr-2 h-4 w-4" />
+                Catálogo de Checklists
+              </Button>
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setCreateOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Checklist
+              </Button>
+            </div>
           )
         }
       />
@@ -367,6 +380,14 @@ export default function ChecklistsPage() {
           </div>
         </div>
       </ResponsiveModal>
+
+      {/* Catálogo: modo "create" — pede nome e cria um checklist novo já populado. */}
+      <ChecklistCatalogModal
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        mode="create"
+        onCreated={(id) => navigate(`/checklists/${id}`)}
+      />
 
       {/* Delete dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>

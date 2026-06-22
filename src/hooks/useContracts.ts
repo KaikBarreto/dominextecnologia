@@ -111,6 +111,8 @@ export interface ContractEnvironmentInput {
   ocupantes_fixos?: number | null;
   ocupantes_flutuantes?: number | null;
   carga_termica_tr?: number | null;
+  /** URL pública (bucket equipment-files) da foto do ambiente. */
+  photo_url?: string | null;
   equipment_ids: string[];
 }
 
@@ -1082,6 +1084,7 @@ async function syncContractEnvironments(args: {
       ocupantes_fixos: env.ocupantes_fixos ?? null,
       ocupantes_flutuantes: env.ocupantes_flutuantes ?? null,
       carga_termica_tr: env.carga_termica_tr ?? null,
+      photo_url: env.photo_url ?? null,
       sort_order: i,
     };
     let envId = env.id && existingIds.has(env.id) ? env.id : null;
@@ -1468,7 +1471,7 @@ export function useContracts() {
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
-          contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, sort_order),
+          contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, photo_url, sort_order),
           service_orders (id, order_number, status, scheduled_date)
         `)
         .order('created_at', { ascending: false });
@@ -1636,6 +1639,7 @@ export function useContracts() {
               ocupantes_fixos: env.ocupantes_fixos ?? null,
               ocupantes_flutuantes: env.ocupantes_flutuantes ?? null,
               carga_termica_tr: env.carga_termica_tr ?? null,
+              photo_url: env.photo_url ?? null,
               sort_order: i,
             })) as any
           )

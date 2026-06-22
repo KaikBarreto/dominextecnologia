@@ -48,6 +48,7 @@ import {
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import { AreaCalculatorModal } from '@/components/contracts/AreaCalculatorModal';
 import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
+import { EnvironmentPhotoField } from '@/components/contracts/EnvironmentPhotoField';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -169,6 +170,7 @@ interface EnvRow {
   ocupantes_fixos: string;
   ocupantes_flutuantes: string;
   carga_termica_tr: string;
+  photo_url?: string | null;
   equipment_ids: string[];
 }
 
@@ -183,6 +185,7 @@ function newEnvRow(): EnvRow {
     ocupantes_fixos: '',
     ocupantes_flutuantes: '',
     carga_termica_tr: '',
+    photo_url: null,
     equipment_ids: [],
   };
 }
@@ -480,6 +483,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         ocupantes_fixos: e.ocupantes_fixos || '',
         ocupantes_flutuantes: e.ocupantes_flutuantes || '',
         carga_termica_tr: e.carga_termica_tr || '',
+        photo_url: e.photo_url ?? null,
         equipment_ids: Array.isArray(e.equipment_ids) ? e.equipment_ids : [],
       };
     });
@@ -601,6 +605,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               ocupantes_fixos: numToStrBR(e.ocupantes_fixos),
               ocupantes_flutuantes: numToStrBR(e.ocupantes_flutuantes),
               carga_termica_tr: numToStrBR(e.carga_termica_tr),
+              photo_url: e.photo_url ?? null,
               equipment_ids: eqIds,
             };
           });
@@ -934,6 +939,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setEnvironments(prev => prev.map(e => e.key === key ? { ...e, [field]: value } : e));
   };
 
+  // Foto do ambiente: aceita null (remover). Separado de updateEnvironmentField
+  // que é tipado pra string dos campos de texto/numéricos.
+  const setEnvironmentPhoto = (key: string, photoUrl: string | null) => {
+    setEnvironments(prev => prev.map(e => e.key === key ? { ...e, photo_url: photoUrl } : e));
+  };
+
   // Alterna um equipamento dentro de um ambiente. Exclusivo: ao marcar num
   // ambiente, é retirado de qualquer outro que o tivesse (sem duplicar).
   const toggleEnvEquipment = (envKey: string, eqId: string) => {
@@ -1124,6 +1135,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     ocupantes_fixos: parseIntOrNull(e.ocupantes_fixos),
     ocupantes_flutuantes: parseIntOrNull(e.ocupantes_flutuantes),
     carga_termica_tr: parseDecimalBR(e.carga_termica_tr),
+    photo_url: e.photo_url ?? null,
     equipment_ids: e.equipment_ids,
   }));
 
@@ -2196,6 +2208,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           </div>
                         </div>
 
+                        <EnvironmentPhotoField
+                          value={env.photo_url}
+                          onChange={(url) => setEnvironmentPhoto(env.key, url)}
+                          envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
+                        />
+
                         {/* Equipamentos deste ambiente (exclusivos entre ambientes).
                             Bloco aninhado/subordinado ao ambiente (borda lateral + recuo). */}
                         <div className="ml-2 space-y-1.5 border-l-2 border-info/30 pl-3">
@@ -2264,6 +2282,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                           <p className="text-sm font-medium truncate">{eq.name}</p>
                                           <p className="text-xs text-muted-foreground truncate">
                                             {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                                            {eq.location && (
+                                              <span className="text-muted-foreground"> • {eq.location}</span>
+                                            )}
                                           </p>
                                         </div>
                                         {checked && (

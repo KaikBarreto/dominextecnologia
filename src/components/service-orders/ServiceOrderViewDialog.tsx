@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -303,6 +303,15 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                   {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                   {response.response_value === 'true' ? 'Sim' : 'Não'}
                 </Badge>
+              ) : response.question?.question_type === 'conformidade' ? (
+                <span className={`mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white ${
+                  response.response_value === 'Conforme' ? 'bg-emerald-600'
+                    : response.response_value === 'Não Conforme' ? 'bg-red-600'
+                    : 'bg-slate-500'
+                }`}>
+                  {response.response_value === 'Conforme' ? <Check className="h-3 w-3" /> : response.response_value === 'Não Conforme' ? <X className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                  {response.response_value || 'N/A'}
+                </span>
               ) : (
                 <div className="space-y-1 mt-1">
                   {hasTextValue && <p>{response.response_value}</p>}

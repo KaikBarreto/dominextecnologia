@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { FormTemplate, FormQuestion } from '@/types/database';
-import { CheckSquare, Type, Hash, Camera, ListChecks, LucideIcon } from 'lucide-react';
+import { CheckSquare, Type, Hash, Camera, ListChecks, ShieldCheck, LucideIcon } from 'lucide-react';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface FormTemplateInsert {
@@ -14,7 +14,7 @@ export interface FormTemplateInsert {
 export interface FormQuestionInsert {
   template_id: string;
   question: string;
-  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature';
+  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature' | 'conformidade';
   options?: string[];
   is_required?: boolean;
   position?: number;
@@ -28,6 +28,7 @@ export interface FormQuestionInsert {
 
 export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[] = [
   { value: 'boolean', label: 'Verdadeiro/Falso', icon: CheckSquare },
+  { value: 'conformidade', label: 'Conformidade', icon: ShieldCheck },
   { value: 'text', label: 'Texto', icon: Type },
   { value: 'number', label: 'Número', icon: Hash },
   { value: 'photo', label: 'Foto', icon: Camera },

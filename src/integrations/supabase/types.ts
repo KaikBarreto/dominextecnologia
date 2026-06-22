@@ -1275,6 +1275,7 @@ export type Database = {
           identificacao: string | null
           ocupantes_fixos: number | null
           ocupantes_flutuantes: number | null
+          photo_url: string | null
           sort_order: number
           tipo_atividade: string | null
           updated_at: string
@@ -1289,6 +1290,7 @@ export type Database = {
           identificacao?: string | null
           ocupantes_fixos?: number | null
           ocupantes_flutuantes?: number | null
+          photo_url?: string | null
           sort_order?: number
           tipo_atividade?: string | null
           updated_at?: string
@@ -1303,6 +1305,7 @@ export type Database = {
           identificacao?: string | null
           ocupantes_fixos?: number | null
           ocupantes_flutuantes?: number | null
+          photo_url?: string | null
           sort_order?: number
           tipo_atividade?: string | null
           updated_at?: string

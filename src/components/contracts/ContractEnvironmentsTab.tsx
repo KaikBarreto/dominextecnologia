@@ -13,6 +13,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { AreaCalculatorModal } from '@/components/contracts/AreaCalculatorModal';
 import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
+import { EnvironmentPhotoField } from '@/components/contracts/EnvironmentPhotoField';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import {
   AlertDialog,
@@ -69,6 +70,7 @@ interface EnvRow {
   ocupantes_fixos: string;
   ocupantes_flutuantes: string;
   carga_termica_tr: string;
+  photo_url?: string | null;
   equipment_ids: string[];
 }
 
@@ -99,6 +101,7 @@ function newEnvRow(): EnvRow {
     ocupantes_fixos: '',
     ocupantes_flutuantes: '',
     carga_termica_tr: '',
+    photo_url: null,
     equipment_ids: [],
   };
 }
@@ -158,6 +161,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         ocupantes_fixos: numToStrBR(e.ocupantes_fixos),
         ocupantes_flutuantes: numToStrBR(e.ocupantes_flutuantes),
         carga_termica_tr: numToStrBR(e.carga_termica_tr),
+        photo_url: e.photo_url ?? null,
         equipment_ids: items
           .filter((it) => it.environment_id === e.id && it.equipment_id)
           .map((it) => it.equipment_id as string),
@@ -292,6 +296,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   };
   const updateField = (key: string, field: keyof EnvRow, value: string) =>
     setEnvs((prev) => prev.map((e) => (e.key === key ? { ...e, [field]: value } : e)));
+  // Foto do ambiente: aceita null (remover), fora do updateField tipado pra string.
+  const setEnvPhoto = (key: string, photoUrl: string | null) =>
+    setEnvs((prev) => prev.map((e) => (e.key === key ? { ...e, photo_url: photoUrl } : e)));
 
   const toggleEquipment = (envKey: string, eqId: string) => {
     setEnvs((prev) =>
@@ -421,6 +428,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       ocupantes_fixos: parseIntOrNull(e.ocupantes_fixos),
       ocupantes_flutuantes: parseIntOrNull(e.ocupantes_flutuantes),
       carga_termica_tr: parseDecimalBR(e.carga_termica_tr),
+      photo_url: e.photo_url ?? null,
       equipment_ids: e.equipment_ids,
     }));
 
@@ -630,6 +638,12 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </div>
                   </div>
 
+                  <EnvironmentPhotoField
+                    value={env.photo_url}
+                    onChange={(url) => setEnvPhoto(env.key, url)}
+                    envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
+                  />
+
                   <div className="ml-2 space-y-1.5 border-l-2 border-info/30 pl-3">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <Wrench className="h-3.5 w-3.5 text-info" />
@@ -667,6 +681,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                                   <p className="truncate text-sm font-medium">{eq.name}</p>
                                   <p className="truncate text-xs text-muted-foreground">
                                     {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                                    {eq.location && (
+                                      <span className="text-muted-foreground"> • {eq.location}</span>
+                                    )}
                                     {ownedByOther && ' · já em outro ambiente'}
                                   </p>
                                 </div>

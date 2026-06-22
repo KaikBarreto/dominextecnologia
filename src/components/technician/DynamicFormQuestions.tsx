@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Check, X, Pencil, AlertTriangle } from 'lucide-react';
+import { Check, X, Pencil, AlertTriangle, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -262,6 +262,41 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           </div>
         );
 
+      case 'conformidade': {
+        // 3 estados fixos. Selo ativo = cor saturada + texto branco (régua de status).
+        const conformOptions: { value: string; label: string; activeClass: string; Icon: typeof Check }[] = [
+          { value: 'Conforme', label: 'Conforme', activeClass: 'bg-emerald-600 border-emerald-600 text-white', Icon: Check },
+          { value: 'Não Conforme', label: 'Não Conforme', activeClass: 'bg-red-600 border-red-600 text-white', Icon: X },
+          { value: 'N/A', label: 'N/A', activeClass: 'bg-slate-500 border-slate-500 text-white', Icon: Minus },
+        ];
+        return (
+          <div className="grid grid-cols-3 gap-1.5">
+            {conformOptions.map((opt) => {
+              const active = value === opt.value;
+              const OptIcon = opt.Icon;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => saveResponse(question.id, active ? null : opt.value)}
+                  className={cn(
+                    'flex items-center justify-center gap-1 rounded-md border px-2 py-2 text-xs font-semibold transition-colors',
+                    'disabled:opacity-60 disabled:cursor-not-allowed',
+                    active
+                      ? opt.activeClass
+                      : 'bg-card text-muted-foreground hover:bg-muted/60 border-border',
+                  )}
+                >
+                  <OptIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+
       case 'text':
         return (
           <Textarea
@@ -453,7 +488,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           {effectiveTypes.map((type) => (
             <div key={type} className="space-y-1">
               <Badge variant="outline" className="text-xs">
-                {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
+                {type === 'boolean' ? 'Sim/Não' : type === 'conformidade' ? 'Conformidade' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
               </Badge>
               {renderSingleTypeInput(question, type)}
             </div>
@@ -492,7 +527,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             <div key={type} className="space-y-1">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
+                  {type === 'boolean' ? 'Sim/Não' : type === 'conformidade' ? 'Conformidade' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
                 </Badge>
                 {answeredType === type && (
                   <Badge variant="default" className="text-xs gap-1">
@@ -565,6 +600,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                     <Badge variant="success" className="gap-1"><Check className="h-3 w-3" /> Sim</Badge>
                   ) : response.response_value === 'false' ? (
                     <Badge variant="destructive" className="gap-1"><X className="h-3 w-3" /> Não</Badge>
+                  ) : response.response_value === 'Conforme' ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white"><Check className="h-3 w-3" /> Conforme</span>
+                  ) : response.response_value === 'Não Conforme' ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"><X className="h-3 w-3" /> Não Conforme</span>
+                  ) : response.response_value === 'N/A' ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-500 px-2 py-0.5 text-xs font-semibold text-white"><Minus className="h-3 w-3" /> N/A</span>
                   ) : response.response_value?.includes('|||') ? (
                     <div className="flex flex-wrap gap-1">
                       {response.response_value.split('|||').map((v, i) => (

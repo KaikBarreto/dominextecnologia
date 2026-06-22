@@ -163,7 +163,7 @@ export interface FormQuestion {
   id: string;
   template_id: string;
   question: string;
-  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature' | 'pmoc_measurement';
+  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature' | 'pmoc_measurement' | 'conformidade';
   options?: string[];
   is_required: boolean;
   position: number;

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.17";
+export const APP_VERSION = "1.14.18";
 
-export const VERSION_NOTES = "Relatório de serviço PMOC mais organizado: os checklists personalizados agora aparecem dentro de cada equipamento — com o nome real do checklist, logo depois dos itens da visita, separados em seções com rótulo. E no computador, a lista lateral de equipamentos mostra a foto de cada um, e clicar abre o checklist dele já na primeira pergunta.";
+export const VERSION_NOTES = "Checklists ganharam o tipo de resposta \"Conformidade\" (Conforme / Não Conforme / N/A) — e os itens do catálogo PMOC já chegam nesse formato, em vez de \"verdadeiro/falso\". Cada ambiente do contrato agora aceita uma foto, e a lista de equipamentos mostra o local de cada um ao lado do nome. O Catálogo de Checklists também ficou mais fácil: dá para escolher modelos, dar um nome e já criar um checklist novo direto da lista. E corrigimos a foto ampliada, que não fechava ao clicar fora.";

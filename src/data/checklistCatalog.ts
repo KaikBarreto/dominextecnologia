@@ -15,6 +15,7 @@
 
 export type CatalogQuestionType =
   | 'boolean'
+  | 'conformidade'
   | 'text'
   | 'number'
   | 'photo'

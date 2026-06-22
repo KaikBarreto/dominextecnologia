@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Trash2, Pencil } from 'lucide-react';
+import { Plus, FileText, Trash2, Pencil, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
 
 type TemplateWithServiceIds = { service_type_ids?: string[] };
 
@@ -36,6 +37,7 @@ export function ChecklistsPanel() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [createOpen, setCreateOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
@@ -82,19 +84,32 @@ export function ChecklistsPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Header desktop: botão inline. No mobile, Services.tsx já renderiza MobilePageHeader,
-          e o botão de criação vira FAB no rodapé. */}
-      {!isMobile && (
-        <div className="flex justify-end">
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Novo checklist
-          </Button>
+      {/* Section header. A page (Services.tsx) já tem o MobilePageHeader "Serviços";
+          aqui é um sub-header da aba, sem duplicar header full. No mobile o texto
+          fica enxuto e as ações viram botão de catálogo + FAB de criar. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Checklists</h2>
+          <p className="text-sm text-muted-foreground">
+            Modelos de checklist reutilizáveis em OS e PMOC
+          </p>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            {isMobile ? 'Catálogo' : 'Catálogo de Checklists'}
+          </Button>
+          {!isMobile && (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo checklist
+            </Button>
+          )}
+        </div>
+      </div>
 
       {activeTemplates.length === 0 ? (
         isMobile ? (
@@ -303,6 +318,14 @@ export function ChecklistsPanel() {
           </div>
         </div>
       </ResponsiveModal>
+
+      {/* Catálogo: modo "create" — pede nome e cria um checklist novo já populado. */}
+      <ChecklistCatalogModal
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        mode="create"
+        onCreated={(id) => navigate(`/checklists/${id}`)}
+      />
 
       {/* Delete dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>

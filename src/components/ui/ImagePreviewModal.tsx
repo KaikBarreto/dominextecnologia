@@ -33,14 +33,23 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
   }, [hasGallery, currentIndex, images, onNavigate]);
 
   useEffect(() => {
-    if (!open || !hasGallery) return;
+    if (!open) return;
     const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Fecha o viewer e impede que o Esc propague pro Dialog do contrato
+        // por baixo (senão fecharia os dois de uma vez).
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (!hasGallery) return;
       if (e.key === 'ArrowLeft') handlePrev();
       if (e.key === 'ArrowRight') handleNext();
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, hasGallery, handlePrev, handleNext]);
+    // capture: true garante que pegamos o Esc antes do Radix Dialog por baixo.
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [open, hasGallery, handlePrev, handleNext, onClose]);
 
   if (!open) return null;
 
@@ -65,7 +74,13 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
 
   const content = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+      // pointer-events explícito: quando este viewer abre POR CIMA de um Radix
+      // Dialog modal (ex.: Novo Contrato com lockBackdrop), o Radix coloca
+      // `pointer-events: none` no body. Como este modal é portalizado pro body
+      // (fora da árvore do Dialog), ele herdaria esse bloqueio e o clique no
+      // backdrop nunca chegaria no onClick. Forçar `auto` aqui restaura o clique.
+      style={{ pointerEvents: 'auto' }}
       onClick={onClose}
     >
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 flex items-center gap-2 z-50">
