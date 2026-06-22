@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.17',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklists personalizados dentro de cada equipamento',
+        description: 'No relatório de serviço PMOC, os checklists personalizados agora aparecem dentro do equipamento a que pertencem — com o nome real do checklist e logo depois dos itens da visita, organizados em seções com rótulo e divisória. No computador, a lista lateral de equipamentos passou a mostrar a foto de cada um, e clicar em um equipamento abre o checklist dele já na primeira pergunta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.16',
     date: '21 de junho de 2026',
     type: 'minor',

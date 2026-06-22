@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2, Star } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star } from 'lucide-react';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,10 @@ interface FormResponseData {
   question_id: string;
   response_value: string | null;
   response_photo_url: string | null;
+  /** Equipamento ao qual a resposta pertence (casa com o grupo de equipamento). */
+  equipment_id?: string | null;
+  /** Nome real do checklist (template) — usado pra rotular o sub-bloco. */
+  template_name?: string | null;
   question: FormQuestion;
 }
 
@@ -204,16 +208,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const pmocPhotoUrlForGroup = (equipmentName: string | null): string | null =>
     equipmentName ? pmocPhotoByName.get(equipmentName) ?? null : null;
 
-  const pmocKeysSig = pmocGroupKeys.join('|');
-  const isPmocKey = (key: string) => pmocGroupKeys.includes(key);
-
   // Resolve o id de âncora (scroll target) de uma chave de grupo do relatório.
-  // PMOC → `os-report-eq-...` (mesmo id do AccordionItem PMOC); personalizado →
-  // `os-report-checklist-...` (id que damos ao AccordionItem personalizado).
+  // Agora TODO grupo (PMOC e/ou personalizado) é um AccordionItem do
+  // ReportPmocChecklist, cujo id = `os-report-eq-${encodeURIComponent(key)}`
+  // (key = equipment_name ?? '__geral__'). Anchor única pra qualquer grupo.
   const reportAnchorIdForKey = (key: string): string =>
-    isPmocKey(key)
-      ? `os-report-eq-${encodeURIComponent(key)}`
-      : `os-report-${key}`;
+    `os-report-eq-${encodeURIComponent(key)}`;
 
   // Leva o cabeçalho do checklist recém-aberto pro topo (logo abaixo do header
   // fixo da tela de OS, offset = stickyTopPx) DEPOIS do reflow do single-open
@@ -246,14 +246,19 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     if (key) scrollReportHeaderToTop(key);
   };
 
-  // Expõe o opener pra a página (sidebar desktop): SETA a chave aberta (não
-  // acumula) pro grupo clicado, fechando o que estava aberto. Single-open.
+  // Expõe o opener pra a página (sidebar desktop): abre o grupo clicado (single-
+  // open, fecha o anterior) E rola até a 1ª pergunta — MESMO caminho do clique no
+  // cabeçalho do accordion (handleReportUserOpen → scrollReportHeaderToTop, que
+  // mede depois da animação e para o cabeçalho no topo). A sidebar não faz mais
+  // o scroll antigo (que competia e podia parar na última pergunta).
+  const handleReportUserOpenRef = useRef(handleReportUserOpen);
+  handleReportUserOpenRef.current = handleReportUserOpen;
   const registeredOpenerRef = useRef(false);
   useEffect(() => {
     if (registeredOpenerRef.current || !registerPmocOpener) return;
     registeredOpenerRef.current = true;
     registerPmocOpener((groupKey: string) => {
-      setOpenReportKey(groupKey);
+      handleReportUserOpenRef.current(groupKey);
     });
   }, [registerPmocOpener]);
 
@@ -277,88 +282,67 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     return !hasValue && !hasPhoto;
   };
 
-  const responsesByTemplate = (() => {
-    if (equipmentItems.length <= 1) {
-      return [{
-        label: serviceOrder.equipment?.name || (serviceOrder.form_template ? serviceOrder.form_template.name : 'Checklist'),
-        responses: otherResponses,
-      }];
-    }
+  // ── Checklists PERSONALIZADOS por equipamento ────────────────────────────────
+  // Agora vivem DENTRO do accordion do equipamento (depois das seções PMOC), em
+  // vez de num accordion top-level separado. Estrutura:
+  //   groupKey (= equipment_name ?? '__geral__')  →  [{ templateName, responses }]
+  // groupKey casa com a chave de grupo do PMOC (groupKeyForName), pra mesclar no
+  // mesmo accordion. Respostas sem equipment_id → grupo '__geral__'.
 
-    const groups: { label: string; responses: FormResponseData[]; categoryBadge?: { name: string; color: string } | null }[] = [];
-    for (const item of equipmentItems) {
-      if (!item.form_template_id) continue;
-      // Filter responses scoped to BOTH this equipment AND this template — same equip can
-      // appear in multiple rows with different templates, so equipment_id alone is ambiguous.
-      const eqResponses = otherResponses.filter(r => {
-        const rEqId = (r as any).equipment_id;
-        const rTplId = r.question?.template_id;
-        if (rEqId) {
-          // Scoped response: must match BOTH equipment and template
-          return rEqId === item.equipment_id && rTplId === item.form_template_id;
-        }
-        // Legacy response (no equipment_id): match by template only when the row is standalone
-        if (!item.equipment_id) return rTplId === item.form_template_id;
-        return false;
-      });
-      if (eqResponses.length > 0) {
-        // When the same equipment has multiple templates, suffix the template name for clarity
-        const sameEquipCount = item.equipment_id
-          ? equipmentItems.filter(i => i.equipment_id === item.equipment_id && i.form_template_id).length
-          : 0;
-        const hasMultipleOnSameEquip = sameEquipCount > 1;
-        const baseLabel = item.equipment?.name
-          ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
-          : (item.form_template?.name || 'Checklist');
-        const label = hasMultipleOnSameEquip && item.form_template?.name
-          ? `${baseLabel} (${item.form_template.name})`
-          : baseLabel;
-        groups.push({ label, responses: eqResponses, categoryBadge: item.equipment?.category || null });
+  // Resolve o NOME do equipamento (= groupKey do PMOC) a partir do equipment_id.
+  const equipmentNameById = (() => {
+    const map = new Map<string, string>();
+    for (const it of equipmentItems) {
+      if (it.equipment_id && it.equipment?.name && !map.has(it.equipment_id)) {
+        map.set(it.equipment_id, it.equipment.name);
       }
     }
-
-    const matchedIds = new Set(groups.flatMap(g => g.responses.map(r => r.id)));
-    const unmatched = otherResponses.filter(r => !matchedIds.has(r.id));
-    if (unmatched.length > 0) {
-      // Em vez de um balde "Outros" genérico, nomeia cada checklist pelo NOME do
-      // template. O nome vem do mapa template_id → name (montado dos equipamentos)
-      // com fallback pra qualquer form_template já visto. Respostas sem template
-      // identificável caem num "Outros" residual no fim.
-      const templateNames = new Map<string, string>();
-      for (const item of equipmentItems) {
-        if (item.form_template?.id && item.form_template?.name) {
-          templateNames.set(item.form_template.id, item.form_template.name);
-        }
-      }
-      // Respostas avulsas (não casadas com equipamento) costumam pertencer ao
-      // checklist GERAL da OS (serviceOrder.form_template) — que não está no mapa
-      // acima (esse só varre equipamentos). Sem isso, o nome real some e cai no
-      // fallback 'Checklist'. Disponível nos dois modos: autenticado (select) e
-      // anônimo (payload de get_public_os via form_template).
-      const osTemplate = (serviceOrder.form_template as { id?: string; name?: string } | null) || null;
-      if (osTemplate?.id && osTemplate?.name) {
-        templateNames.set(osTemplate.id, osTemplate.name);
-      }
-      const byTemplate = new Map<string, FormResponseData[]>();
-      const residual: FormResponseData[] = [];
-      for (const r of unmatched) {
-        const tplId = r.question?.template_id;
-        if (tplId) {
-          if (!byTemplate.has(tplId)) byTemplate.set(tplId, []);
-          byTemplate.get(tplId)!.push(r);
-        } else {
-          residual.push(r);
-        }
-      }
-      for (const [tplId, responses] of byTemplate.entries()) {
-        groups.push({ label: templateNames.get(tplId) || 'Checklist', responses });
-      }
-      if (residual.length > 0) groups.push({ label: 'Outros', responses: residual });
-    }
-    return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
+    return map;
   })();
 
-  
+  // Nome real do checklist (template) por id de template — fallback pro caso de
+  // alguma resposta vir sem `template_name` (ex.: legado). Varre equipamentos +
+  // template geral da OS.
+  const templateNameById = (() => {
+    const map = new Map<string, string>();
+    for (const it of equipmentItems) {
+      if (it.form_template?.id && it.form_template?.name) map.set(it.form_template.id, it.form_template.name);
+    }
+    const osTpl = (serviceOrder.form_template as { id?: string; name?: string } | null) || null;
+    if (osTpl?.id && osTpl?.name) map.set(osTpl.id, osTpl.name);
+    return map;
+  })();
+
+  // Nome do checklist pra uma resposta: prioriza `template_name` (vem pronto nos
+  // dois modos), depois o mapa por template_id, por fim 'Checklist'.
+  const checklistNameFor = (r: FormResponseData): string =>
+    r.template_name
+    || (r.question?.template_id ? templateNameById.get(r.question.template_id) : undefined)
+    || 'Checklist';
+
+  // Map groupKey → sub-blocos { templateName, responses }, só com respostas não
+  // vazias e excluindo assinaturas (que têm seção própria mais abaixo).
+  const personalizedByGroup = (() => {
+    const groups = new Map<string, Map<string, FormResponseData[]>>();
+    for (const r of otherResponses) {
+      if (isResponseEmpty(r)) continue;
+      const eqId = r.equipment_id ?? null;
+      const groupKey = (eqId && equipmentNameById.get(eqId)) || GENERAL_KEY;
+      const tplName = checklistNameFor(r);
+      if (!groups.has(groupKey)) groups.set(groupKey, new Map());
+      const byTpl = groups.get(groupKey)!;
+      if (!byTpl.has(tplName)) byTpl.set(tplName, []);
+      byTpl.get(tplName)!.push(r);
+    }
+    // Materializa preservando ordem de inserção (templates na ordem que apareceram).
+    const out = new Map<string, { templateName: string; responses: FormResponseData[] }[]>();
+    for (const [groupKey, byTpl] of groups.entries()) {
+      out.set(groupKey, Array.from(byTpl.entries()).map(([templateName, responses]) => ({ templateName, responses })));
+    }
+    return out;
+  })();
+
+
 
   useEffect(() => {
     if (forceReadOnly) {
@@ -379,26 +363,34 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceOrder.id, forceReadOnly, partialReport, visibleKeysSig]);
 
-  // Chaves dos checklists PERSONALIZADOS renderizados (grupos com ≥1 resposta
-  // não-vazia). O índice da chave acompanha a lista FILTRADA (`validGroups`),
-  // que é exatamente a que vira `value={`checklist-${gi}`}` no render — assim a
-  // chave aberta sempre casa com um item existente.
-  const checklistKeys = responsesByTemplate
-    .filter(group => group.responses.some(r => !isResponseEmpty(r)))
-    .map((_group, gi) => `checklist-${gi}`);
+  // Chaves de grupo UNIFICADAS do relatório: cada equipamento é UM accordion que
+  // contém as seções PMOC + a seção "Checklists Personalizados". Começa pelas
+  // chaves PMOC (na ordem de render) e acrescenta os grupos que SÓ têm
+  // personalizados (sem item PMOC), com '__geral__' sempre por último.
+  const reportGroupKeys = (() => {
+    const keys: string[] = [...pmocGroupKeys];
+    const seen = new Set(keys);
+    for (const groupKey of personalizedByGroup.keys()) {
+      if (groupKey === GENERAL_KEY) continue;
+      if (!seen.has(groupKey)) { seen.add(groupKey); keys.push(groupKey); }
+    }
+    // '__geral__' (respostas sem equipamento) vai pro fim — só se houver e ainda
+    // não estiver na lista (pode já ter vindo do PMOC).
+    if (personalizedByGroup.has(GENERAL_KEY) && !seen.has(GENERAL_KEY)) keys.push(GENERAL_KEY);
+    return keys;
+  })();
+  const reportGroupKeysSig = reportGroupKeys.join('|');
 
-  // Default UNIFICADO: abre o PRIMEIRO grupo do relatório (primeiro PMOC se
-  // houver, senão o primeiro personalizado). Reaplica quando a composição de
-  // grupos muda (nova chave inicial) e ainda nada foi aberto manualmente.
-  const firstReportKey = pmocGroupKeys[0] ?? checklistKeys[0] ?? null;
+  // Default UNIFICADO: abre o PRIMEIRO grupo do relatório. Reaplica quando a
+  // composição de grupos muda (nova chave inicial) e nada foi aberto à mão.
+  const firstReportKey = reportGroupKeys[0] ?? null;
   const reportInitSigRef = useRef<string | null>(null);
   useEffect(() => {
-    const sig = `${pmocKeysSig}#${checklistKeys.join('|')}`;
-    if (reportInitSigRef.current === sig) return;
-    reportInitSigRef.current = sig;
+    if (reportInitSigRef.current === reportGroupKeysSig) return;
+    reportInitSigRef.current = reportGroupKeysSig;
     if (firstReportKey) setOpenReportKey(firstReportKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pmocKeysSig, checklistKeys.join('|')]);
+  }, [reportGroupKeysSig]);
 
   useEffect(() => {
     const openAllForPrint = () => {
@@ -575,13 +567,20 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const fetchAllResponses = async () => {
     const { data } = await db
       .from('form_responses')
-      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
+      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*, template:form_templates(id, name))')
       .eq('service_order_id', serviceOrder.id);
     if (data) {
-      const normalized = (data as any[]).map(r => ({
-        ...r,
-        question: unwrapJoin(r.question),
-      }));
+      const normalized = (data as any[]).map(r => {
+        const question = unwrapJoin(r.question);
+        // Nome real do checklist (template) vem do join question→form_templates.
+        // Fallback NULL: agrupamento usa 'Checklist' como rótulo genérico.
+        const template = question ? unwrapJoin((question as any).template) : null;
+        return {
+          ...r,
+          question,
+          template_name: r.template_name ?? template?.name ?? null,
+        };
+      });
       const sorted = normalized.sort((a, b) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
       setFormResponses(sorted);
     }
@@ -660,6 +659,15 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                 {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                 {response.response_value === 'true' ? 'Sim' : 'Não'}
+              </span>
+            ) : response.question?.question_type === 'conformidade' ? (
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                response.response_value === 'Conforme' ? 'bg-emerald-600 text-white'
+                  : response.response_value === 'Não Conforme' ? 'bg-red-600 text-white'
+                  : 'bg-slate-500 text-white'
+              }`}>
+                {response.response_value === 'Conforme' ? <Check className="h-3 w-3" /> : response.response_value === 'Não Conforme' ? <X className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                {response.response_value || 'N/A'}
               </span>
             ) : (
               <>
@@ -1009,27 +1017,32 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             </div>
           )}
 
-          {/* Checklists da Visita PMOC (conformidade) — seção clara, antes dos
-              checklists personalizados. Abre a foto no viewer interno (gallery
-              state deste componente), nunca em nova aba. */}
-          {pmocChecklistItems && pmocChecklistItems.length > 0 && (
+          {/* Checklists por equipamento: cada equipamento é UM accordion com as
+              seções de conformidade PMOC + a seção "Checklists Personalizados"
+              (respostas do questionário daquele equipamento, agrupadas pelo nome
+              real do template). Respostas sem equipamento caem no grupo
+              "Geral / Local". Fotos abrem no viewer interno, nunca em nova aba. */}
+          {(((pmocChecklistItems && pmocChecklistItems.length > 0) || personalizedByGroup.size > 0)) && (
             <ReportPmocChecklist
-              items={pmocChecklistItems}
+              items={pmocChecklistItems ?? []}
+              groupOrder={reportGroupKeys}
+              personalizedByGroup={personalizedByGroup}
+              renderResponse={renderResponseItem}
               anchorIdForGroup={pmocAnchorIdForGroup}
               photoUrlForGroup={pmocPhotoUrlForGroup}
               stickyTopPx={stickyTopPx}
+              forceAllSectionsOpen={forcedAllOpen}
               openKeys={
                 forcedAllOpen
-                  ? pmocGroupKeys
-                  : openReportKey && isPmocKey(openReportKey)
+                  ? reportGroupKeys
+                  : openReportKey
                     ? [openReportKey]
                     : []
               }
               onOpenChange={(keys) => {
                 // Single-open unificado: a chave recém-aberta é a que não estava
-                // antes; se nada, fechou tudo (null). Como o accordion é
-                // `type="multiple"` mas só passamos 0-1 chave PMOC, `keys` traz
-                // a nova seleção — pegamos a última (a que abriu).
+                // antes; se nada, fechou tudo (null). Accordion `type="multiple"`
+                // mas só passamos 0-1 chave — pegamos a última (a que abriu).
                 const next = keys.find((k) => k !== openReportKey) ?? (keys.length ? keys[keys.length - 1] : null);
                 handleReportUserOpen(next);
               }}
@@ -1040,76 +1053,6 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               }}
             />
           )}
-
-          {/* Checklist Responses - grouped by equipment (accordions) */}
-          {responsesByTemplate.length > 0 && (() => {
-            const validGroups = responsesByTemplate.filter(group => group.responses.some(r => !isResponseEmpty(r)));
-            if (validGroups.length === 0) return null;
-            return (
-              <Accordion
-                type="multiple"
-                value={
-                  forcedAllOpen
-                    ? checklistKeys
-                    : openReportKey && !isPmocKey(openReportKey)
-                      ? [openReportKey]
-                      : []
-                }
-                onValueChange={(keys) => {
-                  // Single-open unificado (cruza com o accordion PMOC): a chave
-                  // recém-aberta é a que não estava antes; se nada, fechou (null).
-                  const next = keys.find((k) => k !== openReportKey) ?? (keys.length ? keys[keys.length - 1] : null);
-                  handleReportUserOpen(next);
-                }}
-                className="w-full space-y-2"
-              >
-                {validGroups.map((group, gi) => {
-                  const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
-                  return (
-                    <AccordionItem
-                      key={gi}
-                      value={`checklist-${gi}`}
-                      id={`os-report-checklist-${gi}`}
-                      className={cn(
-                        'border border-slate-200 rounded-lg scroll-mt-24',
-                        // `overflow-hidden` clipa o cabeçalho sticky; só mantém
-                        // quando NÃO há sticky (PDF/impressão e modo sem offset).
-                        stickyTopPx === undefined && 'overflow-hidden',
-                      )}
-                      data-pdf-section
-                    >
-                      <AccordionTrigger
-                        // Documento SEMPRE claro: fundo branco fixo + texto slate,
-                        // nunca tokens de tema (bg-card escurece no dark mode).
-                        className="hover:no-underline px-3 sm:px-4 py-3 bg-white text-slate-900 rounded-t-lg"
-                        // Cabeçalho do checklist fixo no topo ao rolar o conteúdo
-                        // aberto (espelha a seção PMOC). Sticky no WRAPPER (Header),
-                        // fundo branco sólido pra o conteúdo não vazar atrás.
-                        // `print:static` volta ao fluxo normal na impressão.
-                        headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white rounded-t-lg shadow-[0_2px_8px_rgba(0,0,0,0.08)] print:static print:shadow-none')}
-                        headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
-                      >
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                          <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
-                          {(group as any).categoryBadge && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white normal-case" style={{ backgroundColor: (group as any).categoryBadge.color }}>
-                              {(group as any).categoryBadge.name}
-                            </span>
-                          )}
-                          <span className="ml-1 text-slate-400 font-normal normal-case">({nonEmptyResponses.length})</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-3 sm:px-4 pb-3">
-                        <div className="space-y-2">
-                          {nonEmptyResponses.map((response, idx) => renderResponseItem(response, idx))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            );
-          })()}
 
           {/* Service Details */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (

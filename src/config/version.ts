@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.16";
+export const APP_VERSION = "1.14.17";
 
-export const VERSION_NOTES = "Catálogo de Checklists: ao criar um checklist em Serviços, agora dá para importar modelos prontos — para empresas de refrigeração/climatização, há os checklists do catálogo PMOC e modelos de serviço (Instalação de Split, Higienização, Manutenção, Carga de Gás) para usar como base e ajustar. No cadastro de contrato, a área climatizada ganhou uma calculadora (largura × comprimento), cada equipamento aparece com sua foto (toque para ampliar) e o botão de checklists ficou ao lado de 'Começa na visita'.";
+export const VERSION_NOTES = "Relatório de serviço PMOC mais organizado: os checklists personalizados agora aparecem dentro de cada equipamento — com o nome real do checklist, logo depois dos itens da visita, separados em seções com rótulo. E no computador, a lista lateral de equipamentos mostra a foto de cada um, e clicar abre o checklist dele já na primeira pergunta.";

@@ -270,19 +270,14 @@ export default function TechnicianOS() {
     if (key) scrollExecHeaderToTop(key);
   }, [scrollExecHeaderToTop]);
 
-  // Navega (scroll suave) até a seção do equipamento clicada na sidebar desktop
-  // e abre o accordion correspondente quando a chave bate com um item.
+  // Navega (scroll suave) até uma seção estática da sidebar desktop. Usada SÓ no
+  // modo público read-only (card "os-public-equipments", que não é accordion).
+  // Nos modos com accordion (execução/relatório) usa-se handleExecUserOpen /
+  // o opener do OSReport (abre + rola pra 1ª pergunta), não esta.
   const scrollToAnchor = useCallback((anchorId: string, accordionKey?: string) => {
     const el = document.getElementById(anchorId);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     // Single-open: abrir esse fecha os demais (questionários + visita PMOC).
-    if (accordionKey) setOpenExecKey(accordionKey);
-  }, []);
-  // Navega até a seção da visita PMOC e abre o accordion (single-open: fecha os
-  // demais). Compartilha o mesmo estado do accordion de questionários.
-  const scrollToVisitAnchor = useCallback((anchorId: string, accordionKey?: string) => {
-    const el = document.getElementById(anchorId);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (accordionKey) setOpenExecKey(accordionKey);
   }, []);
   // Inicializa o accordion da visita PMOC com o 1º equipamento aberto (demais
@@ -1256,6 +1251,19 @@ export default function TechnicianOS() {
   // checklist da visita. Status agregado: vermelho se algum não-conforme;
   // laranja se algum sem resposta; verde se tudo respondido sem não-conforme.
   const reportSidebarItems: OsSidebarItem[] = (() => {
+    // Foto/categoria do equipamento por NOME (a chave do grupo é o nome).
+    // equipmentItems traz photo_url + category nos dois modos (autenticado via
+    // service_order_equipment; anônimo via payload.equipment_items).
+    const metaByName = new Map<string, { photoUrl: string | null; categoryColor: string | null }>();
+    for (const it of equipmentItems) {
+      const nm = it.equipment?.name;
+      if (nm && !metaByName.has(nm)) {
+        metaByName.set(nm, {
+          photoUrl: it.equipment?.photo_url ?? null,
+          categoryColor: it.equipment?.category?.color ?? null,
+        });
+      }
+    }
     const byName = new Map<string, ReportChecklistItem[]>();
     for (const it of reportChecklistItems) {
       const key = it.equipment_name ?? '__geral__';
@@ -1267,11 +1275,14 @@ export default function TechnicianOS() {
       const pending = group.some((a) => !a.conformity_status);
       const status: OsSidebarStatus = naoConforme ? 'nao_conforme' : pending ? 'pendente' : 'concluido';
       const name = key === '__geral__' ? 'Geral / Local' : key;
+      const meta = key === '__geral__' ? undefined : metaByName.get(key);
       return {
         key,
         anchorId: reportGroupAnchorId(key === '__geral__' ? null : key),
         label: name,
         sublabel: `${group.length} item${group.length > 1 ? 's' : ''}`,
+        photoUrl: meta?.photoUrl ?? null,
+        categoryColor: meta?.categoryColor ?? null,
         status,
       };
     });
@@ -1376,9 +1387,11 @@ export default function TechnicianOS() {
           <OsEquipmentSidebar
             items={reportSidebarItems}
             onNavigate={(item) => {
-              scrollToAnchor(item.anchorId);
-              // Abre o accordion do equipamento no relatório (sidebar desktop).
-              // item.key = equipment_name ?? '__geral__' = groupKey do PMOC.
+              // Abre o accordion do equipamento E rola até a 1ª pergunta — o
+              // opener registrado pelo OSReport já usa handleReportUserOpen →
+              // scrollReportHeaderToTop (mede depois da animação, para o cabeçalho
+              // no topo). Sem scrollToAnchor concorrente (parava na última).
+              // item.key = equipment_name ?? '__geral__' = groupKey do relatório.
               reportPmocOpenerRef.current?.(item.key);
             }}
             topPx={headerHeight + 16}
@@ -2396,11 +2409,12 @@ export default function TechnicianOS() {
       <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_20rem] lg:gap-4 lg:px-8 lg:w-full lg:max-w-screen-2xl lg:mx-auto lg:items-start lg:pt-4">
         <OsEquipmentSidebar
           items={interactiveSidebarItems}
-          onNavigate={(item) =>
-            item.anchorId.startsWith('os-pmoc-')
-              ? scrollToVisitAnchor(item.anchorId, item.key)
-              : scrollToAnchor(item.anchorId, item.key)
-          }
+          // Abre o accordion do equipamento E rola até a 1ª pergunta (mesmo
+          // caminho do clique no cabeçalho): handleExecUserOpen → setOpenExecKey +
+          // scrollExecHeaderToTop (mede depois da animação, para o cabeçalho no
+          // topo). item.key casa com a chave única dos dois accordions (os-eq-* /
+          // os-pmoc-*). Sem o scrollIntoView antigo concorrente.
+          onNavigate={(item) => handleExecUserOpen(item.key)}
           topPx={headerHeight + 16}
           header={sidebarContextBlocks}
         />
