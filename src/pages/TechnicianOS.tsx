@@ -3402,8 +3402,8 @@ export default function TechnicianOS() {
           {/* Conteúdo das ferramentas. Padding inferior reserva espaço pro rodapé
               sticky "Voltar para OS" (b-0) não tampar o último item ao rolar. */}
           <div
-            className="flex-1 overflow-auto p-3 pb-24 sm:p-4 sm:pb-24"
-            style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+            className="flex-1 overflow-auto p-5 pb-24 sm:p-6 sm:pb-28"
+            style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
           >
             <TechnicianTools embedded />
           </div>
