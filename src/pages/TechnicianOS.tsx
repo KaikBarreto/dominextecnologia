@@ -3229,12 +3229,12 @@ export default function TechnicianOS() {
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   {finishing ? 'Finalizando...' : 'Finalizar OS'}
                 </Button>
-                {/* Ação secundária: menor/menos proeminente que "Finalizar OS"
-                    (flex-1 + size sm), mas ainda legível e tocável. */}
+                {/* Ação secundária: laranja saturado com texto branco, MESMA
+                    altura do primário (size lg). Mais estreito (flex-1 vs
+                    flex-[2]), mas "Finalizar OS" verde segue como destaque. */}
                 <Button
-                  variant="outline"
-                  className="flex-1 border-warning text-warning hover:bg-warning/10 hover:text-warning"
-                  size="sm"
+                  className="flex-1 bg-warning text-white hover:bg-warning/90"
+                  size="lg"
                   onClick={() => setPartialConfirmOpen(true)}
                   disabled={finishingPartial}
                 >
@@ -3399,17 +3399,28 @@ export default function TechnicianOS() {
           (abas), então não precisa mais de router dedicado. */}
       {toolsOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-background">
+          {/* Conteúdo das ferramentas. Padding inferior reserva espaço pro rodapé
+              sticky "Voltar para OS" (b-0) não tampar o último item ao rolar. */}
           <div
-            className="flex items-center gap-2 border-b border-border bg-background px-3 pb-2 shrink-0"
-            style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+            className="flex-1 overflow-auto p-3 pb-24 sm:p-4 sm:pb-24"
+            style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
           >
-            <Button variant="ghost" size="sm" onClick={() => setToolsOpen(false)} className="gap-1.5">
+            <TechnicianTools embedded />
+          </div>
+          {/* Rodapé sticky vermelho saturado (régua: ação saturada + texto/ícone
+              brancos). Largura cheia + safe-area inferior. */}
+          <div
+            className="shrink-0 border-t border-border bg-background px-3 py-2.5"
+            style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}
+          >
+            <Button
+              size="lg"
+              onClick={() => setToolsOpen(false)}
+              className="w-full gap-2 bg-destructive text-white hover:bg-destructive/90"
+            >
               <ArrowLeft className="h-4 w-4" />
               Voltar para OS
             </Button>
-          </div>
-          <div className="flex-1 overflow-auto p-3 sm:p-4">
-            <TechnicianTools embedded />
           </div>
         </div>
       )}
