@@ -82,6 +82,12 @@ interface Props {
    */
   photoUrlForGroup?: (equipmentName: string | null) => string | null | undefined;
   /**
+   * Nome do AMBIENTE do equipamento (contract_environments.identificacao), por
+   * nome de equipamento. Renderizado no cabeçalho do grupo, ao lado do nome do
+   * equipamento, em fonte mais leve (" | 1º Andar"). null/ausente = não mostra.
+   */
+  environmentForGroup?: (equipmentName: string | null) => string | null | undefined;
+  /**
    * Accordion controlado (sidebar desktop): chaves abertas + callback de
    * mudança. Quando AMBOS vêm, o accordion vira controlado (a sidebar pode abrir
    * o equipamento ao navegar). Senão mantém o comportamento não-controlado (tudo
@@ -306,6 +312,7 @@ function ReportPmocItem({
   pmocItems,
   personalized,
   displayName,
+  environmentName,
   photoUrl,
   anchorId,
   onPreviewPhoto,
@@ -318,6 +325,8 @@ function ReportPmocItem({
   pmocItems: ReportChecklistItem[];
   personalized: PersonalizedBlock<any>[];
   displayName: string;
+  /** Nome do ambiente do equipamento (fonte leve, " | …"). null = não mostra. */
+  environmentName: string | null;
   photoUrl: string | null;
   anchorId?: string;
   onPreviewPhoto?: Props['onPreviewPhoto'];
@@ -394,7 +403,12 @@ function ReportPmocItem({
             </div>
           )}
           <div className="flex-1 min-w-0 self-center">
-            <p className="font-bold text-base text-slate-800 truncate">{displayName}</p>
+            <p className="text-base text-slate-800 truncate min-w-0">
+              <span className="font-bold">{displayName}</span>
+              {environmentName && (
+                <span className="font-normal text-slate-500"> | {environmentName}</span>
+              )}
+            </p>
             {visit && (
               <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 min-w-0">
                 <CalendarClock className="h-3 w-3 shrink-0 text-slate-400" />
@@ -489,6 +503,7 @@ export function ReportPmocChecklist({
   onPreviewPhoto,
   anchorIdForGroup,
   photoUrlForGroup,
+  environmentForGroup,
   openKeys,
   onOpenChange,
   stickyTopPx,
@@ -537,6 +552,7 @@ export function ReportPmocChecklist({
 
           const equipmentName = equipmentNameForKey(groupKey);
           const photoUrl = photoUrlForGroup?.(equipmentName) || null;
+          const environmentName = environmentForGroup?.(equipmentName) || null;
 
           // SÓ o equipamento aberto é sticky. No force-open do PDF/Imprimir todos
           // ficam "abertos", mas aí desligamos o sticky (a saída é estática).
@@ -549,6 +565,7 @@ export function ReportPmocChecklist({
               pmocItems={pmocItems}
               personalized={personalized}
               displayName={displayName(groupKey)}
+              environmentName={environmentName}
               photoUrl={photoUrl}
               anchorId={anchorIdForGroup?.(equipmentName)}
               onPreviewPhoto={onPreviewPhoto}

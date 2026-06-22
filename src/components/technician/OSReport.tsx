@@ -63,6 +63,13 @@ interface CompanyData {
 interface EquipmentItem {
   equipment_id: string;
   form_template_id: string | null;
+  /**
+   * Nome do AMBIENTE do equipamento neste contrato (contract_environments.
+   * identificacao), ex.: "1º ANDAR - SALA DO AUGUSTO". null = sem ambiente.
+   * Modo anônimo: vem pronto no payload de get_public_os. Modo autenticado:
+   * resolvido por query auxiliar em contract_items (mesclado em fetchEquipmentItems).
+   */
+  environment_name?: string | null;
   equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
   form_template: { id: string; name: string } | null;
 }
@@ -214,6 +221,21 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   })();
   const pmocPhotoUrlForGroup = (equipmentName: string | null): string | null =>
     equipmentName ? pmocPhotoByName.get(equipmentName) ?? null : null;
+
+  // Ambiente do equipamento por NOME (groupKey = equipment_name). Vem de
+  // equipmentItems nos DOIS modos (anônimo: payload.equipment_items já traz
+  // environment_name; autenticado: resolvido em fetchEquipmentItems). Mostrado no
+  // cabeçalho do grupo do checklist ao lado do nome do equipamento, em fonte leve.
+  const environmentByName = (() => {
+    const map = new Map<string, string | null>();
+    for (const it of equipmentItems) {
+      const name = it.equipment?.name;
+      if (name && !map.has(name)) map.set(name, it.environment_name ?? null);
+    }
+    return map;
+  })();
+  const environmentForGroup = (equipmentName: string | null): string | null =>
+    equipmentName ? environmentByName.get(equipmentName) ?? null : null;
 
   // Resolve o id de âncora (scroll target) de uma chave de grupo do relatório.
   // Agora TODO grupo (PMOC e/ou personalizado) é um AccordionItem do
@@ -567,6 +589,43 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           item.equipment.category = unwrapJoin(item.equipment.category);
         }
       });
+
+      // Ambiente por equipamento (modo autenticado): o anônimo já recebe
+      // `environment_name` pronto no payload de get_public_os; aqui resolvemos via
+      // contract_items (equipment_id → contract_environments.identificacao) e
+      // mesclamos no item — mesmo dado, mesmo shape nos dois modos. Sem contrato
+      // ou sem ambiente: campo fica null e o cabeçalho não mostra " | ambiente".
+      const contractId = (serviceOrder as any).contract_id || null;
+      if (contractId) {
+        const equipmentIds = Array.from(
+          new Set(normalized.map((it: any) => it.equipment_id).filter(Boolean))
+        );
+        if (equipmentIds.length > 0) {
+          const { data: ciRows } = await db
+            .from('contract_items')
+            .select('equipment_id, sort_order, environment:contract_environments(identificacao)')
+            .eq('contract_id', contractId)
+            .in('equipment_id', equipmentIds);
+          if (ciRows) {
+            // equipment_id → environment_name (1º ambiente por sort_order; ignora
+            // linhas sem ambiente, igual o subselect do get_public_os).
+            const envByEqId = new Map<string, string>();
+            const sorted = [...(ciRows as any[])].sort(
+              (a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity)
+            );
+            for (const row of sorted) {
+              const eqId = row.equipment_id;
+              const env = unwrapJoin(row.environment);
+              const name = env?.identificacao ?? null;
+              if (eqId && name && !envByEqId.has(eqId)) envByEqId.set(eqId, name);
+            }
+            normalized.forEach((it: any) => {
+              it.environment_name = it.equipment_id ? envByEqId.get(it.equipment_id) ?? null : null;
+            });
+          }
+        }
+      }
+
       setEquipmentItems(normalized as unknown as EquipmentItem[]);
     }
   };
@@ -1037,6 +1096,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               renderResponse={renderResponseItem}
               anchorIdForGroup={pmocAnchorIdForGroup}
               photoUrlForGroup={pmocPhotoUrlForGroup}
+              environmentForGroup={environmentForGroup}
               stickyTopPx={stickyTopPx}
               forceAllSectionsOpen={forcedAllOpen}
               openKeys={

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.21',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ambiente do equipamento no checklist',
+        description: 'No checklist da ordem de serviço e no relatório, cada equipamento agora mostra ao lado do nome o ambiente onde ele está instalado — por exemplo, "Cassete 1 | 1º Andar". Ajuda a identificar o aparelho certo em locais com vários equipamentos parecidos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.20',
     date: '22 de junho de 2026',
     type: 'patch',

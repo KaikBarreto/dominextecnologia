@@ -91,6 +91,13 @@ interface OSPhoto {
 interface EquipmentItem {
   equipment_id: string | null;
   form_template_id: string | null;
+  /**
+   * Nome do AMBIENTE do equipamento neste contrato (contract_environments.
+   * identificacao). null = sem ambiente. Anônimo: vem pronto no payload de
+   * get_public_os; autenticado: resolvido por query auxiliar em contract_items
+   * (mesclado em fetchEquipmentItems).
+   */
+  environment_name?: string | null;
   equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
   form_template: { id: string; name: string } | null;
 }
@@ -542,7 +549,40 @@ export default function TechnicianOS() {
         .eq('service_order_id', resolvedOsId);
 
       if (error) throw error;
-      setEquipmentItems((data || []) as unknown as EquipmentItem[]);
+      const items = (data || []) as unknown as EquipmentItem[];
+
+      // Ambiente por equipamento (modo autenticado): o anônimo já recebe
+      // `environment_name` pronto do payload de get_public_os. Aqui resolvemos via
+      // contract_items (equipment_id → contract_environments.identificacao) e
+      // mesclamos — mesmo dado/shape nos dois modos. Sem contrato/ambiente: null.
+      const contractId = (serviceOrder as any)?.contract_id || null;
+      const equipmentIds = Array.from(
+        new Set(items.map((it) => it.equipment_id).filter(Boolean) as string[])
+      );
+      if (contractId && equipmentIds.length > 0) {
+        const { data: ciRows } = await db
+          .from('contract_items')
+          .select('equipment_id, sort_order, environment:contract_environments(identificacao)')
+          .eq('contract_id', contractId)
+          .in('equipment_id', equipmentIds);
+        if (ciRows) {
+          const envByEqId = new Map<string, string>();
+          const sorted = [...(ciRows as any[])].sort(
+            (a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity)
+          );
+          for (const row of sorted) {
+            const eqId = row.equipment_id;
+            const env = Array.isArray(row.environment) ? row.environment[0] : row.environment;
+            const name = env?.identificacao ?? null;
+            if (eqId && name && !envByEqId.has(eqId)) envByEqId.set(eqId, name);
+          }
+          items.forEach((it) => {
+            it.environment_name = it.equipment_id ? envByEqId.get(it.equipment_id) ?? null : null;
+          });
+        }
+      }
+
+      setEquipmentItems(items);
     } catch (error) {
       console.error('Error fetching equipment items:', error);
     }
@@ -825,9 +865,11 @@ export default function TechnicianOS() {
     fetchTechnicianProfile();
     // fetchPhotos/fetchEquipmentItems/fetchFormResponses são estáveis o bastante
     // (sem deps externas que mudem fora de resolvedOsId/db); fetchTechnicianProfile
-    // já depende de resolvedOsId.
+    // já depende de resolvedOsId. contractId entra na dep pra fetchEquipmentItems
+    // re-resolver o ambiente quando o contrato da OS chega DEPOIS (URL = UUID cru,
+    // serviceOrder ainda null na 1ª passada) — sem isso o ambiente não viria.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, resolvedOsId, fetchTechnicianProfile]);
+  }, [isAuthenticated, resolvedOsId, (serviceOrder as any)?.contract_id, fetchTechnicianProfile]);
 
   // Modo cliente (anon): sem realtime (as policies anon caem). Atualização "ao
   // vivo" via polling leve da RPC a cada ~20s, só enquanto a aba está visível.
@@ -1450,6 +1492,21 @@ export default function TechnicianOS() {
       });
     }
     return items;
+  })();
+
+  // Ambiente por equipment_id (contract_environments.identificacao) pro cabeçalho
+  // do checklist da EXECUÇÃO (VisitChecklistPanel). Vem de equipmentItems — modo
+  // autenticado resolve via contract_items em fetchEquipmentItems. Map montado uma
+  // vez por render; null quando o equipamento não tem ambiente.
+  const environmentByEquipmentId = (() => {
+    const map = new Map<string, string | null>();
+    for (const it of equipmentItems) {
+      if (it.equipment_id && !map.has(it.equipment_id)) {
+        map.set(it.equipment_id, it.environment_name ?? null);
+      }
+    }
+    return (equipmentId: string | null): string | null =>
+      equipmentId ? map.get(equipmentId) ?? null : null;
   })();
 
   if (loading || isAuthenticated === null) {
@@ -2907,6 +2964,7 @@ export default function TechnicianOS() {
             readOnly={isPaused}
             onSave={saveChecklistActivity}
             onPreviewPhoto={setPreviewPhoto}
+            environmentByEquipmentId={environmentByEquipmentId}
             openKey={openExecKey}
             onOpenChange={handleExecUserOpen}
             stickyTopPx={headerHeight}

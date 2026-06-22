@@ -44,6 +44,14 @@ interface Props {
   /** Abre a foto do equipamento em tela cheia (mesmo viewer da OS comum). */
   onPreviewPhoto?: (url: string) => void;
   /**
+   * Nome do AMBIENTE do equipamento (contract_environments.identificacao) por
+   * equipment_id. Mostrado no cabeçalho do grupo, ao lado do nome do equipamento,
+   * em fonte mais leve (" | 1º Andar"). Ausente/null = não mostra. Resolvido em
+   * TechnicianOS (autenticado: contract_items; anônimo: não aplica — execução é só
+   * autenticada).
+   */
+  environmentByEquipmentId?: (equipmentId: string | null) => string | null | undefined;
+  /**
    * Checklists personalizados por máquina (PMOC por equipamento, Fase 3):
    * perguntas por template_id, respostas já dadas e save (upsert) por
    * (equipamento, pergunta). Quando uma atividade tem `form_template_id`, em vez
@@ -650,6 +658,8 @@ function VisitChecklistItem({
     photo: string | null;
     category: { name: string; color: string | null } | null;
     brandModel: string;
+    /** Nome do ambiente (fonte leve, " | …"). null = não mostra. */
+    environmentName: string | null;
   };
   children: ReactNode;
 }) {
@@ -658,7 +668,7 @@ function VisitChecklistItem({
   // cabeçalhos sticky sobrepostos (e a invasão do header do topo).
   const stickyOn = isOpen && stickyTopPx !== undefined;
   const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
-  const { total, naoConforme, pending, visit, photo, category, brandModel } = header;
+  const { total, naoConforme, pending, visit, photo, category, brandModel, environmentName } = header;
 
   return (
     <AccordionItem
@@ -708,7 +718,12 @@ function VisitChecklistItem({
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <p className="font-bold text-base truncate">{group.equipmentName}</p>
+              <p className="text-base truncate min-w-0">
+                <span className="font-bold">{group.equipmentName}</span>
+                {environmentName && (
+                  <span className="font-normal text-muted-foreground"> | {environmentName}</span>
+                )}
+              </p>
               {category && (
                 <Badge
                   className="text-[10px] shrink-0 text-white border-0"
@@ -762,6 +777,7 @@ export function VisitChecklistPanel({
   readOnly,
   onSave,
   onPreviewPhoto,
+  environmentByEquipmentId,
   openKey,
   onOpenChange,
   stickyTopPx,
@@ -858,6 +874,7 @@ export function VisitChecklistPanel({
             const brandModel = [group.equipment?.brand, group.equipment?.model]
               .filter(Boolean)
               .join(' ');
+            const environmentName = environmentByEquipmentId?.(group.equipmentId) || null;
 
             return (
               <VisitChecklistItem
@@ -866,7 +883,7 @@ export function VisitChecklistPanel({
                 stickyTopPx={stickyTopPx}
                 isOpen={groupKey(group) === effectiveOpenKey}
                 onPreviewPhoto={onPreviewPhoto}
-                header={{ total, naoConforme, pending, visit, photo, category, brandModel }}
+                header={{ total, naoConforme, pending, visit, photo, category, brandModel, environmentName }}
               >
                 {group.activities.map((activity, idx) =>
                   activity.form_template_id && canRenderTemplates ? (
