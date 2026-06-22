@@ -70,6 +70,13 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
     // Remove anything marked print:hidden
     clone.querySelectorAll('.print\\:hidden, [class*="print:hidden"]').forEach(el => el.remove());
 
+    // Neutralize sticky checklist headers: in the PDF they must be static and
+    // shadow-free regardless of the live "stuck" state captured in the snapshot
+    // (the sticky header gains a shadow when glued to the top during scroll).
+    clone.querySelectorAll('[class*="sticky"]').forEach(el => {
+      (el as HTMLElement).style.cssText += ';position:static!important;box-shadow:none!important;';
+    });
+
     // Inject style overrides for known html2canvas weaknesses:
     // - flexbox `gap` is poorly supported → emulate via margin on adjacent siblings
     // - `ml-auto` sometimes fails inside flex → re-assert

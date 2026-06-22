@@ -3,6 +3,7 @@ import { ListChecks, Wrench, Check, X, MinusCircle, HelpCircle, Gauge, CalendarC
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { cn } from '@/lib/utils';
+import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { visitTypeFromFreqs } from '@/hooks/useOsActivityChecklist';
 import type { ReportChecklistItem } from './ReportChecklist';
 
@@ -291,6 +292,180 @@ function sectionGroups(items: ReportChecklistItem[]): { section: string; items: 
 }
 
 /**
+ * Um equipamento do checklist do relatório. Componente próprio pra hospedar o
+ * `useStickyStuck` (sentinel + IntersectionObserver) do cabeçalho sticky. O
+ * sentinel (0px) fica logo acima do `AccordionTrigger`: ao sair por cima, o
+ * cabeçalho grudou (`isStuck`) → sombra forte + cantos retos no topo; senão sem
+ * sombra + cantos arredondados (visual de card). PDF/Imprimir: estático e sem
+ * sombra. A foto do equipamento fica colada na borda esquerda em altura cheia,
+ * com os cantos da ESQUERDA arredondados acompanhando o cabeçalho.
+ */
+function ReportPmocItem({
+  groupKey,
+  pmocItems,
+  personalized,
+  displayName,
+  photoUrl,
+  anchorId,
+  onPreviewPhoto,
+  renderResponse,
+  stickyTopPx,
+  forceAllSectionsOpen,
+}: {
+  groupKey: string;
+  pmocItems: ReportChecklistItem[];
+  personalized: PersonalizedBlock<any>[];
+  displayName: string;
+  photoUrl: string | null;
+  anchorId?: string;
+  onPreviewPhoto?: Props['onPreviewPhoto'];
+  renderResponse?: Props['renderResponse'];
+  stickyTopPx?: number;
+  forceAllSectionsOpen?: boolean;
+}) {
+  const { sentinelRef, isStuck } = useStickyStuck(stickyTopPx);
+
+  const total = pmocItems.length;
+  const answered = pmocItems.filter((a) => !!a.conformity_status).length;
+  const naoConforme = pmocItems.filter((a) => a.conformity_status === 'nao_conforme').length;
+  const pending = total - answered;
+  const hasFreq = pmocItems.some((a) => !!a.freq_code);
+  const visit = hasFreq ? visitTypeFromFreqs(pmocItems.map((a) => a.freq_code)) : null;
+  const personalizedCount = personalized.reduce((n, b) => n + b.responses.length, 0);
+  const hasPmoc = total > 0;
+
+  return (
+    <AccordionItem
+      key={groupKey}
+      value={groupKey}
+      id={anchorId}
+      data-pdf-section
+      className={cn(
+        // Sem caixa por equipamento: lista limpa, SEM fundo próprio — herda o
+        // branco do documento de trás. Mais espaço VERTICAL entre equipamentos.
+        'border-0 scroll-mt-24 pt-6 first:pt-0',
+        // `overflow-hidden` clipa o cabeçalho sticky; só mantém quando não há
+        // sticky (PDF/impressão e modo sem offset).
+        stickyTopPx === undefined && 'overflow-hidden',
+      )}
+    >
+      {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
+      <div ref={sentinelRef} aria-hidden className="h-0" />
+      <AccordionTrigger
+        // Documento SEMPRE claro (bg-white). O trigger herda o branco de trás
+        // (sem card flutuante). Sem padding à ESQUERDA: a foto encosta na borda.
+        className="hover:no-underline pl-0 pr-1 py-0 gap-2 min-w-0 overflow-hidden text-slate-900"
+        // Cabeçalho do equipamento sticky no WRAPPER (Header). Fundo branco SÓLIDO
+        // (mesma cor do documento). Sombra SÓ quando grudado (isStuck); fora disso
+        // cantos arredondados (card) e sem sombra. `top` = altura exata do header
+        // da tela → gruda rente, sem vão. Rótulos de seção NÃO são sticky → nunca
+        // empurram o cabeçalho do EQUIPAMENTO, que é o único sticky do bloco.
+        headerClassName={cn(
+          stickyTopPx !== undefined && 'sticky z-10 bg-white print:static print:shadow-none transition-shadow overflow-hidden',
+          stickyTopPx !== undefined && (isStuck
+            ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
+            : 'shadow-none rounded-lg'),
+        )}
+        headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
+      >
+        <div className="flex items-stretch gap-3 flex-1 min-w-0 text-left min-h-14">
+          {photoUrl ? (
+            <SignedImg
+              src={photoUrl}
+              alt={displayName}
+              className="self-stretch w-16 rounded-l-lg object-cover shrink-0 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreviewPhoto?.(photoUrl);
+              }}
+            />
+          ) : (
+            <div className="self-stretch w-16 rounded-l-lg bg-slate-100 flex items-center justify-center shrink-0">
+              <Wrench className="h-6 w-6 text-slate-500" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0 self-center">
+            <p className="font-bold text-base text-slate-800 truncate">{displayName}</p>
+            {visit && (
+              <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 min-w-0">
+                <CalendarClock className="h-3 w-3 shrink-0 text-slate-400" />
+                <span className="truncate normal-case">
+                  <span className="font-medium text-slate-700">Visita {visit.tipo}</span>
+                  {' · '}
+                  {visit.niveis.join(' + ')}
+                </span>
+              </p>
+            )}
+            <p className="text-xs text-slate-400 mt-0.5">
+              {hasPmoc && `${total} item${total > 1 ? 's' : ''}`}
+              {hasPmoc && personalizedCount > 0 && ' · '}
+              {personalizedCount > 0 && `${personalizedCount} resposta${personalizedCount > 1 ? 's' : ''}`}
+            </p>
+          </div>
+          {naoConforme > 0 ? (
+            <span className="self-center inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 shrink-0">
+              <X className="h-3 w-3" />
+              {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
+            </span>
+          ) : hasPmoc && pending === 0 ? (
+            <span title="Concluído" aria-label="Concluído" className="self-center shrink-0">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+            </span>
+          ) : hasPmoc ? (
+            <span className="self-center inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
+              {pending} sem resposta
+            </span>
+          ) : null}
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-1 pb-3">
+        {/* Seções do equipamento: cada uma é um accordion próprio (nested) ABERTO
+            por padrão e recolhível. Não são sticky → nunca empurram o cabeçalho. */}
+        <div className="space-y-6 pt-2">
+          {hasPmoc && sectionGroups(pmocItems).map((sec) => (
+            <SectionAccordion
+              key={`sec-${sec.section}`}
+              sectionKey={`sec-${groupKey}-${sec.section}`}
+              icon={ListChecks}
+              label={sec.section}
+              forceOpen={forceAllSectionsOpen}
+            >
+              <div className="space-y-3">
+                {sec.items.map((item, idx) => (
+                  <PmocItemCard key={item.id} item={item} idx={idx} onPreviewPhoto={onPreviewPhoto} />
+                ))}
+              </div>
+            </SectionAccordion>
+          ))}
+
+          {personalized.length > 0 && renderResponse && (
+            <SectionAccordion
+              sectionKey={`pers-${groupKey}`}
+              icon={ClipboardCheck}
+              label="Checklists Personalizados"
+              forceOpen={forceAllSectionsOpen}
+            >
+              <div className="space-y-4">
+                {personalized.map((block, bi) => (
+                  <div key={`tpl-${bi}-${block.templateName}`} className="space-y-1">
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                      {block.templateName}
+                    </p>
+                    <div className="space-y-2">
+                      {block.responses.map((response, idx) => renderResponse(response, idx))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionAccordion>
+          )}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
+
+/**
  * Seção "Checklists por Equipamento" do relatório branco. Cada equipamento é UM
  * accordion contendo as seções de conformidade PMOC (agrupadas por `section`,
  * cada uma com rótulo + divisória) seguidas da seção "Checklists Personalizados"
@@ -354,148 +529,20 @@ export function ReportPmocChecklist({
           const equipmentName = equipmentNameForKey(groupKey);
           const photoUrl = photoUrlForGroup?.(equipmentName) || null;
 
-          // Contadores/visita derivam SÓ dos itens de conformidade PMOC.
-          const total = pmocItems.length;
-          const answered = pmocItems.filter((a) => !!a.conformity_status).length;
-          const naoConforme = pmocItems.filter((a) => a.conformity_status === 'nao_conforme').length;
-          const pending = total - answered;
-          const hasFreq = pmocItems.some((a) => !!a.freq_code);
-          const visit = hasFreq ? visitTypeFromFreqs(pmocItems.map((a) => a.freq_code)) : null;
-          const personalizedCount = personalized.reduce((n, b) => n + b.responses.length, 0);
-          const hasPmoc = total > 0;
-
           return (
-            <AccordionItem
+            <ReportPmocItem
               key={groupKey}
-              value={groupKey}
-              id={anchorIdForGroup?.(equipmentName)}
-              data-pdf-section
-              className={cn(
-                // Sem caixa por equipamento: lista limpa, SEM fundo próprio — o
-                // bloco herda o branco do documento de trás (reportRef). Mais
-                // espaço VERTICAL entre equipamentos (pt-6) pra as fotos coladas
-                // na esquerda não grudarem entre uma linha e outra.
-                'border-0 scroll-mt-24 pt-6 first:pt-0',
-                // `overflow-hidden` clipa o cabeçalho sticky; só mantém quando
-                // não há sticky (PDF/impressão e modo sem offset).
-                stickyTopPx === undefined && 'overflow-hidden',
-              )}
-            >
-              <AccordionTrigger
-                // Relatório é documento SEMPRE claro (reportRef é bg-white). O
-                // trigger NÃO ganha fundo próprio: herda o branco do documento de
-                // trás (sem "card flutuante"). `text-slate-900` garante chevron e
-                // texto não estilizado legíveis. Sem padding à ESQUERDA (pl-0):
-                // a foto encosta na borda esquerda; respiro fica só à direita.
-                className="hover:no-underline pl-0 pr-1 py-0 gap-2 min-w-0 overflow-hidden text-slate-900"
-                // Cabeçalho do equipamento fixo no topo enquanto rola o conteúdo
-                // aberto (logo abaixo do header laranja "OS #..."). Sticky no
-                // WRAPPER (Header). Fundo branco SÓLIDO = MESMA cor do documento:
-                // quando NÃO está grudado parece sem fundo (igual o de trás);
-                // quando gruda continua opaco (conteúdo não passa atrás) +
-                // sombra. z abaixo do header da tela.
-                headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] print:static print:shadow-none')}
-                headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
-              >
-                <div className="flex items-stretch gap-3 flex-1 min-w-0 text-left min-h-14">
-                  {photoUrl ? (
-                    <SignedImg
-                      src={photoUrl}
-                      alt={displayName(groupKey)}
-                      className="self-stretch w-16 rounded-none object-cover shrink-0 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPreviewPhoto?.(photoUrl);
-                      }}
-                    />
-                  ) : (
-                    <div className="self-stretch w-16 rounded-none bg-slate-100 flex items-center justify-center shrink-0">
-                      <Wrench className="h-6 w-6 text-slate-500" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0 self-center">
-                    <p className="font-bold text-base text-slate-800 truncate">
-                      {displayName(groupKey)}
-                    </p>
-                    {visit && (
-                      <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 min-w-0">
-                        <CalendarClock className="h-3 w-3 shrink-0 text-slate-400" />
-                        <span className="truncate normal-case">
-                          <span className="font-medium text-slate-700">Visita {visit.tipo}</span>
-                          {' · '}
-                          {visit.niveis.join(' + ')}
-                        </span>
-                      </p>
-                    )}
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {hasPmoc && `${total} item${total > 1 ? 's' : ''}`}
-                      {hasPmoc && personalizedCount > 0 && ' · '}
-                      {personalizedCount > 0 && `${personalizedCount} resposta${personalizedCount > 1 ? 's' : ''}`}
-                    </p>
-                  </div>
-                  {naoConforme > 0 ? (
-                    <span className="self-center inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 shrink-0">
-                      <X className="h-3 w-3" />
-                      {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
-                    </span>
-                  ) : hasPmoc && pending === 0 ? (
-                    <span title="Concluído" aria-label="Concluído" className="self-center shrink-0">
-                      <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-                    </span>
-                  ) : hasPmoc ? (
-                    <span className="self-center inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
-                      {pending} sem resposta
-                    </span>
-                  ) : null}
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-1 pb-3">
-                {/* Seções do equipamento: cada uma é um accordion próprio (nested)
-                    ABERTO por padrão e recolhível. Espaçamento maior entre elas. */}
-                <div className="space-y-6 pt-2">
-                  {/* Seções de conformidade PMOC, agrupadas por item.section. */}
-                  {hasPmoc && sectionGroups(pmocItems).map((sec) => (
-                    <SectionAccordion
-                      key={`sec-${sec.section}`}
-                      sectionKey={`sec-${groupKey}-${sec.section}`}
-                      icon={ListChecks}
-                      label={sec.section}
-                      forceOpen={forceAllSectionsOpen}
-                    >
-                      <div className="space-y-3">
-                        {sec.items.map((item, idx) => (
-                          <PmocItemCard key={item.id} item={item} idx={idx} onPreviewPhoto={onPreviewPhoto} />
-                        ))}
-                      </div>
-                    </SectionAccordion>
-                  ))}
-
-                  {/* Seção "Checklists Personalizados": cada template é um sub-bloco
-                      com o NOME real do checklist. Reusa o renderResponse do OSReport. */}
-                  {personalized.length > 0 && renderResponse && (
-                    <SectionAccordion
-                      sectionKey={`pers-${groupKey}`}
-                      icon={ClipboardCheck}
-                      label="Checklists Personalizados"
-                      forceOpen={forceAllSectionsOpen}
-                    >
-                      <div className="space-y-4">
-                        {personalized.map((block, bi) => (
-                          <div key={`tpl-${bi}-${block.templateName}`} className="space-y-1">
-                            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                              {block.templateName}
-                            </p>
-                            <div className="space-y-2">
-                              {block.responses.map((response, idx) => renderResponse(response, idx))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </SectionAccordion>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+              groupKey={groupKey}
+              pmocItems={pmocItems}
+              personalized={personalized}
+              displayName={displayName(groupKey)}
+              photoUrl={photoUrl}
+              anchorId={anchorIdForGroup?.(equipmentName)}
+              onPreviewPhoto={onPreviewPhoto}
+              renderResponse={renderResponse}
+              stickyTopPx={stickyTopPx}
+              forceAllSectionsOpen={forceAllSectionsOpen}
+            />
           );
         })}
       </Accordion>

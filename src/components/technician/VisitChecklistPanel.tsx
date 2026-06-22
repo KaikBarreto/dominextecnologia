@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -617,6 +618,127 @@ function groupKey(group: ChecklistEquipmentGroup): string {
   return group.equipmentId ?? '__local__';
 }
 
+/**
+ * Um equipamento do checklist de execução. Componente próprio pra hospedar o
+ * `useStickyStuck` (sentinel + IntersectionObserver) de cada cabeçalho sticky.
+ * O sentinel (0px) fica LOGO acima do `AccordionTrigger`: quando ele sai por cima,
+ * o cabeçalho grudou → `isStuck` → sombra forte + cantos retos; senão sem sombra +
+ * cantos arredondados (visual de card).
+ */
+function VisitChecklistItem({
+  group,
+  stickyTopPx,
+  onPreviewPhoto,
+  header,
+  children,
+}: {
+  group: ChecklistEquipmentGroup;
+  stickyTopPx?: number;
+  onPreviewPhoto?: Props['onPreviewPhoto'];
+  header: {
+    total: number;
+    naoConforme: number;
+    pending: number;
+    visit: { tipo: string; niveis: string[] };
+    photo: string | null;
+    category: { name: string; color: string | null } | null;
+    brandModel: string;
+  };
+  children: ReactNode;
+}) {
+  const { sentinelRef, isStuck } = useStickyStuck(stickyTopPx);
+  const { total, naoConforme, pending, visit, photo, category, brandModel } = header;
+
+  return (
+    <AccordionItem
+      key={groupKey(group)}
+      value={groupKey(group)}
+      id={`os-pmoc-${groupKey(group)}`}
+      className="border-b last:border-0 scroll-mt-28"
+    >
+      {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
+      <div ref={sentinelRef} aria-hidden className="h-0" />
+      <AccordionTrigger
+        className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card"
+        // Cabeçalho fixo no topo enquanto o técnico rola o conteúdo do equipamento
+        // aberto. Sticky no WRAPPER (Header). Fundo sólido (bg-card). Sombra SÓ
+        // quando grudado (isStuck); fora disso cantos arredondados (card) e sem
+        // sombra. `top` = altura exata do header da tela → gruda rente, sem vão.
+        // PDF/Imprimir: estático e sem sombra.
+        headerClassName={cn(
+          stickyTopPx !== undefined && 'sticky z-10 bg-card print:static print:shadow-none transition-shadow',
+          stickyTopPx !== undefined && (isStuck
+            ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
+            : 'shadow-none rounded-lg'),
+        )}
+        headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+          {photo ? (
+            <SignedImg
+              src={photo}
+              alt={group.equipmentName}
+              className="h-14 w-14 rounded-md object-cover shrink-0 border cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreviewPhoto?.(photo);
+              }}
+            />
+          ) : (
+            <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+              <Wrench className="h-6 w-6 text-muted-foreground" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="font-bold text-base truncate">{group.equipmentName}</p>
+              {category && (
+                <Badge
+                  className="text-[10px] shrink-0 text-white border-0"
+                  style={category.color ? { backgroundColor: category.color } : undefined}
+                >
+                  {category.name}
+                </Badge>
+              )}
+            </div>
+            {brandModel && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{brandModel}</p>
+            )}
+            <p className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 min-w-0">
+              <CalendarClock className="h-3 w-3 shrink-0 text-primary" />
+              <span className="truncate">
+                <span className="font-medium text-foreground">Visita {visit.tipo}</span>
+                {' · '}
+                {visit.niveis.join(' + ')}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {total} item{total > 1 ? 's' : ''}
+            </p>
+          </div>
+          {naoConforme > 0 ? (
+            <Badge variant="destructive" className="gap-1 text-xs shrink-0">
+              <X className="h-3 w-3" />
+              {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
+            </Badge>
+          ) : pending === 0 ? (
+            <span title="Concluído" aria-label="Concluído" className="shrink-0">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+            </span>
+          ) : (
+            <Badge variant="outline" className="text-xs shrink-0">
+              {pending} pendente{pending > 1 ? 's' : ''}
+            </Badge>
+          )}
+        </div>
+      </AccordionTrigger>
+      <AccordionContent>
+        <div className="space-y-4 pt-1">{children}</div>
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
+
 export function VisitChecklistPanel({
   serviceOrderId,
   groups,
@@ -717,110 +839,37 @@ export function VisitChecklistPanel({
               .join(' ');
 
             return (
-              <AccordionItem
+              <VisitChecklistItem
                 key={groupKey(group)}
-                value={groupKey(group)}
-                id={`os-pmoc-${groupKey(group)}`}
-                className="border-b last:border-0 scroll-mt-28"
+                group={group}
+                stickyTopPx={stickyTopPx}
+                onPreviewPhoto={onPreviewPhoto}
+                header={{ total, naoConforme, pending, visit, photo, category, brandModel }}
               >
-                <AccordionTrigger
-                  className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card"
-                  // Cabeçalho fixo no topo enquanto o técnico rola o conteúdo do
-                  // equipamento aberto — sempre saber qual está preenchendo. O
-                  // sticky vai no WRAPPER (Header): no botão ele nunca descola
-                  // (o Header tem só a altura do botão). Fundo sólido (bg-card)
-                  // pra o conteúdo não passar por trás. O `top` (offset do header
-                  // fixo da tela) vai via arbitrary value no próprio Header.
-                  headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.08)]')}
-                  headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                    {photo ? (
-                      <SignedImg
-                        src={photo}
-                        alt={group.equipmentName}
-                        className="h-14 w-14 rounded-md object-cover shrink-0 border cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onPreviewPhoto?.(photo);
-                        }}
-                      />
-                    ) : (
-                      <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Wrench className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-bold text-base truncate">{group.equipmentName}</p>
-                        {category && (
-                          <Badge
-                            className="text-[10px] shrink-0 text-white border-0"
-                            style={category.color ? { backgroundColor: category.color } : undefined}
-                          >
-                            {category.name}
-                          </Badge>
-                        )}
-                      </div>
-                      {brandModel && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{brandModel}</p>
-                      )}
-                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 min-w-0">
-                        <CalendarClock className="h-3 w-3 shrink-0 text-primary" />
-                        <span className="truncate">
-                          <span className="font-medium text-foreground">Visita {visit.tipo}</span>
-                          {' · '}
-                          {visit.niveis.join(' + ')}
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {total} item{total > 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    {naoConforme > 0 ? (
-                      <Badge variant="destructive" className="gap-1 text-xs shrink-0">
-                        <X className="h-3 w-3" />
-                        {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
-                      </Badge>
-                    ) : pending === 0 ? (
-                      <span title="Concluído" aria-label="Concluído" className="shrink-0">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-                      </span>
-                    ) : (
-                      <Badge variant="outline" className="text-xs shrink-0">
-                        {pending} pendente{pending > 1 ? 's' : ''}
-                      </Badge>
-                    )}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-4 pt-1">
-                    {group.activities.map((activity, idx) =>
-                      activity.form_template_id && canRenderTemplates ? (
-                        <TemplateActivityBlock
-                          key={activity.id}
-                          serviceOrderId={serviceOrderId}
-                          equipmentId={activity.equipment_id ?? null}
-                          activity={activity}
-                          questions={questionsByTemplate[activity.form_template_id] ?? []}
-                          getFormResponse={getFormResponse!}
-                          readOnly={readOnly}
-                          onSaveResponse={onSaveFormResponse!}
-                        />
-                      ) : (
-                        <ActivityRow
-                          key={activity.id}
-                          serviceOrderId={serviceOrderId}
-                          activity={activity}
-                          index={idx + 1}
-                          readOnly={readOnly}
-                          onSave={onSave}
-                        />
-                      )
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+                {group.activities.map((activity, idx) =>
+                  activity.form_template_id && canRenderTemplates ? (
+                    <TemplateActivityBlock
+                      key={activity.id}
+                      serviceOrderId={serviceOrderId}
+                      equipmentId={activity.equipment_id ?? null}
+                      activity={activity}
+                      questions={questionsByTemplate[activity.form_template_id] ?? []}
+                      getFormResponse={getFormResponse!}
+                      readOnly={readOnly}
+                      onSaveResponse={onSaveFormResponse!}
+                    />
+                  ) : (
+                    <ActivityRow
+                      key={activity.id}
+                      serviceOrderId={serviceOrderId}
+                      activity={activity}
+                      index={idx + 1}
+                      readOnly={readOnly}
+                      onSave={onSave}
+                    />
+                  )
+                )}
+              </VisitChecklistItem>
             );
           })}
         </Accordion>
