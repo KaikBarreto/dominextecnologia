@@ -208,6 +208,10 @@ export default function ServiceOrders() {
 
   const getStatusLabel = (key: string) => statusOptions.find((s) => s.key === key)?.label || osStatusLabels[key as OsStatus] || key;
   const getStatusColor = (key: string) => statusOptions.find((s) => s.key === key)?.color || '#3b82f6';
+  // Rótulo exibido considerando a marca de finalização parcial: OS pausada com
+  // partial_finish vira "Parcialmente Concluída" (cor segue a do status pausada).
+  const getOsDisplayStatusLabel = (os: { status: OsStatus; partial_finish?: boolean | null }) =>
+    os.status === 'pausada' && os.partial_finish ? 'Parcialmente Concluída' : getStatusLabel(os.status);
 
   const handleSubmit = async (data: any) => {
     if (editingOS) {
@@ -656,7 +660,7 @@ export default function ServiceOrders() {
                                   className="text-[10px] px-2 py-0.5 whitespace-nowrap text-white border-0"
                                   style={{ backgroundColor: getStatusColor(os.status) }}
                                 >
-                                  {getStatusLabel(os.status)}
+                                  {getOsDisplayStatusLabel(os as any)}
                                 </Badge>
                               }
                             />
@@ -765,7 +769,7 @@ export default function ServiceOrders() {
                                           <SelectTrigger className="h-8 w-[140px] whitespace-nowrap" style={{ backgroundColor: getStatusColor(os.status), color: 'white' }}>
                                             <SelectValue>
                                               <span className="flex items-center gap-1 whitespace-nowrap text-white">
-                                                {getStatusLabel(os.status)}
+                                                {getOsDisplayStatusLabel(os as any)}
                                               </span>
                                             </SelectValue>
                                           </SelectTrigger>

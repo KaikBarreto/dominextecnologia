@@ -126,6 +126,9 @@ export interface ServiceOrder {
   // que só pode ser setado em OS de contrato is_pmoc=true.
   pmoc_conformity_status?: 'conforme' | 'parcial' | 'nao_conforme' | null;
   pmoc_conformity_notes?: string | null;
+  // Finalização parcial: quando true e status='pausada', a OS é exibida como
+  // "Parcialmente Concluída" (finalizada parcialmente pelo técnico, aguardando conclusão).
+  partial_finish?: boolean;
   // Endereço de serviço próprio da OS (opcional). Quando preenchido, sobrepõe
   // o endereço do cliente no mapa de rota, na exibição e nos links Maps/Waze.
   // Vazio = usa o endereço do cliente.
@@ -302,6 +305,21 @@ export const osStatusLabels: Record<OsStatus, string> = {
   concluida: 'Concluída',
   cancelada: 'Cancelada',
 };
+
+/**
+ * Rótulo de status visível ao usuário, considerando a marca de finalização
+ * parcial. Uma OS `pausada` com `partial_finish = true` é exibida como
+ * "Parcialmente Concluída" (em vez de "Pausada") — é uma OS pausada que o
+ * técnico marcou como finalizada de forma incompleta, até ser concluída de
+ * verdade depois.
+ */
+export function getOsStatusLabel(
+  status: OsStatus,
+  partialFinish?: boolean | null,
+): string {
+  if (status === 'pausada' && partialFinish) return 'Parcialmente Concluída';
+  return osStatusLabels[status];
+}
 
 export const osTypeLabels: Record<OsType, string> = {
   manutencao_preventiva: 'Manutenção Preventiva',

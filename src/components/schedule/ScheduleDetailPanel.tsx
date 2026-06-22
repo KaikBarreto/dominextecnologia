@@ -79,7 +79,7 @@ function OrderDetail({
   onResume?: (id: string) => void;
 }) {
   const navigate = useNavigate();
-  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
+  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date, (order as any).partial_finish);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);

@@ -211,7 +211,7 @@ export function ChecklistCatalogModal({
   };
 
   // ----- modo CREATE: acumula perguntas e abre passo de nome -----
-  const goToNameStep = (questions: CatalogQuestion[]) => {
+  const goToNameStep = (questions: CatalogQuestion[], defaultName?: string) => {
     // Dedup por texto dentro da própria seleção.
     const seen = new Set<string>();
     const unique: CatalogQuestion[] = [];
@@ -226,6 +226,8 @@ export function ChecklistCatalogModal({
       return;
     }
     setPendingQuestions(unique);
+    // Pré-preenche o nome com o template/seção de origem (editável depois).
+    setNewName(defaultName?.trim() || '');
     setNameStep(true);
   };
 
@@ -261,20 +263,28 @@ export function ChecklistCatalogModal({
     });
   };
 
-  // Dispatchers que bifurcam por modo.
-  const handleQuestions = (questions: CatalogQuestion[]) =>
-    isCreate ? goToNameStep(questions) : importToCurrent(questions);
+  // Dispatchers que bifurcam por modo. `defaultName` só vale no modo create
+  // (pré-preenche o nome do novo checklist com o modelo/seção de origem).
+  const handleQuestions = (questions: CatalogQuestion[], defaultName?: string) =>
+    isCreate ? goToNameStep(questions, defaultName) : importToCurrent(questions);
 
-  const handleTemplate = (tpl: ChecklistTemplate) => handleQuestions(tpl.questions);
+  const handleTemplate = (tpl: ChecklistTemplate) => handleQuestions(tpl.questions, tpl.nome);
 
   const handleSelectedPmoc = () => {
     const all = pmocGroups.flatMap(g => g.activities);
-    const chosen = all.filter(a => selectedPmoc[a.id]).map(pmocActivityToQuestion);
-    handleQuestions(chosen);
+    const chosen = all.filter(a => selectedPmoc[a.id]);
+    // Se a seleção pertence a uma única seção PMOC, usa o rótulo dela como nome.
+    const sectionsOfChosen = new Set(
+      pmocGroups
+        .filter(g => g.activities.some(a => selectedPmoc[a.id]))
+        .map(g => g.label),
+    );
+    const defaultName = sectionsOfChosen.size === 1 ? [...sectionsOfChosen][0] : undefined;
+    handleQuestions(chosen.map(pmocActivityToQuestion), defaultName);
   };
 
-  const handlePmocSection = (acts: PmocCatalogActivity[]) =>
-    handleQuestions(acts.map(pmocActivityToQuestion));
+  const handlePmocSection = (acts: PmocCatalogActivity[], label?: string) =>
+    handleQuestions(acts.map(pmocActivityToQuestion), label);
 
   const busy = createQuestionsBatch.isPending || createTemplate.isPending || creating;
 
@@ -380,7 +390,79 @@ export function ChecklistCatalogModal({
           />
         </div>
 
-        {/* Seção PMOC (só refrigeração) */}
+        {/* Templates de serviço curados — vêm PRIMEIRO */}
+        <section className="space-y-2">
+          <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground/70">
+            <ClipboardList className="h-4 w-4 text-primary shrink-0" />
+            Modelos de checklist
+          </h3>
+          {filteredServiceTemplates.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
+              Nenhum modelo encontrado.
+            </p>
+          ) : (
+            <div className="rounded-lg border bg-card divide-y overflow-hidden">
+              {filteredServiceTemplates.map((tpl) => {
+                const key = `tpl:${tpl.id}`;
+                const isOpen = expanded[key] ?? false;
+                return (
+                  <div key={tpl.id}>
+                    <div className={cn('flex items-start gap-2 px-3 py-2', isOpen && 'bg-muted/30')}>
+                      <button
+                        type="button"
+                        className="flex flex-1 items-start gap-2 text-left min-w-0"
+                        onClick={() => toggleSection(key)}
+                      >
+                        {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{tpl.nome}</span>
+                            <Badge variant="secondary" className="text-xs shrink-0">{tpl.questions.length}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-snug">{tpl.descricao}</p>
+                        </div>
+                      </button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+                        onClick={() => handleTemplate(tpl)}
+                        disabled={busy}
+                      >
+                        <Download className="mr-1.5 h-3.5 w-3.5" />
+                        {primaryActionLabel}
+                      </Button>
+                    </div>
+                    {isOpen && (
+                      <div className="divide-y bg-muted/20">
+                        {tpl.questions.map((cq, i) => {
+                          const already = !isCreate && existingSet.has(norm(cq.question));
+                          const tb = qTypeBadge(cq.question_type);
+                          return (
+                            <div key={i} className={cn('flex items-start gap-2 px-3 py-2 text-sm', already && 'opacity-50')}>
+                              <span className="text-xs text-muted-foreground mt-0.5 w-5 shrink-0">{i + 1}.</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="leading-tight">{cq.question}</p>
+                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                  <Badge className={cn('text-[10px] font-medium', tb.className)}>
+                                    {tb.label}{cq.unit ? ` (${cq.unit})` : ''}
+                                  </Badge>
+                                  {cq.is_required && <Badge variant="destructive" className="text-[10px]">Obrigatória</Badge>}
+                                  {already && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5"><Check className="h-3 w-3" />já no checklist</span>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Seção PMOC (só refrigeração) — vem DEPOIS dos modelos */}
         {showPmoc && (
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -411,14 +493,14 @@ export function ChecklistCatalogModal({
                 Nenhuma atividade encontrada.
               </p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="rounded-lg border bg-card divide-y overflow-hidden">
                 {filteredPmocGroups.map((g) => {
                   const key = `pmoc:${g.section}`;
                   const isOpen = expanded[key] ?? !!q;
                   const allOn = g.activities.every(a => selectedPmoc[a.id]);
                   return (
-                    <div key={g.section} className="rounded-lg border bg-card overflow-hidden">
-                      <div className="flex items-center gap-2 px-3 py-2">
+                    <div key={g.section}>
+                      <div className={cn('flex items-center gap-2 px-3 py-2', isOpen && 'bg-muted/30')}>
                         <button
                           type="button"
                           className="flex flex-1 items-center gap-2 text-left min-w-0"
@@ -432,14 +514,14 @@ export function ChecklistCatalogModal({
                           variant="outline"
                           size="sm"
                           className="h-7 text-xs shrink-0"
-                          onClick={() => handlePmocSection(g.activities)}
+                          onClick={() => handlePmocSection(g.activities, g.label)}
                           disabled={busy}
                         >
                           {isCreate ? 'Selecionar seção' : 'Importar seção'}
                         </Button>
                       </div>
                       {isOpen && (
-                        <div className="border-t divide-y">
+                        <div className="divide-y bg-muted/20">
                           <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:bg-muted/40">
                             <Checkbox
                               checked={allOn}
@@ -485,78 +567,6 @@ export function ChecklistCatalogModal({
             )}
           </section>
         )}
-
-        {/* Templates de serviço curados */}
-        <section className="space-y-2">
-          <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground/70">
-            <ClipboardList className="h-4 w-4 text-primary shrink-0" />
-            Modelos de checklist
-          </h3>
-          {filteredServiceTemplates.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
-              Nenhum modelo encontrado.
-            </p>
-          ) : (
-            <div className="space-y-1.5">
-              {filteredServiceTemplates.map((tpl) => {
-                const key = `tpl:${tpl.id}`;
-                const isOpen = expanded[key] ?? false;
-                return (
-                  <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
-                    <div className="flex items-start gap-2 px-3 py-2">
-                      <button
-                        type="button"
-                        className="flex flex-1 items-start gap-2 text-left min-w-0"
-                        onClick={() => toggleSection(key)}
-                      >
-                        {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{tpl.nome}</span>
-                            <Badge variant="secondary" className="text-xs shrink-0">{tpl.questions.length}</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground leading-snug">{tpl.descricao}</p>
-                        </div>
-                      </button>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
-                        onClick={() => handleTemplate(tpl)}
-                        disabled={busy}
-                      >
-                        <Download className="mr-1.5 h-3.5 w-3.5" />
-                        {primaryActionLabel}
-                      </Button>
-                    </div>
-                    {isOpen && (
-                      <div className="border-t divide-y">
-                        {tpl.questions.map((cq, i) => {
-                          const already = !isCreate && existingSet.has(norm(cq.question));
-                          const tb = qTypeBadge(cq.question_type);
-                          return (
-                            <div key={i} className={cn('flex items-start gap-2 px-3 py-2 text-sm', already && 'opacity-50')}>
-                              <span className="text-xs text-muted-foreground mt-0.5 w-5 shrink-0">{i + 1}.</span>
-                              <div className="min-w-0 flex-1">
-                                <p className="leading-tight">{cq.question}</p>
-                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  <Badge className={cn('text-[10px] font-medium', tb.className)}>
-                                    {tb.label}{cq.unit ? ` (${cq.unit})` : ''}
-                                  </Badge>
-                                  {cq.is_required && <Badge variant="destructive" className="text-[10px]">Obrigatória</Badge>}
-                                  {already && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5"><Check className="h-3 w-3" />já no checklist</span>}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
       </div>
     </ResponsiveModal>
   );

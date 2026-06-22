@@ -58,7 +58,7 @@ import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { RouteToCustomerMap } from '@/components/schedule/RouteToCustomerMap';
 import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress, haversineDistance, resolveOsDestination } from '@/utils/geolocation';
-import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
+import { osTypeLabels, getOsTypeLabel, getOsStatusLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
@@ -78,6 +78,7 @@ import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarS
 import TechnicianTools from '@/pages/TechnicianTools';
 import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useStickyStuck } from '@/hooks/useStickyStuck';
 
 interface OSPhoto {
   id: string;
@@ -92,6 +93,130 @@ interface EquipmentItem {
   form_template_id: string | null;
   equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
   form_template: { id: string; name: string } | null;
+}
+
+/**
+ * Um equipamento do accordion de checklists da OS NORMAL (não-PMOC). Componente
+ * próprio pra hospedar o `useStickyStuck` de cada cabeçalho (hooks não rodam
+ * dentro de `.map`). Espelha o VisitChecklistItem do PMOC: cabeçalho gruda no
+ * topo (logo abaixo do header laranja) enquanto o equipamento ABERTO é rolado,
+ * com sombra quando "stuck". Só o equipamento aberto fica sticky (single-open).
+ */
+function OsEquipmentAccordionItem({
+  item,
+  itemKey,
+  serviceOrderId,
+  stickyTopPx,
+  isOpen,
+  readOnly,
+  isComplete,
+  pendingCount,
+  hasMultipleOnSameEquip,
+  onPreviewPhoto,
+  onValidationChange,
+}: {
+  item: EquipmentItem;
+  itemKey: string;
+  serviceOrderId: string;
+  stickyTopPx?: number;
+  isOpen: boolean;
+  readOnly: boolean;
+  isComplete: boolean;
+  pendingCount: number;
+  hasMultipleOnSameEquip: boolean;
+  onPreviewPhoto: (url: string) => void;
+  onValidationChange: (result: FormValidationResult) => void;
+}) {
+  // SÓ o equipamento ABERTO fica sticky (mesmo critério do PMOC) — evita
+  // empilhamento de cabeçalhos sobrepostos e briga de z-index.
+  const stickyOn = isOpen && stickyTopPx !== undefined;
+  const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
+
+  return (
+    <AccordionItem value={itemKey} id={`os-eq-${itemKey}`} className="border-b last:border-0 scroll-mt-28">
+      {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
+      <div ref={sentinelRef} aria-hidden className="h-0" />
+      <AccordionTrigger
+        className={cn(
+          'hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card',
+          stickyOn && !isStuck && 'rounded-lg',
+        )}
+        headerClassName={cn(
+          stickyOn && 'sticky z-10 bg-card print:static print:shadow-none transition-shadow',
+          stickyOn && (isStuck
+            ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
+            : 'shadow-none rounded-lg'),
+        )}
+        headerStyle={stickyOn ? { top: stickyTopPx } : undefined}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+          {item.equipment?.photo_url ? (
+            <SignedImg
+              src={item.equipment.photo_url}
+              alt={item.equipment.name}
+              className="h-10 w-10 rounded-md object-cover shrink-0 cursor-pointer border"
+              onClick={(e) => { e.stopPropagation(); onPreviewPhoto(item.equipment!.photo_url!); }}
+            />
+          ) : (
+            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
+              <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="font-medium text-sm truncate">
+                {item.equipment?.name || item.form_template?.name || 'Checklist'}
+              </p>
+              {item.equipment?.category && (
+                <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: item.equipment.category.color }}>
+                  {item.equipment.category.name}
+                </Badge>
+              )}
+            </div>
+            {hasMultipleOnSameEquip && item.form_template?.name && (
+              <p className="text-xs font-medium text-primary truncate">
+                {item.form_template.name}
+              </p>
+            )}
+            {item.equipment?.brand && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                {item.equipment.brand} {item.equipment.model}
+              </p>
+            )}
+            {item.equipment?.location && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <MapPinned className="h-3 w-3 shrink-0" />
+                <span className="truncate">{item.equipment.location}</span>
+              </p>
+            )}
+            {!item.equipment && item.form_template && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {item.form_template.name}
+              </p>
+            )}
+          </div>
+          {isComplete ? (
+            <Badge variant="success" className="gap-1 shrink-0">
+              <Check className="h-3 w-3" /> Concluído
+            </Badge>
+          ) : pendingCount > 0 ? (
+            <Badge variant="destructive" className="text-xs shrink-0">
+              {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
+            </Badge>
+          ) : null}
+        </div>
+      </AccordionTrigger>
+      <AccordionContent>
+        <DynamicFormQuestions
+          serviceOrderId={serviceOrderId}
+          templateId={item.form_template_id!}
+          equipmentId={item.equipment_id || undefined}
+          readOnly={readOnly}
+          onValidationChange={onValidationChange}
+        />
+      </AccordionContent>
+    </AccordionItem>
+  );
 }
 
 export default function TechnicianOS() {
@@ -164,6 +289,11 @@ export default function TechnicianOS() {
   const [checklistGapOpen, setChecklistGapOpen] = useState(false);
   const [pendingChecklistCount, setPendingChecklistCount] = useState(0);
   const [markingChecklist, setMarkingChecklist] = useState(false);
+  // Finalização PARCIAL: a OS vira pausada + partial_finish=true (marcada como
+  // "Parcialmente Concluída", aparece nas OS pausadas até ser concluída de
+  // verdade). NÃO valida obrigatórios — é intencionalmente incompleta.
+  const [partialConfirmOpen, setPartialConfirmOpen] = useState(false);
+  const [finishingPartial, setFinishingPartial] = useState(false);
 
   // Onda D v1.9.x — classificação de conformidade PMOC.
   // Só aparece quando a OS é PMOC (`useIsPmocOrder`). Notas são obrigatórias
@@ -319,21 +449,15 @@ export default function TechnicianOS() {
   // Enquanto settings carrega (undefined/null), showTools é false → atalho oculto.
   const { settings } = useCompanySettings();
   const showTools = settings?.segment === 'refrigeracao';
+  // FAB é EXCLUSIVO de "Ferramentas do Técnico" (função única, ícone de ferramenta
+  // — não 3 pontinhos). Copiar link público mudou pro 3-pontinhos do rodapé.
   const speedDialActions: SpeedDialAction[] = [
     {
-      icon: Link2,
-      label: 'Copiar o link público da OS (cliente)',
-      onClick: handleCopyTrackingLink,
+      icon: FerramentasTecnicoIcon,
+      label: 'Ferramentas do Técnico',
+      onClick: () => setToolsOpen(true),
       bare: true,
     },
-    ...(showTools
-      ? [{
-          icon: FerramentasTecnicoIcon,
-          label: 'Ferramentas do Técnico',
-          onClick: () => setToolsOpen(true),
-          bare: true,
-        } as SpeedDialAction]
-      : []),
   ];
 
   // Helper to safely extract joined object (Supabase may return array for some joins)
@@ -1033,6 +1157,9 @@ export default function TechnicianOS() {
         check_out_time: now,
         check_out_location: location,
         status: 'concluida',
+        // Conclusão de verdade limpa a marca de finalização parcial (caso a OS
+        // tenha passado por "Finalizar Parcialmente" antes).
+        partial_finish: false,
       };
       if (techSignature) updateData.tech_signature = techSignature;
       if (clientSignature) updateData.client_signature = clientSignature;
@@ -1082,8 +1209,8 @@ export default function TechnicianOS() {
 
       setCheckOutTime(now);
       setCheckOutLocation(location);
-      setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus, check_out_time: now } : null);
-      
+      setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus, check_out_time: now, partial_finish: false } as any : null);
+
       toast({ title: 'OS finalizada com sucesso!' });
     } catch (error: any) {
       toast({
@@ -1379,7 +1506,7 @@ export default function TechnicianOS() {
               <p className="text-xs sm:text-sm opacity-90">Relatório de Serviço</p>
             </div>
             <Badge variant={statusBadgeVariant[serviceOrder.status]}>
-              {osStatusLabels[serviceOrder.status]}
+              {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
             </Badge>
           </div>
         </div>
@@ -1397,12 +1524,17 @@ export default function TechnicianOS() {
             topPx={headerHeight + 16}
           />
         <main
-          className="w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-4 lg:pb-24"
-          // Folga inferior pro rodapé fixo (mobile) / FAB (desktop) de avaliar
-          // não cobrir o fim do relatório quando o affordance está visível.
+          className={cn(
+            'w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-4 lg:pb-24',
+            // Folga base no MOBILE pro rodapé FIXO do relatório (Baixar PDF + 3
+            // pontinhos) não cobrir o fim do conteúdo. Desktop usa lg:pb-24.
+            'pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]',
+          )}
+          // Folga extra quando o affordance de avaliar aparece (empilha acima do
+          // rodapé fixo no mobile).
           style={
             !ratingDone && rating && !rating.already_rated
-              ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)' }
+              ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 8rem)' }
               : undefined
           }
         >
@@ -1494,7 +1626,7 @@ export default function TechnicianOS() {
                 </div>
               </div>
               <Badge variant={statusBadgeVariant[serviceOrder.status]} className="shrink-0">
-                {osStatusLabels[serviceOrder.status]}
+                {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
               </Badge>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
@@ -1776,7 +1908,7 @@ export default function TechnicianOS() {
           <Card>
             <CardContent className="p-3 sm:p-4 text-center">
               <Badge variant={statusBadgeVariant[serviceOrder.status]} className="text-base px-4 py-1">
-                {osStatusLabels[serviceOrder.status]}
+                {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
               </Badge>
               <p className="text-sm text-muted-foreground mt-2">
                 {serviceOrder.status === 'pendente' && 'Aguardando início do atendimento'}
@@ -2103,6 +2235,29 @@ export default function TechnicianOS() {
     }
   };
 
+  // Finalização PARCIAL — marca a OS como "Parcialmente Concluída": vira pausada
+  // + partial_finish=true. NÃO valida obrigatórios/assinatura/PMOC (é
+  // intencionalmente incompleta); o progresso já é auto-salvo. Não faz check-out.
+  // A marca persiste até a conclusão real (proceedFinishOS limpa partial_finish).
+  const handleFinishPartially = async () => {
+    setFinishingPartial(true);
+    try {
+      const { error } = await supabase
+        .from('service_orders')
+        .update({ status: 'pausada', partial_finish: true } as any)
+        .eq('id', resolvedOsId);
+      if (error) throw error;
+      setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus, partial_finish: true } as any : null);
+      setPartialConfirmOpen(false);
+      toast({ title: 'OS finalizada parcialmente' });
+      navigate(-1);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erro ao finalizar parcialmente', description: getErrorMessage(error) });
+    } finally {
+      setFinishingPartial(false);
+    }
+  };
+
   // Itens da sidebar desktop (modo autenticado): um por checklist de equipamento
   // (mesma chave do accordion). Status: pendente até check-in; depois deriva das
   // validações do form + conformidade do checklist da visita por equipamento.
@@ -2384,10 +2539,10 @@ export default function TechnicianOS() {
               </div>
             </div>
             <Badge variant={statusBadgeVariant[serviceOrder.status]} className="shrink-0">
-              {osStatusLabels[serviceOrder.status]}
+              {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
             </Badge>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
             <div>
               <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
@@ -2722,75 +2877,20 @@ export default function TechnicianOS() {
                     : 0;
                   const hasMultipleOnSameEquip = sameEquipCount > 1;
                   return (
-                    <AccordionItem key={itemKey} value={itemKey} id={`os-eq-${itemKey}`} className="border-b last:border-0 scroll-mt-28">
-                      <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0 overflow-hidden">
-                        <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                          {item.equipment?.photo_url ? (
-                            <SignedImg
-                              src={item.equipment.photo_url}
-                              alt={item.equipment.name}
-                              className="h-10 w-10 rounded-md object-cover shrink-0 cursor-pointer border"
-                              onClick={(e) => { e.stopPropagation(); setPreviewPhoto(item.equipment!.photo_url); }}
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                              <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="font-medium text-sm truncate">
-                                {item.equipment?.name || item.form_template?.name || 'Checklist'}
-                              </p>
-                              {item.equipment?.category && (
-                                <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: item.equipment.category.color }}>
-                                  {item.equipment.category.name}
-                                </Badge>
-                              )}
-                            </div>
-                            {hasMultipleOnSameEquip && item.form_template?.name && (
-                              <p className="text-xs font-medium text-primary truncate">
-                                {item.form_template.name}
-                              </p>
-                            )}
-                            {item.equipment?.brand && (
-                              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                                {item.equipment.brand} {item.equipment.model}
-                              </p>
-                            )}
-                            {item.equipment?.location && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                <MapPinned className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{item.equipment.location}</span>
-                              </p>
-                            )}
-                            {!item.equipment && item.form_template && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {item.form_template.name}
-                              </p>
-                            )}
-                          </div>
-                          {isComplete ? (
-                            <Badge variant="success" className="gap-1 shrink-0">
-                              <Check className="h-3 w-3" /> Concluído
-                            </Badge>
-                          ) : pendingCount > 0 ? (
-                            <Badge variant="destructive" className="text-xs shrink-0">
-                              {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <DynamicFormQuestions
-                          serviceOrderId={resolvedOsId!}
-                          templateId={item.form_template_id!}
-                          equipmentId={item.equipment_id || undefined}
-                          readOnly={isPaused}
-                          onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
+                    <OsEquipmentAccordionItem
+                      key={itemKey}
+                      item={item}
+                      itemKey={itemKey}
+                      serviceOrderId={resolvedOsId!}
+                      stickyTopPx={headerHeight}
+                      isOpen={openExecKey === itemKey}
+                      readOnly={isPaused}
+                      isComplete={!!isComplete}
+                      pendingCount={pendingCount}
+                      hasMultipleOnSameEquip={hasMultipleOnSameEquip}
+                      onPreviewPhoto={setPreviewPhoto}
+                      onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
+                    />
                   );
                 })}
               </Accordion>
@@ -3012,12 +3112,30 @@ export default function TechnicianOS() {
           </Button>
           <Button
             variant="outline"
-            className="flex-1 border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
-            onClick={handlePauseOS}
+            className="flex-1 border-warning/40 text-warning hover:bg-warning hover:text-white"
+            onClick={() => setPartialConfirmOpen(true)}
+            disabled={finishingPartial}
           >
-            <Pause className="h-4 w-4 mr-2" />
-            Pausar OS
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+            Finalizar Parcialmente
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="shrink-0" aria-label="Mais ações">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
+              <DropdownMenuItem onClick={handlePauseOS} className="text-warning focus:text-warning">
+                <Pause className="h-4 w-4 mr-2" />
+                Pausar OS
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyTrackingLink}>
+                <Link2 className="h-4 w-4 mr-2" />
+                Copiar link do cliente
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </OsActionFooter>
       )}
 
@@ -3042,17 +3160,32 @@ export default function TechnicianOS() {
                 Retomar OS
               </Button>
             ) : (
-              <Button
-                className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
-                size="lg"
-                onClick={handleFinishOS}
-                disabled={finishing}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                {finishing ? 'Finalizando...' : 'Finalizar OS'}
-              </Button>
+              <>
+                <Button
+                  className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+                  size="lg"
+                  onClick={handleFinishOS}
+                  disabled={finishing}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {finishing ? 'Finalizando...' : 'Finalizar OS'}
+                </Button>
+                <Button
+                  className="flex-1 bg-warning hover:bg-warning/90 text-white"
+                  size="lg"
+                  onClick={() => setPartialConfirmOpen(true)}
+                  disabled={finishingPartial}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Parcial
+                </Button>
+              </>
             )}
-            <DropdownMenu>
+            {/* modal={false}: NÃO trava o scroll do body (react-remove-scroll). Sem
+                isso, abrir o menu tirava o anchor do cabeçalho sticky do
+                equipamento (o lock muda o container de rolagem e o
+                IntersectionObserver perdia o stuck) — o cabeçalho sumia. */}
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -3063,9 +3196,10 @@ export default function TechnicianOS() {
                   <MoreVertical className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
+              {/* Ferramentas NÃO entram aqui: vivem só no FAB de Ferramentas. */}
               <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
                 {!isPaused ? (
-                  <DropdownMenuItem onClick={handlePauseOS} className="text-amber-600 focus:text-amber-600">
+                  <DropdownMenuItem onClick={handlePauseOS} className="text-warning focus:text-warning">
                     <Pause className="h-4 w-4 mr-2" />
                     Pausar OS
                   </DropdownMenuItem>
@@ -3083,12 +3217,6 @@ export default function TechnicianOS() {
                   <Link2 className="h-4 w-4 mr-2" />
                   Copiar link do cliente
                 </DropdownMenuItem>
-                {showTools && (
-                  <DropdownMenuItem onClick={() => setToolsOpen(true)}>
-                    <FerramentasTecnicoIcon className="h-4 w-4 mr-2" />
-                    Ferramentas do Técnico
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -3150,14 +3278,59 @@ export default function TechnicianOS() {
         </div>
       </ResponsiveModal>
 
-      {/* FAB speed-dial (canto inferior esquerdo) — atalho pras Ferramentas do
-          Técnico. Sobe acima do rodapé fixo mobile (faixa preta) quando ele
-          aparece (execução/pausada) pra não ser coberto. */}
-      <SpeedDialFAB
-        actions={speedDialActions}
-        side="left"
-        bottomOffsetPx={isCheckedIn || isPaused ? 60 : 0}
-      />
+      {/* Modal: confirmação de finalização PARCIAL. Mobile vira drawer de baixo
+          (ResponsiveModal). A OS fica marcada como "Parcialmente Concluída" e
+          aparece nas OS pausadas até ser concluída de verdade. */}
+      <ResponsiveModal
+        open={partialConfirmOpen}
+        onOpenChange={(o) => { if (!finishingPartial) setPartialConfirmOpen(o); }}
+        title="Finalizar parcialmente?"
+        footer={
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:flex-1"
+              disabled={finishingPartial}
+              onClick={() => setPartialConfirmOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="w-full sm:flex-1 bg-warning hover:bg-warning/90 text-white"
+              disabled={finishingPartial}
+              onClick={handleFinishPartially}
+            >
+              {finishingPartial ? 'Finalizando...' : 'Finalizar Parcialmente'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2 py-1">
+          <p className="text-sm text-foreground">
+            A OS ficará marcada como <strong>Parcialmente Concluída</strong> e
+            aparecerá nas OS pausadas até ser concluída de verdade.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            O que você já preencheu fica salvo. Você pode retomar e concluir
+            quando terminar o serviço.
+          </p>
+        </div>
+      </ResponsiveModal>
+
+      {/* FAB EXCLUSIVO de Ferramentas do Técnico (canto inferior esquerdo, ícone de
+          ferramenta — não 3 pontinhos). Função única → toque abre direto. Fica
+          MAIS ACIMA quando o rodapé fixo mobile (faixa preta) aparece, pra não
+          sobrepor. Só renderiza quando há ferramentas (segmento refrigeração). */}
+      {showTools && (
+        <SpeedDialFAB
+          actions={speedDialActions}
+          side="left"
+          mainIcon={FerramentasTecnicoIcon}
+          ariaLabel="Ferramentas do Técnico"
+          directWhenSingle
+          bottomOffsetPx={isCheckedIn || isPaused ? 84 : 0}
+        />
+      )}
 
       {/* Overlay fullscreen: mesmo componente da tela de Ferramentas do Técnico.
           A OS continua montada por baixo (toolsOpen é estado local), então o

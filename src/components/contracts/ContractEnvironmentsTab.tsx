@@ -544,6 +544,11 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                   </div>
 
                   <div className="space-y-3 p-3">
+                  <EnvironmentPhotoField
+                    value={env.photo_url}
+                    onChange={(url) => setEnvPhoto(env.key, url)}
+                    envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
+                  />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Identificação do ambiente</Label>
@@ -638,13 +643,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </div>
                   </div>
 
-                  <EnvironmentPhotoField
-                    value={env.photo_url}
-                    onChange={(url) => setEnvPhoto(env.key, url)}
-                    envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
-                  />
-
-                  <div className="ml-2 space-y-1.5 border-l-2 border-info/30 pl-3">
+                  <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <Wrench className="h-3.5 w-3.5 text-info" />
                       Equipamentos deste ambiente ({env.equipment_ids.length})

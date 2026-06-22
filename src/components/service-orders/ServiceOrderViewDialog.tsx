@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsCompact } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsStatus, FormQuestion } from '@/types/database';
-import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
+import { osTypeLabels, getOsTypeLabel, getOsStatusLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
@@ -524,7 +524,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
       <Eye className="h-5 w-5" />
       OS #{String(serviceOrder.order_number).padStart(6, '0')}
       <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border ml-auto`}>
-        {osStatusLabels[serviceOrder.status]}
+        {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
       </Badge>
     </span>
   ) : 'Detalhes da OS';

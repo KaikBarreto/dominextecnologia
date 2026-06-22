@@ -136,6 +136,9 @@ export function PausedOrdersDialog({ open, onOpenChange, onViewDetails, onResume
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="secondary" className="text-xs">OS #{order.order_number}</Badge>
+                        {order.partial_finish && (
+                          <Badge variant="warning" className="text-xs">Parcialmente Concluída</Badge>
+                        )}
                         <span className="font-medium text-sm break-words">{customerLabel}</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1.5 space-y-0.5">

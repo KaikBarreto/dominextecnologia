@@ -5971,6 +5971,7 @@ export type Database = {
           order_number: number
           origin: string
           os_type: Database["public"]["Enums"]["os_type"]
+          partial_finish: boolean
           parts_used: Json | null
           parts_value: number | null
           paused_at: string | null
@@ -6033,6 +6034,7 @@ export type Database = {
           order_number?: number
           origin?: string
           os_type?: Database["public"]["Enums"]["os_type"]
+          partial_finish?: boolean
           parts_used?: Json | null
           parts_value?: number | null
           paused_at?: string | null
@@ -6095,6 +6097,7 @@ export type Database = {
           order_number?: number
           origin?: string
           os_type?: Database["public"]["Enums"]["os_type"]
+          partial_finish?: boolean
           parts_used?: Json | null
           parts_value?: number | null
           paused_at?: string | null

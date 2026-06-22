@@ -95,8 +95,13 @@ export function DaySchedule({ date, orders, onOrderSelect }: DayScheduleProps) {
                       <span className={cn('font-semibold text-lg', order.status === 'concluida' && 'line-through')}>
                         {order.scheduled_time?.slice(0, 5) || '--:--'}
                       </span>
-                      <Badge variant={statusVariants[order.status]} className="text-xs">
-                        {statusLabels[order.status]}
+                      <Badge
+                        variant={(order as any).partial_finish && order.status === 'pausada' ? 'warning' : statusVariants[order.status]}
+                        className="text-xs"
+                      >
+                        {(order as any).partial_finish && order.status === 'pausada'
+                          ? 'Parcialmente Concluída'
+                          : statusLabels[order.status]}
                       </Badge>
                     </div>
                     <Badge variant="outline" className="text-xs shrink-0">

@@ -237,6 +237,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [freqValue, setFreqValue] = useState(1);
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [horizonMonths, setHorizonMonths] = useState(12);
+  // Prévia das visitas: alterna entre lista (default) e calendário mensal.
+  const [visitsView, setVisitsView] = useState<'list' | 'calendar'>('list');
+  // Dia selecionado no calendário de prévia (mostra as atividades abaixo).
+  const [previewSelectedDay, setPreviewSelectedDay] = useState<Date | null>(null);
 
   // Step 2 — Plano de serviços com frequência por linha (Fase 1). Quando há ao
   // menos um serviço, o motor de visitas agrupadas (1 OS/mês = união do que
@@ -1815,27 +1819,85 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               {usePlanEngine ? (
                 groupedVisits.length > 0 && (
                   <div className="space-y-1.5">
-                    <Label>Prévia das visitas ({groupedVisits.length})</Label>
-                    <div className="rounded-md border max-h-44 overflow-y-auto">
-                      {groupedVisits.slice(0, 30).map((visit, i) => {
-                        const isWeekend = visit.date.getDay() === 0 || visit.date.getDay() === 6;
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Prévia das visitas ({groupedVisits.length})</Label>
+                      <LabeledSwitch
+                        value={visitsView}
+                        onChange={(v) => setVisitsView(v as 'list' | 'calendar')}
+                        off={{ value: 'list', label: 'Lista' }}
+                        on={{ value: 'calendar', label: 'Calendário' }}
+                        size="default"
+                        className="[&_button]:text-xs"
+                        aria-label="Visualização da prévia das visitas"
+                      />
+                    </div>
+                    {visitsView === 'list' ? (
+                      <div className="rounded-md border max-h-44 overflow-y-auto">
+                        {groupedVisits.slice(0, 30).map((visit, i) => {
+                          const isWeekend = visit.date.getDay() === 0 || visit.date.getDay() === 6;
+                          return (
+                            <div key={i} className="flex items-center gap-3 px-3 py-2 border-b last:border-0 text-sm">
+                              <span className="text-muted-foreground w-5 text-right font-mono text-xs">{i + 1}</span>
+                              <span className="text-foreground">{format(visit.date, 'dd/MM/yyyy', { locale: ptBR })}</span>
+                              <Badge variant="info" className="text-[10px] px-1.5 py-0 shrink-0">
+                                {visit.activityIndexes.length} atividade{visit.activityIndexes.length === 1 ? '' : 's'}
+                              </Badge>
+                              {isWeekend && <Badge variant="outline" className="text-warning border-warning/30 text-[10px] px-1.5 py-0">Fim de semana</Badge>}
+                            </div>
+                          );
+                        })}
+                        {groupedVisits.length > 30 && (
+                          <div className="text-center py-2 text-xs text-muted-foreground">
+                            +{groupedVisits.length - 30} visitas adicionais
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      (() => {
+                        const visitDays = groupedVisits.map(v => v.date);
+                        const selected = previewSelectedDay
+                          ? groupedVisits.find(v => format(v.date, 'yyyy-MM-dd') === format(previewSelectedDay, 'yyyy-MM-dd'))
+                          : undefined;
                         return (
-                          <div key={i} className="flex items-center gap-3 px-3 py-2 border-b last:border-0 text-sm">
-                            <span className="text-muted-foreground w-5 text-right font-mono text-xs">{i + 1}</span>
-                            <span className="text-foreground">{format(visit.date, 'dd/MM/yyyy', { locale: ptBR })}</span>
-                            <Badge variant="info" className="text-[10px] px-1.5 py-0 shrink-0">
-                              {visit.activityIndexes.length} atividade{visit.activityIndexes.length === 1 ? '' : 's'}
-                            </Badge>
-                            {isWeekend && <Badge variant="outline" className="text-warning border-warning/30 text-[10px] px-1.5 py-0">Fim de semana</Badge>}
+                          <div className="space-y-2">
+                            <div className="rounded-md border flex justify-center">
+                              <Calendar
+                                mode="single"
+                                selected={previewSelectedDay ?? undefined}
+                                onSelect={(d) => setPreviewSelectedDay(d ?? null)}
+                                defaultMonth={groupedVisits[0]?.date}
+                                disabled={(d) => !visitDays.some(vd => format(vd, 'yyyy-MM-dd') === format(d, 'yyyy-MM-dd'))}
+                                modifiers={{ visita: visitDays }}
+                                modifiersClassNames={{
+                                  visita: 'font-semibold text-info relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-info',
+                                }}
+                                locale={ptBR}
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="inline-flex h-2 w-2 rounded-full bg-info" />
+                              Dias com visita agendada. Toque num dia para ver as atividades.
+                            </div>
+                            {selected && (
+                              <div className="rounded-md border bg-muted/20 p-3 space-y-1.5">
+                                <p className="text-sm font-medium">
+                                  Visita de {format(selected.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                </p>
+                                <ul className="space-y-1">
+                                  {selected.activityIndexes.map((ai) => (
+                                    <li key={ai} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                      <Check className="h-3.5 w-3.5 shrink-0 text-success mt-px" />
+                                      <span>{(schedulablePlan[ai] as PlanActivityInput)?.description || 'Atividade'}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         );
-                      })}
-                      {groupedVisits.length > 30 && (
-                        <div className="text-center py-2 text-xs text-muted-foreground">
-                          +{groupedVisits.length - 30} visitas adicionais
-                        </div>
-                      )}
-                    </div>
+                      })()
+                    )}
                   </div>
                 )
               ) : (
@@ -2098,6 +2160,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
                         {envOpen && (
                         <div className="p-3 pt-0 space-y-3">
+                        <EnvironmentPhotoField
+                          value={env.photo_url}
+                          onChange={(url) => setEnvironmentPhoto(env.key, url)}
+                          envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
+                        />
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="space-y-1.5">
                             <Label className="text-xs">Identificação do ambiente</Label>
@@ -2208,15 +2275,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           </div>
                         </div>
 
-                        <EnvironmentPhotoField
-                          value={env.photo_url}
-                          onChange={(url) => setEnvironmentPhoto(env.key, url)}
-                          envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
-                        />
-
                         {/* Equipamentos deste ambiente (exclusivos entre ambientes).
-                            Bloco aninhado/subordinado ao ambiente (borda lateral + recuo). */}
-                        <div className="ml-2 space-y-1.5 border-l-2 border-info/30 pl-3">
+                            Bloco subordinado ao ambiente, sem borda externa (menos
+                            caixa-dentro-de-caixa). */}
+                        <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                             <Wrench className="h-3.5 w-3.5 text-info" />
                             Equipamentos deste ambiente ({envEquipmentCount})
@@ -2622,6 +2684,146 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <CalendarCheck className="h-5 w-5 text-primary" />
                 Revisão do Contrato
               </h3>
+
+              {/* Narrativa dinâmica: explica em PT-BR claro tudo o que este
+                  contrato vai fazer. Só mostra os blocos que se aplicam. */}
+              {(() => {
+                const serviceTypeName = serviceTypes?.find((s: any) => s.id === serviceTypeId)?.name;
+                const templateName = templates?.find((t: any) => t.id === formTemplateId)?.name;
+                const rt = responsibleTechnicians.find((r) => r.id === responsibleTechnicianId);
+                const startLabel = format(new Date(startDate + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+                const totalEquip = isPmoc ? pmocDerivedItems.length : selectedItems.length;
+                const unidadeLocal = [unidadeCidade.trim(), unidadeUf.trim()].filter(Boolean).join('/');
+
+                // Resumo de frequência por código (M/T/S/A) das atividades agendáveis.
+                const freqCount: Record<string, number> = {};
+                if (usePlanEngine) {
+                  for (const a of schedulablePlan) {
+                    const code = (a as PlanActivityInput).freq_code;
+                    if (code) freqCount[code] = (freqCount[code] ?? 0) + 1;
+                  }
+                }
+                const freqParts = ACTIVITY_FREQ_OPTIONS
+                  .filter(o => freqCount[o.code] > 0)
+                  .map(o => `${freqCount[o.code]} ${o.label.toLowerCase()}`);
+
+                // Técnicos/equipes em texto.
+                const teamParts: string[] = [];
+                if (selectedUserIds.length === 1) {
+                  teamParts.push((technicians ?? []).find(t => t.user_id === selectedUserIds[0])?.full_name || '1 técnico');
+                } else if (selectedUserIds.length > 1) {
+                  teamParts.push(`${selectedUserIds.length} técnicos`);
+                }
+                if (selectedTeamIds.length > 0) teamParts.push(`${selectedTeamIds.length} equipe(s)`);
+
+                const Block = ({ title, children }: { title: string; children: React.ReactNode }) => (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+                    <p className="text-sm leading-relaxed text-foreground">{children}</p>
+                  </div>
+                );
+
+                return (
+                  <div className="space-y-3 rounded-lg border bg-muted/20 p-3.5">
+                    <Block title="Identificação">
+                      Este é um contrato{' '}
+                      <strong>{isPmoc ? 'PMOC' : 'de manutenção comum'}</strong>
+                      {name?.trim() ? <> chamado <strong>{name.trim()}</strong></> : null}
+                      {' '}para o cliente <strong>{clientName}</strong>.
+                      {serviceTypeName ? <> O tipo de serviço é <strong>{serviceTypeName}</strong>.</> : null}
+                      {' '}Ele nasce <strong>{isActive ? 'ativo' : 'pausado'}</strong>
+                      {isActive ? ' (já passa a gerar ordens de serviço).' : ' (não gera ordens até ser ativado).'}
+                    </Block>
+
+                    {isPmoc && (
+                      <Block title="Unidade e responsável técnico">
+                        {unidadeNome.trim()
+                          ? <>A unidade atendida é <strong>{unidadeNome.trim()}</strong>{unidadeLocal ? <> ({unidadeLocal})</> : null}.</>
+                          : <>A unidade ainda não tem nome definido{unidadeLocal ? <> ({unidadeLocal})</> : null}.</>}
+                        {' '}
+                        {rt
+                          ? <>O responsável técnico é <strong>{rt.full_name}</strong> (CFT/CREA: {rt.cft_crea ?? '—'}), que assina os documentos da norma.</>
+                          : <>O responsável técnico ainda será definido.</>}
+                      </Block>
+                    )}
+
+                    {isPmoc && (
+                      <Block title="Ambientes e equipamentos">
+                        A unidade tem <strong>{environments.length}</strong> ambiente(s) com{' '}
+                        <strong>{totalEquip}</strong> equipamento(s) no total.
+                        {environments.length > 0 && (
+                          <span className="mt-1.5 block space-y-0.5">
+                            {environments.map((env, i) => {
+                              const area = env.area_climatizada_m2.trim();
+                              const nEq = env.equipment_ids.length;
+                              return (
+                                <span key={env.key} className="block text-xs text-muted-foreground">
+                                  • <strong className="text-foreground">{env.identificacao.trim() || `Ambiente ${i + 1}`}</strong>
+                                  {area ? <> — {area} m²</> : null}
+                                  {` — ${nEq} equipamento(s)`}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        )}
+                      </Block>
+                    )}
+
+                    {isPmoc && pmocDerivedItems.length > 0 && (
+                      <Block title="Plano por máquina">
+                        Cada máquina segue sua própria rotina da norma:
+                        <span className="mt-1.5 block space-y-0.5">
+                          {pmocDerivedItems.map((it) => {
+                            const cfg = machineConfigs[it.equipment_id];
+                            if (!cfg) return null;
+                            return (
+                              <span key={it.equipment_id} className="block text-xs text-muted-foreground">
+                                • <strong className="text-foreground">{it.item_name}</strong>
+                                {` — ${cfg.scope === 'full' ? 'toda a norma' : 'só ar-condicionado'}`}
+                                {`, começa na ${startVisitLabel(cfg.startVisit).toLowerCase()}`}
+                                {`, ${cfg.activities.length} checklist(s)`}
+                                {cfg.customized ? ' (personalizado)' : ''}.
+                              </span>
+                            );
+                          })}
+                        </span>
+                      </Block>
+                    )}
+
+                    {!isPmoc && (
+                      <Block title="Equipamentos do contrato">
+                        Este contrato cobre <strong>{selectedItems.length}</strong> item(ns)/equipamento(s).
+                      </Block>
+                    )}
+
+                    <Block title="Frequência e cronograma">
+                      O plano começa em <strong>{startLabel}</strong> e cobre{' '}
+                      <strong>{horizonMonths}</strong> meses, gerando{' '}
+                      <strong>{visitCount}</strong> {usePlanEngine ? 'visita(s)' : 'ocorrência(s)'}.
+                      {usePlanEngine ? (
+                        <> Em cada mês com atividades a vencer é gerada uma <strong>visita única</strong> que reúne tudo o que vence naquele mês.
+                          {freqParts.length > 0 && <> As atividades se distribuem em: <strong>{freqParts.join(', ')}</strong>.</>}</>
+                      ) : (
+                        <> A cadência é <strong>{getFrequencyLabel(freqType, freqValue)}</strong>.</>
+                      )}
+                    </Block>
+
+                    {templateName && (
+                      <Block title="Checklist padrão">
+                        O checklist padrão aplicado é <strong>{templateName}</strong> (pode ser sobrescrito por item).
+                      </Block>
+                    )}
+
+                    <Block title="Equipe responsável">
+                      {teamParts.length > 0
+                        ? <>Responsável pela execução: <strong>{teamParts.join(' + ')}</strong>.</>
+                        : <>Nenhum técnico ou equipe foi atribuído ainda.</>}
+                    </Block>
+                  </div>
+                );
+              })()}
+
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Ficha técnica</p>
               <div className="grid gap-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Nome</span><span className="font-medium text-right">{name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{clientName}</span></div>

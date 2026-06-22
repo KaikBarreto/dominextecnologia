@@ -40,6 +40,38 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.19',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalizar uma OS parcialmente',
+        description: 'Quando não dá para concluir tudo na visita, o técnico agora pode "Finalizar Parcialmente" a OS: ela fica marcada como "Parcialmente Concluída" e aparece na lista de OS pausadas da agenda, até ser retomada e concluída de vez.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cabeçalho do equipamento fixo ao preencher a OS',
+        description: 'Ao preencher uma Ordem de Serviço, o cabeçalho do equipamento aberto passou a ficar fixo no topo enquanto você rola as perguntas — assim você sempre sabe em qual equipamento está.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Prévia das visitas em calendário',
+        description: 'Na criação de contrato, a prévia das visitas agora pode ser vista em lista ou em calendário, destacando os dias que terão visita.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Revisão do contrato mais detalhada',
+        description: 'A etapa final da criação de contrato agora explica em texto toda a dinâmica do contrato: unidade, ambientes, equipamentos, plano por máquina, frequência, quantas visitas e quando começam.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criação de checklist e cadastro de ambiente mais práticos',
+        description: 'No Catálogo de Checklists, ao criar um checklist a partir de um modelo, o nome já vem sugerido. E no cadastro de ambientes do contrato, a foto do ambiente virou o primeiro campo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.18',
     date: '21 de junho de 2026',
     type: 'patch',

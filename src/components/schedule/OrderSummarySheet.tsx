@@ -45,7 +45,7 @@ function buildGoogleMapsUrl(customer: any): string | null {
 }
 
 function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void; onReopen?: (id: string) => void; onPause?: (id: string) => void; onResume?: (id: string) => void }) {
-  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
+  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date, (order as any).partial_finish);
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
 

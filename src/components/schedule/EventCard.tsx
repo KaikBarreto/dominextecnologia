@@ -55,12 +55,21 @@ const statusConfig: Record<OsStatus, { label: string; className: string }> = {
   cancelada: { label: 'Cancelada', className: 'bg-destructive text-destructive-foreground' },
 };
 
-export function getStatusBadgeClass(status: OsStatus, scheduledDate?: string | null) {
+export function getStatusBadgeClass(
+  status: OsStatus,
+  scheduledDate?: string | null,
+  partialFinish?: boolean | null,
+) {
   if (status === 'pendente' && scheduledDate) {
     const today = new Date().toISOString().split('T')[0];
     if (scheduledDate < today) {
       return { label: 'Atrasada', className: 'bg-destructive text-destructive-foreground' };
     }
+  }
+  // OS pausada marcada como finalizada parcialmente: rótulo distinto, mesma cor
+  // âmbar saturada + texto branco (régua de selos de status).
+  if (status === 'pausada' && partialFinish) {
+    return { label: 'Parcialmente Concluída', className: 'bg-amber-600 text-white' };
   }
   return statusConfig[status];
 }
@@ -133,7 +142,7 @@ function AssigneeAvatars({ assignees, team, light }: { assignees: AssigneeInfo[]
 export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false, assignees: assigneesProp }: EventCardProps) {
   const assignees = assigneesProp ?? (order as any)._assignees;
   const team: TeamBadgeInfo | undefined = (order as any)._team;
-  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
+  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date, (order as any).partial_finish);
   const serviceTypeColor = (order as any).service_type?.color;
   const isTask = (order as any).entry_type === 'tarefa';
   const taskTitle = (order as any).task_title;
