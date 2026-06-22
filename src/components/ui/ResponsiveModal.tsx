@@ -14,14 +14,21 @@ export interface ResponsiveModalProps {
   className?: string;
   /** Footer content rendered below the scrollable area */
   footer?: React.ReactNode;
+  /**
+   * Quando true, clicar fora (backdrop) NÃO fecha o modal — só o "X" ou os botões
+   * explícitos. Opt-in por consumer (default false, mantém o comportamento atual
+   * de todos os outros modais). Use em formulários longos onde fechar por engano
+   * perde o preenchimento (ex.: Novo Contrato).
+   */
+  lockBackdrop?: boolean;
 }
 
-export function ResponsiveModal({ open, onOpenChange, title, children, className, footer }: ResponsiveModalProps) {
+export function ResponsiveModal({ open, onOpenChange, title, children, className, footer, lockBackdrop = false }: ResponsiveModalProps) {
   const isCompact = useIsCompact();
 
   if (isCompact) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open={open} onOpenChange={onOpenChange} dismissible={!lockBackdrop}>
         <DrawerContent className="max-h-[90dvh]">
           <DrawerHeader>
             <DrawerTitle>{title}</DrawerTitle>
@@ -37,7 +44,12 @@ export function ResponsiveModal({ open, onOpenChange, title, children, className
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-h-[90vh] flex flex-col sm:max-w-[600px]", className)} aria-describedby={undefined}>
+      <DialogContent
+        className={cn("max-h-[90vh] flex flex-col sm:max-w-[600px]", className)}
+        aria-describedby={undefined}
+        onPointerDownOutside={lockBackdrop ? (e) => e.preventDefault() : undefined}
+        onInteractOutside={lockBackdrop ? (e) => e.preventDefault() : undefined}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

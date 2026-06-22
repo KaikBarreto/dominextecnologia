@@ -731,7 +731,7 @@ export function VisitChecklistPanel({
                   // (o Header tem só a altura do botão). Fundo sólido (bg-card)
                   // pra o conteúdo não passar por trás. O `top` (offset do header
                   // fixo da tela) vai via arbitrary value no próprio Header.
-                  headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-card')}
+                  headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.08)]')}
                   headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0 text-left">

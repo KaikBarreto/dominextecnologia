@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.15',
+    date: '21 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abrir um checklist leva você direto até ele',
+        description: 'Na ordem de serviço (e no relatório), ao abrir o checklist de um equipamento, a tela rola automaticamente até o início dele, deixando o nome no topo e já mostrando as primeiras perguntas — sem precisar procurar onde abriu.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastro de contrato mais à prova de erro',
+        description: 'No cadastro de contrato: a carga térmica agora mostra o equivalente em BTUs dentro do próprio campo; o modal não fecha mais sem querer quando você clica fora dele (fecha só no X ou nos botões); e o catálogo de checklists da máquina ficou com a hierarquia mais clara entre cada seção e os seus itens.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.14',
     date: '21 de junho de 2026',
     type: 'patch',

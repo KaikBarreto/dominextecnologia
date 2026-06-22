@@ -207,6 +207,45 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const pmocKeysSig = pmocGroupKeys.join('|');
   const isPmocKey = (key: string) => pmocGroupKeys.includes(key);
 
+  // Resolve o id de âncora (scroll target) de uma chave de grupo do relatório.
+  // PMOC → `os-report-eq-...` (mesmo id do AccordionItem PMOC); personalizado →
+  // `os-report-checklist-...` (id que damos ao AccordionItem personalizado).
+  const reportAnchorIdForKey = (key: string): string =>
+    isPmocKey(key)
+      ? `os-report-eq-${encodeURIComponent(key)}`
+      : `os-report-${key}`;
+
+  // Leva o cabeçalho do checklist recém-aberto pro topo (logo abaixo do header
+  // fixo da tela de OS, offset = stickyTopPx) DEPOIS do reflow do single-open
+  // (os outros fecham e o layout encolhe). Só desktop tem sticky/sidebar, mas o
+  // scroll vale nos dois (no mobile stickyTopPx vem indefinido → offset 0, ainda
+  // assim leva o cabeçalho pro topo da viewport). Não rola quando key é null
+  // (fechou) — quem chama já filtra isso.
+  const scrollReportHeaderToTop = (key: string) => {
+    const run = () => {
+      const el = document.getElementById(reportAnchorIdForKey(key));
+      if (!el) return;
+      // Mede DEPOIS da expansão/colapso do single-open: os irmãos animam fechando
+      // e o aberto crescendo por ~200ms (Radix Accordion). Medir antes fixa um
+      // alvo que ainda vai se mover e a rolagem para na ÚLTIMA pergunta.
+      const top = el.getBoundingClientRect().top + window.scrollY - (stickyTopPx ?? 0);
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    };
+    // Espera o fim da animação (0.2s) + reflow antes de medir/rolar.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.setTimeout(run, 260);
+      });
+    });
+  };
+  // Abertura PELO USUÁRIO (clique no cabeçalho do checklist na lista): seta a
+  // chave única (single-open) e, se abriu de fato, rola pro topo. Fechar (null)
+  // NÃO rola. NÃO usar no default inicial nem no force-open do PDF/Imprimir.
+  const handleReportUserOpen = (key: string | null) => {
+    setOpenReportKey(key);
+    if (key) scrollReportHeaderToTop(key);
+  };
+
   // Expõe o opener pra a página (sidebar desktop): SETA a chave aberta (não
   // acumula) pro grupo clicado, fechando o que estava aberto. Single-open.
   const registeredOpenerRef = useRef(false);
@@ -992,7 +1031,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 // `type="multiple"` mas só passamos 0-1 chave PMOC, `keys` traz
                 // a nova seleção — pegamos a última (a que abriu).
                 const next = keys.find((k) => k !== openReportKey) ?? (keys.length ? keys[keys.length - 1] : null);
-                setOpenReportKey(next);
+                handleReportUserOpen(next);
               }}
               onPreviewPhoto={(url, images, index) => {
                 setGalleryImages(images && images.length > 1 ? images : []);
@@ -1020,7 +1059,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   // Single-open unificado (cruza com o accordion PMOC): a chave
                   // recém-aberta é a que não estava antes; se nada, fechou (null).
                   const next = keys.find((k) => k !== openReportKey) ?? (keys.length ? keys[keys.length - 1] : null);
-                  setOpenReportKey(next);
+                  handleReportUserOpen(next);
                 }}
                 className="w-full space-y-2"
               >
@@ -1030,8 +1069,9 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                     <AccordionItem
                       key={gi}
                       value={`checklist-${gi}`}
+                      id={`os-report-checklist-${gi}`}
                       className={cn(
-                        'border border-slate-200 rounded-lg',
+                        'border border-slate-200 rounded-lg scroll-mt-24',
                         // `overflow-hidden` clipa o cabeçalho sticky; só mantém
                         // quando NÃO há sticky (PDF/impressão e modo sem offset).
                         stickyTopPx === undefined && 'overflow-hidden',
@@ -1046,7 +1086,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                         // aberto (espelha a seção PMOC). Sticky no WRAPPER (Header),
                         // fundo branco sólido pra o conteúdo não vazar atrás.
                         // `print:static` volta ao fluxo normal na impressão.
-                        headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white rounded-t-lg print:static')}
+                        headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white rounded-t-lg shadow-[0_2px_8px_rgba(0,0,0,0.08)] print:static print:shadow-none')}
                         headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
                       >
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">

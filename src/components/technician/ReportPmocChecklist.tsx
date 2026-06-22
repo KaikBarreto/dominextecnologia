@@ -196,7 +196,7 @@ export function ReportPmocChecklist({
                 // aberto (logo abaixo do header laranja "OS #..."). Sticky no
                 // WRAPPER (Header), fundo branco sólido pra o conteúdo não passar
                 // atrás, z abaixo do header da tela.
-                headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white print:static')}
+                headerClassName={cn(stickyTopPx !== undefined && 'sticky z-10 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] print:static print:shadow-none')}
                 headerStyle={stickyTopPx !== undefined ? { top: stickyTopPx } : undefined}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0 text-left">

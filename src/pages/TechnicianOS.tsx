@@ -229,6 +229,47 @@ export default function TechnicianOS() {
   // desktop do relatório o chama pra abrir o equipamento ao navegar. Registrado
   // pelo OSReport via registerPmocOpener. Só desktop.
   const reportPmocOpenerRef = useRef<((groupKey: string) => void) | null>(null);
+  // Espelho de headerHeight num ref pra os callbacks memoizados de scroll lerem o
+  // valor atual sem precisar re-criar (e sem fechar sobre um valor velho).
+  const headerHeightRef = useRef(headerHeight);
+  useEffect(() => { headerHeightRef.current = headerHeight; }, [headerHeight]);
+
+  // Leva o cabeçalho do checklist aberto pro topo (logo abaixo do header laranja
+  // fixo). Chama DEPOIS do reflow do single-open (os outros fecham e o layout
+  // encolhe) via requestAnimationFrame. A chave pode pertencer a qualquer um dos
+  // dois accordions (questionários `os-eq-...` ou visita PMOC `os-pmoc-...`).
+  const scrollExecHeaderToTop = useCallback((key: string) => {
+    const run = () => {
+      const el =
+        document.getElementById(`os-eq-${key}`) ||
+        document.getElementById(`os-pmoc-${key}`);
+      if (!el) return;
+      // Mede DEPOIS da expansão/colapso: o single-open anima os irmãos fechando
+      // (accordion-up) e o aberto crescendo (accordion-down) por ~200ms; medir
+      // antes disso fixa um alvo que ainda vai se mover e a rolagem para na
+      // última pergunta. Medimos só quando o layout estabilizou.
+      const top =
+        el.getBoundingClientRect().top + window.scrollY - headerHeightRef.current;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    };
+    // Espera o fim da animação do Radix Accordion (0.2s). setTimeout 260ms cobre
+    // a animação + reflow; dois rAFs garantem que o DOM já trocou de estado antes
+    // de armar o timer.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.setTimeout(run, 260);
+      });
+    });
+  }, []);
+  // Abertura de checklist PELO USUÁRIO (clique no próprio cabeçalho da lista):
+  // troca a chave aberta (single-open: fecha os demais) e, se abriu de fato (key
+  // não-nula), rola o cabeçalho pro topo. Fechar (key null) NÃO rola. NÃO usar no
+  // default inicial nem no force-open do PDF — só na ação do técnico/cliente.
+  const handleExecUserOpen = useCallback((key: string | null) => {
+    setOpenExecKey(key);
+    if (key) scrollExecHeaderToTop(key);
+  }, [scrollExecHeaderToTop]);
+
   // Navega (scroll suave) até a seção do equipamento clicada na sidebar desktop
   // e abre o accordion correspondente quando a chave bate com um item.
   const scrollToAnchor = useCallback((anchorId: string, accordionKey?: string) => {
@@ -2649,7 +2690,7 @@ export default function TechnicianOS() {
                 type="single"
                 collapsible
                 value={openExecKey ?? ''}
-                onValueChange={(v) => setOpenExecKey(v || null)}
+                onValueChange={(v) => handleExecUserOpen(v || null)}
                 className={`w-full ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {equipmentItems.map((item, idx) => {
@@ -2753,7 +2794,7 @@ export default function TechnicianOS() {
             onSave={saveChecklistActivity}
             onPreviewPhoto={setPreviewPhoto}
             openKey={openExecKey}
-            onOpenChange={setOpenExecKey}
+            onOpenChange={handleExecUserOpen}
             stickyTopPx={headerHeight}
             formQuestionsByTemplate={checklistFormQuestions}
             getFormResponse={getChecklistFormResponse}

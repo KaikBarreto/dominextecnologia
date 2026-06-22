@@ -114,7 +114,7 @@ export function PmocChecklistPicker({
     const groupAllChecked = groupIds.length > 0 && groupIds.every((id) => selection.has(id));
     return (
       <AccordionItem key={section} value={section}>
-        <AccordionTrigger className="text-sm">
+        <AccordionTrigger className="text-[13px]">
           <span className="flex flex-1 items-center gap-2 text-left">
             {group.label}
             <Badge variant="outline" className="text-[10px] shrink-0">{group.activities.length}</Badge>
@@ -198,11 +198,11 @@ export function PmocChecklistPicker({
       <Accordion type="single" collapsible defaultValue="ac" className="w-full space-y-2">
         {acSections.length > 0 && (
           <AccordionItem value="ac" className="rounded-md border px-3">
-            <AccordionTrigger className="text-sm font-semibold">
+            <AccordionTrigger className="text-base font-bold">
               Ar-condicionado (Split / ACJ)
             </AccordionTrigger>
             <AccordionContent>
-              <Accordion type="multiple" defaultValue={[acSections[0]]} className="w-full">
+              <Accordion type="multiple" defaultValue={[acSections[0]]} className="ml-1 w-auto border-l-2 border-muted pl-3">
                 {acSections.map(renderSection)}
               </Accordion>
             </AccordionContent>
@@ -211,11 +211,11 @@ export function PmocChecklistPicker({
 
         {otherSections.length > 0 && (
           <AccordionItem value="gp" className="rounded-md border px-3">
-            <AccordionTrigger className="text-sm font-semibold">
+            <AccordionTrigger className="text-base font-bold">
               Grande porte (torres, bombas, casa de máquinas…)
             </AccordionTrigger>
             <AccordionContent>
-              <Accordion type="multiple" className="w-full">
+              <Accordion type="multiple" className="ml-1 w-auto border-l-2 border-muted pl-3">
                 {otherSections.map(renderSection)}
               </Accordion>
             </AccordionContent>
@@ -226,7 +226,7 @@ export function PmocChecklistPicker({
             os checklists que a empresa cria em /checklists (form_templates). Feitos
             em TODA visita da máquina, ALÉM dos da norma. */}
         <AccordionItem value="custom" className="rounded-md border px-3">
-          <AccordionTrigger className="text-sm font-semibold">
+          <AccordionTrigger className="text-base font-bold">
             <span className="flex flex-1 items-center gap-2 text-left">
               Personalizados
               {customTemplates.length > 0 && (
@@ -255,7 +255,7 @@ export function PmocChecklistPicker({
                 para anexar a esta máquina.
               </p>
             ) : (
-              <div className="space-y-1">
+              <div className="ml-1 space-y-1 border-l-2 border-muted pl-3">
                 {customTemplates.map((tpl) => {
                   const checked = selectedTemplateIds.has(tpl.id);
                   return (

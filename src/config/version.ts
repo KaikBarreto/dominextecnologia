@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.14";
+export const APP_VERSION = "1.14.15";
 
-export const VERSION_NOTES = "Checklist do relatório de serviço mais fácil de ler: por padrão só o primeiro equipamento vem aberto, abrir outro fecha o anterior (um de cada vez) e o nome do equipamento ou checklist em foco fica fixo no topo enquanto você rola. A seção da visita PMOC também ficou mais limpa, sem caixas em volta de cada equipamento.";
+export const VERSION_NOTES = "Pequenos ajustes que facilitam o dia a dia: ao abrir um checklist na ordem de serviço, a tela já leva você até ele. No cadastro de contrato, a carga térmica mostra os BTUs equivalentes dentro do próprio campo, o modal não fecha mais sem querer ao clicar fora (só no X ou nos botões), e o catálogo de checklists da máquina ganhou uma hierarquia mais clara entre seção e itens.";

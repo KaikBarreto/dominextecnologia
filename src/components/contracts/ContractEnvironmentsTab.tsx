@@ -553,12 +553,25 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                           <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
                         </Tooltip>
                       </div>
-                      <NumericInput decimal value={env.carga_termica_tr} onValueChange={(v) => updateField(env.key, 'carga_termica_tr', v)} placeholder="Ex: 5,0" />
                       {(() => {
                         const tr = parseDecimalBR(env.carga_termica_tr);
-                        return tr && tr > 0 ? (
-                          <span className="block text-xs text-muted-foreground">= {(tr * 12000).toLocaleString('pt-BR')} BTUs</span>
-                        ) : null;
+                        const showHint = tr && tr > 0;
+                        return (
+                          <div className="relative">
+                            <NumericInput
+                              decimal
+                              value={env.carga_termica_tr}
+                              onValueChange={(v) => updateField(env.key, 'carga_termica_tr', v)}
+                              placeholder="Ex: 5,0"
+                              className={showHint ? 'pr-24' : undefined}
+                            />
+                            {showHint && (
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 max-w-[40%] truncate text-xs text-muted-foreground">
+                                = {(tr * 12000).toLocaleString('pt-BR')} BTUs
+                              </span>
+                            )}
+                          </div>
+                        );
                       })()}
                     </div>
                     <div className="space-y-1.5">
