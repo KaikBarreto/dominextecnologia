@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.23";
+export const APP_VERSION = "1.14.24";
 
-export const VERSION_NOTES = "O cabeçalho do equipamento nas telas de OS (preenchimento, relatório e resumo) ficou padronizado e mais polido — foto, nome e tipo no mesmo formato — e fixa de forma mais suave ao rolar, ocupando a largura toda da tela. As informações do contrato agora aparecem em um card limpo e consistente também na execução e no acompanhamento da OS (antes só no relatório), com a referência à Lei 13.589/2018 quando for PMOC.";
+export const VERSION_NOTES = "A tela de preenchimento da OS ficou mais bonita e prática: o botão de Ferramentas do Técnico ganhou novo visual, o menu de ações do rodapé ficou mais claro (com escurecimento do fundo para dar foco e botões maiores) e os botões de finalizar ganharam destaque e hierarquia. Para evitar finalizar por engano, agora aparece uma confirmação ao concluir a OS.";

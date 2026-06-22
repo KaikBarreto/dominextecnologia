@@ -27,7 +27,8 @@ import {
   Map as MapIcon,
   Maximize2,
   X,
-  MoreVertical,
+  Menu,
+  CircleDashed,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,16 +74,11 @@ import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { cn } from '@/lib/utils';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarStatus } from '@/components/technician/OsDesktopShell';
+import { SystemFooter } from '@/components/layout/SystemFooter';
 import TechnicianTools from '@/pages/TechnicianTools';
 import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -300,6 +296,10 @@ export default function TechnicianOS() {
   // verdade). NÃO valida obrigatórios — é intencionalmente incompleta.
   const [partialConfirmOpen, setPartialConfirmOpen] = useState(false);
   const [finishingPartial, setFinishingPartial] = useState(false);
+  // Confirmação ao Finalizar OS quando TUDO está OK (sem pendência de checklist).
+  // Evita miss-click no botão verde: o caminho "tudo OK direto" abre este confirm
+  // antes de concluir de verdade (proceedFinishOS).
+  const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
 
   // Onda D v1.9.x — classificação de conformidade PMOC.
   // Só aparece quando a OS é PMOC (`useIsPmocOrder`). Notas são obrigatórias
@@ -389,6 +389,35 @@ export default function TechnicianOS() {
   // Overlay fullscreen das Ferramentas do Técnico (atalho a partir do FAB).
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
   const [toolsOpen, setToolsOpen] = useState(false);
+  // Menu de mais-ações do rodapé (hambúrguer): action-sheet próprio ancorado acima
+  // do botão, com backdrop. NÃO usa Radix (evita scroll-lock que quebrava o sticky
+  // do cabeçalho do equipamento). Estados separados pra mobile e desktop.
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [desktopActionsOpen, setDesktopActionsOpen] = useState(false);
+  // "closing": dispara a animação de SAÍDA (animate-out) antes de desmontar.
+  // Máquina de estados: aberto → fechando (roda animate-out) → fechado (desmonta).
+  // O desmonte acontece no FIM da animação (onAnimationEnd do backdrop), NÃO por
+  // timer fixo — timer que não bate exato com a duração da animação re-renderiza
+  // no meio da saída e PISCA. Guard `closing` evita toggle duplo (clique repetido
+  // no hambúrguer enquanto já está fechando não reinicia a animação).
+  const [mobileActionsClosing, setMobileActionsClosing] = useState(false);
+  const [desktopActionsClosing, setDesktopActionsClosing] = useState(false);
+  // Fecha o menu hambúrguer COM animação de saída (mobile/desktop).
+  const closeMobileActions = useCallback(() => {
+    setMobileActionsClosing((c) => c || true);
+  }, []);
+  const closeDesktopActions = useCallback(() => {
+    setDesktopActionsClosing((c) => c || true);
+  }, []);
+  // Desmonte real: chamado pelo onAnimationEnd do backdrop ao terminar o fade-out.
+  const finishCloseMobileActions = useCallback(() => {
+    setMobileActionsOpen(false);
+    setMobileActionsClosing(false);
+  }, []);
+  const finishCloseDesktopActions = useCallback(() => {
+    setDesktopActionsOpen(false);
+    setDesktopActionsClosing(false);
+  }, []);
   const [routeFullscreen, setRouteFullscreen] = useState(false);
   // Accordion da EXECUÇÃO (single-open): UMA chave aberta por vez, COMPARTILHADA
   // entre o accordion de "Checklists" (questionários) e o da "Visita PMOC". Abrir
@@ -404,6 +433,19 @@ export default function TechnicianOS() {
   // valor atual sem precisar re-criar (e sem fechar sobre um valor velho).
   const headerHeightRef = useRef(headerHeight);
   useEffect(() => { headerHeightRef.current = headerHeight; }, [headerHeight]);
+
+  // Esc fecha os menus de mais-ações do rodapé (hambúrguer). Mobile e desktop.
+  useEffect(() => {
+    if (!mobileActionsOpen && !desktopActionsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (mobileActionsOpen) closeMobileActions();
+        if (desktopActionsOpen) closeDesktopActions();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileActionsOpen, desktopActionsOpen, closeMobileActions, closeDesktopActions]);
 
   // Leva o cabeçalho do checklist aberto pro topo (logo abaixo do header laranja
   // fixo). Chama DEPOIS do reflow do single-open (os outros fecham e o layout
@@ -1219,6 +1261,15 @@ export default function TechnicianOS() {
       }
     }
 
+    // Tudo OK e sem pendência de checklist → abre o confirm "Finalizar OS?" antes
+    // de concluir de verdade (evita miss-click). proceedFinishOS roda só no OK.
+    setFinishConfirmOpen(true);
+  };
+
+  // Confirmação do modal "Finalizar OS?" (caminho tudo-OK). handleMarkRestAndFinish
+  // NÃO passa por aqui — lá o técnico já confirmou explicitamente.
+  const handleConfirmFinish = async () => {
+    setFinishConfirmOpen(false);
     await proceedFinishOS();
   };
 
@@ -3149,6 +3200,12 @@ export default function TechnicianOS() {
 
         {/* Finalizar/Pausar no mobile: consolidados no rodapé fixo abaixo
             (faixa preta). Nada inline aqui pra não duplicar a mesma ação. */}
+
+        {/* Rodapé do sistema (versão + Desenvolvido por Auctus + Atualizar) —
+            rola junto com o conteúdo. Variante light (fundo claro do conteúdo). */}
+        <div className="pt-4">
+          <SystemFooter />
+        </div>
       </main>
       {/* Spacer (col 3): equilibra a sidebar à esquerda pra o main centralizar no viewport. */}
       <div className="hidden lg:block" aria-hidden />
@@ -3179,40 +3236,84 @@ export default function TechnicianOS() {
       )}
       {isCheckedIn && !isPaused && (
         <OsActionFooter>
+          {/* Ação primária: ocupa MAIS espaço (flex-1) e texto mais negrito. */}
           <Button
-            className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+            className="flex-1 bg-success hover:bg-success/90 text-success-foreground font-bold"
             onClick={handleFinishOS}
             disabled={finishing}
           >
             <CheckCircle2 className="h-4 w-4 mr-2" />
             {finishing ? 'Finalizando...' : 'Finalizar OS'}
           </Button>
+          {/* Ação secundária: largura de conteúdo (flex-none), ícone de parcial. */}
           <Button
             variant="outline"
-            className="flex-1 border-warning/40 text-warning hover:bg-warning hover:text-white"
+            className="flex-none border-warning/40 text-warning hover:bg-warning hover:text-white"
             onClick={() => setPartialConfirmOpen(true)}
             disabled={finishingPartial}
           >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Finalizar Parcialmente
+            <CircleDashed className="h-4 w-4 mr-2" />
+            Finalizar Parcial
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0" aria-label="Mais ações">
-                <MoreVertical className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
-              <DropdownMenuItem onClick={handlePauseOS} className="text-warning focus:text-warning">
-                <Pause className="h-4 w-4 mr-2" />
-                Pausar OS
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopyTrackingLink}>
-                <Link2 className="h-4 w-4 mr-2" />
-                Copiar link do cliente
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Menu de mais-ações (hambúrguer) — action-sheet próprio ancorado
+              acima do botão, com backdrop. Sem Radix (não trava scroll). */}
+          <div className="relative shrink-0">
+            {desktopActionsOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Fechar menu"
+                  onClick={closeDesktopActions}
+                  onAnimationEnd={() => { if (desktopActionsClosing) finishCloseDesktopActions(); }}
+                  className={cn(
+                    'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm',
+                    desktopActionsClosing ? 'animate-out fade-out' : 'animate-in fade-in',
+                  )}
+                />
+                <div className="absolute bottom-full right-0 z-50 mb-4 flex flex-col gap-2.5 items-end">
+                  <button
+                    type="button"
+                    onClick={() => { closeDesktopActions(); handlePauseOS(); }}
+                    className={cn(
+                      'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                      desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                    )}
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                      <Pause className="h-4 w-4" />
+                    </span>
+                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Pausar OS</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { closeDesktopActions(); handleCopyTrackingLink(); }}
+                    className={cn(
+                      'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                      desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                    )}
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                      <Link2 className="h-4 w-4" />
+                    </span>
+                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Copiar link do cliente</span>
+                  </button>
+                </div>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => (desktopActionsOpen ? closeDesktopActions() : setDesktopActionsOpen(true))}
+              aria-label="Mais ações"
+              aria-expanded={desktopActionsOpen}
+              className={cn(
+                'relative z-50 shrink-0 transition-colors',
+                desktopActionsOpen && 'bg-muted text-primary hover:bg-muted',
+              )}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
         </OsActionFooter>
       )}
 
@@ -3221,6 +3322,17 @@ export default function TechnicianOS() {
           demais. Reusa os handlers existentes (idempotentes). Some no desktop
           (lg:hidden) e nunca no relatório/modo cliente (este return é só o
           caminho autenticado/execução). */}
+      {/* Degradê decorativo no chão da tela (MOBILE): escurece o conteúdo atrás
+          do rodapé fixo e do FAB pra dar profundidade. Preto 100% no chão,
+          some um respiro acima do rodapé. Atrás do rodapé (z-30) e do FAB,
+          acima do conteúdo. pointer-events-none. */}
+      {(isCheckedIn || isPaused) && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-[25] h-48 bg-gradient-to-t from-black via-black/60 to-transparent lg:hidden"
+        />
+      )}
+
       {(isCheckedIn || isPaused) && (
         <div
           className="fixed inset-x-0 bottom-0 z-30 lg:hidden bg-zinc-900 text-white border-t border-zinc-800 shadow-[0_-4px_16px_rgba(0,0,0,0.25)]"
@@ -3238,67 +3350,114 @@ export default function TechnicianOS() {
               </Button>
             ) : (
               <>
-                {/* Ação primária: ocupa mais espaço (flex-[2]) e size lg. */}
+                {/* Ação primária: ocupa mais espaço (flex-[2]), size lg e texto
+                    mais negrito (font-bold). */}
                 <Button
-                  className="flex-[2] bg-success hover:bg-success/90 text-success-foreground"
+                  className="flex-[2] gap-1.5 bg-success hover:bg-success/90 text-success-foreground font-bold"
                   size="lg"
                   onClick={handleFinishOS}
                   disabled={finishing}
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 className="h-4 w-4" />
                   {finishing ? 'Finalizando...' : 'Finalizar OS'}
                 </Button>
                 {/* Ação secundária: laranja saturado com texto branco, MESMA
-                    altura do primário (size lg). Mais estreito (flex-1 vs
-                    flex-[2]), mas "Finalizar OS" verde segue como destaque. */}
+                    altura do primário (size lg). Largura de conteúdo (flex-none)
+                    com ícone de parcial, pra dar destaque ao "Finalizar OS".
+                    Compacto: padding horizontal apertado e gap mínimo ícone↔texto. */}
                 <Button
-                  className="flex-1 bg-warning text-white hover:bg-warning/90"
+                  className="flex-none gap-1 px-2.5 bg-warning text-white hover:bg-warning/90"
                   size="lg"
                   onClick={() => setPartialConfirmOpen(true)}
                   disabled={finishingPartial}
                 >
+                  <CircleDashed className="h-4 w-4" />
                   Finalizar Parcial
                 </Button>
               </>
             )}
-            {/* modal={false}: NÃO trava o scroll do body (react-remove-scroll). Sem
-                isso, abrir o menu tirava o anchor do cabeçalho sticky do
-                equipamento (o lock muda o container de rolagem e o
-                IntersectionObserver perdia o stuck) — o cabeçalho sumia. */}
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 h-11 w-11 text-white hover:bg-white/10"
-                  aria-label="Mais ações"
-                >
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              {/* Ferramentas NÃO entram aqui: vivem só no FAB de Ferramentas. */}
-              <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
-                {!isPaused ? (
-                  <DropdownMenuItem onClick={handlePauseOS} className="text-warning focus:text-warning">
-                    <Pause className="h-4 w-4 mr-2" />
-                    Pausar OS
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={handleFinishOS}
-                    disabled={finishing}
-                    className="text-success focus:text-success"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Finalizar OS
-                  </DropdownMenuItem>
+            {/* Menu de mais-ações (hambúrguer) — action-sheet próprio ancorado
+                acima do botão, com backdrop. NÃO usa Radix de propósito: o
+                scroll-lock do react-remove-scroll tirava o anchor do cabeçalho
+                sticky do equipamento (IntersectionObserver perdia o stuck →
+                cabeçalho sumia). Divs fixos/absolutos próprios não travam o
+                scroll do body. Ferramentas NÃO entram aqui (vivem só no FAB). */}
+            <div className="relative shrink-0">
+              {mobileActionsOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Fechar menu"
+                    onClick={closeMobileActions}
+                    onAnimationEnd={() => { if (mobileActionsClosing) finishCloseMobileActions(); }}
+                    className={cn(
+                      'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm',
+                      mobileActionsClosing ? 'animate-out fade-out' : 'animate-in fade-in',
+                    )}
+                  />
+                  <div className="absolute bottom-full right-0 z-50 mb-4 flex flex-col gap-2.5 items-end">
+                    {!isPaused ? (
+                      <button
+                        type="button"
+                        onClick={() => { closeMobileActions(); handlePauseOS(); }}
+                        className={cn(
+                          'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                          mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                        )}
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                          <Pause className="h-4 w-4" />
+                        </span>
+                        <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Pausar OS</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { closeMobileActions(); handleFinishOS(); }}
+                        disabled={finishing}
+                        className={cn(
+                          'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-60',
+                          mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                        )}
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </span>
+                        <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Finalizar OS</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { closeMobileActions(); handleCopyTrackingLink(); }}
+                      className={cn(
+                        'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                        mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                      )}
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                        <Link2 className="h-4 w-4" />
+                      </span>
+                      <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Copiar link do cliente</span>
+                    </button>
+                  </div>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => (mobileActionsOpen ? closeMobileActions() : setMobileActionsOpen(true))}
+                aria-label="Mais ações"
+                aria-expanded={mobileActionsOpen}
+                className={cn(
+                  'relative z-50 shrink-0 h-11 w-11 transition-colors',
+                  mobileActionsOpen
+                    ? 'bg-white/15 text-primary hover:bg-white/15'
+                    : 'text-white hover:bg-white/10',
                 )}
-                <DropdownMenuItem onClick={handleCopyTrackingLink}>
-                  <Link2 className="h-4 w-4 mr-2" />
-                  Copiar link do cliente
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -3397,6 +3556,40 @@ export default function TechnicianOS() {
         </div>
       </ResponsiveModal>
 
+      {/* Modal: confirmação de finalização quando TUDO está OK (sem pendência de
+          checklist). Evita miss-click no botão verde. Só ao confirmar → conclui
+          de verdade (proceedFinishOS). Mobile vira drawer de baixo. */}
+      <ResponsiveModal
+        open={finishConfirmOpen}
+        onOpenChange={(o) => { if (!finishing) setFinishConfirmOpen(o); }}
+        title="Finalizar OS?"
+        footer={
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:flex-1"
+              disabled={finishing}
+              onClick={() => setFinishConfirmOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="w-full sm:flex-1 bg-success hover:bg-success/90 text-success-foreground"
+              disabled={finishing}
+              onClick={handleConfirmFinish}
+            >
+              {finishing ? 'Finalizando...' : 'Finalizar'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="py-1">
+          <p className="text-sm text-foreground">
+            Tem certeza que deseja finalizar e concluir esta OS?
+          </p>
+        </div>
+      </ResponsiveModal>
+
       {/* FAB EXCLUSIVO de Ferramentas do Técnico (canto inferior esquerdo, ícone de
           ferramenta — não 3 pontinhos). Função única → toque abre direto. Fica
           MAIS ACIMA quando o rodapé fixo mobile (faixa preta) aparece, pra não
@@ -3406,10 +3599,19 @@ export default function TechnicianOS() {
         <SpeedDialFAB
           actions={speedDialActions}
           side="left"
+          // Mobile: left-4 (do sideClass do componente). Desktop: alinhado à
+          // borda esquerda da área de conteúdo centralizada (container
+          // max-w-screen-2xl = 1536px, padding lg:px-8 = 2rem) — cai sobre a
+          // coluna do sidebar do grid, não solto no canto do viewport.
+          className="lg:left-[max(1rem,calc((100vw-min(100vw,1536px))/2+2rem))]"
+          mainImageUrl="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/app/ferramentas-tecnico-fab.jpg"
           mainIcon={FerramentasTecnicoIcon}
           ariaLabel="Ferramentas do Técnico"
           directWhenSingle
-          bottomOffsetPx={isCheckedIn || isPaused ? 84 : 0}
+          // Rebaixa o FAB pra trás do backdrop quando o menu hambúrguer do rodapé
+          // (mobile ou desktop) abre → fica borrado/escuro junto da tela.
+          dimmed={mobileActionsOpen || desktopActionsOpen}
+          bottomOffsetPx={isCheckedIn || isPaused ? 56 : 0}
         />
       )}
 

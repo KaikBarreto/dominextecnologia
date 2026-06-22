@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.24',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de preenchimento da OS repaginada',
+        description: 'O botão de Ferramentas do Técnico ganhou um novo visual, o menu de ações do rodapé ficou mais claro — com escurecimento do fundo para dar foco e botões maiores e mais fáceis de tocar — e os botões de finalizar ganharam hierarquia (Finalizar OS em destaque). A tela também passou a mostrar o rodapé com a versão do sistema.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Confirmação ao finalizar a OS',
+        description: 'Ao finalizar uma OS agora aparece uma confirmação, evitando concluir por engano com um toque acidental.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.23',
     date: '22 de junho de 2026',
     type: 'patch',
