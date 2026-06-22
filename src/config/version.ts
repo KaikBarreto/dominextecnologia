@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.21";
+export const APP_VERSION = "1.14.22";
 
-export const VERSION_NOTES = "Agora, no checklist da ordem de serviço e no relatório, cada equipamento mostra ao lado do nome o ambiente onde ele fica (por exemplo, \"Cassete 1 | 1º Andar\") — fica mais fácil saber de qual aparelho se trata, especialmente em locais com vários do mesmo tipo.";
+export const VERSION_NOTES = "O preenchimento de qualquer OS ficou mais consistente: o cabeçalho do equipamento agora segue o mesmo padrão em todo tipo de OS e ocupa a largura toda ao rolar. O relatório de serviço também ficou mais limpo, com as informações do contrato reunidas em um único card (com a referência à Lei 13.589/2018 quando for PMOC). No cadastro de contrato, o botão de checklists de cada equipamento virou \"Checklists da Máquina\", separando catálogo PMOC e personalizados. E corrigimos o seletor de segmento das Ferramentas do Técnico, que não abria pela tela da OS.";

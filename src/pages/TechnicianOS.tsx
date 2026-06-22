@@ -52,6 +52,10 @@ import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hook
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { useOsActivityChecklist, isTemplateActivityComplete } from '@/hooks/useOsActivityChecklist';
 import { VisitChecklistPanel } from '@/components/technician/VisitChecklistPanel';
+import {
+  EquipmentChecklistHeader,
+  equipmentChecklistHeaderClasses,
+} from '@/components/technician/EquipmentChecklistHeader';
 import { type ReportChecklistItem } from '@/components/technician/ReportChecklist';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import type { ServiceOrder, OsStatus } from '@/types/database';
@@ -119,6 +123,7 @@ function OsEquipmentAccordionItem({
   isComplete,
   pendingCount,
   hasMultipleOnSameEquip,
+  environmentName,
   onPreviewPhoto,
   onValidationChange,
 }: {
@@ -131,6 +136,8 @@ function OsEquipmentAccordionItem({
   isComplete: boolean;
   pendingCount: number;
   hasMultipleOnSameEquip: boolean;
+  /** Ambiente do equipamento (contrato) ou, na ausência, o local cadastrado. */
+  environmentName: string | null;
   onPreviewPhoto: (url: string) => void;
   onValidationChange: (result: FormValidationResult) => void;
 }) {
@@ -138,80 +145,43 @@ function OsEquipmentAccordionItem({
   // empilhamento de cabeçalhos sobrepostos e briga de z-index.
   const stickyOn = isOpen && stickyTopPx !== undefined;
   const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
+  // Mesmo padrão visual do PMOC (foto colada/altura cheia, tipografia, full-bleed
+  // no stuck): cabeçalho compartilhado + classes compartilhadas.
+  const headerCls = equipmentChecklistHeaderClasses(stickyOn, isStuck);
+  const brandModel = [item.equipment?.brand, item.equipment?.model].filter(Boolean).join(' ');
 
   return (
     <AccordionItem value={itemKey} id={`os-eq-${itemKey}`} className="border-b last:border-0 scroll-mt-28">
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
       <AccordionTrigger
-        className={cn(
-          'hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card',
-          stickyOn && !isStuck && 'rounded-lg',
-        )}
-        headerClassName={cn(
-          stickyOn && 'sticky z-10 bg-card print:static print:shadow-none transition-shadow',
-          stickyOn && (isStuck
-            ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
-            : 'shadow-none rounded-lg'),
-        )}
-        headerStyle={stickyOn ? { top: stickyTopPx } : undefined}
+        className={headerCls.trigger}
+        headerClassName={headerCls.header}
+        // `-1px` no top: gruda 1px ATRÁS do header laranja (z-20 cobre o equipamento
+        // z-10) pra fechar qualquer costura sub-pixel entre as duas barras.
+        headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-          {item.equipment?.photo_url ? (
-            <SignedImg
-              src={item.equipment.photo_url}
-              alt={item.equipment.name}
-              className="h-10 w-10 rounded-md object-cover shrink-0 cursor-pointer border"
-              onClick={(e) => { e.stopPropagation(); onPreviewPhoto(item.equipment!.photo_url!); }}
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-              <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <p className="font-medium text-sm truncate">
-                {item.equipment?.name || item.form_template?.name || 'Checklist'}
-              </p>
-              {item.equipment?.category && (
-                <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: item.equipment.category.color }}>
-                  {item.equipment.category.name}
-                </Badge>
-              )}
-            </div>
-            {hasMultipleOnSameEquip && item.form_template?.name && (
-              <p className="text-xs font-medium text-primary truncate">
-                {item.form_template.name}
-              </p>
-            )}
-            {item.equipment?.brand && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                {item.equipment.brand} {item.equipment.model}
-              </p>
-            )}
-            {item.equipment?.location && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <MapPinned className="h-3 w-3 shrink-0" />
-                <span className="truncate">{item.equipment.location}</span>
-              </p>
-            )}
-            {!item.equipment && item.form_template && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {item.form_template.name}
-              </p>
-            )}
-          </div>
-          {isComplete ? (
-            <Badge variant="success" className="gap-1 shrink-0">
-              <Check className="h-3 w-3" /> Concluído
-            </Badge>
-          ) : pendingCount > 0 ? (
-            <Badge variant="destructive" className="text-xs shrink-0">
-              {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
-            </Badge>
-          ) : null}
-        </div>
+        <EquipmentChecklistHeader
+          photo={item.equipment?.photo_url ?? null}
+          name={item.equipment?.name || item.form_template?.name || 'Checklist'}
+          category={item.equipment?.category ?? null}
+          // Subtítulo (nome do checklist) só quando o mesmo equipamento tem vários.
+          subtitle={hasMultipleOnSameEquip && item.form_template?.name ? item.form_template.name : undefined}
+          brandModel={brandModel}
+          environmentName={environmentName}
+          onPreviewPhoto={onPreviewPhoto}
+          statusBadge={
+            isComplete ? (
+              <Badge variant="success" className="gap-1 shrink-0">
+                <Check className="h-3 w-3" /> Concluído
+              </Badge>
+            ) : pendingCount > 0 ? (
+              <Badge variant="destructive" className="text-xs shrink-0">
+                {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
+              </Badge>
+            ) : null
+          }
+        />
       </AccordionTrigger>
       <AccordionContent>
         <DynamicFormQuestions
@@ -344,7 +314,12 @@ export default function TechnicianOS() {
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
-    const measure = () => setHeaderHeight(el.offsetHeight);
+    // Mede com getBoundingClientRect().height (fracionário) e arredonda pra CIMA.
+    // `offsetHeight` trunca pra inteiro: se o header laranja renderiza 60,5px (comum
+    // com env(safe-area-inset-top) + line-heights), offsetHeight=60 e o cabeçalho do
+    // equipamento grudava 0,5px ABAIXO da base real → vão sub-pixel visível no mobile.
+    // `ceil` garante que o `top` nunca cai DENTRO do laranja (sem vão, sem invasão).
+    const measure = () => setHeaderHeight(Math.ceil(el.getBoundingClientRect().height));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -1595,9 +1570,10 @@ export default function TechnicianOS() {
               : undefined
           }
         >
-          {showPmocSeal && (
-            <PmocComplianceBadge variant="ribbon" withTooltip />
-          )}
+          {/* O selo de conformidade PMOC do RELATÓRIO deixou de ser um banner
+              azul separado aqui — agora vive como nota dentro do card CONTRATO
+              do próprio relatório (OSReport, prop isPmoc), num único card neutro
+              que também entra no PDF. */}
           {/* Carona da avaliação: só no modo cliente, OS concluída e com a
               pesquisa habilitada pela empresa (survey_enabled). Ainda sem
               avaliação → formulário; já avaliada → aviso enxuto de sucesso.
@@ -1642,6 +1618,7 @@ export default function TechnicianOS() {
             pmocAnchorIdForGroup={reportGroupAnchorId}
             registerPmocOpener={(open) => { reportPmocOpenerRef.current = open; }}
             stickyTopPx={headerHeight}
+            isPmoc={showPmocSeal}
           />
           {isPublicMode && isPmocPublic && (
             <PmocComplianceBadge variant="footer" className="pt-2" />
@@ -2933,6 +2910,12 @@ export default function TechnicianOS() {
                     ? equipmentItems.filter(i => i.equipment_id === item.equipment_id).length
                     : 0;
                   const hasMultipleOnSameEquip = sameEquipCount > 1;
+                  // Ambiente do equipamento (igual ao PMOC): ambiente do contrato
+                  // quando existe; senão o local cadastrado no equipamento.
+                  const environmentName =
+                    environmentByEquipmentId(item.equipment_id) ||
+                    item.equipment?.location ||
+                    null;
                   return (
                     <OsEquipmentAccordionItem
                       key={itemKey}
@@ -2945,6 +2928,7 @@ export default function TechnicianOS() {
                       isComplete={!!isComplete}
                       pendingCount={pendingCount}
                       hasMultipleOnSameEquip={hasMultipleOnSameEquip}
+                      environmentName={environmentName}
                       onPreviewPhoto={setPreviewPhoto}
                       onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
                     />
@@ -3381,8 +3365,9 @@ export default function TechnicianOS() {
       {/* FAB EXCLUSIVO de Ferramentas do Técnico (canto inferior esquerdo, ícone de
           ferramenta — não 3 pontinhos). Função única → toque abre direto. Fica
           MAIS ACIMA quando o rodapé fixo mobile (faixa preta) aparece, pra não
-          sobrepor. Só renderiza quando há ferramentas (segmento refrigeração). */}
-      {showTools && (
+          sobrepor. Só renderiza quando há ferramentas (segmento refrigeração) e
+          fica oculto enquanto o overlay das Ferramentas está aberto. */}
+      {showTools && !toolsOpen && (
         <SpeedDialFAB
           actions={speedDialActions}
           side="left"
@@ -3398,7 +3383,13 @@ export default function TechnicianOS() {
           técnico volta exatamente onde estava. A navegação interna virou estado
           (abas), então não precisa mais de router dedicado. */}
       {toolsOpen && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-background">
+        // z-50 (não z-[60]): os dropdowns das ferramentas (Select/Popover) são
+        // portados pro <body> no z-50 padrão. Com o overlay em z-[60] eles
+        // abriam ATRÁS dele (overlay opaco) e sumiam. Igualando em z-50, os
+        // portais — que vêm depois no DOM (body > #root) — pintam por cima,
+        // mesmo arranjo de Dialog+Select já usado no app. Mobile-first, sem
+        // regressão no modo rota.
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
           {/* Conteúdo das ferramentas. Padding inferior reserva espaço pro rodapé
               sticky "Voltar para OS" (b-0) não tampar o último item ao rolar. */}
           <div

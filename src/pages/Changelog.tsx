@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.22',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de serviço mais limpo',
+        description: 'As informações do contrato no relatório agora ficam reunidas em um único card, no mesmo estilo das demais seções (com a referência à Lei Federal 13.589/2018 quando a OS é PMOC). O cabeçalho do equipamento gruda rente ao topo ao rolar, e a lista de equipamentos ficou mais enxuta.',
+        category: 'melhoria',
+      },
+      {
+        title: '"Checklists da Máquina" no cadastro de contrato',
+        description: 'No cadastro de contrato PMOC, o botão de checklists de cada equipamento agora se chama "Checklists da Máquina" e organiza as opções em duas seções destacadas: os modelos do catálogo PMOC e os checklists personalizados da empresa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Preenchimento da OS mais consistente',
+        description: 'O cabeçalho do equipamento na tela de preenchimento da OS agora segue o mesmo padrão visual em todo tipo de OS (não só nas de contrato PMOC), e ao rolar ele ocupa a largura toda da tela para ficar mais fácil de acompanhar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correções nas Ferramentas do Técnico',
+        description: 'Corrigimos o seletor de segmento das Ferramentas do Técnico, que não abria as opções quando aberto pela tela de preenchimento da OS. No computador, o seletor ficou melhor posicionado, e o botão flutuante some enquanto as ferramentas estão abertas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.21',
     date: '22 de junho de 2026',
     type: 'patch',

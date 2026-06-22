@@ -155,8 +155,10 @@ function ToolsShell({
 }: ShellProps) {
   return (
     <div className="space-y-6 lg:space-y-6">
-      {/* Header — hub raiz das Ferramentas. */}
-      <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+      {/* Header — hub raiz das Ferramentas. Título em cima, seletor de nicho
+          EMBAIXO (empilhado) em todas as larguras — mobile e desktop (régua
+          CEO: no desktop o select fica abaixo do título, não ao lado). */}
+      <div className="flex flex-col items-start gap-2">
         <div className="flex items-center gap-2">
           <FerramentasTecnicoIcon className="h-6 w-6 text-foreground/70 shrink-0 lg:h-7 lg:w-7" />
           <h1 className="text-lg font-semibold tracking-tight lg:text-2xl">Ferramentas do Técnico</h1>

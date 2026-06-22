@@ -756,7 +756,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                                       onClick={() => openMachinePicker(eq.id)}
                                     >
                                       <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
-                                      Checklists do catálogo PMOC
+                                      Checklists da Máquina
                                     </Button>
                                   </div>
 
@@ -830,7 +830,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       <ResponsiveModal
         open={showCatalogPicker}
         onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) { setPickerMachineEqId(null); setPickerMachineScope(null); } }}
-        title="Checklists da máquina (catálogo PMOC)"
+        title="Checklists da Máquina"
         footer={
           <div className="flex flex-row items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">{pickerSelection.size + pickerTemplateSelection.size} selecionada(s)</span>

@@ -384,7 +384,10 @@ function ReportPmocItem({
             ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
             : 'shadow-none rounded-lg'),
         )}
-        headerStyle={stickyOn ? { top: stickyTopPx } : undefined}
+        // `-1px` no top: gruda 1px ATRÁS do header laranja (z-20 cobre o equipamento
+        // z-10) pra fechar qualquer costura sub-pixel entre as duas barras. Sem isso,
+        // arredondamento fracionário deixa um fio do fundo da página aparecendo (vão).
+        headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
         <div className="flex items-stretch gap-3 flex-1 min-w-0 text-left min-h-14">
           {photoUrl ? (

@@ -6,15 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Wrench, Check, X, MinusCircle, AlertTriangle, Lock, Camera, ClipboardList, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { ListChecks, Check, X, MinusCircle, AlertTriangle, Lock, Camera, ClipboardList, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
 import { sectionLabel } from '@/utils/sectionLabel';
 import { SignaturePad } from '@/components/SignaturePad';
-import { SignedImg } from '@/components/ui/SignedImg';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+  EquipmentChecklistHeader,
+  equipmentChecklistHeaderClasses,
+} from '@/components/technician/EquipmentChecklistHeader';
 import type { FormQuestion } from '@/types/database';
 import {
   type ChecklistActivity,
@@ -669,6 +672,8 @@ function VisitChecklistItem({
   const stickyOn = isOpen && stickyTopPx !== undefined;
   const { sentinelRef, isStuck } = useStickyStuck(stickyOn ? stickyTopPx : undefined);
   const { total, naoConforme, pending, visit, photo, category, brandModel, environmentName } = header;
+  // Classes compartilhadas (sticky + full-bleed no stuck) — fonte única com a OS normal.
+  const headerCls = equipmentChecklistHeaderClasses(stickyOn, isStuck);
 
   return (
     <AccordionItem
@@ -680,89 +685,38 @@ function VisitChecklistItem({
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
       <AccordionTrigger
-        className={cn(
-          'hover:no-underline py-3 gap-2 min-w-0 overflow-hidden bg-card',
-          // Não-stuck: arredonda o card pra combinar com os cantos da foto
-          // (rounded-l-md). Stuck (grudado no topo) fica reto.
-          stickyOn && !isStuck && 'rounded-lg',
-        )}
-        // Cabeçalho fixo no topo enquanto o técnico rola o conteúdo do equipamento
-        // ABERTO. Sticky no WRAPPER (Header). Fundo sólido (bg-card). z-10 < z-20 do
-        // header da tela (laranja), que sempre fica ACIMA. Sombra SÓ quando grudado
-        // (isStuck); fora disso cantos arredondados e sem sombra. `top` = altura
-        // exata do header da tela → gruda rente, sem vão e sem invadir.
-        // PDF/Imprimir: estático e sem sombra.
-        headerClassName={cn(
-          stickyOn && 'sticky z-10 bg-card print:static print:shadow-none transition-shadow',
-          stickyOn && (isStuck
-            ? 'shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
-            : 'shadow-none rounded-lg'),
-        )}
-        headerStyle={stickyOn ? { top: stickyTopPx } : undefined}
+        className={headerCls.trigger}
+        headerClassName={headerCls.header}
+        // `-1px` no top: gruda 1px ATRÁS do header laranja (z-20 cobre o equipamento
+        // z-10) pra fechar qualquer costura sub-pixel entre as duas barras.
+        headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-          {photo ? (
-            <SignedImg
-              src={photo}
-              alt={group.equipmentName}
-              className="h-14 w-14 rounded-md object-cover shrink-0 border cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPreviewPhoto?.(photo);
-              }}
-            />
-          ) : (
-            <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
-              <Wrench className="h-6 w-6 text-muted-foreground" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <p className="text-base truncate min-w-0">
-                <span className="font-bold">{group.equipmentName}</span>
-                {environmentName && (
-                  <span className="font-normal text-muted-foreground"> | {environmentName}</span>
-                )}
-              </p>
-              {category && (
-                <Badge
-                  className="text-[10px] shrink-0 text-white border-0"
-                  style={category.color ? { backgroundColor: category.color } : undefined}
-                >
-                  {category.name}
-                </Badge>
-              )}
-            </div>
-            {brandModel && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{brandModel}</p>
-            )}
-            <p className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 min-w-0">
-              <CalendarClock className="h-3 w-3 shrink-0 text-primary" />
-              <span className="truncate">
-                <span className="font-medium text-foreground">Visita {visit.tipo}</span>
-                {' · '}
-                {visit.niveis.join(' + ')}
+        <EquipmentChecklistHeader
+          photo={photo}
+          name={group.equipmentName}
+          category={category}
+          brandModel={brandModel}
+          environmentName={environmentName}
+          visit={visit}
+          itemsLabel={`${total} item${total > 1 ? 's' : ''}`}
+          onPreviewPhoto={onPreviewPhoto}
+          statusBadge={
+            naoConforme > 0 ? (
+              <Badge variant="destructive" className="gap-1 text-xs shrink-0">
+                <X className="h-3 w-3" />
+                {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
+              </Badge>
+            ) : pending === 0 ? (
+              <span title="Concluído" aria-label="Concluído" className="shrink-0">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
               </span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {total} item{total > 1 ? 's' : ''}
-            </p>
-          </div>
-          {naoConforme > 0 ? (
-            <Badge variant="destructive" className="gap-1 text-xs shrink-0">
-              <X className="h-3 w-3" />
-              {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
-            </Badge>
-          ) : pending === 0 ? (
-            <span title="Concluído" aria-label="Concluído" className="shrink-0">
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-            </span>
-          ) : (
-            <Badge variant="outline" className="text-xs shrink-0">
-              {pending} pendente{pending > 1 ? 's' : ''}
-            </Badge>
-          )}
-        </div>
+            ) : (
+              <Badge variant="outline" className="text-xs shrink-0">
+                {pending} pendente{pending > 1 ? 's' : ''}
+              </Badge>
+            )
+          }
+        />
       </AccordionTrigger>
       <AccordionContent>
         <div className="space-y-4 pt-1">{children}</div>

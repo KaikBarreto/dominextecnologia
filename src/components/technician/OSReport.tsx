@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, MoreVertical } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, MoreVertical, ShieldCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,6 +122,15 @@ interface OSReportProps {
    * execução). Sem valor = sem sticky (comportamento antigo).
    */
   stickyTopPx?: number;
+  /**
+   * OS de contrato PMOC. Quando true, o card CONTRATO (dentro do documento)
+   * acrescenta a nota "Conforme Lei Federal 13.589/2018" abaixo do nome do
+   * contrato. Vem de `showPmocSeal` da página (funciona nos dois modos: técnico
+   * autenticado via `useIsPmocOrder` e cliente anônimo via payload público).
+   * Substitui o antigo banner azul do topo (fora do documento), centralizando a
+   * info de conformidade num único card — que agora também entra no PDF.
+   */
+  isPmoc?: boolean;
 }
 
 const GENERAL_KEY = '__geral__';
@@ -154,7 +163,7 @@ function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: 
   );
 }
 
-export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup, registerPmocOpener, stickyTopPx }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false, desktopActionFooter = false, partialReport = false, visibleEquipmentKeys, pmocChecklistItems, pmocAnchorIdForGroup, registerPmocOpener, stickyTopPx, isPmoc = false }: OSReportProps) {
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
   // (e nao como o usuario logado de outra empresa).
   const db = forceReadOnly ? supabaseAnon : supabase;
@@ -812,14 +821,23 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         </div>
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Contract info */}
+          {/* Contract info — card único e neutro (mesmo padrão de CLIENTE /
+              EQUIPAMENTO / EXECUÇÃO). Mostra o nome do contrato e, quando PMOC,
+              a nota de conformidade "Lei Federal 13.589/2018" como linha
+              secundária discreta (sem fundo azul). Substituiu os dois cards
+              azuis antigos (banner do topo + card de contrato). Entra no PDF. */}
           {contractInfo && (
-            <div data-pdf-section className="bg-blue-600 rounded-lg px-4 py-3 flex items-center gap-2">
-              <FileSignature className="h-4 w-4 text-white shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-white/80 uppercase tracking-wider">Contrato</p>
-                <p className="text-sm font-semibold text-white">{contractInfo.name}</p>
-              </div>
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <FileSignature className="h-3.5 w-3.5" /> Contrato
+              </h3>
+              <p className="font-semibold text-slate-900">{contractInfo.name}</p>
+              {isPmoc && (
+                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  Conforme Lei Federal 13.589/2018
+                </p>
+              )}
             </div>
           )}
 
@@ -904,7 +922,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                             <p className="text-sm text-slate-600">{item.equipment.brand} {item.equipment.model}</p>
                           )}
                           {item.equipment.location && (
-                            <p className="text-xs text-slate-400 mt-0.5">📍 {item.equipment.location}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{item.equipment.location}</p>
                           )}
                         </div>
                       </div>

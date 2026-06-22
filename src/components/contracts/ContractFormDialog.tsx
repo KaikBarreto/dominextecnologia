@@ -2423,7 +2423,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                             onClick={() => openMachinePicker(eq.id)}
                                           >
                                             <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
-                                            Checklists do catálogo PMOC
+                                            Checklists da Máquina
                                           </Button>
                                         </div>
 
@@ -3040,7 +3040,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     <ResponsiveModal
       open={showCatalogPicker}
       onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) { setPickerMachineEqId(null); setPickerMachineScope(null); } }}
-      title={pickerMachineEqId ? 'Checklists da máquina (catálogo PMOC)' : 'Catálogo de atividades PMOC'}
+      title={pickerMachineEqId ? 'Checklists da Máquina' : 'Catálogo de atividades PMOC'}
       footer={
         <div className="flex flex-row items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">

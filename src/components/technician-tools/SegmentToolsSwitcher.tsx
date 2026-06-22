@@ -65,7 +65,12 @@ export function SegmentToolsSwitcher({
           ) : null}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[260px] p-0 sm:w-[320px]">
+      {/* z-[70]: o overlay embutido das Ferramentas (na OS) é `fixed z-[60]` e
+          opaco. O PopoverContent é portado pro <body> (fora do stacking do
+          overlay), então no z-50 padrão ele abre ATRÁS do overlay e o dropdown
+          some. Subir pra z-[70] o coloca acima do overlay. No modo rota não há
+          overlay, então é inofensivo (não regride). */}
+      <PopoverContent align="start" className="z-[70] w-[260px] p-0 sm:w-[320px]">
         <Command>
           <CommandInput placeholder="Buscar nicho..." />
           <CommandList>
