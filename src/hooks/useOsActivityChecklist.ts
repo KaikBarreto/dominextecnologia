@@ -43,6 +43,9 @@ export interface ChecklistActivity {
    * As respostas vão em `form_responses` (por OS + equipamento + pergunta).
    */
   form_template_id: string | null;
+  /** Auditoria: quem respondeu/alterou o item e quando (carimbado na escrita do técnico). */
+  responded_at?: string | null;
+  responded_by?: string | null;
 }
 
 /** Uma resposta de pergunta de checklist personalizado (form_responses). */
@@ -360,12 +363,23 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
       }
     ) => {
       const prev = activities.find((a) => a.id === activityId);
+      // Toda escrita do técnico (responder conformidade/medição, ou anexar
+      // foto) carimba quem respondeu e quando. Espelha o padrão de
+      // form_responses. Não roda em load/leitura — só aqui, na escrita.
+      const respondedAt = new Date().toISOString();
+      const { data: userData } = await supabase.auth.getUser();
+      const respondedBy = userData?.user?.id ?? null;
+      const stampedPatch = {
+        ...patch,
+        responded_at: respondedAt,
+        responded_by: respondedBy,
+      };
       setActivities((curr) =>
-        curr.map((a) => (a.id === activityId ? { ...a, ...patch } : a))
+        curr.map((a) => (a.id === activityId ? { ...a, ...stampedPatch } : a))
       );
       const { error } = await supabase
         .from('service_order_activities')
-        .update(patch)
+        .update(stampedPatch as any)
         .eq('id', activityId);
       if (error) {
         // Reverte a linha pro estado anterior.

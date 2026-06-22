@@ -5786,6 +5786,8 @@ export type Database = {
           is_measurement: boolean
           measured_value: number | null
           plan_activity_id: string | null
+          responded_at: string | null
+          responded_by: string | null
           section: string | null
           service_order_id: string
           sort_order: number
@@ -5809,6 +5811,8 @@ export type Database = {
           is_measurement?: boolean
           measured_value?: number | null
           plan_activity_id?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
           section?: string | null
           service_order_id: string
           sort_order?: number
@@ -5832,6 +5836,8 @@ export type Database = {
           is_measurement?: boolean
           measured_value?: number | null
           plan_activity_id?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
           section?: string | null
           service_order_id?: string
           sort_order?: number
