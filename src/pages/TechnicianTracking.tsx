@@ -19,6 +19,7 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { TrackingEventListItem } from '@/components/tracking/TrackingEventListItem';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { reverseGeocodeShort } from '@/utils/reverseGeocode';
 
 interface LocationRecord {
   id: string;
@@ -28,11 +29,46 @@ interface LocationRecord {
   lng: number;
   event_type: string;
   created_at: string;
+  address: string | null;
 }
 
 interface Profile {
   user_id: string;
   full_name: string;
+}
+
+/**
+ * Endereço + coordenada na timeline do desktop. Usa o `address` gravado no banco
+ * (eventos-chave); senão resolve sob demanda pela fila do reverseGeocodeShort.
+ * Enquanto não resolve, mostra só a coordenada (fallback gracioso).
+ */
+function TimelineAddress({ lat, lng, address }: { lat: number; lng: number; address: string | null }) {
+  const coords = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  const [resolved, setResolved] = useState<string | null>(address ?? null);
+
+  useEffect(() => {
+    if (address) {
+      setResolved(address);
+      return;
+    }
+    let active = true;
+    reverseGeocodeShort(lat, lng).then((addr) => {
+      if (active && addr) setResolved(addr);
+    });
+    return () => {
+      active = false;
+    };
+  }, [address, lat, lng]);
+
+  if (resolved) {
+    return (
+      <span className="text-xs">
+        <span className="text-foreground/90 font-medium">{resolved}</span>
+        <span className="text-muted-foreground/70 font-mono ml-2">{coords}</span>
+      </span>
+    );
+  }
+  return <span className="text-xs text-muted-foreground font-mono">{coords}</span>;
 }
 
 // Gera iniciais (máx 2 caracteres) — usado no avatar dos eventos no mobile.
@@ -469,6 +505,7 @@ export default function TechnicianTracking() {
                 lng={loc.lng}
                 createdAt={loc.created_at}
                 eventType={loc.event_type}
+                address={loc.address}
                 technicianName={selectedTechnicianName}
                 technicianInitials={selectedTechnicianInitials}
               />
@@ -501,9 +538,7 @@ export default function TechnicianTracking() {
                   <Badge variant={eventTypeBadgeVariant[loc.event_type] || 'secondary'} className="w-fit text-xs">
                     {eventTypeLabel[loc.event_type] || loc.event_type}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
-                  </span>
+                  <TimelineAddress lat={loc.lat} lng={loc.lng} address={loc.address} />
                   <a
                     href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
                     target="_blank"

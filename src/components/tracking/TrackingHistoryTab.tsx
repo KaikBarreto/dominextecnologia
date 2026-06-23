@@ -20,6 +20,7 @@ interface LocationRecord {
   lng: number;
   event_type: string;
   created_at: string;
+  address: string | null;
 }
 
 interface Profile {
@@ -84,10 +85,13 @@ export function TrackingHistoryTab() {
 
   const pagination = useDataPagination(locations);
 
-  // Resolve addresses for the current page of locations
+  // Resolve addresses for the current page of locations.
+  // Pontos que JÁ têm `address` gravado (eventos-chave) não vão pra fila — só
+  // resolvemos sob demanda os que estão sem (ex: tracking contínuo).
   const resolveAddresses = useCallback(async (items: LocationRecord[]) => {
-    if (items.length === 0) return;
-    const coords = items.map(l => ({ lat: l.lat, lng: l.lng }));
+    const pending = items.filter(l => !l.address);
+    if (pending.length === 0) return;
+    const coords = pending.map(l => ({ lat: l.lat, lng: l.lng }));
     const resolved = await batchReverseGeocode(coords, 15);
     setAddressMap(prev => {
       const next = new Map(prev);
@@ -237,20 +241,38 @@ export function TrackingHistoryTab() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-1.5">
-                          <span className="text-[11px] text-muted-foreground truncate max-w-[260px]" title={`${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`}>
-                            <MapPin className="h-3 w-3 inline mr-0.5 -mt-0.5" />
-                            {addressMap.get(`${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`) || `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`}
-                          </span>
-                          <a
-                            href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] text-primary hover:underline inline-flex items-center gap-0.5"
-                          >
-                            <ExternalLink className="h-3 w-3" /> Mapa
-                          </a>
-                        </div>
+                        {(() => {
+                          const coordStr = `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`;
+                          // Prefere o endereço gravado no banco (eventos-chave);
+                          // senão, o resolvido sob demanda pela fila.
+                          const resolved = loc.address || addressMap.get(`${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`);
+                          // Se o "endereço" resolvido for igual à coordenada
+                          // (fallback do geocode), não duplicamos a linha.
+                          const hasAddress = resolved && resolved !== coordStr;
+                          return (
+                            <div className="mt-1.5">
+                              <div className="flex items-center gap-3">
+                                <span className="text-[12px] text-foreground/90 truncate max-w-[260px] font-medium" title={hasAddress ? resolved : coordStr}>
+                                  <MapPin className="h-3 w-3 inline mr-0.5 -mt-0.5 text-muted-foreground" />
+                                  {hasAddress ? resolved : coordStr}
+                                </span>
+                                <a
+                                  href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[11px] text-primary hover:underline inline-flex items-center gap-0.5 shrink-0"
+                                >
+                                  <ExternalLink className="h-3 w-3" /> Mapa
+                                </a>
+                              </div>
+                              {hasAddress && (
+                                <span className="text-[10px] text-muted-foreground/70 font-mono mt-0.5 block truncate">
+                                  {coordStr}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </CardContent>

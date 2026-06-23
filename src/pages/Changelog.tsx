@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.33',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Endereço no histórico de localização',
+        description: 'No histórico de localização (rastreamento) da OS, os pontos de chegada, saída e "a caminho" passaram a registrar o endereço (rua, cidade e estado), exibido junto da coordenada — no computador e no celular. A busca de endereços também ficou mais robusta para não falhar quando há muitos pontos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.32',
     date: '23 de junho de 2026',
     type: 'patch',

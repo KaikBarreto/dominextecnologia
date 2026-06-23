@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { reverseGeocodeShort } from '@/utils/reverseGeocode';
 
 /**
  * In-memory cache for the current user's company_id.
@@ -131,7 +132,16 @@ export function useGeoTracking(
 }
 
 /**
- * Record a single location event (check_in or check_out)
+ * Registra um evento-chave de localização (check_in / check_out / en_route).
+ *
+ * São POUCOS eventos por OS, então vale gravar o endereço legível. Estratégia
+ * pra não bloquear o técnico:
+ *   1. Insere JÁ com lat/lng (rápido) e pega o `id` do row.
+ *   2. EM BACKGROUND resolve o endereço (reverseGeocodeShort, via a fila) e dá
+ *      UPDATE no row. Se falhar/retornar null, `address` fica NULL — sem erro.
+ *
+ * O tracking contínuo (`sendLocation`, 30s) NÃO chama isto e NÃO geocoda:
+ * volume alto estouraria o rate-limit; `address` fica NULL nesses pontos.
  */
 export async function recordLocationEvent(
   serviceOrderId: string,
@@ -148,12 +158,34 @@ export async function recordLocationEvent(
     return;
   }
 
-  await supabase.from('technician_locations').insert({
-    user_id: user.id,
-    company_id: companyId,
-    service_order_id: serviceOrderId,
-    lat,
-    lng,
-    event_type: eventType,
-  });
+  const { data: inserted, error } = await supabase
+    .from('technician_locations')
+    .insert({
+      user_id: user.id,
+      company_id: companyId,
+      service_order_id: serviceOrderId,
+      lat,
+      lng,
+      event_type: eventType,
+    })
+    .select('id')
+    .single();
+
+  if (error || !inserted) return;
+
+  // Geocode em background — não bloqueia o retorno (técnico já seguiu o fluxo).
+  // A fila do reverseGeocodeShort serializa e dá retry; aqui só fazemos o UPDATE
+  // quando (e se) o endereço resolver.
+  const rowId = (inserted as { id: string }).id;
+  void reverseGeocodeShort(lat, lng)
+    .then((address) => {
+      if (!address) return;
+      return supabase
+        .from('technician_locations')
+        .update({ address })
+        .eq('id', rowId);
+    })
+    .catch(() => {
+      // Falha de geocode/update é não-crítica — o ponto fica só com coordenada.
+    });
 }

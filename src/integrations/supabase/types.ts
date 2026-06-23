@@ -6794,6 +6794,7 @@ export type Database = {
       }
       technician_locations: {
         Row: {
+          address: string | null
           company_id: string
           created_at: string
           event_type: string
@@ -6804,6 +6805,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address?: string | null
           company_id: string
           created_at?: string
           event_type?: string
@@ -6814,6 +6816,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address?: string | null
           company_id?: string
           created_at?: string
           event_type?: string
