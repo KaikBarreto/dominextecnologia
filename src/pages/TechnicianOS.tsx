@@ -3145,33 +3145,53 @@ export default function TechnicianOS() {
                 value={conformityStatus}
                 onValueChange={(v) => setConformityStatus(v as PmocConformity)}
               >
-                <label
-                  htmlFor="conformity-conforme"
-                  className="flex items-center gap-3 rounded-md border border-success/30 bg-card px-3 py-3 cursor-pointer min-h-[44px]"
-                >
-                  <RadioGroupItem value="conforme" id="conformity-conforme" />
-                  <span className="text-sm font-medium text-success">
-                    Conforme — tudo dentro do esperado
-                  </span>
-                </label>
-                <label
-                  htmlFor="conformity-parcial"
-                  className="flex items-center gap-3 rounded-md border border-warning/30 bg-card px-3 py-3 cursor-pointer min-h-[44px]"
-                >
-                  <RadioGroupItem value="parcial" id="conformity-parcial" />
-                  <span className="text-sm font-medium text-warning">
-                    Parcial — alguma medida fora da faixa, mas operacional
-                  </span>
-                </label>
-                <label
-                  htmlFor="conformity-nao-conforme"
-                  className="flex items-center gap-3 rounded-md border border-destructive/30 bg-card px-3 py-3 cursor-pointer min-h-[44px]"
-                >
-                  <RadioGroupItem value="nao_conforme" id="conformity-nao-conforme" />
-                  <span className="text-sm font-medium text-destructive">
-                    Não-conforme — problema técnico a registrar
-                  </span>
-                </label>
+                {([
+                  {
+                    value: 'conforme' as const,
+                    id: 'conformity-conforme',
+                    label: 'Conforme — tudo dentro do esperado',
+                    dot: 'bg-success',
+                    on: 'bg-success border-success',
+                  },
+                  {
+                    value: 'parcial' as const,
+                    id: 'conformity-parcial',
+                    label: 'Parcial — alguma medida fora da faixa, mas operacional',
+                    dot: 'bg-warning',
+                    on: 'bg-warning border-warning',
+                  },
+                  {
+                    value: 'nao_conforme' as const,
+                    id: 'conformity-nao-conforme',
+                    label: 'Não-conforme — problema técnico a registrar',
+                    dot: 'bg-destructive',
+                    on: 'bg-destructive border-destructive',
+                  },
+                ]).map((opt) => {
+                  const selected = conformityStatus === opt.value;
+                  return (
+                    <label
+                      key={opt.value}
+                      htmlFor={opt.id}
+                      className={cn(
+                        'flex items-center gap-3 rounded-md border px-3 py-3 cursor-pointer min-h-[44px]',
+                        selected
+                          ? cn(opt.on, 'text-white')
+                          : 'border-border bg-card text-foreground'
+                      )}
+                    >
+                      <RadioGroupItem value={opt.value} id={opt.id} className="sr-only" />
+                      {selected ? (
+                        <Check className="h-4 w-4 shrink-0 text-white" />
+                      ) : (
+                        <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', opt.dot)} />
+                      )}
+                      <span className={cn('text-sm', selected ? 'font-bold' : 'font-medium')}>
+                        {opt.label}
+                      </span>
+                    </label>
+                  );
+                })}
               </RadioGroup>
               <div className="space-y-1.5">
                 <Label htmlFor="conformity-notes" className="text-xs">

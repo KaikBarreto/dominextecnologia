@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.27',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Classificação de conformidade PMOC mais clara',
+        description: 'Na finalização de Ordens de Serviço de contratos PMOC, a escolha de conformidade (Conforme, Parcial ou Não-conforme) ficou mais limpa: as opções aparecem discretas, com uma cor só indicando a gravidade, e a cor cheia destaca apenas a opção que você selecionar — deixando óbvio o que foi marcado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.26',
     date: '22 de junho de 2026',
     type: 'patch',
