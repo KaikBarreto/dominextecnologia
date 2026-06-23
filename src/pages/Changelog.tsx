@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.37',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Título da seção de checklists mais correto',
+        description: 'No relatório, a seção de checklists só se chama "Checklists por Equipamento" quando há equipamento de verdade. Quando a OS tem apenas checklist geral (sem equipamento), o título passa a ser simplesmente "Checklists".',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.36',
     date: '23 de junho de 2026',
     type: 'patch',

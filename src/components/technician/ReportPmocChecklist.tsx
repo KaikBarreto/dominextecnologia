@@ -609,10 +609,16 @@ export function ReportPmocChecklist({
   // equipment_name pro lookup de foto/âncora: '__geral__' vira null (igual PMOC).
   const equipmentNameForKey = (key: string): string | null => (key === '__geral__' ? null : key);
 
+  // Título da seção: "Checklists por Equipamento" só faz sentido quando há ao
+  // menos UM grupo de equipamento real. Quando todos os grupos são o geral
+  // ('__geral__'), o título vira só "Checklists" (não é "por equipamento").
+  const hasRealEquipment = keys.some((key) => key !== '__geral__');
+  const sectionTitle = hasRealEquipment ? 'Checklists por Equipamento' : 'Checklists';
+
   return (
     <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
       <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-        <ListChecks className="h-3.5 w-3.5" /> Checklists por Equipamento
+        <ListChecks className="h-3.5 w-3.5" /> {sectionTitle}
       </h3>
       <Accordion
         type="multiple"
