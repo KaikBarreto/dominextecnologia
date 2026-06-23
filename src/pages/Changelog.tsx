@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.40',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Telas de carregamento mais informativas',
+        description: 'As telas de carregamento agora mostram o que o sistema está preparando (por exemplo, "Buscando ordens de serviço…" ou "Carregando agenda…"), com uma animação mais fluida.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.38',
     date: '23 de junho de 2026',
     type: 'patch',
