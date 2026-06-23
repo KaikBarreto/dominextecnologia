@@ -3329,7 +3329,7 @@ export default function TechnicianOS() {
       {(isCheckedIn || isPaused) && (
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-x-0 bottom-0 z-[25] h-48 bg-gradient-to-t from-black via-black/60 to-transparent lg:hidden"
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-[25] h-36 bg-gradient-to-t from-black/70 via-black/25 to-transparent lg:hidden"
         />
       )}
 
@@ -3604,7 +3604,7 @@ export default function TechnicianOS() {
           // max-w-screen-2xl = 1536px, padding lg:px-8 = 2rem) — cai sobre a
           // coluna do sidebar do grid, não solto no canto do viewport.
           className="lg:left-[max(1rem,calc((100vw-min(100vw,1536px))/2+2rem))]"
-          mainImageUrl="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/app/ferramentas-tecnico-fab.jpg"
+          mainImageUrl="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/app/ferramentas-tecnico-fab-v4.jpg"
           mainIcon={FerramentasTecnicoIcon}
           ariaLabel="Ferramentas do Técnico"
           directWhenSingle

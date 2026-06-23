@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.25',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura em tela cheia na OS',
+        description: 'Nos campos de assinatura da Ordem de Serviço, além de assinar direto no campo, agora dá para abrir a assinatura em tela cheia — na horizontal no celular — para assinar com mais espaço e conforto.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.24',
     date: '22 de junho de 2026',
     type: 'patch',

@@ -159,17 +159,17 @@ export function SpeedDialFAB({
             o ícone próprio (ex.: ferramenta). Senão → speed-dial (abre/fecha).
             Wrapper relativo SEM overflow pro glow vazar pra fora do círculo. */}
         <div className="relative">
-          {/* Glow: cópia desfocada da MESMA imagem, blend de adição (ilumina o
-              fundo escuro do rodapé ao redor do FAB). Decorativo. Escondido
-              quando dimmed: o plus-lighter ilumina e "fura" o escurecimento
-              da tela, deixando o FAB aceso por cima do backdrop. */}
+          {/* Glow: disco no VERDE DA MARCA DOMINEX (#00C597) — FIXO, NÃO segue o
+              white-label do tenant (decisão CEO: o glow do FAB de Ferramentas é
+              sempre o verde Dominex). Desfocado, blend de adição (ilumina o fundo
+              escuro do rodapé ao redor do FAB). Decorativo, não é a cópia da
+              imagem. Escondido quando dimmed: o plus-lighter ilumina e "fura" o
+              escurecimento da tela (stacking context isolado), o que deixava o
+              FAB aceso por cima do backdrop. */}
           {showImage && !dimmed && (
-            <img
-              src={mainImageUrl}
-              alt=""
+            <span
               aria-hidden
-              draggable={false}
-              className="pointer-events-none absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 scale-[1.4] rounded-full object-cover blur-xl opacity-70"
+              className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 scale-[1.5] rounded-full bg-[radial-gradient(circle,#00C597_0%,#00C597_45%,transparent_72%)] blur-2xl opacity-80"
               style={{ mixBlendMode: 'plus-lighter' }}
             />
           )}
