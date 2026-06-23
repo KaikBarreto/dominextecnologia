@@ -93,6 +93,7 @@ import TechnicianTools from '@/pages/TechnicianTools';
 import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
+import { useSubscriptionBlock } from '@/hooks/useSubscriptionBlock';
 
 interface OSPhoto {
   id: string;
@@ -248,6 +249,11 @@ export default function TechnicianOS() {
   // Usuário LOGADO agora — carimbo legal da assinatura usa o nome de quem
   // assina de fato (no modo autenticado), não o técnico atribuído à OS.
   const { profile: currentUserProfile } = useAuth();
+  // Bloqueio por assinatura do TENANT DO USUÁRIO LOGADO (profile.company_id),
+  // reusando a mesma decisão do SubscriptionGate. Só é APLICADO no modo técnico
+  // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
+  // nem admin Auctus, então é seguro chamá-lo sempre (regras de hooks).
+  const { blocked: subscriptionBlocked, screen: subscriptionScreen } = useSubscriptionBlock();
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any; contract?: any }) | null>(null);
   // UUID REAL da OS — fonte ÚNICA e estável pra TODA escrita/consulta keyed por
@@ -1709,6 +1715,15 @@ export default function TechnicianOS() {
         <Skeleton className="h-48 w-full" />
       </div>
     );
+  }
+
+  // Bloqueio de assinatura SÓ no modo TÉCNICO LOGADO (sessão autenticada e NÃO
+  // modo cliente). Nunca bloqueia o link público da OS:
+  // - anônimo (cliente final) → `forceReadOnly`/`isAuthenticated === false`;
+  // - `?modo=cliente` → `forceReadOnly === true`.
+  // Admin Auctus já passa direto (o hook não bloqueia isAdminUser).
+  if (isAuthenticated === true && !forceReadOnly && subscriptionBlocked) {
+    return <>{subscriptionScreen}</>;
   }
 
   if (!serviceOrder) {
