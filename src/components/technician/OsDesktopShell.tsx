@@ -67,8 +67,13 @@ interface OsEquipmentSidebarProps {
  * os blocos de contexto (Cliente/Técnico/Check-in) acima dos equipamentos.
  */
 export function OsEquipmentSidebar({ items, onNavigate, topPx, header }: OsEquipmentSidebarProps) {
-  // Sem equipamentos E sem header de contexto → nada a mostrar.
-  if (items.length === 0 && !header) return null;
+  // Sem equipamentos E sem header de contexto → nada a mostrar, MAS no desktop
+  // precisa SEGURAR a coluna 1 do grid 3-col (20rem | 1fr | 20rem). Se retornasse
+  // null, o <main> escorregava pra coluna 1 de 20rem e o relatório ficava espremido
+  // (bug em OS sem equipamento — só "Geral/Local"). Placeholder vazio resolve.
+  if (items.length === 0 && !header) {
+    return <aside className="hidden lg:block lg:w-80 lg:shrink-0" aria-hidden />;
+  }
   return (
     <aside
       className="hidden lg:flex lg:flex-col lg:gap-3 lg:w-80 lg:shrink-0 lg:sticky lg:self-start lg:overflow-y-auto"

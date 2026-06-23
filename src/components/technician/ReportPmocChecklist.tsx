@@ -58,6 +58,14 @@ interface ReportPmocChecklistGroup {
 }
 
 interface Props {
+  /**
+   * OS é PMOC? Quando true (relatório PMOC), os checklists personalizados ficam
+   * dentro de uma seção rotulada "Checklists Personalizados" — o rótulo distingue
+   * dos checklists da NORMA PMOC, que aparecem no mesmo equipamento. Quando false
+   * (OS normal, sem norma PMOC), o rótulo é REDUNDANTE (não há nada do PMOC pra
+   * distinguir): as respostas aparecem direto sob o equipamento, sem o sub-header.
+   */
+  isPmoc?: boolean;
   items: ReportChecklistItem[];
   /**
    * Ordem unificada das chaves de grupo (equipment_name ?? '__geral__'). Quando
@@ -335,6 +343,7 @@ function ReportPmocItem({
   stickyTopPx,
   isOpen,
   forceAllSectionsOpen,
+  isPmoc,
 }: {
   groupKey: string;
   pmocItems: ReportChecklistItem[];
@@ -355,6 +364,12 @@ function ReportPmocItem({
    */
   isOpen: boolean;
   forceAllSectionsOpen?: boolean;
+  /**
+   * OS é PMOC? Em OS normal (false) o bloco personalizado é renderizado SEM o
+   * sub-header "Checklists Personalizados" (redundante — não há norma PMOC pra
+   * distinguir). Em PMOC mantém o sub-header recolhível.
+   */
+  isPmoc?: boolean;
 }) {
   // Sticky só no equipamento ABERTO. Fechado desativa o observer.
   const stickyOn = isOpen && stickyTopPx !== undefined;
@@ -483,12 +498,32 @@ function ReportPmocItem({
           ))}
 
           {personalized.length > 0 && renderResponse && (
-            <SectionAccordion
-              sectionKey={`pers-${groupKey}`}
-              icon={ClipboardCheck}
-              label="Checklists Personalizados"
-              forceOpen={forceAllSectionsOpen}
-            >
+            // Os blocos personalizados (cada um já rotulado pelo NOME do template).
+            // - PMOC: envoltos na seção recolhível "Checklists Personalizados" — o
+            //   rótulo distingue dos checklists da NORMA PMOC do mesmo equipamento.
+            // - OS normal: SEM esse sub-header (redundante, não há norma PMOC pra
+            //   distinguir) — os blocos saem direto sob o equipamento.
+            isPmoc ? (
+              <SectionAccordion
+                sectionKey={`pers-${groupKey}`}
+                icon={ClipboardCheck}
+                label="Checklists Personalizados"
+                forceOpen={forceAllSectionsOpen}
+              >
+                <div className="space-y-4">
+                  {personalized.map((block, bi) => (
+                    <div key={`tpl-${bi}-${block.templateName}`} className="space-y-1">
+                      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                        {block.templateName}
+                      </p>
+                      <div className="space-y-2">
+                        {block.responses.map((response, idx) => renderResponse(response, idx))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionAccordion>
+            ) : (
               <div className="space-y-4">
                 {personalized.map((block, bi) => (
                   <div key={`tpl-${bi}-${block.templateName}`} className="space-y-1">
@@ -501,7 +536,7 @@ function ReportPmocItem({
                   </div>
                 ))}
               </div>
-            </SectionAccordion>
+            )
           )}
         </div>
       </AccordionContent>
@@ -521,6 +556,7 @@ function ReportPmocItem({
  * Não renderiza nada quando não há nem itens PMOC nem checklists personalizados.
  */
 export function ReportPmocChecklist({
+  isPmoc,
   items,
   groupOrder,
   personalizedByGroup,
@@ -601,6 +637,7 @@ export function ReportPmocChecklist({
               stickyTopPx={stickyTopPx}
               isOpen={itemOpen}
               forceAllSectionsOpen={forceAllSectionsOpen}
+              isPmoc={isPmoc}
             />
           );
         })}

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.33";
+export const APP_VERSION = "1.14.34";
 
-export const VERSION_NOTES = "No histórico de localização (rastreamento) da OS, os pontos de chegada, saída e 'a caminho' passaram a registrar o ENDEREÇO do local (rua, cidade e estado), exibido junto da coordenada — no computador e no celular. E a busca de endereços ficou mais robusta (fila com novas tentativas), pra não falhar quando há muitos pontos ou vários técnicos ao mesmo tempo.";
+export const VERSION_NOTES = "Corrigido o relatório de serviço que, no computador, aparecia espremido num canto em Ordens de Serviço sem equipamento vinculado (só checklist geral) — agora ele aparece centralizado normalmente. E em OS que não são de contrato PMOC, o relatório deixou de mostrar o cabeçalho 'Checklists Personalizados' (redundante): mostra os equipamentos e seus checklists direto.";

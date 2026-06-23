@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.34',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção do relatório no computador',
+        description: 'Corrigido o relatório de serviço que aparecia espremido num canto no computador, em Ordens de Serviço sem equipamento vinculado (só com checklist geral). Agora ele aparece centralizado normalmente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Relatório de OS comum mais limpo',
+        description: 'Em OS que não são de contrato PMOC, o relatório deixou de exibir o cabeçalho "Checklists Personalizados" (que era redundante) e passou a mostrar os equipamentos e seus checklists diretamente.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.33',
     date: '23 de junho de 2026',
     type: 'patch',

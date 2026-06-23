@@ -1133,6 +1133,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               "Geral / Local". Fotos abrem no viewer interno, nunca em nova aba. */}
           {(((pmocChecklistItems && pmocChecklistItems.length > 0) || personalizedByGroup.size > 0)) && (
             <ReportPmocChecklist
+              isPmoc={isPmoc}
               items={pmocChecklistItems ?? []}
               groupOrder={reportGroupKeys}
               personalizedByGroup={personalizedByGroup}
