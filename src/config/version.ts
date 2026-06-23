@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.31";
+export const APP_VERSION = "1.14.32";
 
-export const VERSION_NOTES = "Novo histórico de PMOC no contrato: cada contrato PMOC ganhou uma aba 'Histórico PMOC' que mostra, visita a visita, cada tarefa feita em cada equipamento — com a frequência, o resultado (Conforme / Não Conforme / N/A) e quando e por quem foi feita. É a prova, tarefa a tarefa, de que a Planilha PMOC está sendo cumprida.";
+export const VERSION_NOTES = "Agora o check-in, o check-out e as assinaturas da OS registram também o ENDEREÇO do local (rua, cidade e estado), além da coordenada. No relatório, o check-in e o check-out mostram o endereço junto da coordenada, e o selo da assinatura passa a mostrar o endereço. No campo de assinatura já confirmada, os botões ficaram só 'Tela cheia' e 'Limpar'.";

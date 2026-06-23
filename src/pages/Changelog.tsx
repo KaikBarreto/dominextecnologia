@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.32',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Endereço do local no check-in, check-out e assinaturas',
+        description: 'Além da coordenada, a OS passou a registrar o endereço do local (rua, cidade e estado) no check-in, no check-out e nas assinaturas. No relatório, o check-in e o check-out mostram o endereço junto da coordenada, e o selo da assinatura passa a exibir o endereço.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.31',
     date: '23 de junho de 2026',
     type: 'patch',

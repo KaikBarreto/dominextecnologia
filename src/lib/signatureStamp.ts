@@ -20,6 +20,12 @@ export interface SignatureStampInput {
   at?: string | null;
   /** Geolocalização do aparelho no momento da confirmação. */
   geo?: { lat: number; lng: number } | null | undefined;
+  /**
+   * Endereço conciso (reverse geocode) do momento da confirmação. Quando
+   * presente, é PREFERIDO sobre a coordenada no carimbo (decisão CEO). Em geral
+   * vem de `*_signed_location.address`.
+   */
+  address?: string | null;
 }
 
 /**
@@ -55,20 +61,25 @@ function formatStampGeo(geo: SignatureStampInput['geo']): string | null {
 }
 
 /**
- * Monta o carimbo: "Assinado em {data/hora} · {geo}".
- * Cada parte é omitida quando ausente. Retorna null quando não há nada útil
- * (sem data E sem geo) — nesse caso o chamador não renderiza carimbo.
+ * Monta o carimbo: "Assinado em {data/hora} · {endereço ou geo}".
+ * O LOCAL prefere o endereço conciso (`address`) e cai pra coordenada quando
+ * não há endereço. Cada parte é omitida quando ausente. Retorna null quando não
+ * há nada útil (sem data E sem local) — o chamador não renderiza carimbo.
  */
 export function formatSignatureStamp(input: SignatureStampInput): string | null {
   const when = formatStampDateTime(input.at);
+  const address = typeof input.address === 'string' && input.address.trim()
+    ? input.address.trim()
+    : null;
   const geo = formatStampGeo(input.geo);
+  const place = address ?? geo;
 
   // Nada pra carimbar.
-  if (!when && !geo) return null;
+  if (!when && !place) return null;
 
   const parts: string[] = [];
   if (when) parts.push(`Assinado em ${when}`);
-  if (geo) parts.push(geo);
+  if (place) parts.push(place);
 
   return parts.join(' · ');
 }

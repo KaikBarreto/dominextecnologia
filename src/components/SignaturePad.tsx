@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { Eraser, Maximize2, RefreshCw, Check, X, PenTool, Undo2, Redo2 } from 'lucide-react';
+import { Eraser, Maximize2, Check, X, PenTool, Undo2, Redo2 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /* Histórico de traços (undo/redo) por SNAPSHOT de canvas.            */
@@ -241,16 +241,6 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
               >
                 <Maximize2 className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">Tela cheia</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={openFullscreen}
-                className="min-w-0 flex-1 gap-1.5 px-2"
-              >
-                <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Refazer</span>
               </Button>
               <Button
                 type="button"

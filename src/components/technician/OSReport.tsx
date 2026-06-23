@@ -322,8 +322,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const duringPhotos = photos.filter(p => p.photo_type === 'durante');
   const afterPhotos = photos.filter(p => p.photo_type === 'depois');
 
-  const checkInLoc = serviceOrder.check_in_location as { lat: number; lng: number } | null;
-  const checkOutLoc = serviceOrder.check_out_location as { lat: number; lng: number } | null;
+  // Geo do check-in/out: jsonb estendido com endereço conciso opcional
+  // (reverse geocode no momento da captura — sem migration).
+  const checkInLoc = serviceOrder.check_in_location as { lat: number; lng: number; address?: string } | null;
+  const checkOutLoc = serviceOrder.check_out_location as { lat: number; lng: number; address?: string } | null;
 
   const signatureResponses = formResponses.filter(r => r.question?.question_type === 'signature');
   const otherResponses = formResponses.filter(r => r.question?.question_type !== 'signature');
@@ -1022,10 +1024,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                         {format(new Date(serviceOrder.check_in_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
                       {checkInLoc && (
-                        <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="break-all">{checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}</span>
-                        </p>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {checkInLoc.address && (
+                            <p className="flex items-start gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                              <span className="break-words">{checkInLoc.address}</span>
+                            </p>
+                          )}
+                          <p className={checkInLoc.address ? 'opacity-70 pl-3.5 break-all' : 'flex items-center gap-0.5 break-all'}>
+                            {!checkInLoc.address && <MapPin className="h-3 w-3 shrink-0" />}
+                            {checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1054,10 +1064,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                         {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
                       {checkOutLoc && (
-                        <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="break-all">{checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}</span>
-                        </p>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {checkOutLoc.address && (
+                            <p className="flex items-start gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                              <span className="break-words">{checkOutLoc.address}</span>
+                            </p>
+                          )}
+                          <p className={checkOutLoc.address ? 'opacity-70 pl-3.5 break-all' : 'flex items-center gap-0.5 break-all'}>
+                            {!checkOutLoc.address && <MapPin className="h-3 w-3 shrink-0" />}
+                            {checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1212,15 +1230,17 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
                 {(serviceOrder as any).tech_signature && (() => {
-                  // Carimbo SÓ com data/hora + geo (sem nome — decisão CEO).
+                  // Carimbo SÓ com data/hora + LOCAL (sem nome — decisão CEO).
+                  // Local prefere o endereço conciso e cai pra coordenada.
+                  const loc = ((serviceOrder as any).tech_signed_location as { lat: number; lng: number; address?: string } | null)
+                    ?? checkOutLoc ?? checkInLoc;
                   const stamp = formatSignatureStamp({
                     // OS antiga (sem tech_signature_at): cai pro check-out/check-in.
                     at: (serviceOrder as any).tech_signature_at
                       ?? serviceOrder.check_out_time
                       ?? serviceOrder.check_in_time,
-                    // Geo do momento da assinatura (persistida); fallback check-out/in.
-                    geo: ((serviceOrder as any).tech_signed_location as { lat: number; lng: number } | null)
-                      ?? checkOutLoc ?? checkInLoc,
+                    geo: loc,
+                    address: loc?.address,
                   });
                   return (
                     <div className="flex flex-col items-center text-center">
@@ -1231,13 +1251,15 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   );
                 })()}
                 {(serviceOrder as any).client_signature && (() => {
-                  // Carimbo SÓ com data/hora + geo (sem nome — decisão CEO).
+                  // Carimbo SÓ com data/hora + LOCAL (sem nome — decisão CEO).
+                  const loc = ((serviceOrder as any).client_signed_location as { lat: number; lng: number; address?: string } | null)
+                    ?? checkOutLoc ?? checkInLoc;
                   const stamp = formatSignatureStamp({
                     at: (serviceOrder as any).client_signature_at
                       ?? serviceOrder.check_out_time
                       ?? serviceOrder.check_in_time,
-                    geo: ((serviceOrder as any).client_signed_location as { lat: number; lng: number } | null)
-                      ?? checkOutLoc ?? checkInLoc,
+                    geo: loc,
+                    address: loc?.address,
                   });
                   return (
                     <div className="flex flex-col items-center text-center">
@@ -1253,10 +1275,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   // data/hora (responded_at) + geo. Nome de quem assinou NÃO é
                   // registrado nem exibido (decisão CEO).
                   // Sem responded_at não há o que carimbar de útil aqui.
+                  const respLoc = checkOutLoc ?? checkInLoc;
                   const stamp = response.responded_at
                     ? formatSignatureStamp({
                         at: response.responded_at,
-                        geo: checkOutLoc ?? checkInLoc,
+                        geo: respLoc,
+                        address: respLoc?.address,
                       })
                     : null;
                   return (

@@ -47,6 +47,14 @@ import { trackUsage } from '@/lib/trackUsage';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
 import { formatSignatureStamp } from '@/lib/signatureStamp';
+import { reverseGeocodeShort } from '@/utils/reverseGeocode';
+
+/**
+ * Geolocalização persistida no jsonb da OS (check-in/out + assinatura). Estende
+ * `{lat,lng}` com um endereço conciso opcional (reverse geocode). Sem migration:
+ * as colunas são jsonb.
+ */
+type GeoLocation = { lat: number; lng: number; address?: string };
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
 import { ContractInfoCard } from '@/components/technician/ContractInfoCard';
@@ -278,8 +286,8 @@ export default function TechnicianOS() {
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
-  const [checkInLocation, setCheckInLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [checkOutLocation, setCheckOutLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [checkInLocation, setCheckInLocation] = useState<GeoLocation | null>(null);
+  const [checkOutLocation, setCheckOutLocation] = useState<GeoLocation | null>(null);
   const [trackingLinkCopied, setTrackingLinkCopied] = useState(false);
   
   const [formValidations, setFormValidations] = useState<Record<string, FormValidationResult>>({});
@@ -300,8 +308,8 @@ export default function TechnicianOS() {
   // registrar o usuário logado seria enganoso. A geo é fresca (getCurrentLocation
   // no instante da confirmação); se o GPS falhar, cai pra check-out/check-in.
   // Tudo zera quando a assinatura é limpa.
-  const [techSignedLocation, setTechSignedLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [clientSignedLocation, setClientSignedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [techSignedLocation, setTechSignedLocation] = useState<GeoLocation | null>(null);
+  const [clientSignedLocation, setClientSignedLocation] = useState<GeoLocation | null>(null);
   // Handlers que sincronizam assinatura + timestamp + geo: valor presente
   // carimba "agora" e dispara a captura de geo fresca; limpar (null) apaga todo
   // o carimbo.
@@ -330,10 +338,20 @@ export default function TechnicianOS() {
   // é declarado mais abaixo (hoisted via function declaration), então é seguro
   // referenciar aqui.
   const captureSignatureLocation = (
-    setter: (loc: { lat: number; lng: number } | null) => void,
+    setter: (loc: GeoLocation | null) => void,
   ) => {
     getCurrentLocation()
-      .then((loc) => setter(loc))
+      .then((loc) => {
+        // Mostra a coordenada NA HORA (não trava a tela); o endereço entra
+        // depois que o reverse geocode resolver. A gravação final
+        // (proceedFinishOS) reusa o cache do geocode, então chega com o address.
+        setter(loc);
+        reverseGeocodeShort(loc.lat, loc.lng)
+          .then((address) => {
+            if (address) setter({ ...loc, address });
+          })
+          .catch(() => { /* sem endereço: mantém só a coordenada */ });
+      })
       .catch(() => setter(checkOutLocation ?? checkInLocation ?? null));
   };
   const [finishing, setFinishing] = useState(false);
@@ -1238,8 +1256,23 @@ export default function TechnicianOS() {
       setCheckInTime(now);
       setCheckInLocation(location);
       setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus, check_in_time: now } : null);
-      
+
       toast({ title: 'Check-in realizado com sucesso!' });
+
+      // Endereço em BACKGROUND: o check-in já gravou {lat,lng} (rápido, sem
+      // depender da rede). Quando o reverse geocode resolver, faz um UPDATE leve
+      // só do check_in_location incluindo o address (patch idempotente).
+      reverseGeocodeShort(location.lat, location.lng)
+        .then(async (address) => {
+          if (!address || !resolvedOsId) return;
+          const located: GeoLocation = { ...location, address };
+          setCheckInLocation(located);
+          await supabase
+            .from('service_orders')
+            .update({ check_in_location: located })
+            .eq('id', resolvedOsId);
+        })
+        .catch(() => { /* sem endereço: fica só a coordenada já gravada */ });
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -1330,8 +1363,15 @@ export default function TechnicianOS() {
   const proceedFinishOS = async () => {
     setFinishing(true);
     try {
-      const location = await getCurrentLocation();
+      const rawLocation = await getCurrentLocation();
       const now = new Date().toISOString();
+
+      // Aqui é o fim/confirmação: dá pra AWAIT o endereço conciso (o util já tem
+      // fallback interno → null sem travar). Geocode falhou? grava só {lat,lng}.
+      const checkOutAddress = await reverseGeocodeShort(rawLocation.lat, rawLocation.lng);
+      const location: GeoLocation = checkOutAddress
+        ? { ...rawLocation, address: checkOutAddress }
+        : rawLocation;
 
       const updateData: any = {
         check_out_time: now,
@@ -1931,10 +1971,18 @@ export default function TechnicianOS() {
                           {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
                         {checkInLocation && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-0.5 mt-0.5">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            <span className="break-all">{checkInLocation.lat.toFixed(6)}, {checkInLocation.lng.toFixed(6)}</span>
-                          </p>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {checkInLocation.address && (
+                              <p className="flex items-start gap-0.5">
+                                <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                                <span className="break-words">{checkInLocation.address}</span>
+                              </p>
+                            )}
+                            <p className={checkInLocation.address ? 'opacity-70 pl-3.5 break-all' : 'flex items-center gap-0.5 break-all'}>
+                              {!checkInLocation.address && <MapPin className="h-3 w-3 shrink-0" />}
+                              {checkInLocation.lat.toFixed(6)}, {checkInLocation.lng.toFixed(6)}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1962,10 +2010,18 @@ export default function TechnicianOS() {
                           {format(new Date(checkOutTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
                         {checkOutLocation && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-0.5 mt-0.5">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            <span className="break-all">{checkOutLocation.lat.toFixed(6)}, {checkOutLocation.lng.toFixed(6)}</span>
-                          </p>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {checkOutLocation.address && (
+                              <p className="flex items-start gap-0.5">
+                                <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                                <span className="break-words">{checkOutLocation.address}</span>
+                              </p>
+                            )}
+                            <p className={checkOutLocation.address ? 'opacity-70 pl-3.5 break-all' : 'flex items-center gap-0.5 break-all'}>
+                              {!checkOutLocation.address && <MapPin className="h-3 w-3 shrink-0" />}
+                              {checkOutLocation.lat.toFixed(6)}, {checkOutLocation.lng.toFixed(6)}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2947,9 +3003,11 @@ export default function TechnicianOS() {
                 </span>
               </div>
               {checkInLocation && (
-                <span className="text-xs opacity-70 sm:ml-auto flex items-center gap-0.5">
+                <span className="text-xs opacity-70 sm:ml-auto flex items-center gap-0.5 min-w-0">
                   <MapPin className="h-3 w-3 shrink-0" />
-                  {checkInLocation.lat.toFixed(4)}, {checkInLocation.lng.toFixed(4)}
+                  <span className="truncate">
+                    {checkInLocation.address ?? `${checkInLocation.lat.toFixed(4)}, ${checkInLocation.lng.toFixed(4)}`}
+                  </span>
                 </span>
               )}
             </div>
@@ -3170,11 +3228,15 @@ export default function TechnicianOS() {
                     disabled={isPaused}
                   />
                   {techSignature && (() => {
+                    // Endereço/geo NO MOMENTO da assinatura (fallback check-in/out).
+                    // Na tela o address entra async (coord na hora, endereço quando
+                    // resolve) — sem travar.
+                    const loc = techSignedLocation ?? checkOutLocation ?? checkInLocation;
                     const stamp = formatSignatureStamp({
                       // Carimbo SÓ com hora + local (sem nome — decisão CEO).
                       at: techSignatureAt,
-                      // Geo capturada NO MOMENTO da assinatura (fallback check-in/out).
-                      geo: techSignedLocation ?? checkOutLocation ?? checkInLocation,
+                      geo: loc,
+                      address: loc?.address,
                     });
                     return stamp ? (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">
@@ -3193,10 +3255,12 @@ export default function TechnicianOS() {
                     disabled={isPaused}
                   />
                   {clientSignature && (() => {
+                    const loc = clientSignedLocation ?? checkOutLocation ?? checkInLocation;
                     const stamp = formatSignatureStamp({
                       // Carimbo SÓ com hora + local (sem nome — decisão CEO).
                       at: clientSignatureAt,
-                      geo: clientSignedLocation ?? checkOutLocation ?? checkInLocation,
+                      geo: loc,
+                      address: loc?.address,
                     });
                     return stamp ? (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">
