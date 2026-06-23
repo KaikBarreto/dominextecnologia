@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { Eraser, Maximize2, RefreshCw, Check, X } from 'lucide-react';
+import { Eraser, Maximize2, RefreshCw, Check, X, PenTool } from 'lucide-react';
 
 interface SignaturePadProps {
   value?: string | null;
@@ -507,7 +507,10 @@ function SignatureFullscreen({ value, onConfirm, onCancel }: FullscreenProps) {
       <div ref={stageRef} style={stageStyle} className="flex flex-col bg-card text-foreground">
         {/* Cabeçalho limpo */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <span className="text-xl font-bold text-foreground">Assinatura</span>
+          <span className="flex items-center gap-2 text-xl font-bold text-foreground">
+            <PenTool className="h-5 w-5 text-primary" />
+            Assinatura
+          </span>
           <button
             type="button"
             aria-label="Fechar"
@@ -553,7 +556,7 @@ function SignatureFullscreen({ value, onConfirm, onCancel }: FullscreenProps) {
           <Button
             type="button"
             onClick={confirm}
-            className="h-12 flex-[1.6] bg-success text-success-foreground hover:bg-success/90"
+            className="h-12 flex-[1.6] bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Check className="mr-1.5 h-4 w-4" /> Confirmar
           </Button>
