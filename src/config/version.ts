@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.27";
+export const APP_VERSION = "1.14.28";
 
-export const VERSION_NOTES = "Na finalização de Ordens de Serviço de contratos PMOC, a escolha de conformidade (Conforme, Parcial ou Não-conforme) ficou mais limpa: as opções aparecem discretas, com uma cor só indicando a gravidade, e a cor cheia aparece apenas na opção que você selecionar — deixando óbvio o que foi marcado.";
+export const VERSION_NOTES = "Cada assinatura da Ordem de Serviço (técnico e cliente) agora vem com um selo de identificação logo abaixo: quem assinou, o documento do cliente, a data e a hora, e a localização do atendimento — tanto na tela quanto no PDF. Isso reforça a OS como documento, especialmente nos contratos PMOC.";

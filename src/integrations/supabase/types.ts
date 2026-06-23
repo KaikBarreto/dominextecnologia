@@ -5957,6 +5957,7 @@ export type Database = {
           check_out_location: Json | null
           check_out_time: string | null
           client_signature: string | null
+          client_signature_at: string | null
           company_id: string
           completed_at: string | null
           contract_id: string | null
@@ -6010,6 +6011,7 @@ export type Database = {
           task_type_id: string | null
           team_id: string | null
           tech_signature: string | null
+          tech_signature_at: string | null
           technician_id: string | null
           total_value: number | null
           updated_at: string
@@ -6020,6 +6022,7 @@ export type Database = {
           check_out_location?: Json | null
           check_out_time?: string | null
           client_signature?: string | null
+          client_signature_at?: string | null
           company_id: string
           completed_at?: string | null
           contract_id?: string | null
@@ -6073,6 +6076,7 @@ export type Database = {
           task_type_id?: string | null
           team_id?: string | null
           tech_signature?: string | null
+          tech_signature_at?: string | null
           technician_id?: string | null
           total_value?: number | null
           updated_at?: string
@@ -6083,6 +6087,7 @@ export type Database = {
           check_out_location?: Json | null
           check_out_time?: string | null
           client_signature?: string | null
+          client_signature_at?: string | null
           company_id?: string
           completed_at?: string | null
           contract_id?: string | null
@@ -6136,6 +6141,7 @@ export type Database = {
           task_type_id?: string | null
           team_id?: string | null
           tech_signature?: string | null
+          tech_signature_at?: string | null
           technician_id?: string | null
           total_value?: number | null
           updated_at?: string

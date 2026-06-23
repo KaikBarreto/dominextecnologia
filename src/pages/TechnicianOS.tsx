@@ -45,6 +45,7 @@ import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { trackUsage } from '@/lib/trackUsage';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
+import { formatSignatureStamp } from '@/lib/signatureStamp';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
 import { ContractInfoCard } from '@/components/technician/ContractInfoCard';
@@ -284,6 +285,21 @@ export default function TechnicianOS() {
   
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
+  // Carimbo legal: momento (ISO) em que cada assinatura foi capturada. Set ao
+  // confirmar a assinatura, zerado ao limpar. Persistido em
+  // service_orders.tech_signature_at / client_signature_at na conclusão.
+  const [techSignatureAt, setTechSignatureAt] = useState<string | null>(null);
+  const [clientSignatureAt, setClientSignatureAt] = useState<string | null>(null);
+  // Handlers que sincronizam assinatura + timestamp: valor presente carimba o
+  // "agora"; limpar (null) apaga o carimbo.
+  const handleTechSignatureChange = (value: string | null) => {
+    setTechSignature(value);
+    setTechSignatureAt(value ? new Date().toISOString() : null);
+  };
+  const handleClientSignatureChange = (value: string | null) => {
+    setClientSignature(value);
+    setClientSignatureAt(value ? new Date().toISOString() : null);
+  };
   const [finishing, setFinishing] = useState(false);
   // Modal de finalização quando a OS PMOC tem itens do checklist sem resposta.
   // `pendingChecklistCount` guarda quantos faltam; o modal abre quando > 0 ao
@@ -1289,8 +1305,14 @@ export default function TechnicianOS() {
         // tenha passado por "Finalizar Parcialmente" antes).
         partial_finish: false,
       };
-      if (techSignature) updateData.tech_signature = techSignature;
-      if (clientSignature) updateData.client_signature = clientSignature;
+      if (techSignature) {
+        updateData.tech_signature = techSignature;
+        updateData.tech_signature_at = techSignatureAt ?? now;
+      }
+      if (clientSignature) {
+        updateData.client_signature = clientSignature;
+        updateData.client_signature_at = clientSignatureAt ?? now;
+      }
 
       // Onda D v1.9.x — persiste classificação de conformidade PMOC.
       // Colunas service_orders.pmoc_conformity_status / pmoc_conformity_notes
@@ -3103,20 +3125,47 @@ export default function TechnicianOS() {
                 <div className="w-full max-w-md mx-auto text-center [&_p]:text-center [&_button]:mx-auto">
                   <SignaturePad
                     value={techSignature}
-                    onChange={setTechSignature}
+                    onChange={handleTechSignatureChange}
                     label="Assinatura do Técnico"
                     disabled={isPaused}
                   />
+                  {techSignature && (() => {
+                    const stamp = formatSignatureStamp({
+                      name: technicianProfile?.full_name,
+                      role: 'Técnico',
+                      at: techSignatureAt,
+                      geo: checkOutLocation ?? checkInLocation,
+                    });
+                    return stamp ? (
+                      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">
+                        {stamp}
+                      </p>
+                    ) : null;
+                  })()}
                 </div>
               )}
               {(serviceOrder as any)?.require_client_signature && (
                 <div className="w-full max-w-md mx-auto text-center [&_p]:text-center [&_button]:mx-auto">
                   <SignaturePad
                     value={clientSignature}
-                    onChange={setClientSignature}
+                    onChange={handleClientSignatureChange}
                     label="Assinatura do Cliente"
                     disabled={isPaused}
                   />
+                  {clientSignature && (() => {
+                    const stamp = formatSignatureStamp({
+                      name: serviceOrder.customer?.name,
+                      document: serviceOrder.customer?.document,
+                      role: 'Cliente',
+                      at: clientSignatureAt,
+                      geo: checkOutLocation ?? checkInLocation,
+                    });
+                    return stamp ? (
+                      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">
+                        {stamp}
+                      </p>
+                    ) : null;
+                  })()}
                 </div>
               )}
             </CardContent>

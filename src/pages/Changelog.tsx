@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.28',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Selo de identificação na assinatura da OS',
+        description: 'Cada assinatura da Ordem de Serviço (técnico e cliente) passou a exibir um selo logo abaixo com quem assinou, o documento do cliente, a data e a hora, e a localização do atendimento — na tela e no PDF. Reforça a OS como documento, principalmente nos contratos PMOC.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.14.27',
     date: '22 de junho de 2026',
     type: 'patch',

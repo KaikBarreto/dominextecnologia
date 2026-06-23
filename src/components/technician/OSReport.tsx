@@ -10,6 +10,7 @@ import {
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { cn } from '@/lib/utils';
+import { formatSignatureStamp } from '@/lib/signatureStamp';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -46,6 +47,8 @@ interface FormResponseData {
   equipment_id?: string | null;
   /** Nome real do checklist (template) — usado pra rotular o sub-bloco. */
   template_name?: string | null;
+  /** Momento em que a resposta foi gravada — carimbo legal de assinaturas. */
+  responded_at?: string | null;
   question: FormQuestion;
 }
 
@@ -657,7 +660,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const fetchAllResponses = async () => {
     const { data } = await db
       .from('form_responses')
-      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*, template:form_templates(id, name))')
+      .select('id, question_id, response_value, response_photo_url, equipment_id, responded_at, question:form_questions(*, template:form_templates(id, name))')
       .eq('service_order_id', serviceOrder.id);
     if (data) {
       const normalized = (data as any[]).map(r => {
@@ -1208,27 +1211,66 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 <PenTool className="h-3.5 w-3.5" /> Assinaturas
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
-                {(serviceOrder as any).tech_signature && (
-                  <div className="flex flex-col items-center text-center">
-                    <img src={(serviceOrder as any).tech_signature} alt="Assinatura Técnico" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
-                    <p className="text-xs text-slate-500 font-semibold">Assinatura do Técnico</p>
-                  </div>
-                )}
-                {(serviceOrder as any).client_signature && (
-                  <div className="flex flex-col items-center text-center">
-                    <img src={(serviceOrder as any).client_signature} alt="Assinatura Cliente" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
-                    <p className="text-xs text-slate-500 font-semibold">Assinatura do Cliente</p>
-                  </div>
-                )}
-                {signatureResponses.map(response => (
-                  response.response_value && (
+                {(serviceOrder as any).tech_signature && (() => {
+                  const stamp = formatSignatureStamp({
+                    name: technicianInfo?.full_name,
+                    role: 'Técnico',
+                    // OS antiga (sem tech_signature_at): cai pro check-out/check-in.
+                    at: (serviceOrder as any).tech_signature_at
+                      ?? serviceOrder.check_out_time
+                      ?? serviceOrder.check_in_time,
+                    geo: checkOutLoc ?? checkInLoc,
+                  });
+                  return (
+                    <div className="flex flex-col items-center text-center">
+                      <img src={(serviceOrder as any).tech_signature} alt="Assinatura Técnico" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
+                      <p className="text-xs text-slate-500 font-semibold">Assinatura do Técnico</p>
+                      {stamp && <p className="text-[10px] leading-snug text-slate-500 break-words mt-0.5 max-w-[16rem]">{stamp}</p>}
+                    </div>
+                  );
+                })()}
+                {(serviceOrder as any).client_signature && (() => {
+                  const stamp = formatSignatureStamp({
+                    name: serviceOrder.customer?.name,
+                    document: serviceOrder.customer?.document,
+                    role: 'Cliente',
+                    at: (serviceOrder as any).client_signature_at
+                      ?? serviceOrder.check_out_time
+                      ?? serviceOrder.check_in_time,
+                    geo: checkOutLoc ?? checkInLoc,
+                  });
+                  return (
+                    <div className="flex flex-col items-center text-center">
+                      <img src={(serviceOrder as any).client_signature} alt="Assinatura Cliente" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
+                      <p className="text-xs text-slate-500 font-semibold">Assinatura do Cliente</p>
+                      {stamp && <p className="text-[10px] leading-snug text-slate-500 break-words mt-0.5 max-w-[16rem]">{stamp}</p>}
+                    </div>
+                  );
+                })()}
+                {signatureResponses.map(response => {
+                  if (!response.response_value) return null;
+                  // Carimbo das assinaturas vindas de perguntas (signature): só
+                  // data/hora (responded_at) + geo. Nome de quem respondeu exige
+                  // join cross-domínio (responded_by→profiles via RPC público),
+                  // adiado pra não tocar o get_public_os.
+                  // Sem responded_at não há o que carimbar de útil aqui — evita
+                  // mostrar "Assinado por Cliente" solto sem data.
+                  const stamp = response.responded_at
+                    ? formatSignatureStamp({
+                        name: 'Cliente',
+                        at: response.responded_at,
+                        geo: checkOutLoc ?? checkInLoc,
+                      })
+                    : null;
+                  return (
                     <div key={response.id} className="flex flex-col items-center text-center">
                       <p className="text-sm font-medium text-slate-700 break-words mb-1.5">{response.question?.question}</p>
                       <img src={response.response_value} alt={response.question?.question} className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
                       <p className="text-xs text-slate-500 font-semibold">Assinatura</p>
+                      {stamp && <p className="text-[10px] leading-snug text-slate-500 break-words mt-0.5 max-w-[16rem]">{stamp}</p>}
                     </div>
-                  )
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
