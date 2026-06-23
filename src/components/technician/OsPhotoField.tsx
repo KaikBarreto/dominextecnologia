@@ -284,7 +284,10 @@ export function OsPhotoField({
               {!readOnly && (
                 <button
                   type="button"
-                  className="absolute top-1 right-1 z-10 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
+                  // z baixo (local à foto): fica acima da imagem mas ABAIXO do
+                  // cabeçalho sticky do equipamento (z-10) e do header (z-20),
+                  // pra não vazar por cima deles ao rolar.
+                  className="absolute top-1 right-1 z-[1] p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
                   onClick={() => setPendingRemoval(idx)}
                   title="Remover foto"
                 >

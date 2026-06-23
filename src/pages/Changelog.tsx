@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.26',
+    date: '22 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura em tela cheia mais prática',
+        description: 'A assinatura em tela cheia agora abre sempre na horizontal, segue o tema do app (claro ou escuro) com a área de assinatura sempre branca, e os botões ficaram mais claros (Limpar e Confirmar).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Avisos no rodapé com botão de fechar',
+        description: 'No celular, os avisos do sistema passaram a aparecer na parte de baixo da tela, com uma margem da borda e um botão de fechar (X) sempre visível.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.25',
     date: '22 de junho de 2026',
     type: 'patch',

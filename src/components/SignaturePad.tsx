@@ -1,7 +1,7 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { Eraser, Maximize2, RefreshCw, Check, X, Smartphone } from 'lucide-react';
+import { Eraser, Maximize2, RefreshCw, Check, X } from 'lucide-react';
 
 interface SignaturePadProps {
   value?: string | null;
@@ -22,6 +22,7 @@ interface SignaturePadProps {
  */
 export function SignaturePad({ value, onChange, label, disabled }: SignaturePadProps) {
   const [fullscreen, setFullscreen] = useState(false);
+  const inlinePadRef = useRef<InlineSignaturePadHandle>(null);
 
   const openFullscreen = () => {
     if (disabled) return;
@@ -42,20 +43,36 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
             />
           </div>
           {!disabled && (
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={openFullscreen}>
-                <Maximize2 className="mr-1 h-3.5 w-3.5" /> Ver em tela cheia
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openFullscreen}
+                className="min-w-0 flex-1 gap-1.5 px-2"
+              >
+                <Maximize2 className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Tela cheia</span>
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={openFullscreen}>
-                <RefreshCw className="mr-1 h-3.5 w-3.5" /> Refazer
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openFullscreen}
+                className="min-w-0 flex-1 gap-1.5 px-2"
+              >
+                <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Refazer</span>
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => onChange(null)}
+                className="min-w-0 flex-1 gap-1.5 px-2"
               >
-                <Eraser className="mr-1 h-3.5 w-3.5" /> Limpar
+                <Eraser className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Limpar</span>
               </Button>
             </div>
           )}
@@ -63,18 +80,33 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
       ) : (
         <div className="space-y-2">
           {/* Pad inline branco — assinável direto ali. */}
-          <InlineSignaturePad value={value} onChange={onChange} disabled={disabled} />
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={openFullscreen}
-              disabled={disabled}
-            >
-              <Maximize2 className="mr-1 h-3.5 w-3.5" /> Ver em tela cheia
-            </Button>
-          </div>
+          <InlineSignaturePad ref={inlinePadRef} value={value} onChange={onChange} disabled={disabled} />
+          {!disabled && (
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openFullscreen}
+                disabled={disabled}
+                className="min-w-0 flex-1 gap-1.5 px-2"
+              >
+                <Maximize2 className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Tela cheia</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => inlinePadRef.current?.clear()}
+                disabled={disabled}
+                className="min-w-0 flex-1 gap-1.5 px-2"
+              >
+                <Eraser className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Limpar</span>
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -102,7 +134,14 @@ interface InlinePadProps {
   disabled?: boolean;
 }
 
-function InlineSignaturePad({ value, onChange, disabled }: InlinePadProps) {
+export interface InlineSignaturePadHandle {
+  clear: () => void;
+}
+
+const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(function InlineSignaturePad(
+  { value, onChange, disabled },
+  ref,
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
   const hasDrawnRef = useRef(false);
@@ -203,6 +242,8 @@ function InlineSignaturePad({ value, onChange, disabled }: InlinePadProps) {
     onChange(null);
   };
 
+  useImperativeHandle(ref, () => ({ clear }), []);
+
   return (
     <div className="space-y-2">
       <div className="relative">
@@ -222,14 +263,9 @@ function InlineSignaturePad({ value, onChange, disabled }: InlinePadProps) {
           Assine aqui
         </p>
       </div>
-      {!disabled && (
-        <Button type="button" variant="outline" size="sm" onClick={clear}>
-          <Eraser className="mr-1 h-3.5 w-3.5" /> Limpar
-        </Button>
-      )}
     </div>
   );
-}
+});
 
 /* ------------------------------------------------------------------ */
 /* Fullscreen — pad grande em paisagem.                               */
@@ -243,12 +279,18 @@ interface FullscreenProps {
 
 function SignatureFullscreen({ value, onConfirm, onCancel }: FullscreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const isDrawingRef = useRef(false);
   const hasDrawnRef = useRef(false);
   const initialValueRef = useRef(value);
+  // RETRATO = precisamos forçar paisagem via rotação CSS (lock nativo não pegou).
   const [isPortrait, setIsPortrait] = useState(
     typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false,
   );
+  // Mantém o flag de rotação acessível dentro dos handlers de ponteiro sem
+  // recriá-los (ref espelha o state).
+  const isPortraitRef = useRef(isPortrait);
+  isPortraitRef.current = isPortrait;
 
   // Best-effort: fullscreen nativo + trava de orientação paisagem. iOS Safari
   // não suporta — tudo em try/catch, qualquer rejeição é IGNORADA.
@@ -288,14 +330,20 @@ function SignatureFullscreen({ value, onConfirm, onCancel }: FullscreenProps) {
   const setupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    // clientWidth/clientHeight = caixa de LAYOUT do elemento (NÃO afetada pelo
+    // transform: rotate do palco), ao contrário de getBoundingClientRect que
+    // devolve a caixa axis-aligned já rotacionada. Como o getPos assume que
+    // canvas.width/2 é a largura lógica (pré-rotação), precisamos das medidas
+    // de layout aqui pra o mapeamento de ponteiro casar.
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w === 0 || h === 0) return;
 
     // Preserva o conteúdo atual antes de redimensionar (resize limpa o canvas).
     const prev = hasDrawnRef.current ? canvas.toDataURL('image/png') : initialValueRef.current;
 
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
+    canvas.width = w * 2;
+    canvas.height = h * 2;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.scale(2, 2);
@@ -307,7 +355,7 @@ function SignatureFullscreen({ value, onConfirm, onCancel }: FullscreenProps) {
     if (prev) {
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        ctx.drawImage(img, 0, 0, w, h);
       };
       img.src = prev;
     }
@@ -338,17 +386,45 @@ function SignatureFullscreen({ value, onConfirm, onCancel }: FullscreenProps) {
   const getPos = (e: React.TouchEvent | React.MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
+
+    let clientX: number;
+    let clientY: number;
     if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    // Centro visual do canvas (rect já é a caixa axis-aligned, mesmo rotacionado:
+    // como rotacionamos exatamente 90°, a caixa coincide com o canvas e o centro
+    // é o mesmo ponto físico do centro lógico).
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    // Vetor do centro até o ponteiro, em coordenadas de tela.
+    const dx = clientX - cx;
+    const dy = clientY - cy;
+
+    // Dimensões LÓGICAS do canvas em CSS px (largura/altura do elemento canvas,
+    // ANTES da rotação). canvas.width/height são 2x (devicePixel), por isso /2.
+    const logicalW = canvas.width / 2;
+    const logicalH = canvas.height / 2;
+
+    if (isPortraitRef.current) {
+      // Stage rotacionado +90° (sentido horário). Para voltar ao espaço lógico
+      // do canvas aplicamos a rotação inversa (-90°) no vetor da tela:
+      //   localX =  dy
+      //   localY = -dx
       return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top,
+        x: dy + logicalW / 2,
+        y: -dx + logicalH / 2,
       };
     }
-    return {
-      x: (e as React.MouseEvent).clientX - rect.left,
-      y: (e as React.MouseEvent).clientY - rect.top,
-    };
+
+    // Sem rotação: mapeamento direto.
+    return { x: dx + logicalW / 2, y: dy + logicalH / 2 };
   };
 
   const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
@@ -397,71 +473,91 @@ function SignatureFullscreen({ value, onConfirm, onCancel }: FullscreenProps) {
     onConfirm(canvas.toDataURL('image/png'));
   };
 
+  // Quando RETRATO, o palco inteiro (cabeçalho + pad + controles) é rotacionado
+  // +90° e tem dimensões TROCADAS (largura = altura da viewport, altura =
+  // largura da viewport), centralizado, pra preencher a tela SEMPRE em paisagem.
+  // Em PAISAGEM nativa (lock pegou ou usuário girou), o palco preenche normal.
+  const stageStyle: React.CSSProperties = isPortrait
+    ? {
+        // Trava de paisagem por CSS: largura = altura da viewport (100vh) e
+        // altura = largura da viewport (100vw), ancorado no canto superior
+        // esquerdo e rotacionado 90° pra preencher EXATAMENTE a tela retrato.
+        // (transform: rotate(90deg) translateY(-100%) com origin top-left é a
+        // combinação que assenta a caixa em [0,0]→[innerW,innerH] — validado no
+        // browser; centralizar com translate(-50%) quebra por causa da base %.)
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100vh',
+        height: '100vw',
+        transform: 'rotate(90deg) translateY(-100%)',
+        transformOrigin: 'top left',
+      }
+    : {
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+      };
+
   const overlay = (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-white">
-      {/* Cabeçalho compacto */}
-      <div className="flex items-center justify-between border-b border-black/10 px-4 py-3">
-        <span className="text-sm font-semibold text-black">Assinatura</span>
-        <button
-          type="button"
-          aria-label="Cancelar"
-          onClick={onCancel}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-black/70 active:bg-black/5"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
-      {isPortrait && (
-        <div className="flex items-center justify-center gap-2 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-800">
-          <Smartphone className="h-4 w-4 shrink-0" />
-          Vire o celular na horizontal para assinar com mais espaço
+    // CHROME do modal segue o TEMA (dark/light) via tokens. SÓ a área de
+    // assinatura (canvas) é sempre branca pra legibilidade do traço.
+    <div className="fixed inset-0 z-[60] overflow-hidden bg-background">
+      <div ref={stageRef} style={stageStyle} className="flex flex-col bg-card text-foreground">
+        {/* Cabeçalho limpo */}
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <span className="text-xl font-bold text-foreground">Assinatura</span>
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={onCancel}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-      )}
 
-      {/* Área do pad — ocupa quase toda a tela */}
-      <div className="relative flex-1 p-3">
-        <canvas
-          ref={canvasRef}
-          className="h-full w-full touch-none rounded-lg border-2 border-dashed border-black/20 bg-white cursor-crosshair"
-          onMouseDown={startDraw}
-          onMouseMove={draw}
-          onMouseUp={endDraw}
-          onMouseLeave={endDraw}
-          onTouchStart={startDraw}
-          onTouchMove={draw}
-          onTouchEnd={endDraw}
-        />
-        <p className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-sm text-black/30">
-          Assine aqui
-        </p>
-      </div>
+        {/* Área do pad — ocupa quase toda a tela em paisagem. min-h-0/min-w-0
+            são obrigatórios: sem eles o flex-child estoura sob a rotação e o
+            canvas cresce pra milhares de px (validado no browser).
+            O canvas em si é SEMPRE branco (independente do tema). */}
+        <div className="relative min-h-0 min-w-0 flex-1 p-3">
+          <canvas
+            ref={canvasRef}
+            className="h-full w-full touch-none rounded-lg border-2 border-dashed border-black/20 bg-white cursor-crosshair"
+            onMouseDown={startDraw}
+            onMouseMove={draw}
+            onMouseUp={endDraw}
+            onMouseLeave={endDraw}
+            onTouchStart={startDraw}
+            onTouchMove={draw}
+            onTouchEnd={endDraw}
+          />
+          <p className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-sm text-black/30">
+            Assine aqui
+          </p>
+        </div>
 
-      {/* Controles */}
-      <div className="flex items-center gap-2 border-t border-black/10 px-4 py-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={clear}
-          className="h-12 flex-1 border-black/20 text-black hover:bg-black/5"
-        >
-          <Eraser className="mr-1.5 h-4 w-4" /> Limpar
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          className="h-12 flex-1 border-black/20 text-black hover:bg-black/5"
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          onClick={confirm}
-          className="h-12 flex-[1.4] bg-primary text-primary-foreground"
-        >
-          <Check className="mr-1.5 h-4 w-4" /> Confirmar
-        </Button>
+        {/* Controles — Limpar (sutil) + Confirmar (destaque). O X do cabeçalho
+            já fecha sem salvar, então não há "Cancelar" redundante aqui. */}
+        <div className="flex items-center gap-2 border-t border-border px-4 py-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={clear}
+            className="h-12 flex-1"
+          >
+            <Eraser className="mr-1.5 h-4 w-4" /> Limpar
+          </Button>
+          <Button
+            type="button"
+            onClick={confirm}
+            className="h-12 flex-[1.6] bg-success text-success-foreground hover:bg-success/90"
+          >
+            <Check className="mr-1.5 h-4 w-4" /> Confirmar
+          </Button>
+        </div>
       </div>
     </div>
   );

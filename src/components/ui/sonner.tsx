@@ -7,6 +7,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="light"
       className="toaster group"
+      // Rodapé (mobile e desktop), com margem da borda inferior + safe-area pra
+      // não colar na borda nem no rodapé sticky de ações da OS.
+      position="bottom-center"
+      offset="calc(env(safe-area-inset-bottom) + 1.5rem)"
+      closeButton
       toastOptions={{
         classNames: {
           toast:
@@ -14,6 +19,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           description: "group-[.toast]:text-muted-foreground",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          // X sempre visível e contrastado (sonner esconde por padrão até o hover).
+          closeButton:
+            "group-[.toast]:!opacity-100 group-[.toast]:!bg-foreground/10 group-[.toast]:!text-foreground/80 group-[.toast]:!border-transparent group-[.toast]:hover:!bg-foreground/20",
         },
       }}
       {...props}
