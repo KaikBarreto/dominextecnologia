@@ -47,3 +47,6 @@ public/videos/
 
 # Ferramenta interna de scraping de leads (dados pessoais/LGPD — fora do repo)
 tools/maps-lead-scraper/
+
+# Scripts efêmeros de verificação via Chrome DevTools Protocol (debris de agente)
+cdp-*.mjs
