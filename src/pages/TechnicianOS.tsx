@@ -40,6 +40,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { trackUsage } from '@/lib/trackUsage';
@@ -232,6 +233,9 @@ export default function TechnicianOS() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  // Usuário LOGADO agora — carimbo legal da assinatura usa o nome de quem
+  // assina de fato (no modo autenticado), não o técnico atribuído à OS.
+  const { profile: currentUserProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any; contract?: any }) | null>(null);
   // UUID REAL da OS — fonte ÚNICA e estável pra TODA escrita/consulta keyed por
@@ -290,15 +294,54 @@ export default function TechnicianOS() {
   // service_orders.tech_signature_at / client_signature_at na conclusão.
   const [techSignatureAt, setTechSignatureAt] = useState<string | null>(null);
   const [clientSignatureAt, setClientSignatureAt] = useState<string | null>(null);
-  // Handlers que sincronizam assinatura + timestamp: valor presente carimba o
-  // "agora"; limpar (null) apaga o carimbo.
+  // Carimbo legal (segurança): QUEM assinou de fato + LOCALIZAÇÃO capturada NO
+  // MOMENTO do "Confirmar". O técnico carimba com o USUÁRIO LOGADO agora (não o
+  // técnico da OS); o cliente, com o nome do cliente da OS. A geo é fresca
+  // (getCurrentLocation no instante da confirmação); se o GPS falhar, cai pra
+  // check-out/check-in. Tudo zera quando a assinatura é limpa.
+  const [techSignedBy, setTechSignedBy] = useState<string | null>(null);
+  const [clientSignedBy, setClientSignedBy] = useState<string | null>(null);
+  const [techSignedLocation, setTechSignedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [clientSignedLocation, setClientSignedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  // Handlers que sincronizam assinatura + timestamp + signatário + geo: valor
+  // presente carimba "agora" e dispara a captura de geo fresca; limpar (null)
+  // apaga todo o carimbo.
   const handleTechSignatureChange = (value: string | null) => {
     setTechSignature(value);
-    setTechSignatureAt(value ? new Date().toISOString() : null);
+    if (!value) {
+      setTechSignatureAt(null);
+      setTechSignedBy(null);
+      setTechSignedLocation(null);
+      return;
+    }
+    setTechSignatureAt(new Date().toISOString());
+    // Técnico = usuário LOGADO agora (não o técnico atribuído à OS).
+    setTechSignedBy(currentUserProfile?.full_name ?? null);
+    captureSignatureLocation(setTechSignedLocation);
   };
   const handleClientSignatureChange = (value: string | null) => {
     setClientSignature(value);
-    setClientSignatureAt(value ? new Date().toISOString() : null);
+    if (!value) {
+      setClientSignatureAt(null);
+      setClientSignedBy(null);
+      setClientSignedLocation(null);
+      return;
+    }
+    setClientSignatureAt(new Date().toISOString());
+    // Cliente = nome do cliente da OS (quem assina é o cliente final).
+    setClientSignedBy(serviceOrder?.customer?.name ?? null);
+    captureSignatureLocation(setClientSignedLocation);
+  };
+  // Captura a geo fresca no momento do Confirmar e guarda no setter dado. Em
+  // falha de GPS, cai pra check-out/check-in (melhor que nada). getCurrentLocation
+  // é declarado mais abaixo (hoisted via function declaration), então é seguro
+  // referenciar aqui.
+  const captureSignatureLocation = (
+    setter: (loc: { lat: number; lng: number } | null) => void,
+  ) => {
+    getCurrentLocation()
+      .then((loc) => setter(loc))
+      .catch(() => setter(checkOutLocation ?? checkInLocation ?? null));
   };
   const [finishing, setFinishing] = useState(false);
   // Modal de finalização quando a OS PMOC tem itens do checklist sem resposta.
@@ -1308,10 +1351,16 @@ export default function TechnicianOS() {
       if (techSignature) {
         updateData.tech_signature = techSignature;
         updateData.tech_signature_at = techSignatureAt ?? now;
+        // Carimbo legal: quem assinou de fato + geo do momento. Fallback de geo
+        // pro check-out/check-in se o GPS falhou na hora da assinatura.
+        updateData.tech_signed_by = techSignedBy ?? currentUserProfile?.full_name ?? null;
+        updateData.tech_signed_location = techSignedLocation ?? location ?? checkInLocation ?? null;
       }
       if (clientSignature) {
         updateData.client_signature = clientSignature;
         updateData.client_signature_at = clientSignatureAt ?? now;
+        updateData.client_signed_by = clientSignedBy ?? serviceOrder?.customer?.name ?? null;
+        updateData.client_signed_location = clientSignedLocation ?? location ?? checkInLocation ?? null;
       }
 
       // Onda D v1.9.x — persiste classificação de conformidade PMOC.
@@ -3131,10 +3180,13 @@ export default function TechnicianOS() {
                   />
                   {techSignature && (() => {
                     const stamp = formatSignatureStamp({
-                      name: technicianProfile?.full_name,
+                      // Quem assinou de fato (usuário logado agora), com fallback
+                      // pro técnico da OS enquanto a geo/nome carrega.
+                      name: techSignedBy ?? technicianProfile?.full_name,
                       role: 'Técnico',
                       at: techSignatureAt,
-                      geo: checkOutLocation ?? checkInLocation,
+                      // Geo capturada NO MOMENTO da assinatura (fallback check-in/out).
+                      geo: techSignedLocation ?? checkOutLocation ?? checkInLocation,
                     });
                     return stamp ? (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">
@@ -3154,11 +3206,11 @@ export default function TechnicianOS() {
                   />
                   {clientSignature && (() => {
                     const stamp = formatSignatureStamp({
-                      name: serviceOrder.customer?.name,
+                      name: clientSignedBy ?? serviceOrder.customer?.name,
                       document: serviceOrder.customer?.document,
                       role: 'Cliente',
                       at: clientSignatureAt,
-                      geo: checkOutLocation ?? checkInLocation,
+                      geo: clientSignedLocation ?? checkOutLocation ?? checkInLocation,
                     });
                     return stamp ? (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground break-words">

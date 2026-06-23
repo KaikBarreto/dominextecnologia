@@ -1213,13 +1213,17 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
                 {(serviceOrder as any).tech_signature && (() => {
                   const stamp = formatSignatureStamp({
-                    name: technicianInfo?.full_name,
+                    // Quem assinou de fato (persistido). OS antiga (sem
+                    // tech_signed_by): cai pro técnico da OS.
+                    name: (serviceOrder as any).tech_signed_by ?? technicianInfo?.full_name,
                     role: 'Técnico',
                     // OS antiga (sem tech_signature_at): cai pro check-out/check-in.
                     at: (serviceOrder as any).tech_signature_at
                       ?? serviceOrder.check_out_time
                       ?? serviceOrder.check_in_time,
-                    geo: checkOutLoc ?? checkInLoc,
+                    // Geo do momento da assinatura (persistida); fallback check-out/in.
+                    geo: ((serviceOrder as any).tech_signed_location as { lat: number; lng: number } | null)
+                      ?? checkOutLoc ?? checkInLoc,
                   });
                   return (
                     <div className="flex flex-col items-center text-center">
@@ -1231,13 +1235,14 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 })()}
                 {(serviceOrder as any).client_signature && (() => {
                   const stamp = formatSignatureStamp({
-                    name: serviceOrder.customer?.name,
+                    name: (serviceOrder as any).client_signed_by ?? serviceOrder.customer?.name,
                     document: serviceOrder.customer?.document,
                     role: 'Cliente',
                     at: (serviceOrder as any).client_signature_at
                       ?? serviceOrder.check_out_time
                       ?? serviceOrder.check_in_time,
-                    geo: checkOutLoc ?? checkInLoc,
+                    geo: ((serviceOrder as any).client_signed_location as { lat: number; lng: number } | null)
+                      ?? checkOutLoc ?? checkInLoc,
                   });
                   return (
                     <div className="flex flex-col items-center text-center">

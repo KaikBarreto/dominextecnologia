@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.29',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura da OS mais completa',
+        description: 'Agora dá para assinar com vários traços e confirmar ao final, desfazer e refazer o último traço, e o campo de assinatura e a tela cheia mostram sempre o mesmo desenho. O selo da assinatura registra a data, a hora e a localização exatas do momento da confirmação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.28',
     date: '22 de junho de 2026',
     type: 'patch',

@@ -5958,6 +5958,8 @@ export type Database = {
           check_out_time: string | null
           client_signature: string | null
           client_signature_at: string | null
+          client_signed_by: string | null
+          client_signed_location: Json | null
           company_id: string
           completed_at: string | null
           contract_id: string | null
@@ -6012,6 +6014,8 @@ export type Database = {
           team_id: string | null
           tech_signature: string | null
           tech_signature_at: string | null
+          tech_signed_by: string | null
+          tech_signed_location: Json | null
           technician_id: string | null
           total_value: number | null
           updated_at: string
@@ -6023,6 +6027,8 @@ export type Database = {
           check_out_time?: string | null
           client_signature?: string | null
           client_signature_at?: string | null
+          client_signed_by?: string | null
+          client_signed_location?: Json | null
           company_id: string
           completed_at?: string | null
           contract_id?: string | null
@@ -6077,6 +6083,8 @@ export type Database = {
           team_id?: string | null
           tech_signature?: string | null
           tech_signature_at?: string | null
+          tech_signed_by?: string | null
+          tech_signed_location?: Json | null
           technician_id?: string | null
           total_value?: number | null
           updated_at?: string
@@ -6088,6 +6096,8 @@ export type Database = {
           check_out_time?: string | null
           client_signature?: string | null
           client_signature_at?: string | null
+          client_signed_by?: string | null
+          client_signed_location?: Json | null
           company_id?: string
           completed_at?: string | null
           contract_id?: string | null
@@ -6142,6 +6152,8 @@ export type Database = {
           team_id?: string | null
           tech_signature?: string | null
           tech_signature_at?: string | null
+          tech_signed_by?: string | null
+          tech_signed_location?: Json | null
           technician_id?: string | null
           total_value?: number | null
           updated_at?: string
