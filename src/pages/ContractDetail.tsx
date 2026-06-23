@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -33,6 +33,7 @@ import { ContractEnvironmentsTab } from '@/components/contracts/ContractEnvironm
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
 import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
+import { PmocExecutionHistoryTab } from '@/components/pmoc/PmocExecutionHistoryTab';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useContractDetail, isActiveContractOS } from '@/hooks/useContractDetail';
 import { useContracts, getFrequencyLabel, type ContractServiceOrder } from '@/hooks/useContracts';
@@ -105,7 +106,7 @@ export default function ContractDetail() {
   // Aba ativa do contrato. PMOC tem 5 abas; contrato comum tem 3 (Visão Geral
   // + Ocorrências + Financeiro). Default = visão geral. "Ocorrências" e
   // "Financeiro" são abas próprias em TODO contrato (decisão do CEO).
-  const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
+  const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
 
   const { deleteContract, applyFinancialLinksToContractParcels, renewContract } = useContracts();
   const { toast } = useToast();
@@ -722,6 +723,7 @@ export default function ContractDetail() {
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
           { value: 'equipamentos', label: 'Ambientes', icon: Wrench },
+          { value: 'historico', label: 'Histórico PMOC', icon: ClipboardCheck },
           { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
           { value: 'documentos', label: 'Documentos', icon: FileText },
           { value: 'cronograma', label: 'Cronograma', icon: Calendar },
@@ -1336,7 +1338,7 @@ export default function ContractDetail() {
           <SettingsSidebarLayout
             tabs={isPmoc ? pmocSidebarTabs : commonSidebarTabs}
             activeTab={pmocTab}
-            onTabChange={(v) => setPmocTab(v as 'overview' | 'equipamentos' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma')}
+            onTabChange={(v) => setPmocTab(v as 'overview' | 'equipamentos' | 'ocorrencias' | 'historico' | 'financeiro' | 'documentos' | 'cronograma')}
           >
             {pmocTab === 'overview' && overviewContent}
             {pmocTab === 'ocorrencias' && occurrencesContent}
@@ -1344,6 +1346,9 @@ export default function ContractDetail() {
               isPmoc
                 ? <ContractEnvironmentsTab contract={contract} />
                 : <ContractEquipmentTab contract={contract} />
+            )}
+            {isPmoc && pmocTab === 'historico' && id && (
+              <PmocExecutionHistoryTab contractId={id} isPmoc={isPmoc} />
             )}
             {pmocTab === 'financeiro' && financialContent}
             {isPmoc && pmocTab === 'documentos' && id && (

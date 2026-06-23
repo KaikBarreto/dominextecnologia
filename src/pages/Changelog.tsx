@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.31',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Histórico de PMOC no contrato (prova tarefa a tarefa)',
+        description: 'No detalhe de um contrato PMOC, uma nova aba "Histórico PMOC" mostra, visita a visita e equipamento por equipamento, cada tarefa realizada — com a frequência (mensal, trimestral, etc.), o resultado (Conforme, Não Conforme ou N/A) e quando e por quem foi feita. É a comprovação, item a item, de que a Planilha PMOC está sendo cumprida ao longo do tempo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.14.30',
     date: '23 de junho de 2026',
     type: 'patch',

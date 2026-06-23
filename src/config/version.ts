@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.30";
+export const APP_VERSION = "1.14.31";
 
-export const VERSION_NOTES = "O selo abaixo da assinatura agora mostra apenas a data, a hora e a localização exatas do momento em que ela foi confirmada (sem nome) — assim fica correto mesmo quando o cliente assina no aparelho do técnico. E as telas de carregamento do sistema passaram a exibir mensagens (Carregando, Sincronizando, Processando) abaixo da roda.";
+export const VERSION_NOTES = "Novo histórico de PMOC no contrato: cada contrato PMOC ganhou uma aba 'Histórico PMOC' que mostra, visita a visita, cada tarefa feita em cada equipamento — com a frequência, o resultado (Conforme / Não Conforme / N/A) e quando e por quem foi feita. É a prova, tarefa a tarefa, de que a Planilha PMOC está sendo cumprida.";
