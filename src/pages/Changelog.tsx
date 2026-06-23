@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.36',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cabeçalho do checklist geral com o nome do checklist',
+        description: 'No grupo de checklist sem equipamento, o cabeçalho passou a exibir o nome do próprio checklist com um ícone de checklist (no lugar do genérico "Geral / Local"), e nomes longos quebram linha em vez de cortar com "...".',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.35',
     date: '23 de junho de 2026',
     type: 'patch',

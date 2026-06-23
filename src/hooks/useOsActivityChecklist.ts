@@ -224,6 +224,10 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
   const [formQuestionsByTemplate, setFormQuestionsByTemplate] = useState<
     Record<string, FormQuestion[]>
   >({});
+  // Nome de cada template de checklist personalizado (por template_id). Usado pra
+  // rotular o grupo "Geral / Local" (sem equipamento) com o NOME do checklist em
+  // vez do título genérico, tanto no preenchimento quanto no relatório.
+  const [formTemplateNames, setFormTemplateNames] = useState<Record<string, string>>({});
   const [formResponses, setFormResponses] = useState<Record<string, ChecklistFormResponse>>({});
 
   const fetchActivities = useCallback(async () => {
@@ -290,6 +294,18 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
         new Set(rows.map((r) => r.form_template_id).filter((v): v is string => !!v))
       );
       if (templateIds.length > 0) {
+        // Nome de cada template (pra rotular o grupo "Geral / Local" pelo nome do
+        // checklist). Consulta leve — só id + name dos templates referenciados.
+        const { data: tplData } = await supabase
+          .from('form_templates')
+          .select('id, name')
+          .in('id', templateIds);
+        const tplNames: Record<string, string> = {};
+        for (const t of (tplData ?? []) as { id: string; name: string }[]) {
+          tplNames[t.id] = t.name;
+        }
+        setFormTemplateNames(tplNames);
+
         // Perguntas dos templates (ordenadas por position).
         const qById: Record<string, FormQuestion[]> = {};
         const allQuestionIds: string[] = [];
@@ -335,6 +351,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
         setFormResponses(respMap);
       } else {
         setFormQuestionsByTemplate({});
+        setFormTemplateNames({});
         setFormResponses({});
       }
     } catch {
@@ -493,6 +510,23 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
     groups[idx].activities.push(a);
   }
 
+  // Grupo "Geral / Local" (sem equipamento): quando é um checklist PERSONALIZADO de
+  // um ÚNICO template, o cabeçalho passa a ser o NOME do checklist em vez do título
+  // genérico (decisão CEO). Vários templates no mesmo grupo geral mantêm "Geral /
+  // Local" (o cabeçalho não consegue ser o nome de todos). `equipmentId` segue null
+  // → o consumidor renderiza o ícone de checklist no lugar da foto.
+  for (const g of groups) {
+    if (g.equipmentId != null) continue;
+    const tplIds = Array.from(
+      new Set(g.activities.map((a) => a.form_template_id).filter((v): v is string => !!v))
+    );
+    const onlyTemplates = g.activities.every((a) => !!a.form_template_id);
+    if (onlyTemplates && tplIds.length === 1) {
+      const nm = formTemplateNames[tplIds[0]];
+      if (nm) g.equipmentName = nm;
+    }
+  }
+
   /** Lê uma resposta de checklist personalizado (helper p/ a UI e contagem). */
   const getFormResponse = useCallback(
     (equipmentId: string | null, questionId: string): ChecklistFormResponse | undefined =>
@@ -512,6 +546,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
     rollup: rollupConformity(activities.filter((a) => !a.form_template_id)),
     // Checklists personalizados por máquina.
     formQuestionsByTemplate,
+    formTemplateNames,
     formResponses,
     getFormResponse,
     saveFormResponse,

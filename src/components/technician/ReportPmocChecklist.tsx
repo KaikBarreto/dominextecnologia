@@ -334,6 +334,7 @@ function ReportPmocItem({
   pmocItems,
   personalized,
   displayName,
+  hideSingleTemplateLabel,
   environmentName,
   category,
   photoUrl,
@@ -349,6 +350,12 @@ function ReportPmocItem({
   pmocItems: ReportChecklistItem[];
   personalized: PersonalizedBlock<any>[];
   displayName: string;
+  /**
+   * Grupo "Geral / Local" com UM único template: o cabeçalho JÁ é o nome do
+   * checklist, então o sub-rótulo do nome do template dentro do conteúdo é omitido
+   * (seria duplicado). Vários templates mantêm os sub-rótulos.
+   */
+  hideSingleTemplateLabel?: boolean;
   /** Nome do ambiente do equipamento (fonte leve, " | …"). null = não mostra. */
   environmentName: string | null;
   /** Tipo/categoria do equipamento (badge). null = não mostra. */
@@ -452,9 +459,11 @@ function ReportPmocItem({
       >
         <EquipmentChecklistHeader
           tone="document"
-          // Grupo "Geral / Local" (`__geral__`) não é equipamento → sem bloco de
-          // foto (nem o fallback Wrench). Equipamentos reais seguem com foto.
-          hidePhoto={groupKey === '__geral__'}
+          // Grupo "Geral / Local" (`__geral__`) não é equipamento: ícone discreto de
+          // checklist (slate) no lugar da foto. O `displayName` já vem como o NOME do
+          // checklist quando o grupo geral tem UM único template; vários mantêm
+          // "Geral / Local". Equipamentos reais seguem com foto.
+          leadingIcon={groupKey === '__geral__' ? <ClipboardCheck className="h-5 w-5 text-slate-400" /> : undefined}
           photo={photoUrl}
           name={displayName}
           category={category}
@@ -516,9 +525,11 @@ function ReportPmocItem({
                 <div className="space-y-4">
                   {personalized.map((block, bi) => (
                     <div key={`tpl-${bi}-${block.templateName}`} className="space-y-1">
-                      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                        {block.templateName}
-                      </p>
+                      {!hideSingleTemplateLabel && (
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                          {block.templateName}
+                        </p>
+                      )}
                       <div className="space-y-2">
                         {block.responses.map((response, idx) => renderResponse(response, idx))}
                       </div>
@@ -530,9 +541,11 @@ function ReportPmocItem({
               <div className="space-y-4">
                 {personalized.map((block, bi) => (
                   <div key={`tpl-${bi}-${block.templateName}`} className="space-y-1">
-                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                      {block.templateName}
-                    </p>
+                    {!hideSingleTemplateLabel && (
+                      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                        {block.templateName}
+                      </p>
+                    )}
                     <div className="space-y-2">
                       {block.responses.map((response, idx) => renderResponse(response, idx))}
                     </div>
@@ -620,6 +633,17 @@ export function ReportPmocChecklist({
           const environmentName = environmentForGroup?.(equipmentName) || null;
           const category = categoryForGroup?.(equipmentName) || null;
 
+          // Grupo "Geral / Local": quando é UM único checklist personalizado (sem
+          // itens PMOC), o cabeçalho vira o NOME desse checklist em vez do título
+          // genérico. Vários templates mantêm "Geral / Local" (o cabeçalho não pode
+          // ser o nome de todos). O sub-rótulo do nome dentro do conteúdo é então
+          // omitido pra um único template (seria duplicado com o cabeçalho).
+          const isGeneralSingleTemplate =
+            groupKey === '__geral__' && pmocItems.length === 0 && personalized.length === 1;
+          const groupDisplayName = isGeneralSingleTemplate
+            ? personalized[0].templateName
+            : displayName(groupKey);
+
           // SÓ o equipamento aberto é sticky. No force-open do PDF/Imprimir todos
           // ficam "abertos", mas aí desligamos o sticky (a saída é estática).
           const itemOpen = !forceAllSectionsOpen && (openKeys?.includes(groupKey) ?? false);
@@ -630,7 +654,8 @@ export function ReportPmocChecklist({
               groupKey={groupKey}
               pmocItems={pmocItems}
               personalized={personalized}
-              displayName={displayName(groupKey)}
+              displayName={groupDisplayName}
+              hideSingleTemplateLabel={isGeneralSingleTemplate}
               environmentName={environmentName}
               category={category}
               photoUrl={photoUrl}

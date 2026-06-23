@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.35";
+export const APP_VERSION = "1.14.36";
 
-export const VERSION_NOTES = "O grupo de checklist 'Geral / Local' (checklists que não são de um equipamento específico) deixou de mostrar o quadrado de foto de equipamento — aparece como um checklist limpo, fixo no topo, tanto no preenchimento da OS quanto no relatório.";
+export const VERSION_NOTES = "No grupo de checklist sem equipamento, o cabeçalho passou a mostrar o nome do próprio checklist com um ícone de checklist (em vez do genérico 'Geral / Local'), e nomes longos quebram linha em vez de cortar com '...'. Vale no preenchimento da OS e no relatório.";

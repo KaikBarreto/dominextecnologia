@@ -193,9 +193,10 @@ function OsEquipmentAccordionItem({
         headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
         <EquipmentChecklistHeader
-          // Checklist sem equipamento real (geral da OS) → sem bloco de foto/chave.
-          // Equipamento real mantém foto (ou fallback Wrench) normalmente.
-          hidePhoto={!item.equipment}
+          // Checklist sem equipamento real (geral da OS): em vez do quadrado de foto,
+          // um ícone discreto de checklist; o TÍTULO já é o NOME do checklist (fallback
+          // form_template.name). Equipamento real mantém foto (ou fallback Wrench).
+          leadingIcon={!item.equipment ? <ClipboardCheck className="h-5 w-5 text-primary" /> : undefined}
           photo={item.equipment?.photo_url ?? null}
           name={item.equipment?.name || item.form_template?.name || 'Checklist'}
           category={item.equipment?.category ?? null}
@@ -2268,8 +2269,10 @@ export default function TechnicianOS() {
                           <AccordionItem key={groupKey} value={groupKey} className="border-0">
                             <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0">
                               <EquipmentChecklistHeader
-                                // Sem equipamento real (checklist geral) → sem foto/chave.
-                                hidePhoto={!group.equipment?.equipment}
+                                // Sem equipamento real (checklist geral): ícone de
+                                // checklist no lugar da foto; título já é o NOME do
+                                // checklist (form_template.name).
+                                leadingIcon={!group.equipment?.equipment ? <ClipboardCheck className="h-5 w-5 text-primary" /> : undefined}
                                 photo={group.equipment?.equipment?.photo_url ?? null}
                                 name={group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Checklist'}
                                 category={eqCategory ? { name: eqCategory.name, color: eqCategory.color } : null}

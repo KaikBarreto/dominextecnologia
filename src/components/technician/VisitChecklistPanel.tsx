@@ -718,8 +718,10 @@ function VisitChecklistItem({
         headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
         <EquipmentChecklistHeader
-          // Grupo "Geral / Local" (sem equipamento) não mostra bloco de foto/chave.
-          hidePhoto={hidePhoto}
+          // Grupo "Geral / Local" (sem equipamento): ícone discreto de checklist no
+          // lugar da foto. O `name` já vem como o NOME do checklist quando o grupo é
+          // de um único template (resolvido no hook); senão "Geral / Local".
+          leadingIcon={hidePhoto ? <ClipboardList className="h-5 w-5 text-primary" /> : undefined}
           photo={photo}
           name={group.equipmentName}
           category={category}

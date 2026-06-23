@@ -82,6 +82,7 @@ export function EquipmentChecklistHeader({
   onPreviewPhoto,
   tone = 'app',
   hidePhoto = false,
+  leadingIcon,
 }: {
   photo: string | null;
   name: string;
@@ -115,10 +116,19 @@ export function EquipmentChecklistHeader({
    * cabeçalho mostra só o texto (nome + contador + badges), sem o vão da foto.
    */
   hidePhoto?: boolean;
+  /**
+   * Ícone líder pequeno à esquerda, no lugar do quadrado de foto — usado no grupo
+   * "Geral / Local" de CHECKLIST (não é equipamento, mas o cabeçalho passa a ser o
+   * NOME do próprio checklist e ganha um ícone discreto de checklist em vez do
+   * Wrench/foto). Tem precedência sobre `hidePhoto`: quando passado, renderiza o
+   * ícone (pequeno, alinhado ao topo do texto) e ignora a foto. ReactNode = o
+   * chamador escolhe `ClipboardCheck`/`ListChecks` já com a classe de cor/tamanho.
+   */
+  leadingIcon?: ReactNode;
 }) {
   const t = TONE[tone];
   return (
-    <div className={cn('relative flex items-stretch flex-1 min-w-0 text-left min-h-14', hidePhoto ? 'gap-2' : 'gap-3')}>
+    <div className={cn('relative flex items-stretch flex-1 min-w-0 text-left min-h-14', hidePhoto && !leadingIcon ? 'gap-2' : 'gap-3')}>
       {/* Foto com cantos arredondados (`rounded-md`) — pode arredondar porque o
           conteúdo NÃO cola mais na borda (fica no padding da coluna). Largura fixa
           `w-14`. Quem manda na ALTURA é o CONTEÚDO de texto à direita: a foto fica
@@ -137,7 +147,13 @@ export function EquipmentChecklistHeader({
           (no-op quando já cabe) — fonte única, conserta os 4 fluxos de uma vez.
           Quando `hidePhoto` (grupo "Geral / Local") o bloco INTEIRO some — nem
           foto nem fallback Wrench — porque não há equipamento real. */}
-      {hidePhoto ? null : photo ? (
+      {leadingIcon ? (
+        // Grupo "Geral / Local" de CHECKLIST: ícone pequeno e discreto à esquerda
+        // (não o quadrado 14x14 de foto). Largura fixa estreita pra alinhar o texto;
+        // `mt-0.5` casa com a baseline do título. O chamador passa o ícone já com
+        // a cor da paleta (token no preenchimento, slate no relatório).
+        <div className="relative z-10 shrink-0 mt-0.5">{leadingIcon}</div>
+      ) : hidePhoto ? null : photo ? (
         <div className="relative z-10 w-14 self-stretch shrink-0 overflow-hidden rounded-md">
           <SignedImg
             src={photo}
@@ -159,7 +175,10 @@ export function EquipmentChecklistHeader({
             longo). O badge de TIPO e o ambiente saem da linha do título e descem
             pra linha de baixo (flex-wrap) — assim o badge SEMPRE aparece e nada é
             cortado com "..." quando o espaço é pequeno (mobile / sidebar estreita). */}
-        <p className={cn('text-base font-bold truncate min-w-0', t.title)}>{name}</p>
+        {/* Nome do EQUIPAMENTO trunca (compacto). Mas no grupo geral, onde o título
+            é o NOME DO CHECKLIST (leadingIcon presente), pode ser longo → quebra
+            linha (`break-words`) em vez de cortar com "...". */}
+        <p className={cn('text-base font-bold min-w-0', leadingIcon ? 'break-words' : 'truncate', t.title)}>{name}</p>
         {/* Badge de tipo + ambiente: linha logo abaixo do título, quebra se faltar
             espaço. Badge nunca some (não trunca); o ambiente quebra/encolhe. */}
         {(category || environmentName) && (
