@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.30',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Selo da assinatura mais preciso',
+        description: 'O selo abaixo da assinatura agora mostra apenas a data, a hora e a localização exatas do momento em que foi confirmada (sem nome). Assim fica correto mesmo quando o cliente assina no aparelho do técnico.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Telas de carregamento com mensagens',
+        description: 'As telas de carregamento do sistema passaram a mostrar mensagens (Carregando, Sincronizando, Processando) abaixo da roda, deixando mais claro que algo está acontecendo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.29',
     date: '23 de junho de 2026',
     type: 'patch',

@@ -1212,11 +1212,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
                 {(serviceOrder as any).tech_signature && (() => {
+                  // Carimbo SÓ com data/hora + geo (sem nome — decisão CEO).
                   const stamp = formatSignatureStamp({
-                    // Quem assinou de fato (persistido). OS antiga (sem
-                    // tech_signed_by): cai pro técnico da OS.
-                    name: (serviceOrder as any).tech_signed_by ?? technicianInfo?.full_name,
-                    role: 'Técnico',
                     // OS antiga (sem tech_signature_at): cai pro check-out/check-in.
                     at: (serviceOrder as any).tech_signature_at
                       ?? serviceOrder.check_out_time
@@ -1234,10 +1231,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   );
                 })()}
                 {(serviceOrder as any).client_signature && (() => {
+                  // Carimbo SÓ com data/hora + geo (sem nome — decisão CEO).
                   const stamp = formatSignatureStamp({
-                    name: (serviceOrder as any).client_signed_by ?? serviceOrder.customer?.name,
-                    document: serviceOrder.customer?.document,
-                    role: 'Cliente',
                     at: (serviceOrder as any).client_signature_at
                       ?? serviceOrder.check_out_time
                       ?? serviceOrder.check_in_time,
@@ -1255,14 +1250,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 {signatureResponses.map(response => {
                   if (!response.response_value) return null;
                   // Carimbo das assinaturas vindas de perguntas (signature): só
-                  // data/hora (responded_at) + geo. Nome de quem respondeu exige
-                  // join cross-domínio (responded_by→profiles via RPC público),
-                  // adiado pra não tocar o get_public_os.
-                  // Sem responded_at não há o que carimbar de útil aqui — evita
-                  // mostrar "Assinado por Cliente" solto sem data.
+                  // data/hora (responded_at) + geo. Nome de quem assinou NÃO é
+                  // registrado nem exibido (decisão CEO).
+                  // Sem responded_at não há o que carimbar de útil aqui.
                   const stamp = response.responded_at
                     ? formatSignatureStamp({
-                        name: 'Cliente',
                         at: response.responded_at,
                         geo: checkOutLoc ?? checkInLoc,
                       })

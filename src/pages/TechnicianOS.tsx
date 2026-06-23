@@ -294,42 +294,35 @@ export default function TechnicianOS() {
   // service_orders.tech_signature_at / client_signature_at na conclusão.
   const [techSignatureAt, setTechSignatureAt] = useState<string | null>(null);
   const [clientSignatureAt, setClientSignatureAt] = useState<string | null>(null);
-  // Carimbo legal (segurança): QUEM assinou de fato + LOCALIZAÇÃO capturada NO
-  // MOMENTO do "Confirmar". O técnico carimba com o USUÁRIO LOGADO agora (não o
-  // técnico da OS); o cliente, com o nome do cliente da OS. A geo é fresca
-  // (getCurrentLocation no instante da confirmação); se o GPS falhar, cai pra
-  // check-out/check-in. Tudo zera quando a assinatura é limpa.
-  const [techSignedBy, setTechSignedBy] = useState<string | null>(null);
-  const [clientSignedBy, setClientSignedBy] = useState<string | null>(null);
+  // Carimbo legal (segurança): SÓ a LOCALIZAÇÃO capturada NO MOMENTO do
+  // "Confirmar". Decisão CEO: o NOME de quem assinou NÃO é capturado nem
+  // gravado — a assinatura pode ser do cliente (técnico passa o celular), então
+  // registrar o usuário logado seria enganoso. A geo é fresca (getCurrentLocation
+  // no instante da confirmação); se o GPS falhar, cai pra check-out/check-in.
+  // Tudo zera quando a assinatura é limpa.
   const [techSignedLocation, setTechSignedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [clientSignedLocation, setClientSignedLocation] = useState<{ lat: number; lng: number } | null>(null);
-  // Handlers que sincronizam assinatura + timestamp + signatário + geo: valor
-  // presente carimba "agora" e dispara a captura de geo fresca; limpar (null)
-  // apaga todo o carimbo.
+  // Handlers que sincronizam assinatura + timestamp + geo: valor presente
+  // carimba "agora" e dispara a captura de geo fresca; limpar (null) apaga todo
+  // o carimbo.
   const handleTechSignatureChange = (value: string | null) => {
     setTechSignature(value);
     if (!value) {
       setTechSignatureAt(null);
-      setTechSignedBy(null);
       setTechSignedLocation(null);
       return;
     }
     setTechSignatureAt(new Date().toISOString());
-    // Técnico = usuário LOGADO agora (não o técnico atribuído à OS).
-    setTechSignedBy(currentUserProfile?.full_name ?? null);
     captureSignatureLocation(setTechSignedLocation);
   };
   const handleClientSignatureChange = (value: string | null) => {
     setClientSignature(value);
     if (!value) {
       setClientSignatureAt(null);
-      setClientSignedBy(null);
       setClientSignedLocation(null);
       return;
     }
     setClientSignatureAt(new Date().toISOString());
-    // Cliente = nome do cliente da OS (quem assina é o cliente final).
-    setClientSignedBy(serviceOrder?.customer?.name ?? null);
     captureSignatureLocation(setClientSignedLocation);
   };
   // Captura a geo fresca no momento do Confirmar e guarda no setter dado. Em
@@ -1351,15 +1344,13 @@ export default function TechnicianOS() {
       if (techSignature) {
         updateData.tech_signature = techSignature;
         updateData.tech_signature_at = techSignatureAt ?? now;
-        // Carimbo legal: quem assinou de fato + geo do momento. Fallback de geo
-        // pro check-out/check-in se o GPS falhou na hora da assinatura.
-        updateData.tech_signed_by = techSignedBy ?? currentUserProfile?.full_name ?? null;
+        // Carimbo legal: SÓ geo do momento (nome NÃO é gravado — decisão CEO).
+        // Fallback de geo pro check-out/check-in se o GPS falhou na assinatura.
         updateData.tech_signed_location = techSignedLocation ?? location ?? checkInLocation ?? null;
       }
       if (clientSignature) {
         updateData.client_signature = clientSignature;
         updateData.client_signature_at = clientSignatureAt ?? now;
-        updateData.client_signed_by = clientSignedBy ?? serviceOrder?.customer?.name ?? null;
         updateData.client_signed_location = clientSignedLocation ?? location ?? checkInLocation ?? null;
       }
 
@@ -3180,10 +3171,7 @@ export default function TechnicianOS() {
                   />
                   {techSignature && (() => {
                     const stamp = formatSignatureStamp({
-                      // Quem assinou de fato (usuário logado agora), com fallback
-                      // pro técnico da OS enquanto a geo/nome carrega.
-                      name: techSignedBy ?? technicianProfile?.full_name,
-                      role: 'Técnico',
+                      // Carimbo SÓ com hora + local (sem nome — decisão CEO).
                       at: techSignatureAt,
                       // Geo capturada NO MOMENTO da assinatura (fallback check-in/out).
                       geo: techSignedLocation ?? checkOutLocation ?? checkInLocation,
@@ -3206,9 +3194,7 @@ export default function TechnicianOS() {
                   />
                   {clientSignature && (() => {
                     const stamp = formatSignatureStamp({
-                      name: clientSignedBy ?? serviceOrder.customer?.name,
-                      document: serviceOrder.customer?.document,
-                      role: 'Cliente',
+                      // Carimbo SÓ com hora + local (sem nome — decisão CEO).
                       at: clientSignatureAt,
                       geo: clientSignedLocation ?? checkOutLocation ?? checkInLocation,
                     });

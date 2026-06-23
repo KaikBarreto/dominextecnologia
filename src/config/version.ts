@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.29";
+export const APP_VERSION = "1.14.30";
 
-export const VERSION_NOTES = "A assinatura da OS ficou mais completa: dá para assinar com vários traços (confirmando ao final), desfazer e refazer o último traço, e o campo e a tela cheia passam a mostrar sempre o mesmo desenho. O selo da assinatura registra a data, a hora e a localização exatas do momento em que ela foi confirmada.";
+export const VERSION_NOTES = "O selo abaixo da assinatura agora mostra apenas a data, a hora e a localização exatas do momento em que ela foi confirmada (sem nome) — assim fica correto mesmo quando o cliente assina no aparelho do técnico. E as telas de carregamento do sistema passaram a exibir mensagens (Carregando, Sincronizando, Processando) abaixo da roda.";

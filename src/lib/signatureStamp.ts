@@ -2,24 +2,23 @@
  * Carimbo legal da assinatura da OS.
  *
  * Abaixo de cada assinatura (técnico/cliente), na tela de preenchimento e no
- * relatório/PDF, mostramos um carimbo com QUEM assinou + documento (cliente) +
- * papel + data/hora (fuso de Brasília) + geolocalização do atendimento.
+ * relatório/PDF, mostramos um carimbo com APENAS a data/hora (fuso de Brasília)
+ * e a geolocalização do aparelho no momento da confirmação.
+ *
+ * Decisão CEO: o NOME de quem assinou NÃO é registrado nem exibido. Motivo: a
+ * pergunta de assinatura pode ser do CLIENTE (o técnico entrega o celular pro
+ * cliente assinar), então gravar o nome do usuário logado seria enganoso. Por
+ * honestidade/segurança, o carimbo guarda só "quando" e "onde".
  *
  * Este helper é a FONTE ÚNICA do formato — tela e relatório consomem o mesmo
  * texto pra não divergir. Retorna uma string já montada (ou null se não há nem
- * nome nem data, ou seja, não há o que carimbar).
+ * data nem geo, ou seja, não há o que carimbar).
  */
 
 export interface SignatureStampInput {
-  /** Nome de quem assinou. */
-  name?: string | null;
-  /** Documento (CPF/CNPJ) — só faz sentido pro cliente. */
-  document?: string | null;
-  /** Papel: "Técnico" | "Cliente" | etc. */
-  role?: string | null;
   /** Instante ISO (timestamptz UTC) da assinatura. */
   at?: string | null;
-  /** Geolocalização do atendimento. */
+  /** Geolocalização do aparelho no momento da confirmação. */
   geo?: { lat: number; lng: number } | null | undefined;
 }
 
@@ -56,25 +55,19 @@ function formatStampGeo(geo: SignatureStampInput['geo']): string | null {
 }
 
 /**
- * Monta o carimbo: "Assinado por {nome} · {documento} · {papel} · {data/hora} · {geo}".
+ * Monta o carimbo: "Assinado em {data/hora} · {geo}".
  * Cada parte é omitida quando ausente. Retorna null quando não há nada útil
- * (sem nome E sem data) — nesse caso o chamador não renderiza carimbo.
+ * (sem data E sem geo) — nesse caso o chamador não renderiza carimbo.
  */
 export function formatSignatureStamp(input: SignatureStampInput): string | null {
-  const name = input.name?.trim() || null;
-  const document = input.document?.trim() || null;
-  const role = input.role?.trim() || null;
   const when = formatStampDateTime(input.at);
   const geo = formatStampGeo(input.geo);
 
   // Nada pra carimbar.
-  if (!name && !when) return null;
+  if (!when && !geo) return null;
 
   const parts: string[] = [];
-  if (name) parts.push(`Assinado por ${name}`);
-  if (document) parts.push(document);
-  if (role) parts.push(role);
-  if (when) parts.push(when);
+  if (when) parts.push(`Assinado em ${when}`);
   if (geo) parts.push(geo);
 
   return parts.join(' · ');
