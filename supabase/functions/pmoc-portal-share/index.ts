@@ -824,6 +824,183 @@ Deno.serve(async (req) => {
     }
 
     // -------------------------------------------------------------------------
+    // 3.6) Histórico de execução PMOC tarefa-a-tarefa (Frente F).
+    //      Espelha a VIEW autenticada `contract_activity_execution`: cada linha é
+    //      uma ATIVIDADE DE CONFORMIDADE (service_order_activities com freq_code)
+    //      executada numa visita do contrato, com carimbo de quando/quem e o
+    //      status de conformidade. Aqui montamos server-side (service role),
+    //      SEMPRE escopado ao contrato resolvido (so.contract_id = contract.id),
+    //      pra nunca vazar execução de outro contrato/tenant.
+    //
+    //      GATE: é prova da Planilha PMOC → segue a MESMA régua de liberação dos
+    //      documentos (`documentsReleased`, que já depende de isPmoc +
+    //      contracts.portal_documents_released). Enquanto o gestor não liberar,
+    //      o histórico não vai pro payload (não inventamos visibilidade nova).
+    // -------------------------------------------------------------------------
+    type PortalExecutionRow = {
+      service_order_id: string;
+      order_number: number | null;
+      scheduled_date: string | null;
+      visit_conformity: string | null;
+      activity_id: string;
+      equipment_id: string | null;
+      equipment_name: string | null;
+      section: string | null;
+      component: string | null;
+      description: string;
+      freq_code: string | null;
+      is_measurement: boolean | null;
+      measured_value: string | null;
+      unit: string | null;
+      conformity_status: "conforme" | "nao_conforme" | "na" | null;
+      sort_order: number | null;
+      responded_at: string | null;
+      responded_by_name: string | null;
+    };
+    let executionHistory: PortalExecutionRow[] = [];
+
+    if (documentsReleased) {
+      // 3.6.1) OSs do contrato (id, número, data, conformidade da visita).
+      //        Escopo por contract.id — base do filtro de execução.
+      const { data: execOrders } = await supabase
+        .from("service_orders")
+        .select("id, order_number, scheduled_date, pmoc_conformity_status")
+        .eq("contract_id", contract.id);
+
+      type ExecOsRow = {
+        id: string;
+        order_number: number | null;
+        scheduled_date: string | null;
+        pmoc_conformity_status: string | null;
+      };
+      const execOsList = (execOrders ?? []) as ExecOsRow[];
+      const execOsById = new Map<string, ExecOsRow>();
+      for (const o of execOsList) execOsById.set(o.id, o);
+      const execOsIds = execOsList.map((o) => o.id);
+
+      if (execOsIds.length) {
+        // 3.6.2) Atividades de conformidade dessas OSs (freq_code NOT NULL).
+        //        company_id como defesa em camada (além do escopo por OS).
+        const { data: activities } = await supabase
+          .from("service_order_activities")
+          .select(
+            [
+              "id",
+              "service_order_id",
+              "equipment_id",
+              "section",
+              "component",
+              "description",
+              "freq_code",
+              "is_measurement",
+              "measured_value",
+              "unit",
+              "conformity_status",
+              "sort_order",
+              "responded_at",
+              "responded_by",
+            ].join(", "),
+          )
+          .eq("company_id", contract.company_id) // defesa em camada
+          .in("service_order_id", execOsIds)
+          .not("freq_code", "is", null);
+
+        type ActivityRow = {
+          id: string;
+          service_order_id: string;
+          equipment_id: string | null;
+          section: string | null;
+          component: string | null;
+          description: string | null;
+          freq_code: string | null;
+          is_measurement: boolean | null;
+          measured_value: string | null;
+          unit: string | null;
+          conformity_status: string | null;
+          sort_order: number | null;
+          responded_at: string | null;
+          responded_by: string | null;
+        };
+        const activityList = (activities ?? []) as ActivityRow[];
+
+        // 3.6.3) Resolve nomes de equipamento + de quem respondeu (profiles por
+        //        user_id — regra do time). Lookups em lote.
+        const execEquipmentIds = Array.from(
+          new Set(activityList.map((a) => a.equipment_id).filter(Boolean)),
+        ) as string[];
+        const responderUserIds = Array.from(
+          new Set(activityList.map((a) => a.responded_by).filter(Boolean)),
+        ) as string[];
+
+        const [{ data: execEquipment }, { data: responderProfiles }] = await Promise.all([
+          execEquipmentIds.length
+            ? supabase.from("equipment").select("id, name").in("id", execEquipmentIds)
+            : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }> }),
+          responderUserIds.length
+            ? supabase
+                .from("profiles")
+                .select("user_id, full_name")
+                .in("user_id", responderUserIds)
+            : Promise.resolve({
+                data: [] as Array<{ user_id: string; full_name: string | null }>,
+              }),
+        ]);
+
+        const equipmentNameById = new Map<string, string>();
+        for (const e of execEquipment ?? []) {
+          if (e.name) equipmentNameById.set(e.id, e.name);
+        }
+        const responderNameById = new Map<string, string>();
+        for (const p of responderProfiles ?? []) {
+          if (p.full_name) responderNameById.set(p.user_id, p.full_name);
+        }
+
+        const normalizeConformity = (
+          s: string | null,
+        ): "conforme" | "nao_conforme" | "na" | null => {
+          if (s === "conforme" || s === "nao_conforme" || s === "na") return s;
+          return null;
+        };
+
+        executionHistory = activityList.map((a) => {
+          const os = execOsById.get(a.service_order_id);
+          return {
+            service_order_id: a.service_order_id,
+            order_number: os?.order_number ?? null,
+            scheduled_date: os?.scheduled_date ?? null,
+            visit_conformity: os?.pmoc_conformity_status ?? null,
+            activity_id: a.id,
+            equipment_id: a.equipment_id,
+            equipment_name: a.equipment_id
+              ? equipmentNameById.get(a.equipment_id) ?? null
+              : null,
+            section: a.section,
+            component: a.component,
+            description: a.description ?? "",
+            freq_code: a.freq_code,
+            is_measurement: a.is_measurement,
+            measured_value: a.measured_value,
+            unit: a.unit,
+            conformity_status: normalizeConformity(a.conformity_status),
+            sort_order: a.sort_order,
+            responded_at: a.responded_at,
+            responded_by_name: a.responded_by
+              ? responderNameById.get(a.responded_by) ?? null
+              : null,
+          };
+        });
+
+        // Ordena igual à view/aba autenticada: scheduled_date DESC, sort_order ASC.
+        executionHistory.sort((x, y) => {
+          const dx = x.scheduled_date ?? "";
+          const dy = y.scheduled_date ?? "";
+          if (dx !== dy) return dx < dy ? 1 : -1; // desc
+          return (x.sort_order ?? 0) - (y.sort_order ?? 0);
+        });
+      }
+    }
+
+    // -------------------------------------------------------------------------
     // 4) Payload final — TODO campo retornado tem que estar autorizado em §3.2
     //    do portal-rls-rules. Nenhum UUID interno, nenhum campo bruto.
     // -------------------------------------------------------------------------
@@ -847,7 +1024,7 @@ Deno.serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.8.0", // 1.8.0 — Certificado de Conformidade exposto no portal (mesmo gate/formato do TRT)
+      payload_version: "1.9.0", // 1.9.0 — Histórico de execução PMOC tarefa-a-tarefa (Frente F), gateado por documents_released
       // Espelha get_portal_data: acesso liberado (já passamos pelo gate de
       // privacidade) + se o viewer logado pode preencher OS + se é PMOC.
       access: "granted",
@@ -921,6 +1098,9 @@ Deno.serve(async (req) => {
       // "liberado mas sem PDFs gerados".
       payload.documents_released = documentsReleased;
       payload.documents = documents;
+      // Histórico de execução PMOC tarefa-a-tarefa (Frente F). Segue o MESMO
+      // gate dos documentos (só liberado → não vazio). Escopado ao contrato.
+      payload.execution_history = executionHistory;
     }
 
     // Quando a request veio autenticada, a resposta VARIA por usuário

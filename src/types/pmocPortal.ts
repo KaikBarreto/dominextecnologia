@@ -204,6 +204,41 @@ export interface PortalRealDocument {
   valid_until?: string | null;
 }
 
+/**
+ * Frente F (1.9.0) — uma linha de execução de conformidade PMOC no payload do
+ * portal: uma TAREFA do checklist (service_order_activities com freq_code)
+ * executada numa visita do contrato, com carimbo de quando/quem e o status de
+ * conformidade. Espelha o subconjunto público da view `contract_activity_execution`
+ * (mesma forma do `ContractActivityExecutionRow` da aba autenticada), pro
+ * componente compartilhado `PmocExecutionHistoryView` renderizar igual nos dois
+ * lados. Só presente em contrato PMOC com documentos liberados.
+ *
+ * NOTA: o componente compartilhado tipa `rows` como `ContractActivityExecutionRow`,
+ * que tem campos a mais (company_id, contract_id, plan_activity_id, …) não usados
+ * na renderização. O adaptador no portal completa esses campos com defaults — esta
+ * interface documenta exatamente o que a EDGE entrega.
+ */
+export interface PortalExecutionRow {
+  service_order_id: string;
+  order_number: number | null;
+  scheduled_date: string | null;
+  visit_conformity: string | null;
+  activity_id: string;
+  equipment_id: string | null;
+  equipment_name: string | null;
+  section: string | null;
+  component: string | null;
+  description: string;
+  freq_code: string | null;
+  is_measurement: boolean | null;
+  measured_value: string | null;
+  unit: string | null;
+  conformity_status: 'conforme' | 'nao_conforme' | 'na' | null;
+  sort_order: number | null;
+  responded_at: string | null;
+  responded_by_name: string | null;
+}
+
 export interface PortalPayload {
   generated_at: string;
   payload_version: string;
@@ -254,4 +289,11 @@ export interface PortalPayload {
    * Renomeado de `documents_real` em 1.3.0; opcional desde 1.6.0 (não-PMOC).
    */
   documents?: PortalRealDocument[];
+  /**
+   * Frente F (1.9.0) — histórico de execução PMOC tarefa-a-tarefa (prova de
+   * cumprimento da Planilha). Só presente em contrato PMOC com documentos
+   * liberados (mesmo gate de `documents_released`). Ordenado por scheduled_date
+   * DESC, sort_order ASC. Ausente em payloads antigos / contrato não-PMOC.
+   */
+  execution_history?: PortalExecutionRow[];
 }

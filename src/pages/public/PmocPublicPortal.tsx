@@ -18,6 +18,7 @@ import {
   Lock,
   Repeat,
   ExternalLink,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DarkVeil from '@/components/ui/DarkVeil';
@@ -25,6 +26,8 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
+import { PmocExecutionHistoryView } from '@/components/pmoc/PmocExecutionHistoryView';
+import type { ContractActivityExecutionRow } from '@/hooks/useContractPmocExecution';
 import {
   PmocCronogramaCalendar,
   type PmocCronogramaCalendarOrder,
@@ -51,6 +54,7 @@ import type {
   PortalOccurrenceEntry,
   PortalRealDocument,
   PortalTenant,
+  PortalExecutionRow,
 } from '@/types/pmocPortal';
 import type { OsStatus, OsType } from '@/types/database';
 import {
@@ -105,7 +109,7 @@ const OS_STATUS_CONFIG: Record<PortalOsStatus, { label: string; className: strin
  * linha do tempo completa das visitas do contrato (read-only; viewer logado da
  * empresa ganha "Preencher OS").
  */
-function buildTabs(isPmoc: boolean): SettingsTab[] {
+function buildTabs(isPmoc: boolean, hasExecutionHistory: boolean): SettingsTab[] {
   const tabs: SettingsTab[] = [
     { value: 'visao-geral', label: 'Visão Geral', icon: House },
     { value: 'cronograma', label: 'Cronograma', icon: CalendarClock },
@@ -115,6 +119,11 @@ function buildTabs(isPmoc: boolean): SettingsTab[] {
     tabs.push({ value: 'documentos', label: 'Documentos', icon: FileText });
   }
   tabs.push({ value: 'historico', label: 'Histórico', icon: Wrench });
+  // Frente F: prova de cumprimento da Planilha PMOC, tarefa-a-tarefa. Só PMOC e
+  // só quando há execução liberada (a edge gateia por documents_released).
+  if (isPmoc && hasExecutionHistory) {
+    tabs.push({ value: 'historico-pmoc', label: 'Histórico PMOC', icon: ClipboardCheck });
+  }
   return tabs;
 }
 
@@ -312,6 +321,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     occurrences = [],
     documents = [],
     documents_released,
+    execution_history = [],
     is_pmoc,
     viewer_can_fill,
   } = payload;
@@ -324,7 +334,31 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const documentsReleased = documents_released !== false;
 
   const isMobile = useIsMobile();
-  const tabs = useMemo(() => buildTabs(isPmoc), [isPmoc]);
+
+  // Frente F — adapta as linhas do payload (PortalExecutionRow) pro shape que o
+  // componente compartilhado consome (ContractActivityExecutionRow). Os campos
+  // extras da view autenticada (company_id, contract_id, plan_activity_id, …) não
+  // são usados na renderização → preenchemos com defaults seguros. As linhas já
+  // vêm ordenadas (scheduled_date DESC, sort_order ASC) da edge.
+  const executionRows = useMemo<ContractActivityExecutionRow[]>(
+    () =>
+      (execution_history as PortalExecutionRow[]).map((r) => ({
+        company_id: '',
+        contract_id: '',
+        contract_name: null,
+        plan_activity_id: null,
+        contract_item_id: null,
+        responded_by: null,
+        ...r,
+      })),
+    [execution_history],
+  );
+  const hasExecutionHistory = isPmoc && executionRows.length > 0;
+
+  const tabs = useMemo(
+    () => buildTabs(isPmoc, hasExecutionHistory),
+    [isPmoc, hasExecutionHistory],
+  );
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
 
@@ -648,6 +682,18 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
             )}
             {activeTab === 'historico' && (
               <TabHistory history={history} onOsClick={setSelectedOS} />
+            )}
+            {/* Histórico PMOC: prova da Planilha tarefa-a-tarefa. Só PMOC + liberado. */}
+            {isPmoc && activeTab === 'historico-pmoc' && (
+              <div className="space-y-3">
+                <div>
+                  <h2 className="text-base font-semibold sm:text-lg">Histórico PMOC</h2>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Prova de cumprimento da Planilha, tarefa por tarefa, em cada visita.
+                  </p>
+                </div>
+                <PmocExecutionHistoryView rows={executionRows} showHeader={false} />
+              </div>
             )}
           </div>
         </SettingsSidebarLayout>
