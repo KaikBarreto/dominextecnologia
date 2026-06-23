@@ -81,6 +81,7 @@ export function EquipmentChecklistHeader({
   statusBadge,
   onPreviewPhoto,
   tone = 'app',
+  hidePhoto = false,
 }: {
   photo: string | null;
   name: string;
@@ -107,10 +108,17 @@ export function EquipmentChecklistHeader({
   onPreviewPhoto?: (url: string) => void;
   /** Paleta: 'app' (tema, padrão) ou 'document' (relatório claro). */
   tone?: EquipmentChecklistTone;
+  /**
+   * Esconde POR COMPLETO o bloco de foto à esquerda — nem a foto nem o fallback
+   * Wrench. Usado no grupo "Geral / Local" (`__geral__`/sem equipamento real): não
+   * é um equipamento, então o quadrado de foto não faz sentido. Com `hidePhoto` o
+   * cabeçalho mostra só o texto (nome + contador + badges), sem o vão da foto.
+   */
+  hidePhoto?: boolean;
 }) {
   const t = TONE[tone];
   return (
-    <div className="relative flex items-stretch gap-3 flex-1 min-w-0 text-left min-h-14">
+    <div className={cn('relative flex items-stretch flex-1 min-w-0 text-left min-h-14', hidePhoto ? 'gap-2' : 'gap-3')}>
       {/* Foto com cantos arredondados (`rounded-md`) — pode arredondar porque o
           conteúdo NÃO cola mais na borda (fica no padding da coluna). Largura fixa
           `w-14`. Quem manda na ALTURA é o CONTEÚDO de texto à direita: a foto fica
@@ -126,8 +134,10 @@ export function EquipmentChecklistHeader({
           "Checklists" com só título + 1 badge) o intrínseco fica MAIOR que a linha
           e a foto vazava pra baixo, invadindo o próximo item. O `overflow-hidden`
           recorta a foto exatamente na caixa do wrapper em TODOS os contextos
-          (no-op quando já cabe) — fonte única, conserta os 4 fluxos de uma vez. */}
-      {photo ? (
+          (no-op quando já cabe) — fonte única, conserta os 4 fluxos de uma vez.
+          Quando `hidePhoto` (grupo "Geral / Local") o bloco INTEIRO some — nem
+          foto nem fallback Wrench — porque não há equipamento real. */}
+      {hidePhoto ? null : photo ? (
         <div className="relative z-10 w-14 self-stretch shrink-0 overflow-hidden rounded-md">
           <SignedImg
             src={photo}

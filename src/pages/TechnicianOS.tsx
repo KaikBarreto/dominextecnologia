@@ -193,6 +193,9 @@ function OsEquipmentAccordionItem({
         headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
         <EquipmentChecklistHeader
+          // Checklist sem equipamento real (geral da OS) → sem bloco de foto/chave.
+          // Equipamento real mantém foto (ou fallback Wrench) normalmente.
+          hidePhoto={!item.equipment}
           photo={item.equipment?.photo_url ?? null}
           name={item.equipment?.name || item.form_template?.name || 'Checklist'}
           category={item.equipment?.category ?? null}
@@ -2265,6 +2268,8 @@ export default function TechnicianOS() {
                           <AccordionItem key={groupKey} value={groupKey} className="border-0">
                             <AccordionTrigger className="hover:no-underline py-3 gap-2 min-w-0">
                               <EquipmentChecklistHeader
+                                // Sem equipamento real (checklist geral) → sem foto/chave.
+                                hidePhoto={!group.equipment?.equipment}
                                 photo={group.equipment?.equipment?.photo_url ?? null}
                                 name={group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Checklist'}
                                 category={eqCategory ? { name: eqCategory.name, color: eqCategory.color } : null}

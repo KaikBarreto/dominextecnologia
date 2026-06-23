@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.34";
+export const APP_VERSION = "1.14.35";
 
-export const VERSION_NOTES = "Corrigido o relatório de serviço que, no computador, aparecia espremido num canto em Ordens de Serviço sem equipamento vinculado (só checklist geral) — agora ele aparece centralizado normalmente. E em OS que não são de contrato PMOC, o relatório deixou de mostrar o cabeçalho 'Checklists Personalizados' (redundante): mostra os equipamentos e seus checklists direto.";
+export const VERSION_NOTES = "O grupo de checklist 'Geral / Local' (checklists que não são de um equipamento específico) deixou de mostrar o quadrado de foto de equipamento — aparece como um checklist limpo, fixo no topo, tanto no preenchimento da OS quanto no relatório.";

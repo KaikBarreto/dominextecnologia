@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.35',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist geral mais limpo',
+        description: 'O grupo de checklist "Geral / Local" (checklists que não são de um equipamento específico) deixou de exibir o quadrado de foto de equipamento — aparece como um checklist limpo, na tela de preenchimento da OS e no relatório.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.34',
     date: '23 de junho de 2026',
     type: 'patch',

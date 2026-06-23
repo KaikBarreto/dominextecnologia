@@ -666,6 +666,8 @@ function VisitChecklistItem({
     brandModel: string;
     /** Nome do ambiente (fonte leve, " | …"). null = não mostra. */
     environmentName: string | null;
+    /** Grupo "Geral / Local" (sem equipamento): esconde o bloco de foto/chave. */
+    hidePhoto: boolean;
   };
   children: ReactNode;
 }) {
@@ -673,7 +675,7 @@ function VisitChecklistItem({
   // undefined) pra não medir/atualizar à toa. Elimina o empilhamento de vários
   // cabeçalhos sticky sobrepostos (e a invasão do header do topo).
   const stickyOn = isOpen && stickyTopPx !== undefined;
-  const { total, naoConforme, pending, visit, photo, category, brandModel, environmentName } = header;
+  const { total, naoConforme, pending, visit, photo, category, brandModel, environmentName, hidePhoto } = header;
   // Mede a altura do cabeçalho ANTES do useStickyStuck — o hook usa essa altura pra
   // saber onde fica a linha de BAIXO (sticky + altura) que detecta quando o item
   // passou do fim e o cabeçalho desgruda.
@@ -716,6 +718,8 @@ function VisitChecklistItem({
         headerStyle={stickyOn ? { top: stickyTopPx - 1 } : undefined}
       >
         <EquipmentChecklistHeader
+          // Grupo "Geral / Local" (sem equipamento) não mostra bloco de foto/chave.
+          hidePhoto={hidePhoto}
           photo={photo}
           name={group.equipmentName}
           category={category}
@@ -865,7 +869,7 @@ export function VisitChecklistPanel({
                 stickyTopPx={stickyTopPx}
                 isOpen={groupKey(group) === effectiveOpenKey}
                 onPreviewPhoto={onPreviewPhoto}
-                header={{ total, naoConforme, pending, visit, photo, category, brandModel, environmentName }}
+                header={{ total, naoConforme, pending, visit, photo, category, brandModel, environmentName, hidePhoto: group.equipmentId == null }}
               >
                 {group.activities.map((activity, idx) =>
                   activity.form_template_id && canRenderTemplates ? (

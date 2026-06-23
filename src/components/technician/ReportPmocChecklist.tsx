@@ -452,6 +452,9 @@ function ReportPmocItem({
       >
         <EquipmentChecklistHeader
           tone="document"
+          // Grupo "Geral / Local" (`__geral__`) não é equipamento → sem bloco de
+          // foto (nem o fallback Wrench). Equipamentos reais seguem com foto.
+          hidePhoto={groupKey === '__geral__'}
           photo={photoUrl}
           name={displayName}
           category={category}
