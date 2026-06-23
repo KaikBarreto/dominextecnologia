@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.41',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cor da marca sem piscar no carregamento',
+        description: 'A cor da sua marca não pisca mais para o padrão durante os carregamentos — nas telas internas, na tela de OS e no relatório de serviço.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.40',
     date: '23 de junho de 2026',
     type: 'patch',

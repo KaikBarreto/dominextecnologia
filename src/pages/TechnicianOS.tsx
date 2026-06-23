@@ -1006,8 +1006,25 @@ export default function TechnicianOS() {
       fetchServiceOrder();
     }
     return () => {
-      document.documentElement.style.removeProperty('--primary');
-      document.documentElement.style.removeProperty('--ring');
+      // Ao sair da OS, restaura a marca DO VIEWER LOGADO a partir do cache
+      // (cross-tenant safe: é a cor do tenant de quem está logado, nunca a da
+      // OS visitada — que pode ser de outra empresa). Sem cache (cliente anon)
+      // cai no default. Antes isso fazia removeProperty → flash verde ao sair.
+      const root = document.documentElement.style;
+      try {
+        const cached = localStorage.getItem('__wl_primary');
+        if (cached) {
+          root.setProperty('--primary', cached);
+          root.setProperty('--ring', cached);
+        } else {
+          root.removeProperty('--primary');
+          root.removeProperty('--ring');
+        }
+      } catch (_) {
+        // localStorage pode lançar em modo privado/iOS — cai no default.
+        root.removeProperty('--primary');
+        root.removeProperty('--ring');
+      }
     };
   }, [id, isAuthenticated, fetchPublicOS, fetchServiceOrder]);
 

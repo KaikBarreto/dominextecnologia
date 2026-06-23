@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.40";
+export const APP_VERSION = "1.14.41";
 
-export const VERSION_NOTES = "As telas de carregamento agora mostram o que o sistema está preparando (ex.: \"Buscando ordens de serviço…\", \"Carregando agenda…\"), com efeito de digitação e cursor — em vez de um \"Carregando…\" genérico.";
+export const VERSION_NOTES = "A cor da sua marca não pisca mais para o padrão durante os carregamentos — nas telas internas, na tela de OS e no relatório de serviço.";

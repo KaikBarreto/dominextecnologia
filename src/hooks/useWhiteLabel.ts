@@ -119,8 +119,13 @@ export function useWhiteLabel() {
   const defaultLogoWhite = logoWhite;
 
   useEffect(() => {
+    // Enquanto as settings ainda carregam não sabemos a resposta — não derruba
+    // a cor que o inline script (index.html) aplicou do cache no boot. Resetar
+    // aqui durante o load apagaria o cache e piscaria o verde padrão a cada
+    // refresh (inclusive na tela pública de OS / relatório).
+    if (isLoading) return;
     applyWhiteLabelTheme(enabled, primaryColor);
-  }, [enabled, primaryColor]);
+  }, [enabled, primaryColor, isLoading]);
 
   return {
     enabled,
