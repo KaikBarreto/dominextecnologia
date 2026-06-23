@@ -3220,7 +3220,8 @@ export default function TechnicianOS() {
         {isCheckedIn && ((serviceOrder as any)?.require_tech_signature || (serviceOrder as any)?.require_client_signature) && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
+              {/* Seção de assinaturas é centralizada de propósito (título + pad) — decisão CEO. */}
+              <CardTitle className="flex items-center justify-center text-center gap-2 text-base">
                 <PenTool className="h-4 w-4 text-primary" />
                 Assinaturas
               </CardTitle>

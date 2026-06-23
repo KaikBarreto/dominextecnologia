@@ -1226,10 +1226,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           {/* Signatures */}
           {(signatureResponses.length > 0 || (serviceOrder as any).tech_signature || (serviceOrder as any).client_signature) && (
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              {/* Seção de assinaturas é centralizada de propósito (título + conteúdo) — decisão CEO. */}
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center justify-center text-center gap-1.5">
                 <PenTool className="h-3.5 w-3.5" /> Assinaturas
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
+              <div className="flex flex-wrap justify-center gap-4">
                 {(serviceOrder as any).tech_signature && (() => {
                   // Carimbo SÓ com data/hora + LOCAL (sem nome — decisão CEO).
                   // Local prefere o endereço conciso e cai pra coordenada.

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.38',
+    date: '23 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinaturas centralizadas',
+        description: 'A seção de assinaturas (título e conteúdo) passou a ficar centralizada na tela de preenchimento da OS e no relatório: uma assinatura aparece no centro do card; duas ficam lado a lado, centralizadas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.37',
     date: '23 de junho de 2026',
     type: 'patch',
