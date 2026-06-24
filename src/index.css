@@ -395,6 +395,36 @@ Design Premium com Verde da Marca #00C597
   }
 }
 
+/* ─── Proposta pública — visual de "documento" (folhas A4 separadas) ─────────
+   APENAS NA TELA. Adiciona um respiro entre cada folha (.vg-page/.au-page/.pr-page)
+   e um fundo neutro atrás, dando o aspecto de páginas soltas de um documento.
+   Escopado em .proposal-public-pages (wrapper só de ProposalPublic) pra NÃO
+   afetar o preview da Configurar Proposta (que mede 1123px por folha). No print,
+   o @media print acima continua colando as folhas (1 folha = 1 A4, sem gap). */
+@media screen {
+  .proposal-public-pages {
+    /* o wrapper original tem overflow-hidden + rounded + shadow que "cola" as
+       folhas numa caixa única; aqui soltamos pra cada folha respirar com gap. */
+    overflow: visible !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  .proposal-public-pages .vg-page,
+  .proposal-public-pages .au-page,
+  .proposal-public-pages .pr-page {
+    margin-bottom: 1.25rem;
+    box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.15), 0 4px 10px -6px rgb(0 0 0 / 0.15);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  .proposal-public-pages .vg-page:last-child,
+  .proposal-public-pages .au-page:last-child,
+  .proposal-public-pages .pr-page:last-child {
+    margin-bottom: 0;
+  }
+}
+
 /* Scroll reveal animations - escala suave entre seções */
 .scroll-reveal {
   opacity: 0.4;

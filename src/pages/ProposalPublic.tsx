@@ -96,25 +96,34 @@ export default function ProposalPublic() {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      const [quoteRes, companyRes] = await Promise.all([
-        supabase.rpc('get_quote_by_token', { _token: token }),
-        supabase.from('company_settings').select('*').limit(1).single(),
-      ]);
+      // Payload público anon-safe: a RPC (SECURITY DEFINER) resolve quote + itens +
+      // cliente + EMPRESA DO ORÇAMENTO escopada por quote.company_id. Substitui as
+      // leituras client-side antigas (company_settings.limit(1) era bloqueada pelo
+      // RLS anônimo → caía na "Empresa" genérica sem logo/cores). null = token inválido.
+      const { data } = await supabase.rpc('get_quote_public_payload', { _token: token });
+      const payload = (data ?? null) as {
+        quote: any;
+        items: any[];
+        customer: { name: string; email: string | null; phone: string | null } | null;
+        company: any | null;
+      } | null;
 
-      const quoteRow = Array.isArray(quoteRes.data) ? quoteRes.data[0] : quoteRes.data;
+      const quoteRow = payload?.quote ?? null;
       if (quoteRow) {
-        // Carregar itens e cliente separadamente (RPC retorna apenas a quote)
-        const [itemsRes, customerRes] = await Promise.all([
-          supabase.from('quote_items').select('*').eq('quote_id', (quoteRow as any).id),
-          (quoteRow as any).customer_id
-            ? supabase.from('customers').select('name, email, phone').eq('id', (quoteRow as any).customer_id).maybeSingle()
-            : Promise.resolve({ data: null }),
-        ]);
-        const q = { ...(quoteRow as any), quote_items: itemsRes.data || [], customers: customerRes.data };
+        // Monta o shape que o renderer já espera: quote_items ← items, customers ← customer.
+        const q = {
+          ...quoteRow,
+          quote_items: Array.isArray(payload?.items) ? payload!.items : [],
+          customers: payload?.customer ?? null,
+        };
         setQuote(q);
 
+        // A empresa vem do tenant DONO do orçamento (company_id), não do tenant
+        // logado (que no link anônimo nem existe). proposal_customization sai daqui.
+        if (payload?.company) setCompany(payload.company as unknown as CompanySettings);
+
         // Registra a visualização do cliente — 1x por carga, nunca no preview do dono.
-        // Mesmo client anônimo já usado pro get_quote_by_token. Falha é silenciosa.
+        // Falha é silenciosa: tracking nunca quebra a proposta.
         if (!isPreview && !viewRecordedRef.current && token) {
           viewRecordedRef.current = true;
           supabase
@@ -135,7 +144,6 @@ export default function ProposalPublic() {
           if (tpl) setTemplateSlug(tpl.slug);
         }
       }
-      if (companyRes.data) setCompany(companyRes.data as unknown as CompanySettings);
       setLoading(false);
     })();
   }, [token]);
@@ -171,31 +179,30 @@ export default function ProposalPublic() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="max-w-3xl mx-auto py-8 px-4">
-        {/* Baixar PDF: discreto, acima da proposta. Usa a impressão do navegador
-            (window.print) → "Salvar como PDF" em A4 exato. Esconde-se no print. */}
-        <div className="flex justify-end mb-3 print:hidden">
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white/80 backdrop-blur text-gray-600 hover:text-gray-900 gap-2"
-                  onClick={() => window.print()}
-                  title="Na janela de impressão, escolha 'Salvar como PDF' e mantenha 'Gráficos de fundo' ligado."
-                >
-                  <Download className="h-4 w-4" /> Baixar PDF
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs text-center">
-                Na janela de impressão, escolha "Salvar como PDF" e mantenha "Gráficos de fundo" ligado.
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+      {/* Baixar PDF: botão flutuante no canto inferior direito (desktop + mobile,
+          respeitando o safe-area do iOS). Sólido escuro com texto/ícone claro →
+          contraste garantido inclusive no hover. Esconde-se no print. */}
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="lg"
+              className="fixed right-4 z-50 gap-2 rounded-full shadow-2xl bg-slate-900 text-white hover:bg-slate-800 hover:text-white print:hidden"
+              style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+              onClick={() => window.print()}
+              title="Na janela de impressão, escolha 'Salvar como PDF' e mantenha 'Gráficos de fundo' ligado."
+            >
+              <Download className="h-5 w-5" /> Baixar PDF
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="max-w-xs text-center">
+            Na janela de impressão, escolha "Salvar como PDF" e mantenha "Gráficos de fundo" ligado.
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
-        <div className="print-area shadow-xl rounded-xl overflow-hidden">
+      <div className="max-w-3xl mx-auto py-8 px-4">
+        <div className="print-area proposal-public-pages shadow-xl rounded-xl overflow-hidden">
           <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
 

@@ -7545,6 +7545,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_quote_public_payload: { Args: { _token: string }; Returns: Json }
       get_rating_by_token: {
         Args: { _token: string }
         Returns: {

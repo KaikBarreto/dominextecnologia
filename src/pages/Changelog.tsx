@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.46',
+    date: '24 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Proposta com a marca certa no link público',
+        description: 'Corrigido: o link da proposta abria com dados genéricos. Agora mostra corretamente o nome, o logo, as cores e o contato da sua empresa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Botão de baixar PDF mais prático',
+        description: 'Na proposta, o botão "Baixar PDF" agora flutua no canto da tela e fica sempre legível.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.45',
     date: '24 de junho de 2026',
     type: 'patch',
