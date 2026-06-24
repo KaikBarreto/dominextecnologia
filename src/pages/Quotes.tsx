@@ -19,7 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
-import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/useQuotes';
+import { useQuotes, STATUS_LABELS, type Quote } from '@/hooks/useQuotes';
 import { useQuoteConversion } from '@/hooks/useQuoteConversion';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
@@ -529,7 +529,12 @@ function QuotesList() {
                     </TableCell>
                   )}
                   <TableCell>
-                    <Badge className={STATUS_COLORS[q.status] ?? ''}>
+                    {/* Selo de status saturado + texto branco (mesma régua do mobile). */}
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5 whitespace-nowrap text-white border-0"
+                      style={{ backgroundColor: STATUS_HEX[q.status] ?? '#64748b' }}
+                    >
                       {STATUS_LABELS[q.status] ?? q.status}
                     </Badge>
                   </TableCell>

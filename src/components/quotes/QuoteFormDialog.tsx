@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +7,12 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Progress } from '@/components/ui/progress';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
 import { useProposalTemplates } from '@/hooks/useProposalTemplates';
@@ -29,9 +27,13 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { StepTransition } from '@/components/ui/step-transition';
+import { cn } from '@/lib/utils';
 import {
   User, UserPlus, Palette, Wrench, MapPin, Package,
   Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
+  ChevronLeft, ChevronRight, Check, Save, Loader2,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
@@ -60,6 +62,16 @@ interface QuoteFormDialogProps {
   onOpenChange: (open: boolean) => void;
   quote?: Quote | null;
 }
+
+// Etapas do wizard de orçamento (espelha o padrão do ContractFormDialog). A
+// chave dirige o conteúdo via key (nunca por índice cru) e a animação de troca.
+const STEPS = [
+  { key: 'recipient', label: 'Destinatário' },
+  { key: 'services', label: 'Serviços e mão de obra' },
+  { key: 'materials', label: 'Materiais e deslocamento' },
+  { key: 'discount', label: 'Desconto e condições' },
+  { key: 'review', label: 'Validade e revisão' },
+];
 
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -188,7 +200,6 @@ function ServiceItemsList({
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogProps) {
-  const isMobile = useIsMobile();
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
   const { customers } = useCustomers();
@@ -199,6 +210,19 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { items: inventoryItems } = useInventory();
   const { profile } = useAuth();
   const isEditing = !!quote;
+
+  // ── Wizard navigation ──
+  const [step, setStep] = useState(0);
+  // Etapa mais avançada já visitada — libera o clique direto no cabeçalho para
+  // navegar livremente (ida e volta) até onde já se chegou.
+  const [maxStepReached, setMaxStepReached] = useState(0);
+  const currentStepKey = STEPS[step]?.key ?? 'recipient';
+
+  // ── Persisted draft id (rascunho no banco) ──
+  // Num orçamento novo, o 1º "Salvar rascunho" cria a linha; edições seguintes
+  // atualizam a MESMA linha. Guarda o id retornado pra não duplicar.
+  const [draftQuoteId, setDraftQuoteId] = useState<string | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
 
   // ── Customer ──
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
@@ -252,16 +276,18 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   };
   const draft = useFormDraft<QuoteDraft>({ key: 'quote-form', isOpen: open, isEditing });
 
-  // Save draft on changes (lightweight — excludes items to avoid perf issues)
+  // Save draft on changes (lightweight — excludes items to avoid perf issues).
+  // Suspende enquanto um rascunho PERSISTIDO está sendo retomado (draftQuoteId)
+  // pra o auto-resume do sessionStorage não conflitar com a edição do banco.
   useEffect(() => {
-    if (open && !isEditing && !draft.showResumePrompt) {
+    if (open && !isEditing && !draftQuoteId && !draft.showResumePrompt) {
       draft.saveDraft({
         customerMode, customerId, prospectName, prospectPhone, prospectEmail,
         distanceKm, discountType, discountValue, includeGifts,
         validUntil, notes, terms, proposalTemplateId,
       });
     }
-  }, [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, open, isEditing, draft.showResumePrompt]);
+  }, [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, open, isEditing, draftQuoteId, draft.showResumePrompt]);
 
   const applyQuoteDraft = (d: QuoteDraft) => {
     setCustomerMode(d.customerMode as any || 'existing');
@@ -315,6 +341,27 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
     }
   }, [pricing, quote]);
+
+  // ── Reset wizard nav on open/close + reset draft id ──
+  useEffect(() => {
+    if (!open) {
+      setStep(0);
+      setMaxStepReached(0);
+      setDraftQuoteId(null);
+      return;
+    }
+    setStep(0);
+    setMaxStepReached(0);
+    // Em edição, todas as etapas já estão preenchidas → navegação livre desde já.
+    if (isEditing) setMaxStepReached(STEPS.length - 1);
+    // Editar um rascunho persistido reabre apontando pra mesma linha (não duplica).
+    setDraftQuoteId(quote?.id ?? null);
+  }, [open, quote, isEditing]);
+
+  // Mantém o "mais avançado já visitado" sempre ≥ etapa atual.
+  useEffect(() => {
+    setMaxStepReached(prev => (step > prev ? step : prev));
+  }, [step]);
 
   // ── Populate form when editing ──
   useEffect(() => {
@@ -531,64 +578,96 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     : discountValue;
   const finalTotal = Math.max(0, subtotalBeforeDiscount - discountAmount);
 
-  // ── Submit ──
+  // ── Build payload (shared by submit + draft) ──
+  const buildPayload = (status?: string): QuoteInput => ({
+    customer_id: customerMode === 'existing' ? customerId : undefined,
+    prospect_name: customerMode === 'prospect' ? prospectName : undefined,
+    prospect_phone: customerMode === 'prospect' ? prospectPhone : undefined,
+    prospect_email: customerMode === 'prospect' ? prospectEmail : undefined,
+    ...(status ? { status } : {}),
+    tax_rate: taxRate,
+    admin_indirect_rate: adminRate,
+    profit_rate: profitRate,
+    km_cost: kmCostCfg,
+    distance_km: distanceKm,
+    displacement_cost: bdi.displacementCost,
+    bdi: bdiFactor,
+    total_cost: bdi.totalCost,
+    total_price: bdi.finalPrice,
+    valid_until: validUntil || undefined,
+    discount_type: discountType,
+    discount_value: discountValue,
+    subtotal: totalItemsPrice,
+    discount_amount: discountAmount,
+    total_value: finalTotal,
+    final_price: finalTotal,
+    notes: notes || undefined,
+    terms: terms || undefined,
+    proposal_template_id: proposalTemplateId || undefined,
+    include_gifts: includeGifts,
+    card_discount_rate: cardDiscountRateCfg,
+    card_installments: cardInstallmentsCfg,
+    items: items.map((it, idx) => ({
+      id: it.id,
+      position: idx,
+      item_type: it.item_type,
+      description: it.description,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      total_price: it.total_price,
+      service_type_id: it.service_type_id ?? null,
+      inventory_id: it.inventory_id ?? null,
+      unit_hourly_rate: it.unit_hourly_rate,
+      unit_hours: it.unit_hours,
+      unit_labor_cost: it.unit_labor_cost,
+      unit_materials_cost: it.unit_materials_cost,
+      unit_extras_cost: it.unit_extras_cost,
+      unit_total_cost: it.unit_total_cost,
+      profit_rate: it.profit_rate,
+      bdi: it.bdi,
+      price_override: it.price_override ?? null,
+    })),
+  });
+
+  // ── Submit (finaliza: cria/atualiza com validação completa) ──
   const handleSubmit = () => {
     const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
     if (!hasCustomer || items.length === 0) return;
 
-    const payload: QuoteInput = {
-      customer_id: customerMode === 'existing' ? customerId : undefined,
-      prospect_name: customerMode === 'prospect' ? prospectName : undefined,
-      prospect_phone: customerMode === 'prospect' ? prospectPhone : undefined,
-      prospect_email: customerMode === 'prospect' ? prospectEmail : undefined,
-      tax_rate: taxRate,
-      admin_indirect_rate: adminRate,
-      profit_rate: profitRate,
-      km_cost: kmCostCfg,
-      distance_km: distanceKm,
-      displacement_cost: bdi.displacementCost,
-      bdi: bdiFactor,
-      total_cost: bdi.totalCost,
-      total_price: bdi.finalPrice,
-      valid_until: validUntil || undefined,
-      discount_type: discountType,
-      discount_value: discountValue,
-      subtotal: totalItemsPrice,
-      discount_amount: discountAmount,
-      total_value: finalTotal,
-      final_price: finalTotal,
-      notes: notes || undefined,
-      terms: terms || undefined,
-      proposal_template_id: proposalTemplateId || undefined,
-      include_gifts: includeGifts,
-      card_discount_rate: cardDiscountRateCfg,
-      card_installments: cardInstallmentsCfg,
-      items: items.map((it, idx) => ({
-        id: it.id,
-        position: idx,
-        item_type: it.item_type,
-        description: it.description,
-        quantity: it.quantity,
-        unit_price: it.unit_price,
-        total_price: it.total_price,
-        service_type_id: it.service_type_id ?? null,
-        inventory_id: it.inventory_id ?? null,
-        unit_hourly_rate: it.unit_hourly_rate,
-        unit_hours: it.unit_hours,
-        unit_labor_cost: it.unit_labor_cost,
-        unit_materials_cost: it.unit_materials_cost,
-        unit_extras_cost: it.unit_extras_cost,
-        unit_total_cost: it.unit_total_cost,
-        profit_rate: it.profit_rate,
-        bdi: it.bdi,
-        price_override: it.price_override ?? null,
-      })),
-    };
+    const payload = buildPayload();
 
-    if (quote) {
-      updateQuote.mutate({ ...payload, id: quote.id }, { onSuccess: () => onOpenChange(false) });
+    // Se estiver editando, ou se já existe um rascunho persistido pra esta sessão,
+    // atualiza a MESMA linha — nunca duplica.
+    const targetId = quote?.id ?? draftQuoteId;
+    if (targetId) {
+      updateQuote.mutate({ ...payload, id: targetId }, { onSuccess: () => { draft.clearDraft(); onOpenChange(false); } });
     } else {
       createQuote.mutate(payload, { onSuccess: () => { draft.clearDraft(); onOpenChange(false); } });
+    }
+  };
+
+  // ── Salvar rascunho (qualquer etapa, sem validação completa) ──
+  // Cria a linha no 1º salvar (guarda o id) e atualiza nas chamadas seguintes,
+  // sempre via o hook useQuotes (nunca supabase.from direto — hook é a fronteira).
+  const handleSaveDraft = () => {
+    setSavingDraft(true);
+    const payload = buildPayload('rascunho');
+    const targetId = quote?.id ?? draftQuoteId;
+    if (targetId) {
+      updateQuote.mutate({ ...payload, id: targetId }, {
+        onSuccess: () => { draft.clearDraft(); setSavingDraft(false); onOpenChange(false); },
+        onError: () => setSavingDraft(false),
+      });
+    } else {
+      createQuote.mutate(payload, {
+        onSuccess: (created: any) => {
+          if (created?.id) setDraftQuoteId(created.id);
+          draft.clearDraft();
+          setSavingDraft(false);
+          onOpenChange(false);
+        },
+        onError: () => setSavingDraft(false),
+      });
     }
   };
 
@@ -613,452 +692,558 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const materialItems = items.filter(i => i.item_type === 'material');
   const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
 
-  // ── Form Content ───────────────────────────────────────────────────────────
-  const content = (
-    <div className="space-y-5 overflow-y-auto max-h-[70vh] pr-1 pb-4">
-      <DraftResumeDialog
-        open={draft.showResumePrompt}
-        onResume={() => {
-          if (draft.draftData) applyQuoteDraft(draft.draftData);
-          draft.acceptDraft();
-        }}
-        onDiscard={() => {
-          draft.discardDraft();
-          resetQuoteForm();
-        }}
-      />
+  // ── Wizard gating ──
+  const canNext = () => {
+    switch (currentStepKey) {
+      case 'recipient':
+        return hasCustomer;
+      case 'review':
+        // Finalizar exige destinatário + ao menos 1 item.
+        return hasCustomer && items.length > 0;
+      default:
+        return true;
+    }
+  };
 
-      {/* ══ 1. DESTINATÁRIO ══ */}
-      <section className="space-y-3">
-        <SectionHeader icon={<User className="h-4 w-4 text-primary" />} title="Destinatário" />
-        <Tabs value={customerMode} onValueChange={(v) => setCustomerMode(v as any)}>
-          <TabsList className="w-full">
-            <TabsTrigger value="existing" className="flex-1 gap-1.5">
-              <User className="h-3.5 w-3.5" />Cliente Cadastrado
-            </TabsTrigger>
-            <TabsTrigger value="prospect" className="flex-1 gap-1.5">
-              <UserPlus className="h-3.5 w-3.5" />Novo Prospecto
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="existing" className="mt-3">
-            <SearchableSelect
-              options={customerOptions}
-              value={customerId}
-              onValueChange={setCustomerId}
-              placeholder="Selecione o cliente"
-            />
-          </TabsContent>
-          <TabsContent value="prospect" className="mt-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Nome *</Label>
-                <Input placeholder="Nome do prospecto" value={prospectName} onChange={e => setProspectName(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Telefone</Label>
-                <Input placeholder="(00) 00000-0000" value={prospectPhone} onChange={e => setProspectPhone(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">E-mail</Label>
-                <Input type="email" placeholder="email@exemplo.com" value={prospectEmail} onChange={e => setProspectEmail(e.target.value)} />
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </section>
+  const goToStep = (target: number) => {
+    if (target === step) return;
+    if (target <= maxStepReached) { setStep(target); return; }
+    if (target === step + 1 && canNext()) setStep(target);
+  };
 
-      {hasPricing && (
-      <>
-      <Separator />
+  const progressPercent = ((step + 1) / STEPS.length) * 100;
+  const mutating = createQuote.isPending || updateQuote.isPending;
 
-      {/* ══ 2. CONFIGURAÇÕES BDI ══ */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title="Configurações BDI" />
-          <Badge
-            variant="outline"
-            className={`text-xs font-mono ml-auto px-2.5 py-0.5 ${
-              bdiDanger
-                ? 'border-destructive/50 bg-destructive/10 text-destructive'
-                : bdiWarning
-                  ? 'border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
-                  : 'border-primary/30 bg-primary/5 text-primary'
-            }`}
-          >
-            BDI {(bdiFactor * 100).toFixed(1)}%
-          </Badge>
-        </div>
+  // ─── BDI config block (reused inside the Services step) ─────────────────────
+  const bdiConfigBlock = hasPricing && (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title="Configurações BDI" />
+        <Badge
+          variant="outline"
+          className={`text-xs font-mono ml-auto px-2.5 py-0.5 ${
+            bdiDanger
+              ? 'border-destructive/50 bg-destructive/10 text-destructive'
+              : bdiWarning
+                ? 'border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+                : 'border-primary/30 bg-primary/5 text-primary'
+          }`}
+        >
+          BDI {(bdiFactor * 100).toFixed(1)}%
+        </Badge>
+      </div>
 
-        <div className="rounded-xl border bg-muted/20 p-4 space-y-4">
-          {/* Row 1: Taxas */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Taxas e Margens</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <BdiField label="Imposto" suffix="%" value={taxRate}
-                onChange={v => setTaxRate(v)} />
-              <BdiField label="Adm. Indireta" suffix="%" value={adminRate}
-                onChange={v => setAdminRate(v)} />
-              <BdiField label="Lucro" suffix="%" value={profitRate}
-                onChange={v => setProfitRate(v)} />
-              <BdiField label="Custo / km" prefix="R$" value={kmCostCfg}
-                onChange={v => setKmCostCfg(v)} step={0.01} />
-            </div>
-          </div>
-
-          <Separator className="opacity-50" />
-
-          {/* Row 2: Pagamento */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <CreditCard className="h-3 w-3" /> Condições de Pagamento
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <BdiField label="Desconto à vista" suffix="%" value={cardDiscountRateCfg}
-                onChange={v => setCardDiscountRateCfg(v)} />
-              <BdiField label="Parcelas (cartão)" value={cardInstallmentsCfg}
-                onChange={v => setCardInstallmentsCfg(Math.max(1, v))} step={1} min={1} />
-            </div>
+      <div className="rounded-xl border bg-muted/20 p-4 space-y-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Taxas e Margens</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <BdiField label="Imposto" suffix="%" value={taxRate} onChange={v => setTaxRate(v)} />
+            <BdiField label="Adm. Indireta" suffix="%" value={adminRate} onChange={v => setAdminRate(v)} />
+            <BdiField label="Lucro" suffix="%" value={profitRate} onChange={v => setProfitRate(v)} />
+            <BdiField label="Custo / km" prefix="R$" value={kmCostCfg} onChange={v => setKmCostCfg(v)} step={0.01} />
           </div>
         </div>
-      </section>
-      </>
+
+        <Separator className="opacity-50" />
+
+        <div>
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+            <CreditCard className="h-3 w-3" /> Condições de Pagamento
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <BdiField label="Desconto à vista" suffix="%" value={cardDiscountRateCfg} onChange={v => setCardDiscountRateCfg(v)} />
+            <BdiField label="Parcelas (cartão)" value={cardInstallmentsCfg} onChange={v => setCardInstallmentsCfg(Math.max(1, v))} step={1} min={1} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  // ─── Reusable summary block (review step) ───────────────────────────────────
+  const summaryBlock = (
+    <section className="space-y-3">
+      {hasPricing && bdiDanger && (
+        <Alert variant="destructive" className="border-destructive/50">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            O BDI está muito baixo ou negativo. O preço final não cobre os custos. Revise as taxas.
+          </AlertDescription>
+        </Alert>
       )}
-
-      <Separator />
-
-      {/* ══ 3. SERVIÇOS E MÃO DE OBRA ══ */}
-      <section className="space-y-3">
-        <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title="Serviços e Mão de Obra" />
-
-        {/* Add service row */}
-        <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
-          <div className="flex-1 min-w-0">
-            <SearchableSelect
-              options={serviceOptions}
-              value={addSvcId}
-              onValueChange={setAddSvcId}
-              placeholder="Selecionar tipo de serviço..."
-            />
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Label className="text-xs whitespace-nowrap">Qtd:</Label>
-            <NumericInput value={String(addSvcQty ?? '')}
-              onValueChange={v => setAddSvcQty(Math.max(1, Number(v) || 1))}
-              className="h-9 w-16 text-sm" />
-            <Button size="sm" onClick={handleAddService} disabled={!addSvcId || isFetchingSvc} className="h-9 shrink-0">
-              {isFetchingSvc ? '…' : <><Plus className="h-3.5 w-3.5 mr-1" />Adicionar</>}
-            </Button>
-          </div>
-        </div>
-
-        {serviceItems.length > 0 ? (
-          <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onRemove={removeItem} fmt={fmt} />
-        ) : (
-          <EmptyState>Nenhum serviço adicionado</EmptyState>
-        )}
-      </section>
-
-      <Separator />
-
-      {/* ══ 4. MATERIAIS ══ */}
-      <section className="space-y-3">
-        <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
-
-        <div className="flex flex-col gap-2 p-3 bg-muted/40 rounded-lg border">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1 min-w-0">
-              <SearchableSelect
-                options={inventoryOptions}
-                value={addMatId}
-                onValueChange={(v) => { setAddMatId(v); setAddMatManualName(''); }}
-                placeholder="Selecionar do estoque..."
-              />
-            </div>
-            {!addMatId && (
-              <div className="flex-1 min-w-0">
-                <Input
-                  value={addMatManualName}
-                  onChange={e => setAddMatManualName(e.target.value)}
-                  placeholder="Ou digite o nome do material..."
-                  className="h-9 text-sm"
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {!addMatId && addMatManualName && (
-              <>
-                <Label className="text-xs whitespace-nowrap">Preço unit.:</Label>
-                <Input type="number" min={0} step="0.01" value={addMatManualPrice}
-                  onChange={e => setAddMatManualPrice(Number(e.target.value) || 0)}
-                  className="h-9 w-24 text-sm" />
-              </>
-            )}
-            <Label className="text-xs whitespace-nowrap">Qtd:</Label>
-            <NumericInput value={String(addMatQty ?? '')}
-              onValueChange={v => setAddMatQty(Math.max(1, Number(v) || 1))}
-              className="h-9 w-16 text-sm" />
-            <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId && !addMatManualName.trim()} className="h-9 shrink-0">
-              <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
-            </Button>
-          </div>
-        </div>
-
-        {materialItems.length > 0 ? (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-2 font-medium text-muted-foreground">Material</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
-                  <th className="w-8 p-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {materialItems.map((item) => {
-                  const globalIdx = items.indexOf(item);
-                  return (
-                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-2 font-medium">{item.description}</td>
-                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
-                      <td className="p-2">
-                        <Input
-                          type="number" min={0} step="0.01"
-                          value={item.unit_price || ''}
-                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
-                          className="h-7 w-24 text-xs text-right ml-auto"
-                        />
-                      </td>
-                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
-                      <td className="p-2">
-                        <Button type="button" variant="ghost" size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeItem(globalIdx)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr className="bg-muted/30 border-t">
-                  <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
-                    Subtotal Materiais
-                  </td>
-                  <td className="p-2 text-right font-bold">
-                    {fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState>Nenhum material adicionado</EmptyState>
-        )}
-      </section>
-
-      <Separator />
-
-      {/* ══ DESLOCAMENTO + DESCONTO (mesma linha) ══ */}
-      <section className="space-y-3">
-        <div className={`grid grid-cols-1 ${hasPricing ? 'sm:grid-cols-2' : ''} gap-4`}>
-          {hasPricing && (
+      {hasPricing && bdiWarning && !bdiDanger && (
+        <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-700 dark:text-amber-400">
+            BDI abaixo de 20% — margem de lucro muito apertada.
+          </AlertDescription>
+        </Alert>
+      )}
+      {hasPricing ? (
+        <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
+      ) : (
+        <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium text-white flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-emerald-400" /> Resumo do Orçamento
+            </p>
+            <Separator className="bg-slate-700" />
             <div className="space-y-2">
-              <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
-              <div className="flex items-center gap-2 flex-wrap">
-                <NumericInput value={distanceKm ? String(distanceKm) : ''}
-                  onValueChange={v => setDistanceKm(Number(v) || 0)}
-                  className="h-9 w-28" placeholder="0 km" />
-                {bdi.displacementCost > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
-                  </span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-400">Subtotal Serviços</span>
+                <span className="text-sm text-white">{fmt(serviceItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-400">Subtotal Materiais</span>
+                <span className="text-sm text-white">{fmt(materialItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-400">Desconto</span>
+                  <span className="text-sm text-destructive">− {fmt(discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+                <span className="text-sm font-medium text-white">Total</span>
+                <span className="text-sm font-bold text-emerald-400">
+                  {fmt(items.reduce((s, i) => s + (i.total_price || 0), 0) - discountAmount)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </section>
+  );
+
+  // ─── Wizard content (stepper + steps) ───────────────────────────────────────
+  const wizardContent = (
+    <div className="flex flex-col">
+      {/* Stepper */}
+      <div className="space-y-3">
+        <Progress value={progressPercent} className="h-1.5" />
+        <div className="flex items-center gap-1">
+          {STEPS.map((s, i) => {
+            const clickable = i <= maxStepReached || (i === step + 1 && canNext());
+            return (
+              <div key={s.key} className="flex items-center gap-1 flex-1">
+                <button
+                  type="button"
+                  onClick={() => goToStep(i)}
+                  disabled={!clickable}
+                  aria-current={i === step ? 'step' : undefined}
+                  className={cn(
+                    'flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold transition-colors shrink-0',
+                    i < step ? 'bg-primary text-primary-foreground' :
+                    i === step ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
+                    'bg-muted text-muted-foreground',
+                    clickable ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-70',
+                  )}
+                >
+                  {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToStep(i)}
+                  disabled={!clickable}
+                  className={cn(
+                    'text-xs hidden sm:inline truncate text-left',
+                    i === step ? 'font-medium text-foreground' : 'text-muted-foreground',
+                    clickable ? 'cursor-pointer hover:text-foreground' : 'cursor-not-allowed',
+                  )}
+                >
+                  {s.label}
+                </button>
+                {i < STEPS.length - 1 && <div className="flex-1 h-px bg-border mx-1" />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 mt-4">
+        <StepTransition stepKey={currentStepKey} index={step} className="space-y-5">
+
+          {/* ══ STEP 1: DESTINATÁRIO ══ */}
+          {currentStepKey === 'recipient' && (
+            <section className="space-y-3">
+              <SectionHeader icon={<User className="h-4 w-4 text-primary" />} title="Destinatário" />
+              <LabeledSwitch<'existing' | 'prospect'>
+                value={customerMode}
+                onChange={setCustomerMode}
+                size="default"
+                off={{ value: 'existing', label: <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Cliente cadastrado</span> }}
+                on={{ value: 'prospect', label: <span className="inline-flex items-center gap-1.5"><UserPlus className="h-3.5 w-3.5" />Novo prospecto</span> }}
+                aria-label="Tipo de destinatário"
+              />
+              {customerMode === 'existing' ? (
+                <div className="space-y-1">
+                  <Label className="text-xs">Cliente *</Label>
+                  <SearchableSelect
+                    options={customerOptions}
+                    value={customerId}
+                    onValueChange={setCustomerId}
+                    placeholder="Selecione o cliente"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nome *</Label>
+                    <Input placeholder="Nome do prospecto" value={prospectName} onChange={e => setProspectName(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Telefone</Label>
+                    <Input placeholder="(00) 00000-0000" value={prospectPhone} onChange={e => setProspectPhone(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">E-mail</Label>
+                    <Input type="email" placeholder="email@exemplo.com" value={prospectEmail} onChange={e => setProspectEmail(e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ══ STEP 2: SERVIÇOS E MÃO DE OBRA (+ BDI) ══ */}
+          {currentStepKey === 'services' && (
+            <div className="space-y-5">
+              {bdiConfigBlock}
+              {hasPricing && <Separator />}
+
+              <section className="space-y-3">
+                <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title="Serviços e Mão de Obra" />
+
+                <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
+                  <div className="flex-1 min-w-0">
+                    <SearchableSelect
+                      options={serviceOptions}
+                      value={addSvcId}
+                      onValueChange={setAddSvcId}
+                      placeholder="Selecionar tipo de serviço..."
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+                    <NumericInput value={String(addSvcQty ?? '')}
+                      onValueChange={v => setAddSvcQty(Math.max(1, Number(v) || 1))}
+                      className="h-9 w-16 text-sm" />
+                    <Button size="sm" onClick={handleAddService} disabled={!addSvcId || isFetchingSvc} className="h-9 shrink-0">
+                      {isFetchingSvc ? '…' : <><Plus className="h-3.5 w-3.5 mr-1" />Adicionar</>}
+                    </Button>
+                  </div>
+                </div>
+
+                {serviceItems.length > 0 ? (
+                  <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onRemove={removeItem} fmt={fmt} />
+                ) : (
+                  <EmptyState>Nenhum serviço adicionado</EmptyState>
                 )}
+              </section>
+            </div>
+          )}
+
+          {/* ══ STEP 3: MATERIAIS E DESLOCAMENTO ══ */}
+          {currentStepKey === 'materials' && (
+            <div className="space-y-5">
+              <section className="space-y-3">
+                <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
+
+                <div className="flex flex-col gap-2 p-3 bg-muted/40 rounded-lg border">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1 min-w-0">
+                      <SearchableSelect
+                        options={inventoryOptions}
+                        value={addMatId}
+                        onValueChange={(v) => { setAddMatId(v); setAddMatManualName(''); }}
+                        placeholder="Selecionar do estoque..."
+                      />
+                    </div>
+                    {!addMatId && (
+                      <div className="flex-1 min-w-0">
+                        <Input
+                          value={addMatManualName}
+                          onChange={e => setAddMatManualName(e.target.value)}
+                          placeholder="Ou digite o nome do material..."
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {!addMatId && addMatManualName && (
+                      <>
+                        <Label className="text-xs whitespace-nowrap">Preço unit.:</Label>
+                        <Input type="number" min={0} step="0.01" value={addMatManualPrice}
+                          onChange={e => setAddMatManualPrice(Number(e.target.value) || 0)}
+                          className="h-9 w-24 text-sm" />
+                      </>
+                    )}
+                    <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+                    <NumericInput value={String(addMatQty ?? '')}
+                      onValueChange={v => setAddMatQty(Math.max(1, Number(v) || 1))}
+                      className="h-9 w-16 text-sm" />
+                    <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId && !addMatManualName.trim()} className="h-9 shrink-0">
+                      <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
+                    </Button>
+                  </div>
+                </div>
+
+                {materialItems.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="text-left p-2 font-medium text-muted-foreground">Material</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
+                          <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
+                          <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+                          <th className="w-8 p-2" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {materialItems.map((item) => {
+                          const globalIdx = items.indexOf(item);
+                          return (
+                            <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
+                              <td className="p-2 font-medium">{item.description}</td>
+                              <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                              <td className="p-2">
+                                <Input
+                                  type="number" min={0} step="0.01"
+                                  value={item.unit_price || ''}
+                                  onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
+                                  className="h-7 w-24 text-xs text-right ml-auto"
+                                />
+                              </td>
+                              <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
+                              <td className="p-2">
+                                <Button type="button" variant="ghost" size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => removeItem(globalIdx)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="bg-muted/30 border-t">
+                          <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
+                            Subtotal Materiais
+                          </td>
+                          <td className="p-2 text-right font-bold">
+                            {fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}
+                          </td>
+                          <td />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState>Nenhum material adicionado</EmptyState>
+                )}
+              </section>
+
+              {hasPricing && (
+                <>
+                  <Separator />
+                  <section className="space-y-2">
+                    <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <NumericInput value={distanceKm ? String(distanceKm) : ''}
+                        onValueChange={v => setDistanceKm(Number(v) || 0)}
+                        className="h-9 w-28" placeholder="0 km" />
+                      {bdi.displacementCost > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
+                        </span>
+                      )}
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ══ STEP 4: DESCONTO, BRINDES E CONDIÇÕES ══ */}
+          {currentStepKey === 'discount' && (
+            <div className="space-y-5">
+              <section className="space-y-2">
+                <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Desconto" />
+                <div className="flex items-center gap-2">
+                  <Select value={discountType} onValueChange={(v) => setDiscountType(v as any)}>
+                    <SelectTrigger className="w-20 h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="valor">R$</SelectItem>
+                      <SelectItem value="percentual">%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" min={0} step="0.01" value={discountValue || ''}
+                    onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                    placeholder="0" className="w-28 h-9" />
+                  {discountAmount > 0 && (
+                    <span className="text-xs text-destructive font-medium">− {fmt(discountAmount)}</span>
+                  )}
+                </div>
+              </section>
+
+              <Separator />
+
+              <section className="space-y-2">
+                <SectionHeader icon={<Gift className="h-4 w-4 text-primary" />} title="Brindes" />
+                <div className="flex items-center gap-2 px-1">
+                  <Checkbox
+                    id="include-gifts"
+                    checked={includeGifts}
+                    onCheckedChange={(checked) => setIncludeGifts(!!checked)}
+                  />
+                  <Label htmlFor="include-gifts" className="text-xs text-muted-foreground cursor-pointer">
+                    Incluir brindes neste orçamento
+                  </Label>
+                </div>
+              </section>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observações internas" rows={2} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Condições / Termos</Label>
+                  <Textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder="Condições de pagamento, garantia, etc." rows={2} />
+                </div>
               </div>
             </div>
           )}
-          <div className="space-y-2">
-            <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Desconto" />
-            <div className="flex items-center gap-2">
-              <Select value={discountType} onValueChange={(v) => setDiscountType(v as any)}>
-                <SelectTrigger className="w-20 h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="valor">R$</SelectItem>
-                  <SelectItem value="percentual">%</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input type="number" min={0} step="0.01" value={discountValue || ''}
-                onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
-                placeholder="0" className="w-28 h-9" />
-              {discountAmount > 0 && (
-                <span className="text-xs text-destructive font-medium">− {fmt(discountAmount)}</span>
+
+          {/* ══ STEP 5: VALIDADE, TEMPLATE + RESUMO ══ */}
+          {currentStepKey === 'review' && (
+            <div className="space-y-5">
+              <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Válido até</Label>
+                  <Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Palette className="h-3.5 w-3.5" />Template da Proposta
+                  </Label>
+                  <Select value={proposalTemplateId} onValueChange={setProposalTemplateId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: t.preview_color }} />
+                            {t.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </section>
+
+              {items.length > 0 ? (
+                <>
+                  <Separator />
+                  {summaryBlock}
+                </>
+              ) : (
+                <EmptyState>Adicione ao menos um serviço ou material para finalizar.</EmptyState>
               )}
             </div>
-          </div>
-        </div>
-      </section>
+          )}
 
-      {/* ══ BRINDES ══ */}
-      <div className="flex items-center gap-2 px-1">
-        <Checkbox
-          id="include-gifts"
-          checked={includeGifts}
-          onCheckedChange={(checked) => setIncludeGifts(!!checked)}
-        />
-        <Label htmlFor="include-gifts" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1.5">
-          <Gift className="h-3.5 w-3.5" />
-          Incluir brindes neste orçamento
-        </Label>
-      </div>
-
-      {/* ══ RESUMO DO ORÇAMENTO ══ */}
-      {items.length > 0 && (
-        <>
-          <Separator />
-          <section className="space-y-3">
-            {hasPricing && bdiDanger && (
-              <Alert variant="destructive" className="border-destructive/50">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  O BDI está muito baixo ou negativo. O preço final não cobre os custos. Revise as taxas.
-                </AlertDescription>
-              </Alert>
-            )}
-            {hasPricing && bdiWarning && !bdiDanger && (
-              <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700 dark:text-amber-400">
-                  BDI abaixo de 20% — margem de lucro muito apertada.
-                </AlertDescription>
-              </Alert>
-            )}
-            {hasPricing ? (
-              <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
-            ) : (
-              <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700">
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-sm font-medium text-white flex items-center gap-2">
-                    <Calculator className="h-4 w-4 text-emerald-400" /> Resumo do Orçamento
-                  </p>
-                  <Separator className="bg-slate-700" />
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-400">Subtotal Serviços</span>
-                      <span className="text-sm text-white">{fmt(serviceItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-400">Subtotal Materiais</span>
-                      <span className="text-sm text-white">{fmt(materialItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
-                    </div>
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-400">Desconto</span>
-                        <span className="text-sm text-destructive">− {fmt(discountAmount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-                      <span className="text-sm font-medium text-white">Total</span>
-                      <span className="text-sm font-bold text-emerald-400">
-                        {fmt(items.reduce((s, i) => s + (i.total_price || 0), 0) - discountAmount)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </section>
-        </>
-      )}
-
-      <Separator />
-
-      {/* ══ VALIDADE + TEMPLATE ══ */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Válido até</Label>
-          <Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1.5">
-            <Palette className="h-3.5 w-3.5" />Template da Proposta
-          </Label>
-          <Select value={proposalTemplateId} onValueChange={setProposalTemplateId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o template" />
-            </SelectTrigger>
-            <SelectContent>
-              {templates.map(t => (
-                <SelectItem key={t.id} value={t.id}>
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: t.preview_color }} />
-                    {t.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
-
-      {/* ══ 10. NOTAS + TERMOS ══ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Observações</Label>
-          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observações internas" rows={2} />
-        </div>
-        <div className="space-y-2">
-          <Label>Condições / Termos</Label>
-          <Textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder="Condições de pagamento, garantia, etc." rows={2} />
-        </div>
-      </div>
-
-      {/* ══ ACTIONS ══ */}
-      <div className="flex justify-end gap-2 pt-2 pb-1">
-        <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={!hasCustomer || items.length === 0 || createQuote.isPending || updateQuote.isPending}
-        >
-          {quote ? 'Salvar Alterações' : 'Criar Orçamento'}
-        </Button>
+        </StepTransition>
       </div>
     </div>
   );
 
-  const title = quote ? `Editar Orçamento #${quote.quote_number}` : 'Novo Orçamento';
+  // ── Wizard footer (navegação + salvar rascunho) ──
+  const wizardFooter = (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-row justify-between gap-2">
+        <Button
+          variant="outline"
+          onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)}
+          disabled={mutating || savingDraft}
+        >
+          {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Voltar</>}
+        </Button>
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[95vh]">
-          <DrawerHeader>
-            <DrawerTitle>{title}</DrawerTitle>
-            <DrawerDescription className="sr-only">
-              Formulário para criar ou editar orçamento
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="px-4 pb-6">{content}</div>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
+        <div className="flex items-center gap-2">
+          {/* Salvar rascunho — visível em QUALQUER etapa. */}
+          <Button
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={mutating || savingDraft || !hasCustomer}
+            title={!hasCustomer ? 'Informe o destinatário para salvar' : undefined}
+          >
+            {savingDraft
+              ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Salvando…</>
+              : <><Save className="h-4 w-4 mr-1" /> Salvar rascunho</>}
+          </Button>
+
+          {step < STEPS.length - 1 ? (
+            <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
+              Próximo <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              disabled={!canNext() || mutating || savingDraft}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {mutating
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando…</>
+                : quote ? 'Salvar Alterações' : 'Criar Orçamento'}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const title = quote
+    ? `Editar Orçamento #${quote.quote_number}`
+    : draftQuoteId ? 'Rascunho de Orçamento' : 'Novo Orçamento';
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="sr-only">
-            Formulário para criar ou editar orçamento
-          </DialogDescription>
-        </DialogHeader>
-        {content}
-      </DialogContent>
-    </Dialog>
+    <>
+      <ResponsiveModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={title}
+        className="sm:max-w-[920px]"
+        footer={wizardFooter}
+        lockBackdrop
+      >
+        {wizardContent}
+      </ResponsiveModal>
+
+      {/* Rascunho local (sessionStorage) — só em criação e quando NÃO retomando
+          um rascunho persistido do banco (não conflitam). */}
+      {!isEditing && !draftQuoteId && (
+        <DraftResumeDialog
+          open={draft.showResumePrompt}
+          onResume={() => {
+            if (draft.draftData) applyQuoteDraft(draft.draftData);
+            draft.acceptDraft();
+          }}
+          onDiscard={() => {
+            draft.discardDraft();
+            resetQuoteForm();
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -1068,15 +1253,6 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
     <div className="flex items-center gap-2">
       {icon}
       <span className="text-sm font-semibold uppercase tracking-wide text-foreground">{title}</span>
-    </div>
-  );
-}
-
-function FieldBox({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
-      {children}
     </div>
   );
 }

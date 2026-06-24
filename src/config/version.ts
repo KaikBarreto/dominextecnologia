@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.41";
+export const APP_VERSION = "1.14.42";
 
-export const VERSION_NOTES = "A cor da sua marca não pisca mais para o padrão durante os carregamentos — nas telas internas, na tela de OS e no relatório de serviço.";
+export const VERSION_NOTES = "Criar orçamento ficou mais fácil: virou um passo-a-passo guiado (destinatário, serviços, materiais, desconto e revisão) e agora dá pra salvar como rascunho e continuar depois.";

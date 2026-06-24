@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.42',
+    date: '24 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criar orçamento em etapas',
+        description: 'Criar um orçamento agora é um passo-a-passo guiado — destinatário, serviços, materiais, desconto e revisão — mais fácil de preencher tanto no celular quanto no computador.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Rascunho de orçamento',
+        description: 'Agora dá pra salvar um orçamento como rascunho e continuar depois: ele fica guardado na sua lista com o selo "Rascunho", de qualquer aparelho.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.14.41',
     date: '23 de junho de 2026',
     type: 'patch',
