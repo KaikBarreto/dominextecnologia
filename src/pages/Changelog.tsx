@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.45',
+    date: '24 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Baixar proposta em PDF',
+        description: 'A proposta ganhou o botão "Baixar PDF": cada página sai no tamanho A4 certinho, com os fundos e a marca da sua empresa, pronta pra enviar ao cliente.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.14.44',
     date: '24 de junho de 2026',
     type: 'patch',

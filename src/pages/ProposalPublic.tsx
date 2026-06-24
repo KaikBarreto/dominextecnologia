@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, XCircle, Loader2, FileText } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, FileText, Download } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ProposalRenderer } from '@/components/quotes/ProposalRenderer';
 import { extractQuoteToken } from '@/utils/prettyLinks';
 import type { Quote } from '@/hooks/useQuotes';
@@ -171,7 +172,30 @@ export default function ProposalPublic() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-3xl mx-auto py-8 px-4">
-        <div className="shadow-xl rounded-xl overflow-hidden">
+        {/* Baixar PDF: discreto, acima da proposta. Usa a impressão do navegador
+            (window.print) → "Salvar como PDF" em A4 exato. Esconde-se no print. */}
+        <div className="flex justify-end mb-3 print:hidden">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/80 backdrop-blur text-gray-600 hover:text-gray-900 gap-2"
+                  onClick={() => window.print()}
+                  title="Na janela de impressão, escolha 'Salvar como PDF' e mantenha 'Gráficos de fundo' ligado."
+                >
+                  <Download className="h-4 w-4" /> Baixar PDF
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-center">
+                Na janela de impressão, escolha "Salvar como PDF" e mantenha "Gráficos de fundo" ligado.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        <div className="print-area shadow-xl rounded-xl overflow-hidden">
           <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
 

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.44";
+export const APP_VERSION = "1.14.45";
 
-export const VERSION_NOTES = "Novos modelos de proposta (Vanguarda, Aurora e Prisma) em página A4 com a marca da sua empresa, e a Configuração de Proposta virou um passo-a-passo com pré-visualização e opções pra mostrar/ocultar deslocamento, brindes e numeração.";
+export const VERSION_NOTES = "A proposta ganhou o botão 'Baixar PDF': cada página sai em A4 certinho, com os fundos e a marca da sua empresa, pronta pra enviar ao cliente.";
