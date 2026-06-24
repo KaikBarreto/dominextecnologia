@@ -56,6 +56,13 @@ Deno.serve(async (req) => {
     const contact_name = trim(raw.contact_name, 200);
     const password = typeof raw.password === 'string' ? raw.password : '';
     const origin = trim(raw.origin, 100);
+    // Segmento de atuação — OPCIONAL na edge (backward-compat). Persistido em
+    // companies.segment; o trigger espelha pro company_settings.segment (que o
+    // app de campo lê pra gatear ferramentas). A obrigatoriedade fica no
+    // FRONTEND novo (formulário de cadastro); a edge NÃO pode barrar quem não
+    // manda o campo, senão quebra o frontend antigo que ainda está em produção
+    // (incidente: edge nova rejeitava 400 cadastros do site sem segment).
+    const segment = trim(raw.segment, 50);
 
     // Affiliate/sales link params
     const linkType = trim(raw.link_type, 20); // 'teste' | 'venda'
@@ -85,6 +92,8 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    // segment é opcional na edge (ver nota acima): se vier vazio/ausente,
+    // grava null (linha do insert: `segment: segment || null`) e segue normal.
     if (!EMAIL_RE.test(company_email)) {
       return new Response(JSON.stringify({ error: 'E-mail inválido' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -231,6 +240,7 @@ Deno.serve(async (req) => {
         phone: company_phone || null,
         contact_name,
         origin: origin || null,
+        segment: segment || null,
         subscription_status,
         subscription_plan: planCode,
         subscription_value: finalPrice,

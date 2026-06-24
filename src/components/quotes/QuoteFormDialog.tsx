@@ -818,14 +818,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // ─── Wizard content (stepper + steps) ───────────────────────────────────────
   const wizardContent = (
     <div className="flex flex-col">
-      {/* Stepper */}
+      {/* Stepper — indicador de etapas centralizado horizontalmente */}
       <div className="space-y-3">
-        <Progress value={progressPercent} className="h-1.5" />
-        <div className="flex items-center gap-1">
+        <Progress value={progressPercent} className="h-1.5 max-w-md mx-auto" />
+        <div className="flex items-center justify-center gap-1 flex-wrap">
           {STEPS.map((s, i) => {
             const clickable = i <= maxStepReached || (i === step + 1 && canNext());
             return (
-              <div key={s.key} className="flex items-center gap-1 flex-1">
+              <div key={s.key} className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => goToStep(i)}
@@ -853,7 +853,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 >
                   {s.label}
                 </button>
-                {i < STEPS.length - 1 && <div className="flex-1 h-px bg-border mx-1" />}
+                {i < STEPS.length - 1 && <div className="w-4 sm:w-8 h-px bg-border mx-1" />}
               </div>
             );
           })}

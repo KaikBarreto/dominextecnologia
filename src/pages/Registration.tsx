@@ -23,6 +23,8 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { StepTransition } from '@/components/ui/step-transition';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { COMPANY_SEGMENTS } from '@/utils/companySegments';
 
 const ORIGIN_ICONS: Record<string, LucideIcon> = {
   Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
@@ -47,6 +49,9 @@ export default function Registration() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [selectedOrigin, setSelectedOrigin] = useState('');
+  // Segmento de atuação — obrigatório no cadastro da empresa. Só a Dominex
+  // (painel admin) pode alterar depois; o tenant não edita nas Configurações.
+  const [companySegment, setCompanySegment] = useState('');
 
   // Captura utm_* cedo — cobre anúncio que aponta direto pro /cadastro e
   // persiste em sessionStorage antes de qualquer navegação interna.
@@ -136,6 +141,7 @@ export default function Registration() {
           contact_name: data.contact_name,
           password: data.password,
           origin: selectedOrigin || null,
+          segment: companySegment || null,
           // Link/affiliate params
           link_type: linkType || null,
           locked_plan: lockedPlan,
@@ -197,6 +203,10 @@ export default function Registration() {
     if (step === 1) {
       const valid = await trigger(['company_name', 'contact_name', 'company_email', 'company_phone']);
       if (!valid) return;
+      if (!companySegment) {
+        toast({ variant: 'destructive', title: 'Selecione o segmento', description: 'Informe o segmento de atuação da sua empresa.' });
+        return;
+      }
       // If origin came from URL, skip origin step
       if (originFromUrl) {
         setStep(3);
@@ -380,6 +390,28 @@ export default function Registration() {
                         </div>
                         {errors.company_phone && <p className="text-sm text-destructive mt-1">{errors.company_phone.message}</p>}
                       </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Segmento de Atuação*</Label>
+                      <Select value={companySegment || undefined} onValueChange={setCompanySegment}>
+                        <SelectTrigger className="mt-1 bg-primary/[0.08] border-primary/30 text-white focus:border-primary data-[placeholder]:text-white/50">
+                          <SelectValue placeholder="Selecione o segmento da sua empresa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPANY_SEGMENTS.map((s) => {
+                            const Icon = s.icon;
+                            return (
+                              <SelectItem key={s.value} value={s.value}>
+                                <span className="flex items-center gap-2">
+                                  <Icon className="h-4 w-4" style={{ color: s.color }} />
+                                  {s.label}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                   </div>

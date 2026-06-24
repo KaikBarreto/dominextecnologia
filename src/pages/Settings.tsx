@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { COMPANY_SEGMENTS } from '@/utils/companySegments';
+import { getSegment } from '@/utils/companySegments';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { applyWhiteLabelTheme } from '@/hooks/useWhiteLabel';
@@ -594,24 +594,22 @@ export default function Settings() {
 
               <div className="space-y-2 pl-0 sm:pl-6">
                 <Label>Segmento de Atuação da Empresa</Label>
-                <Select value={companySegment || 'none'} onValueChange={v => setCompanySegment(v === 'none' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {COMPANY_SEGMENTS.map((s) => {
-                      const Icon = s.icon;
-                      return (
-                        <SelectItem key={s.value} value={s.value}>
-                          <span className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" style={{ color: s.color }} />
-                            {s.label}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Define quais ferramentas e recursos do seu segmento aparecem no sistema.</p>
+                {/* Somente-leitura: o segmento define quais ferramentas/recursos
+                    aparecem e só pode ser alterado pela Dominex. O usuário vê
+                    qual é, mas não troca aqui. */}
+                {(() => {
+                  const seg = getSegment(companySegment);
+                  const Icon = seg?.icon;
+                  return (
+                    <div className="flex items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                      {Icon && <Icon className="h-4 w-4 shrink-0" style={{ color: seg!.color }} />}
+                      <span className={seg ? 'text-foreground' : 'text-muted-foreground'}>
+                        {seg ? seg.label : 'Não definido'}
+                      </span>
+                    </div>
+                  );
+                })()}
+                <p className="text-xs text-muted-foreground">Define quais ferramentas e recursos do seu segmento aparecem no sistema. Para alterar, fale com a Dominex.</p>
               </div>
 
               <Separator className="my-6" />

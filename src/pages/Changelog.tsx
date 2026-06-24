@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.44',
+    date: '24 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novos modelos de proposta',
+        description: 'Agora você escolhe entre modelos de proposta modernos — Vanguarda, Aurora e Prisma — em página A4, com o logo e as cores da sua empresa. Propostas longas se distribuem em várias páginas sem cortar nenhum item.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configuração de proposta em etapas',
+        description: 'Configurar a proposta virou um passo-a-passo com pré-visualização do documento, escolha do modelo e opções pra mostrar ou ocultar deslocamento, brindes e a numeração de páginas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.43',
     date: '24 de junho de 2026',
     type: 'patch',
