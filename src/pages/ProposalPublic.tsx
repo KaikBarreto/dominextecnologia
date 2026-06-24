@@ -1,11 +1,31 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Loader2, FileText } from 'lucide-react';
 import { ProposalRenderer } from '@/components/quotes/ProposalRenderer';
+import { extractQuoteToken } from '@/utils/prettyLinks';
 import type { Quote } from '@/hooks/useQuotes';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
+
+// Fingerprint estável por navegador, guardado em localStorage. Serve só pro
+// dedupe de refresh (a RPC ignora visitas do mesmo fingerprint em 30min). Não é
+// identificação pessoal — é um uuid aleatório que vive no aparelho do visitante.
+const FP_KEY = '__pv_fp';
+function getViewerFingerprint(): string {
+  try {
+    let fp = localStorage.getItem(FP_KEY);
+    if (!fp) {
+      fp = (crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      localStorage.setItem(FP_KEY, fp);
+    }
+    return fp;
+  } catch {
+    // localStorage indisponível (modo privado/storage bloqueado): sem fingerprint,
+    // a RPC conta cada carga (NULL nunca deduplica) — aceitável como fallback.
+    return '';
+  }
+}
 
 function useOgMeta(company: CompanySettings | null) {
   useEffect(() => {
@@ -54,7 +74,15 @@ function useOgMeta(company: CompanySettings | null) {
 }
 
 export default function ProposalPublic() {
-  const { token } = useParams<{ token: string }>();
+  const { token: tokenParam } = useParams<{ token: string }>();
+  // O param pode vir como token puro (link antigo, 64 hex) OU como
+  // `slug-do-destinatario-<token>` (link amigável novo). Extrai sempre o token real.
+  const token = extractQuoteToken(tokenParam) ?? tokenParam ?? null;
+  const [searchParams] = useSearchParams();
+  // `?preview=1` = o próprio vendedor pré-visualizando. Não conta como visualização.
+  const isPreview = searchParams.get('preview') === '1';
+  // Garante 1 registro de view por carga (evita re-disparo em re-render).
+  const viewRecordedRef = useRef(false);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [company, setCompany] = useState<CompanySettings | null>(null);
   const [templateSlug, setTemplateSlug] = useState('classico');
@@ -83,6 +111,20 @@ export default function ProposalPublic() {
         ]);
         const q = { ...(quoteRow as any), quote_items: itemsRes.data || [], customers: customerRes.data };
         setQuote(q);
+
+        // Registra a visualização do cliente — 1x por carga, nunca no preview do dono.
+        // Mesmo client anônimo já usado pro get_quote_by_token. Falha é silenciosa.
+        if (!isPreview && !viewRecordedRef.current && token) {
+          viewRecordedRef.current = true;
+          supabase
+            .rpc('record_quote_view', {
+              _token: token,
+              _fingerprint: getViewerFingerprint() || undefined,
+              _user_agent: navigator.userAgent,
+            })
+            .then(() => { /* contador atualizado server-side; nada a fazer aqui */ })
+            .catch(() => { /* silencioso: tracking nunca quebra a proposta */ });
+        }
         if (q.proposal_template_id) {
           const { data: tpl } = await supabase
             .from('proposal_templates')

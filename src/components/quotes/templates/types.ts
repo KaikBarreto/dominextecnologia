@@ -5,6 +5,8 @@ export interface ProposalCustomization {
   primary_color?: string;
   accent_color?: string;
   header_bg?: string;
+  /** Logo específico da proposta. Quando definido, vence o logo da empresa. */
+  logo_url?: string;
 }
 
 export interface ProposalTemplateProps {

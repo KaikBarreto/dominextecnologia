@@ -33,6 +33,28 @@ export function buildServiceOrderShareLink(
   return `https://dominex.app/os-tecnico/${segment}?modo=cliente`;
 }
 
+interface ProposalShareLinkParams {
+  /** Token público da proposta (`quotes.token`, 64 hex). É o que resolve a página. */
+  token: string;
+  /** Nome do destinatário (cliente ou prospecto) — vira slug decorativo. */
+  recipientName?: string | null;
+}
+
+/**
+ * Monta o link público amigável da proposta comercial.
+ *
+ * O `token` é SEMPRE o último segmento (nunca contém '-'), então
+ * `…/proposta/maria-silva-<token>` resolve igual a `…/proposta/<token>` — o
+ * `ProposalPublic` extrai o token via `extractQuoteToken`. Quando não há nome,
+ * cai no token puro (compatível com os links antigos já distribuídos).
+ */
+export function buildProposalShareLink({ token, recipientName }: ProposalShareLinkParams): string {
+  const segment = recipientName
+    ? buildSlugSegment([recipientName], token, 'proposta')
+    : token;
+  return `https://dominex.app/proposta/${segment}`;
+}
+
 /**
  * Monta o link wa.me a partir de um telefone "sujo" (com máscara/espaços).
  * Remove tudo que não é dígito; se o número não começar com 55 (DDI Brasil)

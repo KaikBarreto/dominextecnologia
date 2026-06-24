@@ -14,6 +14,7 @@ export function MinimalTemplate({ quote, company, items, customization }: Propos
   const hasGroups = serviceItems.length > 0 || materialItems.length > 0;
 
   const primary = customization?.primary_color || '#111827';
+  const logoUrl = customization?.logo_url || company?.logo_url;
 
   const sumTotal = (rows: typeof items) => rows.reduce((s, i) => s + (i.total_price || 0), 0);
 
@@ -46,8 +47,8 @@ export function MinimalTemplate({ quote, company, items, customization }: Propos
       {/* Header */}
       <div className="flex justify-between items-start mb-16">
         <div>
-          {company?.logo_url ? (
-            <img src={company.logo_url} alt="Logo" className="h-8 object-contain opacity-60 mb-3" crossOrigin="anonymous" />
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-8 object-contain opacity-60 mb-3" crossOrigin="anonymous" />
           ) : (
             <p className="text-xs font-medium text-gray-300 uppercase tracking-[0.3em] mb-3">{company?.name || 'Empresa'}</p>
           )}

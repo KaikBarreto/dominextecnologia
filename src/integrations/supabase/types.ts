@@ -5018,6 +5018,41 @@ export type Database = {
           },
         ]
       }
+      quote_views: {
+        Row: {
+          company_id: string
+          fingerprint: string | null
+          id: string
+          quote_id: string
+          user_agent: string | null
+          viewed_at: string
+        }
+        Insert: {
+          company_id: string
+          fingerprint?: string | null
+          id?: string
+          quote_id: string
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          company_id?: string
+          fingerprint?: string | null
+          id?: string
+          quote_id?: string
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_views_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           assigned_to: string | null
@@ -5034,6 +5069,7 @@ export type Database = {
           financial_transaction_id: string | null
           id: string
           include_gifts: boolean
+          last_viewed_at: string | null
           notes: string | null
           proposal_template_id: string | null
           prospect_email: string | null
@@ -5047,6 +5083,7 @@ export type Database = {
           total_value: number | null
           updated_at: string
           valid_until: string | null
+          view_count: number
         }
         Insert: {
           assigned_to?: string | null
@@ -5063,6 +5100,7 @@ export type Database = {
           financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
+          last_viewed_at?: string | null
           notes?: string | null
           proposal_template_id?: string | null
           prospect_email?: string | null
@@ -5076,6 +5114,7 @@ export type Database = {
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
+          view_count?: number
         }
         Update: {
           assigned_to?: string | null
@@ -5105,6 +5144,7 @@ export type Database = {
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
+          view_count?: number
         }
         Relationships: [
           {
@@ -7592,6 +7632,14 @@ export type Database = {
       recalc_amount_received: {
         Args: { p_parent_id: string }
         Returns: undefined
+      }
+      record_quote_view: {
+        Args: {
+          _token: string
+          _fingerprint?: string
+          _user_agent?: string
+        }
+        Returns: number
       }
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }

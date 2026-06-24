@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.42";
+export const APP_VERSION = "1.14.43";
 
-export const VERSION_NOTES = "Criar orçamento ficou mais fácil: virou um passo-a-passo guiado (destinatário, serviços, materiais, desconto e revisão) e agora dá pra salvar como rascunho e continuar depois.";
+export const VERSION_NOTES = "Proposta agora tem link compartilhável (o cliente abre direto no navegador), contador de visualizações (você vê quando abriram) e logo próprio configurável.";

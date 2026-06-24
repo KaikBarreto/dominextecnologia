@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { Quote } from '@/hooks/useQuotes';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, Eye } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { ProposalRenderer } from './ProposalRenderer';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
@@ -42,8 +44,21 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const viewCount = quote.view_count ?? 0;
+  const viewsLine = viewCount === 0
+    ? 'Não visualizada pelo cliente ainda'
+    : quote.last_viewed_at
+      ? `Visualizada ${viewCount}× · última vez ${format(new Date(quote.last_viewed_at), "dd/MM 'às' HH:mm", { locale: ptBR })} (${formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: ptBR })})`
+      : `Visualizada ${viewCount}×`;
+
   const content = (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Eye className="h-3.5 w-3.5" />
+          {viewsLine}
+        </span>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="outline" size="sm" onClick={handleWhatsApp}>
           <Share2 className="h-4 w-4 mr-1.5" /> WhatsApp

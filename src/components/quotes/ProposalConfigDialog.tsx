@@ -8,7 +8,11 @@ import { ProposalRenderer } from './ProposalRenderer';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { Check, Save, Loader2 } from 'lucide-react';
+import { Check, Save, Loader2, Upload, Trash2, ImageIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { processImageFile } from '@/utils/imageConvert';
+import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 import type { Quote } from '@/hooks/useQuotes';
 import type { ProposalCustomization } from './templates/types';
 
@@ -53,14 +57,24 @@ const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
   classico: 'Layout corporativo com tipografia serifada, tabelas com listras e visual profissional formal.',
   moderno: 'Header com gradiente, cards coloridos, sombras e visual tech/startup vibrante.',
   minimalista: 'Ultra limpo, muito espaço em branco, tipografia fina e estilo editorial Apple.',
+  vanguarda: 'Proposta premium em A4 vertical: capa marcante, apresentação, escopo, investimento e encerramento — uma seção por página, ótima impressa.',
 };
+
+// Garante que o template "Vanguarda" apareça no seletor mesmo antes da linha
+// existir na tabela proposal_templates (a seleção persistida na quote ainda
+// depende do registro no banco — ver briefing). O preview já renderiza por slug.
+const GUARANTEED_TEMPLATES = [
+  { id: 'vanguarda', slug: 'vanguarda', name: 'Vanguarda', preview_color: '#0f172a', description: null, created_at: '' },
+];
 
 export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialogProps) {
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const { templates } = useProposalTemplates();
   const { settings: company, updateSettings } = useCompanySettings();
   const [selectedSlug, setSelectedSlug] = useState<string>('classico');
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const existing = company?.proposal_customization;
   const [colors, setColors] = useState<ProposalCustomization>({
@@ -75,6 +89,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         primary_color: existing.primary_color || '#2563eb',
         accent_color: existing.accent_color || '#f97316',
         header_bg: existing.header_bg || '#1e3a5f',
+        logo_url: existing.logo_url || undefined,
       });
     }
   }, [existing]);
@@ -85,11 +100,74 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     setSaving(false);
   };
 
+  // Upload do logo da proposta. Espelha o fluxo do logo da empresa (Settings):
+  // mesmo bucket `company-logos`, processImageFile, getPublicUrl. Persiste a URL
+  // dentro de proposal_customization.logo_url. Vazio = cai no logo da empresa.
+  const handleProposalLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
+    file = await processImageFile(file);
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      // Remove o logo de proposta anterior (se houver) do bucket.
+      const current = colors.logo_url;
+      if (current) {
+        try {
+          const oldPath = current.split('/company-logos/')[1];
+          if (oldPath) await supabase.storage.from('company-logos').remove([oldPath]);
+        } catch {}
+      }
+      const filePath = `proposal_logo_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+      const next = { ...colors, logo_url: publicUrl };
+      setColors(next);
+      await updateSettings.mutateAsync({ proposal_customization: next } as any);
+      toast({ title: 'Logo da proposta atualizado' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: getErrorMessage(err) });
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveProposalLogo = async () => {
+    const current = colors.logo_url;
+    if (current) {
+      try {
+        const path = current.split('/company-logos/')[1];
+        if (path) await supabase.storage.from('company-logos').remove([path]);
+      } catch {}
+    }
+    const next = { ...colors, logo_url: undefined };
+    setColors(next);
+    await updateSettings.mutateAsync({ proposal_customization: next } as any);
+    toast({ title: 'Logo da proposta removido' });
+  };
+
+  const effectiveLogo = colors.logo_url || company?.logo_url || null;
+
+  // Lista exibida: templates do banco + os garantidos no client, sem duplicar slug.
+  const displayedTemplates = [
+    ...templates,
+    ...GUARANTEED_TEMPLATES.filter((g) => !templates.some((t) => t.slug === g.slug)),
+  ];
+
   const content = (
     <div className="space-y-6">
       {/* Template cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {templates.map((t) => (
+        {displayedTemplates.map((t) => (
           <button
             key={t.id}
             onClick={() => setSelectedSlug(t.slug)}
@@ -113,6 +191,48 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
             </p>
           </button>
         ))}
+      </div>
+
+      {/* Logo da proposta (opcional, separado do logo da empresa) */}
+      <div className="rounded-xl border border-border p-4 space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Logo da proposta</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Opcional. Se vazio, a proposta usa o logo da empresa.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-28 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+            {effectiveLogo ? (
+              <img src={effectiveLogo} alt="Logo da proposta" className="max-h-full max-w-full object-contain" />
+            ) : (
+              <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <label>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProposalLogoUpload}
+                disabled={uploadingLogo}
+              />
+              <Button asChild size="sm" variant="outline" disabled={uploadingLogo}>
+                <span className="cursor-pointer">
+                  {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  {colors.logo_url ? 'Trocar logo' : 'Enviar logo'}
+                </span>
+              </Button>
+            </label>
+            {colors.logo_url && (
+              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleRemoveProposalLogo}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remover (usar logo da empresa)
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Color customization */}

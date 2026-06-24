@@ -4,6 +4,7 @@ import type { ProposalCustomization } from './templates/types';
 import { ClassicTemplate } from './templates/ClassicTemplate';
 import { ModernTemplate } from './templates/ModernTemplate';
 import { MinimalTemplate } from './templates/MinimalTemplate';
+import { VanguardaTemplate } from './templates/VanguardaTemplate';
 import { forwardRef } from 'react';
 
 interface ProposalRendererProps {
@@ -21,7 +22,9 @@ export const ProposalRenderer = forwardRef<HTMLDivElement, ProposalRendererProps
 
     return (
       <div ref={ref}>
-        {templateSlug === 'moderno' ? (
+        {templateSlug === 'vanguarda' ? (
+          <VanguardaTemplate {...props} />
+        ) : templateSlug === 'moderno' ? (
           <ModernTemplate {...props} />
         ) : templateSlug === 'minimalista' ? (
           <MinimalTemplate {...props} />

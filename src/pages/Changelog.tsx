@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.43',
+    date: '24 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Link compartilhável da proposta',
+        description: 'Agora dá pra gerar um link da proposta e enviar pro cliente: ele abre direto no navegador, no celular ou no computador, sem precisar de PDF.',
+        category: 'recurso',
+      },
+      {
+        title: 'Veja quando o cliente abriu a proposta',
+        description: 'Cada proposta passou a mostrar quantas vezes foi visualizada e quando foi a última vez — pra você acompanhar o interesse do cliente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Logo próprio na proposta',
+        description: 'Dá pra escolher um logo específico pra usar nas propostas, separado do logo da empresa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.42',
     date: '24 de junho de 2026',
     type: 'patch',

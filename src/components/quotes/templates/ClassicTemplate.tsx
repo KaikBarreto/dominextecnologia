@@ -15,6 +15,7 @@ export function ClassicTemplate({ quote, company, items, customization }: Propos
   const allItems = hasGroups ? null : items;
 
   const primary = customization?.primary_color || '#1f2937';
+  const logoUrl = customization?.logo_url || company?.logo_url;
 
   const statusLabel: Record<string, string> = {
     rascunho: 'Rascunho', enviado: 'Enviada', aprovado: 'Aprovada', rejeitado: 'Rejeitada',
@@ -64,8 +65,8 @@ export function ClassicTemplate({ quote, company, items, customization }: Propos
       {/* Header */}
       <div className="py-6 mb-8 flex justify-between items-start" style={{ borderTopWidth: 4, borderTopStyle: 'solid', borderTopColor: primary, borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: primary }}>
         <div>
-          {company?.logo_url ? (
-            <img src={company.logo_url} alt="Logo" className="h-16 mb-3 object-contain" crossOrigin="anonymous" />
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-16 mb-3 object-contain" crossOrigin="anonymous" />
           ) : (
             <p className="text-2xl font-bold text-gray-800 mb-1">{company?.name || 'Empresa'}</p>
           )}

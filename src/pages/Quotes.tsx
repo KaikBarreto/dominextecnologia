@@ -4,7 +4,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
   ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp, Calculator,
-  Wallet, BarChart3, Hash, FileEdit, Send, Clock, Boxes,
+  Wallet, BarChart3, Hash, FileEdit, Send, Clock, Boxes, Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
 import { PricingTab } from '@/components/pricing/PricingTab';
 import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
 import { GlobalCostsTab } from '@/components/service-orders/GlobalCostsTab';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -44,6 +44,8 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
+import { buildProposalShareLink } from '@/utils/shareLinks';
+import { useToast } from '@/hooks/use-toast';
 
 const ALL_SIDEBAR_TABS = [
   { value: 'quotes', label: 'Orçamentos', icon: FileText },
@@ -71,12 +73,68 @@ const STATUS_ICONS: Record<string, typeof FileText> = {
   convertido: ArrowRight,
 };
 
+// Indicador discreto de visualizações da proposta pública.
+// view_count===0 => "Não visualizada" esmaecido. Senão: olho + nº + "visto há X"
+// (tempo relativo PT-BR). last_viewed_at vem em UTC; date-fns calcula o delta
+// contra o "agora" local (America/Sao_Paulo no aparelho), então o "há X" bate.
+function QuoteViewsIndicator({ quote, className }: { quote: Quote; className?: string }) {
+  const count = quote.view_count ?? 0;
+  if (count === 0) {
+    return (
+      <span className={cn('inline-flex items-center gap-1 text-[11px] text-muted-foreground/60', className)}>
+        <Eye className="h-3 w-3" />
+        Não visualizada
+      </span>
+    );
+  }
+  const rel = quote.last_viewed_at
+    ? formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: ptBR })
+    : null;
+  return (
+    <span
+      className={cn('inline-flex items-center gap-1 text-[11px] text-muted-foreground', className)}
+      title={
+        quote.last_viewed_at
+          ? `Visualizada ${count}× · última vez ${format(new Date(quote.last_viewed_at), "dd/MM 'às' HH:mm", { locale: ptBR })}`
+          : `Visualizada ${count}×`
+      }
+    >
+      <Eye className="h-3 w-3" />
+      {count}
+      {rel && <span className="text-muted-foreground/70">· visto {rel}</span>}
+    </span>
+  );
+}
+
 function QuotesList() {
   const isMobile = useIsMobile();
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
   const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
   const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
+  const { toast } = useToast();
+
+  // Gera o link público amigável da proposta e copia no ato (régua-lei: todo
+  // fluxo que gera link já copia + toast "Link gerado e copiado!"). O token já
+  // vem preenchido em toda quote (default server-side), então é só ler + montar.
+  const copyProposalLink = async (q: Quote) => {
+    const link = buildProposalShareLink({
+      token: q.token,
+      recipientName: q.customers?.name ?? q.prospect_name,
+    });
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({ title: 'Link gerado e copiado!', description: 'Já pode colar e enviar pro cliente.' });
+    } catch {
+      // Fallback quando o navegador bloqueia clipboard (ex.: contexto não seguro):
+      // mostra o link pra cópia manual.
+      toast({
+        title: 'Link da proposta gerado',
+        description: link,
+        variant: 'default',
+      });
+    }
+  };
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -265,7 +323,14 @@ function QuotesList() {
         key: 'open-public',
         label: 'Abrir proposta',
         icon: <ExternalLink className="h-4 w-4" />,
-        onClick: () => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank'),
+        // ?preview=1 => visualização do próprio dono não infla o contador de views.
+        onClick: () => window.open(`${window.location.origin}/proposta/${q.token}?preview=1`, '_blank'),
+      },
+      {
+        key: 'copy-link',
+        label: 'Gerar link da proposta',
+        icon: <Link2 className="h-4 w-4" />,
+        onClick: () => copyProposalLink(q),
       },
     ];
 
@@ -453,6 +518,8 @@ function QuotesList() {
                       </span>
                       <span>•</span>
                       <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}</span>
+                      <span>•</span>
+                      <QuoteViewsIndicator quote={q} />
                     </div>
                   }
                   trailing={
@@ -503,10 +570,15 @@ function QuotesList() {
                 <TableRow key={q.id}>
                   <TableCell className="font-medium">#{q.quote_number}</TableCell>
                   <TableCell>
-                    {q.customers?.name ?? q.prospect_name ?? '—'}
-                    {!q.customer_id && q.prospect_name && (
-                      <span className="ml-1.5 text-[10px] text-muted-foreground">(prospecto)</span>
-                    )}
+                    <div className="flex flex-col gap-0.5">
+                      <span>
+                        {q.customers?.name ?? q.prospect_name ?? '—'}
+                        {!q.customer_id && q.prospect_name && (
+                          <span className="ml-1.5 text-[10px] text-muted-foreground">(prospecto)</span>
+                        )}
+                      </span>
+                      <QuoteViewsIndicator quote={q} />
+                    </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
                     {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
@@ -548,7 +620,8 @@ function QuotesList() {
                       <RowActionsMenu
                         actions={[
                           { label: 'Visualizar', icon: Eye, onClick: () => setViewQuote(q) },
-                          { label: 'Abrir proposta em nova guia', icon: ExternalLink, onClick: () => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank') },
+                          { label: 'Abrir proposta em nova guia', icon: ExternalLink, onClick: () => window.open(`${window.location.origin}/proposta/${q.token}?preview=1`, '_blank') },
+                          { label: 'Gerar link da proposta', icon: Link2, onClick: () => copyProposalLink(q) },
                           {
                             label: 'Aprovar (registrar recebimento)',
                             icon: CheckCircle2,

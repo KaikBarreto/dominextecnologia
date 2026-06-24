@@ -14,6 +14,7 @@ export function ModernTemplate({ quote, company, items, customization }: Proposa
   const primary = customization?.primary_color || '#2563eb';
   const accent = customization?.accent_color || '#f97316';
   const headerBg = customization?.header_bg || '#1e3a5f';
+  const logoUrl = customization?.logo_url || company?.logo_url;
 
   const statusLabel: Record<string, string> = {
     rascunho: 'Rascunho', enviado: 'Enviada', aprovado: 'Aprovada', rejeitado: 'Rejeitada',
@@ -60,8 +61,8 @@ export function ModernTemplate({ quote, company, items, customization }: Proposa
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, white 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
         <div className="flex justify-between items-start relative z-10">
           <div>
-            {company?.logo_url ? (
-              <img src={company.logo_url} alt="Logo" className="h-12 mb-4 object-contain brightness-0 invert" crossOrigin="anonymous" />
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-12 mb-4 object-contain brightness-0 invert" crossOrigin="anonymous" />
             ) : (
               <p className="text-xl font-extrabold mb-2">{company?.name || 'Empresa'}</p>
             )}
