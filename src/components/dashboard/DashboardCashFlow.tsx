@@ -51,8 +51,10 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
                       Topo saturado (90%), base translúcida (40%) pra dar leveza. */}
                   <defs>
                     <linearGradient id="gradCashEntradas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      {/* Receita é SEMPRE verde semântico (--success), nunca a cor de
+                          white-label (--primary) — espelha o FinanceOverview. */}
+                      <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
                     </linearGradient>
                     <linearGradient id="gradCashSaidas" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.95} />
@@ -73,7 +75,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
               </ResponsiveContainer>
               <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm justify-center lg:justify-start">
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--success))' }} />
                   <span className="text-muted-foreground">Entradas:</span>
                   <span className="font-semibold text-foreground">{formatCurrency(data.totalEntradas)}</span>
                 </div>

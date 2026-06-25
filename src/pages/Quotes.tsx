@@ -3,8 +3,8 @@ import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
-  ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp, Calculator,
-  Wallet, BarChart3, Hash, FileEdit, Send, Clock, Boxes, Link2,
+  ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp,
+  Wallet, BarChart3, FileEdit, Send, Clock, Boxes, Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -205,37 +205,8 @@ function QuotesList() {
       },
     ];
 
-    if (hasPricing) {
-      base.push(
-        {
-          title: 'Margem Média',
-          value: kpis.avgMarginPct,
-          formattedValue: `${kpis.avgMarginPct}%`,
-          icon: TrendingUp,
-          bgClass: 'bg-success',
-          delay: base.length,
-        },
-        {
-          title: 'Custo Total',
-          value: kpis.totalCostSum,
-          formattedValue: fmtBRL(kpis.totalCostSum),
-          icon: Calculator,
-          bgClass: 'bg-destructive',
-          delay: base.length + 1,
-        },
-      );
-    }
-
-    base.push({
-      title: 'Total',
-      value: kpis.total,
-      icon: Hash,
-      bgClass: 'bg-info',
-      delay: base.length,
-    });
-
     return base;
-  }, [kpis, hasPricing]);
+  }, [kpis]);
 
   // Filtros ativos pro badge.
   const activeFilterCount = (search ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
@@ -409,7 +380,7 @@ function QuotesList() {
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-background to-transparent" />
             <div className="flex gap-3 overflow-x-auto px-3 pb-1 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {isLoading
-                ? [0, 1, 2, 3].map((i) => (
+                ? [0, 1, 2].map((i) => (
                     <div key={i} className="snap-start shrink-0 w-[78%]">
                       <Skeleton className="h-[108px] w-full rounded-2xl" />
                     </div>
@@ -437,9 +408,9 @@ function QuotesList() {
           </div>
 
           {/* KPIs desktop — padrão KPICard (mesmo da tela de Ordens de Serviço) */}
-          <div className={cn('grid gap-3 grid-cols-2', hasPricing ? 'lg:grid-cols-3' : 'lg:grid-cols-4')}>
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
             {isLoading
-              ? [0, 1, 2, 3].map((i) => (
+              ? [0, 1, 2].map((i) => (
                   <Skeleton key={i} className="h-[108px] w-full rounded-2xl" />
                 ))
               : kpiCards.map((card) => (
