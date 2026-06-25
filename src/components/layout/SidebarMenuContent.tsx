@@ -407,7 +407,7 @@ export function SidebarMenuContent() {
                         title={item.title}
                         className={({ isActive }) =>
                           cn(
-                            'flex items-center justify-center rounded-lg py-2.5 transition-colors',
+                            'flex w-full items-center justify-center rounded-lg py-2.5 transition-colors',
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'

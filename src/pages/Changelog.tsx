@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.47',
+    date: '25 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fluxo de Caixa que acompanha o período',
+        description: 'O gráfico de Fluxo de Caixa do início virou linhas mais bonitas e agora muda conforme o período escolhido: dia a dia dentro de um mês, mês a mês em períodos maiores — e sem mostrar meses futuros vazios.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Menu lateral recolhido alinhado',
+        description: 'Ao recolher o menu lateral, os ícones voltaram a ficar centralizados e alinhados.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.14.46',
     date: '24 de junho de 2026',
     type: 'patch',

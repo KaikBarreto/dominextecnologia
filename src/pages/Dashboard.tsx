@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, differenceInDays, format, startOfISOWeek,
+  eachDayOfInterval, eachMonthOfInterval,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -120,38 +121,45 @@ export default function Dashboard() {
     };
   }, [statusCounts, stats, start, end, prevRange, prevFilteredOS]);
 
-  // Cash flow data
+  // Cash flow data — segue o período do datepicker (start..end), mas o fim
+  // efetivo é CLAMPADO a HOJE pra não mostrar futuro vazio (ex.: "Este ano"
+  // vira "este ano ATÉ aqui": jan→mês atual, sem jul→dez chapados em R$0).
+  // Granularidade: ≤31 dias agrega por DIA (dd/MM), senão por MÊS (MMM/yy).
+  // Buckets contínuos inicializados em 0 pra a linha não ter buracos.
   const cashFlowData = useMemo(() => {
-    if (!stats?.allFinancial) return { monthlyData: [], totalEntradas: 0, totalSaidas: 0 };
-    const now = new Date();
-    const threeMonthsAgo = subDays(startOfMonth(now), 1);
-    const cfStart = startOfMonth(subDays(startOfMonth(threeMonthsAgo), 1));
-    const cfEnd = endOfMonth(now);
+    if (!stats?.allFinancial) return { data: [], totalEntradas: 0, totalSaidas: 0 };
 
-    const monthMap = new Map<string, { entradas: number; saidas: number }>();
-    for (let i = 2; i >= 0; i--) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = format(m, 'MMM/yy', { locale: ptBR });
-      monthMap.set(key, { entradas: 0, saidas: 0 });
-    }
+    // Clampa o fim a hoje (fim do dia) pra cortar meses/dias futuros vazios.
+    const hoje = endOfDay(new Date());
+    const effEnd = end > hoje ? hoje : end;
+
+    const byDay = differenceInDays(effEnd, start) <= 31;
+    const keyOf = (d: Date) =>
+      byDay ? format(d, 'dd/MM') : format(d, 'MMM/yy', { locale: ptBR });
+
+    // Monta os buckets contínuos ao longo de [start, effEnd].
+    const buckets = new Map<string, { entradas: number; saidas: number }>();
+    const periods = byDay
+      ? eachDayOfInterval({ start, end: effEnd })
+      : eachMonthOfInterval({ start, end: effEnd });
+    periods.forEach(d => buckets.set(keyOf(d), { entradas: 0, saidas: 0 }));
 
     let totalEntradas = 0, totalSaidas = 0;
-    stats.allFinancial.forEach((t: any) => {
-      const d = new Date(t.transaction_date);
-      if (d < cfStart || d > cfEnd) return;
-      const key = format(d, 'MMM/yy', { locale: ptBR });
-      if (!monthMap.has(key)) return;
-      const cur = monthMap.get(key)!;
+    filterByRange(stats.allFinancial, 'transaction_date', start, effEnd).forEach((t: any) => {
+      const key = keyOf(new Date(t.transaction_date));
+      const cur = buckets.get(key);
+      if (!cur) return;
       const amount = Number(t.amount);
       if (t.transaction_type === 'entrada') { cur.entradas += amount; totalEntradas += amount; }
       else { cur.saidas += amount; totalSaidas += amount; }
     });
+
     return {
-      monthlyData: Array.from(monthMap.entries()).map(([month, v]) => ({ month, ...v })),
+      data: Array.from(buckets.entries()).map(([label, v]) => ({ label, ...v })),
       totalEntradas,
       totalSaidas,
     };
-  }, [stats?.allFinancial]);
+  }, [stats?.allFinancial, start, end]);
 
   // OS Evolution data
   const evolutionData = useMemo(() => {

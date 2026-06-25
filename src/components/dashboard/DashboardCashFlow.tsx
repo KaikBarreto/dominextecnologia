@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 
 interface CashFlowData {
-  monthlyData: Array<{ month: string; entradas: number; saidas: number }>;
+  data: Array<{ label: string; entradas: number; saidas: number }>;
   totalEntradas: number;
   totalSaidas: number;
 }
@@ -24,8 +24,10 @@ const formatYAxis = (value: number) => {
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--card))',
   border: '1px solid hsl(var(--border))',
-  borderRadius: '8px',
+  borderRadius: '10px',
   color: 'hsl(var(--foreground))',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+  padding: '8px 12px',
 };
 
 export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isLoading: boolean }) {
@@ -43,37 +45,92 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-[280px] w-full" />
-          ) : data.monthlyData.length > 0 ? (
+          ) : data.data.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={data.monthlyData} barGap={4}>
-                  {/* Degradê vertical nas barras — regra sistema-wide CEO 2026-05-23.
-                      Topo saturado (90%), base translúcida (40%) pra dar leveza. */}
+                <ComposedChart data={data.data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  {/* Degradês sutis sob cada linha: cor cheia no topo (~0.25) → transparente na base. */}
                   <defs>
-                    <linearGradient id="gradCashEntradas" x1="0" y1="0" x2="0" y2="1">
-                      {/* Receita é SEMPRE verde semântico (--success), nunca a cor de
-                          white-label (--primary) — espelha o FinanceOverview. */}
-                      <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
+                    <linearGradient id="cashflow-entradas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="gradCashSaidas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.4} />
+                    <linearGradient id="cashflow-saidas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatYAxis} width={60} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={tooltipStyle} />
-                  <Legend
-                    wrapperStyle={{ fontSize: '12px' }}
-                    formatter={(value: string) => <span style={{ color: 'hsl(var(--foreground))' }}>{value}</span>}
+                  {/* Grid clean: só horizontais, baixa opacidade. */}
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                  {/* preserveStartEnd + minTickGap evita labels sobrepostos em períodos longos (dia-a-dia). */}
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    interval="preserveStartEnd"
+                    minTickGap={24}
+                    axisLine={false}
+                    tickLine={false}
                   />
-                  <Bar dataKey="entradas" name="Entradas" fill="url(#gradCashEntradas)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="saidas" name="Saídas" fill="url(#gradCashSaidas)" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={formatYAxis}
+                    width={60}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={tooltipStyle}
+                    cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
+                  />
+                  {/* Receita é SEMPRE verde semântico (--success), nunca a cor de
+                      white-label (--primary) — espelha o FinanceOverview.
+                      Area só pinta o degradê (stroke none); a Line por cima dá a linha nítida. */}
+                  <Area
+                    type="monotone"
+                    dataKey="entradas"
+                    stroke="none"
+                    fill="url(#cashflow-entradas)"
+                    fillOpacity={1}
+                    activeDot={false}
+                    tooltipType="none"
+                    isAnimationActive={false}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="saidas"
+                    stroke="none"
+                    fill="url(#cashflow-saidas)"
+                    fillOpacity={1}
+                    activeDot={false}
+                    tooltipType="none"
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="entradas"
+                    name="Entradas"
+                    stroke="hsl(var(--success))"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="saidas"
+                    name="Saídas"
+                    stroke="hsl(var(--destructive))"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
-              <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm justify-center lg:justify-start">
+              <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm justify-center">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--success))' }} />
                   <span className="text-muted-foreground">Entradas:</span>

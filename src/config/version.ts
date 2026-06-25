@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.46";
+export const APP_VERSION = "1.14.47";
 
-export const VERSION_NOTES = "Correção: o link público da proposta agora mostra corretamente o nome, o logo e as cores da sua empresa (antes abria com dados genéricos). Botão 'Baixar PDF' agora flutua no canto e fica legível.";
+export const VERSION_NOTES = "O gráfico de Fluxo de Caixa virou linhas mais bonitas e agora acompanha o período escolhido (dia a dia dentro do mês, mês a mês em períodos maiores, sem mostrar futuro vazio). E o menu lateral recolhido voltou a alinhar os ícones direitinho.";
