@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.49',
+    date: '25 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ordem de Serviço com visual repaginado',
+        description: 'A tela de preenchimento e o relatório da OS ganharam um visual novo e mais consistente: cabeçalho centralizado, rodapé de ações em estilo gaveta, botões de checklist mais claros (Conforme em verde, Não-conforme em vermelho, N/A em laranja), contrato exibido dentro dos dados do cliente, check-in/check-out com endereço e técnico, e o relatório seguindo o mesmo padrão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.48',
     date: '25 de junho de 2026',
     type: 'patch',

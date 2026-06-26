@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, MoreVertical } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,7 @@ import { osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
-import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
+import { ReportHeader, DEFAULT_HEADER_CONFIG, REPORT_HEADER_DARK_GRADIENT } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
 import { ReportPmocChecklist, pmocGroupKeysFor } from './ReportPmocChecklist';
 import { ContractInfoCard } from './ContractInfoCard';
@@ -841,15 +841,6 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         </div>
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Contract info — card único e neutro (mesmo padrão de CLIENTE /
-              EQUIPAMENTO / EXECUÇÃO). Mostra o nome do contrato e, quando PMOC,
-              a nota de conformidade "Lei Federal 13.589/2018" como linha
-              secundária discreta (sem fundo azul). Substituiu os dois cards
-              azuis antigos (banner do topo + card de contrato). Entra no PDF. */}
-          {contractInfo && (
-            <ContractInfoCard name={contractInfo.name} isPmoc={isPmoc} tone="document" />
-          )}
-
           {/* Client & Equipment */}
           <div className="grid grid-cols-1 gap-4 max-w-full overflow-hidden">
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
@@ -887,6 +878,21 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   )}
                 </div>
               </div>
+              {/* Subseção CONTRATO dentro do próprio card Cliente — só quando a OS
+                  pertence a um contrato (ex.: PMOC). Sem moldura própria (bare):
+                  divisor claro (border-slate-200, documento sempre claro/print) +
+                  nome do contrato + nota da Lei 13.589 quando PMOC. Espelha o
+                  padrão do preenchimento (tone 'app'), aqui com tone 'document'. */}
+              {contractInfo && (
+                <div className="mt-3 pt-3 border-t border-slate-200">
+                  <ContractInfoCard
+                    name={contractInfo.name}
+                    isPmoc={isPmoc}
+                    tone="document"
+                    bare
+                  />
+                </div>
+              )}
             </div>
 
             {/* Equipment(s) - show all from junction or fallback (dedupe equipment_id) */}
@@ -1380,8 +1386,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           Finalizar/Pausar — relatório é só leitura, vale também no modo cliente. */}
       {desktopActionFooter && createPortal(
         <div
-          className="fixed inset-x-0 bottom-0 z-30 lg:hidden bg-zinc-900 text-white border-t border-zinc-800 shadow-[0_-4px_16px_rgba(0,0,0,0.25)] print:hidden"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          className="fixed inset-x-0 bottom-0 z-30 lg:hidden text-white border-t border-white/10 shadow-[0_-4px_16px_rgba(0,0,0,0.25)] print:hidden overflow-hidden rounded-t-2xl"
+          style={{ background: REPORT_HEADER_DARK_GRADIENT, paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <div className="flex items-center gap-2 px-3 py-2.5">
             <Button
@@ -1400,10 +1406,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="shrink-0 h-11 w-11 text-white hover:bg-white/10"
+                  className="shrink-0 h-11 w-11 text-white hover:bg-white/10 [&_svg]:size-6"
                   aria-label="Mais ações"
                 >
-                  <MoreVertical className="h-5 w-5" />
+                  <Menu className="h-6 w-6" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">

@@ -263,17 +263,51 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         );
 
       case 'conformidade': {
-        // 3 estados fixos. Selo ativo = cor saturada + texto branco (régua de status).
-        const conformOptions: { value: string; label: string; activeClass: string; Icon: typeof Check }[] = [
-          { value: 'Conforme', label: 'Conforme', activeClass: 'bg-emerald-600 border-emerald-600 text-white', Icon: Check },
-          { value: 'Não Conforme', label: 'Não Conforme', activeClass: 'bg-red-600 border-red-600 text-white', Icon: X },
-          { value: 'N/A', label: 'N/A', activeClass: 'bg-slate-500 border-slate-500 text-white', Icon: Minus },
+        // 3 estados fixos. Régua visual: idle = neutro com ÍCONE colorido
+        // (Conforme verde, Não Conforme vermelho, N/A laranja avermelhado);
+        // hover (não selecionado) === estado ativo: MESMAS classes saturadas +
+        // branco, só que prefixadas com `hover:`. Strings LITERAIS (não geradas
+        // em runtime) pra o Tailwind JIT enxergar e compilar o CSS. N/A usa
+        // orange-600 (o mesmo do "Finalizar Parcial"), não mais slate.
+        const conformOptions: {
+          value: string;
+          label: string;
+          activeClass: string;
+          idleIcon: string;
+          hover: string;
+          Icon: typeof Check;
+        }[] = [
+          {
+            value: 'Conforme',
+            label: 'Conforme',
+            activeClass: 'bg-emerald-600 border-emerald-600 text-white [&_svg]:text-white',
+            idleIcon: '[&_svg]:text-emerald-600',
+            hover: 'hover:bg-emerald-600 hover:border-emerald-600 hover:text-white hover:[&_svg]:text-white focus-visible:bg-emerald-600 focus-visible:border-emerald-600 focus-visible:text-white focus-visible:[&_svg]:text-white',
+            Icon: Check,
+          },
+          {
+            value: 'Não Conforme',
+            label: 'Não Conforme',
+            activeClass: 'bg-red-600 border-red-600 text-white [&_svg]:text-white',
+            idleIcon: '[&_svg]:text-red-600',
+            hover: 'hover:bg-red-600 hover:border-red-600 hover:text-white hover:[&_svg]:text-white focus-visible:bg-red-600 focus-visible:border-red-600 focus-visible:text-white focus-visible:[&_svg]:text-white',
+            Icon: X,
+          },
+          {
+            value: 'N/A',
+            label: 'N/A',
+            activeClass: 'bg-orange-600 border-orange-600 text-white [&_svg]:text-white',
+            idleIcon: '[&_svg]:text-orange-600',
+            hover: 'hover:bg-orange-600 hover:border-orange-600 hover:text-white hover:[&_svg]:text-white focus-visible:bg-orange-600 focus-visible:border-orange-600 focus-visible:text-white focus-visible:[&_svg]:text-white',
+            Icon: Minus,
+          },
         ];
         return (
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="flex gap-1.5">
             {conformOptions.map((opt) => {
               const active = value === opt.value;
               const OptIcon = opt.Icon;
+              const isNa = opt.value === 'N/A';
               return (
                 <button
                   key={opt.value}
@@ -281,11 +315,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   disabled={isSaving}
                   onClick={() => saveResponse(question.id, active ? null : opt.value)}
                   className={cn(
-                    'flex items-center justify-center gap-1 rounded-md border px-2 py-2 text-xs font-semibold transition-colors',
+                    'flex items-center justify-center gap-1 rounded-md border py-2 text-xs font-semibold transition-colors min-w-0',
+                    isNa ? 'flex-none px-3' : 'flex-[1.3] px-2',
                     'disabled:opacity-60 disabled:cursor-not-allowed',
                     active
                       ? opt.activeClass
-                      : 'bg-card text-muted-foreground hover:bg-muted/60 border-border',
+                      : cn('bg-card text-muted-foreground border-border', opt.idleIcon, opt.hover),
                   )}
                 >
                   <OptIcon className="h-3.5 w-3.5 shrink-0" />

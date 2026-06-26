@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.48";
+export const APP_VERSION = "1.14.49";
 
-export const VERSION_NOTES = "A função 'Ferramentas do Técnico' passou a se chamar 'Área do Técnico™' (links antigos continuam funcionando). O selo de conformidade PMOC ficou mais visível e, ao passar o mouse na foto do criador nas listas, aparece o nome e o e-mail.";
+export const VERSION_NOTES = "Visual repaginado da Ordem de Serviço: cabeçalho centralizado, rodapé de ações em estilo gaveta, botões de checklist mais claros (verde/vermelho/laranja), contrato dentro dos dados do cliente, e o relatório no mesmo padrão.";

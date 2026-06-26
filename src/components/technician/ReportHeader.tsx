@@ -1,5 +1,3 @@
-import { Building2 } from 'lucide-react';
-
 export interface ReportHeaderConfig {
   bgColor: string;
   textColor: string;
@@ -10,8 +8,18 @@ export interface ReportHeaderConfig {
   logoType: 'full' | 'icon';
 }
 
+/**
+ * Degradê padrão do cabeçalho do relatório (card escuro com dados da empresa).
+ * Preto → cinza escuro neutro (sem tom azulado). Quando a empresa salva uma cor
+ * própria em `report_header_bg_color`, esse valor é substituído pela cor sólida
+ * escolhida (mantém a personalização). `background` (não `background-color`)
+ * aceita tanto hex quanto gradiente e dispara o `print-color-adjust: exact` da
+ * regra `[style*="background"]` no index.css — sai no PDF/print.
+ */
+export const REPORT_HEADER_DARK_GRADIENT = 'linear-gradient(135deg, #0a0a0a 0%, #27272a 100%)';
+
 export const DEFAULT_HEADER_CONFIG: ReportHeaderConfig = {
-  bgColor: '#1e293b',
+  bgColor: REPORT_HEADER_DARK_GRADIENT,
   textColor: '#ffffff',
   logoSize: 80,
   showLogoBg: true,
@@ -59,11 +67,17 @@ export function ReportHeader({
         data-pdf-section
         data-print-preserve-colors="true"
         className="p-4 sm:p-6"
-        style={{ background: cfg.bgColor, color: cfg.textColor }}
+        style={{
+          background: cfg.bgColor,
+          color: cfg.textColor,
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact',
+        }}
       >
         <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
-            {resolvedLogo ? (
+            {/* Sem logo da empresa: não renderiza placeholder — info fica à esquerda. */}
+            {resolvedLogo && (
               <img
                 src={resolvedLogo}
                 alt="Logo"
@@ -76,20 +90,6 @@ export function ReportHeader({
                     : {}),
                 }}
               />
-            ) : (
-              <div
-                className="rounded-lg flex items-center justify-center shrink-0"
-                style={{
-                  height: `${logoPx}px`,
-                  width: `${logoPx}px`,
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                }}
-              >
-                <Building2
-                  className="text-white/70"
-                  style={{ width: logoPx * 0.4, height: logoPx * 0.4 }}
-                />
-              </div>
             )}
             <div className="min-w-0">
               <h1

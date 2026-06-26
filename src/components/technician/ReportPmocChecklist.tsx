@@ -443,7 +443,13 @@ function ReportPmocItem({
           componente compartilhado. No relatório a cor é `bg-white` (documento claro);
           o mecanismo é IDÊNTICO ao do preenchimento (que usa `bg-card`). */}
       {mountStuckBg && (
-        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-white" visible={bgVisible} />
+        // `overlapTop`: sobe o fundo branco ~18px ATRÁS do header verde da tela
+        // (z-20 > este z-[5]) pra preencher os cantinhos do `rounded-b-2xl` dele —
+        // sem isso a cor escura da página vazava nos cantos formando um "vão preto"
+        // entre o header verde e o cabeçalho branco do equipamento. Só no relatório
+        // (fundo branco contra página escura); o preenchimento (`bg-card`) não tem
+        // o contraste e mantém overlapTop=0.
+        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-white" visible={bgVisible} roundedBottom overlapTop={18} />
       )}
       <AccordionTrigger
         ref={triggerRef}

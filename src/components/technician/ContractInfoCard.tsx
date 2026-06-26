@@ -48,6 +48,7 @@ export function ContractInfoCard({
   name,
   isPmoc = false,
   tone = 'document',
+  bare = false,
   className,
 }: {
   name: string;
@@ -55,6 +56,12 @@ export function ContractInfoCard({
   isPmoc?: boolean;
   /** Paleta: 'document' (relatório claro/PDF) ou 'app' (tema do usuário). */
   tone?: ContractInfoCardTone;
+  /**
+   * `bare`: renderiza SEM borda/fundo/padding próprios — pra viver como
+   * SUBSEÇÃO dentro de outro card (ex.: o card "Cliente" na execução da OS).
+   * Mantém o título "Contrato", o nome e a nota da lei, só sem a moldura.
+   */
+  bare?: boolean;
   className?: string;
 }) {
   const t = TONE[tone];
@@ -62,7 +69,7 @@ export function ContractInfoCard({
     <div
       // `data-pdf-section` só no documento (entra no PDF); no app não é PDF.
       {...(tone === 'document' ? { 'data-pdf-section': true } : {})}
-      className={cn('rounded-lg p-3 sm:p-4', t.card, className)}
+      className={cn(bare ? '' : cn('rounded-lg p-3 sm:p-4', t.card), className)}
     >
       <h3 className={cn('text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5', t.title)}>
         <FileSignature className="h-3.5 w-3.5" /> Contrato

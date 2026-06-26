@@ -368,6 +368,8 @@ export function StickyFullBleedBg({
   height,
   bgClass,
   visible,
+  roundedBottom = false,
+  overlapTop = 0,
 }: {
   /** Topo do fundo em px — passe `stickyTopPx - 1` (cola atrás do header laranja). */
   top: number;
@@ -381,6 +383,25 @@ export function StickyFullBleedBg({
    * Sempre montado enquanto sticky/aberto pra animar entrada E saída.
    */
   visible: boolean;
+  /**
+   * Arredonda as bordas INFERIORES do fundo grudado (`rounded-b-2xl`), espelhando
+   * o header principal da tela (que tem `rounded-b-2xl`) — dá ao cabeçalho de
+   * equipamento grudado a mesma cara de "drawer" ao colar no topo. `overflow-hidden`
+   * recorta a sombra/cor exatamente nos cantos arredondados.
+   */
+  roundedBottom?: boolean;
+  /**
+   * Sobe o fundo `overlapTop` px ACIMA de `top` (e soma na altura), mantendo o
+   * topo VISUAL do cabeçalho no mesmo lugar. Serve pra TUCAR o fundo ATRÁS do
+   * header principal da tela (z-20 cobre este z-[5]) e preencher os CANTINHOS que
+   * o `rounded-b-2xl` do header verde deixa expostos — sem esse preenchimento, a
+   * cor escura da página (`bg-background`) vaza nos cantos formando um "vão preto"
+   * entre o header verde e o cabeçalho branco do equipamento. Como o header da
+   * tela está por cima (z-20), essa sobra só aparece NOS cantos arredondados,
+   * pintando-os com a cor do cabeçalho (branco no relatório). 0 = comportamento
+   * antigo (preenchimento/app, onde `bg-card` ≈ fundo da página e não há vão).
+   */
+  overlapTop?: number;
 }) {
   return (
     <div
@@ -388,10 +409,11 @@ export function StickyFullBleedBg({
       className={cn(
         'fixed left-0 right-0 z-[5] shadow-[0_4px_12px_rgba(0,0,0,0.12)] print:hidden',
         'transition-[opacity,transform] duration-200 ease-out',
+        roundedBottom && 'rounded-b-2xl',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none',
         bgClass,
       )}
-      style={{ top, height }}
+      style={{ top: top - overlapTop, height: height + overlapTop }}
     />
   );
 }

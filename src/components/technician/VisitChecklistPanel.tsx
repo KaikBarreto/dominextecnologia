@@ -100,11 +100,43 @@ const CONFORMITY_OPTIONS: {
   value: ActivityConformity;
   label: string;
   icon: typeof Check;
+  /** Cor do ÍCONE no estado idle (sempre colorido, mesmo sem hover/seleção). */
+  idleIcon: string;
+  /** Fundo saturado + branco no estado ATIVO/selecionado (fixo). */
   active: string;
+  /**
+   * HOVER (não selecionado) === ACTIVE === FOCO/TAP: MESMAS classes saturadas +
+   * branco (ícone incluso), prefixadas com `hover:` E `focus-visible:`. O
+   * `focus-visible:` é o que mata o cinza do `<Button variant="outline">` no
+   * tap mobile (o variant injeta `bg-accent`/`ring` no foco que venceria sem
+   * isto). Strings LITERAIS (não geradas em runtime) pro Tailwind JIT compilar.
+   */
+  hover: string;
 }[] = [
-  { value: 'conforme', label: 'Conforme', icon: Check, active: 'bg-success text-success-foreground border-success' },
-  { value: 'nao_conforme', label: 'Não-conforme', icon: X, active: 'bg-destructive text-destructive-foreground border-destructive' },
-  { value: 'na', label: 'N/A', icon: MinusCircle, active: 'bg-muted text-muted-foreground border-border' },
+  {
+    value: 'conforme',
+    label: 'Conforme',
+    icon: Check,
+    idleIcon: '[&_svg]:text-success',
+    active: 'bg-success text-success-foreground border-success [&_svg]:text-success-foreground',
+    hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:text-success-foreground',
+  },
+  {
+    value: 'nao_conforme',
+    label: 'Não-conforme',
+    icon: X,
+    idleIcon: '[&_svg]:text-destructive',
+    active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:text-destructive-foreground',
+    hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:text-destructive-foreground',
+  },
+  {
+    value: 'na',
+    label: 'N/A',
+    icon: MinusCircle,
+    idleIcon: '[&_svg]:text-orange-600',
+    active: 'bg-orange-600 text-white border-orange-600 [&_svg]:text-white',
+    hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:text-white',
+  },
 ];
 
 function ActivityRow({
@@ -207,11 +239,14 @@ function ActivityRow({
         )}
       </div>
 
-      {/* Conforme / Não-conforme / N/A */}
-      <div className="grid grid-cols-3 gap-1.5">
+      {/* Conforme / Não-conforme / N/A — Conforme e Não-conforme ganham mais
+          largura (flex-[1.3] cada); N/A fica estreito (flex-none, só o "N/A"
+          + ícone), já que "Não-conforme" é o rótulo mais comprido. */}
+      <div className="flex gap-1.5">
         {CONFORMITY_OPTIONS.map((opt) => {
           const Icon = opt.icon;
           const selected = activity.conformity_status === opt.value;
+          const isNa = opt.value === 'na';
           return (
             <Button
               key={opt.value}
@@ -221,8 +256,15 @@ function ActivityRow({
               disabled={readOnly || savingStatus}
               onClick={() => setStatus(opt.value)}
               className={cn(
-                'h-9 gap-1.5 text-xs',
-                selected ? opt.active : 'text-muted-foreground'
+                'h-9 gap-1.5 text-xs min-w-0',
+                isNa ? 'flex-none px-3' : 'flex-[1.3]',
+                // Idle: texto neutro + ícone SEMPRE colorido. Hover (não
+                // selecionado) é EXATAMENTE o estado ativo (mesmas classes
+                // saturadas + branco, com `hover:`). As regras `[&_svg]`
+                // controlam a cor do ícone.
+                selected
+                  ? opt.active
+                  : cn('text-muted-foreground', opt.idleIcon, opt.hover)
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -289,7 +331,7 @@ function ActivityRow({
             size="sm"
             onClick={() => setPhotoOpen(true)}
             className={cn(
-              'h-8 gap-1.5 text-xs',
+              'h-8 w-full gap-1.5 text-xs',
               isNaoConforme
                 ? 'border-destructive/60 text-destructive hover:bg-destructive/10'
                 : 'text-muted-foreground',
@@ -363,17 +405,42 @@ function TemplateQuestionRow({
   const renderInput = () => {
     switch (type) {
       case 'boolean': {
-        // 'true' = Conforme, 'false' = Não-conforme, 'na' = N/A.
-        const opts: { v: string; label: string; icon: typeof Check; active: string }[] = [
-          { v: 'true', label: 'Conforme', icon: Check, active: 'bg-success text-success-foreground border-success' },
-          { v: 'false', label: 'Não-conforme', icon: X, active: 'bg-destructive text-destructive-foreground border-destructive' },
-          { v: 'na', label: 'N/A', icon: MinusCircle, active: 'bg-muted text-muted-foreground border-border' },
+        // 'true' = Conforme, 'false' = Não-conforme, 'na' = N/A. Mesma régua
+        // visual da CONFORMITY_OPTIONS: idle (ícone colorido), hover (saturado
+        // + branco) e selecionado (saturado fixo + branco). N/A usa o laranja
+        // avermelhado (orange-600), o mesmo do "Finalizar Parcial".
+        const opts: { v: string; label: string; icon: typeof Check; idleIcon: string; active: string; hover: string }[] = [
+          {
+            v: 'true',
+            label: 'Conforme',
+            icon: Check,
+            idleIcon: '[&_svg]:text-success',
+            active: 'bg-success text-success-foreground border-success [&_svg]:text-success-foreground',
+            hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:text-success-foreground',
+          },
+          {
+            v: 'false',
+            label: 'Não-conforme',
+            icon: X,
+            idleIcon: '[&_svg]:text-destructive',
+            active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:text-destructive-foreground',
+            hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:text-destructive-foreground',
+          },
+          {
+            v: 'na',
+            label: 'N/A',
+            icon: MinusCircle,
+            idleIcon: '[&_svg]:text-orange-600',
+            active: 'bg-orange-600 text-white border-orange-600 [&_svg]:text-white',
+            hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:text-white',
+          },
         ];
         return (
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="flex gap-1.5">
             {opts.map((o) => {
               const Icon = o.icon;
               const selected = value === o.v;
+              const isNa = o.v === 'na';
               return (
                 <Button
                   key={o.v}
@@ -382,7 +449,12 @@ function TemplateQuestionRow({
                   size="sm"
                   disabled={readOnly || saving}
                   onClick={() => save({ response_value: selected ? null : o.v })}
-                  className={cn('h-9 gap-1.5 text-xs', selected ? o.active : 'text-muted-foreground')}
+                  className={cn(
+                    'h-9 gap-1.5 text-xs min-w-0',
+                    isNa ? 'flex-none px-3' : 'flex-[1.3]',
+                    // Hover === active (mesmas classes saturadas + branco com `hover:`).
+                    selected ? o.active : cn('text-muted-foreground', o.idleIcon, o.hover),
+                  )}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   {o.label}
@@ -707,7 +779,7 @@ function VisitChecklistItem({
       {/* Fundo do cabeçalho grudado (full-bleed da viewport interna) — cor `bg-card`
           (tema). Mecanismo IDÊNTICO ao relatório; foto não é cortada (sem overflow). */}
       {mountStuckBg && (
-        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-card" visible={bgVisible} />
+        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-card" visible={bgVisible} roundedBottom />
       )}
       <AccordionTrigger
         ref={triggerRef}

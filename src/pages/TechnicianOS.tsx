@@ -9,7 +9,7 @@ import {
   Play,
   ClipboardCheck,
   PenTool,
-  CheckCircle2,
+  BadgeCheck,
   ArrowLeft,
   Calendar,
   Building2,
@@ -28,7 +28,7 @@ import {
   Maximize2,
   X,
   Menu,
-  CircleDashed,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -183,7 +183,7 @@ function OsEquipmentAccordionItem({
       {/* Fundo do cabeçalho grudado (full-bleed da viewport interna) — cor `bg-card`
           (tema). Mecanismo IDÊNTICO ao relatório; foto não é cortada (sem overflow). */}
       {mountStuckBg && (
-        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-card" visible={bgVisible} />
+        <StickyFullBleedBg top={followTop} height={headerHeight} bgClass="bg-card" visible={bgVisible} roundedBottom />
       )}
       <AccordionTrigger
         ref={triggerRef}
@@ -1773,22 +1773,57 @@ export default function TechnicianOS() {
   if (serviceOrder.status === 'concluida' || isPausedPublicReport) {
     return (
       <div className="min-h-screen bg-background lg:flex lg:flex-col">
+        {/* Header sticky do RELATÓRIO — alinhado visualmente ao header do
+            PREENCHIMENTO: cantos inferiores arredondados (rounded-b-2xl),
+            overlay de profundidade neutro sobre a cor da marca, e conteúdo
+            CENTRALIZADO (empresa/OS#/"Relatório de Serviço"). O que é específico
+            do relatório (selo de status + rótulo "Relatório de Serviço") é
+            mantido. `headerRef` continua sendo EXATAMENTE este container sticky
+            externo (não mexer — preserva a medição de headerHeight usada pelos
+            cabeçalhos de equipamento que grudam abaixo). */}
         <div
           ref={headerRef}
-          className="sticky top-0 z-20 bg-primary text-primary-foreground p-3 sm:p-4 shadow-lg print:hidden"
-          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+          className="relative sticky top-0 z-20 bg-primary text-primary-foreground shadow-lg rounded-b-2xl overflow-hidden print:hidden"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
-          <div className="max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base sm:text-lg font-bold truncate">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
-              <p className="text-xs sm:text-sm opacity-90">Relatório de Serviço</p>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.16) 100%)' }}
+          />
+          <div className="relative max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
+            {/* Linha de topo: [← Voltar] à esquerda, selo de status à direita,
+                na mesma linha (flex absoluto items-center). */}
+            <div className="absolute left-2 right-2 top-2 z-10 flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-primary-foreground hover:bg-primary-foreground/15 shrink-0 px-2 gap-1.5"
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span className="text-sm font-medium">Voltar</span>
+              </Button>
+              <Badge
+                variant={statusBadgeVariant[serviceOrder.status]}
+                className="shrink-0 shadow-sm"
+              >
+                {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
+              </Badge>
             </div>
-            <Badge variant={statusBadgeVariant[serviceOrder.status]}>
-              {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
-            </Badge>
+
+            {/* Bloco centralizado */}
+            <div className="flex flex-col items-center text-center gap-1 pt-8 sm:pt-9">
+              {company?.name && (
+                <span className="text-sm sm:text-base font-semibold opacity-95 truncate max-w-full px-1">
+                  {company.name}
+                </span>
+              )}
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
+                OS <span className="opacity-95">#{String(serviceOrder.order_number).padStart(6, '0')}</span>
+              </h1>
+              <p className="text-xs sm:text-sm font-medium opacity-85">Relatório de Serviço</p>
+            </div>
           </div>
         </div>
         <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)_20rem] lg:gap-4 lg:px-8 lg:w-full lg:max-w-screen-2xl lg:mx-auto lg:items-start lg:pt-4">
@@ -1895,30 +1930,45 @@ export default function TechnicianOS() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background lg:flex lg:flex-col">
-        <div className="bg-primary text-primary-foreground">
-          <div className="max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3 mb-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {company?.logo_url ? (
-                    <img src={company.logo_url} alt="Logo" className="h-10 w-10 sm:h-12 sm:w-12 rounded object-contain bg-white p-1 shrink-0" />
-                  ) : (
-                    <Building2 className="h-5 w-5 opacity-70 shrink-0" />
-                  )}
-                  <span className="text-sm opacity-80 truncate">{company?.name || ''}</span>
-                </div>
+        {/* Header público (acompanhamento anônimo) — mesma pegada visual do
+            header de preenchimento/relatório: cantos inferiores arredondados,
+            overlay de profundidade neutro e conteúdo CENTRALIZADO. Mantém o
+            logo da empresa, o selo de status (canto superior direito) e a linha
+            de data/hora. */}
+        <div className="relative bg-primary text-primary-foreground shadow-lg rounded-b-2xl overflow-hidden">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.16) 100%)' }}
+          />
+          <div className="relative max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
+            {/* Selo de status no canto superior direito */}
+            <Badge
+              variant={statusBadgeVariant[serviceOrder.status]}
+              className="absolute right-2 top-2 z-10 shrink-0 shadow-sm"
+            >
+              {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
+            </Badge>
+
+            {/* Bloco centralizado: logo + empresa, OS#, tipo e data */}
+            <div className="flex flex-col items-center text-center gap-1.5 pt-8 sm:pt-9">
+              <div className="flex items-center justify-center gap-2 max-w-full min-w-0">
+                {company?.logo_url ? (
+                  <img src={company.logo_url} alt="Logo" className="h-10 w-10 sm:h-12 sm:w-12 rounded object-contain bg-white p-1 shrink-0" />
+                ) : (
+                  <Building2 className="h-5 w-5 opacity-70 shrink-0" />
+                )}
+                <span className="text-sm sm:text-base font-semibold opacity-95 truncate">{company?.name || ''}</span>
               </div>
-              <Badge variant={statusBadgeVariant[serviceOrder.status]} className="shrink-0">
-                {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
-              </Badge>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
-                <p className="text-xs sm:text-sm opacity-80">{getOsTypeLabel(serviceOrder)}</p>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
+                OS <span className="opacity-95">#{String(serviceOrder.order_number).padStart(6, '0')}</span>
+              </h1>
+              <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85 max-w-full min-w-0">
+                <Wrench className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{getOsTypeLabel(serviceOrder)}</span>
               </div>
               {serviceOrder.scheduled_date && (
-                <div className="flex items-center gap-1.5 text-xs sm:text-sm opacity-80">
+                <div className="mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85">
                   <Calendar className="h-3.5 w-3.5 shrink-0" />
                   <span>
                     {format(new Date(serviceOrder.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
@@ -2727,6 +2777,17 @@ export default function TechnicianOS() {
             </span>
           </p>
         )}
+        {/* Subseção CONTRATO dentro do bloco Cliente (mesma lógica do mobile) */}
+        {serviceOrder?.contract?.name && (
+          <div className="mt-2.5 pt-2.5 border-t border-border">
+            <ContractInfoCard
+              name={serviceOrder.contract.name}
+              isPmoc={isPmocOrder}
+              tone="app"
+              bare
+            />
+          </div>
+        )}
       </div>
 
       {/* Técnico */}
@@ -2792,39 +2853,72 @@ export default function TechnicianOS() {
 
   return (
     <div className="min-h-screen bg-background lg:flex lg:flex-col">
-      {/* Header fixo no topo: o botão Voltar fica sempre acessível ao rolar */}
+      {/* Header fixo no topo: o botão Voltar fica sempre acessível ao rolar.
+          Visual premium SEM trocar a marca: a base é `bg-primary` (cor de
+          white-label da empresa) e o texto usa `text-primary-foreground` (o
+          sistema já garante o contraste claro/escuro por empresa). Por cima,
+          um overlay de degradê NEUTRO (clareia leve no topo, escurece leve na
+          base) dá profundidade sem deslocar a matiz da marca — funciona tanto
+          em cor clara quanto escura. O elemento `headerRef` (medido pelo
+          ResizeObserver pra `headerHeight`) continua sendo EXATAMENTE este
+          container sticky externo — não mexer nisso preserva o offset dos
+          cabeçalhos de equipamento que grudam abaixo. */}
       <div
         ref={headerRef}
-        className="sticky top-0 z-20 bg-primary text-primary-foreground shadow-md"
+        className="relative sticky top-0 z-20 bg-primary text-primary-foreground shadow-lg rounded-b-2xl overflow-hidden"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3 mb-3">
-            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0" onClick={() => navigate(-1)}>
+        {/* Overlay de profundidade (degradê neutro sobre a cor da marca) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.16) 100%)' }}
+        />
+        <div className="relative max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
+          {/* TODO o conteúdo do header fica centralizado no eixo da tela. O
+              botão [← Voltar] fica ABSOLUTO no canto superior esquerdo (não
+              entra no fluxo, então não desloca a centralização do resto). Os
+              demais blocos usam `text-center` + `justify-center`. */}
+          {/* Linha de topo: [← Voltar] à esquerda, selo de status à direita,
+              PERFEITAMENTE na mesma linha. Em vez de dois absolutos com `top`
+              próprios (que desalinham porque o botão é mais alto que o badge),
+              os dois vivem dentro de UMA linha flex absoluta com `items-center`:
+              os centros verticais coincidem. A linha é absoluta no topo pra não
+              deslocar o bloco centralizado abaixo. */}
+          <div className="absolute left-2 right-2 top-2 z-10 flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-primary-foreground hover:bg-primary-foreground/15 shrink-0 px-2 gap-1.5"
+              onClick={() => navigate(-1)}
+            >
               <ArrowLeft className="h-5 w-5" />
+              <span className="text-sm font-medium">Voltar</span>
             </Button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                {company?.logo_url ? (
-                  <img src={company.logo_url} alt="Logo" className="h-10 w-10 sm:h-12 sm:w-12 rounded object-contain bg-white p-1 shrink-0" />
-                ) : (
-                  <Building2 className="h-5 w-5 opacity-70 shrink-0" />
-                )}
-                <span className="text-sm opacity-80 truncate">{company?.name || ''}</span>
-              </div>
-            </div>
-            <Badge variant={statusBadgeVariant[serviceOrder.status]} className="shrink-0">
+            <Badge
+              variant={statusBadgeVariant[serviceOrder.status]}
+              className="shrink-0 shadow-sm"
+            >
               {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
             </Badge>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
-              <p className="text-xs sm:text-sm opacity-80">{getOsTypeLabel(serviceOrder)}</p>
+          {/* Bloco centralizado: nome da empresa, número da OS, tipo de serviço
+              e a linha de data/hora. O padding-top extra reserva espaço pra
+              linha de topo (Voltar + status) não sobrepor o nome da empresa. */}
+          <div className="flex flex-col items-center text-center gap-1.5 pt-8 sm:pt-9">
+            <span className="text-sm sm:text-base font-semibold opacity-95 truncate max-w-full px-1">
+              {company?.name || ''}
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
+              OS <span className="opacity-95">#{String(serviceOrder.order_number).padStart(6, '0')}</span>
+            </h1>
+            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85 max-w-full min-w-0">
+              <Wrench className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{getOsTypeLabel(serviceOrder)}</span>
             </div>
             {serviceOrder.scheduled_date && (
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm opacity-80">
+              <div className="mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
                 <span>
                   {format(new Date(serviceOrder.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
@@ -2857,12 +2951,8 @@ export default function TechnicianOS() {
           (isCheckedIn || isPaused) && 'pb-[calc(5.5rem_+_env(safe-area-inset-bottom))]',
         )}
       >
-        {/* Card neutro de contrato (mesmo do relatório), no lugar do antigo selo
-            azul PMOC. Nome do contrato vem do join `contract:contracts` do fetch
-            autenticado (RLS isola por empresa); a linha da lei só quando PMOC. */}
-        {serviceOrder?.contract?.name && (
-          <ContractInfoCard name={serviceOrder.contract.name} isPmoc={isPmocOrder} tone="app" />
-        )}
+        {/* O card de Contrato deixou de ser uma moldura própria: virou subseção
+            DENTRO do card "Cliente" (mais abaixo), sem borda separada. */}
         {/* Rota até o cliente — só quando "a caminho" e há destino (coord ou endereço) */}
         {isACaminho && hasRouteDestination && (
           <Card className="border-indigo-600/30 overflow-hidden">
@@ -3094,6 +3184,19 @@ export default function TechnicianOS() {
                 <p className="text-[11px] text-muted-foreground mt-1">
                   O atendimento é neste local, diferente do endereço cadastrado do cliente.
                 </p>
+              </div>
+            )}
+            {/* Subseção CONTRATO dentro do próprio card Cliente — só quando a OS
+                pertence a um contrato (ex.: PMOC). Sem moldura própria (bare):
+                divisor + nome do contrato + nota da Lei 13.589 quando PMOC. */}
+            {serviceOrder?.contract?.name && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <ContractInfoCard
+                  name={serviceOrder.contract.name}
+                  isPmoc={isPmocOrder}
+                  tone="app"
+                  bare
+                />
               </div>
             )}
           </CardContent>
@@ -3454,17 +3557,17 @@ export default function TechnicianOS() {
             onClick={handleFinishOS}
             disabled={finishing}
           >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
+            <BadgeCheck className="h-4 w-4 mr-2" />
             {finishing ? 'Finalizando...' : 'Finalizar OS'}
           </Button>
           {/* Ação secundária: largura de conteúdo (flex-none), ícone de parcial. */}
           <Button
             variant="outline"
-            className="flex-none border-warning/40 text-warning hover:bg-warning hover:text-white"
+            className="flex-none border-orange-600/40 text-orange-600 hover:bg-orange-600 hover:text-white"
             onClick={() => setPartialConfirmOpen(true)}
             disabled={finishingPartial}
           >
-            <CircleDashed className="h-4 w-4 mr-2" />
+            <Pause className="h-4 w-4 mr-2" />
             Finalizar Parcial
           </Button>
           {/* Menu de mais-ações (hambúrguer) — action-sheet próprio ancorado
@@ -3519,11 +3622,11 @@ export default function TechnicianOS() {
               aria-label="Mais ações"
               aria-expanded={desktopActionsOpen}
               className={cn(
-                'relative z-50 shrink-0 transition-colors',
+                'relative z-50 shrink-0 transition-colors [&_svg]:size-6',
                 desktopActionsOpen && 'bg-muted text-primary hover:bg-muted',
               )}
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-6 w-6" />
             </Button>
           </div>
         </OsActionFooter>
@@ -3545,12 +3648,101 @@ export default function TechnicianOS() {
         />
       )}
 
+      {/* Action-sheet de "mais ações" — renderizado FORA do rodapé (que tem
+          `overflow-hidden` + `rounded-t-2xl` pra cara de drawer). Antes ele vivia
+          DENTRO do rodapé como `absolute bottom-full`: o `overflow-hidden` do
+          rodapé recortava tudo que sobe além da barra → menu "vazio" (itens
+          clipados, invisíveis). Sendo `fixed` e irmão do rodapé, escapa do clip.
+          NÃO usa Radix de propósito: o scroll-lock do react-remove-scroll tirava
+          o anchor do cabeçalho sticky do equipamento (perdia o stuck). */}
+      {(isCheckedIn || isPaused) && mobileActionsOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={closeMobileActions}
+            onAnimationEnd={() => { if (mobileActionsClosing) finishCloseMobileActions(); }}
+            className={cn(
+              'fixed inset-0 z-40 lg:hidden bg-black/40 backdrop-blur-sm',
+              mobileActionsClosing ? 'animate-out fade-out' : 'animate-in fade-in',
+            )}
+          />
+          <div
+            className="fixed right-3 z-50 lg:hidden flex flex-col gap-2.5 items-end"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom) + 4.5rem)' }}
+          >
+            {!isPaused ? (
+              <button
+                type="button"
+                onClick={() => { closeMobileActions(); handlePauseOS(); }}
+                className={cn(
+                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                  mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                )}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                  <Pause className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Pausar OS</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { closeMobileActions(); handleFinishOS(); }}
+                disabled={finishing}
+                className={cn(
+                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-60',
+                  mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                )}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                  <BadgeCheck className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Finalizar OS</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { closeMobileActions(); handleCopyTrackingLink(); }}
+              className={cn(
+                'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+              )}
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                <Link2 className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Copiar link da OS</span>
+            </button>
+            {/* Sair do preenchimento — sempre disponível (equivale ao "Voltar"
+                do header). Garante que o menu nunca fique sem ação útil. */}
+            <button
+              type="button"
+              onClick={() => { closeMobileActions(); navigate(-1); }}
+              className={cn(
+                'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+              )}
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                <LogOut className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Sair do preenchimento</span>
+            </button>
+          </div>
+        </>
+      )}
+
       {(isCheckedIn || isPaused) && (
         <div
-          className="fixed inset-x-0 bottom-0 z-30 lg:hidden bg-zinc-900 text-white border-t border-zinc-800 shadow-[0_-4px_16px_rgba(0,0,0,0.25)]"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          className="fixed inset-x-0 bottom-0 z-30 lg:hidden text-white border-t border-white/10 shadow-[0_-4px_16px_rgba(0,0,0,0.25)] overflow-hidden rounded-t-2xl"
+          style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #27272a 100%)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          <div className="flex items-center gap-2 px-3 py-2.5">
+          {/* Rodapé sticky no degradê preto→cinza escuro (mesmo do relatório),
+              NÃO na cor de white-label. Botões de ação (verde/laranja) por cima.
+              Bordas SUPERIORES arredondadas (rounded-t-2xl) → cara de drawer,
+              espelhando o header (bordas inferiores arredondadas). */}
+          <div className="relative flex items-center gap-2 px-3 py-2.5">
             {isPaused ? (
               <Button
                 className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
@@ -3570,7 +3762,7 @@ export default function TechnicianOS() {
                   onClick={handleFinishOS}
                   disabled={finishing}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
+                  <BadgeCheck className="h-4 w-4" />
                   {finishing ? 'Finalizando...' : 'Finalizar OS'}
                 </Button>
                 {/* Ação secundária: laranja saturado com texto branco, MESMA
@@ -3578,98 +3770,34 @@ export default function TechnicianOS() {
                     com ícone de parcial, pra dar destaque ao "Finalizar OS".
                     Compacto: padding horizontal apertado e gap mínimo ícone↔texto. */}
                 <Button
-                  className="flex-none gap-1 px-2.5 bg-warning text-white hover:bg-warning/90"
+                  className="flex-none gap-1 px-2.5 bg-orange-600 text-white hover:bg-orange-700"
                   size="lg"
                   onClick={() => setPartialConfirmOpen(true)}
                   disabled={finishingPartial}
                 >
-                  <CircleDashed className="h-4 w-4" />
+                  <Pause className="h-4 w-4" />
                   Finalizar Parcial
                 </Button>
               </>
             )}
-            {/* Menu de mais-ações (hambúrguer) — action-sheet próprio ancorado
-                acima do botão, com backdrop. NÃO usa Radix de propósito: o
-                scroll-lock do react-remove-scroll tirava o anchor do cabeçalho
-                sticky do equipamento (IntersectionObserver perdia o stuck →
-                cabeçalho sumia). Divs fixos/absolutos próprios não travam o
-                scroll do body. Ferramentas NÃO entram aqui (vivem só no FAB). */}
-            <div className="relative shrink-0">
-              {mobileActionsOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Fechar menu"
-                    onClick={closeMobileActions}
-                    onAnimationEnd={() => { if (mobileActionsClosing) finishCloseMobileActions(); }}
-                    className={cn(
-                      'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm',
-                      mobileActionsClosing ? 'animate-out fade-out' : 'animate-in fade-in',
-                    )}
-                  />
-                  <div className="absolute bottom-full right-0 z-50 mb-4 flex flex-col gap-2.5 items-end">
-                    {!isPaused ? (
-                      <button
-                        type="button"
-                        onClick={() => { closeMobileActions(); handlePauseOS(); }}
-                        className={cn(
-                          'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
-                          mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
-                        )}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
-                          <Pause className="h-4 w-4" />
-                        </span>
-                        <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Pausar OS</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { closeMobileActions(); handleFinishOS(); }}
-                        disabled={finishing}
-                        className={cn(
-                          'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-60',
-                          mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
-                        )}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </span>
-                        <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Finalizar OS</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => { closeMobileActions(); handleCopyTrackingLink(); }}
-                      className={cn(
-                        'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
-                        mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
-                      )}
-                    >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
-                        <Link2 className="h-4 w-4" />
-                      </span>
-                      <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Copiar link do cliente</span>
-                    </button>
-                  </div>
-                </>
+            {/* Gatilho do menu de mais-ações (hambúrguer). O action-sheet em si é
+                renderizado FORA deste rodapé (acima), pra não ser clipado pelo
+                `overflow-hidden` do drawer. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => (mobileActionsOpen ? closeMobileActions() : setMobileActionsOpen(true))}
+              aria-label="Mais ações"
+              aria-expanded={mobileActionsOpen}
+              className={cn(
+                'relative z-50 shrink-0 h-11 w-11 transition-colors [&_svg]:size-6',
+                mobileActionsOpen
+                  ? 'bg-white/15 text-primary hover:bg-white/15'
+                  : 'text-white hover:bg-white/10',
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => (mobileActionsOpen ? closeMobileActions() : setMobileActionsOpen(true))}
-                aria-label="Mais ações"
-                aria-expanded={mobileActionsOpen}
-                className={cn(
-                  'relative z-50 shrink-0 h-11 w-11 transition-colors',
-                  mobileActionsOpen
-                    ? 'bg-white/15 text-primary hover:bg-white/15'
-                    : 'text-white hover:bg-white/10',
-                )}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </div>
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
           </div>
         </div>
       )}
@@ -3747,7 +3875,7 @@ export default function TechnicianOS() {
               Cancelar
             </Button>
             <Button
-              className="w-full sm:flex-1 bg-warning hover:bg-warning/90 text-white"
+              className="w-full sm:flex-1 bg-orange-600 hover:bg-orange-700 text-white"
               disabled={finishingPartial}
               onClick={handleFinishPartially}
             >
