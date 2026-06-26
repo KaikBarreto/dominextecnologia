@@ -92,7 +92,7 @@ import NotFound from "./pages/NotFound";
 import Changelog from "./pages/Changelog";
 // Tutorials removed — replaced by Domiflix
 import Employees from "./pages/Employees";
-import TimeClock from "./pages/TimeClock";
+import PontoPublico from "./pages/PontoPublico";
 import Billing from "./pages/Billing";
 import TechnicianTracking from "./pages/TechnicianTracking";
 import LiveMap from "./pages/LiveMap";
@@ -404,6 +404,9 @@ const AppRoutes = () => (
     
     {/* Technician OS - Public route with OS ID */}
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />
+    {/* Ponto eletrônico por link público — anônimo, fora do AppLayout. O
+       funcionário bate o ponto deslogado; tudo passa pela edge time-clock-portal. */}
+    <Route path="/ponto/:slug" element={<PontoPublico />} />
     {/* Public quote page */}
     <Route path="/orcamento/:token" element={<QuotePublic />} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />
@@ -467,7 +470,6 @@ const AppRoutes = () => (
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
       <Route path="/funcionarios" element={<PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>} />
-      <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas

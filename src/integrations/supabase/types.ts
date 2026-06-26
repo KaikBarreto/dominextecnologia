@@ -2610,6 +2610,8 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           pix_key: string | null
+          ponto_enabled: boolean
+          ponto_slug: string | null
           position: string | null
           salary: number | null
           updated_at: string
@@ -2635,6 +2637,8 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
+          ponto_enabled?: boolean
+          ponto_slug?: string | null
           position?: string | null
           salary?: number | null
           updated_at?: string
@@ -2660,6 +2664,8 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
+          ponto_enabled?: boolean
+          ponto_slug?: string | null
           position?: string | null
           salary?: number | null
           updated_at?: string
@@ -7442,6 +7448,10 @@ export type Database = {
         Returns: number
       }
       generate_pmoc_token: { Args: never; Returns: string }
+      generate_ponto_slug: {
+        Args: { p_employee_id: string }
+        Returns: string
+      }
       generate_public_short_code: {
         Args: { p_len?: number }
         Returns: string
@@ -7633,6 +7643,10 @@ export type Database = {
       }
       recalc_amount_received: {
         Args: { p_parent_id: string }
+        Returns: undefined
+      }
+      recompute_time_sheet: {
+        Args: { p_company_id: string; p_employee_id: string; p_date: string }
         Returns: undefined
       }
       record_quote_view: {

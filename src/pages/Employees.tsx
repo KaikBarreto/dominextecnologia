@@ -134,6 +134,28 @@ export default function Employees() {
     return result;
   }, [employees, search, sort]);
 
+  // Gera (idempotente) o slug do ponto público e copia o link no ato.
+  // `wasEnabled` = estado anterior; só notifica/copia quando o ponto ACABOU de
+  // ser ativado (evita toast em toda edição de funcionário que já tinha link).
+  const ensurePontoLink = useCallback(async (employeeId: string, wasEnabled: boolean) => {
+    try {
+      const { data: slug, error } = await supabase.rpc('generate_ponto_slug', { p_employee_id: employeeId });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      if (!wasEnabled && typeof slug === 'string' && slug) {
+        const link = `${window.location.origin}/ponto/${slug}`;
+        try {
+          await navigator.clipboard.writeText(link);
+          toast({ title: 'Link gerado e copiado!', description: link, duration: 10000 });
+        } catch {
+          toast({ title: 'Link do ponto gerado', description: link, duration: 10000 });
+        }
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao gerar link do ponto', description: getErrorMessage(err) });
+    }
+  }, [queryClient, toast]);
+
   const handleCreateOrUpdate = async (data: Partial<Employee> & { _createAccess?: boolean; _password?: string }) => {
     const { _createAccess, _password, ...employeeData } = data as any;
     
@@ -143,6 +165,7 @@ export default function Employees() {
       const editingPhone = editingEmployee.phone;
       const editingPhotoUrl = editingEmployee.photo_url;
       const previousLinkedUserId = editingEmployee.user_id;
+      const pontoWasEnabled = editingEmployee.ponto_enabled;
 
       updateEmployee.mutate({ id: editingId, ...employeeData }, {
         onSuccess: () => {
@@ -151,6 +174,9 @@ export default function Employees() {
 
           // Side-effects rodam em paralelo, sem bloquear o estado da mutation
           (async () => {
+            if (employeeData.ponto_enabled) {
+              await ensurePontoLink(editingId, pontoWasEnabled);
+            }
             const linkedUserId = employeeData.user_id || previousLinkedUserId;
             if (linkedUserId && employeeData.photo_url) {
               try {
@@ -202,7 +228,11 @@ export default function Employees() {
       createEmployee.mutate(employeeData, {
         onSuccess: async (newEmployee: any) => {
           setFormOpen(false);
-          
+
+          if (employeeData.ponto_enabled && newEmployee?.id) {
+            await ensurePontoLink(newEmployee.id, false);
+          }
+
           if (_createAccess && employeeData.email && _password) {
             try {
               const response = await supabase.functions.invoke('create-user', {
@@ -623,6 +653,23 @@ export default function Employees() {
                         onClick: () => setEmployeeToDelete(emp),
                       },
                     ];
+
+                    if (emp.ponto_enabled && emp.ponto_slug) {
+                      itemActions.splice(itemActions.length - 2, 0, {
+                        key: 'ponto-link',
+                        label: 'Link do ponto',
+                        icon: <Clock className="h-4 w-4" />,
+                        onClick: async () => {
+                          const link = `${window.location.origin}/ponto/${emp.ponto_slug}`;
+                          try {
+                            await navigator.clipboard.writeText(link);
+                            toast({ title: 'Link gerado e copiado!', description: link });
+                          } catch {
+                            toast({ variant: 'destructive', title: 'Não foi possível copiar', description: link });
+                          }
+                        },
+                      });
+                    }
 
                     const subtitleParts = [
                       emp.position,

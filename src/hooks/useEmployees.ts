@@ -19,6 +19,8 @@ export interface Employee {
   pix_key: string | null;
   photo_url: string | null;
   user_id: string | null;
+  ponto_enabled: boolean;
+  ponto_slug: string | null;
   is_active: boolean;
   monthly_cost: number | null;
   monthly_cost_breakdown: any;

@@ -113,6 +113,13 @@ verify_jwt = false
 [functions.fisqal-tax-codes]
 verify_jwt = false
 
+# time-clock-portal: ponto por link público (/ponto/:slug). Anon por design — o
+# funcionário bate o ponto deslogado. Roda com service_role e resolve TUDO pelo
+# ponto_slug (+ ponto_enabled). Anti-abuso (rate-limit IP + teto/dia + validação
+# de next_action) e isolamento por slug ficam dentro da própria função.
+[functions.time-clock-portal]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)

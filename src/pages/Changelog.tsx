@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.0',
+    date: '26 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Ponto eletrônico por link, sem precisar de login',
+        description: 'Agora cada funcionário registra o ponto por um link próprio, aberto direto no celular, sem precisar ter acesso ao sistema. Você ativa o ponto na ficha do funcionário e o link já é copiado na hora pra você enviar (no WhatsApp, por exemplo). A tela de registro mostra o nome do funcionário, fica com a identidade visual da sua empresa e tem entrada, intervalo, saída, selfie e localização. As fotos do ponto ficam bem mais leves e protegidas, e cada link exibe apenas o necessário.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.14.49',
     date: '25 de junho de 2026',
     type: 'patch',

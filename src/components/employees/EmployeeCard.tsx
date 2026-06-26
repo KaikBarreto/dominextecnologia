@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Phone, Mail, MapPin, Calendar, Edit, Trash2, FileText, Banknote, Gift, AlertCircle, CreditCard } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, Edit, Trash2, FileText, Banknote, Gift, AlertCircle, CreditCard, Clock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
@@ -25,10 +26,23 @@ interface EmployeeCardProps {
 }
 
 export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWithUser, onMovement, onPayment, onExtract }: EmployeeCardProps) {
+  const { toast } = useToast();
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const previewUrl = useSignedUrl(employee.photo_url);
+  const hasPontoLink = employee.ponto_enabled && !!employee.ponto_slug;
+
+  const copyPontoLink = async () => {
+    if (!employee.ponto_slug) return;
+    const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({ title: 'Link gerado e copiado!', description: link });
+    } catch {
+      toast({ variant: 'destructive', title: 'Não foi possível copiar', description: link });
+    }
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -111,6 +125,11 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => onMovement('falta')}>
             <AlertCircle className="h-3 w-3" /> Falta
           </Button>
+          {hasPontoLink && (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={copyPontoLink}>
+              <Clock className="h-3 w-3" /> Link do ponto
+            </Button>
+          )}
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={onPayment}>
             <CreditCard className="h-3 w-3" /> Pagamento
           </Button>

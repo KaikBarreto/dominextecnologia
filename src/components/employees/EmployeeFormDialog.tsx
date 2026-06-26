@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
-import { Loader2, Camera, Link2, Unlink, Calculator } from 'lucide-react';
+import { Loader2, Camera, Link2, Unlink, Calculator, Clock, Copy } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,6 +55,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
   const [showPasswordField, setShowPasswordField] = useState(false);
+  const [pontoEnabled, setPontoEnabled] = useState(false);
   const [monthlyCost, setMonthlyCost] = useState('');
   const [monthlyCostBreakdown, setMonthlyCostBreakdown] = useState<MonthlyCostBreakdown | null>(null);
   const [showCostCalc, setShowCostCalc] = useState(false);
@@ -109,6 +111,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setPaymentWeekday(employee?.payment_weekday ?? 5);
       }
       setPhotoUrl(employee?.photo_url || '');
+      setPontoEnabled(employee?.ponto_enabled ?? false);
       setCreateAccess(false);
       setUseTemporaryPassword(false);
       setPassword('');
@@ -160,6 +163,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       pix_key: pixKey || null,
       photo_url: photoUrl || null,
       user_id: linkedUserId,
+      ponto_enabled: pontoEnabled,
       payment_frequency: paymentFrequency,
       payment_day_type: paymentFrequency === 'weekly' ? 'calendar' : paymentDayType,
       payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
@@ -331,6 +335,59 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <p className="text-[11px] text-muted-foreground">
             Valor da folha aparece automaticamente em Contas a Pagar conforme essa configuração.
           </p>
+        </div>
+
+        {/* Ponto eletrônico por link público */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div>
+                <Label className="text-sm font-medium">Ponto eletrônico</Label>
+                <p className="text-xs text-muted-foreground">Gera um link público pro funcionário bater o ponto pelo celular</p>
+              </div>
+            </div>
+            <LabeledSwitch
+              value={pontoEnabled ? 'on' : 'off'}
+              onChange={(v) => setPontoEnabled(v === 'on')}
+              off={{ value: 'off', label: 'Off' }}
+              on={{ value: 'on', label: 'On' }}
+              aria-label="Ponto eletrônico ativado"
+            />
+          </div>
+          {pontoEnabled && (
+            employee?.ponto_slug ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={`${window.location.origin}/ponto/${employee.ponto_slug}`}
+                  className="text-xs"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 shrink-0 gap-1"
+                  onClick={async () => {
+                    const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
+                    try {
+                      await navigator.clipboard.writeText(link);
+                      toast({ title: 'Link gerado e copiado!', description: link });
+                    } catch {
+                      toast({ variant: 'destructive', title: 'Não foi possível copiar', description: link });
+                    }
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copiar
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Salve o funcionário para gerar o link de ponto — ele será copiado automaticamente.
+              </p>
+            )
+          )}
         </div>
 
         {/* Link to existing user */}
