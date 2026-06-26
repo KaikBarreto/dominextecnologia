@@ -105,11 +105,12 @@ const CONFORMITY_OPTIONS: {
   /** Fundo saturado + branco no estado ATIVO/selecionado (fixo). */
   active: string;
   /**
-   * HOVER (não selecionado) === ACTIVE === FOCO/TAP: MESMAS classes saturadas +
+   * HOVER (não selecionado) === FOCO/TAP === ACTIVE: MESMAS classes saturadas +
    * branco (ícone incluso), prefixadas com `hover:` E `focus-visible:`. O
-   * `focus-visible:` é o que mata o cinza do `<Button variant="outline">` no
-   * tap mobile (o variant injeta `bg-accent`/`ring` no foco que venceria sem
-   * isto). Strings LITERAIS (não geradas em runtime) pro Tailwind JIT compilar.
+   * `focus-visible:` garante saturado no tap mobile (sem cinza). Como o botão é
+   * um `<button>` puro (sem variant outline), nada injeta `hover:bg-accent`/foco
+   * cinza — o selecionado mantém `active` no hover sem precisar de override.
+   * Strings LITERAIS (não geradas em runtime) pro Tailwind JIT compilar.
    */
   hover: string;
 }[] = [
@@ -118,24 +119,24 @@ const CONFORMITY_OPTIONS: {
     label: 'Conforme',
     icon: Check,
     idleIcon: '[&_svg]:text-success',
-    active: 'bg-success text-success-foreground border-success [&_svg]:text-success-foreground',
-    hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:text-success-foreground',
+    active: 'bg-success text-success-foreground border-success [&_svg]:!text-success-foreground',
+    hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:!text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:!text-success-foreground',
   },
   {
     value: 'nao_conforme',
     label: 'Não-conforme',
     icon: X,
     idleIcon: '[&_svg]:text-destructive',
-    active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:text-destructive-foreground',
-    hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:text-destructive-foreground',
+    active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:!text-destructive-foreground',
+    hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:!text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:!text-destructive-foreground',
   },
   {
     value: 'na',
     label: 'N/A',
     icon: MinusCircle,
     idleIcon: '[&_svg]:text-orange-600',
-    active: 'bg-orange-600 text-white border-orange-600 [&_svg]:text-white',
-    hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:text-white',
+    active: 'bg-orange-600 text-white border-orange-600 [&_svg]:!text-white',
+    hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:!text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:!text-white',
   },
 ];
 
@@ -241,35 +242,38 @@ function ActivityRow({
 
       {/* Conforme / Não-conforme / N/A — Conforme e Não-conforme ganham mais
           largura (flex-[1.3] cada); N/A fica estreito (flex-none, só o "N/A"
-          + ícone), já que "Não-conforme" é o rótulo mais comprido. */}
+          + ícone), já que "Não-conforme" é o rótulo mais comprido.
+          <button> PURO (NÃO <Button variant="outline">): o variant injeta
+          `hover:bg-accent`/`[&_svg]:size-4` que venciam as classes saturadas e
+          deixavam o ícone colorido (some no fundo) e o selecionado virava cinza
+          no hover. Mesmo padrão do case `conformidade` de DynamicFormQuestions. */}
       <div className="flex gap-1.5">
         {CONFORMITY_OPTIONS.map((opt) => {
           const Icon = opt.icon;
           const selected = activity.conformity_status === opt.value;
           const isNa = opt.value === 'na';
           return (
-            <Button
+            <button
               key={opt.value}
               type="button"
-              variant="outline"
-              size="sm"
+              aria-pressed={selected}
               disabled={readOnly || savingStatus}
               onClick={() => setStatus(opt.value)}
               className={cn(
-                'h-9 gap-1.5 text-xs min-w-0',
-                isNa ? 'flex-none px-3' : 'flex-[1.3]',
-                // Idle: texto neutro + ícone SEMPRE colorido. Hover (não
-                // selecionado) é EXATAMENTE o estado ativo (mesmas classes
-                // saturadas + branco, com `hover:`). As regras `[&_svg]`
-                // controlam a cor do ícone.
+                'flex h-9 items-center justify-center gap-1.5 rounded-md border text-xs font-medium transition-colors min-w-0',
+                isNa ? 'flex-none px-3' : 'flex-[1.3] px-2',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
+                // Selecionado: saturado fixo + branco (inclusive no hover/foco,
+                // pois NÃO há mais hover:bg-accent do variant pra brigar).
+                // Idle: fundo neutro + ícone colorido; hover/foco === ativo.
                 selected
                   ? opt.active
-                  : cn('text-muted-foreground', opt.idleIcon, opt.hover)
+                  : cn('bg-card text-muted-foreground border-border', opt.idleIcon, opt.hover),
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
               {opt.label}
-            </Button>
+            </button>
           );
         })}
       </div>
@@ -415,50 +419,57 @@ function TemplateQuestionRow({
             label: 'Conforme',
             icon: Check,
             idleIcon: '[&_svg]:text-success',
-            active: 'bg-success text-success-foreground border-success [&_svg]:text-success-foreground',
-            hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:text-success-foreground',
+            active: 'bg-success text-success-foreground border-success [&_svg]:!text-success-foreground',
+            hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:!text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:!text-success-foreground',
           },
           {
             v: 'false',
             label: 'Não-conforme',
             icon: X,
             idleIcon: '[&_svg]:text-destructive',
-            active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:text-destructive-foreground',
-            hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:text-destructive-foreground',
+            active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:!text-destructive-foreground',
+            hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:!text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:!text-destructive-foreground',
           },
           {
             v: 'na',
             label: 'N/A',
             icon: MinusCircle,
             idleIcon: '[&_svg]:text-orange-600',
-            active: 'bg-orange-600 text-white border-orange-600 [&_svg]:text-white',
-            hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:text-white',
+            active: 'bg-orange-600 text-white border-orange-600 [&_svg]:!text-white',
+            hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:!text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:!text-white',
           },
         ];
         return (
+          // <button> PURO (mesmo motivo do ActivityRow): <Button variant="outline">
+          // injetava hover:bg-accent/[&_svg]:size-4 que venciam as classes
+          // saturadas. Espelha o case `conformidade` de DynamicFormQuestions.
           <div className="flex gap-1.5">
             {opts.map((o) => {
               const Icon = o.icon;
               const selected = value === o.v;
               const isNa = o.v === 'na';
               return (
-                <Button
+                <button
                   key={o.v}
                   type="button"
-                  variant="outline"
-                  size="sm"
+                  aria-pressed={selected}
                   disabled={readOnly || saving}
                   onClick={() => save({ response_value: selected ? null : o.v })}
                   className={cn(
-                    'h-9 gap-1.5 text-xs min-w-0',
-                    isNa ? 'flex-none px-3' : 'flex-[1.3]',
-                    // Hover === active (mesmas classes saturadas + branco com `hover:`).
-                    selected ? o.active : cn('text-muted-foreground', o.idleIcon, o.hover),
+                    'flex h-9 items-center justify-center gap-1.5 rounded-md border text-xs font-medium transition-colors min-w-0',
+                    isNa ? 'flex-none px-3' : 'flex-[1.3] px-2',
+                    'disabled:opacity-60 disabled:cursor-not-allowed',
+                    // Selecionado: saturado fixo + branco (sem hover cinza, pois
+                    // não há mais o variant). Idle: neutro + ícone colorido;
+                    // hover/foco === ativo.
+                    selected
+                      ? o.active
+                      : cn('bg-card text-muted-foreground border-border', o.idleIcon, o.hover),
                   )}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   {o.label}
-                </Button>
+                </button>
               );
             })}
           </div>
