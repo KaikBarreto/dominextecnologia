@@ -14,6 +14,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
+import { EmployeesListView } from '@/components/employees/EmployeesListView';
+import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
+import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
@@ -42,6 +45,8 @@ export default function Employees() {
   const [activeTab, setActiveTab] = useState('list');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('az');
+  // Modo de exibição da tab de funcionários: 'list' (default) ou 'grid' (cards).
+  const [viewMode, setViewMode] = useViewMode('employees-view-mode');
   const [formOpen, setFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [movementType, setMovementType] = useState<'vale' | 'bonus' | 'falta'>('vale');
@@ -578,6 +583,7 @@ export default function Employees() {
                   <SelectItem value="oldest">Mais antigo</SelectItem>
                 </SelectContent>
               </Select>
+              <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels={!isMobile} />
               {!isMobile && (
                 <Button onClick={openNewEmployee} className="gap-1.5">
                   <Plus className="h-4 w-4" /> Novo Funcionário
@@ -585,25 +591,52 @@ export default function Employees() {
               )}
             </div>
 
-            {isMobile ? (
-              // -------------------------------------------------------------
-              // Mobile: lista nativa via MobileListItem, ações no overflow ⋮.
-              // -------------------------------------------------------------
-              isLoading ? (
+            {/* Loading / vazio compartilhados entre os modos */}
+            {isLoading ? (
+              viewMode === 'grid' ? (
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
+                  {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />)}
+                </div>
+              ) : (
                 <div className="space-y-2">
                   {[1, 2, 3, 4].map(i => (
                     <div key={i} className="h-[72px] rounded-lg bg-muted animate-pulse" />
                   ))}
                 </div>
-              ) : filtered.length === 0 ? (
-                <EmptyState
-                  icon={<Users className="h-12 w-12" />}
-                  title={search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
-                  description={search ? 'Tente uma busca diferente' : 'Toque em "Novo Funcionário" para começar'}
-                />
-              ) : (
-                <div className="rounded-xl border bg-card overflow-hidden">
-                  {filtered.map((emp) => {
+              )
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                icon={<Users className="h-12 w-12" />}
+                title={search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
+                description={search ? 'Tente uma busca diferente' : isMobile ? 'Toque em "Novo Funcionário" para começar' : 'Clique em "Novo Funcionário" para começar'}
+              />
+            ) : viewMode === 'grid' ? (
+              // ---------------------------------------------------------------
+              // Visão CARDS: grid responsivo (1 col mobile / 2 col desktop /
+              // 3 col em telas largas). Reusa o EmployeeCard com todas as ações.
+              // ---------------------------------------------------------------
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
+                {filtered.map(emp => (
+                  <EmployeeCard
+                    key={emp.id}
+                    employee={emp}
+                    balance={balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary)}
+                    onEdit={() => { setEditingEmployee(emp); setFormOpen(true); }}
+                    onDelete={() => deleteEmployee.mutate(emp.id)}
+                    onDeleteWithUser={emp.user_id ? () => handleDeleteWithUser(emp) : undefined}
+                    onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
+                    onPayment={() => setPaymentEmployee(emp)}
+                    onExtract={() => setExtractEmployee(emp)}
+                  />
+                ))}
+              </div>
+            ) : isMobile ? (
+              // -------------------------------------------------------------
+              // Visão LISTA (mobile): lista nativa via MobileListItem, ações
+              // no overflow ⋮ (ações secundárias vivem no menu, não inline).
+              // -------------------------------------------------------------
+              <div className="rounded-xl border bg-card overflow-hidden">
+                {filtered.map((emp) => {
                     const balance = balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary);
                     const balancePositive = balance.currentBalance >= 0;
 
@@ -702,38 +735,22 @@ export default function Employees() {
                       />
                     );
                   })}
-                </div>
-              )
+              </div>
             ) : (
               // -------------------------------------------------------------
-              // Desktop: grid de cards preservado 100% igual.
+              // Visão LISTA (desktop): tabela limpa (1 borda externa + linhas
+              // por divisor), saldo como selo de status saturado, ações no
+              // RowActionsMenu (editar = warning, excluir = destructive).
               // -------------------------------------------------------------
-              isLoading ? (
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
-                  {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />)}
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  {search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
-                </div>
-              ) : (
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
-                  {filtered.map(emp => (
-                    <EmployeeCard
-                      key={emp.id}
-                      employee={emp}
-                      balance={balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary)}
-                      onEdit={() => { setEditingEmployee(emp); setFormOpen(true); }}
-                      onDelete={() => deleteEmployee.mutate(emp.id)}
-                      onDeleteWithUser={emp.user_id ? () => handleDeleteWithUser(emp) : undefined}
-                      onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
-                      onPayment={() => setPaymentEmployee(emp)}
-                      onExtract={() => setExtractEmployee(emp)}
-
-                    />
-                  ))}
-                </div>
-              )
+              <EmployeesListView
+                employees={filtered}
+                balanceMap={balanceMap}
+                onEdit={(emp) => { setEditingEmployee(emp); setFormOpen(true); }}
+                onDelete={(emp) => setEmployeeToDelete(emp)}
+                onMovement={(emp, type) => { setMovementType(type); setMovementEmployee(emp); }}
+                onPayment={(emp) => setPaymentEmployee(emp)}
+                onExtract={(emp) => setExtractEmployee(emp)}
+              />
             )}
           </div>
         ) : activeTab === 'teams' ? (

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.1";
+export const APP_VERSION = "1.15.2";
 
-export const VERSION_NOTES = "Extrato do funcionário repaginado: cada lançamento em cartão com cor e sinal certos (entra com +, sai com −), e geração de recibo de pagamento e de vale em folha A4 ou bobina térmica 80mm, com os dados da sua empresa no cabeçalho.";
+export const VERSION_NOTES = "Tela de ponto por link repaginada (cabeçalho com foto do funcionário, linha do tempo das batidas e identidade da sua empresa) e Funcionários agora em lista ou cards, com cartão mais compacto.";

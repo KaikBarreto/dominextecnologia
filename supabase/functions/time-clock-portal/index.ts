@@ -58,6 +58,35 @@ function nextActionFrom(types: Set<string>): PunchType | null {
   return null; // dia fechado
 }
 
+// employees.photo_url aponta pro bucket PRIVADO `employee-photos`. Numa página
+// anônima um <img> direto dá 403. Aqui (service_role) extraímos o PATH do
+// storage da URL e geramos uma signed URL temporária pro avatar do header.
+// Robusto a URLs públicas, /authenticated/ e /sign/ — sempre fica com o trecho
+// depois de `employee-photos/`. Retorna null se não der pra derivar/assinar.
+async function signEmployeePhoto(
+  supabase: ReturnType<typeof createClient>,
+  rawUrl: string | null,
+): Promise<string | null> {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  const marker = "/employee-photos/";
+  const idx = rawUrl.indexOf(marker);
+  if (idx === -1) return null;
+  let path = rawUrl.slice(idx + marker.length);
+  const q = path.indexOf("?");
+  if (q !== -1) path = path.slice(0, q);
+  path = decodeURIComponent(path).replace(/^\/+/, "");
+  if (!path) return null;
+  try {
+    const { data, error } = await supabase.storage
+      .from("employee-photos")
+      .createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  } catch {
+    return null;
+  }
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -210,13 +239,20 @@ Deno.serve(async (req) => {
     // ── get_state ────────────────────────────────────────────────────────────
     if (action === "get_state") {
       const company = await loadBranding();
+      // Avatar do funcionário: o bucket employee-photos é privado, então
+      // devolvemos uma signed URL (1h) que o front usa direto como <img src>.
+      // Sem foto → null (front mostra fallback de iniciais).
+      const signedPhotoUrl = await signEmployeePhoto(
+        supabase,
+        employee.photo_url ?? null,
+      );
       return jsonResponse({
         // Sem `id`: o front não usa e expor o employee_id num link público é
         // superfície de ataque desnecessária. Só dados de exibição do header.
         employee: {
           name: employee.name,
           position: employee.position ?? null,
-          photo_url: employee.photo_url ?? null,
+          photo_url: signedPhotoUrl,
         },
         company,
         settings,

@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.2',
+    date: '26 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de ponto por link repaginada',
+        description: 'A tela onde o funcionário bate o ponto pelo link ficou com a cara de app: cabeçalho com a foto e o nome do funcionário, identidade visual da sua empresa, e as batidas do dia em uma linha do tempo. Em quem ainda não bateu o ponto, uma tela inicial mais limpa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Funcionários em lista ou cards',
+        description: 'A tela de Funcionários agora deixa você ver a equipe em lista (padrão) ou em cards, do jeito que preferir — e sua escolha fica salva. O cartão de cada funcionário ficou mais compacto, com saldo, vales, bônus e faltas à vista.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.1',
     date: '26 de junho de 2026',
     type: 'patch',
