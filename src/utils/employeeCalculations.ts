@@ -40,29 +40,29 @@ export function calculateEmployeeBalance(movements: EmployeeMovement[], salary: 
   let totalPagamentos = 0;
   let baseSalary = salary;
 
+  // Soma os totais segundo a tabela canônica de sinais. recebimento abate
+  // dos vales acumulados; ajuste nunca entra nos totalizadores.
+  const accumulate = (list: EmployeeMovement[]) => {
+    for (const m of list) {
+      switch (m.type) {
+        case 'vale': totalVales += Math.abs(m.amount); break;
+        case 'recebimento': totalVales = Math.max(0, totalVales - Math.abs(m.amount)); break;
+        case 'bonus': totalBonus += Math.abs(m.amount); break;
+        case 'falta': case 'falta_banco': totalFaltas += Math.abs(m.amount); break;
+        case 'pagamento': totalPagamentos += Math.abs(m.amount); break;
+        // 'ajuste' não é contabilizado nos totais
+      }
+    }
+  };
+
   if (lastAjusteIdx >= 0) {
     // Use the ajuste's balance_after as the base salary for this cycle
     baseSalary = sorted[lastAjusteIdx].balance_after;
     // Only count movements AFTER the ajuste
-    const afterAjuste = sorted.slice(lastAjusteIdx + 1);
-    for (const m of afterAjuste) {
-      switch (m.type) {
-        case 'vale': totalVales += Math.abs(m.amount); break;
-        case 'bonus': totalBonus += Math.abs(m.amount); break;
-        case 'falta': totalFaltas += Math.abs(m.amount); break;
-        case 'pagamento': totalPagamentos += Math.abs(m.amount); break;
-      }
-    }
+    accumulate(sorted.slice(lastAjusteIdx + 1));
   } else {
     // No ajuste found — sum all movements (legacy behavior)
-    for (const m of sorted) {
-      switch (m.type) {
-        case 'vale': totalVales += Math.abs(m.amount); break;
-        case 'bonus': totalBonus += Math.abs(m.amount); break;
-        case 'falta': totalFaltas += Math.abs(m.amount); break;
-        case 'pagamento': totalPagamentos += Math.abs(m.amount); break;
-      }
-    }
+    accumulate(sorted);
   }
 
   const currentBalance = baseSalary + totalBonus - totalVales - totalFaltas;
@@ -75,10 +75,21 @@ export function recalculateBalances(movements: EmployeeMovement[], salary: numbe
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     .map(m => {
       switch (m.type) {
-        case 'vale': case 'falta': balance -= Math.abs(m.amount); break;
-        case 'bonus': balance += Math.abs(m.amount); break;
-        case 'pagamento': balance = salary; break;
-        case 'ajuste': balance = m.amount; break;
+        case 'vale': case 'falta': case 'falta_banco':
+          balance -= Math.abs(m.amount);
+          break;
+        case 'bonus':
+        case 'recebimento':
+          balance += Math.abs(m.amount);
+          break;
+        // Pagamento usa amount negativo (ex: -130), então += amount diminui o
+        // saldo. Ajuste reseta o saldo para o salário base (amount já é o valor).
+        case 'pagamento':
+          balance += m.amount;
+          break;
+        case 'ajuste':
+          balance = m.amount;
+          break;
       }
       return { ...m, balance_after: balance };
     });
@@ -89,6 +100,7 @@ export function formatMovementType(type: string): string {
     vale: 'Vale', bonus: 'Bônus', falta: 'Falta',
     falta_banco: 'Falta (BH)',
     pagamento: 'Pagamento', ajuste: 'Ajuste',
+    recebimento: 'Recebimento',
   };
   return map[type] || type;
 }
@@ -98,8 +110,100 @@ export function getMovementBadgeVariant(type: string): string {
     vale: 'destructive', bonus: 'default', falta: 'secondary',
     falta_banco: 'outline',
     pagamento: 'outline', ajuste: 'secondary',
+    recebimento: 'default',
   };
   return map[type] || 'default';
+}
+
+// ---------------------------------------------------------------------------
+// Helpers por TIPO — fonte única de sinal/cor/ícone do extrato.
+// A exibição lê SEMPRE o tipo, nunca o sinal do amount (que pode estar
+// armazenado negativo por bug antigo). Tabela canônica (fonte: EcoSistema):
+//   bonus       → '+'  verde
+//   recebimento → '+'  esmeralda (abate vales)
+//   vale        → '-'  vermelho
+//   falta(_banco) → '-' laranja
+//   pagamento   → ''   cinza (zera o ciclo, amount negativo)
+//   ajuste      → ''   cinza (reset salário base, fora dos totais)
+// ---------------------------------------------------------------------------
+
+/** Prefixo exibido ao lado do valor: '+', '-' ou '' (sem sinal). */
+export function signFor(type: string): '+' | '-' | '' {
+  switch (type) {
+    case 'bonus':
+    case 'recebimento':
+      return '+';
+    case 'vale':
+    case 'falta':
+    case 'falta_banco':
+      return '-';
+    // pagamento e ajuste: sem sinal
+    default:
+      return '';
+  }
+}
+
+/** Classe de cor (token semântico) para o valor do movimento. */
+export function colorClassFor(type: string): string {
+  switch (type) {
+    case 'bonus':
+      return 'text-green-600';
+    case 'recebimento':
+      return 'text-emerald-600';
+    case 'vale':
+      return 'text-destructive';
+    case 'falta':
+    case 'falta_banco':
+      return 'text-orange-600';
+    // pagamento e ajuste: neutro
+    default:
+      return 'text-muted-foreground';
+  }
+}
+
+/** Nome do ícone lucide associado ao tipo (resolvido na UI). */
+export function iconNameFor(type: string): 'Award' | 'HandCoins' | 'TrendingDown' | 'AlertTriangle' | 'Wallet' | 'TrendingUp' {
+  switch (type) {
+    case 'bonus':
+      return 'Award';
+    case 'recebimento':
+      return 'HandCoins';
+    case 'vale':
+      return 'TrendingDown';
+    case 'falta':
+    case 'falta_banco':
+      return 'AlertTriangle';
+    case 'pagamento':
+      return 'Wallet';
+    default:
+      return 'TrendingUp';
+  }
+}
+
+/** Classe do badge SATURADO (bg da cor + texto branco) por tipo. */
+export function badgeClassFor(type: string): string {
+  switch (type) {
+    case 'vale':
+      return 'bg-red-600 text-white border-red-600 hover:bg-red-600';
+    case 'bonus':
+      return 'bg-green-600 text-white border-green-600 hover:bg-green-600';
+    case 'falta':
+    case 'falta_banco':
+      return 'bg-orange-500 text-white border-orange-500 hover:bg-orange-500';
+    case 'pagamento':
+      return 'bg-slate-600 text-white border-slate-600 hover:bg-slate-600';
+    case 'recebimento':
+      return 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-500';
+    case 'ajuste':
+      return 'bg-slate-500 text-white border-slate-500 hover:bg-slate-500';
+    default:
+      return 'bg-slate-600 text-white border-slate-600 hover:bg-slate-600';
+  }
+}
+
+/** Classe do "chip" do ícone (bg saturado + ícone branco) por tipo. */
+export function iconChipClassFor(type: string): string {
+  return badgeClassFor(type).replace(/ hover:[^ ]+/g, '');
 }
 
 export function currencyMask(value: string): string {

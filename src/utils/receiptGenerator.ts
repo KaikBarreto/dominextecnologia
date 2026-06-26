@@ -4,13 +4,38 @@ import type { EmployeeMovement, BalanceSummary } from '@/utils/employeeCalculati
 import { formatMovementType } from '@/utils/employeeCalculations';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 
+export interface PaymentBreakdown {
+  salary: number;
+  totalBonus: number;
+  totalFaltas: number;
+  totalVales: number;
+  valesDescontados: number;
+  valesRestantes: number;
+  valorPago: number;
+  paymentMethod: string;
+}
+
+export interface ValeBreakdown {
+  amount: number;
+  paymentMethod: string;
+  date: string;
+  description?: string;
+}
+
 interface ReceiptData {
   employeeName: string;
+  /** 'pagamento' (default) ou 'vale'. */
+  kind?: 'pagamento' | 'vale';
   salary: number;
   movement: EmployeeMovement;
   companySettings?: CompanySettings | null;
   whiteLabel?: boolean;
   generatedByName?: string;
+  /** Breakdown explícito do pagamento (preferido — o movimento de pagamento no
+   * banco não carrega payment_details; ele vive no ajuste seguinte). */
+  payment?: PaymentBreakdown;
+  /** Dados do vale (quando kind='vale'). */
+  vale?: ValeBreakdown;
 }
 
 function buildWhiteLabelHeader(s: CompanySettings): string {
@@ -104,28 +129,109 @@ function renderHeader(s: CompanySettings | null | undefined): string {
   return plainHeader ? `<div class="header">${plainHeader}</div><hr class="divider" />` : '';
 }
 
-export function generateReceiptHTML(data: ReceiptData): string {
-  const { employeeName, salary, movement, companySettings, whiteLabel, generatedByName } = data;
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const escapeHtml = (v: string): string =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const details = movement.payment_details || {};
-  const bonus = Number(details.bonus) || 0;
-  const totalVales = Number(details.totalVales) || 0;
-  const totalFaltas = Number(details.totalFaltas) || 0;
-  const valeDiscount = Number(details.valeDiscount) || totalVales;
-  const paymentMethod = movement.payment_method || details.paymentMethod || 'Não informado';
-  const subtotal = salary + bonus;
-  const paidAmount = Math.abs(movement.amount);
+export function generateReceiptHTML(data: ReceiptData): string {
+  const { employeeName, salary, movement, companySettings, whiteLabel, generatedByName, payment, vale } = data;
+  const kind = data.kind ?? 'pagamento';
+  const isVale = kind === 'vale';
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
   const dateStr = format(new Date(movement.created_at), "dd/MM/yyyy 'às' HH:mm");
 
+  const docTitle = isVale ? 'RECIBO DE VALE' : 'RECIBO DE PAGAMENTO';
+
+  // ---- Corpo (detalhamento) ----
+  let bodyHTML = '';
+  let totalLabel = '';
+  let totalValue = 0;
+  let extraAfterTotal = '';
+
+  if (isVale) {
+    const v = vale ?? {
+      amount: Math.abs(movement.amount),
+      paymentMethod: movement.payment_method || 'Não informado',
+      date: dateStr,
+      description: movement.description || undefined,
+    };
+    bodyHTML = `
+<div class="row">
+  <span class="label">Data/Hora</span>
+  <span class="value">${escapeHtml(v.date || dateStr)}</span>
+</div>
+<div class="row">
+  <span class="label">Forma de Pagamento</span>
+  <span class="value">${escapeHtml(v.paymentMethod || 'Não informado')}</span>
+</div>
+${v.description ? `<div class="row">
+  <span class="label">Observações</span>
+  <span class="value">${escapeHtml(v.description)}</span>
+</div>` : ''}`;
+    totalLabel = 'Valor do Vale';
+    totalValue = v.amount;
+  } else {
+    // Breakdown explícito tem prioridade; fallback lê payment_details do movimento.
+    const details = movement.payment_details || {};
+    const p: PaymentBreakdown = payment ?? {
+      salary: Number(details.salary) || salary,
+      totalBonus: Number(details.bonus) || 0,
+      totalFaltas: Number(details.faltas) || 0,
+      totalVales: Number(details.valeDiscount) + (Number(details.remainingVales) || 0) || Number(details.totalVales) || 0,
+      valesDescontados: Number(details.valeDiscount) || 0,
+      valesRestantes: Number(details.remainingVales) || 0,
+      valorPago: Number(details.amountPaid) || Math.abs(movement.amount),
+      paymentMethod: movement.payment_method || details.paymentMethod || 'Não informado',
+    };
+    const subtotal = p.salary + p.totalBonus - p.totalFaltas;
+
+    bodyHTML = `
+<div class="row">
+  <span class="label">Salário Base</span>
+  <span class="value">${fmt(p.salary)}</span>
+</div>
+${p.totalBonus > 0 ? `<div class="row indent">
+  <span class="label">+ Bônus</span>
+  <span class="value green">+ ${fmt(p.totalBonus)}</span>
+</div>` : ''}
+${p.totalFaltas > 0 ? `<div class="row indent">
+  <span class="label">- Faltas</span>
+  <span class="value red">- ${fmt(p.totalFaltas)}</span>
+</div>` : ''}
+<div class="row">
+  <span class="label">Subtotal</span>
+  <span class="value">${fmt(subtotal)}</span>
+</div>
+${p.totalVales > 0 ? `<div class="row">
+  <span class="label">Total de vales acumulados</span>
+  <span class="value red">${fmt(p.totalVales)}</span>
+</div>
+<div class="row">
+  <span class="label">Vales descontados neste pagamento</span>
+  <span class="value red">- ${fmt(p.valesDescontados)}</span>
+</div>` : ''}
+<div class="row">
+  <span class="label">Forma de Pagamento</span>
+  <span class="value">${escapeHtml(p.paymentMethod)}</span>
+</div>
+${movement.description ? `<div class="row">
+  <span class="label">Observações</span>
+  <span class="value">${escapeHtml(movement.description)}</span>
+</div>` : ''}`;
+    totalLabel = 'Valor Líquido Pago';
+    totalValue = p.valorPago;
+    if (p.valesRestantes > 0) {
+      extraAfterTotal = `<p style="text-align:center;color:#b45309;font-size:12px;font-weight:600;margin-top:-12px;margin-bottom:24px">Vales restantes (não descontados): ${fmt(p.valesRestantes)}</p>`;
+    }
+  }
+
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Recibo de Pagamento — ${employeeName}</title>
+<title>${isVale ? 'Recibo de Vale' : 'Recibo de Pagamento'} — ${escapeHtml(employeeName)}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding:40px; color:#1a1a1a; font-size:13px; max-width:800px; margin:0 auto; }
@@ -158,67 +264,39 @@ export function generateReceiptHTML(data: ReceiptData): string {
 
 ${headerHTML}
 
-<h1>RECIBO DE PAGAMENTO</h1>
+<h1>${docTitle}</h1>
 <p class="date-sub">Emitido em ${dateStr}</p>
 
 <p class="section-title">DADOS DO FUNCIONÁRIO</p>
 <div class="row">
   <span class="label">Nome</span>
-  <span class="value">${employeeName}</span>
+  <span class="value">${escapeHtml(employeeName)}</span>
 </div>
 
 <br/>
-<p class="section-title">DETALHAMENTO</p>
-<div class="row">
-  <span class="label">Salário Base</span>
-  <span class="value">${fmt(salary)}</span>
-</div>
-${bonus > 0 ? `<div class="row indent">
-  <span class="label">+ Bônus</span>
-  <span class="value green">+ ${fmt(bonus)}</span>
-</div>
-<div class="row">
-  <span class="label">Subtotal</span>
-  <span class="value">${fmt(subtotal)}</span>
-</div>` : ''}
-${totalVales > 0 ? `<div class="row">
-  <span class="label">Total de vales acumulados</span>
-  <span class="value red">${fmt(totalVales)}</span>
-</div>
-<div class="row">
-  <span class="label">Vales descontados neste pagamento</span>
-  <span class="value red">- ${fmt(valeDiscount)}</span>
-</div>` : ''}
-${totalFaltas > 0 ? `<div class="row">
-  <span class="label">Total de faltas</span>
-  <span class="value red">- ${fmt(totalFaltas)}</span>
-</div>` : ''}
-<div class="row">
-  <span class="label">Forma de Pagamento</span>
-  <span class="value">${paymentMethod}</span>
-</div>
-${movement.description ? `<div class="row">
-  <span class="label">Observações</span>
-  <span class="value">${movement.description}</span>
-</div>` : ''}
+<p class="section-title">${isVale ? 'DADOS DO VALE' : 'DETALHAMENTO'}</p>
+${bodyHTML}
 
 <div class="total-box">
-  <span class="lbl">Valor Líquido Pago</span>
-  <span class="val">${fmt(paidAmount)}</span>
+  <span class="lbl">${totalLabel}</span>
+  <span class="val">${fmt(totalValue)}</span>
 </div>
+${extraAfterTotal}
 
 <div class="signatures">
   <div class="sig-block">
     <div class="sig-line"></div>
-    <p class="sig-name">${generatedByName || (companySettings?.name || 'Empresa')}</p>
+    <p class="sig-name">${escapeHtml(generatedByName || (companySettings?.name || 'Empresa'))}</p>
     <p class="sig-role">Responsável / Empresa</p>
   </div>
   <div class="sig-block">
     <div class="sig-line"></div>
-    <p class="sig-name">${employeeName}</p>
+    <p class="sig-name">${escapeHtml(employeeName)}</p>
     <p class="sig-role">Funcionário</p>
   </div>
 </div>
+
+${generatedByName ? `<p style="text-align:center;color:#999;font-size:11px;margin-top:24px">Gerado por: ${escapeHtml(generatedByName)}</p>` : ''}
 
 ${dominexFooter}
 </body></html>`;

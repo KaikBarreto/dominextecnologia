@@ -1,14 +1,33 @@
-import { Trash2, Download, FileText } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Trash2, Download, FileText,
+  Award, HandCoins, TrendingDown, AlertTriangle, Wallet, TrendingUp,
+  Printer, ReceiptText,
+} from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useDataPagination } from '@/hooks/useDataPagination';
-import { BalanceSummary, formatMovementType, getMovementBadgeVariant, EmployeeMovement } from '@/utils/employeeCalculations';
-import { generateExtractHTMLWithHeader, generateReceiptHTML } from '@/utils/receiptGenerator';
+import {
+  BalanceSummary, formatMovementType, EmployeeMovement,
+  signFor, colorClassFor, badgeClassFor, iconChipClassFor, iconNameFor,
+} from '@/utils/employeeCalculations';
+import {
+  generateExtractHTMLWithHeader, generateReceiptHTML,
+  type PaymentBreakdown, type ValeBreakdown,
+} from '@/utils/receiptGenerator';
+import {
+  generateEmployeeThermalReceipt,
+  type ThermalPaymentBreakdown, type ThermalValeData,
+} from '@/utils/employeeReceiptThermalGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
@@ -22,6 +41,13 @@ interface EmployeeExtractProps {
   onDeleteMovement: (id: string) => void;
 }
 
+const ICONS = { Award, HandCoins, TrendingDown, AlertTriangle, Wallet, TrendingUp } as const;
+
+function MovementIcon({ type }: { type: string }) {
+  const Icon = ICONS[iconNameFor(type)];
+  return <Icon className="h-4 w-4 text-white" />;
+}
+
 function openHTMLInNewTab(html: string) {
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
@@ -29,78 +55,8 @@ function openHTMLInNewTab(html: string) {
   if (win) win.onload = () => URL.revokeObjectURL(url);
 }
 
-function PaymentDetails({ movement, salary, fmt, onReceipt }: { movement: EmployeeMovement; salary: number; fmt: (v: number) => string; onReceipt: () => void }) {
-  const details = movement.payment_details || {};
-  const bonus = Number(details.bonus) || 0;
-  const totalVales = Number(details.totalVales) || Number(details.valeDiscount) || 0;
-  const totalFaltas = Number(details.faltas) || 0;
-  const valeDiscount = Number(details.valeDiscount) || totalVales;
-  const subtotal = salary + bonus;
-  const paidAmount = Math.abs(movement.amount);
-  const diffFromBase = paidAmount - salary;
-  const paymentMethod = movement.payment_method ? 'Conta bancária' : (details.paymentMethod || '');
-
-  return (
-    <div className="mt-2 rounded-lg border bg-muted/30 p-3 space-y-1 text-xs">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">Salário base</span>
-        <span className="font-medium">{fmt(salary)}</span>
-      </div>
-      {bonus > 0 && (
-        <div className="flex justify-between text-green-600">
-          <span>+ Bônus</span>
-          <span>+{fmt(bonus)}</span>
-        </div>
-      )}
-      {(bonus > 0) && (
-        <div className="flex justify-between border-t pt-1">
-          <span className="text-muted-foreground">Subtotal</span>
-          <span className="font-medium">{fmt(subtotal)}</span>
-        </div>
-      )}
-      {totalVales > 0 && (
-        <>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Total de vales acumulados</span>
-            <span className="text-destructive">{fmt(totalVales)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Vales descontados neste pgto</span>
-            <span className="text-destructive">-{fmt(valeDiscount)}</span>
-          </div>
-        </>
-      )}
-      {totalFaltas > 0 && (
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Total de faltas</span>
-          <span className="text-destructive">-{fmt(totalFaltas)}</span>
-        </div>
-      )}
-      <div className="flex justify-between border-t pt-1">
-        <span className="font-semibold">Valor pago</span>
-        <span className="font-bold text-green-600">{fmt(paidAmount)}</span>
-      </div>
-      {diffFromBase !== 0 && (
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Diferença do salário base</span>
-          <span className={diffFromBase > 0 ? 'text-green-600' : 'text-destructive'}>{diffFromBase > 0 ? '+' : '-'}{fmt(Math.abs(diffFromBase))}</span>
-        </div>
-      )}
-      {paymentMethod && (
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Forma</span>
-          <span>{paymentMethod}</span>
-        </div>
-      )}
-      <div className="pt-1">
-        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={onReceipt}>
-          <FileText className="h-3 w-3" />
-          Gerar Recibo
-        </Button>
-      </div>
-    </div>
-  );
-}
+// Alvo do recibo (movimento + tipo). Quando preenchido abre o modal de formato.
+type ReceiptTarget = { movement: EmployeeMovement; kind: 'pagamento' | 'vale' };
 
 export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSalary, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -108,129 +64,318 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   const pagination = useDataPagination(sorted, 10);
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
+  const { accounts } = useFinancialAccounts();
   const { profile } = useAuth();
-  const handleExport = () => {
-    const html = generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled);
-    openHTMLInNewTab(html);
+  const [receiptTarget, setReceiptTarget] = useState<ReceiptTarget | null>(null);
+
+  const accountName = (accountId?: string | null) => {
+    if (!accountId) return '';
+    const acc = accounts?.find(a => a.id === accountId);
+    return acc?.name || 'Conta bancária';
   };
 
-  const handleReceipt = (m: EmployeeMovement) => {
-    const html = generateReceiptHTML({
-      employeeName,
-      salary: employeeSalary,
-      movement: m,
-      companySettings,
-      whiteLabel: wlEnabled,
-      generatedByName: profile?.full_name || undefined,
-    });
-    openHTMLInNewTab(html);
+  // O movimento de pagamento no banco NÃO carrega payment_details — eles vivem
+  // no 'ajuste' (Reset para salário base) lançado logo em seguida. Procura esse
+  // ajuste e monta o breakdown a partir dele (com fallback pro próprio movimento).
+  const buildPaymentDetails = (movement: EmployeeMovement): Record<string, any> => {
+    if (movement.payment_details && Object.keys(movement.payment_details).length > 0) {
+      return movement.payment_details;
+    }
+    // Movimentos em ordem cronológica crescente.
+    const chrono = [...movements].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const idx = chrono.findIndex(m => m.id === movement.id);
+    for (let i = idx + 1; i < chrono.length; i++) {
+      const m = chrono[i];
+      if (m.type === 'ajuste' && m.payment_details && Object.keys(m.payment_details).length > 0) {
+        return m.payment_details;
+      }
+      // só olha os movimentos imediatamente após o pagamento (ajuste/vale residual)
+      if (m.type !== 'ajuste' && m.type !== 'vale') break;
+    }
+    return {};
+  };
+
+  const buildBreakdown = (movement: EmployeeMovement) => {
+    const d = buildPaymentDetails(movement);
+    const salary = Number(d.salary) || employeeSalary || 0;
+    const totalBonus = Number(d.bonus) || 0;
+    const totalFaltas = Number(d.faltas) || 0;
+    const valesDescontados = Number(d.valeDiscount) || 0;
+    const valesRestantes = Number(d.remainingVales) || 0;
+    const totalVales = valesDescontados + valesRestantes;
+    const valorPago = Number(d.amountPaid) || Math.abs(movement.amount);
+    return { salary, totalBonus, totalFaltas, totalVales, valesDescontados, valesRestantes, valorPago };
+  };
+
+  const handleExport = () => {
+    openHTMLInNewTab(generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled));
+  };
+
+  const generateReceipt = (target: ReceiptTarget, outputFormat: 'a4' | 'thermal') => {
+    const { movement, kind } = target;
+    const responsibleName = profile?.full_name || undefined;
+    const employee = { name: employeeName, position: undefined as string | undefined, cpf: undefined as string | undefined };
+
+    if (kind === 'pagamento') {
+      const b = buildBreakdown(movement);
+      const method = accountName(movement.payment_method) || 'Conta bancária';
+      if (outputFormat === 'a4') {
+        const payment: PaymentBreakdown = { ...b, paymentMethod: method };
+        openHTMLInNewTab(generateReceiptHTML({
+          employeeName, kind: 'pagamento', salary: employeeSalary, movement,
+          companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, payment,
+        }));
+      } else {
+        const payment: ThermalPaymentBreakdown = { ...b, paymentMethod: method, description: movement.description || undefined };
+        void generateEmployeeThermalReceipt({
+          company: companySettings, whiteLabel: wlEnabled, employee,
+          responsibleName, kind: 'pagamento', payment,
+        });
+      }
+      return;
+    }
+
+    // kind === 'vale'
+    const dateStr = format(new Date(movement.created_at), 'dd/MM/yyyy HH:mm');
+    const method = accountName(movement.payment_method) || (movement.payment_method ? 'Conta bancária' : 'Não informado');
+    if (outputFormat === 'a4') {
+      const vale: ValeBreakdown = { amount: Math.abs(movement.amount), paymentMethod: method, date: dateStr, description: movement.description || undefined };
+      openHTMLInNewTab(generateReceiptHTML({
+        employeeName, kind: 'vale', salary: employeeSalary, movement,
+        companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, vale,
+      }));
+    } else {
+      const vale: ThermalValeData = { amount: Math.abs(movement.amount), paymentMethod: method, date: dateStr, description: movement.description || undefined };
+      void generateEmployeeThermalReceipt({
+        company: companySettings, whiteLabel: wlEnabled, employee,
+        responsibleName, kind: 'vale', vale,
+      });
+    }
+  };
+
+  const renderCard = (m: EmployeeMovement) => {
+    const isPayment = m.type === 'pagamento';
+    const isVale = m.type === 'vale';
+    const sign = signFor(m.type);
+    const b = isPayment ? buildBreakdown(m) : null;
+
+    return (
+      <div key={m.id} className="rounded-lg border p-3 space-y-2">
+        {/* Header: ícone + badge + data + excluir */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded ${iconChipClassFor(m.type)}`}>
+              <MovementIcon type={m.type} />
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <Badge className={`w-fit text-[10px] ${badgeClassFor(m.type)}`}>{formatMovementType(m.type)}</Badge>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-right">
+              <div className={`text-sm font-semibold ${colorClassFor(m.type)}`}>
+                {sign}{fmt(Math.abs(m.amount))}
+              </div>
+              <div className="text-[10px] text-muted-foreground">Saldo após: {fmt(m.balance_after)}</div>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-destructive group">
+                  <Trash2 className="h-3.5 w-3.5 text-destructive group-hover:text-white transition-colors" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+                  <AlertDialogDescription>Esta ação não pode ser desfeita. Os saldos serão recalculados.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDeleteMovement(m.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+
+        {/* Descrição */}
+        {m.description && <p className="text-xs text-muted-foreground pl-1">{m.description}</p>}
+
+        {/* Forma de pagamento (não-pagamento) */}
+        {!isPayment && m.payment_method && (
+          <p className="text-xs text-muted-foreground pl-1">via {accountName(m.payment_method)}</p>
+        )}
+
+        {/* Breakdown do pagamento */}
+        {isPayment && b && (
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Salário base</span>
+              <span className="font-medium">{fmt(b.salary)}</span>
+            </div>
+            {b.totalBonus > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">+ Bônus</span>
+                <span className="font-medium text-green-600">+{fmt(b.totalBonus)}</span>
+              </div>
+            )}
+            {b.totalFaltas > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">- Faltas</span>
+                <span className="font-medium text-orange-600">-{fmt(b.totalFaltas)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t pt-1.5">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-medium">{fmt(b.salary + b.totalBonus - b.totalFaltas)}</span>
+            </div>
+            {b.totalVales > 0 && (
+              <>
+                <div className="flex justify-between border-t pt-1.5">
+                  <span className="text-muted-foreground">Total de vales acumulados</span>
+                  <span className="font-medium text-destructive">{fmt(b.totalVales)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Vales descontados</span>
+                  <span className="font-medium text-destructive">-{fmt(b.valesDescontados)}</span>
+                </div>
+                {b.valesRestantes > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Vales restantes</span>
+                    <span className="font-medium text-orange-600">{fmt(b.valesRestantes)}</span>
+                  </div>
+                )}
+              </>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Forma de pagamento</span>
+              <span className="font-medium">{accountName(m.payment_method) || 'Conta bancária'}</span>
+            </div>
+            <div className="flex justify-between border-t pt-1.5 items-center">
+              <span className="font-semibold">Valor líquido pago</span>
+              <span className="font-bold text-base text-green-600">{fmt(b.valorPago)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Botão de recibo (pagamento e vale) */}
+        {(isPayment || isVale) && (
+          <Button
+            size="sm"
+            className="w-full h-7 gap-1.5 text-xs bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 text-white"
+            onClick={() => setReceiptTarget({ movement: m, kind: isVale ? 'vale' : 'pagamento' })}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Gerar Recibo
+          </Button>
+        )}
+      </div>
+    );
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`} className="sm:max-w-[900px]">
-      <div className="space-y-4">
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
-            <Download className="h-4 w-4" />
-            Exportar
+    <>
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`} className="sm:max-w-[900px]">
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
+          </div>
+
+          {/* Cards de resumo — saturados, texto branco */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="rounded-lg bg-green-600 p-3">
+              <div className="mb-1 flex items-center gap-1.5">
+                <Award className="h-3.5 w-3.5 text-white" />
+                <span className="text-xs text-white/80">Bônus</span>
+              </div>
+              <p className="text-base font-semibold text-white">{fmt(balance.totalBonus)}</p>
+            </div>
+            <div className="rounded-lg bg-red-600 p-3">
+              <div className="mb-1 flex items-center gap-1.5">
+                <TrendingDown className="h-3.5 w-3.5 text-white" />
+                <span className="text-xs text-white/80">Vales</span>
+              </div>
+              <p className="text-base font-semibold text-white">{fmt(balance.totalVales)}</p>
+            </div>
+            <div className="rounded-lg bg-orange-500 p-3">
+              <div className="mb-1 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-white" />
+                <span className="text-xs text-white/80">Faltas</span>
+              </div>
+              <p className="text-base font-semibold text-white">{fmt(balance.totalFaltas)}</p>
+            </div>
+            <div className={`rounded-lg p-3 ${balance.currentBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
+              <div className="mb-1 flex items-center gap-1.5">
+                <Wallet className="h-3.5 w-3.5 text-white" />
+                <span className="text-xs text-white/80">Saldo</span>
+              </div>
+              <p className="text-base font-bold text-white">{fmt(balance.currentBalance)}</p>
+            </div>
+          </div>
+
+          {/* Lista de movimentos em cards */}
+          <div className="space-y-2">
+            {pagination.paginatedItems.length === 0 ? (
+              <div className="rounded-lg border py-8 text-center text-muted-foreground">Nenhuma movimentação</div>
+            ) : (
+              pagination.paginatedItems.map(renderCard)
+            )}
+          </div>
+
+          {movements.length > 0 && (
+            <DataTablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              from={pagination.from}
+              to={pagination.to}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+          )}
+        </div>
+      </ResponsiveModal>
+
+      {/* Modal de escolha de formato do recibo */}
+      <ResponsiveModal
+        open={!!receiptTarget}
+        onOpenChange={(o) => !o && setReceiptTarget(null)}
+        title={receiptTarget?.kind === 'vale' ? 'Gerar recibo de vale' : 'Gerar recibo de pagamento'}
+        className="sm:max-w-[420px]"
+      >
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-muted-foreground">Escolha o formato do recibo:</p>
+          <Button
+            variant="outline"
+            className="w-full h-auto justify-start gap-3 py-3"
+            onClick={() => { if (receiptTarget) generateReceipt(receiptTarget, 'a4'); setReceiptTarget(null); }}
+          >
+            <Printer className="h-5 w-5 shrink-0" />
+            <span className="flex flex-col items-start">
+              <span className="font-medium">A4 (imprimível)</span>
+              <span className="text-xs text-muted-foreground">Folha inteira, ideal para arquivar e imprimir.</span>
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full h-auto justify-start gap-3 py-3"
+            onClick={() => { if (receiptTarget) generateReceipt(receiptTarget, 'thermal'); setReceiptTarget(null); }}
+          >
+            <ReceiptText className="h-5 w-5 shrink-0" />
+            <span className="flex flex-col items-start">
+              <span className="font-medium">Térmico 80mm</span>
+              <span className="text-xs text-muted-foreground">Comprovante para impressora de cupom.</span>
+            </span>
           </Button>
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <div className="rounded-lg border p-3 text-center">
-            <p className="text-xs text-muted-foreground">Bônus</p>
-            <p className="text-sm font-semibold text-green-600">{fmt(balance.totalBonus)}</p>
-          </div>
-          <div className="rounded-lg border p-3 text-center">
-            <p className="text-xs text-muted-foreground">Vales</p>
-            <p className="text-sm font-semibold text-destructive">{fmt(balance.totalVales)}</p>
-          </div>
-          <div className="rounded-lg border p-3 text-center">
-            <p className="text-xs text-muted-foreground">Faltas</p>
-            <p className="text-sm font-semibold text-destructive">{fmt(balance.totalFaltas)}</p>
-          </div>
-          <div className="rounded-lg border p-3 text-center">
-            <p className="text-xs text-muted-foreground">Saldo</p>
-            <p className={`text-sm font-semibold ${balance.currentBalance >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-              {fmt(balance.currentBalance)}
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-auto rounded-lg border divide-y">
-          {pagination.paginatedItems.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">Nenhuma movimentação</div>
-          ) : pagination.paginatedItems.map(m => {
-            const isPayment = m.type === 'pagamento';
-            return (
-              <div key={m.id} className="p-3 space-y-2">
-                {/* Movement header row */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px] shrink-0">
-                      {formatMovementType(m.type)}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-right">
-                      <div className={`text-xs font-semibold ${['vale', 'falta', 'pagamento'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
-                        {['vale', 'falta', 'pagamento'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">Saldo após: {fmt(m.balance_after)}</div>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
-                          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDeleteMovement(m.id)}>Excluir</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-                {/* Description */}
-                {m.description && !isPayment && (
-                  <p className="text-xs text-muted-foreground pl-1">{m.description}</p>
-                )}
-                {isPayment && (
-                  <>
-                    {m.description && <p className="text-xs text-muted-foreground pl-1">{m.description}</p>}
-                    <PaymentDetails
-                      movement={m}
-                      salary={employeeSalary}
-                      fmt={fmt}
-                      onReceipt={() => handleReceipt(m)}
-                    />
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {movements.length > 0 && (
-          <DataTablePagination
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            totalItems={pagination.totalItems}
-            from={pagination.from}
-            to={pagination.to}
-            pageSize={pagination.pageSize}
-            onPageChange={pagination.setPage}
-            onPageSizeChange={pagination.setPageSize}
-          />
-        )}
-      </div>
-    </ResponsiveModal>
+      </ResponsiveModal>
+    </>
   );
 }

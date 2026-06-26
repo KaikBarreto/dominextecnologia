@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.1',
+    date: '26 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Extrato do funcionário repaginado, com recibos',
+        description: 'O extrato de cada funcionário ficou mais claro: cada lançamento aparece em cartão, com cor e sinal certos — o que entra soma (+) e o que sai desconta (−). Você também gera recibo de pagamento e de vale, escolhendo entre folha A4 ou bobina térmica 80mm, já com os dados da sua empresa no cabeçalho.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.0',
     date: '26 de junho de 2026',
     type: 'minor',
