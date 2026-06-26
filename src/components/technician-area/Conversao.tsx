@@ -23,7 +23,7 @@ import {
   registrarConversaoRecente,
   toggleConversaoFavorita,
   useToolHistory,
-} from '@/lib/technicianToolsHistory';
+} from '@/lib/technicianAreaHistory';
 import { usePersistedState } from '@/hooks/usePersistedState';
 
 /** Par inicial de deep-link vindo de Recentes/Favoritos do Início. */

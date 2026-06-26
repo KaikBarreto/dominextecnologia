@@ -46,8 +46,8 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 /**
- * Ids das Ferramentas do Técnico. Batem com os `activeTab` do container
- * (`TechnicianTools.tsx`) e com os `ToolNavId` do hub (`Inicio.tsx`).
+ * Ids das Área do Técnico™. Batem com os `activeTab` do container
+ * (`TechnicianArea.tsx`) e com os `ToolNavId` do hub (`Inicio.tsx`).
  * "inicio" (hub) NÃO é uma ferramenta — fica fora desta lista.
  */
 export type TechToolId =
@@ -78,7 +78,7 @@ export interface TechTool {
  * Hoje só `refrigeracao` tem ferramentas. Adicionar um segmento novo aqui
  * faz a feature aparecer sozinha (menu + rota + cards) sem caçar strings.
  *
- * O mapeamento `id → Componente` continua no container (`TechnicianTools.tsx`),
+ * O mapeamento `id → Componente` continua no container (`TechnicianArea.tsx`),
  * pois mistura componentes + deep-link/keys especiais. Este config = só dados.
  */
 export const TECH_TOOLS_BY_SEGMENT: Partial<Record<string, TechTool[]>> = {

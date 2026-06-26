@@ -31,7 +31,7 @@ import {
   Video,
   Crown,
 } from 'lucide-react';
-import { FerramentasTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
+import { AreaTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,7 +78,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: OperacionalIcon,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
-      { title: 'Ferramentas do Técnico', icon: FerramentasTecnicoIcon, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools' },
+      { title: 'Área do Técnico™', icon: AreaTecnicoIcon, path: '/area-tecnico', screenKey: 'screen:technician_tools' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],

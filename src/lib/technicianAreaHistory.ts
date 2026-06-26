@@ -1,5 +1,5 @@
 /**
- * Histórico (Recentes) e Favoritos das Ferramentas do Técnico.
+ * Histórico (Recentes) e Favoritos das Área do Técnico™.
  *
  * Persistência 100% local (localStorage) — é preferência por aparelho, offline-first,
  * sem banco. Funções puras read/write; o hook `useToolHistory` (mesmo arquivo) dá

@@ -23,10 +23,10 @@ import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { GLOSSARIO_ELETRICA } from '@/lib/glossarioEletrica';
 import { GLOSSARIO_GASES } from '@/lib/glossarioGases';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { getTechToolsForSegment, type TechToolId } from '@/config/technicianTools';
-import type { ToolNavPayload } from '@/pages/TechnicianTools';
+import { getTechToolsForSegment, type TechToolId } from '@/config/technicianArea';
+import type { ToolNavPayload } from '@/pages/TechnicianArea';
 
-/** Ids das abas — fonte única em `@/config/technicianTools`. */
+/** Ids das abas — fonte única em `@/config/technicianArea`. */
 export type ToolNavId = TechToolId;
 
 interface SecaoGlossario {
@@ -69,7 +69,7 @@ const GLOSSARIO_SECOES: SecaoGlossario[] = [
 
 interface InicioProps {
   /**
-   * Troca a aba ativa em TechnicianTools (estado interno, funciona standalone e
+   * Troca a aba ativa em TechnicianArea (estado interno, funciona standalone e
    * no overlay da OS). `payload` opcional faz deep-link no item escolhido.
    */
   onNavigate: (id: ToolNavId, payload?: ToolNavPayload) => void;

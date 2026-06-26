@@ -36,8 +36,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { cn } from '@/lib/utils';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
@@ -636,11 +635,11 @@ export default function ServiceOrders() {
                               subtitle={
                                 <div className="flex items-center gap-2 flex-wrap">
                                   {getIsPmocFromOrder(os as any) && (
-                                    <PmocComplianceBadge variant="chip" />
+                                    <PmocComplianceBadge variant="chip" withTooltip />
                                   )}
                                   {os.service_type ? (
                                     <span className="inline-flex items-center gap-1">
-                                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getIsPmocFromOrder(os as any) ? 'hsl(var(--info))' : os.service_type.color }} />
                                       {os.service_type.name}
                                     </span>
                                   ) : (
@@ -717,23 +716,17 @@ export default function ServiceOrders() {
                                             {getOsCode(os)}
                                           </span>
                                           {getIsPmocFromOrder(os as any) && (
-                                            <PmocComplianceBadge variant="chip" />
+                                            <PmocComplianceBadge variant="chip" withTooltip />
                                           )}
                                         </div>
                                       </TableCell>
                                       <TableCell>
-                                        {(os as any).created_by_profile?.avatar_url ? (
-                                          <img
-                                            src={(os as any).created_by_profile.avatar_url}
-                                            alt={(os as any).created_by_profile.full_name || ''}
-                                            title={(os as any).created_by_profile.full_name || 'Usuário'}
-                                            className="h-7 w-7 rounded-full object-cover"
-                                          />
-                                        ) : (
-                                          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground" title={(os as any).created_by_profile?.full_name || 'Usuário'}>
-                                            {((os as any).created_by_profile?.full_name || '?').slice(0, 2).toUpperCase()}
-                                          </div>
-                                        )}
+                                        <UserAvatarTooltip
+                                          name={(os as any).created_by_profile?.full_name}
+                                          email={(os as any).created_by_profile?.email}
+                                          avatarUrl={(os as any).created_by_profile?.avatar_url}
+                                          roleLabel="Criador da OS"
+                                        />
                                       </TableCell>
                                       <TableCell>
                                         <div>
@@ -746,7 +739,7 @@ export default function ServiceOrders() {
                                       <TableCell className="hidden md:table-cell">
                                         {os.service_type ? (
                                           <div className="flex items-center gap-2">
-                                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: getIsPmocFromOrder(os as any) ? 'hsl(var(--info))' : os.service_type.color }} />
                                             <span className="text-sm">{os.service_type.name}</span>
                                           </div>
                                         ) : (
@@ -954,13 +947,6 @@ export default function ServiceOrders() {
                         <div className="flex-1 p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                           {columnOrders.map((os) => {
                             const creator = (os as any).created_by_profile as { full_name: string | null; avatar_url: string | null; email: string | null } | null;
-                            const creatorInitials = (creator?.full_name || '?')
-                              .trim()
-                              .split(/\s+/)
-                              .slice(0, 2)
-                              .map(w => w[0])
-                              .join('')
-                              .toUpperCase();
                             return (
                             <Card
                               key={os.id}
@@ -1000,7 +986,7 @@ export default function ServiceOrders() {
                                 <p className="text-sm font-medium">{os.customer?.name || 'N/A'}</p>
                                 {os.service_type && (
                                   <div className="flex items-center gap-1">
-                                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: getIsPmocFromOrder(os as any) ? 'hsl(var(--info))' : os.service_type.color }} />
                                     <span className="text-xs text-muted-foreground">{os.service_type.name}</span>
                                   </div>
                                 )}
@@ -1014,27 +1000,15 @@ export default function ServiceOrders() {
                               {/* Avatar do criador da OS — canto inferior direito do card.
                                   Tooltip mostra nome + email (espelhado de auth.users por
                                   trigger em profiles.email) + rótulo "Criador da OS". */}
-                              <TooltipProvider delayDuration={150}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Avatar className="absolute bottom-2 right-2 h-6 w-6 ring-2 ring-background shadow-md cursor-help">
-                                      {creator?.avatar_url ? (
-                                        <AvatarImage src={creator.avatar_url} alt={creator.full_name || ''} />
-                                      ) : null}
-                                      <AvatarFallback className="text-[9px] font-medium bg-muted text-muted-foreground">
-                                        {creatorInitials}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="text-xs">
-                                    <p className="font-medium">{creator?.full_name || 'Usuário'}</p>
-                                    {creator?.email && (
-                                      <p className="text-muted-foreground">{creator.email}</p>
-                                    )}
-                                    <p className="text-muted-foreground mt-0.5">Criador da OS</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <UserAvatarTooltip
+                                name={creator?.full_name}
+                                email={creator?.email}
+                                avatarUrl={creator?.avatar_url}
+                                roleLabel="Criador da OS"
+                                size={24}
+                                side="left"
+                                className="absolute bottom-2 right-2 ring-2 ring-background shadow-md"
+                              />
                             </Card>
                             );
                           })}

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 /**
  * Drop-in do useState que persiste o valor em sessionStorage.
  *
- * Por quê: a tela "Ferramentas do Técnico" navega por ABAS (não rotas) e
+ * Por quê: a tela "Área do Técnico™" navega por ABAS (não rotas) e
  * renderiza cada ferramenta condicionalmente. Trocar de aba DESMONTA o
  * componente, então o useState local morre e o técnico perde o que digitou /
  * selecionou. Guardando em sessionStorage, o input sobrevive à troca de aba

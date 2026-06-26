@@ -89,8 +89,8 @@ import { cn } from '@/lib/utils';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarStatus } from '@/components/technician/OsDesktopShell';
 import { SystemFooter } from '@/components/layout/SystemFooter';
-import TechnicianTools from '@/pages/TechnicianTools';
-import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
+import TechnicianArea from '@/pages/TechnicianArea';
+import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { useSubscriptionBlock } from '@/hooks/useSubscriptionBlock';
@@ -466,7 +466,7 @@ export default function TechnicianOS() {
     // o ELEMENTO em si é remontado/trocado.
   }, [serviceOrder?.status, isAuthenticated, company, loading]);
 
-  // Overlay fullscreen das Ferramentas do Técnico (atalho a partir do FAB).
+  // Overlay fullscreen da Área do Técnico™ (atalho a partir do FAB).
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.
   const [toolsOpen, setToolsOpen] = useState(false);
   // Menu de mais-ações do rodapé (hambúrguer): action-sheet próprio ancorado acima
@@ -608,16 +608,16 @@ export default function TechnicianOS() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [routeFullscreen]);
-  // "Ferramentas do Técnico" é exclusiva do segmento Refrigeração e Climatização.
+  // "Área do Técnico™" é exclusiva do segmento Refrigeração e Climatização.
   // Enquanto settings carrega (undefined/null), showTools é false → atalho oculto.
   const { settings } = useCompanySettings();
   const showTools = settings?.segment === 'refrigeracao';
-  // FAB é EXCLUSIVO de "Ferramentas do Técnico" (função única, ícone de ferramenta
+  // FAB é EXCLUSIVO de "Área do Técnico™" (função única, ícone de ferramenta
   // — não 3 pontinhos). Copiar link público mudou pro 3-pontinhos do rodapé.
   const speedDialActions: SpeedDialAction[] = [
     {
-      icon: FerramentasTecnicoIcon,
-      label: 'Ferramentas do Técnico',
+      icon: AreaTecnicoIcon,
+      label: 'Área do Técnico™',
       onClick: () => setToolsOpen(true),
       bare: true,
     },
@@ -3802,11 +3802,11 @@ export default function TechnicianOS() {
         </div>
       </ResponsiveModal>
 
-      {/* FAB EXCLUSIVO de Ferramentas do Técnico (canto inferior esquerdo, ícone de
+      {/* FAB EXCLUSIVO da Área do Técnico™ (canto inferior esquerdo, ícone de
           ferramenta — não 3 pontinhos). Função única → toque abre direto. Fica
           MAIS ACIMA quando o rodapé fixo mobile (faixa preta) aparece, pra não
           sobrepor. Só renderiza quando há ferramentas (segmento refrigeração) e
-          fica oculto enquanto o overlay das Ferramentas está aberto. */}
+          fica oculto enquanto o overlay da Área do Técnico está aberto. */}
       {showTools && !toolsOpen && (
         <SpeedDialFAB
           actions={speedDialActions}
@@ -3817,8 +3817,8 @@ export default function TechnicianOS() {
           // coluna do sidebar do grid, não solto no canto do viewport.
           className="lg:left-[max(1rem,calc((100vw-min(100vw,1536px))/2+2rem))]"
           mainImageUrl="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/app/ferramentas-tecnico-fab-v4.jpg"
-          mainIcon={FerramentasTecnicoIcon}
-          ariaLabel="Ferramentas do Técnico"
+          mainIcon={AreaTecnicoIcon}
+          ariaLabel="Área do Técnico™"
           directWhenSingle
           // Rebaixa o FAB pra trás do backdrop quando o menu hambúrguer do rodapé
           // (mobile ou desktop) abre → fica borrado/escuro junto da tela.
@@ -3827,7 +3827,7 @@ export default function TechnicianOS() {
         />
       )}
 
-      {/* Overlay fullscreen: mesmo componente da tela de Ferramentas do Técnico.
+      {/* Overlay fullscreen: mesmo componente da tela da Área do Técnico™.
           A OS continua montada por baixo (toolsOpen é estado local), então o
           técnico volta exatamente onde estava. A navegação interna virou estado
           (abas), então não precisa mais de router dedicado. */}
@@ -3845,7 +3845,7 @@ export default function TechnicianOS() {
             className="flex-1 overflow-auto p-5 pb-24 sm:p-6 sm:pb-28"
             style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
           >
-            <TechnicianTools embedded />
+            <TechnicianArea embedded />
           </div>
           {/* Rodapé sticky vermelho saturado (régua: ação saturada + texto/ícone
               brancos). Largura cheia + safe-area inferior. */}

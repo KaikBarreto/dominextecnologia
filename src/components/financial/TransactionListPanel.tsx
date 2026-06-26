@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, User, ArrowLeftRight } from 'lucide-react';
+import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ArrowLeftRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -300,33 +300,12 @@ export function TransactionListPanel({
   // Tooltip com nome completo + e-mail; fallback neutro quando não identificado.
   const renderCreatorAvatar = (t: any) => {
     const creator = t.creator as { full_name: string | null; email: string | null; avatar_url: string | null } | null;
-    const fullName = creator?.full_name?.trim() || '';
-    const parts = fullName.split(/\s+/).filter(Boolean);
-    const initials = parts.length
-      ? (parts.length === 1 ? parts[0][0] : parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : '';
-
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Avatar className="h-7 w-7 cursor-default">
-            {creator?.avatar_url && <AvatarImage src={creator.avatar_url} alt={fullName || 'Usuário'} />}
-            <AvatarFallback className="text-[10px] bg-muted">
-              {initials || <User className="h-3.5 w-3.5 text-muted-foreground" />}
-            </AvatarFallback>
-          </Avatar>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          {creator ? (
-            <>
-              <p className="font-medium">{fullName || 'Sem nome'}</p>
-              {creator.email && <p className="text-xs text-muted-foreground">{creator.email}</p>}
-            </>
-          ) : (
-            <p className="text-xs">Usuário não identificado</p>
-          )}
-        </TooltipContent>
-      </Tooltip>
+      <UserAvatarTooltip
+        name={creator?.full_name}
+        email={creator?.email}
+        avatarUrl={creator?.avatar_url}
+      />
     );
   };
 

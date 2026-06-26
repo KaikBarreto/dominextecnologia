@@ -1,5 +1,5 @@
 /**
- * Glossário de termos técnicos usados na tela "Ferramentas do Técnico".
+ * Glossário de termos técnicos usados na tela "Área do Técnico™".
  * 100% estático/offline. PT-BR, linguagem direta pro técnico de campo.
  *
  * Renderizado em accordion pela aba "Início" (Inicio.tsx). Cada item tem

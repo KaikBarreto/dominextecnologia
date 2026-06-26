@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { segmentHasTechTools } from "@/config/technicianTools";
+import { segmentHasTechTools } from "@/config/technicianArea";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
 import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
@@ -84,7 +84,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Teams from "./pages/Teams";
-import TechnicianTools from "./pages/TechnicianTools";
+import TechnicianArea from "./pages/TechnicianArea";
 // Lazy: TechnicianOS importa o anonClient. Carregando sob demanda,
 // o bundle do /login fica livre de inicializar dois GoTrueClient na mesma aba.
 const TechnicianOS = React.lazy(() => import("./pages/TechnicianOS"));
@@ -283,17 +283,26 @@ function SegmentRoute({ segment, children }: { segment: string; children: React.
   return <>{children}</>;
 }
 
-// Ferramentas do Técnico — libera quando o segmento da empresa tem ferramentas
-// no registro (`@/config/technicianTools`). Hoje só refrigeração → comportamento
+// Área do Técnico™ — libera quando o segmento da empresa tem ferramentas
+// no registro (`@/config/technicianArea`). Hoje só refrigeração → comportamento
 // idêntico ao SegmentRoute("refrigeracao"); ao adicionar um segmento ao registro,
 // a rota passa a liberar sozinha.
-function TechnicianToolsRoute({ children }: { children: React.ReactNode }) {
+function TechnicianAreaRoute({ children }: { children: React.ReactNode }) {
   const { settings, isLoading } = useCompanySettings();
 
   if (isLoading) return null;
   if (!segmentHasTechTools(settings?.segment)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
+}
+
+// Retrocompat: a rota antiga era `/ferramentas-tecnico` (renomeada para
+// `/area-tecnico` na "Área do Técnico™"). Links/deep-links antigos
+// (catálogo, gás, modelo) continuam funcionando: preserva subpath + query.
+function LegacyTechnicianToolsRedirect() {
+  const location = useLocation();
+  const rest = location.pathname.replace(/^\/ferramentas-tecnico/, '');
+  return <Navigate to={`/area-tecnico${rest}${location.search}`} replace />;
 }
 
 // Admin-screen-gated route — protege rotas /admin/* via admin_permissions.
@@ -461,9 +470,11 @@ const AppRoutes = () => (
       <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
-      {/* Ferramentas do Técnico — hub client-side/offline. Sub-rotas internas
+      {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas
          via <Routes> dentro da página, então registra com /* (wildcard). */}
-      <Route path="/ferramentas-tecnico/*" element={<PermissionRoute screenKey="screen:technician_tools"><TechnicianToolsRoute><TechnicianTools /></TechnicianToolsRoute></PermissionRoute>} />
+      <Route path="/area-tecnico/*" element={<PermissionRoute screenKey="screen:technician_tools"><TechnicianAreaRoute><TechnicianArea /></TechnicianAreaRoute></PermissionRoute>} />
+      {/* Retrocompat da rota antiga → preserva subpath/query. */}
+      <Route path="/ferramentas-tecnico/*" element={<LegacyTechnicianToolsRedirect />} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />

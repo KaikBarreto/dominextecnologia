@@ -34,7 +34,7 @@ import {
   Video,
   Crown,
 } from 'lucide-react';
-import { OperacionalIcon, FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
+import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -55,7 +55,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { segmentHasTechTools } from '@/config/technicianTools';
+import { segmentHasTechTools } from '@/config/technicianArea';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -74,7 +74,7 @@ interface MenuItem {
   screenKey?: string;
   moduleKey?: ModuleCode;
   requiresSegment?: string;
-  /** Gate dedicado: libera só se o segmento da empresa tem Ferramentas do Técnico. */
+  /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
   children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
@@ -92,7 +92,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
-  { title: 'Ferramentas do Técnico', icon: FerramentasTecnicoIcon, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresTechTools: true },
+  { title: 'Área do Técnico™', icon: AreaTecnicoIcon, path: '/area-tecnico', screenKey: 'screen:technician_tools', requiresTechTools: true },
   { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
   {
     title: 'Gestão',
@@ -140,6 +140,13 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
 // Número sorteado no CLIQUE (rodízio de números do suporte).
 const getWhatsAppSupportUrl = () => `https://wa.me/${getRandomWhatsAppNumber()}`;
 const ICON_SIZE = 'h-[20px] w-[20px] shrink-0';
+// Box FIXO e idêntico pra TODO item no rail colapsado (folha, grupo, header,
+// footer). `mx-auto` + tamanho fixo (h-10 w-10) garantem que o centro de cada
+// box caia no MESMO eixo vertical do rail — independente da largura óptica do
+// ícone (lucide tem viewBox 24, os custom OperacionalIcon/AreaTecnicoIcon
+// não são quadrados) ou do tipo de item. `justify-center` num `w-full` deixava
+// o centro deslocar quando a scrollbar aparecia / paddings divergiam → zigzag.
+const COLLAPSED_ITEM = 'mx-auto flex h-10 w-10 items-center justify-center rounded-lg transition-colors';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -335,7 +342,7 @@ export function SidebarMenuContent() {
                           title={item.title}
                           onClick={() => toggleMenu(item.title)}
                           className={cn(
-                            'flex w-full items-center justify-center rounded-lg py-2.5 transition-colors',
+                            COLLAPSED_ITEM,
                             hasActiveChild
                               ? 'bg-primary text-primary-foreground'
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
@@ -407,7 +414,7 @@ export function SidebarMenuContent() {
                         title={item.title}
                         className={({ isActive }) =>
                           cn(
-                            'flex w-full items-center justify-center rounded-lg py-2.5 transition-colors',
+                            COLLAPSED_ITEM,
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'

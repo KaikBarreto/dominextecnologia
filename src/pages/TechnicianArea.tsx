@@ -10,27 +10,27 @@ import {
 } from 'react-router-dom';
 import { Home, Lock, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
+import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { SegmentToolsSwitcher } from '@/components/technician-tools/SegmentToolsSwitcher';
-import { SegmentLockedScreen } from '@/components/technician-tools/SegmentLockedScreen';
-import { getTechToolsForSegment, getTeaserToolsForSegment } from '@/config/technicianTools';
-import { Inicio } from '@/components/technician-tools/Inicio';
-import { CargaTermica } from '@/components/technician-tools/CargaTermica';
-import { Conversao, type ConversaoInicial } from '@/components/technician-tools/Conversao';
-import { Catalogo } from '@/components/technician-tools/Catalogo';
-import { CalculoCapacitor } from '@/components/technician-tools/CalculoCapacitor';
-import { CaboEletrico } from '@/components/technician-tools/CaboEletrico';
-import { Superaquecimento } from '@/components/technician-tools/Superaquecimento';
-import { ReguaGases } from '@/components/technician-tools/ReguaGases';
-import { RetrofitGas } from '@/components/technician-tools/RetrofitGas';
-import { CicloRefrigeracao } from '@/components/technician-tools/CicloRefrigeracao';
-import { DiluicaoProduto } from '@/components/technician-tools/DiluicaoProduto';
+import { SegmentToolsSwitcher } from '@/components/technician-area/SegmentToolsSwitcher';
+import { SegmentLockedScreen } from '@/components/technician-area/SegmentLockedScreen';
+import { getTechToolsForSegment, getTeaserToolsForSegment } from '@/config/technicianArea';
+import { Inicio } from '@/components/technician-area/Inicio';
+import { CargaTermica } from '@/components/technician-area/CargaTermica';
+import { Conversao, type ConversaoInicial } from '@/components/technician-area/Conversao';
+import { Catalogo } from '@/components/technician-area/Catalogo';
+import { CalculoCapacitor } from '@/components/technician-area/CalculoCapacitor';
+import { CaboEletrico } from '@/components/technician-area/CaboEletrico';
+import { Superaquecimento } from '@/components/technician-area/Superaquecimento';
+import { ReguaGases } from '@/components/technician-area/ReguaGases';
+import { RetrofitGas } from '@/components/technician-area/RetrofitGas';
+import { CicloRefrigeracao } from '@/components/technician-area/CicloRefrigeracao';
+import { DiluicaoProduto } from '@/components/technician-area/DiluicaoProduto';
 import type { ConversaoCategoria } from '@/lib/conversoes';
 
-const TOOLS_BASE = '/ferramentas-tecnico';
+const TOOLS_BASE = '/area-tecnico';
 
 /** Ferramentas cuja sub-tela tem voltar PRÓPRIO (lista ↔ detalhe). O "Voltar" do
  *  shell some pra elas pra evitar dois botões de voltar (régua CEO). Usado só no
@@ -77,10 +77,10 @@ const VALID_CONVERSAO_CATS: ReadonlySet<string> = new Set<ConversaoCategoria>([
   'comprimento',
 ]);
 
-interface TechnicianToolsProps {
+interface TechnicianAreaProps {
   /**
    * `true` quando renderizado EMBUTIDO no overlay da OS (`/os-tecnico/:id`), onde
-   * NÃO existe `/ferramentas-tecnico/*` na URL. Nesse modo a navegação é por
+   * NÃO existe `/area-tecnico/*` na URL. Nesse modo a navegação é por
    * useState interno (comportamento legado, zero regressão). No modo default
    * (rota) usa `<Routes>` + navigate.
    */
@@ -88,12 +88,12 @@ interface TechnicianToolsProps {
 }
 
 /**
- * "Ferramentas do Técnico" — utilidades de campo 100% client-side / offline.
+ * "Área do Técnico™" — utilidades de campo 100% client-side / offline.
  * MODO DUPLO:
- *  - rota (default): navegação por URL (`/ferramentas-tecnico/<tab>`, `?nicho`).
+ *  - rota (default): navegação por URL (`/area-tecnico/<tab>`, `?nicho`).
  *  - embedded (overlay da OS): navegação por estado interno.
  */
-export default function TechnicianTools({ embedded = false }: TechnicianToolsProps) {
+export default function TechnicianArea({ embedded = false }: TechnicianAreaProps) {
   return embedded ? <EmbeddedTools /> : <RouteTools />;
 }
 
@@ -160,8 +160,8 @@ function ToolsShell({
           CEO: no desktop o select fica abaixo do título, não ao lado). */}
       <div className="flex flex-col items-start gap-2">
         <div className="flex items-center gap-2">
-          <FerramentasTecnicoIcon className="h-6 w-6 text-foreground/70 shrink-0 lg:h-7 lg:w-7" />
-          <h1 className="text-lg font-semibold tracking-tight lg:text-2xl">Ferramentas do Técnico</h1>
+          <AreaTecnicoIcon className="h-6 w-6 text-foreground/70 shrink-0 lg:h-7 lg:w-7" />
+          <h1 className="text-lg font-semibold tracking-tight lg:text-2xl">Área do Técnico™</h1>
         </div>
         {companySegment && (
           <SegmentToolsSwitcher
@@ -315,7 +315,7 @@ function RouteTools() {
           />
         }
       />
-      {/* Rota desconhecida sob /ferramentas-tecnico → volta ao hub. */}
+      {/* Rota desconhecida sob /area-tecnico → volta ao hub. */}
       <Route path="*" element={<Navigate to={TOOLS_BASE} replace />} />
     </Routes>
   );

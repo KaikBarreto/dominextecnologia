@@ -42,7 +42,7 @@ const ROUTE_MESSAGES: Array<readonly [string, string]> = [
   ['/funcionarios', 'Carregando funcionários...'],
   ['/ponto', 'Carregando ponto...'],
   ['/mapa-ao-vivo', 'Localizando técnicos...'],
-  ['/ferramentas-tecnico', 'Abrindo ferramentas...'],
+  ['/area-tecnico', 'Abrindo ferramentas...'],
   ['/assinatura', 'Carregando assinatura...'],
   ['/changelog', 'Carregando novidades...'],
   ['/domiflix', 'Carregando Domiflix...'],

@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.14.48',
+    date: '25 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ferramentas do Técnico virou Área do Técnico™',
+        description: 'A função "Ferramentas do Técnico" passou a se chamar "Área do Técnico™". Os links e atalhos antigos continuam funcionando normalmente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Selo PMOC e detalhes do criador nas listas',
+        description: 'O selo de conformidade da Lei 13.589 (PMOC) ficou mais visível com uma explicação ao passar o mouse, e nas listas você vê o nome e o e-mail de quem criou o registro ao passar o mouse na foto.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.14.47',
     date: '25 de junho de 2026',
     type: 'patch',

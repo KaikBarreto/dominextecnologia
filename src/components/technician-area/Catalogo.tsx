@@ -66,7 +66,7 @@ import {
   isModeloFavorito,
   toggleModeloFavorito,
   useToolHistory,
-} from '@/lib/technicianToolsHistory';
+} from '@/lib/technicianAreaHistory';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import {
   Carousel,
@@ -77,7 +77,7 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel';
 import { getRefrigerante, REFRIGERANTES } from '@/lib/refrigerantes';
-import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
+import { RefrigeranteInflamavel } from '@/components/technician-area/RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
 import { slugify } from '@/lib/slugify';
 
@@ -389,7 +389,7 @@ const DEFAULT_CATALOG_TAB: CatalogTab = 'ar_condicionado';
  *    pelo `RouteTools` em `catalogo/*`. Refresh cai na tela certa e os links
  *    (gás por code, modelo por id) são compartilháveis.
  *  - embedded (overlay da OS): navegação por estado interno (legado, zero
- *    regressão) — não há `/ferramentas-tecnico/*` na URL nesse contexto.
+ *    regressão) — não há `/area-tecnico/*` na URL nesse contexto.
  */
 export function Catalogo({
   embedded = false,
@@ -516,11 +516,11 @@ function CatalogBrandScreen() {
   }, [brands, slugParam]);
 
   if (!tabValido) {
-    return <Navigate to={`/ferramentas-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
+    return <Navigate to={`/area-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
   }
 
   // Caminho-pai da lista da subaba (volta sempre pra cá).
-  const tabPath = `/ferramentas-tecnico/catalogo/${tab}`;
+  const tabPath = `/area-tecnico/catalogo/${tab}`;
 
   if (isLoading) return <LoadingBlock />;
   if (!brand) {
@@ -540,13 +540,13 @@ function CatalogBrandScreen() {
       onBack={() => navigate(tabPath)}
       // Trocar de marca no carrossel: replace pra não inflar o history. URL por slug.
       onSelectBrand={(b) =>
-        navigate(`/ferramentas-tecnico/catalogo/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
+        navigate(`/area-tecnico/catalogo/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
       }
       onSelectDetail={(model) =>
         // Ninhado sob a marca atual (modelo da lista não traz brand hidratado → passamos
         // o nome da marca conhecida). from=marca pra voltar pra esta tela de marca.
         navigate(
-          `/ferramentas-tecnico/catalogo/${tab}/${modelPath(tab, model, {
+          `/area-tecnico/catalogo/${tab}/${modelPath(tab, model, {
             brandName: brand.name,
             from: 'marca',
           })}`,
@@ -627,19 +627,19 @@ function CatalogModelScreen() {
       : { ...found, brand: { id: brand.id, name: brand.name, logo_url: brand.logo_url } };
   }, [models, modelSlug, brand]);
 
-  const tabPath = `/ferramentas-tecnico/catalogo/${tab}`;
+  const tabPath = `/area-tecnico/catalogo/${tab}`;
 
   if (!tabValido) {
-    return <Navigate to={`/ferramentas-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
+    return <Navigate to={`/area-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
   }
 
   // Voltar: se veio de uma marca, volta pra ela; senão pra lista da subaba.
   // Sem navigate(-1) pra não quebrar link direto/colado.
   const fromMarca = searchParams.get('from') === 'marca';
   const brandPath = brand
-    ? `/ferramentas-tecnico/catalogo/${tab}/marca/${brandSlug(brand.name)}`
+    ? `/area-tecnico/catalogo/${tab}/marca/${brandSlug(brand.name)}`
     : brandSlugParam
-      ? `/ferramentas-tecnico/catalogo/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
+      ? `/area-tecnico/catalogo/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
       : tabPath;
   const backTo = fromMarca ? brandPath : tabPath;
   const onBack = () => navigate(backTo);
@@ -671,7 +671,7 @@ function CatalogRemoteModelScreen() {
   const { modelSlug } = useParams<{ modelSlug: string }>();
   const navigate = useNavigate();
   const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
-  const tabPath = '/ferramentas-tecnico/catalogo/controle_remoto';
+  const tabPath = '/area-tecnico/catalogo/controle_remoto';
 
   const model = useMemo<EquipmentModel | null>(() => {
     if (!modelSlug) return null;
@@ -698,7 +698,7 @@ function CatalogGasScreen() {
   const { gasCode } = useParams<{ gasCode: string }>();
   const navigate = useNavigate();
   const { data: gases = [], isLoading } = useRefrigerantGases();
-  const fluidoPath = '/ferramentas-tecnico/catalogo/fluido_refrigerante';
+  const fluidoPath = '/area-tecnico/catalogo/fluido_refrigerante';
 
   const gas = useMemo(() => {
     if (!gasCode) return null;

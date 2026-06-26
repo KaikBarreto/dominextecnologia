@@ -16,7 +16,7 @@ import {
   type UnidadePressao,
 } from '@/lib/refrigerantes';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
-import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
+import { RefrigeranteInflamavel } from '@/components/technician-area/RefrigeranteInflamavel';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { ToolDisclaimer } from './ToolDisclaimer';
 

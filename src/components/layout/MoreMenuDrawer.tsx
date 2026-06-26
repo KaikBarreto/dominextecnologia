@@ -35,7 +35,7 @@ import {
   Crown,
   Video,
 } from 'lucide-react';
-import { OperacionalIcon, FerramentasTecnicoIcon } from '@/components/icons/MenuIcons';
+import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -45,7 +45,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { segmentHasTechTools } from '@/config/technicianTools';
+import { segmentHasTechTools } from '@/config/technicianArea';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
@@ -61,7 +61,7 @@ interface MenuItem {
   screenKey?: string;
   moduleKey?: ModuleCode;
   requiresSegment?: string;
-  /** Gate dedicado: libera só se o segmento da empresa tem Ferramentas do Técnico. */
+  /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
   children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
@@ -78,7 +78,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
-  { title: 'Ferramentas do Técnico', icon: FerramentasTecnicoIcon, path: '/ferramentas-tecnico', screenKey: 'screen:technician_tools', requiresTechTools: true },
+  { title: 'Área do Técnico™', icon: AreaTecnicoIcon, path: '/area-tecnico', screenKey: 'screen:technician_tools', requiresTechTools: true },
   { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
   {
     title: 'Gestão',

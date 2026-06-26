@@ -39,9 +39,9 @@ function ChipBody({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5',
-        'text-[10px] font-semibold uppercase tracking-wide text-info',
-        'border border-info/20 whitespace-nowrap',
+        'inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-0.5',
+        'text-[10px] font-semibold uppercase tracking-wide text-white',
+        'border border-blue-700 whitespace-nowrap',
         className,
       )}
       aria-label="Conforme Lei Federal 13.589/2018"

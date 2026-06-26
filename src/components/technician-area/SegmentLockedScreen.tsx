@@ -12,7 +12,7 @@ interface SegmentLockedScreenProps {
 }
 
 /**
- * Tela de bloqueio (upsell) das Ferramentas do Técnico. Aparece quando o técnico
+ * Tela de bloqueio (upsell) da Área do Técnico™. Aparece quando o técnico
  * escolhe no seletor um nicho diferente do contratado pela empresa. Centraliza um
  * card mobile-first com a cor do nicho e CTA de WhatsApp pro comercial Dominex.
  */
@@ -22,7 +22,7 @@ export function SegmentLockedScreen({ segment }: SegmentLockedScreenProps) {
 
   const handleContact = () => {
     const mensagem = `Olá! Já uso a Dominex e gostaria de contratar as ferramentas do segmento de ${seg.label}.`;
-    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), mensagem, 'Ferramentas do Técnico');
+    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), mensagem, 'Área do Técnico');
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 

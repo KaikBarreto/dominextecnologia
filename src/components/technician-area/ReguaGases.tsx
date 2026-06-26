@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
-import { RefrigeranteOption } from '@/components/technician-tools/RefrigeranteOption';
+import { RefrigeranteOption } from '@/components/technician-area/RefrigeranteOption';
 import { ToolDisclaimer } from './ToolDisclaimer';
 import { cn } from '@/lib/utils';
 import {

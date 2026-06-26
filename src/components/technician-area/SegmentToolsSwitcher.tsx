@@ -22,7 +22,7 @@ interface SegmentToolsSwitcherProps {
 }
 
 /**
- * Seletor de nichos no header das Ferramentas do Técnico. O trigger é o badge
+ * Seletor de nichos no header das Área do Técnico™. O trigger é o badge
  * colorido do nicho selecionado (mesma cara do SegmentBadge) + chevron. Abre um
  * Popover + Command listando todos os nichos (menos "Outro"), com o nicho da
  * empresa no topo. Trocar pra um nicho que não é o da empresa dispara o upsell

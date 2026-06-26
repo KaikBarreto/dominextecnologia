@@ -1,5 +1,5 @@
 import { SelectItem } from '@/components/ui/select';
-import { RefrigeranteInflamavel } from '@/components/technician-tools/RefrigeranteInflamavel';
+import { RefrigeranteInflamavel } from '@/components/technician-area/RefrigeranteInflamavel';
 import type { Refrigerante } from '@/lib/refrigerantes';
 
 /**
