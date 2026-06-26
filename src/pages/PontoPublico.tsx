@@ -147,8 +147,11 @@ function resolveBranding(company: PontoCompany) {
     wl && company.white_label_primary_color
       ? company.white_label_primary_color
       : ACCENT_PRIMARY;
-  const bgColor = brandColor;
-  // accentColor é a cor das linhas/detalhes accent (sólida); = a cor do header.
+  // Header em DEGRADÊ da cor de marca → a MESMA cor mais escura (color-mix com
+  // preto funciona tanto pro hex do white-label quanto pro hsl teal default).
+  // De cima (cor cheia) pra baixo (mais escura), dando profundidade no domo.
+  const bgColor = `linear-gradient(180deg, ${brandColor} 0%, color-mix(in srgb, ${brandColor}, #000 34%) 100%)`;
+  // accentColor é a cor das linhas/detalhes accent (sólida); = a cor cheia da marca.
   const accentColor = brandColor;
   // Texto/ícones do header: como a cor da marca pode ser CLARA (Glacial #EEB770,
   // dourado) ou ESCURA (ENGETEC #F97316), NÃO fixar branco. Escolhe preto/branco
