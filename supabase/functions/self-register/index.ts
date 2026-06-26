@@ -63,6 +63,9 @@ Deno.serve(async (req) => {
     // manda o campo, senão quebra o frontend antigo que ainda está em produção
     // (incidente: edge nova rejeitava 400 cadastros do site sem segment).
     const segment = trim(raw.segment, 50);
+    // Endereço da empresa — OPCIONAL (string já formatada pelo frontend).
+    // Backward-compat: ausente/vazio grava null, não barra ninguém.
+    const company_address = trim(raw.company_address, 500);
 
     // Affiliate/sales link params
     const linkType = trim(raw.link_type, 20); // 'teste' | 'venda'
@@ -241,6 +244,7 @@ Deno.serve(async (req) => {
         contact_name,
         origin: origin || null,
         segment: segment || null,
+        address: company_address || null,
         subscription_status,
         subscription_plan: planCode,
         subscription_value: finalPrice,

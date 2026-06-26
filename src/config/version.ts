@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.14.49";
+export const APP_VERSION = "1.14.50";
 
-export const VERSION_NOTES = "Visual repaginado da Ordem de Serviço: cabeçalho centralizado, rodapé de ações em estilo gaveta, botões de checklist mais claros (verde/vermelho/laranja), contrato dentro dos dados do cliente, e o relatório no mesmo padrão.";
+export const VERSION_NOTES = "Cadastro/onboarding repaginado: etapas Dados → Segmento → Origem → Acesso, segmento e origem em cards (clicou, avançou), endereço opcional por CEP, e aviso na hora quando o e-mail já está em uso.";
