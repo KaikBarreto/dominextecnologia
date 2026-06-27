@@ -16,6 +16,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useContracts, REGENERABLE_OS_STATUSES, type Contract, type ContractItem } from '@/hooks/useContracts';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -58,6 +60,14 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
   const { equipment } = useEquipment(contract.customer_id || undefined);
   const activeEquipment = useMemo(() => equipment.filter((eq: any) => eq.status === 'active'), [equipment]);
 
+  // Lookup pela LISTA COMPLETA (não só active): um item do contrato pode apontar
+  // pra equipamento já inativo, e ainda assim queremos mostrar foto/marca/modelo.
+  const equipmentById = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const eq of equipment) m.set(eq.id, eq);
+    return m;
+  }, [equipment]);
+
   // Lista de trabalho — começa do conjunto persistido. Add/remover mexem aqui;
   // só persiste no "Salvar alterações".
   const initialItems = useMemo<WorkingItem[]>(
@@ -72,6 +82,25 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
     [contract.contract_items],
   );
   const [workingItems, setWorkingItems] = useState<WorkingItem[]>(initialItems);
+
+  // Busca SÓ de visualização na listagem principal — não altera workingItems
+  // nem o cálculo de dirty/save. Casa em item_name + marca/modelo do equipamento.
+  const [search, setSearch] = useState('');
+  // Viewer de foto do equipamento (nunca abre em nova aba).
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
+
+  const displayedItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return workingItems;
+    return workingItems.filter((item) => {
+      const eq = item.equipment_id ? equipmentById.get(item.equipment_id) : undefined;
+      return (
+        item.item_name?.toLowerCase().includes(q) ||
+        eq?.brand?.toLowerCase().includes(q) ||
+        eq?.model?.toLowerCase().includes(q)
+      );
+    });
+  }, [workingItems, search, equipmentById]);
 
   // Picker de equipamentos (multi-seleção) — só equipamentos do cliente que
   // ainda não estão no contrato.
@@ -221,34 +250,71 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
               action={{ label: 'Adicionar equipamento', onClick: openPicker }}
             />
           ) : (
-            <div className="space-y-2 min-w-0">
-              {workingItems.map((item) => (
-                <div
-                  key={itemKey(item)}
-                  className="flex min-w-0 items-start gap-3 rounded-xl border p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words text-sm font-medium">{item.item_name}</p>
-                    {item.item_description && (
-                      <p className="break-words text-xs text-muted-foreground">{item.item_description}</p>
-                    )}
-                  </div>
-                  {item.equipment_id ? (
-                    <Badge variant="secondary" className="shrink-0 self-start text-xs">Equipamento</Badge>
-                  ) : (
-                    <Badge variant="outline" className="shrink-0 self-start text-xs">Item manual</Badge>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 min-h-11 min-w-11 sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 text-destructive active:scale-90 transition-transform rounded-xl"
-                    title="Remover do contrato"
-                    onClick={() => setRemovingItem(item)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+            <div className="space-y-3 min-w-0">
+              {/* Busca de visualização — só aparece quando há itens. */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar equipamento..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+
+              {displayedItems.length === 0 && search ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Nenhum equipamento encontrado para "{search}".
+                </p>
+              ) : (
+                <div className="space-y-2 min-w-0">
+                  {displayedItems.map((item) => {
+                    const eq = item.equipment_id ? equipmentById.get(item.equipment_id) : undefined;
+                    // Linha de detalhe rica vinda do equipamento (marca · modelo · capacidade).
+                    // Sem equipamento vinculado, cai no item_description manual.
+                    const eqDetail = [eq?.brand, eq?.model].filter(Boolean).join(' · ');
+                    const detailLine = eq
+                      ? [eqDetail, eq?.capacity].filter(Boolean).join(' · ')
+                      : item.item_description;
+                    return (
+                      <div
+                        key={itemKey(item)}
+                        className="flex min-w-0 items-start gap-3 rounded-xl border p-3"
+                      >
+                        <EquipmentAvatar
+                          photoUrl={eq?.photo_url}
+                          name={item.item_name}
+                          onPreview={
+                            eq?.photo_url
+                              ? () => setPreviewPhoto({ src: eq.photo_url, alt: eq.name || item.item_name })
+                              : undefined
+                          }
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words text-sm font-medium">{item.item_name}</p>
+                          {detailLine && (
+                            <p className="break-words text-xs text-muted-foreground">{detailLine}</p>
+                          )}
+                        </div>
+                        {item.equipment_id ? (
+                          <Badge variant="secondary" className="shrink-0 self-start text-xs">Equipamento</Badge>
+                        ) : (
+                          <Badge variant="outline" className="shrink-0 self-start text-xs">Item manual</Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 min-h-11 min-w-11 sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 text-destructive active:scale-90 transition-transform rounded-xl"
+                          title="Remover do contrato"
+                          onClick={() => setRemovingItem(item)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </div>
           )}
 
@@ -398,6 +464,14 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Viewer de foto do equipamento (ampliado, nunca nova aba). */}
+      <ImagePreviewModal
+        open={!!previewPhoto}
+        src={previewPhoto?.src ?? ''}
+        alt={previewPhoto?.alt}
+        onClose={() => setPreviewPhoto(null)}
+      />
     </div>
   );
 }

@@ -134,7 +134,6 @@ export default function ContractDetail() {
   const [applyAccountId, setApplyAccountId] = useState('');
   const [applyCategory, setApplyCategory] = useState('');
   const [applySaving, setApplySaving] = useState(false);
-  const [eqPage, setEqPage] = useState(1);
   const [editingRecTransaction, setEditingRecTransaction] = useState<any>(null);
   const [showEditRecModal, setShowEditRecModal] = useState(false);
   const [editRecDescription, setEditRecDescription] = useState('');
@@ -222,11 +221,6 @@ export default function ContractDetail() {
         description: 'Copie manualmente da barra acima.',
       });
     }
-  };
-
-  const handleOpenPortal = () => {
-    if (!portalUrl) return;
-    window.open(portalUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handlePrintQrCode = async () => {
@@ -722,7 +716,7 @@ export default function ContractDetail() {
         const pmocSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
-          { value: 'equipamentos', label: 'Ambientes', icon: Wrench },
+          { value: 'equipamentos', label: 'Ambientes e Equipamentos', icon: Wrench },
           { value: 'historico', label: 'Histórico PMOC', icon: ClipboardCheck },
           { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
           { value: 'documentos', label: 'Documentos', icon: FileText },
@@ -768,7 +762,7 @@ export default function ContractDetail() {
                 <span className="min-w-0 break-words">Informações</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="min-w-0">
+            <CardContent className="min-w-0 space-y-5">
               <div className="grid min-w-0 grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <div className="min-w-0">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
@@ -793,156 +787,114 @@ export default function ContractDetail() {
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Portal do Contrato — logo após Informações pra ficar visível sem scrollar.
-              Aparece em TODO contrato (PMOC ou não), enquanto houver token público. */}
-          {publicToken && (
-            <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base break-words">
-                  <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                  Portal do Contrato
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 min-w-0">
-                <p className="text-xs text-muted-foreground break-words">
-                  Página pública deste contrato para o cliente final. Aparece no QR Code colado no quadro físico.
-                </p>
-
-                {/* Toggle público/privado (espelha o Portal do Cliente). */}
-                <div className="flex items-start justify-between gap-3 rounded-xl border bg-muted/30 p-3">
+              {/* Portal do Contrato — subseção dentro de Informações, separada por linha fina.
+                  Aparece em TODO contrato (PMOC ou não), enquanto houver token público. */}
+              {publicToken && (
+                <div className="space-y-3 border-t pt-5 min-w-0">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">Portal Público</p>
-                    <p className="text-xs text-muted-foreground break-words">
-                      {portalIsPublic
-                        ? 'Qualquer pessoa com o link vê o portal (somente leitura).'
-                        : 'O link exige login da sua empresa para abrir.'}
+                    <h3 className="flex items-center gap-2 text-base font-semibold break-words">
+                      <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                      Portal do Contrato
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground break-words">
+                      Página pública deste contrato para o cliente final. Aparece no QR Code colado no quadro físico.
                     </p>
                   </div>
-                  <Switch
-                    checked={portalIsPublic}
-                    disabled={updatingPortalVisibility}
-                    onCheckedChange={handleTogglePortalPublic}
-                    aria-label="Portal Público"
-                    className="shrink-0"
-                  />
-                </div>
 
-                {portalUrl && (
-                  <div className="flex justify-center">
-                    <div
-                      className={cn(
-                        'inline-flex items-center justify-center rounded-xl p-4 transition-colors',
-                        resolvedTheme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-border',
-                      )}
-                    >
-                      <QRCodeSVG
-                        value={portalUrl}
-                        size={isMobile ? 130 : 160}
-                        bgColor="transparent"
-                        fgColor={resolvedTheme === 'dark' ? '#ffffff' : '#000000'}
-                        level="M"
-                      />
+                  {/* Toggle público/privado (espelha o Portal do Cliente). */}
+                  <div className="flex items-start justify-between gap-3 rounded-xl border bg-muted/30 p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Portal Público</p>
+                      <p className="text-xs text-muted-foreground break-words">
+                        {portalIsPublic
+                          ? 'Qualquer pessoa com o link vê o portal (somente leitura).'
+                          : 'O link exige login da sua empresa para abrir.'}
+                      </p>
                     </div>
+                    <Switch
+                      checked={portalIsPublic}
+                      disabled={updatingPortalVisibility}
+                      onCheckedChange={handleTogglePortalPublic}
+                      aria-label="Portal Público"
+                      className="shrink-0"
+                    />
                   </div>
-                )}
 
-                {portalUrl ? (
-                  <div className="rounded-md border bg-muted/40 p-2 text-xs font-mono break-all min-w-0">
-                    {portalUrl}
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-                    Link público em geração. Aguarde alguns instantes.
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyPortalLink}
-                    disabled={!portalUrl}
-                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                  >
-                    <Copy className="h-3.5 w-3.5 mr-1" />
-                    Copiar link
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenPortal}
-                    disabled={!portalUrl}
-                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                    Abrir portal
-                  </Button>
-                  {/* Imprimir QR Code: PDF com layout PMOC (capa legal). Só PMOC. */}
-                  {isPmoc && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePrintQrCode}
-                      disabled={!portalUrl || downloadingQr}
-                      className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                  {portalUrl ? (
+                    <a
+                      href={portalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-md border bg-muted/40 p-2.5 text-xs font-mono break-all min-w-0 hover:bg-muted/60 hover:text-info transition-colors cursor-pointer"
                     >
-                      {downloadingQr ? (
-                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                      ) : (
-                        <Printer className="h-3.5 w-3.5 mr-1" />
-                      )}
-                      Imprimir QR Code
-                    </Button>
+                      {portalUrl}
+                      <ExternalLink className="h-3 w-3 inline ml-1 shrink-0 opacity-60" />
+                    </a>
+                  ) : (
+                    <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+                      Link público em geração. Aguarde alguns instantes.
+                    </div>
                   )}
-                  {canRegenerateToken && (
-                    <Button
-                      variant="destructive-ghost"
-                      size="sm"
-                      onClick={() => setShowRegenerateDialog(true)}
-                      disabled={!publicToken || regenerateToken.isPending}
-                      className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                      Regenerar token
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Equipment */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-            <CardHeader>
-              <CardTitle className="min-w-0 text-base sm:text-lg break-words">Equipamentos do Contrato ({items.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="min-w-0">
-              {items.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">Nenhum equipamento vinculado</p>
-              ) : (
-                <div className="space-y-2 min-w-0">
-                  {items.slice((eqPage - 1) * 5, eqPage * 5).map(item => (
-                    <div key={item.id} className="flex min-w-0 flex-col items-start gap-3 rounded-xl border p-3 sm:flex-row sm:items-center">
-                      <div className="min-w-0 flex-1">
-                        <p className="break-words text-sm font-medium">{item.item_name}</p>
-                        {item.item_description && <p className="break-words text-xs text-muted-foreground">{item.item_description}</p>}
+                  {/* QR à esquerda, botões empilhados à direita (desktop). Mobile empilha tudo. */}
+                  {portalUrl && (
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center min-w-0">
+                      <div
+                        className={cn(
+                          'inline-flex shrink-0 items-center justify-center self-center rounded-xl p-4 transition-colors sm:self-auto',
+                          resolvedTheme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-border',
+                        )}
+                      >
+                        <QRCodeSVG
+                          value={portalUrl}
+                          size={isMobile ? 130 : 160}
+                          bgColor="transparent"
+                          fgColor={resolvedTheme === 'dark' ? '#ffffff' : '#000000'}
+                          level="M"
+                        />
                       </div>
-                      {item.equipment && (
-                        <Badge variant="secondary" className="shrink-0 self-start text-xs sm:self-auto">Equipamento</Badge>
-                      )}
-                    </div>
-                  ))}
-                  {items.length > 5 && (
-                    <div className="flex flex-col items-start gap-2 border-t pt-2 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {(eqPage - 1) * 5 + 1}-{Math.min(eqPage * 5, items.length)} de {items.length}
-                      </span>
-                      <div className="flex w-full gap-2 sm:w-auto">
-                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setEqPage(p => p - 1)} disabled={eqPage <= 1}>Anterior</Button>
-                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setEqPage(p => p + 1)} disabled={eqPage >= Math.ceil(items.length / 5)}>Próxima</Button>
+
+                      <div className="flex w-full flex-col gap-2 sm:flex-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCopyPortalLink}
+                          disabled={!portalUrl}
+                          className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                        >
+                          <Copy className="h-3.5 w-3.5 mr-1" />
+                          Copiar link
+                        </Button>
+                        {/* Imprimir QR Code: PDF com layout PMOC (capa legal). Só PMOC. */}
+                        {isPmoc && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePrintQrCode}
+                            disabled={!portalUrl || downloadingQr}
+                            className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                          >
+                            {downloadingQr ? (
+                              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                            ) : (
+                              <Printer className="h-3.5 w-3.5 mr-1" />
+                            )}
+                            Imprimir QR Code
+                          </Button>
+                        )}
+                        {canRegenerateToken && (
+                          <Button
+                            variant="destructive-ghost"
+                            size="sm"
+                            onClick={() => setShowRegenerateDialog(true)}
+                            disabled={!publicToken || regenerateToken.isPending}
+                            className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                            Regenerar token
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.4";
+export const APP_VERSION = "1.15.5";
 
-export const VERSION_NOTES = "Agora dá pra calcular a carga térmica direto no ambiente do contrato: clique em Calcular, informe as medidas, pessoas, eletrônicos e janelas, e o valor entra preenchido — a mesma calculadora que o técnico usa em campo.";
+export const VERSION_NOTES = "A aba de Equipamentos do contrato ficou mais visual: cada equipamento aparece com foto, marca, modelo e capacidade, e dá pra buscar por nome, marca ou modelo. A lista saiu da Visão Geral pra não repetir, e nos contratos de manutenção a aba passou a se chamar Ambientes e Equipamentos.";

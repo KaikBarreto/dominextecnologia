@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.5',
+    date: '27 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Equipamentos do contrato com foto e busca',
+        description: 'A aba de Equipamentos do contrato ficou mais visual: cada equipamento aparece com a foto, a marca, o modelo e a capacidade, e você pode buscar pelo nome, marca ou modelo. A lista saiu da Visão Geral para não aparecer duplicada, e nos contratos de manutenção a aba passou a se chamar Ambientes e Equipamentos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.4',
     date: '27 de junho de 2026',
     type: 'patch',
