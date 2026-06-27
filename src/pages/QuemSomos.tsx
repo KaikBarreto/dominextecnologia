@@ -152,7 +152,7 @@ function Hero() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to="/#pricing">Ver planos</Link>
+            <Link to="/#precos">Ver planos</Link>
           </Button>
         </div>
       </div>
@@ -271,7 +271,7 @@ function FinalCta() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to="/#pricing">Ver planos</Link>
+            <Link to="/#precos">Ver planos</Link>
           </Button>
         </div>
       </div>

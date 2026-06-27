@@ -6,23 +6,33 @@ import {
   LogIn,
   ChevronDown,
   ClipboardList,
-  ShieldCheck,
-  Users,
-  Wallet,
+  ClipboardCheck,
+  TrendingUp,
+  DollarSign,
   Clock,
   FileText,
+  Receipt,
   UserCircle,
   Package,
-  FileSignature,
-  MapPin,
-  Wrench,
+  Map,
   type LucideProps,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { idealForeground } from '@/lib/colorContrast';
+
+/** Verde da marca Dominex (#00C597) — fallback do CTA fora de páginas de segmento. */
+const BRAND_GREEN = '#00C597';
+
+/**
+ * Imagem REDONDA da Área do Técnico™ — a MESMA do botão flutuante (FAB) do
+ * preenchimento da OS (SpeedDialFAB em TechnicianOS). É um asset remoto no
+ * Storage; aqui só referenciamos a mesma URL pra manter a identidade.
+ */
+const AREA_TECNICO_FAB_IMG =
+  'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/app/ferramentas-tecnico-fab-v4.jpg';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
-import { SEGMENT_NAV_LINKS } from '@/pages/segmentos/segmentsData';
+import { SEGMENT_NAV_LINKS, SEGMENTS } from '@/pages/segmentos/segmentsData';
 import { getSegment } from '@/utils/companySegments';
 
 const navLinks = [
@@ -68,13 +78,32 @@ function segmentAccent(slug: string): { bg: string; fg: string } {
 /**
  * Mega menu de Soluções — uma página por módulo (slugs canônicos definidos com
  * o Tech Lead; as páginas entram no mesmo push). Tagline curta, foco no
- * benefício, PT-BR. Quadradinho na cor de marca (primary) com ícone branco,
- * mesmo padrão dos Segmentos.
+ * benefício, PT-BR.
+ *
+ * REGRA DE ÍCONE (régua CEO): cada módulo usa o MESMO ícone Lucide que a função
+ * tem DENTRO do sistema autenticado (sidebar SidebarMenuContent.tsx / abas das
+ * telas), pra dar continuidade visual entre a vitrine e o produto:
+ *   - Ordem de Serviço      → ClipboardList  (sidebar "Ordens de Serviço")
+ *   - PMOC                  → ClipboardCheck (aba "Histórico PMOC" do contrato)
+ *   - CRM                   → TrendingUp     (sidebar "CRM")
+ *   - Financeiro            → DollarSign     (sidebar grupo "Financeiro")
+ *   - Ponto & Folha         → Clock          (Funcionários → "Controle de Ponto")
+ *   - NFS-e                 → Receipt        (sidebar "Notas Fiscais")
+ *   - Portal do Cliente     → UserCircle     (sem item no sidebar; ícone canônico do módulo)
+ *   - Estoque               → Package        (sidebar "Estoque")
+ *   - Orçamentos & Contratos→ FileText       (sidebar "Orçamentos")
+ *   - Rastreamento & Agenda → Map            (sidebar "Mapa e Rastreamento")
+ *   - Área do Técnico™      → IMAGEM REDONDA do FAB da OS (não é ícone Lucide)
+ *
+ * O ícone fica SOLTO na cor verde da marca (sem quadradinho de fundo).
  */
 interface SolutionLink {
   label: string;
   slug: string;
-  icon: MenuIcon;
+  /** Ícone Lucide do módulo (omitido quando o item usa imagem própria). */
+  icon?: MenuIcon;
+  /** Imagem redonda (só Área do Técnico™ — a mesma do FAB da OS). */
+  image?: string;
   tagline: string;
 }
 
@@ -88,19 +117,19 @@ const SOLUTION_LINKS: SolutionLink[] = [
   {
     label: 'PMOC',
     slug: '/sistema-pmoc',
-    icon: ShieldCheck,
+    icon: ClipboardCheck,
     tagline: 'Relatório PMOC automático pela Lei 13.589/2018.',
   },
   {
     label: 'CRM & Vendas',
     slug: '/sistema-crm',
-    icon: Users,
+    icon: TrendingUp,
     tagline: 'Funil de clientes e propostas até fechar o negócio.',
   },
   {
     label: 'Financeiro',
     slug: '/controle-financeiro',
-    icon: Wallet,
+    icon: DollarSign,
     tagline: 'Contas a pagar, a receber e fluxo de caixa no controle.',
   },
   {
@@ -112,7 +141,7 @@ const SOLUTION_LINKS: SolutionLink[] = [
   {
     label: 'NFS-e',
     slug: '/emissao-de-nfse',
-    icon: FileText,
+    icon: Receipt,
     tagline: 'Emita a nota fiscal de serviço direto pela plataforma.',
   },
   {
@@ -130,19 +159,19 @@ const SOLUTION_LINKS: SolutionLink[] = [
   {
     label: 'Orçamentos & Contratos',
     slug: '/orcamentos-e-contratos',
-    icon: FileSignature,
+    icon: FileText,
     tagline: 'Orçamento aprovado por link vira contrato e OS recorrente.',
   },
   {
     label: 'Rastreamento & Agenda',
     slug: '/rastreamento-de-equipes',
-    icon: MapPin,
+    icon: Map,
     tagline: 'Equipe no mapa ao vivo e rota do dia organizada.',
   },
   {
     label: 'Área do Técnico™',
     slug: '/area-do-tecnico',
-    icon: Wrench,
+    image: AREA_TECNICO_FAB_IMG,
     tagline: 'Calculadoras, gases e catálogo de equipamentos no bolso.',
   },
 ];
@@ -178,6 +207,14 @@ export default function LandingNavbar() {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const location = useLocation();
   const onHome = location.pathname === '/';
+
+  // CTA "Criar Conta": cor do segmento na respectiva landing, verde da marca no
+  // resto. Resolvemos o accentColor pelo slug da rota (mesma fonte que a página
+  // usa pra setar --seg-accent) e calculamos o texto legível por cima — branco
+  // na maioria, escuro só nos acentos claros (solar #eab308, elétrica #f59e0b).
+  const ctaSegment = SEGMENTS[location.pathname.replace(/^\//, '')];
+  const ctaBg = ctaSegment?.accentColor ?? BRAND_GREEN;
+  const ctaFg = idealForeground(ctaBg);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 25);
@@ -343,7 +380,10 @@ export default function LandingNavbar() {
                 />
               </button>
 
-              {/* Mega menu — grid de 3 colunas, quadradinho na cor de marca + ícone branco */}
+              {/* Mega menu — grid de 3 colunas. SEM quadradinho atrás do ícone:
+                  o ícone fica SOLTO no verde da marca (texto-primary). No hover o
+                  card satura em primary e o ícone vira branco pra contraste.
+                  Área do Técnico™ usa a imagem REDONDA do FAB da OS. */}
               {solutionsOpen && (
                 <div
                   role="menu"
@@ -369,14 +409,19 @@ export default function LandingNavbar() {
                             isCurrent && 'bg-primary/10'
                           )}
                         >
-                          <span
-                            className={cn(
-                              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white transition-colors duration-200',
-                              'bg-primary group-hover:bg-white/25 group-focus-visible:bg-white/25'
-                            )}
-                          >
-                            <Icon className="h-[18px] w-[18px]" />
-                          </span>
+                          {sol.image ? (
+                            <img
+                              src={sol.image}
+                              alt=""
+                              aria-hidden="true"
+                              loading="lazy"
+                              className="h-9 w-9 shrink-0 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-primary transition-colors duration-200 group-hover:text-white group-focus-visible:text-white">
+                              {Icon && <Icon className="h-[20px] w-[20px]" />}
+                            </span>
+                          )}
                           <span className="min-w-0">
                             <span
                               className={cn(
@@ -521,7 +566,13 @@ export default function LandingNavbar() {
                 Entrar
               </Link>
             </Button>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+            {/* Criar Conta — verde da marca na home/módulos; cor do segmento na
+                landing daquele segmento. Texto via idealForeground (contraste). */}
+            <Button
+              className="hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: ctaBg, color: ctaFg }}
+              asChild
+            >
               <Link to="/cadastro">Criar Conta</Link>
             </Button>
           </div>
@@ -601,9 +652,19 @@ export default function LandingNavbar() {
                     }}
                     className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-white/65 transition-colors hover:bg-white/5 hover:text-white"
                   >
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-white">
-                      <Icon className="h-4 w-4" />
-                    </span>
+                    {sol.image ? (
+                      <img
+                        src={sol.image}
+                        alt=""
+                        aria-hidden="true"
+                        loading="lazy"
+                        className="h-7 w-7 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-primary">
+                        {Icon && <Icon className="h-[18px] w-[18px]" />}
+                      </span>
+                    )}
                     {sol.label}
                   </Link>
                 );
@@ -670,7 +731,11 @@ export default function LandingNavbar() {
                 Entrar
               </Link>
             </Button>
-            <Button className="w-full bg-primary text-primary-foreground" asChild>
+            <Button
+              className="w-full hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: ctaBg, color: ctaFg }}
+              asChild
+            >
               <Link to="/cadastro">Criar Conta</Link>
             </Button>
           </div>

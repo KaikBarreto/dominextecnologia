@@ -13,6 +13,7 @@ import { captureUtmParams } from '@/lib/whatsapp';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
+import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import type { SegmentData } from './segmentsData';
 
@@ -38,12 +39,14 @@ const SLUG_TO_SEGMENT_VALUE: Record<string, string> = {
   'sistema-para-dedetizacao': 'dedetizacao',
 };
 
-// Monta o link de cadastro carregando origem=Site + segmento pré-selecionado.
+// Monta o link de cadastro com o segmento pré-selecionado. NÃO passamos
+// `origem` de propósito: assim o cadastro exibe a etapa "Como nos conheceu"
+// pro usuário escolher (passar origem=Site fazia o cadastro pular essa etapa).
 // Se o slug não estiver no mapa (segmento sem nicho equivalente no cadastro),
 // cai pro link padrão sem param de segmento.
 function cadastroLink(slug: string): string {
   const value = SLUG_TO_SEGMENT_VALUE[slug];
-  return value ? `/cadastro?origem=Site&segmento=${value}` : '/cadastro?origem=Site';
+  return value ? `/cadastro?segmento=${value}` : '/cadastro';
 }
 
 // A landing de segmento é pública e NUNCA herda o white-label do tenant logado.
@@ -197,7 +200,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to="/#pricing">Ver planos</Link>
+            <Link to="/#precos">Ver planos</Link>
           </Button>
         </div>
       </div>
@@ -246,13 +249,55 @@ function SegmentPains({ data }: { data: SegmentData }) {
           </p>
         </div>
 
-        {/* Tabela estilizada Problema × Solução. Um único cartão "tabela": cabeçalho
-            de duas colunas no desktop, e linhas pareadas. No mobile cada linha
-            empilha a dor (em cima, tom de alerta) e a solução (logo abaixo,
-            destacada no acento do segmento). */}
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)]">
-          {/* Cabeçalho — só no desktop, onde existem duas colunas reais */}
-          <div className="hidden md:grid md:grid-cols-2 border-b border-white/10">
+        {/* MOBILE: cada par vira um card vertical limpo, com respiro generoso.
+            "O problema" em cima (tom de alerta neutro) + "Com o Dominex" embaixo,
+            destacado no acento do segmento. Sem setas espremidas, sem tabela. */}
+        <div className="md:hidden space-y-5">
+          {data.pains.map((p) => (
+            <div
+              key={p.pain}
+              className="overflow-hidden rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)]"
+            >
+              {/* O problema */}
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <XCircle className="h-4 w-4 text-destructive/80 shrink-0" />
+                  <span className="text-[0.7rem] font-bold uppercase tracking-wider text-destructive/80">
+                    O problema
+                  </span>
+                </div>
+                <p className="text-white/55 text-[0.95rem] leading-relaxed">{p.pain}</p>
+              </div>
+
+              {/* Com o Dominex — destacado no acento */}
+              <div
+                className="px-5 pt-4 pb-5 border-t"
+                style={{
+                  borderColor: 'color-mix(in srgb, var(--seg-accent) 22%, hsl(0 0% 100% / 0.08))',
+                  backgroundImage:
+                    'linear-gradient(to bottom, color-mix(in srgb, var(--seg-accent) 9%, transparent), transparent)',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-2.5">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: 'var(--seg-accent)' }} />
+                  <span
+                    className="text-[0.7rem] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--seg-accent)' }}
+                  >
+                    Com o Dominex
+                  </span>
+                </div>
+                <p className="text-white font-medium text-[0.95rem] leading-relaxed">
+                  {p.solution}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* DESKTOP: tabela estilizada Problema × Solução (mantida). */}
+        <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)]">
+          <div className="grid grid-cols-2 border-b border-white/10">
             <div className="flex items-center justify-center gap-2.5 px-7 py-5">
               <XCircle className="h-6 w-6 text-destructive shrink-0" />
               <span className="text-lg sm:text-xl font-bold text-white text-center">
@@ -280,30 +325,16 @@ function SegmentPains({ data }: { data: SegmentData }) {
           {data.pains.map((p, i) => (
             <div
               key={p.pain}
-              className={`group grid md:grid-cols-2 transition-colors hover:bg-white/[0.015] ${
+              className={`group grid grid-cols-2 transition-colors hover:bg-white/[0.015] ${
                 i > 0 ? 'border-t border-white/10' : ''
               }`}
             >
-              {/* Problema */}
-              <div className="flex items-start gap-3 px-6 py-5 sm:px-7 sm:py-6">
+              <div className="flex items-start gap-3 px-7 py-6">
                 <XCircle className="h-5 w-5 text-destructive/70 shrink-0 mt-0.5" />
                 <p className="text-white/55 text-[0.95rem] leading-snug">{p.pain}</p>
               </div>
-
-              {/* Seta de transição dor → solução (mobile: pra baixo / desktop: pra direita) */}
               <div
-                className="md:hidden flex justify-center"
-                aria-hidden="true"
-              >
-                <ArrowRight
-                  className="h-4 w-4 rotate-90 -my-0.5"
-                  style={{ color: 'color-mix(in srgb, var(--seg-accent) 60%, transparent)' }}
-                />
-              </div>
-
-              {/* Solução — destacada no acento do segmento */}
-              <div
-                className="relative flex items-start gap-3 px-6 py-5 sm:px-7 sm:py-6 md:border-l border-t md:border-t-0 border-white/10"
+                className="relative flex items-start gap-3 px-7 py-6 border-l border-white/10"
                 style={{
                   backgroundImage:
                     'linear-gradient(to right, color-mix(in srgb, var(--seg-accent) 6%, transparent), transparent)',
@@ -375,56 +406,38 @@ function SegmentDeepDives({ data }: { data: SegmentData }) {
 
 /* --------------------------- Funcionalidades ----------------------- */
 
+/**
+ * Seção de funcionalidades (scroll-sync estilo SEMRUSH) — extraída para o
+ * componente reutilizável `ScrollSyncFeatures`. Aqui só montamos os dados do
+ * segmento e o CTA. O acento vem de `--seg-accent` (definido no pageStyle).
+ * Mapeia `desc` → `description` (a prop do componente).
+ */
 function SegmentFeatures({ data }: { data: SegmentData }) {
-  const ref = useScrollReveal();
+  const features = data.features.map((f) => ({
+    icon: f.icon,
+    title: f.title,
+    description: f.desc,
+  }));
+
   return (
-    <section className="py-24">
-      <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Tudo que sua operação precisa, em um só lugar
-          </h2>
-          <p className="text-white/40 max-w-2xl mx-auto">
-            Do chamado ao relatório, o Dominex cobre cada etapa do serviço em campo
-          </p>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {data.features.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)] p-6 transition-colors hover:[border-color:color-mix(in_srgb,var(--seg-accent)_30%,transparent)]"
-              >
-                <div
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-xl mb-4 text-white"
-                  style={{ backgroundImage: SEG_ACCENT_BADGE_GRADIENT }}
-                >
-                  <Icon className="h-6 w-6" />
-                </div>
-                <h3 className="font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex justify-center mt-10">
-          <Button
-            size="lg"
-            className="text-white font-semibold px-8 py-6 text-base rounded-xl border-0 transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'var(--seg-accent)' }}
-            asChild
-          >
-            <Link to={cadastroLink(data.slug)}>
-              Teste grátis 14 dias, sem cartão
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </section>
+    <ScrollSyncFeatures
+      features={features}
+      heading="Tudo que sua operação precisa, em um só lugar"
+      subheading="Do chamado ao relatório, o Dominex cobre cada etapa do serviço em campo"
+      footer={
+        <Button
+          size="lg"
+          className="text-white font-semibold px-8 py-6 text-base rounded-xl border-0 transition-opacity hover:opacity-90"
+          style={{ backgroundColor: 'var(--seg-accent)' }}
+          asChild
+        >
+          <Link to={cadastroLink(data.slug)}>
+            Teste grátis 14 dias, sem cartão
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Link>
+        </Button>
+      }
+    />
   );
 }
 
@@ -500,7 +513,7 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
               className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
               asChild
             >
-              <Link to="/#pricing">
+              <Link to="/#precos">
                 Ver todos os planos <ChevronRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
@@ -580,7 +593,7 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to="/#pricing">Ver planos</Link>
+            <Link to="/#precos">Ver planos</Link>
           </Button>
         </div>
       </div>

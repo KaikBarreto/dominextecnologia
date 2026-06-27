@@ -83,8 +83,8 @@ export default function SegmentsSection() {
                   {/* Degradê escuro pra leitura do título */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
 
-                  {/* Overlay "Clique para ver mais" — só hover/focus no desktop (touch não tem hover). */}
-                  <div className="pointer-events-none absolute right-3 top-3 z-10 hidden translate-y-1 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-visible/card:translate-y-0 group-focus-visible/card:opacity-100 sm:block">
+                  {/* Overlay "Clique para ver mais" — canto inferior direito, só hover/focus no desktop (touch não tem hover). */}
+                  <div className="pointer-events-none absolute bottom-3 right-3 z-10 hidden translate-y-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white opacity-0 shadow-sm shadow-black/40 backdrop-blur-sm transition-all duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-visible/card:translate-y-0 group-focus-visible/card:opacity-100 sm:block">
                     Clique para ver mais
                   </div>
 

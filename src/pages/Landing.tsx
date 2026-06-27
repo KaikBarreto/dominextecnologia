@@ -3,7 +3,7 @@ import LandingNavbar from '@/components/landing/LandingNavbar';
 import HeroSection from '@/components/landing/HeroSection';
 import LogosSection from '@/components/landing/LogosSection';
 import ProblemSolutionSection from '@/components/landing/ProblemSolutionSection';
-import FeaturesGrid from '@/components/landing/FeaturesGrid';
+import HomeFeatures from '@/components/landing/HomeFeatures';
 import HowItWorks from '@/components/landing/HowItWorks';
 import ProductMockup from '@/components/landing/ProductMockup';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
@@ -51,7 +51,7 @@ export default function Landing() {
         <HeroSection />
         <LogosSection />
         <ProblemSolutionSection />
-        <FeaturesGrid />
+        <HomeFeatures />
         <HowItWorks />
         <ProductMockup />
         <TestimonialsSection />

@@ -1216,6 +1216,7 @@ const construcaoCivil: SegmentData = {
 const elevadores: SegmentData = {
   slug: 'sistema-para-elevadores',
   accentColor: '#ef4444',
+  veilHueShift: 245, // calibrado no browser: vermelho vivo (longe do laranja)
   navLabel: 'Elevadores',
   icon: Building,
   metaTitle:
