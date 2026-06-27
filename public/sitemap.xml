@@ -107,6 +107,12 @@
     <lastmod>2026-06-27</lastmod>
     <priority>0.9</priority>
   </url>
+  <!-- Blog (lista; posts individuais não entram por serem dinâmicos) -->
+  <url>
+    <loc>https://dominex.app/blog</loc>
+    <lastmod>2026-06-27</lastmod>
+    <priority>0.7</priority>
+  </url>
   <!-- Institucional -->
   <url>
     <loc>https://dominex.app/quem-somos</loc>

@@ -50,7 +50,15 @@ export const PRERENDER_ROUTES = [
   '/area-do-tecnico',
   // Institucional
   '/quem-somos',
+  // Blog (lista). Os posts individuais (/blog/:slug) têm slug DINÂMICO (vêm do
+  // banco) e são descobertos/prerenderizados em runtime: o prerender renderiza
+  // /blog, extrai os links `a[href^="/blog/"]` do DOM e renderiza cada post.
+  // Ver scripts/prerender.mjs → prerenderBlogPosts(). NÃO hardcodar slugs aqui.
+  '/blog',
 ];
+
+/** Prefixo de rota dos posts individuais do blog. */
+export const BLOG_LIST_ROUTE = '/blog';
 
 /**
  * Um trecho de texto que DEVE aparecer no HTML renderizado de uma rota válida
@@ -68,6 +76,14 @@ export const MARKETING_CONTENT_MARKER = '14 dias';
  * a rota caiu no catch-all NotFound. Usado para detectar rota inexistente.
  */
 export const NOT_FOUND_MARKER = 'Página não Encontrada';
+
+/**
+ * Marcador do estado "post não encontrado" DENTRO do BlogPost (slug que não
+ * existe / não está publicado). Esse estado NÃO cai no NotFound da SPA nem
+ * contém o CTA "14 dias", então precisa de detecção própria pra não salvarmos
+ * um 404 amigável como se fosse post. Ajuste se a copy de BlogPost mudar.
+ */
+export const BLOG_POST_NOT_FOUND_MARKER = 'Artigo não encontrado';
 
 /** Porta usada pelo `vite preview` durante o prerender. */
 export const PREVIEW_PORT = 4178;

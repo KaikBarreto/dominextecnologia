@@ -24,7 +24,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { StepTransition } from '@/components/ui/step-transition';
 import { getSelectableSegments } from '@/utils/companySegments';
-import { ORIGIN_OPTIONS } from '@/utils/companyOrigins';
+import { ORIGIN_OPTIONS, getOrigin } from '@/utils/companyOrigins';
 import { SelectableCardGrid } from '@/components/registration/SelectableCardGrid';
 
 interface RegistrationFormData {
@@ -165,6 +165,11 @@ export default function Registration() {
     (explicitOrigin && explicitOrigin !== 'Site' ? explicitOrigin : null) ??
     getLeadOriginLabel() ??
     (explicitOrigin || null);
+  // Quando a origem da URL corresponde a uma OPÇÃO do catálogo (ex.: ?origem=Blog),
+  // a etapa Origem NÃO é pulada: ela aparece com o card já PRÉ-SELECIONADO e a pessoa
+  // confirma no Continuar (mesma UX da pré-seleção de Segmento). Para origens que não
+  // são opção do catálogo (UTM mapeada, string livre, etc.) mantém-se o pulo histórico.
+  const originIsCatalogOption = !!getOrigin(originFromUrl);
   // Sales-link params
   const linkType = searchParams.get('tipo'); // 'teste' | 'venda'
   const lockedPlan = searchParams.get('plano') || null;
@@ -176,8 +181,10 @@ export default function Registration() {
   const referrer = searchParams.get('vendedor'); // referral_code do closer
   const sdrReferrer = searchParams.get('sdr'); // referral_code do SDR (opcional)
   // Pula a etapa Origem quando a origem veio de algum param de URL
-  // (origem explícita/UTM, indicação `ref` ou vendedor).
-  const skipOriginStep = !!(originFromUrl || refCode || referrer);
+  // (origem explícita/UTM, indicação `ref` ou vendedor) — EXCETO quando a origem
+  // é uma opção do catálogo (ex.: ?origem=Blog), caso em que a etapa fica visível
+  // com o card pré-selecionado pra a pessoa confirmar.
+  const skipOriginStep = !originIsCatalogOption && !!(originFromUrl || refCode || referrer);
   const isSale = linkType === 'venda';
   // Plano personalizado: módulos à la carte + máx. usuários vindos do link
   const lockedModulesParam = searchParams.get('modulos');

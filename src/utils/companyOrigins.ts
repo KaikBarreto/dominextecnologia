@@ -1,7 +1,7 @@
 import { ComponentType } from 'react';
 import {
   Search, Instagram, Facebook, Youtube, Users, Music2,
-  Megaphone, MoreHorizontal,
+  Megaphone, MoreHorizontal, BookOpen,
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 
@@ -27,6 +27,7 @@ export const ORIGIN_OPTIONS: CompanyOrigin[] = [
   { value: 'Indicação de amigo',   label: 'Indicação de amigo',  color: '#10b981', icon: Users,          description: 'Alguém recomendou' },
   { value: 'TikTok',               label: 'TikTok',              color: '#1f2937', icon: Music2,          description: 'Vídeo ou anúncio' },
   { value: 'Grupos de WhatsApp',   label: 'Grupos de WhatsApp',  color: '#25d366', icon: WhatsAppIcon,    description: 'Contato ou grupo' },
+  { value: 'Blog',                 label: 'Blog',                color: '#0ea5e9', icon: BookOpen,       description: 'Artigo no nosso blog' },
   { value: 'Anúncio / Propaganda', label: 'Anúncio / Propaganda', color: '#f97316', icon: Megaphone,     description: 'Publicidade paga' },
   { value: 'Outro',                label: 'Outro',               color: '#6b7280', icon: MoreHorizontal,  description: 'Outra forma' },
 ];

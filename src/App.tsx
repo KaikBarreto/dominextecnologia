@@ -87,6 +87,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfUse from "./pages/TermsOfUse";
 import QuemSomos from "./pages/QuemSomos";
 import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CODE-SPLITTING POR ROTA — performance da landing pública.
@@ -148,6 +149,8 @@ const AdminCompanies = React.lazy(() => import("./pages/admin/AdminCompanies"));
 const AdminCompanyDetail = React.lazy(() => import("./pages/admin/AdminCompanyDetail"));
 const AdminHealthScore = React.lazy(() => import("./pages/admin/AdminHealthScore"));
 const AdminDashboard = React.lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminBlog = React.lazy(() => import("./pages/admin/AdminBlog"));
+const AdminBlogEditor = React.lazy(() => import("./pages/admin/AdminBlogEditor"));
 const AdminFinancial = React.lazy(() => import("./pages/admin/AdminFinancial"));
 const AdminCRM = React.lazy(() => import("./pages/admin/AdminCRM"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
@@ -460,6 +463,7 @@ const AppRoutes = () => (
     {/* Páginas institucionais / legais públicas — linkadas no rodapé. */}
     <Route path="/quem-somos" element={<QuemSomos />} />
     <Route path="/blog" element={<Blog />} />
+    <Route path="/blog/:slug" element={<BlogPost />} />
     <Route path="/privacidade" element={<PrivacyPolicy />} />
     <Route path="/termos" element={<TermsOfUse />} />
 
@@ -558,6 +562,9 @@ const AppRoutes = () => (
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />
+      <Route path="/admin/blog" element={<AdminScreenRoute screenKey="admin_blog"><AdminBlog /></AdminScreenRoute>} />
+      <Route path="/admin/blog/novo" element={<AdminScreenRoute screenKey="admin_blog"><AdminBlogEditor /></AdminScreenRoute>} />
+      <Route path="/admin/blog/:id" element={<AdminScreenRoute screenKey="admin_blog"><AdminBlogEditor /></AdminScreenRoute>} />
       <Route path="/admin/empresas" element={<AdminScreenRoute screenKey="admin_empresas"><AdminCompanies /></AdminScreenRoute>} />
       <Route path="/admin/empresas/:id" element={<AdminScreenRoute screenKey="admin_empresas"><AdminCompanyDetail /></AdminScreenRoute>} />
       <Route path="/admin/health-score" element={<AdminScreenRoute screenKey="admin_health_score"><AdminHealthScore /></AdminScreenRoute>} />

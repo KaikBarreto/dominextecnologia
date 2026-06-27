@@ -223,6 +223,54 @@ export default function ScrollSyncFeatures({
     !pinEnabled
   );
 
+  // Refs dos títulos do desktop, usados quando o pin está desligado (fallback)
+  // pra centralizar via scrollIntoView no clique.
+  const desktopItemsRef = useRef<Array<HTMLElement | null>>([]);
+
+  /**
+   * Clique num item (desktop). Inverso EXATO da fórmula de
+   * `usePinScrollActiveIndex`:
+   *   progress = (scrollY - containerTop) / scrollable
+   *   idx      = floor(progress * count)
+   * Pra ativar i, miramos o meio da faixa: p_i = (i + 0.5) / count, então
+   *   targetScrollY = containerTop + p_i * scrollable
+   * onde containerTop = rect.top + scrollY e scrollable = offsetHeight - vh.
+   *
+   * Sem pin (reduced-motion / desktop legado), o ativo vem do centro: aí
+   * caímos no centralizar o título correspondente.
+   */
+  const handleItemActivate = (i: number) => {
+    const el = tallRef.current;
+    if (pinEnabled && el) {
+      const count = features.length;
+      const vh = window.innerHeight;
+      const scrollable = el.offsetHeight - vh;
+      if (scrollable <= 0 || count <= 1) return;
+      const rect = el.getBoundingClientRect();
+      const containerTop = rect.top + window.scrollY;
+      const p = (i + 0.5) / count;
+      const targetScrollY = containerTop + p * scrollable;
+      window.scrollTo({
+        top: targetScrollY,
+        behavior: reduced ? 'auto' : 'smooth',
+      });
+      return;
+    }
+    // Sem pin: centraliza o título (ativo é por centro de viewport).
+    const node = desktopItemsRef.current[i];
+    node?.scrollIntoView({
+      behavior: reduced ? 'auto' : 'smooth',
+      block: 'center',
+    });
+  };
+
+  const setDesktopItemRef =
+    (i: number) => (el: HTMLElement | null) => {
+      desktopItemsRef.current[i] = el;
+      // Quando o pin está off, o hook de centro também precisa dessas refs.
+      if (!pinEnabled) setItemRef(i)(el);
+    };
+
   return (
     <section id={sectionId} className="py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -257,8 +305,10 @@ export default function ScrollSyncFeatures({
             <DesktopGrid
               features={features}
               active={pinEnabled ? pinActive : centerActive}
-              // Sem pin (reduced-motion), precisamos medir cada título pelo centro.
-              setItemRef={pinEnabled ? undefined : setItemRef}
+              // Refs dos títulos: usados pra medir pelo centro (pin off) e pra
+              // centralizar no clique do fallback. Sempre setados.
+              setItemRef={setDesktopItemRef}
+              onActivate={handleItemActivate}
             />
           </div>
         </div>
@@ -268,6 +318,7 @@ export default function ScrollSyncFeatures({
           features={features}
           active={centerActive}
           setItemRef={setItemRef}
+          reduced={reduced}
         />
 
         {footer ? <div className="flex justify-center mt-12">{footer}</div> : null}
@@ -282,22 +333,29 @@ function DesktopGrid({
   features,
   active,
   setItemRef,
+  onActivate,
 }: {
   features: ScrollSyncFeature[];
   active: number;
   setItemRef?: (i: number) => (el: HTMLElement | null) => void;
+  /** Atalho de clique/teclado: rola até o item i ficar ativo. */
+  onActivate: (i: number) => void;
 }) {
   return (
     <div className="grid grid-cols-2 gap-12 xl:gap-16 items-center w-full">
-      {/* Coluna de títulos */}
+      {/* Coluna de títulos — itens clicáveis (atalho até o item ativo). */}
       <ul className="space-y-2">
         {features.map((f, i) => {
           const Icon = f.icon;
           const isActive = i === active;
           return (
             <li key={f.title} ref={setItemRef ? setItemRef(i) : undefined}>
-              <div
-                className="flex items-center gap-4 rounded-2xl px-5 py-4 transition-all duration-300"
+              <button
+                type="button"
+                onClick={() => onActivate(i)}
+                aria-label={`Ir para ${f.title}`}
+                aria-current={isActive ? 'true' : undefined}
+                className="group w-full text-left flex items-center gap-4 rounded-2xl px-5 py-4 transition-all duration-300 cursor-pointer hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 style={
                   isActive
                     ? {
@@ -322,7 +380,7 @@ function DesktopGrid({
                 >
                   {f.title}
                 </h3>
-              </div>
+              </button>
             </li>
           );
         })}
@@ -377,21 +435,40 @@ function MobileList({
   features,
   active,
   setItemRef,
+  reduced,
 }: {
   features: ScrollSyncFeature[];
   active: number;
   setItemRef: (i: number) => (el: HTMLElement | null) => void;
+  reduced: boolean;
 }) {
+  // Refs locais dos cards pra centralizar no clique (o ativo é por centro de
+  // viewport, então scrollIntoView block:'center' resolve).
+  const cardsRef = useRef<Array<HTMLElement | null>>([]);
+  const activate = (i: number) => {
+    cardsRef.current[i]?.scrollIntoView({
+      behavior: reduced ? 'auto' : 'smooth',
+      block: 'center',
+    });
+  };
+
   return (
     <div className="lg:hidden space-y-4">
       {features.map((f, i) => {
         const Icon = f.icon;
         const isActive = i === active;
         return (
-          <div
+          <button
             key={f.title}
-            ref={setItemRef(i)}
-            className="rounded-2xl border p-5 transition-all duration-300"
+            type="button"
+            ref={(el) => {
+              setItemRef(i)(el);
+              cardsRef.current[i] = el;
+            }}
+            onClick={() => activate(i)}
+            aria-label={`Ir para ${f.title}`}
+            aria-current={isActive ? 'true' : undefined}
+            className="w-full text-left rounded-2xl border p-5 transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             style={{
               borderColor: isActive
                 ? `color-mix(in srgb, ${ACCENT} 40%, transparent)`
@@ -420,7 +497,7 @@ function MobileList({
                 </p>
               </div>
             </div>
-          </div>
+          </button>
         );
       })}
     </div>

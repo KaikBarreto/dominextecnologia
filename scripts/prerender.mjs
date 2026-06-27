@@ -18,6 +18,8 @@ import {
   PRERENDER_ROUTES,
   MARKETING_CONTENT_MARKER,
   NOT_FOUND_MARKER,
+  BLOG_LIST_ROUTE,
+  BLOG_POST_NOT_FOUND_MARKER,
   PREVIEW_PORT,
 } from './prerender.config.mjs';
 
@@ -100,6 +102,156 @@ function routeToOutputPath(route) {
   return join(DIST, clean, 'index.html');
 }
 
+// ── Renderiza UMA rota no headless e devolve o HTML "assentado" ───────────────
+// Mesma lógica de settle (espera o #root encher e estabilizar) usada por TODAS
+// as rotas — fixas e posts de blog. Devolve `null` se não conseguiu HTML.
+async function renderRoute(browser, route) {
+  const url = `${BASE_URL}${route}`;
+  const page = await browser.newPage();
+  // Marca pra qualquer código client que queira pular efeitos no prerender.
+  await page.evaluateOnNewDocument(() => {
+    // localStorage limpo: garante que NENHUM tenant/white-label vaze para o
+    // HTML prerenderizado. O HTML sai com a marca padrão Dominex.
+    try {
+      window.localStorage.clear();
+    } catch {
+      /* noop */
+    }
+    // Sinaliza ambiente de prerender (disponível pra quem quiser checar).
+    window.__PRERENDER__ = true;
+  });
+  await page.setViewport({ width: 1280, height: 900 });
+
+  // Aborta mídia pesada (vídeo/imagem do hero, fontes externas): não afeta o
+  // texto de marketing no DOM e impede que `networkidle` nunca settle por
+  // causa de stream de vídeo. CSS/JS continuam carregando normalmente.
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const type = req.resourceType();
+    if (type === 'media' || type === 'image' || type === 'font') {
+      req.abort().catch(() => {});
+    } else {
+      req.continue().catch(() => {});
+    }
+  });
+
+  let html = null;
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    // Espera o React montar conteúdo real dentro do #root.
+    await page
+      .waitForFunction(
+        () => {
+          const root = document.getElementById('root');
+          return !!root && root.textContent && root.textContent.trim().length > 200;
+        },
+        { timeout: 20000 }
+      )
+      .catch(() => {});
+
+    // SETTLE: rotas inexistentes caem no catch-all `/:osId` (OSRedirect) que
+    // só renderiza <NotFound /> APÓS montar. E o `<Navigate>` de SegmentRoute
+    // redireciona pra `/` depois do mount. No caso dos posts, o BlogPost faz um
+    // fetch async no Supabase: o conteúdo (dangerouslySetInnerHTML) só aparece
+    // DEPOIS que a query resolve. Esperar a app ficar ESTÁVEL (texto do #root
+    // sem mudar) cobre os três casos antes de serializar.
+    await page
+      .waitForFunction(
+        () => {
+          const root = document.getElementById('root');
+          if (!root) return false;
+          const now = (root.textContent || '').length;
+          const prev = window.__lastLen || 0;
+          window.__lastLen = now;
+          window.__stableCount = now === prev ? (window.__stableCount || 0) + 1 : 0;
+          return window.__stableCount >= 3;
+        },
+        { timeout: 15000, polling: 300 }
+      )
+      .catch(() => {});
+
+    html = await page.content();
+  } finally {
+    await page.close();
+  }
+  return html;
+}
+
+// ── Descobre os slugs de posts a partir do DOM renderizado de /blog ───────────
+// Abordagem: DOM (não REST). A lista /blog renderiza `<a href="/blog/<slug>">`
+// pra cada post publicado (cards + "Mais lidos" da sidebar). Extrair daqui:
+//   • não precisa da anon key nem acoplar o script ao .env/cliente;
+//   • já vem naturalmente escopado a `status=published` (as duas queries da
+//     página filtram por isso) — sem risco de prerenderizar rascunho;
+//   • zero hardcode de slug: qualquer post novo aparece sozinho.
+// Determinístico: ordenamos os slugs (sem Date.now/Math.random).
+function extractBlogSlugs(blogListHtml) {
+  if (!blogListHtml) return [];
+  const slugs = new Set();
+  // href="/blog/<slug>" — captura o segmento após /blog/. Exclui a própria
+  // /blog (sem slug) e qualquer href com mais de um segmento.
+  const re = /href="\/blog\/([^"/?#]+)"/g;
+  let m;
+  while ((m = re.exec(blogListHtml)) !== null) {
+    const slug = m[1].trim();
+    if (slug && slug !== 'blog') slugs.add(slug);
+  }
+  return [...slugs].sort();
+}
+
+// ── Prerenderiza cada post de blog descoberto ────────────────────────────────
+// Salva em dist/blog/<slug>/index.html com a MESMA lógica de settle das outras
+// rotas. Validade do post (pra NÃO salvar o 404 amigável "Artigo não
+// encontrado" como se fosse post):
+//   1. NÃO contém o NotFound da SPA (NOT_FOUND_MARKER);
+//   2. NÃO contém o "Artigo não encontrado" do BlogPost (slug inválido);
+//   3. CONTÉM o CTA "14 dias" (MARKETING_CONTENT_MARKER) — só o post renderizado
+//      tem o CTA final; o estado de erro não tem;
+//   4. CONTÉM um <article ...> com texto — o corpo do post vive dentro de
+//      <article> (o estado de erro renderiza só uma <div>, sem <article>).
+// Graceful: 0 posts → não gera nada, loga "0 posts" e NÃO quebra o build.
+async function prerenderBlogPosts(browser, blogListHtml, results) {
+  const slugs = extractBlogSlugs(blogListHtml);
+  if (slugs.length === 0) {
+    console.log('[prerender] 0 posts de blog publicados — nenhuma página de post gerada.');
+    return;
+  }
+  console.log(`[prerender] ${slugs.length} post(s) de blog descoberto(s) no DOM de /blog.`);
+
+  for (const slug of slugs) {
+    const route = `${BLOG_LIST_ROUTE}/${slug}`;
+    const html = await renderRoute(browser, route);
+
+    if (!html) {
+      results.push({ route, status: 'skip', reason: 'sem HTML' });
+      continue;
+    }
+    if (html.includes(NOT_FOUND_MARKER)) {
+      results.push({ route, status: 'skip', reason: 'rota inexistente (NotFound da SPA)' });
+      continue;
+    }
+    if (html.includes(BLOG_POST_NOT_FOUND_MARKER)) {
+      results.push({ route, status: 'skip', reason: 'post não encontrado (slug inválido)' });
+      continue;
+    }
+    if (!html.includes(MARKETING_CONTENT_MARKER)) {
+      results.push({ route, status: 'skip', reason: 'sem CTA — post não renderizou' });
+      continue;
+    }
+    // <article ...> com conteúdo: o corpo do post real vive aqui; o estado de
+    // erro renderiza só uma <div>, então a ausência de <article> = não é post.
+    if (!/<article[\s>]/i.test(html)) {
+      results.push({ route, status: 'skip', reason: 'sem <article> — não é post válido' });
+      continue;
+    }
+
+    const outPath = routeToOutputPath(route);
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, html, 'utf8');
+    results.push({ route, status: 'ok', out: outPath });
+  }
+}
+
 async function main() {
   if (!existsSync(join(DIST, 'index.html'))) {
     console.error('[prerender] dist/index.html não existe. Rode `vite build` antes.');
@@ -141,74 +293,10 @@ async function main() {
       ],
     });
 
+    let blogListHtml = null;
+
     for (const route of PRERENDER_ROUTES) {
-      const url = `${BASE_URL}${route}`;
-      const page = await browser.newPage();
-      // Marca pra qualquer código client que queira pular efeitos no prerender.
-      await page.evaluateOnNewDocument(() => {
-        // localStorage limpo: garante que NENHUM tenant/white-label vaze para o
-        // HTML prerenderizado. O HTML sai com a marca padrão Dominex.
-        try {
-          window.localStorage.clear();
-        } catch {
-          /* noop */
-        }
-        // Sinaliza ambiente de prerender (disponível pra quem quiser checar).
-        window.__PRERENDER__ = true;
-      });
-      await page.setViewport({ width: 1280, height: 900 });
-
-      // Aborta mídia pesada (vídeo/imagem do hero, fontes externas): não afeta o
-      // texto de marketing no DOM e impede que `networkidle` nunca settle por
-      // causa de stream de vídeo. CSS/JS continuam carregando normalmente.
-      await page.setRequestInterception(true);
-      page.on('request', (req) => {
-        const type = req.resourceType();
-        if (type === 'media' || type === 'image' || type === 'font') {
-          req.abort().catch(() => {});
-        } else {
-          req.continue().catch(() => {});
-        }
-      });
-
-      let html = null;
-      try {
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        // Espera o React montar conteúdo real dentro do #root.
-        await page
-          .waitForFunction(
-            () => {
-              const root = document.getElementById('root');
-              return !!root && root.textContent && root.textContent.trim().length > 200;
-            },
-            { timeout: 20000 }
-          )
-          .catch(() => {});
-
-        // SETTLE: rotas inexistentes caem no catch-all `/:osId` (OSRedirect) que
-        // só renderiza <NotFound /> APÓS montar. E o `<Navigate>` de SegmentRoute
-        // redireciona pra `/` depois do mount. Sem esperar o roteador estabilizar,
-        // a checagem de NotFound dá falso-positivo/negativo (corrida). Esperamos a
-        // app ficar ESTÁVEL (texto do #root sem mudar) antes de serializar.
-        await page
-          .waitForFunction(
-            () => {
-              const root = document.getElementById('root');
-              if (!root) return false;
-              const now = (root.textContent || '').length;
-              const prev = window.__lastLen || 0;
-              window.__lastLen = now;
-              window.__stableCount = now === prev ? (window.__stableCount || 0) + 1 : 0;
-              return window.__stableCount >= 3;
-            },
-            { timeout: 15000, polling: 300 }
-          )
-          .catch(() => {});
-
-        html = await page.content();
-      } finally {
-        await page.close();
-      }
+      const html = await renderRoute(browser, route);
 
       if (!html) {
         results.push({ route, status: 'skip', reason: 'sem HTML' });
@@ -232,7 +320,17 @@ async function main() {
       mkdirSync(dirname(outPath), { recursive: true });
       writeFileSync(outPath, html, 'utf8');
       results.push({ route, status: 'ok', out: outPath });
+
+      // Guarda o HTML da lista de blog pra extrair os slugs dos posts depois.
+      if (route === BLOG_LIST_ROUTE) blogListHtml = html;
     }
+
+    // ── Posts individuais do blog (slug dinâmico, vindos do banco) ───────────
+    // NOTA: posts publicados DEPOIS deste build só viram HTML estático no
+    // próximo build/deploy. No meio-tempo o Google ainda os indexa porque
+    // executa JS (a SPA renderiza o post normalmente) — só os crawlers que NÃO
+    // rodam JS (alguns bots de LLM) é que ficam sem o conteúdo até o rebuild.
+    await prerenderBlogPosts(browser, blogListHtml, results);
   } finally {
     if (browser) await browser.close();
     preview.kill('SIGTERM');
