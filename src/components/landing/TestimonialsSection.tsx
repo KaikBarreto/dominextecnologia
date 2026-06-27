@@ -50,8 +50,10 @@ export default function TestimonialsSection() {
               <div className="flex items-center gap-3">
                 <img
                   src={t.avatar}
-                  alt={t.name}
+                  alt={`Foto de ${t.name}, ${t.role} na ${t.company}`}
                   loading="lazy"
+                  width={40}
+                  height={40}
                   className="h-10 w-10 rounded-full object-cover"
                 />
                 <div>

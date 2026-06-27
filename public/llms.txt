@@ -1,0 +1,25 @@
+# Dominex
+
+> Sistema de ordem de serviço, PMOC e gestão para empresas de refrigeração, climatização e equipes de campo.
+
+O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital, funcionando mesmo offline. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza e dedetização. Teste grátis por 14 dias, sem cartão de crédito.
+
+## Páginas principais
+
+- [Home](https://dominex.app/): visão geral do Dominex, planos, recursos e perguntas frequentes.
+- [Sistema para Refrigeração](https://dominex.app/sistema-para-refrigeracao): gestão de OS e PMOC para empresas de refrigeração e climatização.
+- [Sistema para Eletricistas](https://dominex.app/sistema-para-eletricistas): ordens de serviço e equipes de campo para instalações elétricas.
+- [Sistema para Energia Solar](https://dominex.app/sistema-para-energia-solar): gestão de instalações e manutenção de energia solar.
+- [Sistema para Provedores](https://dominex.app/sistema-para-provedores): OS e campo para provedores de internet e telecomunicações.
+- [Sistema para CFTV](https://dominex.app/sistema-para-cftv): gestão de instalações de CFTV e segurança eletrônica.
+- [Sistema para Construção Civil](https://dominex.app/sistema-para-construcao-civil): controle de equipes e serviços na construção civil.
+- [Sistema para Elevadores](https://dominex.app/sistema-para-elevadores): manutenção e contratos recorrentes para empresas de elevadores.
+- [Sistema para Limpeza e Conservação](https://dominex.app/sistema-para-limpeza-conservacao): gestão de equipes de limpeza e conservação predial.
+- [Sistema para Dedetização](https://dominex.app/sistema-para-dedetizacao): ordens de serviço e contratos para empresas de dedetização.
+- [Sistema PMOC](https://dominex.app/sistema-pmoc): geração automática de OS de PMOC e calendário de manutenção por equipamento.
+- [OS Digital](https://dominex.app/os-digital): ordens de serviço digitais com fotos, checklist e assinatura.
+- [Novidades](https://dominex.app/changelog): histórico de atualizações e novos recursos do Dominex.
+
+## Sobre
+
+- [Dominex](https://dominex.app/): conheça o sistema e comece o teste grátis 14 dias, sem cartão de crédito.

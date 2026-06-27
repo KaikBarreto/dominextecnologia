@@ -1,7 +1,33 @@
 User-agent: *
 Allow: /
+Allow: /quem-somos
 Allow: /privacidade
 Allow: /termos
+# Landing pages de segmento e palavra-chave (SEO) — indexáveis.
+Allow: /sistema-para-refrigeracao
+Allow: /sistema-para-eletricistas
+Allow: /sistema-para-energia-solar
+Allow: /sistema-para-provedores
+Allow: /sistema-para-cftv
+Allow: /sistema-para-construcao-civil
+Allow: /sistema-para-elevadores
+Allow: /sistema-para-limpeza-conservacao
+Allow: /sistema-para-dedetizacao
+Allow: /sistema-pmoc
+Allow: /os-digital
+# Landing pages de módulo / Soluções (SEO) — indexáveis. Allow explícito
+# porque alguns slugs colidem por prefixo com rotas internas bloqueadas
+# abaixo (ex.: /ponto-e-folha vs /ponto, /orcamentos-e-contratos vs
+# /orcamentos). Allow mais específico vence no matching do Google.
+Allow: /sistema-crm
+Allow: /controle-financeiro
+Allow: /ponto-e-folha
+Allow: /emissao-de-nfse
+Allow: /portal-do-cliente
+Allow: /controle-de-estoque
+Allow: /orcamentos-e-contratos
+Allow: /rastreamento-de-equipes
+Allow: /area-do-tecnico
 # Portal PMOC público (Onda B v1.9.1) — indexável pelo Google.
 # Rota interna /pmoc continua bloqueada logo abaixo.
 Allow: /pmoc/unidade/

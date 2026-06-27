@@ -22,12 +22,21 @@ export default function HeroSection() {
     return () => clearTimeout(timeout);
   }, [typedCount]);
 
-  const preTyped = FULL_TEXT_PRE.slice(0, Math.min(typedCount, FULL_TEXT_PRE.length));
-  const highlightTyped =
-    typedCount > FULL_TEXT_PRE.length
-      ? FULL_TEXT_HIGHLIGHT.slice(0, typedCount - FULL_TEXT_PRE.length)
-      : '';
   const isDone = typedCount >= TOTAL_LENGTH;
+
+  // O texto COMPLETO fica sempre no DOM (crawler/prerender/leitor de tela veem
+  // a frase inteira desde o load). A animação de "typing" é apenas um reveal
+  // visual por opacidade — nenhum caractere é removido do DOM em momento algum.
+  const renderTyped = (text: string, offset: number) =>
+    text.split('').map((char, i) => (
+      <span
+        key={i}
+        style={{ opacity: offset + i < typedCount ? 1 : 0 }}
+        className="transition-opacity duration-75"
+      >
+        {char}
+      </span>
+    ));
 
   return (
     <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
@@ -48,16 +57,27 @@ export default function HeroSection() {
           {/* Left — texto (depois do video no mobile) */}
           <div className="space-y-8 order-2 lg:order-1 text-center lg:text-left">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[2.5em]">
-              <span>{preTyped}</span>
-              <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
-                {highlightTyped}
+              {/* Texto estável keyword-rico para SEO/leitores de tela —
+                  invisível visualmente, mas é conteúdo real do H1 lido por SR. */}
+              <span className="sr-only">
+                Sistema de ordem de serviço, PMOC e gestão para refrigeração e
+                equipes de campo. Domine a execução do seu negócio.
               </span>
-              <span
-                aria-hidden="true"
-                className={`inline-block w-[3px] sm:w-[4px] lg:w-[5px] h-[0.9em] -mb-[0.1em] ml-1 bg-primary align-middle ${
-                  isDone ? 'animate-caret-blink' : ''
-                }`}
-              />
+              {/* Frase visível COMPLETA, sempre presente no DOM (crawler/prerender
+                  capturam a frase inteira no load). O "typing" é só reveal por
+                  opacidade. aria-hidden p/ não duplicar leitura no SR. */}
+              <span aria-hidden="true">
+                <span>{renderTyped(FULL_TEXT_PRE, 0)}</span>
+                <span className="whitespace-nowrap bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
+                  {renderTyped(FULL_TEXT_HIGHLIGHT, FULL_TEXT_PRE.length)}
+                </span>
+                <span
+                  className={`inline-block w-[3px] sm:w-[4px] lg:w-[5px] h-[0.9em] -mb-[0.1em] ml-1 bg-primary align-middle ${
+                    isDone ? 'animate-caret-blink' : ''
+                  }`}
+                  style={{ opacity: typedCount > 0 ? 1 : 0 }}
+                />
+              </span>
             </h1>
 
             <p className="text-lg text-white/50 max-w-xl mx-auto lg:mx-0 leading-relaxed">
@@ -79,7 +99,7 @@ export default function HeroSection() {
                 className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
                 asChild
               >
-                <a href="#pricing">Ver planos</a>
+                <a href="#precos">Ver planos</a>
               </Button>
             </div>
           </div>
@@ -119,6 +139,8 @@ export default function HeroSection() {
                 src={iphoneFrame}
                 alt=""
                 aria-hidden="true"
+                width={880}
+                height={1832}
                 draggable={false}
                 className="pointer-events-none select-none absolute inset-0 h-full w-full"
               />

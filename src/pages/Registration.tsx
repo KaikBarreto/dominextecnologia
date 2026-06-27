@@ -23,7 +23,7 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { StepTransition } from '@/components/ui/step-transition';
-import { COMPANY_SEGMENTS } from '@/utils/companySegments';
+import { getSelectableSegments } from '@/utils/companySegments';
 import { ORIGIN_OPTIONS } from '@/utils/companyOrigins';
 import { SelectableCardGrid } from '@/components/registration/SelectableCardGrid';
 
@@ -155,6 +155,11 @@ export default function Registration() {
   // Origem vinda da URL: truthy SÓ quando há param/UTM real. Sem isso é null
   // → a etapa Origem APARECE no cadastro normal (`/cadastro` puro).
   const explicitOrigin = searchParams.get('origem');
+  // Segmento vindo de uma página de nicho do site (?segmento=cftv, etc.).
+  // Só é aceito se for um segmento SELECIONÁVEL (os 9 do site + 'outro'); valores
+  // inválidos/legados são ignorados. Pré-seleciona o card na etapa Segmento sem
+  // auto-avançar — a pessoa confirma no Continuar.
+  const segmentFromUrl = searchParams.get('segmento');
   const refCode = searchParams.get('ref'); // referral_code de indicação
   const originFromUrl =
     (explicitOrigin && explicitOrigin !== 'Site' ? explicitOrigin : null) ??
@@ -186,6 +191,18 @@ export default function Registration() {
     // Sem origem na URL → '' (usuário escolhe na etapa Origem). Nunca null no state string.
     setSelectedOrigin(originFromUrl || '');
   }, [originFromUrl]);
+
+  // Pré-seleciona o segmento quando vem de uma página de nicho (?segmento=...).
+  // Validamos contra getSelectableSegments() pra aceitar só os 9 do site + 'outro'
+  // (ignora valores inválidos/legados). IMPORTANTE: só setamos o state (card fica
+  // marcado) — NÃO chamamos advanceFromSegment/handleSegmentSelect, pra não disparar
+  // o auto-avanço do card. A pessoa continua vendo a etapa Segmento e confirma no
+  // botão Continuar. Pré-seleção ≠ clique simulado.
+  useEffect(() => {
+    if (!segmentFromUrl) return;
+    const isSelectable = getSelectableSegments().some(s => s.value === segmentFromUrl);
+    if (isSelectable) setCompanySegment(segmentFromUrl);
+  }, [segmentFromUrl]);
 
   const { register, handleSubmit, watch, formState: { errors }, trigger } = useForm<RegistrationFormData>();
   const emailValue = watch('company_email');
@@ -656,7 +673,7 @@ export default function Registration() {
                   <SelectableCardGrid
                     title="Qual o segmento do seu negócio?"
                     subtitle="Selecione pra personalizar sua experiência"
-                    options={COMPANY_SEGMENTS}
+                    options={getSelectableSegments()}
                     selectedValue={companySegment}
                     onSelect={handleSegmentSelect}
                   />

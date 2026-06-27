@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTermsOfService } from '@/hooks/useTermsOfService';
-import { TermsOfServiceModal } from './TermsOfServiceModal';
+
+// O modal de Termos puxa o gerador de PDF (jspdf/html2canvas, ~400KB gzip). Esse
+// peso NÃO pode entrar no entry da landing: este wrapper é montado app-wide, mas
+// o modal só aparece pra usuário autenticado (1º aceite) ou sob demanda. Lazy +
+// render condicional tira jspdf do caminho do primeiro paint da landing.
+const TermsOfServiceModal = lazy(() =>
+  import('./TermsOfServiceModal').then((m) => ({ default: m.TermsOfServiceModal }))
+);
 
 /**
  * Envolve as rotas autenticadas e força o aceite dos Termos de Uso no PRIMEIRO
@@ -73,23 +80,24 @@ export const TermsOfServiceWrapper = ({ children }: { children: React.ReactNode 
   const showTermsModal =
     !!user && initialLoadDone && !hasAccepted && !isBlockedRoute;
 
+  // Só montamos o modal (e baixamos seu chunk com o jspdf) quando ele REALMENTE
+  // vai abrir. Em landing/login/visitante anônimo nada é carregado.
   return (
     <>
       {children}
-      {/* Modal de ACEITE obrigatório (1º acesso): trava o fechamento. */}
-      <TermsOfServiceModal
-        open={showTermsModal}
-        // Modo obrigatório: o modal ignora qualquer tentativa de fechar que não
-        // seja via aceite. Passamos noop por segurança.
-        onOpenChange={() => {}}
-      />
-      {/* Modal de LEITURA sob demanda (readOnly): aberto via evento global
-          'dominex:open-terms'. Independente do aceite — fecha normalmente. */}
-      <TermsOfServiceModal
-        readOnly
-        open={showReadOnlyTerms}
-        onOpenChange={setShowReadOnlyTerms}
-      />
+      {showTermsModal && (
+        <Suspense fallback={null}>
+          {/* Modal de ACEITE obrigatório (1º acesso): trava o fechamento. */}
+          <TermsOfServiceModal open onOpenChange={() => {}} />
+        </Suspense>
+      )}
+      {showReadOnlyTerms && (
+        <Suspense fallback={null}>
+          {/* Modal de LEITURA sob demanda (readOnly): aberto via evento global
+              'dominex:open-terms'. Independente do aceite — fecha normalmente. */}
+          <TermsOfServiceModal readOnly open onOpenChange={setShowReadOnlyTerms} />
+        </Suspense>
+      )}
     </>
   );
 };

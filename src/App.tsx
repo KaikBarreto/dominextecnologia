@@ -59,73 +59,116 @@ import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
 
 // Pages
 import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import Registration from "./pages/Registration";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import ServiceOrders from "./pages/ServiceOrders";
-import ServicesPage from "./pages/Services";
-import ChecklistDetail from "./pages/ChecklistDetail";
-import Schedule from "./pages/Schedule";
-import Customers from "./pages/Customers";
-import CustomerDetail from "./pages/CustomerDetail";
-import EquipmentPage from "./pages/Equipment";
-import EquipmentDetail from "./pages/EquipmentDetail";
-import CRM from "./pages/CRM";
-import Inventory from "./pages/Inventory";
-import Finance from "./pages/Finance";
-import FiscalSettings from "./pages/FiscalSettings";
-import NotasFiscais from "./pages/NotasFiscais";
-import PMOC from "./pages/PMOC";
-import Contracts from "./pages/Contracts";
-import ContractDetail from "./pages/ContractDetail";
-import ContractSettings from "./pages/ContractSettings";
-import Users from "./pages/Users";
-import Settings from "./pages/Settings";
-import Profile from "./pages/Profile";
-import Teams from "./pages/Teams";
-import TechnicianArea from "./pages/TechnicianArea";
+// Landings de segmento (SEO) — públicas, sem redirect. Data-driven em src/pages/segmentos.
+import SistemaParaRefrigeracao from "./pages/segmentos/SistemaParaRefrigeracao";
+import SistemaParaEletricistas from "./pages/segmentos/SistemaParaEletricistas";
+import SistemaParaEnergiaSolar from "./pages/segmentos/SistemaParaEnergiaSolar";
+import SistemaParaProvedores from "./pages/segmentos/SistemaParaProvedores";
+import SistemaParaCftv from "./pages/segmentos/SistemaParaCftv";
+import SistemaParaConstrucaoCivil from "./pages/segmentos/SistemaParaConstrucaoCivil";
+import SistemaParaElevadores from "./pages/segmentos/SistemaParaElevadores";
+import SistemaParaLimpezaConservacao from "./pages/segmentos/SistemaParaLimpezaConservacao";
+import SistemaParaDedetizacao from "./pages/segmentos/SistemaParaDedetizacao";
+// Landings de módulo (aba "Soluções", SEO) — públicas, sem redirect. Data-driven
+// em src/pages/modulos. Uma rota por slug de modulesData; o prerender captura.
+import OsDigital from "./pages/modulos/OsDigital";
+import SistemaPmoc from "./pages/modulos/SistemaPmoc";
+import CrmModulo from "./pages/modulos/CrmModulo";
+import ControleFinanceiro from "./pages/modulos/ControleFinanceiro";
+import PontoEFolha from "./pages/modulos/PontoEFolha";
+import EmissaoDeNfse from "./pages/modulos/EmissaoDeNfse";
+import PortalDoCliente from "./pages/modulos/PortalDoCliente";
+import ControleDeEstoque from "./pages/modulos/ControleDeEstoque";
+import OrcamentosEContratos from "./pages/modulos/OrcamentosEContratos";
+import RastreamentoDeEquipes from "./pages/modulos/RastreamentoDeEquipes";
+import AreaDoTecnico from "./pages/modulos/AreaDoTecnico";
+// Páginas legais públicas — pequenas, mantidas EAGER (linkadas no rodapé da landing).
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfUse from "./pages/TermsOfUse";
+import QuemSomos from "./pages/QuemSomos";
+import Blog from "./pages/Blog";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CODE-SPLITTING POR ROTA — performance da landing pública.
+//
+// As páginas de MARKETING (Landing, /sistema-para-*, /os-digital, etc. acima) e
+// as legais ficam EAGER: precisam estar no caminho mais curto do primeiro paint
+// e o prerender (scripts/prerender.mjs) exige que o H1 real já esteja no DOM.
+//
+// Todo o resto — app autenticado (dashboard, OS, financeiro, admin, Domiflix),
+// auth e rotas públicas pontuais (portal, orçamento, ponto) — vira React.lazy:
+// o visitante da landing NÃO baixa mais o app inteiro no entry chunk. O fallback
+// de Suspense é leve (<PageLoading/>) e nunca aparece no prerender porque o
+// prerender só visita rotas de marketing (todas eager).
+// ─────────────────────────────────────────────────────────────────────────────
+const Auth = React.lazy(() => import("./pages/Auth"));
+const Registration = React.lazy(() => import("./pages/Registration"));
+const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
+const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const ServiceOrders = React.lazy(() => import("./pages/ServiceOrders"));
+const ServicesPage = React.lazy(() => import("./pages/Services"));
+const ChecklistDetail = React.lazy(() => import("./pages/ChecklistDetail"));
+const Schedule = React.lazy(() => import("./pages/Schedule"));
+const Customers = React.lazy(() => import("./pages/Customers"));
+const CustomerDetail = React.lazy(() => import("./pages/CustomerDetail"));
+const EquipmentPage = React.lazy(() => import("./pages/Equipment"));
+const EquipmentDetail = React.lazy(() => import("./pages/EquipmentDetail"));
+const CRM = React.lazy(() => import("./pages/CRM"));
+const Inventory = React.lazy(() => import("./pages/Inventory"));
+const Finance = React.lazy(() => import("./pages/Finance"));
+const FiscalSettings = React.lazy(() => import("./pages/FiscalSettings"));
+const NotasFiscais = React.lazy(() => import("./pages/NotasFiscais"));
+const PMOC = React.lazy(() => import("./pages/PMOC"));
+const Contracts = React.lazy(() => import("./pages/Contracts"));
+const ContractDetail = React.lazy(() => import("./pages/ContractDetail"));
+const ContractSettings = React.lazy(() => import("./pages/ContractSettings"));
+const Users = React.lazy(() => import("./pages/Users"));
+const Settings = React.lazy(() => import("./pages/Settings"));
+const Profile = React.lazy(() => import("./pages/Profile"));
+const TechnicianArea = React.lazy(() => import("./pages/TechnicianArea"));
 // Lazy: TechnicianOS importa o anonClient. Carregando sob demanda,
 // o bundle do /login fica livre de inicializar dois GoTrueClient na mesma aba.
 const TechnicianOS = React.lazy(() => import("./pages/TechnicianOS"));
-import NotFound from "./pages/NotFound";
-import Changelog from "./pages/Changelog";
-// Tutorials removed — replaced by Domiflix
-import Employees from "./pages/Employees";
-import PontoPublico from "./pages/PontoPublico";
-import Billing from "./pages/Billing";
-import TechnicianTracking from "./pages/TechnicianTracking";
-import LiveMap from "./pages/LiveMap";
-import Checkout from "./pages/Checkout";
-import Quotes from "./pages/Quotes";
-import QuotePublic from "./pages/QuotePublic";
-import ProposalPublic from "./pages/ProposalPublic";
-import CustomerPortal from "./pages/CustomerPortal";
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+const Changelog = React.lazy(() => import("./pages/Changelog"));
+const Employees = React.lazy(() => import("./pages/Employees"));
+const PontoPublico = React.lazy(() => import("./pages/PontoPublico"));
+const Billing = React.lazy(() => import("./pages/Billing"));
+const LiveMap = React.lazy(() => import("./pages/LiveMap"));
+const Checkout = React.lazy(() => import("./pages/Checkout"));
+const Quotes = React.lazy(() => import("./pages/Quotes"));
+const QuotePublic = React.lazy(() => import("./pages/QuotePublic"));
+const ProposalPublic = React.lazy(() => import("./pages/ProposalPublic"));
+const CustomerPortal = React.lazy(() => import("./pages/CustomerPortal"));
 // Portal PMOC público (Onda B — v1.9.1). Lazy: rota pública sem auth,
 // só carrega quando o cliente final escaneia o QR Code.
 const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPortal"));
 
-import AdminCompanies from "./pages/admin/AdminCompanies";
-import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
-import AdminHealthScore from "./pages/admin/AdminHealthScore";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminFinancial from "./pages/admin/AdminFinancial";
-import AdminCRM from "./pages/admin/AdminCRM";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminSalespeople from "./pages/admin/AdminSalespeople";
-import AdminSalespersonDetail from "./pages/admin/AdminSalespersonDetail";
-import AdminDomiflix from "./pages/admin/AdminDomiflix";
+const AdminCompanies = React.lazy(() => import("./pages/admin/AdminCompanies"));
+const AdminCompanyDetail = React.lazy(() => import("./pages/admin/AdminCompanyDetail"));
+const AdminHealthScore = React.lazy(() => import("./pages/admin/AdminHealthScore"));
+const AdminDashboard = React.lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminFinancial = React.lazy(() => import("./pages/admin/AdminFinancial"));
+const AdminCRM = React.lazy(() => import("./pages/admin/AdminCRM"));
+const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
+const AdminSalespeople = React.lazy(() => import("./pages/admin/AdminSalespeople"));
+const AdminSalespersonDetail = React.lazy(() => import("./pages/admin/AdminSalespersonDetail"));
+const AdminDomiflix = React.lazy(() => import("./pages/admin/AdminDomiflix"));
 
-// Domiflix
-import { DomiflixLayout } from "@/components/domiflix/DomiflixLayout";
-import DomiflixHome from "./pages/Domiflix";
-import DomiflixTitle from "./pages/DomiflixTitle";
-import DomiflixWatch from "./pages/DomiflixWatch";
-import DomiflixMinhaLista from "./pages/DomiflixMinhaLista";
-import DomiflixAvatarPicker from "./pages/DomiflixAvatarPicker";
+// Domiflix — fullscreen, fora do caminho da landing → tudo lazy.
+const DomiflixLayout = React.lazy(() =>
+  import("@/components/domiflix/DomiflixLayout").then((m) => ({ default: m.DomiflixLayout }))
+);
+const DomiflixHome = React.lazy(() => import("./pages/Domiflix"));
+const DomiflixTitle = React.lazy(() => import("./pages/DomiflixTitle"));
+const DomiflixWatch = React.lazy(() => import("./pages/DomiflixWatch"));
+const DomiflixMinhaLista = React.lazy(() => import("./pages/DomiflixMinhaLista"));
+const DomiflixAvatarPicker = React.lazy(() => import("./pages/DomiflixAvatarPicker"));
 
-// Layout
-import { AppLayout } from "@/components/layout/AppLayout";
+// Layout — só carrega quando entra numa rota autenticada (lazy).
+const AppLayout = React.lazy(() =>
+  import("@/components/layout/AppLayout").then((m) => ({ default: m.AppLayout }))
+);
 import { PageLoading } from "@/components/ui/page-loading";
 
 const queryClient = new QueryClient();
@@ -384,6 +427,41 @@ const AppRoutes = () => (
   <Routes>
     {/* Landing page — public, no redirect */}
     <Route path="/" element={<Landing />} />
+
+    {/* Landings de segmento (SEO) — públicas, sem redirect. Uma rota por slug
+        de segmentsData; o prerender captura os slugs automaticamente. */}
+    <Route path="/sistema-para-refrigeracao" element={<SistemaParaRefrigeracao />} />
+    <Route path="/sistema-para-eletricistas" element={<SistemaParaEletricistas />} />
+    <Route path="/sistema-para-energia-solar" element={<SistemaParaEnergiaSolar />} />
+    <Route path="/sistema-para-provedores" element={<SistemaParaProvedores />} />
+    <Route path="/sistema-para-cftv" element={<SistemaParaCftv />} />
+    <Route path="/sistema-para-construcao-civil" element={<SistemaParaConstrucaoCivil />} />
+    <Route path="/sistema-para-elevadores" element={<SistemaParaElevadores />} />
+    <Route path="/sistema-para-limpeza-conservacao" element={<SistemaParaLimpezaConservacao />} />
+    <Route path="/sistema-para-dedetizacao" element={<SistemaParaDedetizacao />} />
+
+    {/* Landings de módulo (aba "Soluções", SEO) — públicas, sem redirect. Uma
+        rota por slug de modulesData; o prerender captura os slugs.
+        NOTA: o slug do módulo CRM é /sistema-crm porque /crm já é a tela
+        AUTENTICADA do CRM (bloco protegido abaixo). Colisão de path devolvida
+        ao Tech Lead — ver retorno do dev. */}
+    <Route path="/os-digital" element={<OsDigital />} />
+    <Route path="/sistema-pmoc" element={<SistemaPmoc />} />
+    <Route path="/sistema-crm" element={<CrmModulo />} />
+    <Route path="/controle-financeiro" element={<ControleFinanceiro />} />
+    <Route path="/ponto-e-folha" element={<PontoEFolha />} />
+    <Route path="/emissao-de-nfse" element={<EmissaoDeNfse />} />
+    <Route path="/portal-do-cliente" element={<PortalDoCliente />} />
+    <Route path="/controle-de-estoque" element={<ControleDeEstoque />} />
+    <Route path="/orcamentos-e-contratos" element={<OrcamentosEContratos />} />
+    <Route path="/rastreamento-de-equipes" element={<RastreamentoDeEquipes />} />
+    <Route path="/area-do-tecnico" element={<AreaDoTecnico />} />
+
+    {/* Páginas institucionais / legais públicas — linkadas no rodapé. */}
+    <Route path="/quem-somos" element={<QuemSomos />} />
+    <Route path="/blog" element={<Blog />} />
+    <Route path="/privacidade" element={<PrivacyPolicy />} />
+    <Route path="/termos" element={<TermsOfUse />} />
 
     {/* Auth routes */}
     <Route

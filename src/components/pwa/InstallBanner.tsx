@@ -48,7 +48,7 @@ export function InstallBanner() {
           <div className="flex-1">
             <p className="font-semibold text-sm text-foreground">Instalar Dominex</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Adicione à tela inicial para acesso rápido, mesmo offline.
+              Adicione à tela inicial para abrir rápido, como um app.
             </p>
             <div className="flex gap-2 mt-3">
               <Button size="sm" onClick={handleInstall} className="h-7 text-xs">

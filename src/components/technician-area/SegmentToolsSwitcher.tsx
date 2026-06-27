@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { getSiteSegments, getSegment } from '@/utils/companySegments';
 
 interface SegmentToolsSwitcherProps {
   /** Nicho atualmente selecionado (pode diferir do da empresa). */
@@ -36,9 +36,10 @@ export function SegmentToolsSwitcher({
   const [open, setOpen] = useState(false);
   const selectedSeg = getSegment(selected);
 
-  // Nichos: tira "Outro", coloca o da empresa primeiro, demais na ordem do catálogo.
+  // Nichos do switcher = os 9 do site (com landing + ferramentas). "Outro" e os
+  // legados não entram. Coloca o da empresa primeiro, demais na ordem do catálogo.
   const options = useMemo(() => {
-    const list = COMPANY_SEGMENTS.filter((s) => s.value !== 'outro');
+    const list = getSiteSegments();
     return list.sort((a, b) => {
       if (a.value === companySegment) return -1;
       if (b.value === companySegment) return 1;

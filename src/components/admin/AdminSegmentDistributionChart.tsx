@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Briefcase } from 'lucide-react';
-import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { getSegment } from '@/utils/companySegments';
 
 interface Props {
   companies: any[];
@@ -18,7 +18,7 @@ export function AdminSegmentDistributionChart({ companies }: Props) {
     });
     return Object.entries(counts)
       .map(([value, count]) => {
-        const seg = getSegment(value) || COMPANY_SEGMENTS[COMPANY_SEGMENTS.length - 1];
+        const seg = getSegment(value) || getSegment('outro')!;
         return { name: seg.label, value: count, color: seg.color, key: value };
       })
       .sort((a, b) => b.value - a.value);

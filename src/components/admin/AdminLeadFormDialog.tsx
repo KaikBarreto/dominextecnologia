@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { phoneMask } from '@/utils/masks';
-import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { getSelectableSegments, getSegment } from '@/utils/companySegments';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
@@ -321,7 +321,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
                       )}
                     </SelectTrigger>
                     <SelectContent>
-                      {COMPANY_SEGMENTS.map(s => (
+                      {getSelectableSegments().map(s => (
                         <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
                           <div className="flex items-center gap-2">
                             <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>

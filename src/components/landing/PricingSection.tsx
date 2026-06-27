@@ -94,7 +94,7 @@ export default function PricingSection() {
   const ref = useScrollReveal();
 
   return (
-    <section id="pricing" className="py-24">
+    <section id="precos" className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
           Planos que crescem com a sua operação
@@ -104,6 +104,9 @@ export default function PricingSection() {
           <span className={cn('text-sm font-medium', !annual ? 'text-white' : 'text-white/40')}>Mensal</span>
           <button
             onClick={() => setAnnual(!annual)}
+            role="switch"
+            aria-checked={annual}
+            aria-label="Alternar entre cobrança mensal e anual"
             className={cn('relative h-7 w-12 rounded-full transition-colors', annual ? 'bg-primary' : 'bg-white/20')}
           >
             <div

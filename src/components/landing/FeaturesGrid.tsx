@@ -36,7 +36,7 @@ const FEATURES = [
   {
     icon: Smartphone,
     title: 'App para o Técnico',
-    desc: 'Aplicativo mobile offline-first. O técnico recebe OS, faz check-in, tira fotos e coleta assinatura — sem papel. Funciona mesmo sem internet.',
+    desc: 'Aplicativo instalável no celular (PWA). O técnico recebe a OS, faz check-in, tira fotos e coleta a assinatura do cliente — tudo no celular, direto do campo e sem papel.',
   },
 ];
 
@@ -46,7 +46,7 @@ export default function FeaturesGrid() {
   const sectionRef = useScrollReveal();
 
   return (
-    <section id="features" className="py-24">
+    <section id="recursos" className="py-24">
       <div ref={sectionRef} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -165,6 +165,7 @@ function FeaturesShowcaseMobile({ activeIndex, setActiveIndex }: { activeIndex: 
         <button
           onClick={() => navigate(-1)}
           disabled={activeIndex === 0}
+          aria-label="Recurso anterior"
           className="shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-white/5 text-white/60 disabled:opacity-30 transition-opacity"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -189,6 +190,7 @@ function FeaturesShowcaseMobile({ activeIndex, setActiveIndex }: { activeIndex: 
         <button
           onClick={() => navigate(1)}
           disabled={activeIndex === FEATURES.length - 1}
+          aria-label="Próximo recurso"
           className="shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-white/5 text-white/60 disabled:opacity-30 transition-opacity"
         >
           <ChevronRight className="h-4 w-4" />
@@ -214,10 +216,12 @@ function FeaturesShowcaseMobile({ activeIndex, setActiveIndex }: { activeIndex: 
 
           {/* Dots indicator */}
           <div className="flex justify-center gap-1.5 mt-4">
-            {FEATURES.map((_, i) => (
+            {FEATURES.map((f, i) => (
               <button
                 key={i}
                 onClick={() => setActiveIndex(i)}
+                aria-label={`Ver recurso: ${f.title}`}
+                aria-current={i === activeIndex}
                 className={cn(
                   'h-2 rounded-full transition-all',
                   i === activeIndex ? 'w-5 bg-primary' : 'w-2 bg-white/20'

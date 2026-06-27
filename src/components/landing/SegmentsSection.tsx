@@ -1,9 +1,18 @@
+import { Link } from 'react-router-dom';
 import { Thermometer, Zap, Sun, Radio, Shield, HardHat, Building, Sparkles, Droplets } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { SEGMENTS } from '@/pages/segmentos/segmentsData';
 
 // Para trocar por foto real depois: basta apontar `image` para o asset definitivo
 // (ex: '/images/segments/refrigeracao.jpg'). O onError cai no placeholder.svg.
 const PLACEHOLDER = '/placeholder.svg';
+
+// Fonte canônica de slug + cor de acento por segmento: SEGMENTS (keyed por slug,
+// com `navLabel` espelhando os labels abaixo). Montamos um índice por label pra
+// não duplicar slugs/cores aqui — consistência interna com as landings de nicho.
+const SEGMENT_BY_LABEL = Object.fromEntries(
+  Object.values(SEGMENTS).map((s) => [s.navLabel, { slug: s.slug, color: s.accentColor }]),
+) as Record<string, { slug: string; color: string }>;
 
 const segments = [
   { icon: Thermometer, label: 'Refrigeração e Climatização', image: '/images/segments/refrigeracao.jpg' },
@@ -25,7 +34,7 @@ export default function SegmentsSection() {
   const ref = useScrollReveal();
 
   return (
-    <section id="segments" className="py-24 overflow-hidden">
+    <section id="segmentos" className="py-24 overflow-hidden">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
           Para qualquer empresa com equipe em campo
@@ -43,35 +52,56 @@ export default function SegmentsSection() {
           className="flex w-max gap-4 animate-marquee-slow sm:gap-6 md:animate-marquee-mid group-hover:[animation-play-state:paused] motion-reduce:animate-none"
           aria-label="Segmentos atendidos"
         >
-          {marqueeItems.map((s, i) => (
-            <li
-              key={`${s.label}-${i}`}
-              aria-hidden={i >= segments.length ? true : undefined}
-              className="group/card relative aspect-[4/3] w-72 shrink-0 overflow-hidden rounded-2xl border border-white/10 transition-colors hover:border-primary/40 sm:w-80 lg:w-[26rem]"
-            >
-              {/* Imagem de fundo */}
-              <img
-                src={s.image}
-                alt={s.label}
-                loading="lazy"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
-                }}
-                className="absolute inset-0 h-full w-full bg-white/[0.03] object-cover transition-transform duration-500 group-hover/card:scale-105"
-              />
+          {marqueeItems.map((s, i) => {
+            const meta = SEGMENT_BY_LABEL[s.label];
+            const isClone = i >= segments.length;
+            return (
+              <li
+                key={`${s.label}-${i}`}
+                aria-hidden={isClone ? true : undefined}
+                className="shrink-0"
+              >
+                <Link
+                  to={meta ? `/${meta.slug}` : '#'}
+                  aria-label={`Ver Dominex para ${s.label}`}
+                  tabIndex={isClone ? -1 : undefined}
+                  className="group/card relative block aspect-[4/3] w-72 cursor-pointer overflow-hidden rounded-2xl border border-white/10 transition-colors hover:border-primary/40 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-80 lg:w-[26rem]"
+                >
+                  {/* Imagem de fundo */}
+                  <img
+                    src={s.image}
+                    alt={`Dominex para ${s.label}`}
+                    loading="lazy"
+                    width={416}
+                    height={312}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                    }}
+                    className="absolute inset-0 h-full w-full bg-white/[0.03] object-cover transition-transform duration-500 group-hover/card:scale-105"
+                  />
 
-              {/* Degradê escuro pra leitura do título */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
+                  {/* Degradê escuro pra leitura do título */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
 
-              {/* Ícone + título sobre o degradê */}
-              <div className="absolute inset-x-0 bottom-0 flex flex-col items-start gap-2 p-4 text-left sm:p-5">
-                <s.icon className="h-6 w-6 text-primary/80 transition-colors group-hover/card:text-primary" />
-                <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">
-                  {s.label}
-                </h3>
-              </div>
-            </li>
-          ))}
+                  {/* Overlay "Clique para ver mais" — só hover/focus no desktop (touch não tem hover). */}
+                  <div className="pointer-events-none absolute right-3 top-3 z-10 hidden translate-y-1 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-visible/card:translate-y-0 group-focus-visible/card:opacity-100 sm:block">
+                    Clique para ver mais
+                  </div>
+
+                  {/* Ícone (na cor do segmento) + título sobre o degradê */}
+                  <div className="absolute inset-x-0 bottom-0 flex flex-col items-start gap-2 p-4 text-left sm:p-5">
+                    <s.icon
+                      className="h-6 w-6 transition-transform group-hover/card:scale-110"
+                      style={{ color: meta?.color }}
+                    />
+                    <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">
+                      {s.label}
+                    </h3>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </section>

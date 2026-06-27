@@ -20,7 +20,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { getSelectableSegments, getSegment } from '@/utils/companySegments';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 
 interface CompanyTableProps {
@@ -257,7 +257,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="py-2 max-h-[320px]">
-                              {COMPANY_SEGMENTS.map((s) => (
+                              {getSelectableSegments().map((s) => (
                                 <SelectItem key={s.value} value={s.value} className="py-2">
                                   <Badge className="text-white border-0 gap-1" style={{ backgroundColor: s.color }}>
                                     <s.icon className="h-3 w-3" />

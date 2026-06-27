@@ -73,4 +73,32 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // ESTRATÉGIA DE CHUNKING — minimalista de propósito.
+        //
+        // O ganho real da landing vem do code-splitting POR ROTA (React.lazy em
+        // App.tsx): o entry deixou de ser um monolito de 8MB e as libs pesadas
+        // (recharts, leaflet, jspdf/xlsx, tiptap, ogl) passam a viver nos chunks
+        // LAZY das telas internas que as usam — nunca tocam a landing.
+        //
+        // LIÇÃO MEDIDA (não reverter sem medir): forçar essas libs em
+        // manualChunks PRÓPRIOS é CONTRAPRODUCENTE. O rollup hoista um símbolo
+        // compartilhado pro entry e passa a IMPORTAR ESTATICAMENTE o vendor
+        // inteiro — então a landing pré-carregava recharts/jspdf à toa, e o
+        // último vendor da lista sempre virava âncora do entry. Deixar o rollup
+        // distribuir essas libs nos chunks lazy mantém o entry da landing limpo.
+        // (Também evita o TDZ que aparece ao fatiar react/radix/supabase.)
+        //
+        // Único override: fixar o helper `__vitePreload` num chunk leaf próprio.
+        // Sem isso o rollup o ancora dentro de um vendor pesado e o entry arrasta
+        // esse vendor só pelo helper. É folha, sem ciclo → TDZ-safe.
+        manualChunks(id) {
+          if (id.includes("vite/preload-helper")) return "vite-preload-helper";
+          return undefined;
+        },
+      },
+    },
+  },
 }));

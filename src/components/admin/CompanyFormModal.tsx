@@ -20,7 +20,7 @@ import {
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
   Tag, Briefcase, Link2, Layers,
 } from 'lucide-react';
-import { COMPANY_SEGMENTS } from '@/utils/companySegments';
+import { getSelectableSegments } from '@/utils/companySegments';
 import { Switch } from '@/components/ui/switch';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
@@ -851,7 +851,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum</SelectItem>
-                    {COMPANY_SEGMENTS.map((s) => {
+                    {getSelectableSegments().map((s) => {
                       const Icon = s.icon;
                       return (
                         <SelectItem key={s.value} value={s.value}>

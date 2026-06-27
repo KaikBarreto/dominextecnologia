@@ -26,7 +26,7 @@ export default function HowItWorks() {
   const ref = useScrollReveal();
 
   return (
-    <section id="how-it-works" className="py-24">
+    <section id="como-funciona" className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
           Simples de começar, poderoso para escalar
