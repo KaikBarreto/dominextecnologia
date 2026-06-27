@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
-import { Loader2, Camera, Link2, Unlink, Calculator, Clock, Copy } from 'lucide-react';
+import { Loader2, Camera, Link2, Calculator, Clock, Copy } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,6 +65,10 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [paymentDay, setPaymentDay] = useState<number>(5);
   const [paymentDay2, setPaymentDay2] = useState<number>(20);
   const [paymentWeekday, setPaymentWeekday] = useState<number>(5);
+  const TAB_DADOS = 'dados';
+  const TAB_REMUNERACAO = 'remuneracao';
+  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO;
+  const [activeTab, setActiveTab] = useState<TabKey>(TAB_DADOS);
 
   type EmployeeDraft = { name: string; cpf: string; phone: string; email: string; position: string; salary: string; hireDate: string; address: string; pixKey: string };
   const draft = useFormDraft<EmployeeDraft>({ key: 'employee-form', isOpen: open, isEditing });
@@ -116,6 +121,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setUseTemporaryPassword(false);
       setPassword('');
       setLinkedUserId(employee?.user_id || null);
+      setActiveTab(TAB_DADOS);
     }
   }, [open, employee?.id]);
 
@@ -144,10 +150,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { toast({ variant: 'destructive', title: 'Nome é obrigatório' }); return; }
-    if (createAccess && !email.trim()) { toast({ variant: 'destructive', title: 'Email é obrigatório para criar acesso' }); return; }
+    if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: 'Nome é obrigatório' }); return; }
+    if (parseCurrency(salary) <= 0) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: 'Salário é obrigatório' }); return; }
+    if (createAccess && !email.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: 'Email é obrigatório para criar acesso' }); return; }
     const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
-    if (createAccess && finalPassword.length < 6) { toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
+    if (createAccess && finalPassword.length < 6) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
     draft.clearDraft();
     onSubmit({
       name: name.trim(),
@@ -191,16 +198,51 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         }}
       />
       <form onSubmit={handleSubmit} className="space-y-4 p-1">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="space-y-4">
+          <TabsList className="mx-auto flex w-full max-w-md">
+            <TabsTrigger
+              value={TAB_DADOS}
+              className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Dados
+            </TabsTrigger>
+            <TabsTrigger
+              value={TAB_REMUNERACAO}
+              className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Remuneração & Acesso
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={TAB_DADOS} className="space-y-4">
         {/* Photo */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-1.5">
           <label className="cursor-pointer relative group">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={photoUrl || undefined} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xl">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              {uploading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
-            </div>
+            {photoUrl ? (
+              <>
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={photoUrl} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xl">{initials}</AvatarFallback>
+                </Avatar>
+                {/* Overlay de troca aparece no hover/toque */}
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                </div>
+              </>
+            ) : (
+              // Vazio: dica visual clara de upload — borda tracejada + câmera sempre visível
+              <div className="h-20 w-20 rounded-full border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center transition-colors group-hover:bg-primary/10 group-hover:border-primary">
+                {uploading ? (
+                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6 text-primary" />
+                )}
+              </div>
+            )}
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+          </label>
+          <label className="cursor-pointer text-xs font-medium text-primary hover:underline">
+            {photoUrl ? 'Trocar foto' : 'Adicionar foto do funcionário'}
             <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
           </label>
         </div>
@@ -226,6 +268,24 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <Label>Cargo</Label>
             <Input value={position} onChange={e => setPosition(e.target.value)} placeholder="Ex: Técnico" />
           </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Endereço</Label>
+            <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Endereço completo" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Data de Admissão</Label>
+            <Input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Chave PIX</Label>
+            <Input value={pixKey} onChange={e => setPixKey(pixKeyMask(e.target.value))} placeholder="CPF, email, telefone ou chave aleatória" />
+          </div>
+        </div>
+
+          </TabsContent>
+
+          <TabsContent value={TAB_REMUNERACAO} className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Salário *</Label>
             <Input value={salary} onChange={e => setSalary(currencyMask(e.target.value))} placeholder="R$ 0,00" />
@@ -240,18 +300,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">Salário + encargos + benefícios</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Data de Admissão</Label>
-            <Input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Endereço</Label>
-            <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Endereço completo" />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Chave PIX</Label>
-            <Input value={pixKey} onChange={e => setPixKey(pixKeyMask(e.target.value))} placeholder="CPF, email, telefone ou chave aleatória" />
           </div>
         </div>
 
@@ -350,8 +398,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <LabeledSwitch
               value={pontoEnabled ? 'on' : 'off'}
               onChange={(v) => setPontoEnabled(v === 'on')}
-              off={{ value: 'off', label: 'Off' }}
-              on={{ value: 'on', label: 'On' }}
+              off={{ value: 'off', label: 'Desativado' }}
+              on={{ value: 'on', label: 'Ativado' }}
               aria-label="Ponto eletrônico ativado"
             />
           </div>
@@ -457,7 +505,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
+          </TabsContent>
+        </Tabs>
+
+        {/* Rodapé de ações fixo — sempre visível independente da aba ativa */}
+        <div className="flex justify-end gap-2 pt-2 border-t mt-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button type="submit" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

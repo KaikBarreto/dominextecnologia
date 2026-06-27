@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.3',
+    date: '26 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de funcionário reorganizado em abas',
+        description: 'O cadastro e a edição de funcionário ficaram mais simples: os campos agora estão separados em duas abas — Dados e Remuneração & Acesso — e você pode salvar a qualquer momento, em qualquer aba. A foto ficou mais fácil de adicionar, os campos foram reorganizados e o botão de ponto eletrônico agora mostra Ativado/Desativado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.2',
     date: '26 de junho de 2026',
     type: 'patch',

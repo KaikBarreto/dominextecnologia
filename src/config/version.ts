@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.2";
+export const APP_VERSION = "1.15.3";
 
-export const VERSION_NOTES = "Tela de ponto por link repaginada (cabeçalho com foto do funcionário, linha do tempo das batidas e identidade da sua empresa) e Funcionários agora em lista ou cards, com cartão mais compacto.";
+export const VERSION_NOTES = "Cadastro de funcionário reorganizado em abas (Dados e Remuneração & Acesso), com salvar a qualquer momento, foto mais fácil de adicionar e botão de ponto Ativado/Desativado.";
