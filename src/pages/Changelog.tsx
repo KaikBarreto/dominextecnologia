@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.4',
+    date: '27 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Calcular carga térmica direto no ambiente do contrato',
+        description: 'Ao cadastrar ou editar um ambiente no contrato de manutenção, agora dá pra calcular a carga térmica ali mesmo: clique em Calcular, informe as medidas do ambiente, a quantidade de pessoas, eletrônicos e janelas, e se há incidência de sol — o valor já entra preenchido no campo. É a mesma calculadora que o técnico usa nas ferramentas de campo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.15.3',
     date: '26 de junho de 2026',
     type: 'patch',

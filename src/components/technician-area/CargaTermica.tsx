@@ -1,11 +1,22 @@
 import { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { Calculator } from 'lucide-react';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { calcularCargaTermica, formatarBtus } from '@/lib/cargaTermica';
 import { ToolDisclaimer } from './ToolDisclaimer';
+
+interface CargaTermicaProps {
+  /**
+   * Quando presente, exibe um botão "Usar resultado" que devolve o valor
+   * calculado em TR (Tonelada de Refrigeração), formatado em padrão BR (vírgula).
+   * Sem essa prop, a ferramenta se comporta de forma idêntica ao standalone.
+   */
+  onApply?: (trBR: string) => void;
+}
 
 /** Converte string crua de input numérico em number, com default seguro. */
 function num(str: string, def = 0): number {
@@ -29,7 +40,7 @@ const CAMPOS: CampoNum[] = [
   { id: 'janelas', label: 'Janelas (2 x 1,5 metros)', placeholder: 'Ex: 1', inputMode: 'numeric' },
 ];
 
-export function CargaTermica() {
+export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
   // Estado em string crua — convertido com num() só no cálculo.
   const [valores, setValores] = usePersistedState<Record<string, string>>(
     'tt:state:carga-termica:valores',
@@ -153,6 +164,23 @@ export function CargaTermica() {
           </p>
         )}
       </div>
+
+      {/* Botão de aplicar — só aparece quando a ferramenta roda embutida (ex: contrato PMOC).
+          Devolve sempre em TR, independente do switch de exibição. */}
+      {onApply && (
+        <Button
+          type="button"
+          className="w-full"
+          disabled={!temArea}
+          onClick={() => {
+            const tr = btus / 12000;
+            const trBR = String(Number(tr.toFixed(2))).replace('.', ',');
+            onApply(trBR);
+          }}
+        >
+          <Calculator className="mr-1.5 h-4 w-4" /> Usar resultado
+        </Button>
+      )}
 
       <ToolDisclaimer texto="Ferramenta de apoio. Esta simulação é uma referência aproximada e não corresponde integralmente às diferentes realidades do local de instalação — confira sempre a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
     </div>

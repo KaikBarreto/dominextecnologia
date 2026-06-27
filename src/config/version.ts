@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.3";
+export const APP_VERSION = "1.15.4";
 
-export const VERSION_NOTES = "Cadastro de funcionário reorganizado em abas (Dados e Remuneração & Acesso), com salvar a qualquer momento, foto mais fácil de adicionar e botão de ponto Ativado/Desativado.";
+export const VERSION_NOTES = "Agora dá pra calcular a carga térmica direto no ambiente do contrato: clique em Calcular, informe as medidas, pessoas, eletrônicos e janelas, e o valor entra preenchido — a mesma calculadora que o técnico usa em campo.";

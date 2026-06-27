@@ -47,6 +47,7 @@ import {
 } from '@/components/contracts/pmocMachineRoutine';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import { AreaCalculatorModal } from '@/components/contracts/AreaCalculatorModal';
+import { CargaTermicaCalculatorModal } from '@/components/contracts/CargaTermicaCalculatorModal';
 import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
 import { EnvironmentPhotoField } from '@/components/contracts/EnvironmentPhotoField';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -346,6 +347,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [quickEquipEnvKey, setQuickEquipEnvKey] = useState<string | null>(null);
   // Calculadora de área (largura × comprimento → m²): guarda a key do ambiente alvo.
   const [areaCalcEnvKey, setAreaCalcEnvKey] = useState<string | null>(null);
+  // Calculadora de carga térmica (ferramenta da Área do Técnico → TR): key do ambiente alvo.
+  const [cargaCalcEnvKey, setCargaCalcEnvKey] = useState<string | null>(null);
   // Viewer da foto do equipamento (ampliada). null = fechado.
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
 
@@ -2220,19 +2223,31 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               const tr = parseDecimalBR(env.carga_termica_tr);
                               const showHint = tr && tr > 0;
                               return (
-                                <div className="relative">
-                                  <NumericInput
-                                    decimal
-                                    value={env.carga_termica_tr}
-                                    onValueChange={v => updateEnvironmentField(env.key, 'carga_termica_tr', v)}
-                                    placeholder="Ex: 5,0"
-                                    className={showHint ? 'pr-24' : undefined}
-                                  />
-                                  {showHint && (
-                                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 max-w-[40%] truncate text-xs text-muted-foreground">
-                                      = {(tr * 12000).toLocaleString('pt-BR')} BTUs
-                                    </span>
-                                  )}
+                                <div className="flex items-center gap-2">
+                                  <div className="relative flex-1">
+                                    <NumericInput
+                                      decimal
+                                      value={env.carga_termica_tr}
+                                      onValueChange={v => updateEnvironmentField(env.key, 'carga_termica_tr', v)}
+                                      placeholder="Ex: 5,0"
+                                      className={showHint ? 'pr-24' : undefined}
+                                    />
+                                    {showHint && (
+                                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 max-w-[40%] truncate text-xs text-muted-foreground">
+                                        = {(tr * 12000).toLocaleString('pt-BR')} BTUs
+                                      </span>
+                                    )}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 shrink-0 px-3"
+                                    onClick={() => setCargaCalcEnvKey(env.key)}
+                                  >
+                                    <Calculator className="h-4 w-4 sm:mr-1.5" />
+                                    <span className="hidden sm:inline">Calcular</span>
+                                  </Button>
                                 </div>
                               );
                             })()}
@@ -3070,6 +3085,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       open={!!areaCalcEnvKey}
       onOpenChange={(v) => { if (!v) setAreaCalcEnvKey(null); }}
       onApply={(areaBR) => { if (areaCalcEnvKey) updateEnvironmentField(areaCalcEnvKey, 'area_climatizada_m2', areaBR); }}
+    />
+
+    {/* Calculadora de carga térmica (ferramenta da Área do Técnico → TR). */}
+    <CargaTermicaCalculatorModal
+      open={!!cargaCalcEnvKey}
+      onOpenChange={(v) => { if (!v) setCargaCalcEnvKey(null); }}
+      onApply={(trBR) => { if (cargaCalcEnvKey) updateEnvironmentField(cargaCalcEnvKey, 'carga_termica_tr', trBR); }}
     />
 
     {/* Viewer da foto do equipamento (ampliada). */}
