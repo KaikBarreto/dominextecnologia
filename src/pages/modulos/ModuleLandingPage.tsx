@@ -200,7 +200,7 @@ function ModulePains({ data }: { data: ModuleData }) {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             {data.painsHeading}
           </h2>
-          <p className="text-white/40 max-w-2xl mx-auto">
+          <p className="text-white/55 max-w-2xl mx-auto">
             {data.painsSubheading}
           </p>
         </div>
@@ -512,7 +512,7 @@ function ModuleTestimonials({ data }: { data: ModuleData }) {
               <p className="text-white/70 text-sm leading-relaxed mb-6">"{t.quote}"</p>
               <div>
                 <p className="text-sm font-semibold text-white">{t.name}</p>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-white/55">
                   {t.role} — {t.company}
                 </p>
               </div>
@@ -583,7 +583,7 @@ function ModuleFaq({ data }: { data: ModuleData }) {
               <AccordionTrigger className="text-sm text-white/80 hover:text-white hover:no-underline py-5 text-left">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-white/40 leading-relaxed pb-5">
+              <AccordionContent className="text-sm text-white/55 leading-relaxed pb-5">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

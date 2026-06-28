@@ -102,7 +102,7 @@ export default function PricingSection() {
         </h2>
 
         <div className="flex items-center justify-center gap-4 mb-16 relative">
-          <span className={cn('text-sm font-medium', !annual ? 'text-white' : 'text-white/40')}>Mensal</span>
+          <span className={cn('text-sm font-medium', !annual ? 'text-white' : 'text-white/55')}>Mensal</span>
           <button
             onClick={() => setAnnual(!annual)}
             role="switch"
@@ -114,7 +114,7 @@ export default function PricingSection() {
               className={cn('absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform', annual ? 'translate-x-5' : 'translate-x-0.5')}
             />
           </button>
-          <span className={cn('text-sm font-medium', annual ? 'text-white' : 'text-white/40')}>Anual</span>
+          <span className={cn('text-sm font-medium', annual ? 'text-white' : 'text-white/55')}>Anual</span>
           <Badge className={cn('bg-emerald-500 text-white transition-opacity ml-5', annual ? 'opacity-100' : 'opacity-0 pointer-events-none')}>-20%</Badge>
         </div>
 
@@ -146,10 +146,10 @@ export default function PricingSection() {
                 )}
 
                 <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                <p className="text-sm text-white/40 mb-5">{plan.desc}</p>
+                <p className="text-sm text-white/55 mb-5">{plan.desc}</p>
 
                 <div className="mb-5">
-                  <p className="text-[10px] uppercase tracking-widest text-white/40 font-medium mb-1">
+                  <p className="text-[10px] uppercase tracking-widest text-white/55 font-medium mb-1">
                     {annual ? 'equivalente a' : 'a partir de'}
                   </p>
                   <PriceAmount
@@ -164,7 +164,7 @@ export default function PricingSection() {
                   />
                   {annual && (
                     <div className="mt-1 space-y-0.5">
-                      <p className="text-xs text-white/40 line-through">R$ {plan.monthly}/mês</p>
+                      <p className="text-xs text-white/55 line-through">R$ {plan.monthly}/mês</p>
                       <p className="text-xs font-medium text-emerald-400">
                         Total: R$ {yearlyTotal}/ano · Economize 20%
                       </p>
@@ -174,7 +174,7 @@ export default function PricingSection() {
 
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-[10px] uppercase tracking-widest text-white/40 font-medium">Recursos</span>
+                  <span className="text-[10px] uppercase tracking-widest text-white/55 font-medium">Recursos</span>
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
 

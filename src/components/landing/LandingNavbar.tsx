@@ -229,7 +229,12 @@ export default function LandingNavbar() {
       setActiveId('');
       return;
     }
-    const updateActive = () => {
+    // Mede a posição das seções e atualiza a aba ativa. As leituras de geometria
+    // (getBoundingClientRect) rodam dentro de um requestAnimationFrame e nunca
+    // depois de uma escrita no DOM no mesmo frame — evita o forced reflow (layout
+    // thrashing) que o trace acusou no scroll da home.
+    let raf = 0;
+    const compute = () => {
       const offset = window.innerHeight * 0.4;
       let current = '';
       for (const link of navLinks) {
@@ -244,11 +249,16 @@ export default function LandingNavbar() {
       }
       setActiveId(current);
     };
+    const updateActive = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(compute);
+    };
 
-    updateActive();
+    compute();
     window.addEventListener('scroll', updateActive, { passive: true });
-    window.addEventListener('resize', updateActive);
+    window.addEventListener('resize', updateActive, { passive: true });
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('scroll', updateActive);
       window.removeEventListener('resize', updateActive);
     };
@@ -391,7 +401,7 @@ export default function LandingNavbar() {
                   aria-label="Nossas soluções"
                   className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-white/10 bg-[hsl(0,0%,8%)] p-4 shadow-2xl"
                 >
-                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/40">
+                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/55">
                     Tudo o que a plataforma faz
                   </p>
                   <div className="grid grid-cols-3 gap-1">
@@ -486,7 +496,7 @@ export default function LandingNavbar() {
                   aria-label="Nossos segmentos"
                   className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-white/10 bg-[hsl(0,0%,8%)] p-4 shadow-2xl"
                 >
-                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/40">
+                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/55">
                     Nossos segmentos
                   </p>
                   <div className="grid grid-cols-3 gap-1">

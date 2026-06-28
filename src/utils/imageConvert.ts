@@ -1,4 +1,13 @@
-import heic2any from 'heic2any';
+// heic2any é uma lib PESADA (~1,3MB). É necessária SÓ quando o arquivo é HEIC/HEIF
+// (foto de iPhone). Carregamos sob demanda via import() dinâmico: assim ela vira
+// um chunk lazy próprio e não entra no bundle de NENHUM dos diálogos/telas que
+// importam este util (cadastro de cliente/equipamento, foto da OS, perfil etc.).
+// O caminho comum (JPEG/PNG/WebP) nunca baixa heic2any.
+type Heic2Any = (options: {
+  blob: Blob;
+  toType: string;
+  quality: number;
+}) => Promise<Blob | Blob[]>;
 
 const HEIC_MIME_TYPES = new Set([
   'image/heic',
@@ -7,13 +16,16 @@ const HEIC_MIME_TYPES = new Set([
   'image/heif-sequence',
 ]);
 
-const getHeicConverter = () => {
-  const maybeModule = heic2any as unknown as { default?: typeof heic2any };
-  return (maybeModule.default ?? heic2any) as (options: {
-    blob: Blob;
-    toType: string;
-    quality: number;
-  }) => Promise<Blob | Blob[]>;
+let heicConverterPromise: Promise<Heic2Any> | null = null;
+
+const getHeicConverter = (): Promise<Heic2Any> => {
+  if (!heicConverterPromise) {
+    heicConverterPromise = import('heic2any').then((mod) => {
+      const maybeModule = mod as unknown as { default?: Heic2Any };
+      return (maybeModule.default ?? (mod as unknown as Heic2Any));
+    });
+  }
+  return heicConverterPromise;
 };
 
 const toJpgName = (name: string) =>
@@ -106,7 +118,8 @@ async function ensureNonHeic(file: File): Promise<File> {
   if (!isHeic) return file;
 
   const convert = async (source: Blob) => {
-    const converted = await getHeicConverter()({
+    const heic2any = await getHeicConverter();
+    const converted = await heic2any({
       blob: source,
       toType: 'image/jpeg',
       quality: JPEG_QUALITY,

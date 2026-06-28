@@ -244,7 +244,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             As dores do dia a dia, resolvidas
           </h2>
-          <p className="text-white/40 max-w-2xl mx-auto">
+          <p className="text-white/55 max-w-2xl mx-auto">
             Onde a operação trava no improviso, o Dominex entra no controle
           </p>
         </div>
@@ -462,7 +462,7 @@ function SegmentTestimonials({ data }: { data: SegmentData }) {
               <p className="text-white/70 text-sm leading-relaxed mb-6">"{t.quote}"</p>
               <div>
                 <p className="text-sm font-semibold text-white">{t.name}</p>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-white/55">
                   {t.role} — {t.company}
                 </p>
               </div>
@@ -544,7 +544,7 @@ function SegmentFaq({ data }: { data: SegmentData }) {
               <AccordionTrigger className="text-sm text-white/80 hover:text-white hover:no-underline py-5 text-left">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-white/40 leading-relaxed pb-5">
+              <AccordionContent className="text-sm text-white/55 leading-relaxed pb-5">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

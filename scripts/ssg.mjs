@@ -64,6 +64,14 @@ function attr(text) {
 function buildHtml(baseHtml, html, head) {
   let out = baseHtml;
 
+  // meta viewport — troca o viewport FIXO do shell (app logado, user-scalable=no)
+  // pelo viewport ZOOMÁVEL da rota de marketing (libera o zoom de pinça → passa no
+  // Lighthouse a11y). O conteúdo já vem pronto do entry-ssg (MARKETING_VIEWPORT).
+  out = out.replace(
+    /<meta name="viewport" content="[\s\S]*?" \/>/,
+    `<meta name="viewport" content="${attr(head.viewport)}" />`
+  );
+
   // <title>
   out = out.replace(/<title>[\s\S]*?<\/title>/, `<title>${attr(head.title)}</title>`);
 

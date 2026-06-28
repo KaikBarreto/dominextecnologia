@@ -1,10 +1,13 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { animate, motion, useMotionValue } from "framer-motion";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
- * SwipeBackProvider — gesto "arrastar da borda esquerda para voltar".
+ * SwipeBackMotion — implementação real do gesto "arrastar da borda esquerda
+ * para voltar". Isolada num módulo lazy (ver SwipeBackProvider abaixo): é a
+ * ÚNICA coisa que importa framer-motion na raiz da app, e o site público
+ * (landing) NUNCA precisa do gesto. Carregar isto sob demanda tira ~5,5MB de
+ * framer-motion do entry/landing.
  *
  * Replica o swipe-back nativo do iOS dentro do PWA instalado:
  *   - Só ativa em mobile + display-mode standalone (PWA instalado).
@@ -20,9 +23,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
  *       - Cancela: spring suave de volta a 0.
  *   - Bloqueia o gesto quando há modal/drawer aberto (Radix marca
  *     [data-state="open"]) ou input em foco — não roubar interação.
- *
- * Coloque o provider DENTRO do <BrowserRouter> (precisa do useNavigate)
- * e FORA das <Routes> (precisa envolver tudo que pode ser navegado).
  */
 
 // ---- Limiares e constantes ----
@@ -37,8 +37,7 @@ const VERTICAL_CANCEL_RATIO = 1.5;
 // Duração da animação final de commit (ms).
 const COMMIT_ANIM_MS = 180;
 
-export function SwipeBackProvider({ children }: { children: React.ReactNode }) {
-  const isMobile = useIsMobile();
+function SwipeBackMotion({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const x = useMotionValue(0);
 
@@ -56,11 +55,6 @@ export function SwipeBackProvider({ children }: { children: React.ReactNode }) {
     navigateRef.current = navigate;
   }, [navigate]);
 
-  const isMobileRef = React.useRef(isMobile);
-  React.useEffect(() => {
-    isMobileRef.current = isMobile;
-  }, [isMobile]);
-
   React.useEffect(() => {
     // Em SSR não faz nada.
     if (typeof window === "undefined") return;
@@ -70,10 +64,9 @@ export function SwipeBackProvider({ children }: { children: React.ReactNode }) {
      * Tudo aqui é leitura síncrona do DOM/window; ok rodar a cada toque.
      */
     const canSwipeBack = (): boolean => {
-      // 1) Precisa ser mobile (viewport <1024px).
-      if (!isMobileRef.current) return false;
-
-      // 2) Precisa estar em modo PWA standalone (instalado).
+      // 1) Precisa estar em modo PWA standalone (instalado). Este componente só
+      //    monta em mobile (SwipeBackProvider gateia por useIsMobile), então o
+      //    teste de largura saiu — basta confirmar o standalone aqui.
       if (!window.matchMedia("(display-mode: standalone)").matches) return false;
 
       // 3) Precisa ter histórico para onde voltar.
@@ -206,3 +199,5 @@ export function SwipeBackProvider({ children }: { children: React.ReactNode }) {
     </>
   );
 }
+
+export default SwipeBackMotion;

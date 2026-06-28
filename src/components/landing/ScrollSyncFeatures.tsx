@@ -3,8 +3,8 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type LucideIcon,
 } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 /**
  * Seção de funcionalidades estilo SEMRUSH (scroll-sync), extraída de
@@ -382,7 +382,7 @@ function FeaturesHeader({
     <>
       <div className={`text-center ${compact ? 'mb-6' : 'mb-10 lg:mb-12'}`}>
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">{heading}</h2>
-        <p className="text-white/40 max-w-2xl mx-auto">{subheading}</p>
+        <p className="text-white/55 max-w-2xl mx-auto">{subheading}</p>
       </div>
       {control ? (
         <div className={compact ? 'mb-8' : 'mb-8 lg:mb-10'}>{control}</div>
@@ -440,7 +440,7 @@ function DesktopGrid({
                 />
                 <h3
                   className="text-lg font-bold transition-colors duration-300"
-                  style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.32)' }}
+                  style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.55)' }}
                 >
                   {f.title}
                 </h3>
@@ -541,7 +541,11 @@ function MobileList({
               backgroundImage: isActive
                 ? `linear-gradient(135deg, color-mix(in srgb, ${ACCENT} 14%, transparent), transparent 65%)`
                 : 'none',
-              opacity: isActive ? 1 : 0.45,
+              // Cards inativos ficam levemente apagados, mas não tanto a ponto
+              // de o texto (title branco + descrição white/60) cair abaixo de
+              // 4.5:1 sobre o fundo escuro. 0.8 mantém a hierarquia visual e
+              // passa o contraste AA.
+              opacity: isActive ? 1 : 0.8,
             }}
           >
             <div className="flex items-start gap-4">

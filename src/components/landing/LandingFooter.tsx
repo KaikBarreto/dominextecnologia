@@ -38,7 +38,7 @@ const INSTITUTIONAL_LINKS: { label: string; to: string }[] = [
 ];
 
 const footerLinkClass =
-  'text-sm text-white/30 hover:text-white/60 transition-colors';
+  'text-sm text-white/55 hover:text-white transition-colors';
 
 export default function LandingFooter() {
   return (
@@ -51,14 +51,14 @@ export default function LandingFooter() {
             <div className="flex items-center gap-2 mb-4">
               <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
             </div>
-            <p className="text-sm text-white/30 mb-4">
+            <p className="text-sm text-white/55 mb-4">
               Domine a execução do seu negócio.
             </p>
           </div>
 
           {/* Soluções — coluna vertical única (11 itens) */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-4">Soluções</h4>
+            <h3 className="text-sm font-semibold text-white mb-4">Soluções</h3>
             <ul className="space-y-2">
               {MODULE_NAV_LINKS.map((mod) => (
                 <li key={mod.slug}>
@@ -75,7 +75,7 @@ export default function LandingFooter() {
               segmento SATURADO na cor daquele nicho (group-hover/focus-within, com
               transição suave — não quebra foco por teclado). */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-4">Segmentos</h4>
+            <h3 className="text-sm font-semibold text-white mb-4">Segmentos</h3>
             <ul className="space-y-2">
               {SEGMENT_NAV_LINKS.map((seg) => {
                 const Icon = seg.icon;
@@ -84,7 +84,7 @@ export default function LandingFooter() {
                   <li key={seg.slug}>
                     <Link
                       to={`/${seg.slug}`}
-                      className="group relative flex items-center text-sm text-white/30 transition-colors hover:text-white/70 focus-visible:text-white/70 focus-visible:outline-none"
+                      className="group relative flex items-center text-sm text-white/55 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none"
                     >
                       {/* Ícone do segmento na cor pura — parte invisível e um pouco
                           à esquerda; entra (fade + slide) no hover/foco. */}
@@ -106,7 +106,7 @@ export default function LandingFooter() {
 
           {/* Institucional — coluna única enxuta (Empresa + Suporte unidas) */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-4">Institucional</h4>
+            <h3 className="text-sm font-semibold text-white mb-4">Institucional</h3>
             <ul className="space-y-2">
               {INSTITUTIONAL_LINKS.map((item) => (
                 <li key={item.to}>

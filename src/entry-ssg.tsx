@@ -39,6 +39,7 @@ import SegmentLandingPage from '@/pages/segmentos/SegmentLandingPage';
 import { SEGMENTS } from '@/pages/segmentos/segmentsData';
 import ModuleLandingPage from '@/pages/modulos/ModuleLandingPage';
 import { MODULES } from '@/pages/modulos/modulesData';
+import { MARKETING_VIEWPORT } from '@/utils/publicMarketingRoutes';
 
 import '@/index.css';
 /* eslint-enable import/first */
@@ -49,6 +50,12 @@ export interface SsgHead {
   description: string;
   /** URL canônica absoluta (www). */
   canonical: string;
+  /**
+   * Conteúdo da meta viewport desta rota. Páginas de marketing (todas as do SSG)
+   * usam o viewport ZOOMÁVEL (libera o zoom de pinça → passa no Lighthouse a11y),
+   * substituindo o viewport FIXO do shell base (default do app logado).
+   */
+  viewport: string;
   ogTitle: string;
   ogDescription: string;
   ogUrl: string;
@@ -348,6 +355,8 @@ export function renderRoute(route: string): SsgRenderResult {
     title: entry.title,
     description: entry.description,
     canonical: `${SITE_URL}${route}`,
+    // Toda rota do SSG é marketing → viewport zoomável (acessibilidade).
+    viewport: MARKETING_VIEWPORT,
     ogTitle: entry.title,
     ogDescription: entry.description,
     ogUrl: `${SITE_URL}${route}`,

@@ -91,11 +91,38 @@ export default defineConfig(({ mode }) => ({
         // distribuir essas libs nos chunks lazy mantém o entry da landing limpo.
         // (Também evita o TDZ que aparece ao fatiar react/radix/supabase.)
         //
-        // Único override: fixar o helper `__vitePreload` num chunk leaf próprio.
+        // Override 1: fixar o helper `__vitePreload` num chunk leaf próprio.
         // Sem isso o rollup o ancora dentro de um vendor pesado e o entry arrasta
         // esse vendor só pelo helper. É folha, sem ciclo → TDZ-safe.
+        //
+        // Override 2 (perf da landing): supabase-js e @tanstack/react-query são
+        // importados ESTATICAMENTE pelo AuthProvider (eager no App.tsx), então já
+        // estão no caminho crítico — não há como "não baixá-los" sem refatorar o
+        // tronco de auth. Mas extraí-los para um vendor próprio quebra o entry de
+        // ~1MB em entry (<500KB) + vendor cacheável, e o browser baixa os dois em
+        // paralelo. NÃO inclui react/react-dom/radix aqui (fatiar esses dá TDZ,
+        // lição medida acima). Estes dois vendors são folhas sem ciclo com o app.
         manualChunks(id) {
           if (id.includes("vite/preload-helper")) return "vite-preload-helper";
+          if (id.includes("node_modules/@supabase/")) return "vendor-supabase";
+          if (id.includes("node_modules/@tanstack/react-query")) return "vendor-react-query";
+          // react-router-dom, sonner (toast) e date-fns também são folhas estáticas
+          // do entry (App.tsx as importa eager). Extraí-las enxuga o entry da
+          // landing abaixo de 500KB. NÃO mexer em react/react-dom (TDZ, ver acima).
+          if (id.includes("node_modules/react-router")) return "vendor-router";
+          if (id.includes("node_modules/sonner")) return "vendor-sonner";
+          if (id.includes("node_modules/date-fns")) return "vendor-date-fns";
+          // react + react-dom + scheduler + jsx-runtime JUNTOS num único vendor.
+          // O TDZ medido anteriormente vinha de SEPARAR react de quem o consome
+          // (radix) — manter react/react-dom no MESMO chunk não tem ciclo interno
+          // e é o padrão seguro. Tira ~130KB de react-dom do entry da landing.
+          if (
+            /node_modules\/(react|react-dom|scheduler)\//.test(id) ||
+            id.includes("node_modules/react/jsx-runtime") ||
+            id.includes("node_modules/react/jsx-dev-runtime")
+          ) {
+            return "vendor-react";
+          }
           return undefined;
         },
       },

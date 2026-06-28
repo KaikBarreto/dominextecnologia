@@ -16,6 +16,7 @@ import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
 import { getErrorMessage } from "@/utils/errorMessages";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useMarketingViewport } from "@/hooks/useMarketingViewport";
 import { useToast } from "@/hooks/use-toast";
 
 class ErrorBoundary extends React.Component<
@@ -54,7 +55,7 @@ class ErrorBoundary extends React.Component<
 }
 
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
-import { SwipeBackProvider } from "@/components/SwipeBackProvider";
+import { SwipeBackProvider } from "@/components/SwipeBack";
 import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
 
 // Pages
@@ -412,6 +413,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 const PageTitleUpdater = () => { usePageTitle(); return null; };
 
+// Alterna a meta viewport por rota: zoom liberado no site de marketing (a11y),
+// fixo no app logado (sensação de app nativo). Fica dentro do BrowserRouter.
+const ViewportManager = () => { useMarketingViewport(); return null; };
+
 // Instrumentação MVP — page views.
 // Só dispara quando há user autenticado (evita request em landing/login/cadastro).
 // trackUsage internamente também checa user, mas pular o getUser() aqui economiza chamadas.
@@ -643,6 +648,7 @@ const App = () => (
         <BrowserRouter>
           <OfflineIndicator />
           <PageTitleUpdater />
+          <ViewportManager />
           <AuthProvider>
             <UsageTracker />
             <SwipeBackProvider>

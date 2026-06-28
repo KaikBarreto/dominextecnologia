@@ -44,7 +44,7 @@ export default function HowItWorks() {
                 </div>
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">{s.title}</h3>
-              <p className="text-sm text-white/40 max-w-xs mx-auto">{s.desc}</p>
+              <p className="text-sm text-white/55 max-w-xs mx-auto">{s.desc}</p>
             </div>
           ))}
         </div>

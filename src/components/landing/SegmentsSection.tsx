@@ -39,7 +39,7 @@ export default function SegmentsSection() {
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
           Para qualquer empresa com equipe em campo
         </h2>
-        <p className="text-white/40 mb-12">Atendemos diversos segmentos de serviços externos</p>
+        <p className="text-white/55 mb-12">Atendemos diversos segmentos de serviços externos</p>
       </div>
 
       {/* Carrossel infinito (marquee). Full-bleed: ignora o max-w pra rolar de borda a borda. */}
@@ -63,7 +63,11 @@ export default function SegmentsSection() {
               >
                 <Link
                   to={meta ? `/${meta.slug}` : '#'}
-                  aria-label={`Ver Dominex para ${s.label}`}
+                  // O nome acessível CONTÉM o texto visível (o título s.label),
+                  // exigência da regra label-content-name-mismatch do WCAG. O
+                  // overlay decorativo "Clique para ver mais" é aria-hidden, logo
+                  // não entra no nome — sem mismatch.
+                  aria-label={`${s.label}: ver Dominex para esse segmento`}
                   tabIndex={isClone ? -1 : undefined}
                   className="group/card relative block aspect-[4/3] w-72 cursor-pointer overflow-hidden rounded-2xl border border-white/10 transition-colors hover:border-primary/40 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-80 lg:w-[26rem]"
                 >
@@ -83,8 +87,12 @@ export default function SegmentsSection() {
                   {/* Degradê escuro pra leitura do título */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
 
-                  {/* Overlay "Clique para ver mais" — canto inferior direito, só hover/focus no desktop (touch não tem hover). */}
-                  <div className="pointer-events-none absolute bottom-3 right-3 z-10 hidden translate-y-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white opacity-0 shadow-sm shadow-black/40 backdrop-blur-sm transition-all duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-visible/card:translate-y-0 group-focus-visible/card:opacity-100 sm:block">
+                  {/* Overlay "Clique para ver mais" — canto inferior direito, só hover/focus no desktop (touch não tem hover).
+                      aria-hidden: é dica visual decorativa; sem isso entraria no
+                      nome acessível do link e dispararia label-content-name-mismatch. */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-3 right-3 z-10 hidden translate-y-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white opacity-0 shadow-sm shadow-black/40 backdrop-blur-sm transition-all duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-visible/card:translate-y-0 group-focus-visible/card:opacity-100 sm:block">
                     Clique para ver mais
                   </div>
 

@@ -77,7 +77,7 @@ export default function FaqSection() {
               <AccordionTrigger className="text-sm text-white/80 hover:text-white hover:no-underline py-5 text-left">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-white/40 leading-relaxed pb-5">
+              <AccordionContent className="text-sm text-white/55 leading-relaxed pb-5">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

@@ -207,7 +207,7 @@ function Values() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             No que a gente acredita
           </h2>
-          <p className="text-white/40 max-w-2xl mx-auto">
+          <p className="text-white/55 max-w-2xl mx-auto">
             Os princípios que guiam cada decisão sobre o produto.
           </p>
         </div>

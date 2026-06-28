@@ -58,7 +58,7 @@ export default function TestimonialsSection() {
                 />
                 <div>
                   <p className="text-sm font-semibold text-white">{t.name}</p>
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-white/55">
                     {t.role} — {t.company}
                   </p>
                 </div>

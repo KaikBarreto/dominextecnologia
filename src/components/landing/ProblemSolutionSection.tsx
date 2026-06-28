@@ -26,9 +26,9 @@ export default function ProblemSolutionSection() {
         <div className="rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)] overflow-hidden">
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/10">
             <div className="p-8 lg:p-12">
-              <h3 className="text-xl font-bold text-white mb-6">
+              <h2 className="text-xl font-bold text-white mb-6">
                 Sua operação travada no improviso?
-              </h3>
+              </h2>
               <ul className="space-y-4">
                 {problems.map((p) => (
                   <li key={p} className="flex items-start gap-3 text-white/50">
@@ -39,9 +39,9 @@ export default function ProblemSolutionSection() {
               </ul>
             </div>
             <div className="p-8 lg:p-12">
-              <h3 className="text-xl font-bold text-white mb-6">
+              <h2 className="text-xl font-bold text-white mb-6">
                 Com o Dominex, você tem controle total
-              </h3>
+              </h2>
               <ul className="space-y-4">
                 {solutions.map((s) => (
                   <li key={s} className="flex items-start gap-3 text-white/70">

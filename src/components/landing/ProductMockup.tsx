@@ -10,7 +10,7 @@ export default function ProductMockup() {
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
           O painel que seu time vai amar usar
         </h2>
-        <p className="text-white/40 text-center mb-12 max-w-lg mx-auto">
+        <p className="text-white/55 text-center mb-12 max-w-lg mx-auto">
           Interface intuitiva e poderosa, projetada para gestores de equipes de campo
         </p>
 
