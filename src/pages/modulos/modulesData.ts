@@ -53,7 +53,8 @@ import {
  *  3. Registre no objeto `MODULES` no fim do arquivo.
  *  4. Crie a entry de rota em src/pages/modulos/<Entry>.tsx (4 linhas).
  *  5. Adicione a rota pública em App.tsx.
- *  6. (SEO) Adicione o slug em scripts/prerender.config.mjs → PRERENDER_ROUTES.
+ *  6. (SEO) Nada a fazer: o SSG (src/entry-ssg.tsx) deriva a rota de MODULES
+ *     automaticamente e gera o HTML estático no build.
  *
  * Regras:
  *  - PT-BR sempre, copy dor-primeiro, marca = Dominex (NUNCA Auctus).
