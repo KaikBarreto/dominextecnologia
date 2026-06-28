@@ -53,6 +53,12 @@ interface ScrollSyncFeaturesProps {
   subheading: string;
   /** Slot opcional embaixo (ex: CTA). Renderizado centralizado. */
   footer?: React.ReactNode;
+  /**
+   * Slot opcional CENTRALIZADO, em fluxo normal, logo abaixo do heading e ANTES
+   * do scroll travado (NÃO entra no container sticky/pin). Usado pelo seletor de
+   * nicho da landing `/area-do-tecnico`. Backward-compat: sem ele, layout idêntico.
+   */
+  controlSlot?: React.ReactNode;
   /** id da <section> (ex: "recursos" pra ancorar o menu). */
   sectionId?: string;
 }
@@ -204,6 +210,7 @@ export default function ScrollSyncFeatures({
   heading,
   subheading,
   footer,
+  controlSlot,
   sectionId,
 }: ScrollSyncFeaturesProps) {
   const reduced = usePrefersReducedMotion();
@@ -272,18 +279,18 @@ export default function ScrollSyncFeatures({
     };
 
   return (
-    <section id={sectionId} className="py-24">
+    <section id={sectionId} className="py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 lg:mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">{heading}</h2>
-          <p className="text-white/40 max-w-2xl mx-auto">{subheading}</p>
-        </div>
-
         {/* ----------------------------- DESKTOP -----------------------------
-            Pin-scroll: container ALTO (N+1 viewports) envolvendo um inner
-            sticky (top:0, h-screen, centralizado). O índice ativo vem do
-            progresso do scroll DENTRO do container. Quando reduced-motion, o
-            container alto vira altura normal (sem pin) e o ativo vem do centro.
+            Pin-scroll: container ALTO (N+1 viewports, ~70vh por item) envolvendo
+            um inner sticky (top:0, h-screen, coluna centralizada). O índice
+            ativo vem do progresso do scroll DENTRO do container (o hook lê
+            rect.height ao vivo, então comprimir a altura só comprime o scroll).
+            Quando reduced-motion, o container alto vira altura normal (sem pin)
+            e o ativo vem do centro.
+
+            O cabeçalho (heading + subtítulo + controlSlot) PINA JUNTO com as
+            colunas: tudo numa coluna vertical centralizada, cabendo em uma tela.
 
             TODO o conteúdo (títulos + descrições) existe no DOM sempre. */}
         <div
@@ -291,39 +298,96 @@ export default function ScrollSyncFeatures({
           className="hidden lg:block relative"
           style={
             pinEnabled
-              ? ({ height: `${(features.length + 1) * 100}vh` } as CSSProperties)
+              ? ({ height: `${(features.length + 1) * 70}vh` } as CSSProperties)
               : undefined
           }
         >
           <div
             className={
               pinEnabled
-                ? 'sticky top-0 h-screen flex items-center'
+                ? 'sticky top-0 h-screen flex flex-col items-center justify-center'
                 : 'sticky top-28'
             }
           >
-            <DesktopGrid
-              features={features}
-              active={pinEnabled ? pinActive : centerActive}
-              // Refs dos títulos: usados pra medir pelo centro (pin off) e pra
-              // centralizar no clique do fallback. Sempre setados.
-              setItemRef={setDesktopItemRef}
-              onActivate={handleItemActivate}
-            />
+            {/* Sem pin (reduced-motion): mantém o cabeçalho em fluxo, acima. */}
+            {!pinEnabled ? (
+              <FeaturesHeader
+                heading={heading}
+                subheading={subheading}
+                control={controlSlot}
+              />
+            ) : (
+              <FeaturesHeader
+                heading={heading}
+                subheading={subheading}
+                control={controlSlot}
+                compact
+              />
+            )}
+            <div className="w-full">
+              <DesktopGrid
+                features={features}
+                active={pinEnabled ? pinActive : centerActive}
+                // Refs dos títulos: usados pra medir pelo centro (pin off) e pra
+                // centralizar no clique do fallback. Sempre setados.
+                setItemRef={setDesktopItemRef}
+                onActivate={handleItemActivate}
+              />
+            </div>
           </div>
         </div>
 
-        {/* ------------------------------ MOBILE ----------------------------- */}
-        <MobileList
-          features={features}
-          active={centerActive}
-          setItemRef={setItemRef}
-          reduced={reduced}
-        />
+        {/* ------------------------------ MOBILE -----------------------------
+            Nunca pina. Cabeçalho + controlSlot em fluxo normal, acima da lista. */}
+        <div className="lg:hidden">
+          <FeaturesHeader
+            heading={heading}
+            subheading={subheading}
+            control={controlSlot}
+          />
+          <MobileList
+            features={features}
+            active={centerActive}
+            setItemRef={setItemRef}
+            reduced={reduced}
+          />
+        </div>
 
         {footer ? <div className="flex justify-center mt-12">{footer}</div> : null}
       </div>
     </section>
+  );
+}
+
+/* ------------------------------ Cabeçalho --------------------------------- */
+
+/**
+ * Cabeçalho da seção: título + subtítulo + slot de controle (ex.: seletor de
+ * nicho). Reusado nos 3 caminhos (desktop pinado, desktop sem pin, mobile) pra
+ * não duplicar markup. `compact` aperta os espaçamentos pro modo pinado, onde
+ * tudo precisa caber numa única tela junto das colunas.
+ */
+function FeaturesHeader({
+  heading,
+  subheading,
+  control,
+  compact,
+}: {
+  heading: string;
+  subheading: string;
+  control?: React.ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <>
+      <div className={`text-center ${compact ? 'mb-6' : 'mb-10 lg:mb-12'}`}>
+        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">{heading}</h2>
+        <p className="text-white/40 max-w-2xl mx-auto">{subheading}</p>
+      </div>
+      {control ? (
+        <div className={compact ? 'mb-8' : 'mb-8 lg:mb-10'}>{control}</div>
+      ) : null}
+    </>
   );
 }
 
@@ -388,7 +452,7 @@ function DesktopGrid({
 
       {/* Coluna de descrição — todas no DOM, só a ativa opaca (grid 1x1). */}
       <div
-        className="relative rounded-3xl border p-10 min-h-[20rem] flex items-center"
+        className="relative rounded-3xl border p-8 xl:p-10 min-h-[17rem] flex items-center"
         style={{
           borderColor: `color-mix(in srgb, ${ACCENT} 22%, hsl(0 0% 100% / 0.08))`,
           backgroundColor: 'hsl(0,0%,6%)',

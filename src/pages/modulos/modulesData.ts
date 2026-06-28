@@ -137,6 +137,14 @@ export interface ModuleData {
     title: string;
     subtitle: string;
   };
+
+  /**
+   * Opt-in EXCLUSIVO da landing `/area-do-tecnico`: na seção de funcionalidades
+   * (scroll travado), substitui `features` por um seletor de nicho centralizado
+   * + as ferramentas reais do técnico por nicho (ver tecnicoNicheTools.ts).
+   * NÃO setar em nenhum outro módulo.
+   */
+  techNicheSelector?: boolean;
 }
 
 /* ================================================================== */
@@ -1316,6 +1324,10 @@ const areaTecnico: ModuleData = {
     title: 'Ponha o campo inteiro no celular da equipe',
     subtitle: '14 dias grátis, sem cartão. OS, ferramentas técnicas e catálogo na Área do Técnico™, no celular da equipe.',
   },
+
+  // EXCLUSIVO desta landing: seletor de nicho + ferramentas reais do técnico na
+  // seção de funcionalidades. Nenhum outro módulo usa.
+  techNicheSelector: true,
 };
 
 /* ================================================================== */

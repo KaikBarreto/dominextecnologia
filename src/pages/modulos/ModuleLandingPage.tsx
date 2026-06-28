@@ -1,6 +1,6 @@
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight } from 'lucide-react';
+import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight, Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Accordion,
@@ -8,13 +8,27 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { captureUtmParams } from '@/lib/whatsapp';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
+import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
+import { getSiteSegments, getSegment } from '@/utils/companySegments';
 import type { ModuleData } from './modulesData';
+import { TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
 
 // Degradê de acento de MARCA (verde Dominex) — espelha o SEG_ACCENT_BADGE_GRADIENT
 // das landings de segmento, mas fixo na cor da marca (não varia por nicho).
@@ -33,6 +47,9 @@ const DOMINEX_BRAND_VARS = {
   '--sidebar-accent': '160 100% 39%',
   '--sidebar-ring': '160 100% 39%',
   '--gradient-brand': 'linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%)',
+  // Acento usado pelos blocos espelhados das landings de segmento (tabela de
+  // dores, ScrollSyncFeatures). Fixo no verde de marca Dominex (BRAND_GREEN).
+  '--seg-accent': '#00C597',
 } as CSSProperties;
 
 /**
@@ -188,19 +205,92 @@ function ModulePains({ data }: { data: ModuleData }) {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* MOBILE: cada par vira um card vertical limpo */}
+        <div className="md:hidden space-y-5">
           {data.pains.map((p) => (
             <div
               key={p.pain}
-              className="rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)] p-7 transition-colors hover:border-primary/30"
+              className="overflow-hidden rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)]"
             >
-              <div className="flex items-start gap-3 mb-4">
-                <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                <p className="text-white font-semibold text-base leading-snug">{p.pain}</p>
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <XCircle className="h-4 w-4 text-destructive/80 shrink-0" />
+                  <span className="text-[0.7rem] font-bold uppercase tracking-wider text-destructive/80">
+                    O problema
+                  </span>
+                </div>
+                <p className="text-white/55 text-[0.95rem] leading-relaxed">{p.pain}</p>
               </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <p className="text-white/55 text-sm leading-relaxed">{p.solution}</p>
+              <div
+                className="px-5 pt-4 pb-5 border-t"
+                style={{
+                  borderColor: 'color-mix(in srgb, var(--seg-accent) 22%, hsl(0 0% 100% / 0.08))',
+                  backgroundImage:
+                    'linear-gradient(to bottom, color-mix(in srgb, var(--seg-accent) 9%, transparent), transparent)',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-2.5">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: 'var(--seg-accent)' }} />
+                  <span
+                    className="text-[0.7rem] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--seg-accent)' }}
+                  >
+                    Com o Dominex
+                  </span>
+                </div>
+                <p className="text-white font-medium text-[0.95rem] leading-relaxed">
+                  {p.solution}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* DESKTOP: tabela estilizada Problema × Solução */}
+        <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)]">
+          <div className="grid grid-cols-2 border-b border-white/10">
+            <div className="flex items-center justify-center gap-2.5 px-7 py-5">
+              <XCircle className="h-6 w-6 text-destructive shrink-0" />
+              <span className="text-lg sm:text-xl font-bold text-white text-center">
+                O problema
+              </span>
+            </div>
+            <div
+              className="flex items-center justify-center gap-2.5 px-7 py-5 border-l border-white/10"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, color-mix(in srgb, var(--seg-accent) 7%, transparent), transparent)',
+              }}
+            >
+              <CheckCircle2 className="h-6 w-6 shrink-0" style={{ color: 'var(--seg-accent)' }} />
+              <span className="text-lg sm:text-xl font-bold text-white text-center">
+                Com o Dominex
+              </span>
+            </div>
+          </div>
+
+          {data.pains.map((p, i) => (
+            <div
+              key={p.pain}
+              className={`group grid grid-cols-2 transition-colors hover:bg-white/[0.015] ${
+                i > 0 ? 'border-t border-white/10' : ''
+              }`}
+            >
+              <div className="flex items-start gap-3 px-7 py-6">
+                <XCircle className="h-5 w-5 text-destructive/70 shrink-0 mt-0.5" />
+                <p className="text-white/55 text-[0.95rem] leading-snug">{p.pain}</p>
+              </div>
+              <div
+                className="relative flex items-start gap-3 px-7 py-6 border-l border-white/10"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(to right, color-mix(in srgb, var(--seg-accent) 6%, transparent), transparent)',
+                }}
+              >
+                <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'var(--seg-accent)' }} />
+                <p className="text-white font-medium text-[0.95rem] leading-snug">
+                  {p.solution}
+                </p>
               </div>
             </div>
           ))}
@@ -248,52 +338,156 @@ function ModuleDeepDives({ data }: { data: ModuleData }) {
 
 /* --------------------------- Funcionalidades ----------------------- */
 
+/** CTA verde reaproveitado no rodapé da seção de funcionalidades. */
+const FEATURES_CTA = (
+  <Button
+    size="lg"
+    className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl"
+    asChild
+  >
+    <Link to="/cadastro?origem=Site">
+      Teste grátis 14 dias, sem cartão
+      <ArrowRight className="ml-2 h-5 w-5" />
+    </Link>
+  </Button>
+);
+
 function ModuleFeatures({ data }: { data: ModuleData }) {
-  const ref = useScrollReveal();
+  // Opt-in EXCLUSIVO da landing /area-do-tecnico: seletor de nicho + ferramentas
+  // reais do técnico. Subcomponente dedicado (stateful) pra não violar as regras
+  // de hooks no caso comum.
+  if (data.techNicheSelector) {
+    return <ModuleFeaturesWithNiche data={data} />;
+  }
+
+  const features = data.features.map((f) => ({
+    icon: f.icon,
+    title: f.title,
+    description: f.desc,
+  }));
+
   return (
-    <section className="py-24">
-      <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            {data.featuresHeading}
-          </h2>
-          <p className="text-white/40 max-w-2xl mx-auto">
-            {data.featuresSubheading}
-          </p>
-        </div>
+    <ScrollSyncFeatures
+      features={features}
+      heading={data.featuresHeading}
+      subheading={data.featuresSubheading}
+      footer={FEATURES_CTA}
+    />
+  );
+}
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {data.features.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)] p-6 transition-colors hover:border-primary/30"
-              >
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
-                  <Icon className="h-6 w-6" />
-                </div>
-                <h3 className="font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
-              </div>
-            );
-          })}
-        </div>
+/**
+ * Variante da seção de funcionalidades SÓ da /area-do-tecnico: um seletor de
+ * nicho centralizado acima do scroll travado troca, em runtime, o conjunto de
+ * ferramentas mostrado. Default = primeiro grupo (refrigeração, 10 ferramentas
+ * reais). Trocar de nicho muda `features` (e a altura do pin recalcula sozinha).
+ */
+function ModuleFeaturesWithNiche({ data }: { data: ModuleData }) {
+  const segments = getSiteSegments();
+  const [activeSeg, setActiveSeg] = useState(segments[0].value);
+  const features = TOOLS_BY_SEGMENT[activeSeg] ?? [];
 
-        <div className="flex justify-center mt-10">
-          <Button
-            size="lg"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl"
-            asChild
-          >
-            <Link to="/cadastro?origem=Site">
-              Teste grátis 14 dias, sem cartão
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </section>
+  // SÓ nesta seção (/area-do-tecnico): o destaque das ferramentas puxa a COR
+  // DO SEGMENTO selecionado. Sobrescreve `--seg-accent` na subárvore — recolore
+  // apenas o active tile/texto/ícone do ScrollSyncFeatures. Fora daqui o site
+  // segue verde de marca. Default refrigeração → ciano (#06b6d4).
+  const selectedSeg = getSegment(activeSeg);
+
+  return (
+    <div style={{ '--seg-accent': selectedSeg?.color ?? '#00C597' } as CSSProperties}>
+      <ScrollSyncFeatures
+        features={features}
+        heading={data.featuresHeading}
+        subheading={data.featuresSubheading}
+        controlSlot={
+          <div className="flex justify-center">
+            <NicheSelect selected={activeSeg} onSelect={setActiveSeg} />
+          </div>
+        }
+        footer={FEATURES_CTA}
+      />
+    </div>
+  );
+}
+
+/* ---------------- Seletor de nicho (Área do Técnico™) --------------
+   Espelha o visual do `SegmentToolsSwitcher` interno (Badge colorido +
+   Popover + Command com busca), mas SEM exigir empresa logada: na landing
+   pública não há `companySegment`, então some o selo "Incluído" e o trigger
+   é o badge na cor do segmento selecionado. Só o select é colorido na cor do
+   nicho; o destaque das ferramentas no scroll continua verde de marca. */
+
+function NicheSelect({
+  selected,
+  onSelect,
+}: {
+  selected: string;
+  onSelect: (segment: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const segments = getSiteSegments();
+  const selectedSeg = getSegment(selected);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="rounded-full transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2"
+        >
+          {selectedSeg ? (
+            <Badge
+              className="cursor-pointer gap-1.5 border-0 text-white px-3 py-1.5 text-sm"
+              style={{ backgroundColor: selectedSeg.color }}
+            >
+              <selectedSeg.icon className="h-3.5 w-3.5" />
+              <span className="truncate">{selectedSeg.label}</span>
+              <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+            </Badge>
+          ) : null}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="center" className="z-[70] w-[260px] p-0 sm:w-[320px]">
+        <Command>
+          <CommandInput placeholder="Buscar nicho..." />
+          <CommandList>
+            <CommandEmpty>Nenhum nicho encontrado.</CommandEmpty>
+            <CommandGroup>
+              {segments.map((seg) => {
+                const isSelected = seg.value === selected;
+                return (
+                  <CommandItem
+                    key={seg.value}
+                    value={seg.label}
+                    onSelect={() => {
+                      onSelect(seg.value);
+                      setOpen(false);
+                    }}
+                    className="items-start gap-2"
+                  >
+                    <span
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: seg.color }}
+                    >
+                      <seg.icon className="h-3 w-3 text-white" />
+                    </span>
+                    <span className="flex-1 whitespace-normal break-words leading-snug">
+                      {seg.label}
+                    </span>
+                    <Check
+                      className={cn(
+                        'ml-auto h-4 w-4 shrink-0',
+                        isSelected ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
