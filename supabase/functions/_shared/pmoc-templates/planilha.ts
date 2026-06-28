@@ -54,6 +54,9 @@ const COLORS = {
   accent: rgb(0.12, 0.16, 0.23),
   mark: rgb(0.18, 0.62, 0.31), // verde — mês marcado na matriz
   white: rgb(1, 1, 1),
+  noticeBg: rgb(0.96, 0.97, 0.99), // caixa de aviso informativo (azul bem claro)
+  noticeBorder: rgb(0.62, 0.68, 0.80),
+  noticeText: rgb(0.16, 0.22, 0.34),
 };
 
 const MESES_ABBR = [
@@ -185,6 +188,13 @@ export interface PlanilhaData {
     name: string | null;
     start_date_extenso: string;
     frequency_label: string;
+    /**
+     * Cadência do contrato NÃO é mensal (≠ `months`/1). Quando true, a Seção 5
+     * imprime um aviso de que a matriz de 12 meses é o cronograma de REFERÊNCIA
+     * da norma (passo mensal) e que as visitas reais seguem a cadência do
+     * contrato. Quando false/ausente → nenhum aviso (Planilha mensal idêntica).
+     */
+    is_non_monthly?: boolean;
   };
   /**
    * Ambientes climatizados do contrato (1→N), cada um com seus equipamentos.
@@ -682,6 +692,9 @@ export async function drawPlanilha(
 
   // ---- Seção 5 — Plano de manutenção + matriz 12 meses ---------------------
   drawSectionTitle(ctx, "5", "Plano de Manutenção (Periodicidade Programada)");
+  // Aviso quando o contrato usa cadência NÃO-mensal: a matriz abaixo é o
+  // cronograma de referência da norma (passo mensal), não as datas reais.
+  if (ctx.data.contract.is_non_monthly) drawCadenceWarning(ctx);
   drawPlanTable(ctx);
 
   // Seção 6 "Registro de Execução" removida (2026-06): dado dinâmico (visitas/
@@ -912,6 +925,69 @@ function drawEquipmentTable(ctx: Ctx, equipments: PlanilhaEquipment[]): void {
     ctx.cursorY -= rowH;
     idx++;
   }
+}
+
+// -- Seção 5: aviso de cadência NÃO-mensal -----------------------------------
+// Caixa informativa (azul bem claro, sem ícone de alerta) que aparece SÓ quando
+// o contrato usa cadência personalizada (≠ mensal). Esclarece que a matriz de
+// 12 meses abaixo é o cronograma de REFERÊNCIA da norma (passo mensal) e que as
+// visitas reais seguem a cadência do contrato e a frequência de cada item — o
+// cronograma na cadência real fica no documento "Plano de Manutenção".
+function drawCadenceWarning(ctx: Ctx): void {
+  const { helv, helvBold } = ctx;
+  const cadence = orDash(ctx.data.contract.frequency_label);
+  const padX = 8;
+  const padY = 7;
+  const innerW = CONTENT_W - 2 * padX;
+
+  const title = "Cronograma de referência da norma (periodicidade mensal)";
+  const lines = [
+    `Este contrato usa cadência personalizada (${cadence}). A matriz de 12 meses abaixo`,
+    "representa o cronograma de referência da norma, em passo mensal. O cronograma real das",
+    "visitas segue a cadência do contrato e a frequência definida para cada item do checklist;",
+    "consulte o documento \"Plano de Manutenção\" para as datas previstas na cadência real.",
+  ];
+  // Quebra cada linha pra largura interna (caso a cadência seja longa).
+  const wrapped: string[] = [];
+  for (const ln of lines) {
+    for (const w of wrapText(helv, ln, 7.5, innerW)) wrapped.push(w);
+  }
+
+  const boxH = padY + 11 /* título */ + wrapped.length * 9 + padY;
+  ensureSpace(ctx, boxH + 6);
+  const { page } = ctx;
+  const top = ctx.cursorY;
+
+  page.drawRectangle({
+    x: MARGIN_X,
+    y: top - boxH,
+    width: CONTENT_W,
+    height: boxH,
+    color: COLORS.noticeBg,
+    borderColor: COLORS.noticeBorder,
+    borderWidth: 0.8,
+  });
+
+  let cy = top - padY - 8;
+  page.drawText(safe(title), {
+    x: MARGIN_X + padX,
+    y: cy,
+    size: 8,
+    font: helvBold,
+    color: COLORS.noticeText,
+  });
+  cy -= 12;
+  for (const w of wrapped) {
+    page.drawText(safe(w), {
+      x: MARGIN_X + padX,
+      y: cy,
+      size: 7.5,
+      font: helv,
+      color: COLORS.noticeText,
+    });
+    cy -= 9;
+  }
+  ctx.cursorY = top - boxH - 8;
 }
 
 // -- Seção 5: plano de manutenção com matriz de 12 meses ---------------------

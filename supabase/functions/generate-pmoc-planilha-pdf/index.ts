@@ -94,6 +94,16 @@ function maskUuid(s: string | null | undefined): string {
   return s.slice(0, 8) + "...";
 }
 
+// Cadência mensal = `months`/1 (passo da matriz de 12 meses da Planilha). Tudo
+// fora disso (a cada N dias/semanas, bimestral, semestral, etc.) é não-mensal e
+// dispara o aviso na Seção 5. Sem tipo/valor → trata como mensal (sem aviso),
+// preservando o comportamento legado de contratos sem cadência configurada.
+function isNonMonthlyCadence(value: number | null, type: string | null): boolean {
+  if (!type || !value) return false;
+  const v = Math.max(1, Math.round(value));
+  return !(type === "months" && v === 1);
+}
+
 function jsonResponse(body: unknown, status: number, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -745,6 +755,13 @@ Deno.serve(async (req) => {
           (contract.frequency_value ?? null) as number | null,
           (contract.frequency_type ?? null) as string | null,
         ),
+        // Cadência mensal = `months`/1. Qualquer outra combinação (a cada N dias/
+        // semanas, bimestral, etc.) é não-mensal → a matriz de 12 meses vira só
+        // referência da norma e o template imprime o aviso de cadência custom.
+        is_non_monthly: isNonMonthlyCadence(
+          (contract.frequency_value ?? null) as number | null,
+          (contract.frequency_type ?? null) as string | null,
+        ),
       },
       // Plano por equipamento (Fase 4); vazio → template usa `activities` (legado).
       planMachines,
@@ -780,7 +797,12 @@ Deno.serve(async (req) => {
       // planilha_v10: rodapé Dominex (sem white-label) garantido SEM linha
       // separadora cruzando o logo + "dominex.app" — força regeração dos PDFs
       // que ainda traziam a linha do bundle antigo.
-      v: "planilha_v10",
+      // planilha_v11: aviso de cadência NÃO-mensal na Seção 5. Contrato com
+      // cadência personalizada (≠ months/1) ganha uma caixa informativa
+      // explicando que a matriz de 12 meses é o cronograma de referência da
+      // norma (passo mensal) e que as visitas reais seguem a cadência do
+      // contrato. Contrato mensal (months/1) fica idêntico ao v10 (sem aviso).
+      v: "planilha_v11",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,

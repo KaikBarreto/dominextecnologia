@@ -327,6 +327,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [unidadeUf, setUnidadeUf] = useState('');
   const [unidadeCep, setUnidadeCep] = useState('');
   const [showPmocOffConfirm, setShowPmocOffConfirm] = useState(false);
+  // Confirmação ao LIGAR PMOC num contrato comum já existente (em edição): avisa
+  // que será criada a estrutura PMOC por máquina (escopo/rotina) com os padrões
+  // da norma. Na criação de um contrato novo não pede (não há nada a converter).
+  const [showPmocOnConfirm, setShowPmocOnConfirm] = useState(false);
   // Quick-create RT (Onda UI-1.2): botão "+" abre dialog nested.
   const [showQuickCreateRT, setShowQuickCreateRT] = useState(false);
   // Ambientes climatizados (multi-ambiente PMOC). Cada ambiente carrega os 6
@@ -1909,6 +1913,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               setShowPmocOffConfirm(true);
               return;
             }
+            // Ligar PMOC num contrato comum já existente: pede confirmação (avisa
+            // que será criada a estrutura PMOC por máquina com os padrões da norma).
+            if (v && isEditing && !initialIsPmocRef.value) {
+              setShowPmocOnConfirm(true);
+              return;
+            }
             setIsPmoc(v);
             if (!v) {
               setResponsibleTechnicianId('');
@@ -2828,29 +2838,36 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               </div>
 
                               <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
-                                <div className="flex flex-1 flex-col gap-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
-                                          <HelpCircle className="h-3.5 w-3.5" />
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-xs text-xs">
-                                        Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
-                                      </TooltipContent>
-                                    </Tooltip>
+                                {/* Fase "Começa na visita" é um conceito do ciclo mensal
+                                    da norma (12 meses). Em cadência personalizada a
+                                    geração ignora pmoc_start_visit — quem manda é a
+                                    frequência por pergunta + "Adicionar na 1ª OS" —, então
+                                    o seletor de fase fica enganoso e some. */}
+                                {!pmocCustomCadence && (
+                                  <div className="flex flex-1 flex-col gap-1.5">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                            <HelpCircle className="h-3.5 w-3.5" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs text-xs">
+                                          Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                    <Select value={String(cfg?.startVisit ?? 12)} onValueChange={(v) => setMachineStartVisit(eqId, Number(v))}>
+                                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {START_VISIT_OPTIONS.map(o => (
+                                          <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
-                                  <Select value={String(cfg?.startVisit ?? 12)} onValueChange={(v) => setMachineStartVisit(eqId, Number(v))}>
-                                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      {START_VISIT_OPTIONS.map(o => (
-                                        <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                                )}
                                 <Button type="button" variant="outline" size="sm" className="h-9 w-full text-xs sm:w-auto" disabled={catalogLoading} onClick={() => openMachinePicker(eqId)}>
                                   <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
                                   Checklists da Máquina
@@ -2862,11 +2879,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
                               </span>
 
-                              {cfg && (
+                              {cfg && !pmocCustomCadence && (
                                 <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                                   <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
                                   <span>
                                     Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                                  </span>
+                                </div>
+                              )}
+
+                              {pmocCustomCadence && (
+                                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                  <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
+                                  <span>
+                                    Na cadência personalizada, o que entra em cada visita é definido pela frequência de cada pergunta e pelo "Adicionar na 1ª OS".
                                   </span>
                                 </div>
                               )}
@@ -3956,10 +3982,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Desligar PMOC deste contrato?</AlertDialogTitle>
-          <AlertDialogDescription>
-            O Responsável Técnico será desvinculado e as próximas OSs deixarão de exibir o selo
-            "Conforme Lei Federal 13.589/2018". OSs já geradas não são afetadas. Você pode reativar
-            depois.
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-left">
+              <p>
+                Este contrato deixa de seguir a estrutura PMOC. Ao desligar, ele perde:
+              </p>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>os passos <strong>Unidade &amp; RT</strong> e o Responsável Técnico vinculado;</li>
+                <li>o <strong>escopo e a rotina por máquina</strong> da norma (cada equipamento volta ao checklist comum);</li>
+                <li>o selo "Conforme Lei Federal 13.589/2018" — e os documentos e a Planilha PMOC deixam de fazer sentido para este contrato.</li>
+              </ul>
+              <p>
+                As próximas visitas passam a usar o checklist comum. As OSs já geradas não mudam, e você pode reativar o PMOC depois.
+              </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -3972,6 +4008,44 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             }}
           >
             Desligar PMOC
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirmação ao LIGAR PMOC num contrato comum já existente. */}
+    <AlertDialog open={showPmocOnConfirm} onOpenChange={setShowPmocOnConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Transformar em contrato PMOC?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-left">
+              <p>
+                Este contrato passa a seguir a estrutura PMOC. Ao ligar, serão habilitados:
+              </p>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>os passos <strong>Unidade &amp; RT</strong> para definir o local e o Responsável Técnico;</li>
+                <li>o <strong>escopo e a rotina por máquina</strong>, já com os padrões da norma para cada equipamento;</li>
+                <li>o selo "Conforme Lei Federal 13.589/2018" e os documentos e a Planilha PMOC.</li>
+              </ul>
+              <p>
+                Confira a Unidade, o Responsável Técnico e o escopo de cada máquina antes de salvar. As próximas visitas passam a usar a rotina da norma.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setIsPmoc(true);
+              // Ligar PMOC: o Tipo de Serviço some (quem manda é o plano/catálogo
+              // da norma). Limpa pra não enviar valor obsoleto no submit.
+              setServiceTypeId('');
+              setShowPmocOnConfirm(false);
+            }}
+          >
+            Ligar PMOC
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

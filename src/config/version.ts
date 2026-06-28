@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.23";
+export const APP_VERSION = "1.15.24";
 
-export const VERSION_NOTES = "Correções na consistência do checklist entre o técnico, a visualização do gestor e o relatório: as três telas agora mostram exatamente as mesmas perguntas da visita. E corrigimos um caso em que uma ordem de serviço de contrato PMOC podia ficar impossível de finalizar por causa de uma pergunta que nem aparecia na visita.";
+export const VERSION_NOTES = "Mais clareza no PMOC com cadência personalizada: quando a cadência não é mensal, o campo 'começa na visita' por máquina deixa de aparecer (quem manda é a frequência de cada pergunta e o 'aparece na 1ª OS'), e a Planilha da norma ganha um aviso explicando que a matriz mensal é a referência da lei, enquanto o cronograma real segue a cadência do contrato. Também deixamos mais claros os avisos ao ativar ou desativar o PMOC em um contrato.";

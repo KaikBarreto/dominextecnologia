@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.24',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PMOC com cadência personalizada mais claro',
+        description: 'Quando um contrato PMOC usa cadência personalizada (diferente do mensal), o campo "começa na visita" por máquina deixa de aparecer — nesse modo, o que entra em cada visita é decidido pela frequência de cada pergunta e pelo "aparece na primeira OS". A Planilha da norma passa a trazer um aviso explicando que a matriz de 12 meses é a referência mensal da lei, enquanto as visitas reais seguem a cadência do contrato. E os avisos ao ativar ou desativar o PMOC em um contrato existente ficaram mais claros sobre o que muda.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.23',
     date: '28 de junho de 2026',
     type: 'patch',

@@ -51,6 +51,7 @@ import {
   useContracts,
   useContractPlanActivities,
   REGENERABLE_OS_STATUSES,
+  isMonthlyCadence,
   type Contract,
 } from '@/hooks/useContracts';
 import { usePmocActivityCatalog } from '@/hooks/usePmocActivityCatalog';
@@ -241,6 +242,15 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   }, [customTemplateOptions]);
 
   const isPmoc = !!contract.is_pmoc;
+  // PMOC com cadência ≠ mensal: a fase "Começa na visita" (ciclo de 12 da norma)
+  // não se aplica — a geração custom ignora pmoc_start_visit e quem manda é a
+  // frequência por pergunta + "Adicionar na 1ª OS". Esconde o seletor de fase.
+  const pmocCustomCadence =
+    isPmoc &&
+    !isMonthlyCadence(
+      (contract.frequency_type as 'days' | 'months') ?? 'months',
+      contract.frequency_value ?? 1,
+    );
 
   // Conjunto inicial de ambientes a partir do que está persistido (+ agrupamento
   // de equipamentos por environment_id, lido dos contract_items).
@@ -1789,34 +1799,38 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         />
                       </div>
 
-                      {/* 2) Começa na visita + Checklists (lado a lado; empilha no mobile) */}
+                      {/* 2) Começa na visita + Checklists (lado a lado; empilha no mobile).
+                          A fase "Começa na visita" pertence ao ciclo mensal da norma;
+                          em cadência personalizada some (a geração ignora pmoc_start_visit). */}
                       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
-                        <div className="flex flex-1 flex-col gap-1.5">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
-                                  <HelpCircle className="h-3.5 w-3.5" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs text-xs">
-                                Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
-                              </TooltipContent>
-                            </Tooltip>
+                        {!pmocCustomCadence && (
+                          <div className="flex flex-1 flex-col gap-1.5">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                    <HelpCircle className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs">
+                                  Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <Select
+                              value={String(cfg?.startVisit ?? 12)}
+                              onValueChange={(v) => setMachineStartVisit(eqId, Number(v))}
+                            >
+                              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {START_VISIT_OPTIONS.map((o) => (
+                                  <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <Select
-                            value={String(cfg?.startVisit ?? 12)}
-                            onValueChange={(v) => setMachineStartVisit(eqId, Number(v))}
-                          >
-                            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {START_VISIT_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        )}
                         <Button
                           type="button"
                           variant="outline"
@@ -1836,12 +1850,22 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
                       </span>
 
-                      {/* Preview: em que visita começa e o que inclui */}
-                      {cfg && (
+                      {/* Preview: em que visita começa e o que inclui (só ciclo mensal) */}
+                      {cfg && !pmocCustomCadence && (
                         <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                           <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
                           <span>
                             Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Cadência personalizada: explica que a fase não se aplica */}
+                      {pmocCustomCadence && (
+                        <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                          <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
+                          <span>
+                            Na cadência personalizada, o que entra em cada visita é definido pela frequência de cada pergunta e pelo "Adicionar na 1ª OS".
                           </span>
                         </div>
                       )}
