@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.25";
+export const APP_VERSION = "1.15.26";
 
-export const VERSION_NOTES = "Ajuste de frequência da pergunta mais simples: o controle 'começa vencida' deixou de aparecer dentro de cada pergunta do checklist. Essa decisão (a pergunta entra já na primeira visita ou não) agora é feita num lugar só — no contrato, pela opção 'aparece na primeira OS' por equipamento — evitando configurar a mesma coisa em dois cantos.";
+export const VERSION_NOTES = "Agora dá para entrar no sistema com a sua conta do Google: na tela de login, toque em 'Continuar com Google' e escolha a conta, sem precisar digitar email e senha. Funciona com o mesmo email já cadastrado no sistema, e o acesso por email e senha continua disponível normalmente.";

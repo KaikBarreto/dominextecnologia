@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,7 +21,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { trackUsage } from '@/lib/trackUsage';
-import { generateSessionToken, getDeviceInfo } from '@/lib/sessionUtils';
+import { getDeviceInfo } from '@/lib/sessionUtils';
+import { registerSession, resolvePostLoginRedirect } from '@/lib/postLogin';
 import {
   isAddingAccountStandalone,
   addCurrentSessionToSavedStandalone,
@@ -35,6 +36,42 @@ const loginSchema = z.object({
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
+
+// Logo "G" oficial multicolor do Google (lucide não tem). SVG inline pra não
+// adicionar asset/rede. Mantém proporção via viewBox.
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
+  );
+}
+
+// Divisor "ou" entre o form de email/senha e o botão do Google.
+function OrDivider() {
+  return (
+    <div className="relative flex items-center">
+      <div className="flex-1 border-t border-white/15" />
+      <span className="px-3 text-[10px] uppercase tracking-widest text-white/40">ou</span>
+      <div className="flex-1 border-t border-white/15" />
+    </div>
+  );
+}
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
@@ -53,9 +90,39 @@ export default function Auth() {
   // Ref to prevent auto-redirect while login flow is in progress
   const loginInProgressRef = useRef(false);
 
-  const { user, loading } = useAuth();
+  const { user, loading, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // Erro vindo do retorno do Google (AuthCallback): chega via location.state
+  // ({ authError }) ou query param ?auth_error=. Mostramos na montagem e
+  // limpamos a URL/estado pra não reaparecer num refresh.
+  useEffect(() => {
+    const stateError = (location.state as { authError?: string } | null)?.authError;
+    const params = new URLSearchParams(location.search);
+    const queryError = params.get('auth_error');
+    const incoming = stateError || queryError;
+    if (incoming) {
+      setAuthError(incoming);
+      // Limpa state + query pra o erro não persistir em navegação/refresh.
+      navigate(location.pathname, { replace: true });
+    }
+    // Só na montagem — não reagir a navegações internas posteriores.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Inicia o OAuth com Google. É um redirect (o browser sai pro Google), então
+  // no sucesso não navegamos nem resetamos o loading — a página é descarregada.
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    setAuthError(null);
+    const { error } = await signInWithGoogle();
+    if (error) {
+      setAuthError(getErrorMessage(error));
+      setIsLoading(false);
+    }
+  };
 
   // Limpa a flag de "relogin email" assim que o componente monta. Mantemos
   // pra o defaultValues capturar (linha abaixo) — usuário não pode ver email
@@ -129,25 +196,8 @@ export default function Auth() {
     },
   });
 
-  const registerSession = useCallback(async (userId: string) => {
-    // Sessão admin-como-usuário (Token de Acesso) NÃO entra em active_sessions:
-    // é temporária e não pode expulsar nem aparecer entre as sessões reais do
-    // usuário. O single-session enforcement (useForcedLogout) só vale pras reais.
-    if (localStorage.getItem('is_admin_token_session') === 'true') {
-      return null;
-    }
-    const sessionToken = generateSessionToken();
-    await supabase
-      .from('active_sessions')
-      .insert({
-        user_id: userId,
-        session_token: sessionToken,
-        device_info: getDeviceInfo(),
-        last_activity: new Date().toISOString(),
-      });
-    localStorage.setItem("session_token", sessionToken);
-    return sessionToken;
-  }, []);
+  // registerSession e a árvore de decisão de destino vivem em @/lib/postLogin
+  // (fonte única compartilhada com o retorno do OAuth em AuthCallback).
 
   const disconnectOtherSessions = useCallback(async (userId: string) => {
     const currentToken = localStorage.getItem("session_token");
@@ -178,55 +228,19 @@ export default function Auth() {
     trackUsage('login');
     toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
 
-    // Fetch all roles to decide the post-login destination
-    const { data: rolesData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
-    const userRoles = (rolesData ?? []).map((r: any) => r.role as string);
-
-    // super_admin → redirect to admin panel
-    if (userRoles.includes('super_admin')) {
-      navigate('/admin/empresas');
-      loginInProgressRef.current = false;
-      return;
+    // Destino pós-login: árvore de decisão compartilhada (super_admin →
+    // /admin/empresas; pending_payment sem bypass → /checkout; técnico →
+    // /agenda; resto → /dashboard). Fonte única em @/lib/postLogin.
+    const destination = await resolvePostLoginRedirect(userId);
+    // Toast específico do fluxo email/senha quando cai no checkout por
+    // pagamento pendente. (O OAuth não emite esse toast.)
+    if (destination === '/checkout') {
+      toast({
+        title: 'Pagamento pendente',
+        description: 'Finalize o pagamento para acessar a plataforma.',
+      });
     }
-
-    // Check company status — pending_payment redirects to checkout
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (profileData?.company_id) {
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('subscription_status, payment_lock_bypass')
-        .eq('id', profileData.company_id)
-        .maybeSingle();
-      // pending_payment manda pro checkout, EXCETO se a empresa tem
-      // bypass liberado (payment_lock_bypass === true) — aí segue normal.
-      // Cast as any: coluna ainda não está no types.ts. Comparação
-      // estrita: null/undefined nunca abre exceção.
-      const hasBypass = (companyData as any)?.payment_lock_bypass === true;
-      if (companyData?.subscription_status === 'pending_payment' && !hasBypass) {
-        toast({
-          title: 'Pagamento pendente',
-          description: 'Finalize o pagamento para acessar a plataforma.',
-        });
-        navigate('/checkout');
-        loginInProgressRef.current = false;
-        return;
-      }
-    }
-
-    // Técnico cai direto na agenda; demais papéis no dashboard
-    if (userRoles.includes('tecnico')) {
-      navigate('/agenda');
-    } else {
-      navigate('/dashboard');
-    }
+    navigate(destination);
     loginInProgressRef.current = false;
   };
 
@@ -526,6 +540,18 @@ export default function Auth() {
                   </form>
                 </Form>
 
+                <OrDivider />
+
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                  className="flex h-12 w-full items-center justify-center gap-3 rounded-md bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <GoogleIcon className="h-5 w-5" />
+                  Continuar com Google
+                </button>
+
                 <div className="text-center text-[11px] text-white/60 pt-2 border-t uppercase tracking-wider">
                   Ainda não tem conta?{' '}
                   <Link to="/cadastro" className="text-primary font-semibold hover:underline">
@@ -688,6 +714,18 @@ export default function Auth() {
                     </Button>
                   </form>
                 </Form>
+
+                <OrDivider />
+
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                  className="flex h-11 w-full items-center justify-center gap-3 rounded-md bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <GoogleIcon className="h-5 w-5" />
+                  Continuar com Google
+                </button>
 
                 <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
                   Ainda não tem conta?{' '}

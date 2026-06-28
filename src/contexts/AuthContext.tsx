@@ -26,6 +26,7 @@ interface AuthContextType {
   isAdminUser: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
@@ -206,6 +207,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
+  // OAuth com Google. Redireciona o navegador pro Google e volta pra
+  // /auth/callback (AuthCallback decide acesso/destino). `select_account` força
+  // o seletor de contas do Google a cada vez (não loga silenciosamente na última).
+  // O provider Google é habilitado no painel do Supabase (Client ID/Secret +
+  // Redirect URLs) — nada de schema/SQL aqui.
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    return { error: error as Error | null };
+  };
+
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
@@ -313,6 +330,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdminUser,
         loading,
         signIn,
+        signInWithGoogle,
         signUp,
         signOut,
         hasRole,

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.26',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Entrar com a conta do Google',
+        description: 'Agora você pode acessar o sistema com a sua conta do Google, em um clique, sem precisar digitar email e senha toda vez. Na tela de login, é só tocar em "Continuar com Google" e escolher a conta. Funciona com o mesmo email que já está cadastrado no sistema, e o login por email e senha continua disponível normalmente.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.15.25',
     date: '28 de junho de 2026',
     type: 'patch',
