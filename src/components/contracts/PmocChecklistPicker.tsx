@@ -11,8 +11,8 @@
 //    default carrega toda a norma do escopo).
 //
 // Cada seção tem "marcar todos" (padrão já existente) e um "marcar todos" global.
-import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Check, ChevronDown, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,7 +21,25 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { catalogFreqCode, isAcSection, partitionPickerSections, type PmocMachineScope } from '@/components/contracts/pmocMachineRoutine';
 import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/components/contracts/questionFrequency';
 import { cn } from '@/lib/utils';
-import type { PmocCatalogSectionGroup } from '@/hooks/usePmocActivityCatalog';
+import {
+  groupActivitiesByType,
+  isEssentialFor,
+  type PmocCatalogActivity,
+  type PmocCatalogSectionGroup,
+} from '@/hooks/usePmocActivityCatalog';
+
+// Copy dos tooltips das duas famílias (sem travessão — vírgula). Reusada também
+// pelo Catálogo de Checklists pra não divergir.
+export const FAMILY_TOOLTIPS = {
+  expansaoDireta:
+    'Aparelhos de expansão direta, que resfriam o ambiente sem água gelada: hi-wall, cassete, piso teto, janela, ACJ e splitão DX. É o PMOC do dia a dia.',
+  sistemasCentrais:
+    'Climatização central de grande porte: VRF, chiller, fan coil, UTA/AHU e self contained, com torres, bombas, válvulas, sensores e água gelada.',
+} as const;
+
+// Nota de conformidade exibida perto do selo "Essencial" (sem travessão).
+export const ESSENTIAL_COMPLIANCE_NOTE =
+  'Conjunto essencial da norma para começar. Você pode adicionar a norma completa quando quiser, conforme o porte e o risco do equipamento.';
 
 const FREQ_LABELS: Record<string, string> = {
   M: 'Mensal',
@@ -72,6 +90,11 @@ interface PmocChecklistPickerProps {
   // expansão por pergunta não aparece (mantém o comportamento antigo só-seleção).
   excludedQuestionIds?: Set<string>;
   onToggleExcludedQuestion?: (questionId: string) => void;
+  // Seta um LOTE de perguntas de uma vez na lista de exclusões da 1ª OS.
+  // excluded=true → tira todas da 1ª OS; excluded=false → coloca todas de volta.
+  // "Toda visita" nunca chega aqui (filtrada antes). Quando ausente, os chips de
+  // frequência não aparecem (mantém comportamento antigo).
+  onSetExcludedQuestions?: (questionIds: string[], excluded: boolean) => void;
 }
 
 export function PmocChecklistPicker({
@@ -85,6 +108,7 @@ export function PmocChecklistPicker({
   onChangeTemplates,
   excludedQuestionIds = new Set(),
   onToggleExcludedQuestion,
+  onSetExcludedQuestions,
 }: PmocChecklistPickerProps) {
   // Filtra os grupos pelo escopo: 'ac' só mostra seções de ar-condicionado.
   const visibleGroups = catalogGroups.filter((g) => (scope === 'ac' ? isAcSection(g.section) : true));
@@ -92,8 +116,24 @@ export function PmocChecklistPicker({
   // Ordena: bloco de ar-condicionado primeiro (Condicionadores → Medições →
   // Testes), depois as demais seções de grande porte.
   const { acSections, otherSections } = partitionPickerSections(visibleGroups.map((g) => g.section));
-  const orderedSections = [...acSections, ...otherSections];
   const groupBySection = new Map(visibleGroups.map((g) => [g.section, g] as const));
+
+  // Escopo concreto pra calcular o conjunto essencial. scope null/full ⇒ 'full'
+  // (essencial = base + central); só 'ac' restringe ao tier base.
+  const essentialScope: PmocMachineScope = scope === 'ac' ? 'ac' : 'full';
+
+  // ── Família "Expansão Direta" (seções AC) — display por activity_group ──────
+  // Achatamos as seções AC numa lista só e reagrupamos por TIPO de tarefa
+  // (LIMPEZA · INSPEÇÃO · MEDIÇÕES · TESTES), independente da section de origem.
+  const acActivities = acSections.flatMap((s) => groupBySection.get(s)?.activities ?? []);
+  const acTypeGroups = groupActivitiesByType(acActivities);
+  const acIds = acActivities.map((a) => a.id);
+  const acEssentialIds = acActivities.filter((a) => isEssentialFor(a, essentialScope)).map((a) => a.id);
+
+  // ── Família "Sistemas Centrais" (demais seções) — display por section ───────
+  const otherActivities = otherSections.flatMap((s) => groupBySection.get(s)?.activities ?? []);
+  const otherIds = otherActivities.map((a) => a.id);
+  const otherEssentialIds = otherActivities.filter((a) => isEssentialFor(a, essentialScope)).map((a) => a.id);
 
   const allIds = visibleGroups.flatMap((g) => g.activities.map((a) => a.id));
   const allChecked = allIds.length > 0 && allIds.every((id) => selection.has(id));
@@ -114,6 +154,25 @@ export function PmocChecklistPicker({
     onChange(next);
   };
 
+  // Selo "Essencial" de uma família: a seleção CORRENTE dentro da família é
+  // exatamente o conjunto essencial (some quando o gestor adiciona/remove algo).
+  const isEssentialSelection = (familyIds: string[], essentialIds: string[]): boolean => {
+    if (essentialIds.length === 0) return false;
+    const selectedInFamily = familyIds.filter((id) => selection.has(id));
+    if (selectedInFamily.length !== essentialIds.length) return false;
+    const essSet = new Set(essentialIds);
+    return selectedInFamily.every((id) => essSet.has(id));
+  };
+
+  // "Adicionar norma completa" de uma família: marca TODAS as atividades dela.
+  const addFullNorm = (familyIds: string[]) => {
+    const next = new Set(selection);
+    familyIds.forEach((id) => next.add(id));
+    onChange(next);
+  };
+  const familyAllChecked = (familyIds: string[]) =>
+    familyIds.length > 0 && familyIds.every((id) => selection.has(id));
+
   // ---- Personalizados (form_templates) -------------------------------------
   const templateIds = customTemplates.map((t) => t.id);
   const selectedTemplateCount = templateIds.filter((id) => selectedTemplateIds.has(id)).length;
@@ -131,7 +190,35 @@ export function PmocChecklistPicker({
     onChangeTemplates(allTemplatesChecked ? new Set() : new Set(templateIds));
   };
 
-  // Render de uma seção (AccordionItem). Reaproveitado nos dois blocos.
+  // Linha de UMA atividade do catálogo (checkbox + descrição + selo de frequência).
+  const renderActivityRow = (act: PmocCatalogActivity) => {
+    const checked = selection.has(act.id);
+    const freqLabel = FREQ_LABELS[catalogFreqCode(act.default_freq_code)] ?? act.default_freq_code;
+    return (
+      <label
+        key={act.id}
+        className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+      >
+        <input
+          type="checkbox"
+          className="mt-0.5 rounded border-border shrink-0"
+          checked={checked}
+          onChange={() => toggleOne(act.id)}
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-foreground">{act.description}</p>
+        </div>
+        <Badge
+          variant={catalogFreqCode(act.default_freq_code) === 'E' ? 'outline' : 'info'}
+          className="shrink-0 text-[10px]"
+        >
+          {freqLabel}
+        </Badge>
+      </label>
+    );
+  };
+
+  // Render de uma seção (AccordionItem) por SECTION — usado em Sistemas Centrais.
   const renderSection = (section: string) => {
     const group = groupBySection.get(section);
     if (!group) return null;
@@ -159,39 +246,94 @@ export function PmocChecklistPicker({
           </span>
         </AccordionTrigger>
         <AccordionContent>
-          <div className="space-y-1">
-            {group.activities.map((act) => {
-              const checked = selection.has(act.id);
-              const freqLabel = FREQ_LABELS[catalogFreqCode(act.default_freq_code)] ?? act.default_freq_code;
-              return (
-                <label
-                  key={act.id}
-                  className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 rounded border-border shrink-0"
-                    checked={checked}
-                    onChange={() => toggleOne(act.id)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground">{act.description}</p>
-                    {act.component && (
-                      <p className="text-xs text-muted-foreground truncate">{act.component}</p>
-                    )}
-                  </div>
-                  <Badge
-                    variant={catalogFreqCode(act.default_freq_code) === 'E' ? 'outline' : 'info'}
-                    className="shrink-0 text-[10px]"
-                  >
-                    {freqLabel}
-                  </Badge>
-                </label>
-              );
-            })}
-          </div>
+          <div className="space-y-1">{group.activities.map(renderActivityRow)}</div>
         </AccordionContent>
       </AccordionItem>
+    );
+  };
+
+  // Render de um grupo por TIPO de tarefa (AccordionItem) — usado em Expansão
+  // Direta (LIMPEZA · INSPEÇÃO · MEDIÇÕES · TESTES). value = `tipo:<group>`.
+  const renderTypeGroup = (block: { group: string; label: string; activities: PmocCatalogActivity[] }) => {
+    const groupIds = block.activities.map((a) => a.id);
+    const selectedInGroup = groupIds.filter((id) => selection.has(id)).length;
+    const groupAllChecked = groupIds.length > 0 && groupIds.every((id) => selection.has(id));
+    return (
+      <AccordionItem key={block.group} value={`tipo:${block.group}`}>
+        <AccordionTrigger className="text-[13px]">
+          <span className="flex flex-1 items-center gap-2 text-left">
+            <span className="font-semibold uppercase tracking-wide">{block.label}</span>
+            <Badge variant="outline" className="text-[10px] shrink-0">{block.activities.length}</Badge>
+            {selectedInGroup > 0 && (
+              <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
+            )}
+            <span
+              role="button"
+              tabIndex={0}
+              className="ml-auto mr-2 shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); } }}
+            >
+              {groupAllChecked ? 'Desmarcar' : 'Marcar todos'}
+            </span>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-1">{block.activities.map(renderActivityRow)}</div>
+        </AccordionContent>
+      </AccordionItem>
+    );
+  };
+
+  // Cabeçalho de família com o "?" (HelpCircle + Tooltip), selo "Essencial"
+  // quando a seleção da família = conjunto essencial, e o atalho "Adicionar norma
+  // completa". stopPropagation/preventDefault no "?" e no botão pra não togglar o
+  // accordion da família.
+  const renderFamilyHeader = (
+    title: string,
+    tip: string,
+    familyIds: string[],
+    essentialIds: string[],
+  ) => {
+    const essentialNow = isEssentialSelection(familyIds, essentialIds);
+    const allOn = familyAllChecked(familyIds);
+    return (
+      <span className="flex flex-1 flex-wrap items-center gap-2 text-left">
+        <span className="text-sm font-semibold">{title}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* role=button (não <button>) pra não aninhar botão dentro do
+                AccordionTrigger; stopPropagation evita togglar a família. */}
+            <span
+              role="button"
+              tabIndex={0}
+              className="inline-flex shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={`Sobre ${title}`}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); } }}
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs text-xs">{tip}</TooltipContent>
+        </Tooltip>
+        {essentialNow && (
+          <Badge className="shrink-0 bg-emerald-600 text-white border-transparent text-[10px]">Essencial</Badge>
+        )}
+        {!allOn && (
+          <span
+            role="button"
+            tabIndex={0}
+            className="ml-auto mr-2 shrink-0 rounded-md border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); addFullNorm(familyIds); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); addFullNorm(familyIds); } }}
+          >
+            Adicionar norma completa
+          </span>
+        )}
+      </span>
     );
   };
 
@@ -241,16 +383,24 @@ export function PmocChecklistPicker({
             )}
           </header>
 
-          {/* Sub-seções por escopo (single-open): AC → Grande porte. */}
+          {/* Nota de conformidade: o default vem enxuto (essencial), a norma
+              completa fica a um clique por família. */}
+          <p className="px-1 text-[11px] leading-snug text-muted-foreground">{ESSENTIAL_COMPLIANCE_NOTE}</p>
+
+          {/* Famílias (single-open): Expansão Direta → Sistemas Centrais.
+              - Expansão Direta agrupa por TIPO de tarefa (Limpeza/Inspeção/
+                Medições/Testes).
+              - Sistemas Centrais agrupa por section (infra/central têm
+                activity_group NULL). */}
           <Accordion type="single" collapsible defaultValue="ac" className="w-full space-y-2">
-            {acSections.length > 0 && (
+            {acTypeGroups.length > 0 && (
               <AccordionItem value="ac" className="rounded-md border bg-background px-3">
                 <AccordionTrigger className="text-sm font-semibold">
-                  Ar-condicionado (Split / ACJ)
+                  {renderFamilyHeader('Expansão Direta', FAMILY_TOOLTIPS.expansaoDireta, acIds, acEssentialIds)}
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Accordion type="multiple" defaultValue={[acSections[0]]} className="ml-1 w-auto border-l-2 border-muted pl-3">
-                    {acSections.map(renderSection)}
+                  <Accordion type="multiple" defaultValue={acTypeGroups.map((b) => `tipo:${b.group}`)} className="ml-1 w-auto border-l-2 border-muted pl-3">
+                    {acTypeGroups.map(renderTypeGroup)}
                   </Accordion>
                 </AccordionContent>
               </AccordionItem>
@@ -259,7 +409,7 @@ export function PmocChecklistPicker({
             {otherSections.length > 0 && (
               <AccordionItem value="gp" className="rounded-md border bg-background px-3">
                 <AccordionTrigger className="text-sm font-semibold">
-                  Grande porte (torres, bombas, casa de máquinas…)
+                  {renderFamilyHeader('Sistemas Centrais', FAMILY_TOOLTIPS.sistemasCentrais, otherIds, otherEssentialIds)}
                 </AccordionTrigger>
                 <AccordionContent>
                   <Accordion type="multiple" className="ml-1 w-auto border-l-2 border-muted pl-3">
@@ -311,6 +461,7 @@ export function PmocChecklistPicker({
                   onToggle={() => toggleTemplate(tpl.id)}
                   excludedQuestionIds={excludedQuestionIds}
                   onToggleExcludedQuestion={onToggleExcludedQuestion}
+                  onSetExcludedQuestions={onSetExcludedQuestions}
                 />
               ))}
             </div>
@@ -326,12 +477,16 @@ export function PmocChecklistPicker({
 // que expande a lista de perguntas, cada uma com selo de frequência e o checkbox
 // quadrado "Adicionar na 1ª OS?". "Toda visita" entra travado marcado (sempre na
 // 1ª OS); as demais default marcado, desmarcar → vai pra lista de exclusões.
+// Acima da lista, uma faixa de chips por frequência (quando o pai fornece
+// onSetExcludedQuestions) marca/desmarca todas as perguntas de uma frequência de
+// uma vez — paridade com o contrato comum.
 interface CustomTemplateRowProps {
   tpl: CustomChecklistOption;
   checked: boolean;
   onToggle: () => void;
   excludedQuestionIds: Set<string>;
   onToggleExcludedQuestion?: (questionId: string) => void;
+  onSetExcludedQuestions?: (questionIds: string[], excluded: boolean) => void;
 }
 
 function CustomTemplateRow({
@@ -340,6 +495,7 @@ function CustomTemplateRow({
   onToggle,
   excludedQuestionIds,
   onToggleExcludedQuestion,
+  onSetExcludedQuestions,
 }: CustomTemplateRowProps) {
   const [open, setOpen] = useState(false);
   const questions = [...(tpl.questions ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -348,6 +504,20 @@ function CustomTemplateRow({
   const questionCount = tpl.questionCount ?? questions.length;
   // Quantas perguntas entram na 1ª OS (toda visita + não excluídas).
   const includedCount = questions.filter((q) => isEveryVisit(q) || !excludedQuestionIds.has(q.id)).length;
+
+  // Frequências distintas deste checklist (exclui "toda visita", obrigatória).
+  // Cada bucket vira um chip "marcar/desmarcar todas". Espelha CommonChecklistEditor.
+  const frequencyBuckets = useMemo(() => {
+    const map = new Map<string, { label: string; ids: string[] }>();
+    for (const q of questions) {
+      if (isEveryVisit(q)) continue;
+      const label = frequencyLabel(q);
+      const bucket = map.get(label) ?? { label, ids: [] };
+      bucket.ids.push(q.id);
+      map.set(label, bucket);
+    }
+    return [...map.values()];
+  }, [questions]);
 
   return (
     <div className="rounded-md bg-background">
@@ -388,6 +558,42 @@ function CustomTemplateRow({
 
       {expandable && open && (
         <div className="ml-7 mr-1 mb-1.5 rounded-md border bg-muted/20 px-2 pb-2 pt-1.5">
+          {/* Faixa de chips por frequência: marca/desmarca todas de uma vez.
+              Só aparece quando o pai fornece o setter de lote e há ≥1 bucket. */}
+          {onSetExcludedQuestions && frequencyBuckets.length > 0 && (
+            <div className="mb-2.5 rounded-md bg-muted/40 p-2">
+              <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">
+                Marcar/desmarcar todas de uma frequência
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {frequencyBuckets.map((b) => {
+                  const allIncluded = b.ids.every((id) => !excludedQuestionIds.has(id));
+                  return (
+                    <button
+                      key={b.label}
+                      type="button"
+                      onClick={() => onSetExcludedQuestions(b.ids, allIncluded)}
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors',
+                        allIncluded
+                          ? 'border-info bg-info text-info-foreground'
+                          : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                      )}
+                      title={
+                        allIncluded
+                          ? `Desmarcar todas as perguntas: ${b.label}`
+                          : `Marcar todas as perguntas: ${b.label}`
+                      }
+                    >
+                      {allIncluded && <Check className="h-3 w-3" />}
+                      {b.label}
+                      <span className="opacity-70">({b.ids.length})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2.5 border-b px-1.5 pb-1.5">
             <span className="min-w-0 flex-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Pergunta

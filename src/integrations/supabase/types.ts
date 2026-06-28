@@ -4738,10 +4738,12 @@ export type Database = {
       }
       pmoc_activity_catalog: {
         Row: {
+          activity_group: string | null
           component: string | null
           created_at: string
           default_freq_code: string
           description: string
+          essential_tier: string | null
           expected_max: number | null
           expected_min: number | null
           guidance: string | null
@@ -4754,10 +4756,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activity_group?: string | null
           component?: string | null
           created_at?: string
           default_freq_code: string
           description: string
+          essential_tier?: string | null
           expected_max?: number | null
           expected_min?: number | null
           guidance?: string | null
@@ -4770,10 +4774,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activity_group?: string | null
           component?: string | null
           created_at?: string
           default_freq_code?: string
           description?: string
+          essential_tier?: string | null
           expected_max?: number | null
           expected_min?: number | null
           guidance?: string | null

@@ -10,6 +10,17 @@ import { supabase } from '@/integrations/supabase/client';
  * São poucas linhas (149) e o conteúdo é estável (catálogo regulatório), então
  * carregamos tudo de uma vez e agrupamos/filtramos no client.
  */
+// Tier do conjunto ESSENCIAL ("enxuto") que nasce pré-marcado num plano novo.
+//  - base    = essencial da Expansão Direta (herdado por Sistemas Centrais);
+//  - central = adição da máquina de Sistemas Centrais (pressões, água);
+//  - infra   = essencial do equipamento de infraestrutura (torre/bombas) — Fase 2;
+//  - null    = não-essencial (entra DESMARCADO, opt-in via "Adicionar norma completa").
+export type PmocEssentialTier = 'base' | 'central' | 'infra';
+
+// Grupo de exibição por TIPO de tarefa. Só agrupa o display do picker; independe
+// de `section`. NULL nas seções de infra/central (essas agrupam por section).
+export type PmocActivityGroup = 'limpeza' | 'inspecao' | 'medicao' | 'teste';
+
 export interface PmocCatalogActivity {
   id: string;
   section: string;
@@ -22,6 +33,8 @@ export interface PmocCatalogActivity {
   expected_min: number | null;
   expected_max: number | null;
   sort_order: number;
+  essential_tier: PmocEssentialTier | null;
+  activity_group: PmocActivityGroup | null;
 }
 
 /** Rótulo PT-BR de cada seção da norma (chave técnica → texto pro gestor). */
@@ -54,6 +67,70 @@ export interface PmocCatalogSectionGroup {
   activities: PmocCatalogActivity[];
 }
 
+// ── Conjunto ESSENCIAL ───────────────────────────────────────────────────────
+// O escopo da máquina ('ac' = Expansão Direta; 'full' = Sistemas Centrais) define
+// quais tiers contam como essenciais. Expansão Direta = só 'base'; Sistemas
+// Centrais herda 'base' e adiciona 'central'. ('infra' é Fase 2 — equipamento de
+// infraestrutura à parte — e nunca entra no essencial da máquina.)
+export type PmocEssentialScope = 'ac' | 'full';
+
+const ESSENTIAL_TIERS_BY_SCOPE: Record<PmocEssentialScope, ReadonlySet<PmocEssentialTier>> = {
+  ac: new Set<PmocEssentialTier>(['base']),
+  full: new Set<PmocEssentialTier>(['base', 'central']),
+};
+
+/** A atividade pertence ao conjunto essencial do escopo dado? */
+export function isEssentialFor(
+  activity: Pick<PmocCatalogActivity, 'essential_tier'>,
+  scope: PmocEssentialScope,
+): boolean {
+  return !!activity.essential_tier && ESSENTIAL_TIERS_BY_SCOPE[scope].has(activity.essential_tier);
+}
+
+// ── Grupos de exibição por TIPO de tarefa (Expansão Direta) ──────────────────
+// Ordem fixa pedida pelo CEO: LIMPEZA · INSPEÇÃO · MEDIÇÕES · TESTES.
+export const PMOC_ACTIVITY_GROUP_ORDER: PmocActivityGroup[] = ['limpeza', 'inspecao', 'medicao', 'teste'];
+
+export const PMOC_ACTIVITY_GROUP_LABELS: Record<PmocActivityGroup, string> = {
+  limpeza: 'Limpeza',
+  inspecao: 'Inspeção',
+  medicao: 'Medições',
+  teste: 'Testes',
+};
+
+export function pmocActivityGroupLabel(group: PmocActivityGroup): string {
+  return PMOC_ACTIVITY_GROUP_LABELS[group];
+}
+
+export interface PmocCatalogActivityGroupBlock {
+  group: PmocActivityGroup;
+  label: string;
+  activities: PmocCatalogActivity[];
+}
+
+/**
+ * Agrupa uma lista de atividades por `activity_group`, na ordem fixa
+ * LIMPEZA/INSPEÇÃO/MEDIÇÕES/TESTES. Atividades sem grupo (NULL) são ignoradas
+ * aqui (elas pertencem ao display por section de Sistemas Centrais). Grupos
+ * vazios não aparecem.
+ */
+export function groupActivitiesByType(
+  activities: PmocCatalogActivity[],
+): PmocCatalogActivityGroupBlock[] {
+  const byGroup = new Map<PmocActivityGroup, PmocCatalogActivity[]>();
+  for (const a of activities) {
+    if (!a.activity_group) continue;
+    const arr = byGroup.get(a.activity_group) ?? [];
+    arr.push(a);
+    byGroup.set(a.activity_group, arr);
+  }
+  return PMOC_ACTIVITY_GROUP_ORDER.filter((g) => (byGroup.get(g)?.length ?? 0) > 0).map((g) => ({
+    group: g,
+    label: PMOC_ACTIVITY_GROUP_LABELS[g],
+    activities: byGroup.get(g)!,
+  }));
+}
+
 export function usePmocActivityCatalog() {
   const { data, isLoading } = useQuery({
     queryKey: ['pmoc-activity-catalog'],
@@ -62,7 +139,7 @@ export function usePmocActivityCatalog() {
       const { data, error } = await supabase
         .from('pmoc_activity_catalog')
         .select(
-          'id, section, component, description, guidance, default_freq_code, is_measurement, unit, expected_min, expected_max, sort_order',
+          'id, section, component, description, guidance, default_freq_code, is_measurement, unit, expected_min, expected_max, sort_order, essential_tier, activity_group',
         )
         .eq('is_active', true)
         .order('section', { ascending: true })

@@ -777,6 +777,15 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       return next;
     });
   };
+  // Marca/desmarca um LOTE de perguntas na lista de exclusões da 1ª OS (chips de
+  // frequência). excluded=true tira da 1ª OS; false coloca de volta.
+  const setPickerExcludedQuestionsBulk = (questionIds: string[], excluded: boolean) => {
+    setPickerExcludedQuestions((prev) => {
+      const next = new Set(prev);
+      for (const id of questionIds) { if (excluded) next.add(id); else next.delete(id); }
+      return next;
+    });
+  };
   const confirmCatalogPicker = () => {
     if (!pickerMachineEqId) { setShowCatalogPicker(false); return; }
     const eqId = pickerMachineEqId;
@@ -1303,6 +1312,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           onChangeTemplates={setPickerTemplateSelection}
           excludedQuestionIds={pickerExcludedQuestions}
           onToggleExcludedQuestion={togglePickerExcludedQuestion}
+          onSetExcludedQuestions={setPickerExcludedQuestionsBulk}
         />
       </ResponsiveModal>
 
@@ -1784,15 +1794,15 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                               </button>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs text-xs">
-                              "Só ar-condicionado" cobre split/ACJ comum. "Toda a norma" inclui as seções de grande porte (VRF, Chiller, Torre, casa de máquinas…).
+                              Expansão Direta cobre split/ACJ/cassete/piso teto. Sistemas Centrais inclui VRF, chiller, fan coil, UTA e self contained.
                             </TooltipContent>
                           </Tooltip>
                         </div>
                         <LabeledSwitch
                           value={cfg?.scope ?? 'ac'}
                           onChange={(v) => setMachineScope(eqId, v as PmocMachineScope)}
-                          off={{ value: 'ac', label: 'Só ar-condicionado' }}
-                          on={{ value: 'full', label: 'Grande Porte (VRF/Chiller…)' }}
+                          off={{ value: 'ac', label: 'Expansão Direta' }}
+                          on={{ value: 'full', label: 'Sistemas Centrais' }}
                           size="default"
                           className="[&_button]:text-xs"
                           aria-label="Escopo da norma da máquina"

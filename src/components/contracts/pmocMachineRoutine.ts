@@ -7,7 +7,7 @@
 // pelo MESMO caminho (updateContract / createContract no useContracts).
 import type { PlanActivityInput, FreqCode } from '@/hooks/useContracts';
 import type { PmocCatalogActivity } from '@/hooks/usePmocActivityCatalog';
-import { PMOC_DEFAULT_SECTION } from '@/hooks/usePmocActivityCatalog';
+import { PMOC_DEFAULT_SECTION, isEssentialFor } from '@/hooks/usePmocActivityCatalog';
 
 // Escopo da norma POR MÁQUINA. 'ac' = só condicionadores e medições/testes do
 // aparelho; 'full' = toda a norma aplicável ao equipamento (grande porte:
@@ -92,6 +92,19 @@ export function machineCatalogActivities(
     if (scope === 'ac') return AC_EQUIPMENT_SECTIONS.has(a.section);
     return true; // full = toda a norma do aparelho
   });
+}
+
+// Subconjunto ESSENCIAL ("enxuto") das atividades de UMA máquina, dado o escopo.
+// É machineCatalogActivities(...) filtrado por essential_tier:
+//  - 'ac'   → só tier 'base' (essencial da Expansão Direta);
+//  - 'full' → tier 'base' + 'central' (herda a base e adiciona pressões/água).
+// É isso que nasce PRÉ-MARCADO num contrato/máquina novo (default enxuto). O
+// catálogo completo continua disponível pelo botão "Adicionar norma completa".
+export function essentialMachineActivities(
+  all: PmocCatalogActivity[],
+  scope: PmocMachineScope,
+): PmocCatalogActivity[] {
+  return machineCatalogActivities(all, scope).filter((a) => isEssentialFor(a, scope));
 }
 
 // Atividades de LOCAL do catálogo (casa de máquinas, dutos, torres, bombas…).
@@ -235,14 +248,15 @@ export function planRowToFreqCode(row: { freq_code: string | null; freq_months: 
 }
 
 // Config default de uma máquina: escopo dado (default 'ac'), começa na 12
-// (anual = revisão completa) e listagem = toda a norma do escopo (não
-// personalizado). `equipment_ref` amarra cada atividade ao seu equipamento.
+// (anual = revisão completa) e listagem = conjunto ESSENCIAL do escopo (default
+// enxuto, não a norma inteira). `equipment_ref` amarra cada atividade ao seu
+// equipamento. O gestor adiciona a norma completa a um clique no picker.
 export function buildDefaultMachineConfig(
   catalogActivities: PmocCatalogActivity[],
   eqId: string,
   scope: PmocMachineScope,
 ): MachineConfig {
-  const acts = machineCatalogActivities(catalogActivities, scope).map(a => ({
+  const acts = essentialMachineActivities(catalogActivities, scope).map(a => ({
     ...catalogToPlanRow(a),
     applies_per_equipment: true,
     equipment_ref: eqId,
@@ -341,7 +355,17 @@ export function reconstructMachineConfigs(args: {
       if (!it.equipment_id) continue;
       const meta = itemMeta[it.equipment_id] ?? { scope: 'ac' as PmocMachineScope, startVisit: 12, firstOsExcludedQuestions: [] };
       const acts = byEquip[it.equipment_id] ?? [];
-      // Personalizado = listagem difere da norma do escopo (algum item removido/adicionado).
+      // "Personalizado" = a listagem da máquina não bate com NENHUM dos dois
+      // baselines não-customizados do escopo:
+      //   - ESSENCIAL  → novo default enxuto (o que nasce pré-marcado);
+      //   - NORMA CHEIA → contratos antigos foram salvos com a norma inteira.
+      // Sem o baseline cheio, todo contrato legado abriria como "personalizado"
+      // só por causa da mudança de default. Com ele, tanto a máquina nova
+      // (essencial) quanto a legada (norma cheia) abrem limpas; só uma curadoria
+      // de verdade (subset/adição parcial) marca como personalizado. Quando o
+      // plano não tem atividade do catálogo (acts vazio), caímos no fallback de
+      // norma cheia → não-personalizado. Decisão do plano 2026-06-28.
+      const essentialCount = essentialMachineActivities(catalogActivities, meta.scope).length;
       const normaCount = machineCatalogActivities(catalogActivities, meta.scope).length;
       configs[it.equipment_id] = {
         scope: meta.scope,
@@ -349,7 +373,7 @@ export function reconstructMachineConfigs(args: {
         activities: acts.length > 0
           ? acts
           : machineCatalogActivities(catalogActivities, meta.scope).map(a => ({ ...catalogToPlanRow(a), applies_per_equipment: true, equipment_ref: it.equipment_id! })),
-        customized: acts.length !== normaCount,
+        customized: acts.length > 0 && acts.length !== essentialCount && acts.length !== normaCount,
         customTemplateIds: customByEquip[it.equipment_id] ?? [],
         firstOsExcludedQuestions: meta.firstOsExcludedQuestions,
       };

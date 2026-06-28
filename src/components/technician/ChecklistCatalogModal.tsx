@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, Search, ChevronDown, ChevronRight, Snowflake,
-  ClipboardList, Check, Download, BookOpen, ArrowLeft,
+  ClipboardList, Check, Download, BookOpen, ArrowLeft, HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,12 @@ import {
 } from '@/hooks/useFormTemplates';
 import {
   usePmocActivityCatalog,
+  groupActivitiesByType,
   type PmocCatalogActivity,
 } from '@/hooks/usePmocActivityCatalog';
+import { isAcSection } from '@/components/contracts/pmocMachineRoutine';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { FAMILY_TOOLTIPS } from '@/components/contracts/PmocChecklistPicker';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import {
   getCatalogForSegment,
@@ -135,6 +139,26 @@ export function ChecklistCatalogModal({
     [existingQuestions],
   );
 
+  // Default ENXUTO: ao abrir o catálogo, o conjunto ESSENCIAL já vem pré-marcado
+  // (não vazio, não a norma inteira). Essencial = qualquer linha com
+  // essential_tier (base/central/infra). Itens já no checklist (modo import) não
+  // entram (ficam disabled). Só semeia uma vez por abertura, sem sobrescrever a
+  // escolha do gestor depois.
+  const [seededDefault, setSeededDefault] = useState(false);
+  useEffect(() => {
+    if (!open) { setSeededDefault(false); return; }
+    if (seededDefault || pmocLoading || !showPmoc) return;
+    const seed: Record<string, boolean> = {};
+    for (const g of pmocGroups) {
+      for (const a of g.activities) {
+        if (a.essential_tier && !existingSet.has(norm(a.description))) seed[a.id] = true;
+      }
+    }
+    setSelectedPmoc(seed);
+    setSeededDefault(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pmocLoading, showPmoc, pmocGroups]);
+
   const resetState = () => {
     setSearch('');
     setSelectedPmoc({});
@@ -175,6 +199,32 @@ export function ChecklistCatalogModal({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceTemplates, q]);
+
+  // Famílias do catálogo PMOC, derivadas dos grupos já filtrados pela busca.
+  //  - Expansão Direta = seções AC (condicionadores/medições/testes), reagrupadas
+  //    por TIPO de tarefa (Limpeza/Inspeção/Medições/Testes via activity_group).
+  //  - Sistemas Centrais = demais seções, agrupadas por section (infra/central
+  //    têm activity_group NULL).
+  const acTypeGroups = useMemo(() => {
+    const acActs = filteredPmocGroups
+      .filter(g => isAcSection(g.section))
+      .flatMap(g => g.activities);
+    return groupActivitiesByType(acActs);
+  }, [filteredPmocGroups]);
+
+  const acActivitiesFlat = useMemo(
+    () => acTypeGroups.flatMap(b => b.activities),
+    [acTypeGroups],
+  );
+
+  const otherGroups = useMemo(
+    () => filteredPmocGroups.filter(g => !isAcSection(g.section)),
+    [filteredPmocGroups],
+  );
+  const otherActivitiesFlat = useMemo(
+    () => otherGroups.flatMap(g => g.activities),
+    [otherGroups],
+  );
 
   const selectedPmocCount = Object.values(selectedPmoc).filter(Boolean).length;
 
@@ -321,6 +371,121 @@ export function ChecklistCatalogModal({
     handleQuestions(acts.map(pmocActivityToQuestion), label);
 
   const busy = createQuestionsBatch.isPending || createTemplate.isPending || creating;
+
+  // Linha de UMA atividade PMOC (checkbox + descrição + selo de tipo).
+  const renderPmocActivity = (a: PmocCatalogActivity) => {
+    const already = !isCreate && existingSet.has(norm(a.description));
+    const tb = qTypeBadge(a.is_measurement ? 'number' : 'conformidade');
+    return (
+      <label
+        key={a.id}
+        className={cn(
+          'flex items-start gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40',
+          already && 'opacity-50',
+        )}
+      >
+        <Checkbox
+          className="mt-0.5"
+          checked={!!selectedPmoc[a.id]}
+          onCheckedChange={() => togglePmoc(a.id)}
+          disabled={already}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="leading-tight">{a.description}</p>
+          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+            <Badge className={cn('text-[10px] font-medium', tb.className)}>
+              {a.is_measurement ? `Número${a.unit ? ` (${a.unit})` : ''}` : 'Conformidade'}
+            </Badge>
+            {already && <span className="text-[10px] text-muted-foreground">já no checklist</span>}
+          </div>
+        </div>
+      </label>
+    );
+  };
+
+  // Um subgrupo (tipo de tarefa OU section) dentro de uma família: cabeçalho
+  // colapsável + "marcar todas" + importar/selecionar o subgrupo inteiro.
+  const renderPmocSubGroup = (sub: { key: string; label: string; activities: PmocCatalogActivity[] }) => {
+    const isOpen = expanded[sub.key] ?? !!q;
+    const allOn = sub.activities.length > 0 && sub.activities.every(a => selectedPmoc[a.id]);
+    return (
+      <div key={sub.key}>
+        <div className={cn('flex items-center gap-2 px-3 py-2', isOpen && 'bg-muted/30')}>
+          <button
+            type="button"
+            className="flex flex-1 items-center gap-2 text-left min-w-0"
+            onClick={() => toggleSection(sub.key)}
+          >
+            {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+            <span className="text-sm font-medium truncate">{sub.label}</span>
+            <Badge variant="secondary" className="text-xs shrink-0">{sub.activities.length}</Badge>
+          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs shrink-0"
+            onClick={() => handlePmocSection(sub.activities, sub.label)}
+            disabled={busy}
+          >
+            {isCreate ? 'Selecionar' : 'Importar'}
+          </Button>
+        </div>
+        {isOpen && (
+          <div className="divide-y bg-muted/20">
+            <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:bg-muted/40">
+              <Checkbox
+                checked={allOn}
+                onCheckedChange={(c) => togglePmocSection(sub.activities, !!c)}
+              />
+              {allOn ? 'Desmarcar todas' : 'Marcar todas'}
+            </label>
+            {sub.activities.map(renderPmocActivity)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Uma família (Expansão Direta / Sistemas Centrais): cabeçalho forte com "?",
+  // selo de selecionados, "Importar/Selecionar a família" + subgrupos por dentro.
+  const renderPmocFamily = (fam: {
+    familyKey: string;
+    title: string;
+    tip: string;
+    familyActivities: PmocCatalogActivity[];
+    subgroups: { key: string; label: string; activities: PmocCatalogActivity[] }[];
+  }) => {
+    const selectedInFamily = fam.familyActivities.filter(a => selectedPmoc[a.id]).length;
+    return (
+      <div key={fam.familyKey} className="rounded-lg border bg-card overflow-hidden">
+        <header className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
+          <h4 className="text-sm font-semibold">{fam.title}</h4>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Sobre ${fam.title}`}>
+                <HelpCircle className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs">{fam.tip}</TooltipContent>
+          </Tooltip>
+          <Badge variant="secondary" className="text-xs shrink-0">{fam.familyActivities.length}</Badge>
+          {selectedInFamily > 0 && (
+            <Badge className="bg-emerald-600 text-white border-transparent text-[10px] shrink-0">{selectedInFamily} ✓</Badge>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-7 text-xs shrink-0"
+            onClick={() => handlePmocSection(fam.familyActivities, fam.title)}
+            disabled={busy}
+          >
+            {isCreate ? 'Selecionar tudo' : 'Importar tudo'}
+          </Button>
+        </header>
+        <div className="divide-y">{fam.subgroups.map(renderPmocSubGroup)}</div>
+      </div>
+    );
+  };
 
   // -------------------------------------------------------------------------
   // PASSO DE NOME (só no modo create)
@@ -522,80 +687,28 @@ export function ChecklistCatalogModal({
 
             {pmocLoading ? (
               <p className="text-sm text-muted-foreground py-2">Carregando catálogo PMOC...</p>
-            ) : filteredPmocGroups.length === 0 ? (
+            ) : acActivitiesFlat.length === 0 && otherActivitiesFlat.length === 0 ? (
               <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
                 Nenhuma atividade encontrada.
               </p>
             ) : (
-              <div className="rounded-lg border bg-card divide-y overflow-hidden">
-                {filteredPmocGroups.map((g) => {
-                  const key = `pmoc:${g.section}`;
-                  const isOpen = expanded[key] ?? !!q;
-                  const allOn = g.activities.every(a => selectedPmoc[a.id]);
-                  return (
-                    <div key={g.section}>
-                      <div className={cn('flex items-center gap-2 px-3 py-2', isOpen && 'bg-muted/30')}>
-                        <button
-                          type="button"
-                          className="flex flex-1 items-center gap-2 text-left min-w-0"
-                          onClick={() => toggleSection(key)}
-                        >
-                          {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-                          <span className="text-sm font-medium truncate">{g.label}</span>
-                          <Badge variant="secondary" className="text-xs shrink-0">{g.activities.length}</Badge>
-                        </button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs shrink-0"
-                          onClick={() => handlePmocSection(g.activities, g.label)}
-                          disabled={busy}
-                        >
-                          {isCreate ? 'Selecionar seção' : 'Importar seção'}
-                        </Button>
-                      </div>
-                      {isOpen && (
-                        <div className="divide-y bg-muted/20">
-                          <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:bg-muted/40">
-                            <Checkbox
-                              checked={allOn}
-                              onCheckedChange={(c) => togglePmocSection(g.activities, !!c)}
-                            />
-                            {allOn ? 'Desmarcar todas' : 'Marcar todas desta seção'}
-                          </label>
-                          {g.activities.map((a) => {
-                            const already = !isCreate && existingSet.has(norm(a.description));
-                            const tb = qTypeBadge(a.is_measurement ? 'number' : 'conformidade');
-                            return (
-                              <label
-                                key={a.id}
-                                className={cn(
-                                  'flex items-start gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40',
-                                  already && 'opacity-50',
-                                )}
-                              >
-                                <Checkbox
-                                  className="mt-0.5"
-                                  checked={!!selectedPmoc[a.id]}
-                                  onCheckedChange={() => togglePmoc(a.id)}
-                                  disabled={already}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="leading-tight">{a.description}</p>
-                                  <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                    <Badge className={cn('text-[10px] font-medium', tb.className)}>
-                                      {a.is_measurement ? `Número${a.unit ? ` (${a.unit})` : ''}` : 'Conformidade'}
-                                    </Badge>
-                                    {already && <span className="text-[10px] text-muted-foreground">já no checklist</span>}
-                                  </div>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
+              <div className="space-y-3">
+                {/* Família 1: Expansão Direta — agrupada por TIPO de tarefa. */}
+                {acActivitiesFlat.length > 0 && renderPmocFamily({
+                  familyKey: 'expansao',
+                  title: 'Expansão Direta',
+                  tip: FAMILY_TOOLTIPS.expansaoDireta,
+                  familyActivities: acActivitiesFlat,
+                  subgroups: acTypeGroups.map(b => ({ key: `tipo:${b.group}`, label: b.label, activities: b.activities })),
+                })}
+
+                {/* Família 2: Sistemas Centrais — agrupada por section. */}
+                {otherActivitiesFlat.length > 0 && renderPmocFamily({
+                  familyKey: 'centrais',
+                  title: 'Sistemas Centrais',
+                  tip: FAMILY_TOOLTIPS.sistemasCentrais,
+                  familyActivities: otherActivitiesFlat,
+                  subgroups: otherGroups.map(g => ({ key: `sec:${g.section}`, label: g.label, activities: g.activities })),
                 })}
               </div>
             )}
