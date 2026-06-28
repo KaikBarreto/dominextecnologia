@@ -66,6 +66,7 @@ import {
   firstVisitContents,
   catalogToPlanRow,
   machineCatalogActivities,
+  essentialMachineActivities,
   reconstructMachineConfigs,
   buildDefaultMachineConfig,
   buildPmocPlanFromMachines,
@@ -740,7 +741,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     setMachineConfigs((prev) => {
       const cur = prev[eqId];
       if (!cur) return prev;
-      const acts = machineCatalogActivities(catalogActivities, scope).map((a) => ({
+      // Enxuto também ao TROCAR de escopo: só o essencial do novo escopo.
+      const acts = essentialMachineActivities(catalogActivities, scope).map((a) => ({
         ...catalogToPlanRow(a),
         applies_per_equipment: true,
         equipment_ref: eqId,

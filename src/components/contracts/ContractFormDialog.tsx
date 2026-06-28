@@ -38,6 +38,7 @@ import {
   startVisitLabel,
   firstVisitContents,
   machineCatalogActivities,
+  essentialMachineActivities,
   catalogToPlanRow,
   planRowToInput,
   planRowToFreqCode,
@@ -1335,7 +1336,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setMachineConfigs(prev => {
       const cur = prev[eqId];
       if (!cur) return prev;
-      const acts = machineCatalogActivities(catalogActivities, scope).map(a => ({
+      // Enxuto também ao TROCAR de escopo: recarrega só o conjunto essencial do
+      // novo escopo (não a norma cheia). A norma completa fica no "Adicionar
+      // norma completa" do picker.
+      const acts = essentialMachineActivities(catalogActivities, scope).map(a => ({
         ...catalogToPlanRow(a),
         applies_per_equipment: true,
         equipment_ref: eqId,
