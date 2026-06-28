@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ComponentType } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Menu,
@@ -405,8 +406,11 @@ export default function LandingNavbar() {
                           onClick={() => setSolutionsOpen(false)}
                           className={cn(
                             'group flex items-start gap-3 rounded-xl p-3 transition-colors duration-200',
-                            'hover:bg-primary focus-visible:bg-primary focus-visible:outline-none',
-                            isCurrent && 'bg-primary/10'
+                            // Verde FIXO da marca (#00C597): este menu NÃO pode
+                            // depender de --primary (sobrescrito pelo white-label
+                            // do tenant logado / accent de página de segmento).
+                            'hover:bg-[#00C597] focus-visible:bg-[#00C597] focus-visible:outline-none',
+                            isCurrent && 'bg-[#00C597]/10'
                           )}
                         >
                           {sol.image ? (
@@ -418,7 +422,7 @@ export default function LandingNavbar() {
                               className="h-9 w-9 shrink-0 rounded-full object-cover"
                             />
                           ) : (
-                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-primary transition-colors duration-200 group-hover:text-white group-focus-visible:text-white">
+                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-[#00C597] transition-colors duration-200 group-hover:text-white group-focus-visible:text-white">
                               {Icon && <Icon className="h-[20px] w-[20px]" />}
                             </span>
                           )}
@@ -577,29 +581,58 @@ export default function LandingNavbar() {
             </Button>
           </div>
 
-          {/* Mobile hamburger — fica à direita; logo é absolute-centralizado. */}
-          <button
-            className="md:hidden ml-auto text-white"
-            aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+          {/* No mobile o header tem APENAS o logo centralizado — o menu agora é
+              aberto pelo botão "Menu" do rodapé sticky (abaixo). */}
         </div>
       </div>
 
-      {/* Mobile menu — overlay full-screen (100vw x 100dvh), fundo sólido. */}
-      {mobileOpen && (
+      {/* Rodapé sticky mobile — aparece ao rolar (scrolled) e some quando o
+          overlay do menu está aberto. CTA grande de conversão + botão "Menu".
+          z-40: abaixo do overlay (z-50) e acima do conteúdo. Respeita a
+          safe-area inferior do iPhone.
+          PORTAL p/ document.body: o <nav> tem `backdrop-blur` (backdrop-filter),
+          que cria um containing block — um `fixed bottom-0` descendente do nav
+          ancoraria no topo do nav, não no rodapé da viewport. O portal escapa
+          disso e fixa de verdade no rodapé da tela. */}
+      {scrolled &&
+        !mobileOpen &&
+        createPortal(
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(0,0%,5%)]/95 backdrop-blur-xl px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+            <div className="flex items-center gap-3">
+              <Link
+                to="/cadastro?origem=Site"
+                className="flex-1 inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-base font-semibold hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: ctaBg, color: ctaFg }}
+              >
+                Testar grátis por 14 dias
+              </Link>
+              <button
+                type="button"
+                aria-label="Abrir menu"
+                aria-expanded={mobileOpen}
+                onClick={() => setMobileOpen(true)}
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/15 px-4 py-3.5 text-base font-medium text-white hover:bg-white/5 transition-colors"
+              >
+                <Menu className="h-5 w-5" />
+                Menu
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Mobile menu — overlay full-screen (100vw x 100dvh), fundo sólido.
+          Também via PORTAL: mesmo motivo do rodapé sticky (o backdrop-filter do
+          nav vira containing block dos `fixed` filhos). */}
+      {mobileOpen &&
+        createPortal(
         <div
           className="md:hidden fixed inset-0 z-50 flex flex-col bg-[hsl(0,0%,5%)] animate-in fade-in slide-in-from-top-2 duration-200"
           style={{ height: '100dvh', width: '100vw' }}
         >
-          {/* Header do overlay — logo + X de fechar */}
-          <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/5 px-4">
-            <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-              <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
-            </Link>
+          {/* Header do overlay — apenas o X de fechar, à direita (sem logo, sem
+              borda). O logo agora aparece centralizado acima das opções. */}
+          <div className="flex h-16 shrink-0 items-center justify-end px-4">
             <button
               type="button"
               className="text-white"
@@ -610,8 +643,28 @@ export default function LandingNavbar() {
             </button>
           </div>
 
-          {/* Conteúdo rolável */}
-          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2">
+          {/* Conteúdo rolável — centralizado verticalmente quando cabe (my-auto),
+              mas rola sem cortar o topo quando os grupos expandem. */}
+          <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
+          <div className="my-auto w-full">
+          {/* Logo Dominex centralizado acima das opções. width/height intrínsecos
+              + onError: se um Service Worker antigo tiver precacheado um hash de
+              logo defasado e o asset 404, o navegador não mostra o ícone de
+              imagem quebrada. */}
+          <div className="mb-6 flex justify-center">
+            <Link to="/" onClick={() => setMobileOpen(false)}>
+              <img
+                src={logoWhite}
+                alt="Dominex"
+                width={1601}
+                height={326}
+                className="h-10 w-auto"
+                onError={(e) => {
+                  e.currentTarget.style.visibility = 'hidden';
+                }}
+              />
+            </Link>
+          </div>
           {navLinks.slice(0, 1).map((l) => (
             <a
               key={l.href}
@@ -661,7 +714,7 @@ export default function LandingNavbar() {
                         className="h-7 w-7 shrink-0 rounded-full object-cover"
                       />
                     ) : (
-                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-primary">
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-[#00C597]">
                         {Icon && <Icon className="h-[18px] w-[18px]" />}
                       </span>
                     )}
@@ -740,8 +793,10 @@ export default function LandingNavbar() {
             </Button>
           </div>
           </div>
-        </div>
-      )}
+          </div>
+        </div>,
+          document.body
+        )}
     </nav>
   );
 }

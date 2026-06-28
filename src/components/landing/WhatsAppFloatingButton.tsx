@@ -21,7 +21,10 @@ export default function WhatsAppFloatingButton() {
     <button
       type="button"
       onClick={handleClick}
-      className="fixed bottom-6 right-6 z-50 group"
+      // No mobile o FAB sobe (bottom-24) pra ficar ACIMA do rodapé sticky do
+      // LandingNavbar (CTA + Menu, que aparece ao rolar). No desktop não há
+      // rodapé sticky, então volta pra bottom-6.
+      className="fixed bottom-24 right-5 md:bottom-6 md:right-6 z-50 group"
       aria-label="Fale conosco no WhatsApp"
     >
       {/* Onda 1 - brilho pulsante atrás */}

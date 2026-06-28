@@ -52,10 +52,10 @@ export default function HeroSection() {
         />
       </div>
 
-      <div ref={ref} className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 lg:py-32 scroll-reveal">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div ref={ref} className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-32 scroll-reveal">
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-16 items-center">
           {/* Left — texto (depois do video no mobile) */}
-          <div className="space-y-8 order-2 lg:order-1 text-center lg:text-left">
+          <div className="space-y-5 lg:space-y-8 order-2 lg:order-1 text-center lg:text-left">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[2.5em]">
               {/* Texto estável keyword-rico para SEO/leitores de tela —
                   invisível visualmente, mas é conteúdo real do H1 lido por SR. */}
@@ -106,7 +106,7 @@ export default function HeroSection() {
 
           {/* Right — Demo video dentro da moldura do iPhone 17 Pro — antes do texto no mobile */}
           <div className="relative flex justify-center order-1 lg:order-2">
-            <div className="relative aspect-[880/1832] w-full max-w-[240px] sm:max-w-[260px] lg:max-w-[320px] mx-auto">
+            <div className="relative aspect-[880/1832] w-full max-w-[190px] sm:max-w-[240px] lg:max-w-[320px] mx-auto">
               {/* Recorte EXATO da tela do iPhone (squircle, extraído do SVG e normalizado p/ escalar) */}
               <svg width="0" height="0" className="absolute" aria-hidden="true">
                 <defs>
