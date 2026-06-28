@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.20',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PMOC: escolher por pergunta o que entra na primeira OS do checklist personalizado',
+        description: 'Nos contratos PMOC, ao adicionar um checklist personalizado a uma máquina, agora você pode expandir cada pergunta e marcar, uma a uma, se ela entra já na primeira ordem de serviço daquela máquina — o mesmo controle que já existe nos contratos comuns. As perguntas que você deixar de fora aparecem só quando a frequência delas vence; as de toda visita entram sempre.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.19',
     date: '28 de junho de 2026',
     type: 'patch',

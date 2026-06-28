@@ -289,6 +289,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Seleção dos checklists PERSONALIZADOS (form_templates) no modal aberto, por
   // máquina. Gerenciada à parte da seleção do catálogo da norma.
   const [pickerTemplateSelection, setPickerTemplateSelection] = useState<Set<string>>(new Set());
+  // 1ª OS por pergunta dos PERSONALIZADOS da máquina no modal aberto: ids de
+  // perguntas TIRADAS da 1ª OS. Aplicado à machineConfig no confirmar.
+  const [pickerExcludedQuestions, setPickerExcludedQuestions] = useState<Set<string>>(new Set());
   // Guarda contra re-empurrar o plano padrão PMOC mais de uma vez por abertura.
   const [pmocDefaultSeeded, setPmocDefaultSeeded] = useState(false);
   // Controle EXPLÍCITO do padrão PMOC da norma (substitui a auto-carga silenciosa).
@@ -949,7 +952,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     );
     setPickerSelection(current);
     setPickerTemplateSelection(new Set(cfg?.customTemplateIds ?? []));
+    setPickerExcludedQuestions(new Set(cfg?.firstOsExcludedQuestions ?? []));
     setShowCatalogPicker(true);
+  };
+
+  // Toggle de uma pergunta na lista de exclusões da 1ª OS (modal aberto).
+  const togglePickerExcludedQuestion = (questionId: string) => {
+    setPickerExcludedQuestions((prev) => {
+      const next = new Set(prev);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
   };
 
   // Confirma o picker. Dois modos:
@@ -972,10 +986,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }
       }
       const templateIds = [...pickerTemplateSelection];
+      // Sanitiza a âncora da 1ª OS: só ids que pertencem aos templates AINDA
+      // selecionados e que NÃO são "toda visita" (essas sempre entram).
+      const validExcludable = new Set<string>();
+      for (const tplId of templateIds) {
+        const tpl = templateQuestionsById.get(tplId);
+        for (const q of tpl?.questions ?? []) {
+          if (!isEveryVisit(q)) validExcludable.add(q.id);
+        }
+      }
+      const excludedQuestions = [...pickerExcludedQuestions].filter((id) => validExcludable.has(id));
       setMachineConfigs(prev => {
         const cur = prev[eqId];
         if (!cur) return prev;
-        return { ...prev, [eqId]: { ...cur, activities: selected, customized: true, customTemplateIds: templateIds } };
+        return { ...prev, [eqId]: { ...cur, activities: selected, customized: true, customTemplateIds: templateIds, firstOsExcludedQuestions: excludedQuestions } };
       });
       const total = selected.length + templateIds.length;
       toast({ title: `Checklists da máquina atualizados (${total} item(ns))` });
@@ -1327,7 +1351,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     () =>
       (templates ?? [])
         .filter((t: any) => t.is_active && !t.is_pmoc_default)
-        .map((t: any) => ({ id: t.id, name: t.name, questionCount: (t.questions ?? []).length })),
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          questionCount: (t.questions ?? []).length,
+          // Perguntas (com frequência) pra expandir o personalizado no picker da
+          // máquina e gerir o "Adicionar na 1ª OS?" por pergunta.
+          questions: ((t.questions ?? []) as any[]).map((q) => ({
+            id: q.id,
+            question: q.question,
+            position: q.position ?? null,
+            freq_kind: q.freq_kind ?? null,
+            freq_months: q.freq_months ?? null,
+            freq_days: q.freq_days ?? null,
+            freq_visits: q.freq_visits ?? null,
+            start_kind: q.start_kind ?? null,
+            start_visit: q.start_visit ?? null,
+          })),
+        })),
     [templates],
   );
   const templateNameById = useMemo(() => {
@@ -1367,6 +1408,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const templateQuestionsById = useMemo(() => {
     const map = new Map<string, ChecklistTemplateOption>();
     for (const t of commonChecklistTemplates) map.set(t.id, t);
+    return map;
+  }, [commonChecklistTemplates]);
+
+  // Perguntas (id + everyVisit) por template pra sanitizar a âncora da 1ª OS dos
+  // personalizados ao montar os itens PMOC (buildPmocItemsWithScope).
+  const templateQuestionsRefById = useMemo(() => {
+    const map: Record<string, { id: string; everyVisit: boolean }[]> = {};
+    for (const t of commonChecklistTemplates) {
+      map[t.id] = t.questions.map((q) => ({ id: q.id, everyVisit: isEveryVisit(q) }));
+    }
     return map;
   }, [commonChecklistTemplates]);
 
@@ -1487,8 +1538,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         });
       return [...envItems, ...looseItemsPayload];
     }
-    return buildPmocItemsWithScope({ items: pmocDerivedItems, machineConfigs });
-  }, [isPmoc, derivedItems, environments, looseItems, pmocDerivedItems, machineConfigs, commonChecklists, templateQuestionsById]);
+    return buildPmocItemsWithScope({ items: pmocDerivedItems, machineConfigs, templateQuestions: templateQuestionsRefById, templatesLoading });
+  }, [isPmoc, derivedItems, environments, looseItems, pmocDerivedItems, machineConfigs, commonChecklists, templateQuestionsById, templateQuestionsRefById, templatesLoading]);
 
   // Atividades do plano efetivo com frequência válida pra cronograma (exclui
   // eventuais). PMOC usa o plano POR MÁQUINA; comum usa o planActivities.
@@ -1687,12 +1738,31 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           if (ids.length > 0) return ids;
           return it.form_template_id ? [it.form_template_id] : [];
         };
+        // Exclusões da 1ª OS por equipamento no estado INICIAL (banco). Usado como
+        // fallback quando a linha atual vem com first_os_excluded_questions
+        // `undefined` (templates carregando, guarda anti-perda-de-dado): nesse caso
+        // a comparação enxerga o valor do banco → "salvar com templates carregando"
+        // não dispara prompt de regeneração falso.
+        const initialExcludedByEquip = new Map<string, string[]>();
+        for (const it of (editContract.contract_items || []) as any[]) {
+          if (!it.equipment_id) continue;
+          initialExcludedByEquip.set(
+            it.equipment_id,
+            Array.isArray(it.first_os_excluded_questions)
+              ? (it.first_os_excluded_questions as any[]).filter((x) => typeof x === 'string')
+              : [],
+          );
+        }
         const checklistSig = (rows: any[]) =>
           rows
             .filter((it) => it.equipment_id)
             .map((it) => {
-              const ex = Array.isArray(it.first_os_excluded_questions)
-                ? [...it.first_os_excluded_questions].filter((x) => typeof x === 'string').sort()
+              // `undefined` = guarda anti-perda: cai pro valor do banco daquele equip.
+              const raw = it.first_os_excluded_questions === undefined
+                ? (initialExcludedByEquip.get(it.equipment_id) ?? [])
+                : it.first_os_excluded_questions;
+              const ex = Array.isArray(raw)
+                ? [...raw].filter((x) => typeof x === 'string').sort()
                 : [];
               const tpls = [...effectiveTplIds(it)].sort();
               return `eq:${it.equipment_id}|${tpls.join(',')}|${ex.join(',')}`;
@@ -1701,7 +1771,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             .join('§');
         const initialChecklistSig = checklistSig((editContract.contract_items || []) as any[]);
         const currentChecklistSig = checklistSig(effectiveItemsWithScope as any[]);
-        const checklistChanged = !isPmoc && initialChecklistSig !== currentChecklistSig;
+        // Vale pro comum (template + exclusões) E pro PMOC (a 1ª-OS por pergunta
+        // dos personalizados grava em contract_items.first_os_excluded_questions
+        // da máquina; o plano não muda, então o diff de checklist é o que detecta).
+        const checklistChanged = initialChecklistSig !== currentChecklistSig;
 
         const scheduleChanged = scheduleFieldsChanged || planChanged || itemsChanged || checklistChanged;
 
@@ -3772,6 +3845,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         customTemplates={pickerMachineEqId ? customTemplateOptions : []}
         selectedTemplateIds={pickerTemplateSelection}
         onChangeTemplates={pickerMachineEqId ? setPickerTemplateSelection : undefined}
+        excludedQuestionIds={pickerExcludedQuestions}
+        onToggleExcludedQuestion={pickerMachineEqId ? togglePickerExcludedQuestion : undefined}
       />
     </ResponsiveModal>
 

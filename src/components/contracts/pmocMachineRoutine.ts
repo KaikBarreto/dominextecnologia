@@ -162,6 +162,12 @@ export interface MachineConfig {
   // feitos em TODA visita, ALÉM das atividades da norma. Independem do escopo
   // ('ac'/'full'). Default [].
   customTemplateIds: string[];
+  // Ids de perguntas (form_questions) dos checklists PERSONALIZADOS desta máquina
+  // que NÃO entram na 1ª OS dela (a âncora por equipamento que o render respeita,
+  // espelha `contract_items.first_os_excluded_questions`). Perguntas "toda visita"
+  // NUNCA entram aqui (sempre na 1ª OS). Default []. Só vale pros personalizados —
+  // o catálogo da norma tem fase própria (pmoc_start_visit).
+  firstOsExcludedQuestions: string[];
 }
 
 // Item/equipamento do contrato no formato mínimo usado pelos builders.
@@ -241,7 +247,7 @@ export function buildDefaultMachineConfig(
     applies_per_equipment: true,
     equipment_ref: eqId,
   }));
-  return { scope, startVisit: 12, activities: acts, customized: false, customTemplateIds: [] };
+  return { scope, startVisit: 12, activities: acts, customized: false, customTemplateIds: [], firstOsExcludedQuestions: [] };
 }
 
 // Reconstrói as configs POR MÁQUINA a partir do que está PERSISTIDO (edição):
@@ -257,6 +263,9 @@ export interface PersistedContractItem {
   equipment_id: string | null;
   pmoc_scope?: string | null;
   pmoc_start_visit?: number | null;
+  // Âncora por equipamento dos personalizados (jsonb array de ids). Carregada na
+  // reconstrução pra a config saber quais perguntas o gestor tirou da 1ª OS.
+  first_os_excluded_questions?: unknown;
 }
 export interface PersistedPlanRow {
   description: string;
@@ -281,13 +290,16 @@ export function reconstructMachineConfigs(args: {
 }): Record<string, MachineConfig> {
   const { items, plan, catalogActivities } = args;
   const itemIdToEquip: Record<string, string> = {};
-  const itemMeta: Record<string, { scope: PmocMachineScope; startVisit: number }> = {};
+  const itemMeta: Record<string, { scope: PmocMachineScope; startVisit: number; firstOsExcludedQuestions: string[] }> = {};
   for (const it of items) {
     if (it.equipment_id) {
       itemIdToEquip[it.id] = it.equipment_id;
       itemMeta[it.equipment_id] = {
         scope: (it.pmoc_scope === 'full' ? 'full' : 'ac') as PmocMachineScope,
         startVisit: typeof it.pmoc_start_visit === 'number' && it.pmoc_start_visit >= 1 ? it.pmoc_start_visit : 12,
+        firstOsExcludedQuestions: Array.isArray(it.first_os_excluded_questions)
+          ? (it.first_os_excluded_questions as unknown[]).filter((x): x is string => typeof x === 'string')
+          : [],
       };
     }
   }
@@ -327,7 +339,7 @@ export function reconstructMachineConfigs(args: {
     }
     for (const it of items) {
       if (!it.equipment_id) continue;
-      const meta = itemMeta[it.equipment_id] ?? { scope: 'ac' as PmocMachineScope, startVisit: 12 };
+      const meta = itemMeta[it.equipment_id] ?? { scope: 'ac' as PmocMachineScope, startVisit: 12, firstOsExcludedQuestions: [] };
       const acts = byEquip[it.equipment_id] ?? [];
       // Personalizado = listagem difere da norma do escopo (algum item removido/adicionado).
       const normaCount = machineCatalogActivities(catalogActivities, meta.scope).length;
@@ -339,6 +351,7 @@ export function reconstructMachineConfigs(args: {
           : machineCatalogActivities(catalogActivities, meta.scope).map(a => ({ ...catalogToPlanRow(a), applies_per_equipment: true, equipment_ref: it.equipment_id! })),
         customized: acts.length !== normaCount,
         customTemplateIds: customByEquip[it.equipment_id] ?? [],
+        firstOsExcludedQuestions: meta.firstOsExcludedQuestions,
       };
     }
   } else {
@@ -357,6 +370,7 @@ export function reconstructMachineConfigs(args: {
         activities: machineCatalogActivities(catalogActivities, useScope).map(a => ({ ...catalogToPlanRow(a), applies_per_equipment: true, equipment_ref: it.equipment_id! })),
         customized: false,
         customTemplateIds: [],
+        firstOsExcludedQuestions: meta?.firstOsExcludedQuestions ?? [],
       };
     }
   }
@@ -436,14 +450,66 @@ export interface PmocItemWithScope {
   form_template_id: string | null;
   pmoc_scope: PmocMachineScope;
   pmoc_start_visit: number;
+  // Âncora por equipamento dos personalizados (1ª-OS por pergunta). Sanitizada:
+  // só ids de perguntas que pertencem aos templates personalizados selecionados
+  // da máquina; "toda visita" nunca entra.
+  // `undefined` = templates ainda carregando e a máquina tem personalizados não
+  // resolvidos → não dá pra sanitizar com segurança; o hook preserva o valor do
+  // banco em vez de zerar (mesma guarda do checklist comum, evita perda de dado).
+  first_os_excluded_questions: string[] | undefined;
 }
+
+// Forma mínima de uma pergunta de checklist personalizado pra sanitizar a âncora
+// da 1ª OS sem arrastar React/Radix: id + se é "toda visita" (obrigatória).
+export interface TemplateQuestionRef {
+  id: string;
+  everyVisit: boolean;
+}
+
 export function buildPmocItemsWithScope(args: {
   items: MachineItemRef[];
   machineConfigs: Record<string, MachineConfig>;
+  // Perguntas (id + everyVisit) de cada form_template, por id de template. Usado
+  // pra sanitizar a âncora da 1ª OS: só ids que pertencem aos templates
+  // SELECIONADOS da máquina e que NÃO são "toda visita". Vazio/ausente = nada
+  // sanitiza (preserva [] — sem âncora), em vez de gravar lixo.
+  templateQuestions?: Record<string, TemplateQuestionRef[]>;
+  // Quando os form_templates ainda estão carregando (`useFormTemplates`), uma
+  // máquina com personalizados selecionados cujas perguntas ainda NÃO estão em
+  // `templateQuestions` não pode ser sanitizada — sanitizar agora filtraria toda
+  // exclusão persistida pra [], apagando a âncora da 1ª OS no save. Nesse caso o
+  // item sai com `first_os_excluded_questions: undefined` pra o hook PRESERVAR o
+  // valor do banco (mesma guarda do `commonChecklistPayload` do checklist comum).
+  templatesLoading?: boolean;
 }): PmocItemWithScope[] {
-  const { items, machineConfigs } = args;
+  const { items, machineConfigs, templateQuestions = {}, templatesLoading = false } = args;
   return items.map((i) => {
     const cfg = machineConfigs[i.equipment_id];
+    const customTemplateIds = cfg?.customTemplateIds ?? [];
+    // Guarda anti-perda-de-dado: templates carregando E há personalizado cujas
+    // perguntas ainda não resolveram → devolve undefined (hook preserva o banco).
+    if (
+      templatesLoading &&
+      customTemplateIds.some((tplId) => templateQuestions[tplId] === undefined)
+    ) {
+      return {
+        equipment_id: i.equipment_id || null,
+        item_name: i.item_name,
+        item_description: i.item_description || null,
+        form_template_id: null,
+        pmoc_scope: (cfg?.scope ?? 'ac') as PmocMachineScope,
+        pmoc_start_visit: cfg?.startVisit ?? 12,
+        first_os_excluded_questions: undefined,
+      };
+    }
+    // Ids válidos pra exclusão: perguntas não-toda-visita dos templates escolhidos.
+    const validExcludable = new Set<string>();
+    for (const tplId of customTemplateIds) {
+      for (const q of templateQuestions[tplId] ?? []) {
+        if (!q.everyVisit) validExcludable.add(q.id);
+      }
+    }
+    const excluded = (cfg?.firstOsExcludedQuestions ?? []).filter((id) => validExcludable.has(id));
     return {
       equipment_id: i.equipment_id || null,
       item_name: i.item_name,
@@ -451,6 +517,7 @@ export function buildPmocItemsWithScope(args: {
       form_template_id: null,
       pmoc_scope: (cfg?.scope ?? 'ac') as PmocMachineScope,
       pmoc_start_visit: cfg?.startVisit ?? 12,
+      first_os_excluded_questions: excluded,
     };
   });
 }

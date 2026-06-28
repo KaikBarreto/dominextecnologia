@@ -11,10 +11,16 @@
 //    default carrega toda a norma do escopo).
 //
 // Cada seção tem "marcar todos" (padrão já existente) e um "marcar todos" global.
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { catalogFreqCode, isAcSection, partitionPickerSections, type PmocMachineScope } from '@/components/contracts/pmocMachineRoutine';
+import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/components/contracts/questionFrequency';
+import { cn } from '@/lib/utils';
 import type { PmocCatalogSectionGroup } from '@/hooks/usePmocActivityCatalog';
 
 const FREQ_LABELS: Record<string, string> = {
@@ -25,12 +31,22 @@ const FREQ_LABELS: Record<string, string> = {
   E: 'Eventual',
 };
 
+// Pergunta de um checklist personalizado (subset de form_questions) usada pra
+// expandir o template e gerir o "Adicionar na 1ª OS?" por pergunta.
+export interface CustomChecklistQuestion extends QuestionFrequency {
+  id: string;
+  question: string;
+  position?: number | null;
+}
+
 // Checklist personalizado: um form_templates da empresa. Forma mínima usada pelo
-// picker (id + nome + nº de perguntas pro selo).
+// picker (id + nome + nº de perguntas pro selo). `questions` (opcional) habilita
+// a expansão por pergunta com o checkbox "Adicionar na 1ª OS?".
 export interface CustomChecklistOption {
   id: string;
   name: string;
   questionCount?: number;
+  questions?: CustomChecklistQuestion[];
 }
 
 interface PmocChecklistPickerProps {
@@ -49,6 +65,13 @@ interface PmocChecklistPickerProps {
   // Seleção dos templates personalizados, gerenciada à parte da do catálogo.
   selectedTemplateIds?: Set<string>;
   onChangeTemplates?: (next: Set<string>) => void;
+  // 1ª OS por pergunta dos PERSONALIZADOS desta máquina. `excludedQuestionIds` =
+  // ids de perguntas que o gestor TIROU da 1ª OS (checkbox desmarcado). O picker
+  // só reporta o toggle; o pai mantém o estado e sanitiza no save. Perguntas
+  // "toda visita" nunca entram aqui (checkbox travado marcado). Quando ausente, a
+  // expansão por pergunta não aparece (mantém o comportamento antigo só-seleção).
+  excludedQuestionIds?: Set<string>;
+  onToggleExcludedQuestion?: (questionId: string) => void;
 }
 
 export function PmocChecklistPicker({
@@ -60,6 +83,8 @@ export function PmocChecklistPicker({
   customTemplates = [],
   selectedTemplateIds = new Set(),
   onChangeTemplates,
+  excludedQuestionIds = new Set(),
+  onToggleExcludedQuestion,
 }: PmocChecklistPickerProps) {
   // Filtra os grupos pelo escopo: 'ac' só mostra seções de ar-condicionado.
   const visibleGroups = catalogGroups.filter((g) => (scope === 'ac' ? isAcSection(g.section) : true));
@@ -278,38 +303,141 @@ export function PmocChecklistPicker({
             </p>
           ) : (
             <div className="space-y-1 rounded-md border bg-background p-1.5">
-              {customTemplates.map((tpl) => {
-                const checked = selectedTemplateIds.has(tpl.id);
-                return (
-                  <label
-                    key={tpl.id}
-                    className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 rounded border-border shrink-0"
-                      checked={checked}
-                      onChange={() => toggleTemplate(tpl.id)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground">{tpl.name}</p>
-                      {typeof tpl.questionCount === 'number' && (
-                        <p className="text-xs text-muted-foreground">
-                          {tpl.questionCount} pergunta{tpl.questionCount === 1 ? '' : 's'}
-                        </p>
-                      )}
-                    </div>
-                    {/* A frequência de um checklist personalizado é POR PERGUNTA
-                        (cada pergunta tem sua própria cadência), então o antigo
-                        selo "Toda visita" era enganoso — perguntas com frequência
-                        só caem nas visitas em que vencem. */}
-                    <Badge variant="outline" className="shrink-0 text-[10px]">Frequência por pergunta</Badge>
-                  </label>
-                );
-              })}
+              {customTemplates.map((tpl) => (
+                <CustomTemplateRow
+                  key={tpl.id}
+                  tpl={tpl}
+                  checked={selectedTemplateIds.has(tpl.id)}
+                  onToggle={() => toggleTemplate(tpl.id)}
+                  excludedQuestionIds={excludedQuestionIds}
+                  onToggleExcludedQuestion={onToggleExcludedQuestion}
+                />
+              ))}
             </div>
           )}
         </section>
+      )}
+    </div>
+  );
+}
+
+// ── Linha de UM checklist personalizado da máquina ───────────────────────────
+// Checkbox de selecionar o template + (quando selecionado e há perguntas) chevron
+// que expande a lista de perguntas, cada uma com selo de frequência e o checkbox
+// quadrado "Adicionar na 1ª OS?". "Toda visita" entra travado marcado (sempre na
+// 1ª OS); as demais default marcado, desmarcar → vai pra lista de exclusões.
+interface CustomTemplateRowProps {
+  tpl: CustomChecklistOption;
+  checked: boolean;
+  onToggle: () => void;
+  excludedQuestionIds: Set<string>;
+  onToggleExcludedQuestion?: (questionId: string) => void;
+}
+
+function CustomTemplateRow({
+  tpl,
+  checked,
+  onToggle,
+  excludedQuestionIds,
+  onToggleExcludedQuestion,
+}: CustomTemplateRowProps) {
+  const [open, setOpen] = useState(false);
+  const questions = [...(tpl.questions ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  // Expansível só quando selecionado, com perguntas E o pai gerencia a 1ª OS.
+  const expandable = checked && questions.length > 0 && !!onToggleExcludedQuestion;
+  const questionCount = tpl.questionCount ?? questions.length;
+  // Quantas perguntas entram na 1ª OS (toda visita + não excluídas).
+  const includedCount = questions.filter((q) => isEveryVisit(q) || !excludedQuestionIds.has(q.id)).length;
+
+  return (
+    <div className="rounded-md bg-background">
+      <div className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/50 transition-colors">
+        <input
+          type="checkbox"
+          className="mt-0.5 rounded border-border shrink-0 cursor-pointer"
+          checked={checked}
+          onChange={onToggle}
+          aria-label={`Selecionar checklist ${tpl.name}`}
+        />
+        <button
+          type="button"
+          className="flex flex-1 min-w-0 items-start gap-2 text-left"
+          onClick={() => (expandable ? setOpen((o) => !o) : onToggle())}
+          aria-expanded={expandable ? open : undefined}
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-foreground">{tpl.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {checked && questions.length > 0
+                ? `${includedCount} de ${questionCount} na 1ª OS`
+                : `${questionCount} pergunta${questionCount === 1 ? '' : 's'}`}
+            </p>
+          </div>
+          {/* A frequência de um personalizado é POR PERGUNTA — selo informativo. */}
+          <Badge variant="outline" className="shrink-0 text-[10px]">Frequência por pergunta</Badge>
+          {expandable && (
+            <ChevronDown
+              className={cn(
+                'mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                open && 'rotate-180',
+              )}
+            />
+          )}
+        </button>
+      </div>
+
+      {expandable && open && (
+        <div className="ml-7 mr-1 mb-1.5 rounded-md border bg-muted/20 px-2 pb-2 pt-1.5">
+          <div className="flex items-center gap-2.5 border-b px-1.5 pb-1.5">
+            <span className="min-w-0 flex-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Pergunta
+            </span>
+            <span className="w-[5.5rem] shrink-0 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Frequência
+            </span>
+            <span className="w-12 shrink-0 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Na 1ª OS?
+            </span>
+          </div>
+          <div className="max-h-72 space-y-1.5 overflow-y-auto pt-1">
+            {questions.map((q) => {
+              const everyVisit = isEveryVisit(q);
+              const included = everyVisit || !excludedQuestionIds.has(q.id);
+              return (
+                <div key={q.id} className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 hover:bg-muted/40">
+                  <p className="min-w-0 flex-1 text-xs leading-snug text-foreground">{q.question}</p>
+                  <Badge
+                    variant={everyVisit ? 'info' : 'outline'}
+                    className="w-[5.5rem] shrink-0 justify-center text-[10px] font-normal"
+                  >
+                    {frequencyLabel(q)}
+                  </Badge>
+                  <div className="flex w-12 shrink-0 justify-center">
+                    {everyVisit ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex">
+                            <Checkbox checked disabled aria-label="Sempre na primeira OS" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[15rem] text-xs">
+                          Itens de toda visita sempre entram na primeira OS.
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Checkbox
+                        checked={included}
+                        onCheckedChange={() => onToggleExcludedQuestion?.(q.id)}
+                        aria-label={`Adicionar na primeira OS: ${q.question}`}
+                        title="Adicionar na 1ª OS?"
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );

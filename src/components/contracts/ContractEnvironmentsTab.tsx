@@ -214,7 +214,24 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     () =>
       (templates ?? [])
         .filter((t: any) => t.is_active && !t.is_pmoc_default)
-        .map((t: any) => ({ id: t.id, name: t.name, questionCount: (t.questions ?? []).length })),
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          questionCount: (t.questions ?? []).length,
+          // Perguntas (com frequência) pra expandir o personalizado no picker da
+          // máquina e gerir o "Adicionar na 1ª OS?" por pergunta.
+          questions: ((t.questions ?? []) as any[]).map((q) => ({
+            id: q.id,
+            question: q.question,
+            position: q.position ?? null,
+            freq_kind: q.freq_kind ?? null,
+            freq_months: q.freq_months ?? null,
+            freq_days: q.freq_days ?? null,
+            freq_visits: q.freq_visits ?? null,
+            start_kind: q.start_kind ?? null,
+            start_visit: q.start_visit ?? null,
+          })),
+        })),
     [templates],
   );
   const templateNameById = useMemo(() => {
@@ -339,6 +356,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
   // Seleção dos checklists PERSONALIZADOS (form_templates) no modal aberto.
   const [pickerTemplateSelection, setPickerTemplateSelection] = useState<Set<string>>(new Set());
+  // 1ª OS por pergunta dos PERSONALIZADOS da máquina no modal aberto: ids TIRADOS
+  // da 1ª OS. Aplicado à machineConfig no confirmar.
+  const [pickerExcludedQuestions, setPickerExcludedQuestions] = useState<Set<string>>(new Set());
 
   // Reconstrói as configs por máquina ao carregar o contrato + o plano + o
   // catálogo. Fonte ÚNICA compartilhada (mesma do form em edição). Só PMOC.
@@ -480,6 +500,16 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     return map;
   }, [commonChecklistTemplates]);
 
+  // Perguntas (id + everyVisit) por template pra sanitizar a âncora da 1ª OS dos
+  // personalizados ao montar os itens PMOC (buildPmocItemsWithScope).
+  const templateQuestionsRefById = useMemo(() => {
+    const map: Record<string, { id: string; everyVisit: boolean }[]> = {};
+    for (const t of commonChecklistTemplates) {
+      map[t.id] = t.questions.map((q) => ({ id: q.id, everyVisit: isEveryVisit(q) }));
+    }
+    return map;
+  }, [commonChecklistTemplates]);
+
   // Campos de checklist por equipamento (form_template_ids + form_template_id
   // compat + first_os_excluded_questions). Sanitiza exclusões: só ids que (a)
   // pertencem a algum checklist escolhido e (b) NÃO são "toda visita". `undefined`
@@ -551,7 +581,11 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           .map((a) => a.catalog_activity_id ?? a.description.trim())
           .sort()
           .join(',');
-        return `${eqId}:${c.scope}:${c.startVisit}:${acts}`;
+        const tpls = [...(c.customTemplateIds ?? [])].sort().join(',');
+        // 1ª OS por pergunta dos personalizados (entra na assinatura: muda o que a
+        // 1ª OS contém → re-expande as visitas).
+        const ex = [...(c.firstOsExcludedQuestions ?? [])].sort().join(',');
+        return `${eqId}:${c.scope}:${c.startVisit}:${acts}:${tpls}:${ex}`;
       })
       .join('§');
 
@@ -721,7 +755,17 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     const current = new Set((cfg?.activities ?? []).map((a) => a.catalog_activity_id).filter(Boolean) as string[]);
     setPickerSelection(current);
     setPickerTemplateSelection(new Set(cfg?.customTemplateIds ?? []));
+    setPickerExcludedQuestions(new Set(cfg?.firstOsExcludedQuestions ?? []));
     setShowCatalogPicker(true);
+  };
+  // Toggle de uma pergunta na lista de exclusões da 1ª OS (modal aberto).
+  const togglePickerExcludedQuestion = (questionId: string) => {
+    setPickerExcludedQuestions((prev) => {
+      const next = new Set(prev);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
   };
   const confirmCatalogPicker = () => {
     if (!pickerMachineEqId) { setShowCatalogPicker(false); return; }
@@ -735,10 +779,19 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       }
     }
     const templateIds = [...pickerTemplateSelection];
+    // Sanitiza a âncora da 1ª OS: só ids dos templates AINDA selecionados e não-"toda visita".
+    const validExcludable = new Set<string>();
+    for (const tplId of templateIds) {
+      const tpl = templateQuestionsById.get(tplId);
+      for (const q of tpl?.questions ?? []) {
+        if (!isEveryVisit(q)) validExcludable.add(q.id);
+      }
+    }
+    const excludedQuestions = [...pickerExcludedQuestions].filter((id) => validExcludable.has(id));
     setMachineConfigs((prev) => {
       const cur = prev[eqId];
       if (!cur) return prev;
-      return { ...prev, [eqId]: { ...cur, activities: selected, customized: true, customTemplateIds: templateIds } };
+      return { ...prev, [eqId]: { ...cur, activities: selected, customized: true, customTemplateIds: templateIds, firstOsExcludedQuestions: excludedQuestions } };
     });
     toast({ title: `Checklists da máquina atualizados (${selected.length + templateIds.length} item(ns))` });
     setShowCatalogPicker(false);
@@ -916,7 +969,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       return { items, environments, plan_activities: undefined as any };
     }
 
-    const items = buildPmocItemsWithScope({ items: derivedItems, machineConfigs });
+    const items = buildPmocItemsWithScope({ items: derivedItems, machineConfigs, templateQuestions: templateQuestionsRefById });
     const planRows = buildPmocPlanFromMachines({ items: derivedItems, machineConfigs, catalogActivities, templateNameById });
     const plan_activities = planRows.map(planRowToInput);
     return { items, environments, plan_activities };
@@ -1238,6 +1291,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           customTemplates={customTemplateOptions}
           selectedTemplateIds={pickerTemplateSelection}
           onChangeTemplates={setPickerTemplateSelection}
+          excludedQuestionIds={pickerExcludedQuestions}
+          onToggleExcludedQuestion={togglePickerExcludedQuestion}
         />
       </ResponsiveModal>
 
