@@ -3664,6 +3664,7 @@ export default function TechnicianOS() {
             formQuestionsByTemplate={checklistFormQuestions}
             getFormResponse={getChecklistFormResponse}
             onSaveFormResponse={saveChecklistFormResponse}
+            visibilityForEquipment={visibilityForEquipment}
           />
         )}
 

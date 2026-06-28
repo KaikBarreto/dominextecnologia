@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.19',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PMOC: checklists personalizados respeitam a frequência por pergunta',
+        description: 'Nos contratos PMOC, quando você adiciona um checklist personalizado a uma máquina, cada pergunta dele passa a respeitar a sua própria frequência. Assim, uma pergunta configurada para "a cada 40 dias", por exemplo, aparece apenas nas visitas em que vence, em vez de aparecer em toda visita. As atividades do catálogo da norma continuam com a periodicidade da norma, sem mudança.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.18',
     date: '28 de junho de 2026',
     type: 'patch',

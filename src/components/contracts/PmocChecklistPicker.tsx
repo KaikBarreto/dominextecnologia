@@ -299,7 +299,11 @@ export function PmocChecklistPicker({
                         </p>
                       )}
                     </div>
-                    <Badge variant="info" className="shrink-0 text-[10px]">Toda visita</Badge>
+                    {/* A frequência de um checklist personalizado é POR PERGUNTA
+                        (cada pergunta tem sua própria cadência), então o antigo
+                        selo "Toda visita" era enganoso — perguntas com frequência
+                        só caem nas visitas em que vencem. */}
+                    <Badge variant="outline" className="shrink-0 text-[10px]">Frequência por pergunta</Badge>
                   </label>
                 );
               })}

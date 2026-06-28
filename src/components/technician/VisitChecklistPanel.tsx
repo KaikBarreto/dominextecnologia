@@ -33,6 +33,38 @@ import {
   isTemplateActivityComplete,
   visitTypeFromFreqs,
 } from '@/hooks/useOsActivityChecklist';
+import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
+import type { ContractVisibilityContext } from '@/components/technician/DynamicFormQuestions';
+
+/**
+ * Filtra as perguntas de um checklist PERSONALIZADO pelas que "vencem" nesta
+ * visita PMOC, conforme a frequência POR PERGUNTA (mesma régua do contrato comum
+ * em DynamicFormQuestions). Só se aplica a checklist personalizado — atividades
+ * do CATÁLOGO da norma já são filtradas na GERAÇÃO e não passam por aqui.
+ *
+ * Helper PURO (sem hooks) — pode ser chamado dentro do map de render sem violar
+ * as regras de hooks. Na dúvida (sem visibility/sem datas/sem match), o helper
+ * `computeVisibleQuestionIds` devolve TODAS — nunca esconde por incerteza.
+ * Perguntas sem frequência (NULL) = toda visita. Perguntas já respondidas nunca
+ * somem (proteção de histórico).
+ *
+ * `visibility` ausente (OS avulsa, sem contrato) → devolve a lista intacta.
+ */
+function visibleTemplateQuestions(
+  questions: FormQuestion[],
+  visibility: ContractVisibilityContext | undefined,
+  answeredQuestionIds: Set<string>,
+): FormQuestion[] {
+  if (!visibility || questions.length === 0) return questions;
+  const visibleIds = computeVisibleQuestionIds({
+    visitDates: visibility.visitDates,
+    scheduledDate: visibility.scheduledDate,
+    questions,
+    answeredQuestionIds,
+    excludedQuestionIds: visibility.excludedQuestionIds,
+  });
+  return questions.filter((q) => visibleIds.has(q.id));
+}
 
 interface Props {
   /** OS dona das atividades — usado no path das fotos no bucket. */
@@ -86,6 +118,18 @@ interface Props {
    * altura do header fixo da tela de OS. Quando ausente, o header não fica sticky.
    */
   stickyTopPx?: number;
+  /**
+   * Contexto de visibilidade por visita (Fase B), POR EQUIPAMENTO. Quando a OS é
+   * de CONTRATO, filtra as perguntas dos checklists PERSONALIZADOS pelas que
+   * "vencem" nesta visita conforme a frequência por pergunta (mesma régua do
+   * contrato comum). Atividades do CATÁLOGO da norma NÃO usam isto — já vêm
+   * filtradas na geração. Ausente (OS avulsa) = sem filtro, render intacto.
+   * É uma função porque a âncora (perguntas excluídas da 1ª OS) é por equipamento;
+   * o pai (TechnicianOS) monta o contexto específico por equipamento.
+   */
+  visibilityForEquipment?: (
+    equipmentId: string | null,
+  ) => ContractVisibilityContext | undefined;
 }
 
 /** Número PT-BR: aceita vírgula ou ponto; vazio = null. */
@@ -855,6 +899,7 @@ export function VisitChecklistPanel({
   formQuestionsByTemplate,
   getFormResponse,
   onSaveFormResponse,
+  visibilityForEquipment,
 }: Props) {
   if (groups.length === 0) return null;
 
@@ -862,12 +907,37 @@ export function VisitChecklistPanel({
   // Suporte a checklist personalizado só quando o pai passa os 3 handlers.
   const canRenderTemplates = !!getFormResponse && !!onSaveFormResponse;
 
+  /**
+   * Perguntas VISÍVEIS de uma atividade de checklist PERSONALIZADO nesta visita,
+   * filtradas pela frequência por pergunta (só quando a OS é de contrato). É a
+   * MESMA lista usada no render e na contagem de pendências — assim uma pergunta
+   * escondida não trava o bloco como "pendente". Catálogo da norma não passa aqui
+   * (não tem form_template_id). Helper PURO (computeVisibleQuestionIds) — sem
+   * hooks, seguro dentro do map.
+   */
+  const visibleQuestionsFor = (a: ChecklistActivity): FormQuestion[] => {
+    if (!canRenderTemplates || !a.form_template_id) return [];
+    const all = questionsByTemplate[a.form_template_id] ?? [];
+    if (all.length === 0) return all;
+    const equipmentId = a.equipment_id ?? null;
+    const answeredQuestionIds = new Set(
+      all
+        .filter((q) => isFormResponseAnswered(getFormResponse!(equipmentId, q.id)))
+        .map((q) => q.id),
+    );
+    return visibleTemplateQuestions(
+      all,
+      visibilityForEquipment?.(equipmentId),
+      answeredQuestionIds,
+    );
+  };
+
   /** Uma atividade de conformidade "respondida"? (pra contagem do header). */
   const isConformityAnswered = (a: ChecklistActivity) => !!a.conformity_status;
-  /** Uma atividade de template "completa"? (todas as obrigatórias respondidas). */
+  /** Uma atividade de template "completa"? (obrigatórias VISÍVEIS respondidas). */
   const isTemplateDone = (a: ChecklistActivity): boolean => {
     if (!canRenderTemplates || !a.form_template_id) return false;
-    const qs = questionsByTemplate[a.form_template_id] ?? [];
+    const qs = visibleQuestionsFor(a);
     return isTemplateActivityComplete(qs, (qid) => getFormResponse!(a.equipment_id ?? null, qid));
   };
 
@@ -912,18 +982,38 @@ export function VisitChecklistPanel({
           className={cn('w-full space-y-3', readOnly && 'opacity-60 cursor-not-allowed')}
         >
           {groups.map((group) => {
-            const total = group.activities.length;
+            // Perguntas VISÍVEIS por atividade de checklist personalizado nesta
+            // visita (frequência por pergunta). Calculadas UMA vez aqui e reusadas
+            // em contagem + render. Catálogo da norma → lista vazia (não passa pelo
+            // filtro). Memo por id pra não recomputar dentro do bloco.
+            const visibleQsById = new Map<string, FormQuestion[]>();
+            for (const a of group.activities) {
+              if (a.form_template_id && canRenderTemplates) {
+                visibleQsById.set(a.id, visibleQuestionsFor(a));
+              }
+            }
+            // Atividades RENDERIZADAS: um checklist personalizado cujas perguntas
+            // foram TODAS filtradas (nenhuma vence nesta visita) some do grupo —
+            // não conta como pendência nem polui o cabeçalho. Catálogo da norma e
+            // personalizado com ao menos 1 pergunta visível continuam.
+            const renderedActivities = group.activities.filter((a) => {
+              if (a.form_template_id && canRenderTemplates) {
+                return (visibleQsById.get(a.id) ?? []).length > 0;
+              }
+              return true;
+            });
+            const total = renderedActivities.length;
             // "Feita": conformidade marcada (atividade comum) OU todas as
-            // perguntas obrigatórias respondidas (atividade de checklist próprio).
-            const answered = group.activities.filter((a) =>
+            // perguntas obrigatórias VISÍVEIS respondidas (checklist próprio).
+            const answered = renderedActivities.filter((a) =>
               a.form_template_id ? isTemplateDone(a) : isConformityAnswered(a)
             ).length;
             // Não-conforme conta tanto atividade comum quanto pergunta boolean
-            // 'false' (= não-conforme) de checklist personalizado.
-            const naoConforme = group.activities.filter((a) => {
+            // 'false' (= não-conforme) de checklist personalizado VISÍVEL.
+            const naoConforme = renderedActivities.filter((a) => {
               if (a.form_template_id) {
                 if (!canRenderTemplates) return false;
-                const qs = questionsByTemplate[a.form_template_id] ?? [];
+                const qs = visibleQsById.get(a.id) ?? [];
                 return qs.some(
                   (q) =>
                     q.question_type === 'boolean' &&
@@ -933,12 +1023,18 @@ export function VisitChecklistPanel({
               return a.conformity_status === 'nao_conforme';
             }).length;
             const pending = total - answered;
+
+            // Todas as atividades do grupo sumiram (só personalizados, nenhum item
+            // nesta visita) → não renderiza o equipamento. Régua de ouro do helper
+            // garante que isso só acontece com datas/match confiáveis.
+            if (renderedActivities.length === 0) return null;
+
             // Tipo de visita + checklists exibidos, derivados das frequências das
-            // atividades DESTE equipamento (atividade de checklist personalizado
+            // atividades RENDERIZADAS deste equipamento (checklist personalizado
             // acrescenta o nível "personalizado" sem mudar o tipo da visita).
             const visit = visitTypeFromFreqs(
-              group.activities.map((a) => a.freq_code),
-              { hasTemplate: group.activities.some((a) => !!a.form_template_id) }
+              renderedActivities.map((a) => a.freq_code),
+              { hasTemplate: renderedActivities.some((a) => !!a.form_template_id) }
             );
             const photo = group.equipment?.photo_url || null;
             const category = group.equipment?.category || null;
@@ -956,14 +1052,14 @@ export function VisitChecklistPanel({
                 onPreviewPhoto={onPreviewPhoto}
                 header={{ total, naoConforme, pending, visit, photo, category, brandModel, environmentName, hidePhoto: group.equipmentId == null }}
               >
-                {group.activities.map((activity, idx) =>
+                {renderedActivities.map((activity, idx) =>
                   activity.form_template_id && canRenderTemplates ? (
                     <TemplateActivityBlock
                       key={activity.id}
                       serviceOrderId={serviceOrderId}
                       equipmentId={activity.equipment_id ?? null}
                       activity={activity}
-                      questions={questionsByTemplate[activity.form_template_id] ?? []}
+                      questions={visibleQsById.get(activity.id) ?? []}
                       getFormResponse={getFormResponse!}
                       readOnly={readOnly}
                       onSaveResponse={onSaveFormResponse!}
