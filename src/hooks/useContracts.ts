@@ -2083,13 +2083,22 @@ export function useContracts() {
       if (items !== undefined) {
         const { data: existingItems } = await supabase
           .from('contract_items')
-          .select('id, equipment_id, item_name, pmoc_scope, pmoc_start_visit')
+          .select('id, equipment_id, item_name, item_description, pmoc_scope, pmoc_start_visit')
           .eq('contract_id', id);
-        const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
-          it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
+        // FIX B — item manual usa `manual:<nome>:<descrição>` (não só o nome).
+        // Antes dois itens manuais homônimos (ex.: dois "Bebedouro") colapsavam
+        // numa chave só e o diff perdia/não inseria uma cópia. A descrição entra
+        // pra desambiguar. A chave é 100% derivada do conteúdo persistido
+        // (item_name + item_description) — reconstruída IDÊNTICA tanto das linhas
+        // do banco quanto do payload da UI — então um "save sem mudança" continua
+        // no-op (sem delete+reinsert). `eq:<id>` (equipamentos/PMOC) é intocado.
+        const itemKey = (it: { equipment_id?: string | null; item_name: string; item_description?: string | null }) =>
+          it.equipment_id
+            ? `eq:${it.equipment_id}`
+            : `manual:${(it.item_name || '').trim().toLowerCase()}:${(it.item_description || '').trim().toLowerCase()}`;
 
         const existingByKey = new Map<string, { id: string; pmoc_scope: string | null; pmoc_start_visit: number | null }>();
-        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; pmoc_scope: string | null; pmoc_start_visit: number | null }[]) {
+        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; item_description: string | null; pmoc_scope: string | null; pmoc_start_visit: number | null }[]) {
           existingByKey.set(itemKey(it), { id: it.id, pmoc_scope: it.pmoc_scope, pmoc_start_visit: it.pmoc_start_visit });
         }
         const newKeys = new Set(items.map(itemKey));
@@ -2479,13 +2488,17 @@ export function useContracts() {
       //    equipment_id || nome do item manual). Idempotente.
       const { data: existingItems } = await supabase
         .from('contract_items')
-        .select('id, equipment_id, item_name')
+        .select('id, equipment_id, item_name, item_description')
         .eq('contract_id', id);
-      const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
-        it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
+      // FIX B — mesma chave do updateContract: item manual = `manual:<nome>:<desc>`
+      // pra desambiguar homônimos. Derivada do conteúdo persistido → no-op estável.
+      const itemKey = (it: { equipment_id?: string | null; item_name: string; item_description?: string | null }) =>
+        it.equipment_id
+          ? `eq:${it.equipment_id}`
+          : `manual:${(it.item_name || '').trim().toLowerCase()}:${(it.item_description || '').trim().toLowerCase()}`;
 
       const existingByKey = new Map<string, { id: string }>();
-      for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string }[]) {
+      for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; item_description: string | null }[]) {
         existingByKey.set(itemKey(it), { id: it.id });
       }
       const newKeys = new Set(items.map(itemKey));

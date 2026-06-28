@@ -3633,6 +3633,7 @@ export type Database = {
           description: string | null
           expected_max: number | null
           expected_min: number | null
+          freq_days: number | null
           freq_kind: string | null
           freq_months: number | null
           freq_visits: number | null
@@ -3657,6 +3658,7 @@ export type Database = {
           description?: string | null
           expected_max?: number | null
           expected_min?: number | null
+          freq_days?: number | null
           freq_kind?: string | null
           freq_months?: number | null
           freq_visits?: number | null
@@ -3681,6 +3683,7 @@ export type Database = {
           description?: string | null
           expected_max?: number | null
           expected_min?: number | null
+          freq_days?: number | null
           freq_kind?: string | null
           freq_months?: number | null
           freq_visits?: number | null

@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   ClipboardList, 
@@ -44,7 +44,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { trackUsage } from '@/lib/trackUsage';
-import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
+import { DynamicFormQuestions, type FormValidationResult, type ContractVisibilityContext } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
 import { formatSignatureStamp } from '@/lib/signatureStamp';
 import { reverseGeocodeShort } from '@/utils/reverseGeocode';
@@ -137,6 +137,7 @@ function OsEquipmentAccordionItem({
   environmentName,
   onPreviewPhoto,
   onValidationChange,
+  visibility,
 }: {
   item: EquipmentItem;
   itemKey: string;
@@ -151,6 +152,8 @@ function OsEquipmentAccordionItem({
   environmentName: string | null;
   onPreviewPhoto: (url: string) => void;
   onValidationChange: (result: FormValidationResult) => void;
+  /** Contexto de visibilidade por visita (OS de contrato). Undefined = OS avulsa. */
+  visibility?: ContractVisibilityContext;
 }) {
   // SÓ o equipamento ABERTO fica sticky (mesmo critério do PMOC) — evita
   // empilhamento de cabeçalhos sobrepostos e briga de z-index.
@@ -226,6 +229,7 @@ function OsEquipmentAccordionItem({
           equipmentId={item.equipment_id || undefined}
           readOnly={readOnly}
           onValidationChange={onValidationChange}
+          visibility={visibility}
         />
       </AccordionContent>
       {/* Sentinel da BASE: 0px logo após o conteúdo. Marca o fim do item — quando
@@ -286,6 +290,10 @@ export default function TechnicianOS() {
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
+  // Datas REAIS de todas as visitas do contrato (FIX 2 — fatia B3.1). Só
+  // populado quando a OS tem contract_id; alimenta o calendário do helper de
+  // visibilidade por pergunta. Vazio = helper mostra tudo (fallback seguro).
+  const [contractVisitDates, setContractVisitDates] = useState<string[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
   // Checklist da visita no MODO ANÔNIMO: a RLS bloqueia service_order_activities
@@ -941,7 +949,7 @@ export default function TechnicianOS() {
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name),
           service_type:service_types(id, name, color),
-          contract:contracts(id, name)
+          contract:contracts(id, name, start_date, frequency_type, frequency_value, horizon_months)
         `);
       query = isUuid(id)
         ? query.eq('id', id!)
@@ -1044,6 +1052,39 @@ export default function TechnicianOS() {
     // serviceOrder ainda null na 1ª passada) — sem isso o ambiente não viria.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, resolvedOsId, (serviceOrder as any)?.contract_id, fetchTechnicianProfile]);
+
+  // Datas REAIS das visitas do contrato (FIX 2). Busca os scheduled_date de
+  // TODAS as OSs do mesmo contract_id pra usar como calendário do filtro de
+  // perguntas por visita — em vez de reconstruir e divergir. Só roda quando a OS
+  // é de contrato. Falha/vazio → mantém [] → o helper mostra tudo.
+  useEffect(() => {
+    const contractId = (serviceOrder as any)?.contract_id;
+    if (!contractId) {
+      setContractVisitDates([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await db
+          .from('service_orders')
+          .select('scheduled_date')
+          .eq('contract_id', contractId)
+          .order('scheduled_date', { ascending: true });
+        if (error) throw error;
+        if (cancelled) return;
+        const dates = (data || [])
+          .map((r: any) => r.scheduled_date as string | null)
+          .filter((d): d is string => !!d);
+        setContractVisitDates(dates);
+      } catch {
+        if (!cancelled) setContractVisitDates([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [(serviceOrder as any)?.contract_id, db]);
 
   // Modo cliente (anon): sem realtime (as policies anon caem). Atualização "ao
   // vivo" via polling leve da RPC a cada ~20s, só enquanto a aba está visível.
@@ -2591,6 +2632,23 @@ export default function TechnicianOS() {
   // "Checklist da visita"), então o card "Checklists" não deve aparecer.
   const questionnaireItems = equipmentItems.filter((i) => i.form_template_id);
 
+  // Contexto de visibilidade por visita (Fase B, fatia B3.1). Só existe quando a
+  // OS pertence a um CONTRATO (`contract_id` + dados de agendamento do contrato);
+  // aí os checklists exibem só as perguntas que "vencem" nesta visita conforme a
+  // frequência por pergunta. OS avulsa → undefined → DynamicFormQuestions não
+  // filtra (render idêntico ao histórico). O helper garante "mostra tudo" em
+  // qualquer incerteza, então isto é seguro mesmo com dados parciais.
+  const checklistVisibility: ContractVisibilityContext | undefined = useMemo(() => {
+    const contractId = (serviceOrder as any)?.contract_id;
+    if (!contractId) return undefined;
+    return {
+      // Datas reais de todas as visitas (FIX 2) = calendário do motor. Vazio
+      // (busca falhou/ainda não chegou) → helper mostra tudo.
+      visitDates: contractVisitDates,
+      scheduledDate: (serviceOrder as any)?.scheduled_date ?? null,
+    };
+  }, [serviceOrder, contractVisitDates]);
+
   const interactiveSidebarItems: OsSidebarItem[] = (() => {
     if (!isCheckedIn) return [];
     const items: OsSidebarItem[] = [];
@@ -3280,6 +3338,7 @@ export default function TechnicianOS() {
                       environmentName={environmentName}
                       onPreviewPhoto={setPreviewPhoto}
                       onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
+                      visibility={checklistVisibility}
                     />
                   );
                 })}
@@ -3345,6 +3404,7 @@ export default function TechnicianOS() {
                   templateId={serviceOrder.form_template_id}
                   readOnly={isPaused}
                   onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
+                  visibility={checklistVisibility}
                 />
               </div>
             </CardContent>

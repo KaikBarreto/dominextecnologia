@@ -188,6 +188,89 @@ describe('por nº de visitas — a cada 6 visitas', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────
+// 6b. freqDays — frequência "Personalizada" em DIAS corridos.
+//     Visitas a cada 14 dias; atividade a cada 17 dias. 17 NÃO casa com nenhuma
+//     visita exata, mas a atividade NÃO se perde: vence na 1ª visita após 17d.
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('por tempo — freqDays (a cada 17 dias) sobre visitas de 14 dias', () => {
+  // Datas em dias: 0, 14, 28, 42, 56, 70, 84, 98 (8 visitas).
+  const visits = visitsEveryDays(START, 14, 8);
+
+  it('contract_start (cadência fixa ancorada): metas 17,34,51,68,85 caem nas 1ªs visitas ≥ cada meta → idx [2,3,4,5,7]', () => {
+    const a: ActivitySpec = { id: 'D17', freqKind: 'time', freqDays: 17, startKind: 'contract_start' };
+    const map = scheduleActivitiesOntoVisits(visits, [a]);
+    // Model B (ancorado, sem drift): âncora dia 0; 1ª meta = âncora + 17.
+    // Metas: 17,34,51,68,85 (102 > 98, fora). Cada meta na 1ª visita ≥ ela:
+    // 17→dia28(idx2); 34→dia42(idx3); 51→dia56(idx4); 68→dia70(idx5); 85→dia98(idx7).
+    expect(dueIndexes(map, 'D17')).toEqual([2, 3, 4, 5, 7]);
+  });
+
+  it('NÃO se perde mesmo sem visita exata em 17d (1º vencimento é a 1ª visita ≥17d)', () => {
+    const a: ActivitySpec = { id: 'D17b', freqKind: 'time', freqDays: 17, startKind: 'contract_start' };
+    const due = dueIndexes(scheduleActivitiesOntoVisits(visits, [a]), 'D17b');
+    expect(due.length).toBeGreaterThan(0);
+    expect(due[0]).toBe(2); // dia 28
+  });
+
+  it('due_now (cadência fixa ancorada): aparece na visita 0; metas 0,17,34,51,68,85 → idx [0,2,3,4,5,7]', () => {
+    const a: ActivitySpec = { id: 'D17now', freqKind: 'time', freqDays: 17, startKind: 'due_now' };
+    const map = scheduleActivitiesOntoVisits(visits, [a]);
+    // Model B: âncora dia 0; 1ª meta = âncora (0). Metas: 0,17,34,51,68,85.
+    // 0→idx0; 17→dia28(idx2); 34→dia42(idx3); 51→dia56(idx4); 68→dia70(idx5); 85→dia98(idx7).
+    expect(dueIndexes(map, 'D17now')).toEqual([0, 2, 3, 4, 5, 7]);
+  });
+
+  it('1º vencimento cairia após a última visita → não aparece', () => {
+    // 2 visitas: dia 0 e dia 14. Atividade a cada 30 dias, contract_start.
+    const short = visitsEveryDays(START, 14, 2);
+    const a: ActivitySpec = { id: 'D30', freqKind: 'time', freqDays: 30, startKind: 'contract_start' };
+    expect(dueIndexes(scheduleActivitiesOntoVisits(short, [a]), 'D30')).toEqual([]);
+  });
+
+  it('freqDays ganha de freqMonths quando ambos vierem', () => {
+    const a: ActivitySpec = {
+      id: 'DM',
+      freqKind: 'time',
+      freqDays: 17,
+      freqMonths: 6, // deve ser ignorado
+      startKind: 'contract_start',
+    };
+    // Mesmo resultado do caso só-dias (17): [2, 3, 4, 5, 7]. Se months valesse,
+    // semestral sobre ~98 dias daria [] (1ª meta cairia ~mês 6).
+    expect(dueIndexes(scheduleActivitiesOntoVisits(visits, [a]), 'DM')).toEqual([2, 3, 4, 5, 7]);
+  });
+
+  it('cenário do CEO: 7 visitas (0,14,28,42,56,70,84), freqDays 17 contract_start → idx [2,3,4,5] (85 fora)', () => {
+    // Cadência fixa ancorada: metas 17,34,51,68 (85 > 84, fora). Mantém o número
+    // que o usuário definiu (17), sem escorregar pra ~28d como no modelo antigo.
+    const sete = visitsEveryDays(START, 14, 7); // dias 0..84
+    const a: ActivitySpec = { id: 'CEO', freqKind: 'time', freqDays: 17, startKind: 'contract_start' };
+    expect(dueIndexes(scheduleActivitiesOntoVisits(sete, [a]), 'CEO')).toEqual([2, 3, 4, 5]);
+  });
+
+  it('dedup: visitas muito espaçadas, várias metas caem na mesma visita → aparece 1 vez', () => {
+    // Visitas a cada 90 dias; atividade a cada 17 dias (due_now). Entre 2 visitas
+    // cabem ~5 metas, mas a atividade aparece só 1 vez por visita (Set de índices).
+    const espacadas = visitsEveryDays(START, 90, 3); // dias 0, 90, 180
+    const a: ActivitySpec = { id: 'DD', freqKind: 'time', freqDays: 17, startKind: 'due_now' };
+    // Metas 0,17,34,...,170; 0→idx0, primeira ≥1→idx1(90), primeira ≥91→idx2(180).
+    // Cada índice 1 vez só.
+    expect(dueIndexes(scheduleActivitiesOntoVisits(espacadas, [a]), 'DD')).toEqual([0, 1, 2]);
+  });
+
+  it('aceita datas em string ISO no caminho de dias', () => {
+    const isoVisits: VisitInput[] = [
+      { date: '2026-01-15' }, // dia 0
+      { date: '2026-01-29' }, // dia 14
+      { date: '2026-02-12' }, // dia 28
+    ];
+    const a: ActivitySpec = { id: 'Diso', freqKind: 'time', freqDays: 17, startKind: 'contract_start' };
+    expect(dueIndexes(scheduleActivitiesOntoVisits(isoVisits, [a]), 'Diso')).toEqual([2]);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
 // 7. EQUIVALÊNCIA PMOC — cadência mensal + atividades M/T/S/A com fase ancorada
 //    igual ao ciclo de 12 do PMOC ⇒ o motor novo BATE com positionForMonth/
 //    dueLevelsForPosition. Prova que o motor novo é superconjunto do atual.

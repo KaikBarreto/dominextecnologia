@@ -185,6 +185,9 @@ export interface FormQuestion {
    *  Casam com o motor puro visitScheduleEngine.ts (ActivitySpec). */
   freq_kind?: 'time' | 'visits' | null;
   freq_months?: number | null;
+  /** quando freq_kind='time': intervalo em DIAS corridos (ex: 17). Tem PRIORIDADE
+   *  sobre freq_months no motor (visitScheduleEngine.ActivitySpec.freqDays). */
+  freq_days?: number | null;
   freq_visits?: number | null;
   start_kind?: 'contract_start' | 'due_now' | 'visit_n' | null;
   start_visit?: number | null;

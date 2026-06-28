@@ -1079,16 +1079,34 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         if (seen.has(eqId)) continue;
         seen.add(eqId);
         const eq = activeEquipment.find(e => e.id === eqId) || equipment.find(e => e.id === eqId);
-        if (!eq) continue;
+        if (eq) {
+          out.push({
+            equipment_id: eq.id,
+            item_name: eq.name,
+            item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined,
+          });
+          continue;
+        }
+        // FIX A — equipamento não resolvido (inativo ou ainda não carregado pela
+        // query de equipamentos). NUNCA descartar: o diff de itens do backend
+        // apagaria esse contract_item (perda de dado) mesmo o usuário não tendo
+        // mexido nele. Em edição caímos no snapshot persistido do contrato (mesmo
+        // equipment_id), reusando item_name/item_description gravados pra que a
+        // chave `eq:<id>` sobreviva ao diff. (Na criação não há snapshot — mas aí
+        // o equipamento veio de uma seleção recém-feita, sempre presente em
+        // `equipment`; o ramo de fallback só vale pra edição.)
+        const snap = (editContract?.contract_items || []).find(
+          (it: any) => it.equipment_id === eqId,
+        );
         out.push({
-          equipment_id: eq.id,
-          item_name: eq.name,
-          item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined,
+          equipment_id: eqId,
+          item_name: snap?.item_name ?? 'Equipamento',
+          item_description: snap?.item_description ?? undefined,
         });
       }
     }
     return out;
-  }, [environments, activeEquipment, equipment]);
+  }, [environments, activeEquipment, equipment, editContract?.contract_items]);
   // Alias mantido pra uso interno PMOC (plano/itens com escopo). Idêntico no PMOC.
   const pmocDerivedItems = derivedItems;
 
@@ -1392,8 +1410,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         const planChanged = currentPlanSig !== initialPlanSig;
         // Mudança no conjunto de equipamentos também re-expande as visitas
         // (mesma chave estável usada no hook: equipment_id ou nome do manual).
-        const itemKey = (it: { equipment_id?: string | null; item_name: string }) =>
-          it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
+        // FIX B — chave do item manual inclui a descrição (`manual:<nome>:<desc>`),
+        // espelhando o diff do backend (useContracts ~2089/2485) e o looseItemKey
+        // da aba. Mantém itens manuais homônimos com descrições diferentes como
+        // chaves distintas (antes colapsavam). 100% derivada do conteúdo → estável
+        // dos dois lados.
+        const itemKey = (it: { equipment_id?: string | null; item_name: string; item_description?: string | null }) =>
+          it.equipment_id
+            ? `eq:${it.equipment_id}`
+            : `manual:${(it.item_name || '').trim().toLowerCase()}:${(it.item_description || '').trim().toLowerCase()}`;
         const initialItemsSig = ((editContract.contract_items || []) as any[])
           .map((it) => itemKey(it)).sort().join('§');
         const currentItemsSig = effectiveItems.map((it: any) => itemKey(it)).sort().join('§');

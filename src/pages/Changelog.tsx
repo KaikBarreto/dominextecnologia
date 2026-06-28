@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.8',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Frequência por item do checklist nos contratos',
+        description: 'Agora cada pergunta de um checklist pode ter a sua própria frequência dentro de um contrato: mensal, bimestral, trimestral, semestral, anual, a cada N visitas ou personalizado (a cada X dias). Em cada visita, o técnico vê só os itens que vencem naquele momento, sem poluir a tela com o que não é da vez — e o que não estiver dentro do prazo entra na próxima visita, sem se perder. Itens sem frequência definida continuam aparecendo em toda visita, como antes.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.15.7',
     date: '27 de junho de 2026',
     type: 'patch',

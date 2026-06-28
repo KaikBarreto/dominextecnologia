@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Check, X, Pencil, AlertTriangle, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
+import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
 
 interface FormResponse {
   question_id: string;
@@ -27,6 +28,23 @@ export interface FormValidationResult {
   missingQuestions: string[];
 }
 
+/**
+ * Contexto de agendamento do contrato pra filtrar perguntas por visita (Fase B,
+ * fatia B3.1). Só vem quando a OS pertence a um CONTRATO. Ausente (undefined) =
+ * OS avulsa → nenhum filtro, render idêntico ao comportamento histórico.
+ */
+export interface ContractVisibilityContext {
+  /**
+   * Datas REAIS de TODAS as visitas do contrato (as `scheduled_date` de todas as
+   * OSs daquele `contract_id`). É o calendário do motor E a base do índice desta
+   * visita — elimina a divergência de reconstruir o calendário (plano mensal,
+   * remarcação, virada de mês). Vazio/ausente → helper mostra tudo.
+   */
+  visitDates?: (string | null | undefined)[] | null;
+  /** scheduled_date desta OS (yyyy-mm-dd). */
+  scheduledDate?: string | null;
+}
+
 interface DynamicFormQuestionsProps {
   serviceOrderId: string;
   templateId: string;
@@ -37,9 +55,17 @@ interface DynamicFormQuestionsProps {
    * dadas, mas desabilita toggles, inputs, uploads e edição. Liberar = retomar a OS.
    */
   readOnly?: boolean;
+  /**
+   * Quando setado (OS de CONTRATO), filtra as perguntas exibidas pelas que
+   * "vencem" nesta visita conforme a frequência por pergunta. Perguntas sem
+   * frequência e perguntas já respondidas nunca somem. Ausente = OS avulsa →
+   * sem filtro. O helper `computeVisibleQuestionIds` garante o fallback
+   * "mostra tudo" em qualquer incerteza.
+   */
+  visibility?: ContractVisibilityContext;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false, visibility }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
@@ -60,12 +86,62 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   // (corta re-renders desnecessários e qualquer eco de loop).
   const lastValidationRef = useRef<string | null>(null);
 
+  // Perguntas que JÁ APARECERAM nesta sessão (FIX 4). Uma pergunta visível não
+  // pode sumir no meio do preenchimento — caso clássico: o técnico LIMPA a
+  // resposta de uma pergunta que não vence nesta visita; sem isto, ela some na
+  // hora (some do `answeredQuestionIds` e deixa de cair no motor). Acumulamos os
+  // ids num ref que NUNCA remove; unimos ao conjunto visível abaixo.
+  const everShownRef = useRef<Set<string>>(new Set());
+
+  // Perguntas VISÍVEIS nesta visita (Fase B, fatia B3.1). Só filtra quando a OS
+  // é de CONTRATO (prop `visibility` presente). OS avulsa = lista intacta. O
+  // helper já garante "mostra tudo" em qualquer incerteza; perguntas sem
+  // frequência e já respondidas nunca somem. Filtra TANTO o render QUANTO a
+  // validação de obrigatórias (pergunta escondida não pode travar a conclusão).
+  const visibleQuestions = useMemo(() => {
+    if (!visibility) return questions;
+    const answeredQuestionIds = new Set(
+      Object.values(responses)
+        .filter((r) => r.response_value?.trim() || r.response_photo_url)
+        .map((r) => r.question_id),
+    );
+    const visibleIds = computeVisibleQuestionIds({
+      visitDates: visibility.visitDates,
+      scheduledDate: visibility.scheduledDate,
+      questions,
+      answeredQuestionIds,
+    });
+    // Une as que já apareceram nesta sessão (nunca remove durante o uso).
+    for (const id of everShownRef.current) visibleIds.add(id);
+    const result = questions.filter((q) => visibleIds.has(q.id));
+    // Registra as visíveis agora pra não sumirem em renders seguintes.
+    for (const q of result) everShownRef.current.add(q.id);
+    return result;
+  }, [visibility, questions, responses]);
+
+  // Troca de OS/equipamento/template = nova sessão de preenchimento → zera o
+  // acumulador (senão perguntas de outra visita vazariam pra esta).
+  useEffect(() => {
+    everShownRef.current = new Set();
+  }, [serviceOrderId, templateId, equipmentId]);
+
   // Validation effect — depende SÓ de dados (questions/responses), não da callback.
   useEffect(() => {
     const cb = onValidationChangeRef.current;
-    if (!cb || questions.length === 0) return;
+    if (!cb || visibleQuestions.length === 0) {
+      // Sem perguntas visíveis (ex.: nenhuma vence nesta visita) → nada pendente.
+      if (cb && questions.length > 0) {
+        const result: FormValidationResult = { isValid: true, missingQuestions: [] };
+        const signature = JSON.stringify(result);
+        if (signature !== lastValidationRef.current) {
+          lastValidationRef.current = signature;
+          cb(result);
+        }
+      }
+      return;
+    }
 
-    const requiredQuestions = questions.filter(q => q.is_required);
+    const requiredQuestions = visibleQuestions.filter(q => q.is_required);
     const missingQuestions: string[] = [];
 
     requiredQuestions.forEach(q => {
@@ -87,7 +163,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     lastValidationRef.current = signature;
 
     cb(result);
-  }, [questions, responses]);
+  }, [visibleQuestions, questions, responses]);
 
   useEffect(() => {
     fetchQuestions();
@@ -225,6 +301,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
         Nenhuma pergunta configurada para este checklist.
+      </p>
+    );
+  }
+
+  // OS de contrato em que nenhuma pergunta vence nesta visita (todas têm
+  // frequência e nenhuma caiu aqui, e nenhuma respondida). Mensagem amigável.
+  if (visibleQuestions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-4">
+        Nenhuma pergunta prevista para esta visita.
       </p>
     );
   }
@@ -590,7 +676,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
   return (
     <div className="space-y-4">
-      {questions.map((question, index) => {
+      {visibleQuestions.map((question, index) => {
         const response = responses[question.id];
         const hasAnswer = !!(response?.response_value?.trim() || response?.response_photo_url);
         const isEditing = editingQuestion === question.id;

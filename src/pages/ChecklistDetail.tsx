@@ -49,10 +49,11 @@ export default function ChecklistDetail() {
     setTemplateServices,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
-  const { hasModule } = useCompanyModules();
+  const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   // Frequência por pergunta só aparece com o módulo Contratos ativo. Sem ele, a
   // tela fica idêntica ao padrão (zero poluição). Gate reusa useCompanyModules.
-  const showFrequency = hasModule('contracts');
+  // Espera o boot dos módulos pra NÃO piscar "ausente" pra quem TEM o módulo.
+  const showFrequency = !modulesLoading && hasModule('contracts');
   const { toast } = useToast();
 
   const template = templates.find(t => t.id === id) as (FormTemplate & { questions: FormQuestion[] }) | undefined;
@@ -198,14 +199,24 @@ export default function ChecklistDetail() {
     }
   };
 
-  const handleSaveFrequency = (questionId: string, payload: QuestionFrequencyPayload) => {
-    updateQuestion.mutate({ id: questionId, ...payload } as any, {
-      onSuccess: () => {
-        const everyVisit = !payload.freq_kind;
-        toast({ title: everyVisit ? 'Frequência: toda visita' : 'Frequência atualizada' });
-      },
+  const handleSaveFrequency = (questionId: string, payload: QuestionFrequencyPayload) =>
+    new Promise<void>((resolve, reject) => {
+      updateQuestion.mutate({ id: questionId, ...payload } as any, {
+        onSuccess: () => {
+          const everyVisit = !payload.freq_kind;
+          toast({ title: everyVisit ? 'Frequência: toda visita' : 'Frequência atualizada' });
+          resolve();
+        },
+        onError: () => {
+          toast({
+            variant: 'destructive',
+            title: 'Não foi possível salvar a frequência',
+            description: 'Verifique a conexão e tente de novo.',
+          });
+          reject(new Error('update failed'));
+        },
+      });
     });
-  };
 
   const handleAddOption = () => {
     if (!newOption.trim()) return;

@@ -32,8 +32,18 @@ export type StartKind = 'contract_start' | 'due_now' | 'visit_n';
 export interface ActivitySpec {
   id: string;
   freqKind: FreqKind;
-  /** quando freqKind='time': período em meses (1, 3, 6, 12 ou custom). */
+  /**
+   * quando freqKind='time' E `freqDays` NÃO está presente: período em MESES de
+   * calendário (1, 3, 6, 12 ou custom). Overflow de fim-de-mês segue o JS.
+   */
   freqMonths?: number;
+  /**
+   * quando freqKind='time': período em DIAS corridos (ex: 17 = "a cada 17 dias",
+   * frequência "Personalizada"). PRIORIDADE: se `freqDays` (>0) estiver presente,
+   * o intervalo é medido em dias corridos e `freqMonths` é IGNORADO. Só quando
+   * `freqDays` está ausente/inválido é que `freqMonths` (meses de calendário) vale.
+   */
+  freqDays?: number;
   /** quando freqKind='visits': vence a cada N visitas (1 = toda visita). */
   freqVisits?: number;
   /** Onde o relógio começa. Default 'contract_start'. */
@@ -58,20 +68,19 @@ function toDate(d: string | Date): Date {
   return new Date(d);
 }
 
-/**
- * "Já passaram pelo menos `months` meses (de calendário) entre `from` e `to`?"
- * Compara por DIA, ignorando hora. Modelo de calendário: a data-alvo é
- * `from` + `months` meses (com overflow de fim-de-mês do JS), e devolve true se
- * `to` é >= essa data-alvo (no nível do dia). Isso casa com a régua "a atividade
- * vence na 1ª visita em que já passou `freqMonths` desde a última vez que venceu".
- */
-function monthsElapsedReached(from: Date, to: Date, months: number): boolean {
-  const target = new Date(from.getTime());
-  target.setMonth(target.getMonth() + months);
-  // Comparação por dia (zera a hora dos dois lados).
-  const a = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
-  const b = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate());
-  return a >= b;
+/** Compara só por DIA (zera a hora): a >= b? */
+function dayGte(a: Date, b: Date): boolean {
+  const ad = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const bd = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return ad >= bd;
+}
+
+/** `base` + `count`×intervalo, em meses de calendário OU dias corridos. */
+function addInterval(base: Date, count: number, months: number, days: number): Date {
+  const d = new Date(base.getTime());
+  if (days > 0) d.setDate(d.getDate() + days * count);
+  else d.setMonth(d.getMonth() + months * count);
+  return d;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -88,17 +97,17 @@ function monthsElapsedReached(from: Date, to: Date, months: number): boolean {
  * testes 6 e 7 pra a tabela exata.
  *
  * Regras (o coração — ver doc da fatia B1):
- *  1. Por tempo: vence na 1ª visita em que já passou `freqMonths` desde a última
- *     vez que venceu (modelo "desde a última execução", não drift fixo). Ao
- *     vencer, a "última vez" passa a ser a data daquela visita.
+ *  1. Por tempo: CADÊNCIA FIXA ANCORADA (Model B). As metas ficam fixas a partir
+ *     de uma âncora (1ªMeta, +1×iv, +2×iv, …) e NÃO escorregam; cada meta cai na
+ *     1ª visita com data ≥ ela. Várias metas na mesma visita = aparece 1 vez
+ *     (dedup). Ver `scheduleByTime`.
  *  2. Por nº de visitas: vence a cada `freqVisits` visitas, contagem limpa a
  *     partir do início.
  *  3. Início: 'due_now' = vence já na 1ª visita aplicável; 'visit_n' = 1ª
  *     ocorrência na visita N (1-based); 'contract_start' = relógio começa no
  *     início do contrato (data da 1ª visita).
  *  4. Não agendar após o fim: como as visitas já estão dentro do contrato, uma
- *     atividade cujo 1º vencimento cairia depois da última visita simplesmente
- *     não aparece.
+ *     atividade cuja meta cairia depois da última visita simplesmente não aparece.
  */
 export function scheduleActivitiesOntoVisits(
   visits: VisitInput[],
@@ -156,14 +165,27 @@ function scheduleByVisits(
 }
 
 /**
- * Por tempo (meses): modelo "desde a última execução". A âncora inicial depende
- * do início:
- *   • 'due_now'        → vence na 1ª visita aplicável (índice 0).
- *   • 'visit_n'        → vence na visita N (índice N-1).
- *   • 'contract_start' → o relógio parte do início do contrato; vence na 1ª
- *                        visita em que já passou `freqMonths` desde o início.
- * Após cada vencimento, a "última execução" vira a data daquela visita; o próximo
- * vencimento é a 1ª visita em que já passou `freqMonths` desde então.
+ * Por tempo (meses OU dias): CADÊNCIA FIXA ANCORADA (Model B). As metas ficam
+ * fixas a partir de uma âncora e NÃO escorregam — diferente do modelo antigo
+ * ("desde a última execução"), que reiniciava o relógio na data da visita em que
+ * a atividade aparecia (gerando drift quando a visita caía depois da meta).
+ *
+ * 1. Âncora e 1ª meta conforme `startKind`:
+ *    • 'due_now'        → âncora = data da 1ª visita; 1ª meta = essa data (aparece
+ *                         já na visita 0). Metas seguintes: âncora + k×intervalo.
+ *    • 'visit_n'        → âncora = data da visita N (1-based, índice N-1); 1ª meta
+ *                         = essa data; metas seguintes += intervalo.
+ *    • 'contract_start' → âncora = data da 1ª visita; 1ª meta = âncora + 1
+ *                         intervalo (NÃO aparece na visita 0).
+ * 2. Metas = 1ªMeta, +1×iv, +2×iv, … enquanto ≤ data da última visita. Intervalo
+ *    em meses de calendário (`freqMonths`) ou dias corridos (`freqDays`, que tem
+ *    PRIORIDADE se >0; nesse caso `freqMonths` é ignorado).
+ * 3. Cada meta cai na PRIMEIRA visita com data ≥ a meta. Esse índice recebe a
+ *    atividade. As metas continuam ancoradas (não reiniciam pela data da visita).
+ * 4. Dedup: se várias metas caírem na mesma visita (visitas espaçadas demais), a
+ *    atividade aparece UMA vez só naquela visita (Set de índices).
+ * 5. Meta cuja 1ª visita ≥ ela não existe (cairia após a última visita) → não
+ *    agenda.
  */
 function scheduleByTime(
   a: ActivitySpec,
@@ -171,38 +193,45 @@ function scheduleByTime(
   contractStart: Date,
   push: (visitIndex: number, id: string) => void,
 ): void {
+  const days = a.freqDays && a.freqDays > 0 ? a.freqDays : 0;
   const months = a.freqMonths && a.freqMonths > 0 ? a.freqMonths : 0;
-  if (months <= 0) return; // sem período válido (eventual) → nunca no automático
+  if (days <= 0 && months <= 0) return; // sem período válido (eventual)
 
   const visitCount = dates.length;
-  let i = 0; // índice da próxima visita candidata
-  let lastDue: Date | null = null;
+  const lastVisitDate = dates[visitCount - 1];
 
-  // Resolve o 1º vencimento conforme o início.
+  // Âncora + offset da 1ª meta (em nº de intervalos a partir da âncora).
+  let anchor: Date;
+  let firstStep: number;
   if (a.startKind === 'due_now') {
-    // Começa vencida: 1ª visita aplicável já é vencimento.
-    push(0, a.id);
-    lastDue = dates[0];
-    i = 1;
+    anchor = contractStart; // data da 1ª visita
+    firstStep = 0; // 1ª meta = âncora (aparece na visita 0)
   } else if (a.startKind === 'visit_n') {
     const startIdx = firstApplicableIndex(a, visitCount);
-    if (startIdx >= visitCount) return; // após a última visita → não aparece
-    push(startIdx, a.id);
-    lastDue = dates[startIdx];
-    i = startIdx + 1;
+    if (startIdx >= visitCount) return; // âncora cairia após a última visita
+    anchor = dates[startIdx];
+    firstStep = 0; // 1ª meta = data da visita N
   } else {
-    // 'contract_start': relógio parte do início; 1º vencimento quando já passou
-    // `months` desde o contractStart. lastDue começa como o início (não emite).
-    lastDue = contractStart;
-    i = 0;
+    // 'contract_start': âncora na 1ª visita, 1ª meta após 1 intervalo.
+    anchor = contractStart;
+    firstStep = 1;
   }
 
-  // Varre as visitas restantes, emitindo a cada vez que `months` já passaram
-  // desde a última vez que venceu (ou desde o início, no contract_start).
-  for (; i < visitCount; i++) {
-    if (lastDue && monthsElapsedReached(lastDue, dates[i], months)) {
-      push(i, a.id);
-      lastDue = dates[i];
+  // Set de índices: dedup quando metas distintas caem na mesma visita.
+  const scheduled = new Set<number>();
+  let searchFrom = 0; // metas são monótonas → varredura linear acumulada
+
+  for (let step = firstStep; ; step++) {
+    const target = addInterval(anchor, step, months, days);
+    if (!dayGte(lastVisitDate, target)) break; // meta passou da última visita
+
+    // 1ª visita com data ≥ meta. As datas são crescentes; avança o cursor.
+    while (searchFrom < visitCount && !dayGte(dates[searchFrom], target)) {
+      searchFrom++;
     }
+    if (searchFrom >= visitCount) break; // nenhuma visita alcança a meta
+    scheduled.add(searchFrom);
   }
+
+  for (const idx of [...scheduled].sort((x, y) => x - y)) push(idx, a.id);
 }

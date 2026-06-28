@@ -96,11 +96,23 @@ interface LooseItem {
 }
 
 // Chave estável de item solto, espelhando o `itemKey` do diff do backend
-// (useContracts ~2089) e a convenção do form: item com equipamento = `eq:<id>`;
-// item manual = `manual:<nome normalizado>`. Usada como key do React, dedupe de
-// payload e detecção de dirty.
-function looseItemKey(it: { equipment_id: string | null; item_name: string }): string {
-  return it.equipment_id ? `eq:${it.equipment_id}` : `manual:${(it.item_name || '').trim().toLowerCase()}`;
+// (useContracts ~2089/2485) e a convenção do form: item com equipamento =
+// `eq:<id>`; item manual = `manual:<nome>:<descrição>` (ambos normalizados).
+// Usada como key do React, dedupe de payload e detecção de dirty.
+//
+// FIX B — a descrição entra na chave pra desambiguar itens manuais homônimos
+// (ex.: dois "Bebedouro" com modelos/descrições diferentes), que antes
+// colapsavam em `manual:<nome>` e faziam o diff perder/não inserir uma cópia.
+// A chave é 100% derivada do conteúdo (nome+descrição) → é reconstruída idêntica
+// dos dois lados do diff (payload e linhas do banco), então um "save sem mudança"
+// continua sendo no-op (nada de delete+reinsert). Duplicata EXATA (mesmo nome E
+// mesma descrição) ainda colide; isso é tratado preservando todas as cópias na
+// montagem do payload e exige acompanhamento pra robustez total do diff.
+function looseItemKey(it: { equipment_id: string | null; item_name: string; item_description?: string | null }): string {
+  if (it.equipment_id) return `eq:${it.equipment_id}`;
+  const name = (it.item_name || '').trim().toLowerCase();
+  const desc = (it.item_description || '').trim().toLowerCase();
+  return `manual:${name}:${desc}`;
 }
 
 // Ambiente no estado da UI. Strings cruas nos campos numéricos; equipment_ids
@@ -648,16 +660,32 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         if (seen.has(eqId)) continue;
         seen.add(eqId);
         const eq = activeEquipment.find((e: any) => e.id === eqId) || equipment.find((e: any) => e.id === eqId);
-        if (!eq) continue;
+        if (eq) {
+          out.push({
+            equipment_id: eq.id,
+            item_name: eq.name,
+            item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || null,
+          });
+          continue;
+        }
+        // FIX A — equipamento não resolvido (inativo ou ainda não carregado pela
+        // query de equipamentos). NUNCA descartar: o diff de itens do backend
+        // apagaria esse contract_item (perda de dado) mesmo o usuário não tendo
+        // mexido nele. Caímos no snapshot persistido do próprio contrato (mesmo
+        // equipment_id) e reusamos item_name/item_description gravados, de modo
+        // que a chave `eq:<id>` sobreviva ao diff intacta.
+        const snap = (contract.contract_items || []).find(
+          (it: any) => it.equipment_id === eqId,
+        );
         out.push({
-          equipment_id: eq.id,
-          item_name: eq.name,
-          item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || null,
+          equipment_id: eqId,
+          item_name: snap?.item_name ?? 'Equipamento',
+          item_description: snap?.item_description ?? null,
         });
       }
     }
     return out;
-  }, [envs, activeEquipment, equipment]);
+  }, [envs, activeEquipment, equipment, contract.contract_items]);
 
   // Monta o payload do mesmo jeito que o form: itens com escopo/fase + plano por
   // máquina (+ bucket local), ambientes. Tudo via builders compartilhados.
