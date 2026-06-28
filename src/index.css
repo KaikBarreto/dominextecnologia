@@ -1,8 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Montserrat auto-hospedada — sem dependência do Google Fonts */
+/* Montserrat auto-hospedada (sem dependência do Google Fonts).
+   Os @import precisam vir ANTES de @tailwind: a regra CSS exige que todo
+   @import preceda qualquer outra declaração, senão o build do Vercel quebra. */
 @import '@fontsource/montserrat/100.css';
 @import '@fontsource/montserrat/200.css';
 @import '@fontsource/montserrat/300.css';
@@ -12,6 +10,10 @@
 @import '@fontsource/montserrat/700.css';
 @import '@fontsource/montserrat/800.css';
 @import '@fontsource/montserrat/900.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Netflix Sans — usado apenas no Domiflix */
 @font-face {
