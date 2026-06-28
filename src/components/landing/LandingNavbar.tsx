@@ -560,6 +560,25 @@ export default function LandingNavbar() {
                 )}
               />
             </a>
+
+            {/* Blog — rota própria (/blog), não é âncora: usa Link (SPA, sem reload). */}
+            <Link
+              to="/blog"
+              className={cn(
+                'relative text-sm transition-colors py-1',
+                location.pathname.startsWith('/blog')
+                  ? 'text-white font-medium'
+                  : 'text-white/60 hover:text-white'
+              )}
+            >
+              Blog
+              <span
+                className={cn(
+                  'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
+                  location.pathname.startsWith('/blog') ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+                )}
+              />
+            </Link>
           </div>
 
           {/* Desktop CTA */}
@@ -776,6 +795,20 @@ export default function LandingNavbar() {
           >
             Preços
           </a>
+
+          {/* Blog — rota própria (/blog), Link SPA (não recarrega). */}
+          <Link
+            to="/blog"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              'block py-3 text-sm border-b border-white/5 transition-colors',
+              location.pathname.startsWith('/blog')
+                ? 'text-white font-medium border-l-2 border-l-primary pl-3'
+                : 'text-white/70 hover:text-white'
+            )}
+          >
+            Blog
+          </Link>
 
           <div className="mt-4 flex flex-col gap-3">
             <Button variant="ghost" className="w-full text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>

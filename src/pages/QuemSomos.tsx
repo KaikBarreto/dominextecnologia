@@ -121,9 +121,9 @@ function Hero() {
       </div>
 
       <div ref={ref} className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center scroll-reveal">
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 mb-7">
-          <HeartHandshake className="h-4 w-4 text-primary" />
-          <span className="text-xs font-medium text-primary">Sobre a Dominex</span>
+        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] px-4 py-1.5 mb-7">
+          <HeartHandshake className="h-4 w-4 text-white" />
+          <span className="text-xs font-semibold text-white">Sobre a Dominex</span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight">

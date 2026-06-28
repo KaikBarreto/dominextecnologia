@@ -34,9 +34,9 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
     <aside className="space-y-6">
       {/* CTA Card */}
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.12] to-primary/[0.03] p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-primary/80 mb-2">
+        <span className="inline-flex items-center rounded-full bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white mb-3">
           Pra equipes de campo
-        </p>
+        </span>
         <h3 className="text-lg font-bold text-white mb-2 leading-snug">
           Quer tirar a operação do papel?
         </h3>

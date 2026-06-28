@@ -181,9 +181,9 @@ export default function Blog() {
         <section className="relative pt-28 pb-10 overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(160,100%,39%,0.08)_0%,transparent_70%)]" />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 mb-6">
-              <Newspaper className="h-4 w-4 text-primary" />
-              <span className="text-xs font-medium text-primary">Blog da Dominex</span>
+            <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] px-4 py-1.5 mb-6">
+              <Newspaper className="h-4 w-4 text-white" />
+              <span className="text-xs font-semibold text-white">Blog da Dominex</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-[1.12] tracking-tight">
               Conteúdo pra quem{' '}
