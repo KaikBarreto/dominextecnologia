@@ -190,21 +190,32 @@ async function main() {
     process.exit(1);
   }
 
-  const chromePath = findChrome();
+  // Resolve o Chrome em duas frentes:
+  //   1) Chrome do sistema (dev local / PUPPETEER_EXECUTABLE_PATH).
+  //   2) @sparticuz/chromium — Chromium empacotado pra ambientes serverless/CI
+  //      sem Chrome instalado, que é o caso do build do Vercel (Linux). Assim o
+  //      prerender de SEO roda no deploy e as landings saem como HTML estático,
+  //      visíveis pra Google e IAs.
+  // Só PULA o prerender se NENHUM dos dois existir — sem derrubar o build (as
+  // landings caem no fallback de SPA do vercel.json, /(.*) → /index.html).
+  let chromePath = findChrome();
+  let sparticuzArgs = null;
   if (!chromePath) {
-    // Sem Chrome (ex.: build do Vercel, que não tem Chromium instalado) NÃO deve
-    // derrubar o deploy inteiro. As landings caem no fallback de SPA (rewrite
-    // /(.*) → /index.html no vercel.json), exatamente como já era antes deste
-    // passo existir. O prerender estático de SEO é um bônus, não um pré-requisito
-    // pra publicar. Pra reativá-lo no Vercel, exponha PUPPETEER_EXECUTABLE_PATH
-    // (ou CHROME_PATH) apontando pra um Chrome instalado no build.
-    console.warn(
-      '[prerender] Chrome/Chromium não encontrado — PULANDO prerender (build segue). ' +
-        'Defina PUPPETEER_EXECUTABLE_PATH pra gerar as páginas estáticas de SEO.'
-    );
-    return;
+    try {
+      const { default: chromium } = await import('@sparticuz/chromium');
+      chromePath = await chromium.executablePath();
+      sparticuzArgs = chromium.args;
+      console.log('[prerender] Chrome: @sparticuz/chromium (serverless)');
+    } catch (err) {
+      console.warn(
+        '[prerender] Sem Chrome do sistema e @sparticuz/chromium indisponível — ' +
+          'PULANDO prerender (build segue). Detalhe: ' + (err?.message || err)
+      );
+      return;
+    }
+  } else {
+    console.log(`[prerender] Chrome: ${chromePath}`);
   }
-  console.log(`[prerender] Chrome: ${chromePath}`);
 
   // Guarda o index.html original (template do build) pra reusar como base de
   // cada rota de segmento — assim toda rota nasce do MESMO <head> de SEO.
@@ -219,12 +230,14 @@ async function main() {
     browser = await puppeteer.launch({
       executablePath: chromePath,
       headless: true,
-      args: [
+      // Com @sparticuz/chromium usamos os args que ele já fornece (tunados pro
+      // ambiente serverless, incluindo o necessário pra WebGL via SwiftShader).
+      // No Chrome do sistema usamos nossos próprios args. Em ambos, o SwiftShader
+      // deixa o DarkVeil (ogl) criar contexto WebGL sem ruído de erro de GL.
+      args: sparticuzArgs ?? [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        // WebGL via SwiftShader: o DarkVeil (ogl) tenta criar contexto WebGL.
-        // Sem isso o headless pode logar erro de GL (inofensivo, mas ruidoso).
         '--use-gl=angle',
         '--use-angle=swiftshader',
         '--disable-gpu',
@@ -257,8 +270,17 @@ async function main() {
       writeFileSync(outPath, html, 'utf8');
       results.push({ route, status: 'ok', out: outPath });
     }
+  } catch (err) {
+    // Prerender é aditivo: qualquer falha de render (ex.: Chromium serverless
+    // incompatível no Vercel) PULA o passo e deixa o build seguir. As landings
+    // caem no fallback de SPA do vercel.json. NUNCA derrubar o deploy por isso.
+    console.warn(
+      '[prerender] Falha ao renderizar — PULANDO prerender (build segue). ' +
+        'Detalhe: ' + (err?.message || err)
+    );
+    return;
   } finally {
-    if (browser) await browser.close();
+    if (browser) await browser.close().catch(() => {});
     preview.kill('SIGTERM');
   }
 
@@ -273,13 +295,15 @@ async function main() {
   }
   const okCount = results.filter((r) => r.status === 'ok').length;
   if (okCount === 0) {
-    console.error('[prerender] Nenhuma rota prerenderizada. Falha.');
-    process.exit(1);
+    console.warn('[prerender] Nenhuma rota prerenderizada — PULANDO (build segue).');
+    return;
   }
   console.log(`\n[prerender] ${okCount} rota(s) prerenderizada(s).`);
 }
 
 main().catch((err) => {
-  console.error('[prerender] Erro:', err);
-  process.exit(1);
+  // Último resguardo: prerender jamais derruba o deploy (o app já foi buildado
+  // pelo vite antes deste passo). Loga e sai 0 pra o build do Vercel concluir.
+  console.warn('[prerender] Erro inesperado — PULANDO prerender, build segue:', err?.message || err);
+  process.exit(0);
 });
