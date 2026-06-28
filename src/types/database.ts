@@ -181,6 +181,13 @@ export interface FormQuestion {
   expected_min?: number | null;
   expected_max?: number | null;
   auto_classify?: boolean | null;
+  /** Fase B (contratos agnósticos) — frequência por pergunta. NULL em tudo = "Toda visita".
+   *  Casam com o motor puro visitScheduleEngine.ts (ActivitySpec). */
+  freq_kind?: 'time' | 'visits' | null;
+  freq_months?: number | null;
+  freq_visits?: number | null;
+  start_kind?: 'contract_start' | 'due_now' | 'visit_n' | null;
+  start_visit?: number | null;
   created_at: string;
 }
 

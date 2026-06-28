@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.7',
+    date: '27 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de checklists mais limpa',
+        description: 'A tela de um checklist ganhou uma lista de perguntas mais enxuta e organizada: cada pergunta fica numa linha clara, mais fácil de ler, reordenar (arrastando) e gerenciar — uma diferença e tanto em checklists com muitas perguntas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.6',
     date: '27 de junho de 2026',
     type: 'patch',

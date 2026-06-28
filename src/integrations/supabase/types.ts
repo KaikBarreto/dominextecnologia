@@ -3633,6 +3633,9 @@ export type Database = {
           description: string | null
           expected_max: number | null
           expected_min: number | null
+          freq_kind: string | null
+          freq_months: number | null
+          freq_visits: number | null
           id: string
           is_required: boolean
           options: Json | null
@@ -3640,6 +3643,8 @@ export type Database = {
           question: string
           question_type: string
           require_camera: boolean
+          start_kind: string | null
+          start_visit: number | null
           template_id: string
           unit: string | null
         }
@@ -3652,6 +3657,9 @@ export type Database = {
           description?: string | null
           expected_max?: number | null
           expected_min?: number | null
+          freq_kind?: string | null
+          freq_months?: number | null
+          freq_visits?: number | null
           id?: string
           is_required?: boolean
           options?: Json | null
@@ -3659,6 +3667,8 @@ export type Database = {
           question: string
           question_type?: string
           require_camera?: boolean
+          start_kind?: string | null
+          start_visit?: number | null
           template_id: string
           unit?: string | null
         }
@@ -3671,6 +3681,9 @@ export type Database = {
           description?: string | null
           expected_max?: number | null
           expected_min?: number | null
+          freq_kind?: string | null
+          freq_months?: number | null
+          freq_visits?: number | null
           id?: string
           is_required?: boolean
           options?: Json | null
@@ -3678,6 +3691,8 @@ export type Database = {
           question?: string
           question_type?: string
           require_camera?: boolean
+          start_kind?: string | null
+          start_visit?: number | null
           template_id?: string
           unit?: string | null
         }

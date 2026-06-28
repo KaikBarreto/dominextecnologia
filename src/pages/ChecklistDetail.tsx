@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Pencil, Trash2, GripVertical, X,
   CheckSquare, Type, Hash, Camera, ListChecks,
-  ChevronUp, ChevronDown, BookOpen,
+  ChevronUp, ChevronDown, BookOpen, Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
+import { QuestionFrequencyBadge, type QuestionFrequencyPayload } from '@/components/technician/QuestionFrequencyBadge';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useToast } from '@/hooks/use-toast';
 
 const getQTypeIcon = (type: string) => {
   const found = QUESTION_TYPES.find(t => t.value === type);
@@ -46,6 +49,11 @@ export default function ChecklistDetail() {
     setTemplateServices,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+  const { hasModule } = useCompanyModules();
+  // Frequência por pergunta só aparece com o módulo Contratos ativo. Sem ele, a
+  // tela fica idêntica ao padrão (zero poluição). Gate reusa useCompanyModules.
+  const showFrequency = hasModule('contracts');
+  const { toast } = useToast();
 
   const template = templates.find(t => t.id === id) as (FormTemplate & { questions: FormQuestion[] }) | undefined;
   const serviceTypeIds = ((template as any)?.service_type_ids ?? []) as string[];
@@ -190,6 +198,15 @@ export default function ChecklistDetail() {
     }
   };
 
+  const handleSaveFrequency = (questionId: string, payload: QuestionFrequencyPayload) => {
+    updateQuestion.mutate({ id: questionId, ...payload } as any, {
+      onSuccess: () => {
+        const everyVisit = !payload.freq_kind;
+        toast({ title: everyVisit ? 'Frequência: toda visita' : 'Frequência atualizada' });
+      },
+    });
+  };
+
   const handleAddOption = () => {
     if (!newOption.trim()) return;
     setQForm(prev => ({ ...prev, options: [...(prev.options || []), newOption.trim()] }));
@@ -302,7 +319,7 @@ export default function ChecklistDetail() {
 
       {/* Services section */}
       <Card>
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-3 space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Serviços habilitados</Label>
             <div className="flex items-center gap-2">
@@ -376,98 +393,125 @@ export default function ChecklistDetail() {
           description={isMobile ? 'Toque em "Pergunta" no canto inferior pra começar' : 'Clique em "Nova Pergunta" para começar'}
         />
       ) : (
-        <div className="space-y-2">
+        <div className="rounded-lg border bg-card divide-y overflow-hidden">
           {sortedQuestions.map((question, index) => {
             const effectiveTypes = getEffectiveTypes(question);
             const questionOptions = (question.options as string[]) || [];
 
             return (
-              <div key={question.id} className="flex items-start gap-2">
-                <span className="text-xs font-medium text-muted-foreground mt-3 w-6">{index + 1}.</span>
-                <div
-                  className={cn(
-                    "flex-1 flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors group",
-                    draggedQuestionId === question.id && "opacity-50",
-                    dragOverQuestionId === question.id && "border-primary border-2"
+              <div
+                key={question.id}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-2.5 sm:px-3 hover:bg-muted/40 transition-colors group",
+                  draggedQuestionId === question.id && "opacity-50",
+                  dragOverQuestionId === question.id && "bg-primary/5 ring-1 ring-inset ring-primary"
+                )}
+                draggable
+                onDragStart={(e) => handleDragStart(e, question.id)}
+                onDragOver={(e) => handleDragOver(e, question.id)}
+                onDragLeave={() => setDragOverQuestionId(null)}
+                onDrop={(e) => handleDrop(e, question.id)}
+                onDragEnd={() => { setDraggedQuestionId(null); setDragOverQuestionId(null); }}
+              >
+                {/* Reorder control: drag handle no desktop, setas no mobile */}
+                <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+                  <GripVertical className="h-4 w-4 text-muted-foreground/60 cursor-grab active:cursor-grabbing" />
+                  <span className="text-xs font-medium text-muted-foreground tabular-nums w-5 text-right">{index + 1}</span>
+                </div>
+                <div className="flex flex-col gap-0.5 lg:hidden shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={index === 0}
+                    onClick={() => moveQuestion(question.id, 'up')}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={index === sortedQuestions.length - 1}
+                    onClick={() => moveQuestion(question.id, 'down')}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Conteúdo */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0 lg:hidden">{index + 1}.</span>
+                    <p className="text-sm font-medium leading-snug truncate">{question.question}</p>
+                    {question.is_required && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" title="Obrigatória" />
+                    )}
+                  </div>
+                  {question.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-start gap-1 leading-snug">
+                      <Lock className="h-3 w-3 mt-0.5 shrink-0" />
+                      <span className="line-clamp-1">{question.description}</span>
+                    </p>
                   )}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, question.id)}
-                  onDragOver={(e) => handleDragOver(e, question.id)}
-                  onDragLeave={() => setDragOverQuestionId(null)}
-                  onDrop={(e) => handleDrop(e, question.id)}
-                  onDragEnd={() => { setDraggedQuestionId(null); setDragOverQuestionId(null); }}
-                >
-                  {/* Desktop: drag handle */}
-                  <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab active:cursor-grabbing shrink-0 hidden lg:block" />
-                  {/* Mobile: up/down buttons com touch target maior */}
-                  <div className="flex flex-col gap-0.5 lg:hidden shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      disabled={index === 0}
-                      onClick={() => moveQuestion(question.id, 'up')}
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      disabled={index === sortedQuestions.length - 1}
-                      onClick={() => moveQuestion(question.id, 'down')}
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <p className="text-sm font-medium leading-tight">{question.question}</p>
-                    {question.description && (
-                      <p className="text-xs text-muted-foreground italic whitespace-pre-line">🔒 {question.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {effectiveTypes.map(t => {
-                        const Icon = getQTypeIcon(t);
-                        return (
-                          <Badge key={t} variant="secondary" className="text-xs gap-1">
-                            <Icon className="h-3 w-3" />
-                            {getQTypeLabel(t)}
-                          </Badge>
-                        );
-                      })}
-                      {effectiveTypes.length > 1 && (
-                        <Badge variant="outline" className="text-xs">
-                          {(question as any).answer_mode === 'combined' ? '🔗 Cumulativo' : '⚡ Exclusivo'}
-                        </Badge>
-                      )}
-                      {question.is_required && (
-                        <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
-                      )}
-                      {effectiveTypes.includes('photo') && (question as any).require_camera && (
-                        <Badge variant="outline" className="text-xs">Câmera obrigatória</Badge>
-                      )}
-                      {effectiveTypes.includes('select') && questionOptions.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {questionOptions.length} opções
-                        </span>
-                      )}
-                    </div>
-                    {effectiveTypes.includes('select') && questionOptions.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {questionOptions.map((opt, i) => (
-                          <Badge key={i} variant="outline" className="text-xs font-normal">{opt}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-                    <RowActionsMenu
-                      actions={[
-                        { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEditModal(question) },
-                        { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteQuestionId(question.id) },
-                      ]}
-                    />
-                  </div>
+                  {effectiveTypes.includes('select') && questionOptions.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{questionOptions.length} opções: {questionOptions.join(', ')}</p>
+                  )}
+                </div>
+
+                {/* Selos de tipo (compactos, à direita) */}
+                <div className="hidden sm:flex items-center gap-1 flex-wrap justify-end max-w-[40%] shrink-0">
+                  {effectiveTypes.map(t => {
+                    const Icon = getQTypeIcon(t);
+                    return (
+                      <Badge key={t} variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
+                        <Icon className="h-3 w-3" />
+                        {getQTypeLabel(t)}
+                      </Badge>
+                    );
+                  })}
+                  {effectiveTypes.length > 1 && (
+                    <Badge variant="outline" className="text-[11px] font-normal px-1.5 py-0 text-muted-foreground">
+                      {(question as any).answer_mode === 'combined' ? 'Cumulativo' : 'Exclusivo'}
+                    </Badge>
+                  )}
+                  {effectiveTypes.includes('photo') && (question as any).require_camera && (
+                    <Badge variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
+                      <Camera className="h-3 w-3" />
+                      Câmera
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Selo de tipo único no mobile (compacto) */}
+                <div className="flex sm:hidden items-center shrink-0">
+                  {(() => {
+                    const Icon = getQTypeIcon(effectiveTypes[0]);
+                    return (
+                      <Badge variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
+                        <Icon className="h-3 w-3" />
+                        {effectiveTypes.length > 1 ? `${effectiveTypes.length} tipos` : getQTypeLabel(effectiveTypes[0])}
+                      </Badge>
+                    );
+                  })()}
+                </div>
+
+                {/* Selo de frequência por pergunta — só com módulo Contratos */}
+                {showFrequency && (
+                  <QuestionFrequencyBadge
+                    value={question as any}
+                    onChange={(payload) => handleSaveFrequency(question.id, payload)}
+                    disabled={updateQuestion.isPending}
+                  />
+                )}
+
+                <div className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <RowActionsMenu
+                    actions={[
+                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEditModal(question) },
+                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteQuestionId(question.id) },
+                    ]}
+                  />
                 </div>
               </div>
             );
