@@ -3,28 +3,44 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { generateOccurrences } from '@/hooks/useContracts';
-import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import {
+  buildContractVisits,
+  regenerateFutureVisits,
+  machinesFromItemRows,
+  effectiveItemTemplateIds,
+  type ContractItemMachineRow,
+  type PlanActivityInput,
+} from '@/hooks/useContracts';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 /**
- * Geração retroativa de OSs para um contrato que já existe mas não tem
- * ordens de serviço criadas (ex.: contratos PMOC criados antes da v1.9.12,
- * quando a geração automática ainda dependia do cron `generate-pmoc-orders`
- * que estava desabilitado).
+ * Geração retroativa de OSs para um contrato que já existe mas não tem nenhuma
+ * ordem de serviço criada (ex.: contratos PMOC criados antes da v1.9.12, quando
+ * a geração automática ainda dependia do cron `generate-pmoc-orders`, ou
+ * contratos cujas OSs foram apagadas).
+ *
+ * ⚠️ FONTE ÚNICA: este caminho NÃO reimplementa a geração. Ele delega ao MESMO
+ * motor de createContract/renewContract — `buildContractVisits` (que bifurca em
+ * 3 caminhos: por-máquina PMOC, agrupado por frequência, e cadência única
+ * legado) + `regenerateFutureVisits` → `persistContractVisit`. Com isso, a OS
+ * retroativa sai IDÊNTICA à do fluxo normal:
+ *   • plano por frequência (contract_plan_activities) vira snapshot de atividades;
+ *   • múltiplos checklists por equipamento (contract_items.form_template_ids)
+ *     viram N linhas de service_order_equipment (1 por equipamento × checklist);
+ *   • exclusões da 1ª OS (contract_items.first_os_excluded_questions) NÃO são
+ *     aplicadas aqui — elas vivem em contract_items e o RENDER da OS filtra por
+ *     equipamento ancorando na 1ª visita real do contrato. Gerar as OSs com o
+ *     conteúdo certo é suficiente; a visibilidade resolve sozinha.
+ *
+ * A ÚNICA diferença do fluxo normal é a JANELA de datas: a geração retroativa
+ * cobre a série COMPLETA do contrato (do start_date até o horizonte), sem o
+ * corte `fromMonthStr` que a edição/renovação usam pra mexer só no futuro.
  *
  * Idempotente: confere antes se o contrato já tem OSs vinculadas — se tiver,
- * aborta com toast informativo e NÃO duplica.
+ * aborta com toast informativo e NÃO duplica. Como `oldRegenerableIds=[]` e
+ * `deleteOld=false`, nenhuma OS existente é apagada.
  *
- * Espelha fielmente o loop de geração de `useContracts.createContract`
- * (mesma frequência, mesmo horizonte, mesma estrutura de OS +
- * service_order_assignees + service_order_equipment). Único atalho: pega
- * assignees apenas a partir do `technician_id` do contrato — se o gestor
- * quiser ajustar time/responsáveis, edita as OSs depois ou usa o fluxo
- * normal de criação.
- *
- * Não atualiza `next_pmoc_generation_date` (esse campo é legado / informativo
- * desde a v1.9.12 que aposentou o cron).
+ * Não atualiza `next_pmoc_generation_date` (legado/informativo desde a v1.9.12).
  */
 export function useGenerateRetroactiveContractOSs() {
   const { user } = useAuth();
@@ -33,10 +49,8 @@ export function useGenerateRetroactiveContractOSs() {
 
   return useMutation({
     mutationFn: async (contractId: string) => {
-      // Carrega contrato + itens
-      // `company_id` é OBRIGATÓRIO no payload da OS (RLS em service_orders
-      // exige). Sem ele, o INSERT era rejeitado silenciosamente e o botão
-      // "Gerar OSs agora" parecia funcionar mas não criava nada. Fix v1.9.20.
+      // Carrega o contrato. `company_id` é OBRIGATÓRIO no payload da OS (RLS de
+      // service_orders bloqueia em silêncio sem ele — incidente v1.9.20).
       const { data: contract, error: contractErr } = await supabase
         .from('contracts')
         .select(`
@@ -52,9 +66,7 @@ export function useGenerateRetroactiveContractOSs() {
           frequency_type,
           frequency_value,
           start_date,
-          horizon_months,
-          is_pmoc,
-          contract_items (id, equipment_id, form_template_id, sort_order)
+          horizon_months
         `)
         .eq('id', contractId)
         .single();
@@ -69,7 +81,7 @@ export function useGenerateRetroactiveContractOSs() {
         throw new Error('Apenas contratos ativos podem gerar OSs.');
       }
 
-      // Idempotência: se já existem OSs vinculadas, não gera de novo
+      // Idempotência: se já existem OSs vinculadas, não gera de novo.
       const { count: existingCount, error: countErr } = await supabase
         .from('service_orders')
         .select('id', { count: 'exact', head: true })
@@ -81,103 +93,108 @@ export function useGenerateRetroactiveContractOSs() {
         return { skipped: true, generated: 0, expected: 0 };
       }
 
-      // Mesmo cálculo de datas usado em createContract
-      const occurrenceDates = generateOccurrences(
-        new Date(c.start_date + 'T12:00:00'),
-        c.frequency_type as 'days' | 'months',
-        c.frequency_value,
-        c.horizon_months,
-      );
+      // ── Plano de serviços com frequência (contract_plan_activities) ─────────
+      // Mesma forma que updateContractEquipment/renewContract leem. Vazio =
+      // contrato sem plano → buildContractVisits cai na cadência única (legado).
+      const { data: persisted } = await supabase
+        .from('contract_plan_activities')
+        .select('id, description, guidance, section, component, freq_code, freq_months, is_measurement, unit, expected_min, expected_max, contract_item_id, catalog_activity_id, applies_per_equipment, form_template_id')
+        .eq('contract_id', contractId)
+        .order('sort_order', { ascending: true });
+      const effPlan: PlanActivityInput[] = (persisted ?? []).map((a: any) => ({
+        description: a.description,
+        guidance: a.guidance,
+        section: a.section,
+        component: a.component,
+        freq_code: a.freq_code,
+        freq_months: a.freq_months,
+        is_measurement: a.is_measurement,
+        unit: a.unit,
+        expected_min: a.expected_min,
+        expected_max: a.expected_max,
+        contract_item_id: a.contract_item_id,
+        catalog_activity_id: a.catalog_activity_id,
+        applies_per_equipment: a.applies_per_equipment,
+        form_template_id: a.form_template_id,
+      }));
+      const effPlanIds: (string | null)[] = (persisted ?? []).map((a: any) => a.id);
+      const useGroupedEngine = effPlan.length > 0;
 
-      const equipmentIds: string[] = (c.contract_items || [])
-        .map((item: any) => item.equipment_id)
-        .filter((id: string | null): id is string => Boolean(id));
+      // ── Itens do contrato (escopo + fase + checklists por equipamento) ──────
+      // Inclui pmoc_scope/pmoc_start_visit (motor por máquina) e
+      // form_template_id(s) (múltiplos checklists por equipamento — M5).
+      const { data: contractItemsRows } = await supabase
+        .from('contract_items')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order, form_template_id, form_template_ids')
+        .eq('contract_id', contractId);
+      const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
 
-      const assigneeUserIds: string[] = c.technician_id ? [c.technician_id] : [];
+      const equipmentIds = itemRows
+        .map((i) => i.equipment_id)
+        .filter(Boolean) as string[];
 
-      let created = 0;
-      let errors = 0;
-
-      for (let i = 0; i < occurrenceDates.length; i++) {
-        const date = occurrenceDates[i];
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${d}`;
-
-        const description = `${c.name} — Ocorrência ${i + 1}`;
-
-        const osPayload = normalizeOptionalForeignKeys(
-          {
-            // Ver comentário no .select acima — company_id é mandatório
-            // pra RLS de service_orders aceitar o INSERT.
-            company_id: c.company_id,
-            customer_id: c.customer_id,
-            equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
-            technician_id: c.technician_id || null,
-            team_id: c.team_id || null,
-            os_type: 'manutencao_preventiva' as const,
-            service_type_id: c.service_type_id || null,
-            form_template_id: c.form_template_id || null,
-            scheduled_date: dateStr,
-            scheduled_time: '08:00',
-            description,
-            require_tech_signature: true,
-            status: 'agendada' as const,
-            contract_id: contractId,
-            origin: 'contract',
-            created_by: user?.id || null,
-          } as any,
-          ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'equipment_id'],
+      // M5 — checklists EFETIVOS por equipamento: 1 linha de
+      // service_order_equipment por (equipamento × checklist). Mesma regra do create.
+      const equipmentTemplateMap: Record<string, string[]> = {};
+      for (const it of itemRows) {
+        if (!it.equipment_id) continue;
+        equipmentTemplateMap[it.equipment_id] = effectiveItemTemplateIds(
+          it.form_template_ids,
+          it.form_template_id,
         );
-
-        const { data: os, error: osError } = await supabase
-          .from('service_orders')
-          .insert(osPayload)
-          .select('id')
-          .single();
-
-        if (osError || !os) {
-          console.error(`Erro criando OS retroativa #${i + 1}:`, osError);
-          errors++;
-          continue;
-        }
-
-        created++;
-
-        // Vincula equipamentos (junction)
-        if (equipmentIds.length > 0) {
-          const { error: eqErr } = await supabase.from('service_order_equipment').insert(
-            equipmentIds.map((eqId) => ({
-              service_order_id: os.id,
-              equipment_id: eqId,
-              form_template_id: c.form_template_id || null,
-            })),
-          );
-          if (eqErr) console.error('Erro vinculando equipamentos:', eqErr);
-        }
-
-        // Vincula assignees (junction)
-        if (assigneeUserIds.length > 0) {
-          const { error: assignErr } = await supabase.from('service_order_assignees').insert(
-            assigneeUserIds.map((uid) => ({
-              service_order_id: os.id,
-              user_id: uid,
-            })),
-          );
-          if (assignErr) console.error('Erro vinculando responsáveis:', assignErr);
-        }
-
-        // A OS recorrente JÁ é a visita do contrato — não há mais
-        // tabela-sombra de ocorrências pra criar.
       }
 
-      return {
-        skipped: false,
-        generated: created,
-        expected: occurrenceDates.length,
-        errors,
-      };
+      // contract_item_id → equipment_id (resolve atividade amarrada a um item).
+      const itemEquipmentMap: Record<string, string | null> = {};
+      for (const it of itemRows) {
+        itemEquipmentMap[it.id] = it.equipment_id ?? null;
+      }
+
+      // Máquinas (escopo + fase) → ativa o motor por máquina (PMOC) quando há plano.
+      const machines = machinesFromItemRows(itemRows);
+
+      // Série COMPLETA do contrato (sem corte de data — é a diferença do retroativo).
+      const visits = buildContractVisits({
+        startDate: new Date(c.start_date + 'T12:00:00'),
+        frequencyType: c.frequency_type as 'days' | 'months',
+        frequencyValue: c.frequency_value as number,
+        horizonMonths: c.horizon_months as number,
+        planActivities: effPlan,
+        planActivityIds: effPlanIds,
+        machines: machines.length > 0 ? machines : undefined,
+      });
+
+      const expected = visits.length;
+
+      const effTechnicianId = (c.technician_id as string | null) ?? null;
+      const effTeamId = (c.team_id as string | null) ?? null;
+      const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
+
+      // Delega à fonte única de persistência. deleteOld=false e
+      // oldRegenerableIds=[] → só GERA (nunca apaga). A validação
+      // assertAllVisitsPersisted está embutida: se faltar visita, lança erro
+      // PT-BR que o onError vira toast destrutivo.
+      const { createdCount } = await regenerateFutureVisits({
+        companyId: c.company_id,
+        contractId,
+        visits,
+        oldRegenerableIds: [],
+        deleteOld: false,
+        contractName: (c.name as string | null) || 'Contrato',
+        useGroupedEngine,
+        customerId: c.customer_id as string,
+        technicianId: effTechnicianId,
+        teamId: effTeamId,
+        serviceTypeId: (c.service_type_id as string | null) ?? null,
+        formTemplateId: (c.form_template_id as string | null) ?? null,
+        equipmentIds,
+        itemEquipmentMap,
+        equipmentTemplateMap,
+        assigneeUserIds,
+        createdBy: user?.id || null,
+      });
+
+      return { skipped: false, generated: createdCount, expected };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
@@ -188,15 +205,6 @@ export function useGenerateRetroactiveContractOSs() {
         toast({
           title: 'Contrato já possui OSs',
           description: 'Nada a fazer — as ordens já existem.',
-        });
-        return;
-      }
-
-      if (result.errors && result.errors > 0) {
-        toast({
-          variant: 'destructive',
-          title: `${result.errors} OS(s) falharam ao ser geradas`,
-          description: `${result.generated} de ${result.expected} criadas com sucesso.`,
         });
         return;
       }

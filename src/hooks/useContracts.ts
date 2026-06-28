@@ -1338,7 +1338,7 @@ async function deleteRegenerableOrders(ids: string[]): Promise<void> {
  * visitas já calculadas. `oldRegenerableIds` é capturado pelo chamador ANTES de
  * mexer (mas NÃO apagado por ele — o apaga sai daqui, só após o sucesso).
  */
-interface RegenerateFutureVisitsArgs {
+export interface RegenerateFutureVisitsArgs {
   companyId: string;
   contractId: string;
   visits: BuiltVisit[];
@@ -1436,7 +1436,7 @@ export async function orchestrateRegeneration(deps: {
  *
  * Retorna { createdCount, deletedCount }.
  */
-async function regenerateFutureVisits(
+export async function regenerateFutureVisits(
   args: RegenerateFutureVisitsArgs,
 ): Promise<{ createdCount: number; deletedCount: number }> {
   const baseIndex = args.baseVisitIndex ?? 0;

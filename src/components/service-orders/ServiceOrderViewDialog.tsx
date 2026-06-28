@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -368,15 +368,16 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         const renderResponse = (response: FormResponseData) => {
           const hasTextValue = response.response_value && response.response_value.trim() !== '' && response.response_value.trim() !== '-';
           const hasPhoto = !!response.response_photo_url;
+          const qType = response.question?.question_type;
           return (
             <div key={response.id} className="text-sm border-b last:border-0 pb-2 last:pb-0">
               <p className="font-medium text-muted-foreground">{response.question?.question}</p>
-              {response.question?.question_type === 'boolean' ? (
+              {qType === 'boolean' ? (
                 <Badge variant={response.response_value === 'true' ? 'success' : 'destructive'} className="mt-1 gap-1">
                   {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                   {response.response_value === 'true' ? 'Sim' : 'Não'}
                 </Badge>
-              ) : response.question?.question_type === 'conformidade' ? (
+              ) : qType === 'conformidade' ? (
                 <span className={`mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white ${
                   response.response_value === 'Conforme' ? 'bg-emerald-600'
                     : response.response_value === 'Não Conforme' ? 'bg-red-600'
@@ -385,7 +386,32 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                   {response.response_value === 'Conforme' ? <Check className="h-3 w-3" /> : response.response_value === 'Não Conforme' ? <X className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                   {response.response_value || 'N/A'}
                 </span>
-              ) : (
+              ) : (qType === 'number' || qType === 'pmoc_measurement') && hasTextValue ? (() => {
+                // Numérico/medição: valor + unidade, faixa esperada e aviso fora-da-faixa.
+                const unit = response.question?.unit ?? null;
+                const min = response.question?.expected_min ?? null;
+                const max = response.question?.expected_max ?? null;
+                const numericValue = parseFloat(response.response_value!.replace(',', '.'));
+                const isOutOfRange =
+                  !isNaN(numericValue) &&
+                  ((min != null && numericValue < min) || (max != null && numericValue > max));
+                return (
+                  <div className="space-y-1 mt-1">
+                    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2 py-0.5 rounded-md ${isOutOfRange ? 'bg-amber-100 text-amber-800' : 'bg-muted text-foreground'}`}>
+                      {isOutOfRange && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+                      {response.response_value}{unit ? ` ${unit}` : ''}
+                    </span>
+                    {(min != null || max != null) && (
+                      <p className="text-xs text-muted-foreground">
+                        Faixa esperada: {min ?? '—'} a {max ?? '—'}{unit ? ` ${unit}` : ''}
+                      </p>
+                    )}
+                    {isOutOfRange && (
+                      <p className="text-xs text-amber-700">Valor fora da faixa esperada.</p>
+                    )}
+                  </div>
+                );
+              })() : (
                 <div className="space-y-1 mt-1">
                   {hasTextValue && <p>{response.response_value}</p>}
                   {hasPhoto && (() => {
@@ -409,23 +435,47 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         const itemsWithTemplate = equipmentItems.filter(i => i.form_template_id);
 
         if (itemsWithTemplate.length > 0) {
+          // AGRUPAMENTO POR EQUIPAMENTO (espelha OSReport/groupItems): um cabeçalho
+          // por equipamento, com os N checklists daquele equipamento aninhados.
+          // Antes era 1 Card por par equipamento×template — repetia o cabeçalho do
+          // equipamento quando havia vários checklists. Chave de grupo = equipment_id
+          // (ou 'standalone' p/ respostas sem equipamento). Mantém a ordem em que os
+          // equipamentos aparecem em equipmentItems.
+          type EqGroup = {
+            key: string;
+            equipmentName: string | null;
+            templates: { templateName: string | null; responses: FormResponseData[] }[];
+          };
+          const groupsMap = new Map<string, EqGroup>();
+          for (const item of itemsWithTemplate) {
+            const itemResponses = visibleResponses.filter(r => {
+              if (r.question?.template_id !== item.form_template_id) return false;
+              if (item.equipment_id) return r.equipment_id === item.equipment_id;
+              return !r.equipment_id;
+            });
+            if (itemResponses.length === 0) continue;
+            const groupKey = item.equipment_id || 'standalone';
+            if (!groupsMap.has(groupKey)) {
+              groupsMap.set(groupKey, {
+                key: groupKey,
+                equipmentName: item.equipment?.name ?? null,
+                templates: [],
+              });
+            }
+            groupsMap.get(groupKey)!.templates.push({
+              templateName: item.form_template?.name ?? null,
+              responses: itemResponses,
+            });
+          }
+          const groups = Array.from(groupsMap.values());
+          if (groups.length === 0) return null;
+
           return (
             <div className="space-y-3">
-              {itemsWithTemplate.map((item, idx) => {
-                // Filter responses by template_id; when also have equipment_id, scope further
-                const itemResponses = visibleResponses.filter(r => {
-                  if (r.question?.template_id !== item.form_template_id) return false;
-                  if (item.equipment_id) return r.equipment_id === item.equipment_id;
-                  return !r.equipment_id;
-                });
-                if (itemResponses.length === 0) return null;
-                const cardKey = `${item.equipment_id || 'standalone'}::${item.form_template_id}::${idx}`;
-                const titleParts: string[] = [];
-                if (item.equipment?.name) titleParts.push(item.equipment.name);
-                if (item.form_template?.name) titleParts.push(item.form_template.name);
-                const title = titleParts.join(' — ') || 'Checklist';
+              {groups.map((group, idx) => {
+                const title = group.equipmentName || 'Checklist';
                 return (
-                  <Card key={cardKey}>
+                  <Card key={group.key}>
                     <Collapsible defaultOpen={idx === 0}>
                       <CollapsibleTrigger asChild>
                         <CardHeader className="group py-3 min-h-[44px] cursor-pointer w-full flex-row items-center justify-between gap-2">
@@ -436,8 +486,18 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                         </CardHeader>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <CardContent className="pt-0 space-y-3">
-                          {itemResponses.map(renderResponse)}
+                        <CardContent className="pt-0 space-y-4">
+                          {group.templates.map((tpl, ti) => (
+                            <div key={ti} className="space-y-3">
+                              {/* Só rotula o checklist quando o equipamento tem mais de um. */}
+                              {group.templates.length > 1 && tpl.templateName && (
+                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                  {tpl.templateName}
+                                </p>
+                              )}
+                              {tpl.responses.map(renderResponse)}
+                            </div>
+                          ))}
                         </CardContent>
                       </CollapsibleContent>
                     </Collapsible>

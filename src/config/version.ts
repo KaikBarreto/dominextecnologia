@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.15";
+export const APP_VERSION = "1.15.16";
 
-export const VERSION_NOTES = "Refinamos a experiência com vários checklists por equipamento: na visita, o técnico vê um único cabeçalho por equipamento com os checklists agrupados e que abrem e fecham individualmente; na criação do contrato, os checklists do equipamento ficam num acordeão (abre um, fecha os outros); e o campo de assinatura ficou mais claro (o botão de confirmar só aparece depois de assinar).";
+export const VERSION_NOTES = "Os contratos comuns ficaram mais completos, no nível do PMOC: na visita, o técnico vê a orientação de cada item, o progresso (X de Y respondidas), a frequência de cada pergunta e pode marcar de uma vez os itens de conformidade restantes ao finalizar. Os checklists de cada equipamento agora também podem ser editados direto na tela do contrato. No relatório, os checklists ficam agrupados por equipamento e as medições mostram a faixa esperada. E gerar ordens de serviço de períodos anteriores passou a respeitar o plano e os checklists certos.";

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.16',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contratos comuns mais completos na visita e no relatório',
+        description: 'Trouxemos para os contratos comuns vários recursos que antes eram só do PMOC: na visita, o técnico passa a ver a orientação de cada item do checklist, o progresso (quantas de quantas já respondeu), a frequência de cada pergunta e, ao finalizar, pode marcar de uma vez os itens de conformidade que sobraram. Os checklists de cada equipamento também podem ser editados direto na tela do contrato (não só na criação). No relatório e na visualização da OS, os checklists ficam agrupados por equipamento e as perguntas de medição mostram a faixa esperada, sinalizando quando o valor está fora dela. Por fim, gerar ordens de serviço de períodos anteriores passou a respeitar o plano e os checklists corretos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.15',
     date: '28 de junho de 2026',
     type: 'patch',

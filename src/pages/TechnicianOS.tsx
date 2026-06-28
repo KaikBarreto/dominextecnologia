@@ -150,9 +150,12 @@ function OsEquipmentAccordionItem({
   /** Resumo agregado dos checklists deste equipamento (somatório dos pares). */
   isComplete,
   pendingCount,
+  requiredTotal,
+  answeredTotal,
   environmentName,
   onPreviewPhoto,
   onValidationChange,
+  registerAutoFill,
   visibility,
   validations,
 }: {
@@ -166,11 +169,17 @@ function OsEquipmentAccordionItem({
   readOnly: boolean;
   isComplete: boolean;
   pendingCount: number;
+  /** Soma das obrigatórias de todos os checklists do equipamento ("Y" do X de Y). */
+  requiredTotal: number;
+  /** Soma das obrigatórias já respondidas ("X" do X de Y). */
+  answeredTotal: number;
   /** Ambiente do equipamento (contrato) ou, na ausência, o local cadastrado. */
   environmentName: string | null;
   onPreviewPhoto: (url: string) => void;
   /** Callback de validação POR par (itemKey + resultado). */
   onValidationChange: (itemKey: string, result: FormValidationResult) => void;
+  /** Registra/limpa a função de auto-preenchimento POR par (itemKey + fn|null). */
+  registerAutoFill: (itemKey: string, fn: (() => Promise<void>) | null) => void;
   /** Resolve o contexto de visibilidade POR equipamento. Undefined = OS avulsa. */
   visibility?: ContractVisibilityContext;
   /**
@@ -264,6 +273,11 @@ function OsEquipmentAccordionItem({
               <Badge variant="success" className="gap-1 shrink-0">
                 <Check className="h-3 w-3" /> Concluído
               </Badge>
+            ) : requiredTotal > 0 ? (
+              // Contador "X de Y" (item 6) — respondidas/obrigatórias do equipamento.
+              <Badge variant="outline" className="text-xs shrink-0">
+                {answeredTotal} de {requiredTotal}
+              </Badge>
             ) : pendingCount > 0 ? (
               <Badge variant="destructive" className="text-xs shrink-0">
                 {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
@@ -286,9 +300,9 @@ function OsEquipmentAccordionItem({
               // contagem "N pendentes" agregada do equipamento continua intacta.
               const open = openChecklistKeys.has(itemKey);
               const v = validations[itemKey];
-              // Selo do checklist: válido → "Concluído"; senão N pendentes (sem
-              // validação ainda = pendente, mesma régua do agregado do equipamento).
-              const checklistPending = v ? v.missingQuestions.length : null;
+              // Selo do checklist (item 6, paridade com o PMOC): completo →
+              // "Concluído"; com obrigatórias → contador "X de Y" (respondidas/
+              // obrigatórias); sem obrigatórias e sem validação → "Pendente".
               const checklistComplete = v ? v.isValid : false;
               return (
                 <div
@@ -309,9 +323,9 @@ function OsEquipmentAccordionItem({
                       <Badge variant="success" className="gap-1 shrink-0 text-[10px]">
                         <Check className="h-3 w-3" /> Concluído
                       </Badge>
-                    ) : checklistPending && checklistPending > 0 ? (
-                      <Badge variant="destructive" className="shrink-0 text-[10px]">
-                        {checklistPending} pendente{checklistPending > 1 ? 's' : ''}
+                    ) : v && v.requiredCount > 0 ? (
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        {v.answeredRequiredCount} de {v.requiredCount}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="shrink-0 text-[10px]">
@@ -334,6 +348,7 @@ function OsEquipmentAccordionItem({
                       equipmentId={item.equipment_id || undefined}
                       readOnly={readOnly}
                       onValidationChange={(result) => onValidationChange(itemKey, result)}
+                      registerAutoFill={(fn) => registerAutoFill(itemKey, fn)}
                       visibility={visibility}
                     />
                   </div>
@@ -348,6 +363,7 @@ function OsEquipmentAccordionItem({
             equipmentId={checklists[0].item.equipment_id || undefined}
             readOnly={readOnly}
             onValidationChange={(result) => onValidationChange(checklists[0].itemKey, result)}
+            registerAutoFill={(fn) => registerAutoFill(checklists[0].itemKey, fn)}
             visibility={visibility}
           />
         )}
@@ -435,9 +451,27 @@ export default function TechnicianOS() {
   const [trackingLinkCopied, setTrackingLinkCopied] = useState(false);
   
   const [formValidations, setFormValidations] = useState<Record<string, FormValidationResult>>({});
-  
+
+  // Registro das funções de auto-preenchimento POR checklist (itemKey → fn). Cada
+  // DynamicFormQuestions se registra ao montar e se remove ao desmontar. O atalho
+  // "marcar restantes como Conforme e finalizar" (item 7) dispara todas. Ref (não
+  // state) pra não re-renderizar a cada registro.
+  const formAutoFillRegistry = useRef<Map<string, () => Promise<void>>>(new Map());
+  const registerFormAutoFill = useCallback((itemKey: string, fn: (() => Promise<void>) | null) => {
+    if (fn) formAutoFillRegistry.current.set(itemKey, fn);
+    else formAutoFillRegistry.current.delete(itemKey);
+  }, []);
+
   const allFormsValid = Object.values(formValidations).every(v => v.isValid);
   const allMissingQuestions = Object.values(formValidations).flatMap(v => v.missingQuestions);
+  // Total de pendências obrigatórias auto-preenchíveis (conformidade/boolean) em
+  // TODOS os checklists comuns — base do atalho de finalização do item 7.
+  const formAutoFillableCount = Object.values(formValidations).reduce((sum, v) => sum + (v.autoFillableCount ?? 0), 0);
+  // Há pendência obrigatória que NÃO é auto-preenchível (texto/número/seleção)?
+  // Se sim, o atalho não resolve tudo sozinho → não oferecemos a auto-marcação.
+  const formHasNonAutoFillableMissing = Object.values(formValidations).some(
+    (v) => v.missingQuestions.length > v.autoFillableCount,
+  );
   
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
@@ -1495,6 +1529,16 @@ export default function TechnicianOS() {
 
   const handleFinishOS = async () => {
     if (!allFormsValid) {
+      // Item 7: se TODAS as obrigatórias pendentes forem auto-preenchíveis
+      // (conformidade/boolean) e NENHUMA for de texto/número/seleção, oferecemos o
+      // atalho "marcar restantes como Conforme e finalizar" (mesmo modal do PMOC),
+      // em vez de só bloquear. Se houver QUALQUER pendência não auto-preenchível,
+      // mantém o bloqueio (o técnico precisa responder essas à mão).
+      if (formAutoFillableCount > 0 && !formHasNonAutoFillableMissing) {
+        setPendingChecklistCount(formAutoFillableCount);
+        setChecklistGapOpen(true);
+        return;
+      }
       toast({
         variant: 'destructive',
         title: 'Campos obrigatórios pendentes',
@@ -1671,8 +1715,8 @@ export default function TechnicianOS() {
     if (!resolvedOsId) return;
     setMarkingChecklist(true);
     try {
-      // Só atividades de CONFORMIDADE em branco viram 'conforme'. Atividades de
-      // checklist personalizado (form_template_id) não têm conformidade — não são
+      // (PMOC) Só atividades de CONFORMIDADE em branco viram 'conforme'. Atividades
+      // de checklist personalizado (form_template_id) não têm conformidade — não são
       // tocadas (suas perguntas continuam por conta do técnico).
       const { error } = await supabase
         .from('service_order_activities')
@@ -1681,6 +1725,15 @@ export default function TechnicianOS() {
         .is('conformity_status', null)
         .is('form_template_id', null);
       if (error) throw error;
+
+      // (Comum/contrato — item 7) Dispara a auto-marcação das perguntas de
+      // checklist do formulário: cada DynamicFormQuestions registrado preenche
+      // SUAS obrigatórias conformidade/boolean em branco como "Conforme"/"Sim"
+      // (texto/número/seleção NUNCA são tocados — filtro vive no componente).
+      for (const fn of formAutoFillRegistry.current.values()) {
+        await fn();
+      }
+
       // Recarrega o checklist pra o rollup refletir 'conforme' nas atividades
       // que estavam em branco (proceedFinishOS deriva pmoc_conformity_status do rollup).
       await refetchChecklist();
@@ -3536,6 +3589,12 @@ export default function TechnicianOS() {
                   // equipamento estão válidos; pendências = soma das faltas.
                   let pendingCount = 0;
                   let allValid = true;
+                  // Agregado "X de Y" do equipamento (item 6) — soma das
+                  // obrigatórias/respondidas de todos os checklists dele. Usado no
+                  // selo do cabeçalho do equipamento (sobretudo no caso de 1 só
+                  // checklist, que não tem sub-cabeçalho).
+                  let requiredTotal = 0;
+                  let answeredTotal = 0;
                   for (const { itemKey } of group.checklists) {
                     const v = formValidations[itemKey];
                     if (!v) {
@@ -3544,6 +3603,8 @@ export default function TechnicianOS() {
                     } else {
                       if (!v.isValid) allValid = false;
                       pendingCount += v.missingQuestions.length;
+                      requiredTotal += v.requiredCount;
+                      answeredTotal += v.answeredRequiredCount;
                     }
                   }
                   const isComplete = allValid;
@@ -3565,11 +3626,14 @@ export default function TechnicianOS() {
                       readOnly={isPaused}
                       isComplete={isComplete}
                       pendingCount={pendingCount}
+                      requiredTotal={requiredTotal}
+                      answeredTotal={answeredTotal}
                       environmentName={environmentName}
                       onPreviewPhoto={setPreviewPhoto}
                       onValidationChange={(itemKey, result) =>
                         setFormValidations(prev => ({ ...prev, [itemKey]: result }))
                       }
+                      registerAutoFill={registerFormAutoFill}
                       visibility={visibilityForEquipment(firstItem.equipment_id)}
                       validations={formValidations}
                     />
@@ -3637,6 +3701,7 @@ export default function TechnicianOS() {
                   templateId={serviceOrder.form_template_id}
                   readOnly={isPaused}
                   onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
+                  registerAutoFill={(fn) => registerFormAutoFill('legacy', fn)}
                   visibility={visibilityForEquipment((serviceOrder as any)?.equipment_id ?? null)}
                 />
               </div>

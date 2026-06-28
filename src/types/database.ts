@@ -171,6 +171,8 @@ export interface FormQuestion {
   is_required: boolean;
   position: number;
   description?: string;
+  /** Orientação "como fazer" exibida sob o título da pergunta (espelha o PMOC). */
+  guidance?: string | null;
   require_camera?: boolean;
   answer_types?: string[];
   answer_mode?: 'exclusive' | 'combined';

@@ -16,6 +16,7 @@ import { OsPhotoField } from '@/components/technician/OsPhotoField';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
 import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
+import { frequencyLabel } from '@/components/contracts/questionFrequency';
 
 interface FormResponse {
   question_id: string;
@@ -26,6 +27,19 @@ interface FormResponse {
 export interface FormValidationResult {
   isValid: boolean;
   missingQuestions: string[];
+  /**
+   * Total de perguntas VISÍVEIS obrigatórias deste checklist (denominador do
+   * contador "X de Y" no cabeçalho — item 6). 0 quando não há obrigatórias.
+   */
+  requiredCount: number;
+  /** Quantas dessas obrigatórias já foram respondidas (numerador do "X de Y"). */
+  answeredRequiredCount: number;
+  /**
+   * Quantas das obrigatórias pendentes são AUTO-PREENCHÍVEIS como "Conforme"/"Sim"
+   * (tipo conformidade/boolean — item 7). Texto/número/seleção NÃO entram aqui:
+   * continuam exigindo resposta manual.
+   */
+  autoFillableCount: number;
 }
 
 /**
@@ -54,6 +68,22 @@ export interface ContractVisibilityContext {
   excludedQuestionIds?: Set<string>;
 }
 
+/**
+ * Pergunta auto-preenchível como "Conforme"/"Sim" (item 7). Só quando o tipo
+ * EFETIVO é único e é conformidade ou boolean — esses têm padrão seguro. Tipos
+ * compostos (answer_types com mais de um) ou livres (texto/número/seleção/foto/
+ * assinatura/medição) NUNCA são auto-preenchidos. Devolve também o valor a gravar.
+ */
+function autoFillValueFor(q: FormQuestion): string | null {
+  const answerTypes = (q as any).answer_types as string[] | null;
+  const effectiveTypes = answerTypes && answerTypes.length > 0 ? answerTypes : [q.question_type];
+  if (effectiveTypes.length !== 1) return null;
+  const type = effectiveTypes[0];
+  if (type === 'conformidade') return 'Conforme';
+  if (type === 'boolean') return 'true';
+  return null;
+}
+
 interface DynamicFormQuestionsProps {
   serviceOrderId: string;
   templateId: string;
@@ -72,9 +102,17 @@ interface DynamicFormQuestionsProps {
    * "mostra tudo" em qualquer incerteza.
    */
   visibility?: ContractVisibilityContext;
+  /**
+   * Registra (ou limpa, com null) uma função imperativa que auto-marca as
+   * perguntas VISÍVEIS obrigatórias do tipo conformidade/boolean ainda em branco
+   * como "Conforme"/"Sim", salvando-as (item 7). O pai (TechnicianOS) guarda
+   * estas funções por checklist e dispara todas no atalho "marcar restantes e
+   * finalizar". Só conformidade/boolean: texto/número/seleção NUNCA são tocados.
+   */
+  registerAutoFill?: (fn: (() => Promise<void>) | null) => void;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false, visibility }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false, visibility, registerAutoFill }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
@@ -101,6 +139,20 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   // hora (some do `answeredQuestionIds` e deixa de cair no motor). Acumulamos os
   // ids num ref que NUNCA remove; unimos ao conjunto visível abaixo.
   const everShownRef = useRef<Set<string>>(new Set());
+
+  // Snapshot fresco pra a função de auto-preenchimento (item 7). Registramos UMA
+  // função estável no pai; ela lê daqui no momento do clique (não fecha sobre
+  // valores velhos). `saveFn` aponta sempre pro saveResponse atual.
+  const autoFillDataRef = useRef<{
+    questions: FormQuestion[];
+    responses: Record<string, FormResponse>;
+    saveFn: (q: string, v: string | null, p?: string | null) => Promise<void>;
+  }>({ questions: [], responses: {}, saveFn: async () => {} });
+  // Callback de registro do pai mantida fresca (mesmo motivo do onValidationChange).
+  const registerAutoFillRef = useRef(registerAutoFill);
+  useEffect(() => {
+    registerAutoFillRef.current = registerAutoFill;
+  });
 
   // Perguntas VISÍVEIS nesta visita (Fase B, fatia B3.1). Só filtra quando a OS
   // é de CONTRATO (prop `visibility` presente). OS avulsa = lista intacta. O
@@ -141,7 +193,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     if (!cb || visibleQuestions.length === 0) {
       // Sem perguntas visíveis (ex.: nenhuma vence nesta visita) → nada pendente.
       if (cb && questions.length > 0) {
-        const result: FormValidationResult = { isValid: true, missingQuestions: [] };
+        const result: FormValidationResult = {
+          isValid: true,
+          missingQuestions: [],
+          requiredCount: 0,
+          answeredRequiredCount: 0,
+          autoFillableCount: 0,
+        };
         const signature = JSON.stringify(result);
         if (signature !== lastValidationRef.current) {
           lastValidationRef.current = signature;
@@ -153,18 +211,25 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
     const requiredQuestions = visibleQuestions.filter(q => q.is_required);
     const missingQuestions: string[] = [];
+    let autoFillableCount = 0;
 
     requiredQuestions.forEach(q => {
       const response = responses[q.id];
       const hasValue = response?.response_value?.trim() || response?.response_photo_url;
       if (!hasValue) {
         missingQuestions.push(q.question);
+        // Pendência auto-preenchível: pergunta de tipo único conformidade/boolean
+        // (essas têm padrão seguro "Conforme"/"Sim"). Tipos compostos/livres não.
+        if (autoFillValueFor(q) !== null) autoFillableCount++;
       }
     });
 
     const result: FormValidationResult = {
       isValid: missingQuestions.length === 0,
       missingQuestions,
+      requiredCount: requiredQuestions.length,
+      answeredRequiredCount: requiredQuestions.length - missingQuestions.length,
+      autoFillableCount,
     };
 
     // Só emite se mudou de fato.
@@ -240,6 +305,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const saveResponse = async (questionId: string, value: string | null, photoUrl?: string | null) => {
     setSaving(questionId);
     try {
+      // Carimbo de auditoria (item 8): toda escrita do técnico grava QUANDO e
+      // QUEM respondeu, alinhado com o PMOC (useOsActivityChecklist). Vale no
+      // INSERT e no UPDATE. Falha ao obter usuário (link público anônimo) → null.
+      const respondedAt = new Date().toISOString();
+      const { data: userData } = await supabase.auth.getUser();
+      const respondedBy = userData?.user?.id ?? null;
+
       // Build query to find existing response scoped to this equipment
       let existingQuery = supabase
         .from('form_responses')
@@ -261,8 +333,9 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           .update({
             response_value: value,
             response_photo_url: photoUrl !== undefined ? photoUrl : responses[questionId]?.response_photo_url,
-            responded_at: new Date().toISOString(),
-          })
+            responded_at: respondedAt,
+            responded_by: respondedBy,
+          } as any)
           .eq('id', existing.id);
         if (error) throw error;
       } else {
@@ -274,6 +347,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             response_value: value,
             response_photo_url: photoUrl || null,
             equipment_id: equipmentId || null,
+            responded_at: respondedAt,
+            responded_by: respondedBy,
           } as any);
         if (error) throw error;
       }
@@ -296,6 +371,35 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       setSaving(null);
     }
   };
+
+  // Mantém o snapshot fresco a cada render (perguntas VISÍVEIS, respostas atuais
+  // e o saveResponse mais novo). A função registrada no pai lê daqui no clique.
+  autoFillDataRef.current = { questions: visibleQuestions, responses, saveFn: saveResponse };
+
+  // Registra a função de auto-preenchimento UMA vez (estável). Ao desmontar,
+  // limpa o registro (null) pra o pai não chamar um checklist morto. Sem deps =
+  // sem hook em loop; lê tudo do ref no momento da chamada.
+  useEffect(() => {
+    const reg = registerAutoFillRef.current;
+    if (!reg) return;
+    const fn = async () => {
+      const { questions: qs, responses: resp, saveFn } = autoFillDataRef.current;
+      for (const q of qs) {
+        if (!q.is_required) continue;
+        const already = resp[q.id]?.response_value?.trim() || resp[q.id]?.response_photo_url;
+        if (already) continue;
+        const fill = autoFillValueFor(q);
+        if (fill === null) continue; // texto/número/seleção/composto: não toca.
+        await saveFn(q.id, fill);
+      }
+    };
+    reg(fn);
+    return () => {
+      const r = registerAutoFillRef.current;
+      if (r) r(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return (
@@ -721,6 +825,21 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 </button>
               )}
             </Label>
+            {/* Selo discreto de frequência (item 9) — SÓ em OS de contrato
+                (visibility presente). Em OS avulsa não há frequência → não mostra.
+                Mesmo estilo do PMOC (outline, 10px). */}
+            {visibility && (
+              <div className="ml-5">
+                <Badge variant="outline" className="text-[10px]">
+                  {frequencyLabel(question)}
+                </Badge>
+              </div>
+            )}
+            {/* Orientação "como fazer" (item 5): guidance tem prioridade visual de
+                instrução; description segue como texto auxiliar quando ambos existem. */}
+            {question.guidance && (
+              <p className="text-xs text-muted-foreground ml-5">{question.guidance}</p>
+            )}
             {question.description && (
               <p className="text-xs text-muted-foreground ml-5">{question.description}</p>
             )}

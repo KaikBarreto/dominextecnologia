@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, Menu } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Star, Menu, AlertTriangle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -764,7 +764,33 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 {response.response_value === 'Conforme' ? <Check className="h-3 w-3" /> : response.response_value === 'Não Conforme' ? <X className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                 {response.response_value || 'N/A'}
               </span>
-            ) : (
+            ) : (response.question?.question_type === 'number' || response.question?.question_type === 'pmoc_measurement') && hasTextValue ? (() => {
+              // Numérico/medição: valor + unidade, faixa esperada e aviso visual
+              // (documento sempre claro/print → cores hardcoded slate/amber).
+              const unit = response.question?.unit ?? null;
+              const min = response.question?.expected_min ?? null;
+              const max = response.question?.expected_max ?? null;
+              const numericValue = parseFloat(response.response_value!.replace(',', '.'));
+              const isOutOfRange =
+                !isNaN(numericValue) &&
+                ((min != null && numericValue < min) || (max != null && numericValue > max));
+              return (
+                <div className="space-y-1">
+                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2 py-0.5 rounded-md ${isOutOfRange ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>
+                    {isOutOfRange && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+                    {response.response_value}{unit ? ` ${unit}` : ''}
+                  </span>
+                  {(min != null || max != null) && (
+                    <p className="text-xs text-slate-400">
+                      Faixa esperada: {min ?? '—'} a {max ?? '—'}{unit ? ` ${unit}` : ''}
+                    </p>
+                  )}
+                  {isOutOfRange && (
+                    <p className="text-xs text-amber-700">Valor fora da faixa esperada.</p>
+                  )}
+                </div>
+              );
+            })() : (
               <>
                 {hasTextValue && (
                   response.response_value!.includes('|||') ? (
