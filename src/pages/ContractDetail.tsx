@@ -564,6 +564,11 @@ export default function ContractDetail() {
   // vencimento já passou (timezone Brasil: comparamos só a data, sem hora).
   const totalPending = totalReceivable - totalPaid;
   const todayLocal = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+  // "Hoje" no fuso Brasil como YYYY-MM-DD (mesmo formato de scheduled_date),
+  // pra comparar atraso por DIA — uma visita só atrasa a partir do dia seguinte.
+  const todaySP = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
   const overdueTransactions = (linkedTransactions || []).filter(
     t => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal),
   );
@@ -991,7 +996,9 @@ export default function ContractDetail() {
                     const statusVariant = OS_STATUS_VARIANT[osStatus] ?? 'outline';
                     const occDate = os.scheduled_date ? parseLocalDate(os.scheduled_date) : null;
                     // "Atrasada" = OS ativa (não concluída/cancelada) com data já passada.
-                    const isLate = isActiveContractOS(os) && !!occDate && isBefore(occDate, new Date());
+                    // Atrasada só a partir do DIA SEGUINTE: scheduled_date estritamente
+                    // antes de hoje (fuso Brasil), comparando por dia (YYYY-MM-DD).
+                    const isLate = isActiveContractOS(os) && !!os.scheduled_date && os.scheduled_date < todaySP;
                     const isActive = isActiveContractOS(os);
                     const goToOs = () => navigate(`/os-tecnico/${os.id}`);
                     return (
@@ -1087,7 +1094,9 @@ export default function ContractDetail() {
                         const statusLabel = osStatusLabels[osStatus] ?? os.status;
                         const statusVariant = OS_STATUS_VARIANT[osStatus] ?? 'outline';
                         const occDate = os.scheduled_date ? parseLocalDate(os.scheduled_date) : null;
-                        const isLate = isActiveContractOS(os) && !!occDate && isBefore(occDate, new Date());
+                        // Atrasada só a partir do DIA SEGUINTE: scheduled_date estritamente
+                        // antes de hoje (fuso Brasil), comparando por dia (YYYY-MM-DD).
+                        const isLate = isActiveContractOS(os) && !!os.scheduled_date && os.scheduled_date < todaySP;
                         const isActive = isActiveContractOS(os);
                         const goToOs = () => navigate(`/os-tecnico/${os.id}`);
 

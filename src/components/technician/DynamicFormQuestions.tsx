@@ -40,6 +40,15 @@ export interface FormValidationResult {
    * continuam exigindo resposta manual.
    */
   autoFillableCount: number;
+  /**
+   * Total de perguntas VISÍVEIS nesta visita (depois do filtro de frequência/1ª
+   * OS), obrigatórias E opcionais. É o DENOMINADOR do contador "X de Y" exibido no
+   * cabeçalho — o usuário espera ver o total de perguntas, não só as obrigatórias.
+   * Em OS avulsa (sem visibility) = total de perguntas do template.
+   */
+  visibleCount: number;
+  /** Quantas dessas visíveis (qualquer tipo) já têm resposta válida (NUMERADOR). */
+  answeredCount: number;
 }
 
 /**
@@ -199,6 +208,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           requiredCount: 0,
           answeredRequiredCount: 0,
           autoFillableCount: 0,
+          visibleCount: 0,
+          answeredCount: 0,
         };
         const signature = JSON.stringify(result);
         if (signature !== lastValidationRef.current) {
@@ -224,12 +235,23 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       }
     });
 
+    // Contador EXIBIDO no cabeçalho (X de Y) = total de perguntas VISÍVEIS nesta
+    // visita (obrigatórias + opcionais) e quantas delas já têm resposta válida.
+    // Independente do gate de finalizar (que segue só nas obrigatórias).
+    const answeredCount = visibleQuestions.reduce((n, q) => {
+      const response = responses[q.id];
+      const hasValue = response?.response_value?.trim() || response?.response_photo_url;
+      return hasValue ? n + 1 : n;
+    }, 0);
+
     const result: FormValidationResult = {
       isValid: missingQuestions.length === 0,
       missingQuestions,
       requiredCount: requiredQuestions.length,
       answeredRequiredCount: requiredQuestions.length - missingQuestions.length,
       autoFillableCount,
+      visibleCount: visibleQuestions.length,
+      answeredCount,
     };
 
     // Só emite se mudou de fato.

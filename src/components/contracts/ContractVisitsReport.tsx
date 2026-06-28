@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format, parseISO, isBefore } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Printer,
@@ -251,8 +251,13 @@ function VisitBlock({
   const isCancelled = status === 'cancelada';
 
   const occDate = scheduledDate ? parseLocalDate(scheduledDate) : null;
+  // "Hoje" no fuso Brasil (YYYY-MM-DD). Atrasada só a partir do DIA SEGUINTE:
+  // scheduled_date estritamente antes de hoje, comparando por dia.
+  const todaySP = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
   const isLate =
-    !isDone && !isCancelled && !!occDate && isBefore(occDate, new Date());
+    !isDone && !isCancelled && !!scheduledDate && scheduledDate < todaySP;
 
   const executedAt = enrichment?.executedAt ? parseISO(enrichment.executedAt) : null;
   const technician = enrichment?.technicianName;

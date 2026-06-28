@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.18',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ajustes em "Atrasada" e no contador de checklist',
+        description: 'Uma visita do contrato só passa a aparecer como "Atrasada" depois que o dia agendado realmente passa — no próprio dia ela fica apenas "Agendada". E o contador de progresso de cada checklist na visita do técnico passou a refletir o total de perguntas (por exemplo, 0 de 48), em vez de mostrar só as obrigatórias.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.15.17',
     date: '28 de junho de 2026',
     type: 'patch',

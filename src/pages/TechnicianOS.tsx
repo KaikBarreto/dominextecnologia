@@ -150,7 +150,7 @@ function OsEquipmentAccordionItem({
   /** Resumo agregado dos checklists deste equipamento (somatório dos pares). */
   isComplete,
   pendingCount,
-  requiredTotal,
+  visibleTotal,
   answeredTotal,
   environmentName,
   onPreviewPhoto,
@@ -169,9 +169,9 @@ function OsEquipmentAccordionItem({
   readOnly: boolean;
   isComplete: boolean;
   pendingCount: number;
-  /** Soma das obrigatórias de todos os checklists do equipamento ("Y" do X de Y). */
-  requiredTotal: number;
-  /** Soma das obrigatórias já respondidas ("X" do X de Y). */
+  /** Soma das perguntas VISÍVEIS de todos os checklists do equipamento ("Y" do X de Y). */
+  visibleTotal: number;
+  /** Soma das visíveis já respondidas, de qualquer tipo ("X" do X de Y). */
   answeredTotal: number;
   /** Ambiente do equipamento (contrato) ou, na ausência, o local cadastrado. */
   environmentName: string | null;
@@ -273,10 +273,11 @@ function OsEquipmentAccordionItem({
               <Badge variant="success" className="gap-1 shrink-0">
                 <Check className="h-3 w-3" /> Concluído
               </Badge>
-            ) : requiredTotal > 0 ? (
-              // Contador "X de Y" (item 6) — respondidas/obrigatórias do equipamento.
+            ) : visibleTotal > 0 ? (
+              // Contador "X de Y" — respondidas/total de perguntas do equipamento
+              // (todas, não só obrigatórias). "Concluído"/Finalizar seguem nas obrigatórias.
               <Badge variant="outline" className="text-xs shrink-0">
-                {answeredTotal} de {requiredTotal}
+                {answeredTotal} de {visibleTotal}
               </Badge>
             ) : pendingCount > 0 ? (
               <Badge variant="destructive" className="text-xs shrink-0">
@@ -323,9 +324,12 @@ function OsEquipmentAccordionItem({
                       <Badge variant="success" className="gap-1 shrink-0 text-[10px]">
                         <Check className="h-3 w-3" /> Concluído
                       </Badge>
-                    ) : v && v.requiredCount > 0 ? (
+                    ) : v && v.visibleCount > 0 ? (
+                      // Contador EXIBIDO = respondidas/total de perguntas da visita
+                      // (todas, não só obrigatórias). "Concluído" e o gate de
+                      // Finalizar seguem nas obrigatórias.
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        {v.answeredRequiredCount} de {v.requiredCount}
+                        {v.answeredCount} de {v.visibleCount}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="shrink-0 text-[10px]">
@@ -3589,11 +3593,11 @@ export default function TechnicianOS() {
                   // equipamento estão válidos; pendências = soma das faltas.
                   let pendingCount = 0;
                   let allValid = true;
-                  // Agregado "X de Y" do equipamento (item 6) — soma das
-                  // obrigatórias/respondidas de todos os checklists dele. Usado no
-                  // selo do cabeçalho do equipamento (sobretudo no caso de 1 só
-                  // checklist, que não tem sub-cabeçalho).
-                  let requiredTotal = 0;
+                  // Agregado "X de Y" do equipamento — soma das perguntas
+                  // VISÍVEIS/respondidas (todas, não só obrigatórias) de todos os
+                  // checklists dele. Usado no selo do cabeçalho do equipamento
+                  // (sobretudo no caso de 1 só checklist, sem sub-cabeçalho).
+                  let visibleTotal = 0;
                   let answeredTotal = 0;
                   for (const { itemKey } of group.checklists) {
                     const v = formValidations[itemKey];
@@ -3603,8 +3607,8 @@ export default function TechnicianOS() {
                     } else {
                       if (!v.isValid) allValid = false;
                       pendingCount += v.missingQuestions.length;
-                      requiredTotal += v.requiredCount;
-                      answeredTotal += v.answeredRequiredCount;
+                      visibleTotal += v.visibleCount;
+                      answeredTotal += v.answeredCount;
                     }
                   }
                   const isComplete = allValid;
@@ -3626,7 +3630,7 @@ export default function TechnicianOS() {
                       readOnly={isPaused}
                       isComplete={isComplete}
                       pendingCount={pendingCount}
-                      requiredTotal={requiredTotal}
+                      visibleTotal={visibleTotal}
                       answeredTotal={answeredTotal}
                       environmentName={environmentName}
                       onPreviewPhoto={setPreviewPhoto}
