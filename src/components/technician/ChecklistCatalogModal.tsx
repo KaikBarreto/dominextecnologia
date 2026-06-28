@@ -49,7 +49,26 @@ interface ChecklistCatalogModalProps {
 
 const norm = (s: string) => s.trim().toLowerCase();
 
+/**
+ * Mapeia o `default_freq_code` do catálogo PMOC ('M'|'T'|'S'|'A'|'E') pros
+ * campos de frequência de uma pergunta. M=1, T=3, S=6, A=12 meses; 'E'
+ * (eventual) e qualquer código desconhecido ficam como "toda visita" (NULL).
+ */
+function freqCodeToFields(code: string | null | undefined): Pick<
+  CatalogQuestion,
+  'freq_kind' | 'freq_months' | 'freq_days' | 'freq_visits' | 'start_kind' | 'start_visit'
+> {
+  const months: Record<string, number> = { M: 1, T: 3, S: 6, A: 12 };
+  const m = code ? months[code] : undefined;
+  if (!m) {
+    // 'E'/eventual/desconhecido → toda visita (NULL em tudo).
+    return { freq_kind: null, freq_months: null, freq_days: null, freq_visits: null, start_kind: null, start_visit: null };
+  }
+  return { freq_kind: 'time', freq_months: m, freq_days: null, freq_visits: null, start_kind: 'contract_start', start_visit: null };
+}
+
 function pmocActivityToQuestion(a: PmocCatalogActivity): CatalogQuestion {
+  const freq = freqCodeToFields(a.default_freq_code);
   if (a.is_measurement) {
     return {
       question: a.description,
@@ -59,6 +78,7 @@ function pmocActivityToQuestion(a: PmocCatalogActivity): CatalogQuestion {
       expected_min: a.expected_min ?? undefined,
       expected_max: a.expected_max ?? undefined,
       is_required: false,
+      ...freq,
     };
   }
   return {
@@ -66,6 +86,7 @@ function pmocActivityToQuestion(a: PmocCatalogActivity): CatalogQuestion {
     question_type: 'conformidade',
     description: a.guidance || undefined,
     is_required: false,
+    ...freq,
   };
 }
 
@@ -186,6 +207,13 @@ export function ChecklistCatalogModal({
         expected_min: cq.expected_min ?? null,
         expected_max: cq.expected_max ?? null,
         position: pos++,
+        // Frequência herdada do catálogo (PMOC). Modelos curados ficam NULL.
+        freq_kind: cq.freq_kind ?? null,
+        freq_months: cq.freq_months ?? null,
+        freq_days: cq.freq_days ?? null,
+        freq_visits: cq.freq_visits ?? null,
+        start_kind: cq.start_kind ?? null,
+        start_visit: cq.start_visit ?? null,
       });
     }
     return { inserts, skipped };
@@ -249,6 +277,12 @@ export function ChecklistCatalogModal({
           expected_min: cq.expected_min ?? null,
           expected_max: cq.expected_max ?? null,
           position: i,
+          freq_kind: cq.freq_kind ?? null,
+          freq_months: cq.freq_months ?? null,
+          freq_days: cq.freq_days ?? null,
+          freq_visits: cq.freq_visits ?? null,
+          start_kind: cq.start_kind ?? null,
+          start_visit: cq.start_visit ?? null,
         }));
         createQuestionsBatch.mutate(inserts, {
           onSuccess: () => {

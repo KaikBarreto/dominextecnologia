@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.11',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Erro ao abrir uma ocorrência do contrato',
+        description: 'Corrigimos uma falha que, em alguns casos, travava a tela ao clicar em uma ocorrência dentro de um contrato. Agora a ocorrência abre normalmente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Mais controle de frequência e cadência nos contratos',
+        description: 'Ficou mais fácil planejar a manutenção: a frequência de cada pergunta já pode ser definida na própria tela de criar a pergunta; importar um checklist do catálogo passa a preservar a frequência de cada item; o contrato pode usar cadências personalizadas de visita (a cada X dias, quinzenal, etc., além de mensal); e a seleção de quais serviços usam o checklist virou um seletor com busca e marcação múltipla.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.10',
     date: '28 de junho de 2026',
     type: 'patch',

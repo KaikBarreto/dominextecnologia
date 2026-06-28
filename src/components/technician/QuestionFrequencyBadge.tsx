@@ -138,7 +138,7 @@ function isCustomValue(value: QuestionFrequency): boolean {
   return false;
 }
 
-function FrequencyEditor({ value, onApply }: { value: QuestionFrequency; onApply: (p: QuestionFrequencyPayload) => void | Promise<void> }) {
+export function FrequencyEditor({ value, onApply }: { value: QuestionFrequency; onApply: (p: QuestionFrequencyPayload) => void | Promise<void> }) {
   // Estado local: começa refletindo o valor atual (round-trip months/days/visits).
   const [custom, setCustom] = useState(isCustomValue(value));
   const [mode, setMode] = useState<EditorMode>(initialMode(value));

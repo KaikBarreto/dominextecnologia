@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -28,7 +27,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
-import { QuestionFrequencyBadge, type QuestionFrequencyPayload } from '@/components/technician/QuestionFrequencyBadge';
+import { QuestionFrequencyBadge, FrequencyEditor, frequencyLabel, type QuestionFrequencyPayload } from '@/components/technician/QuestionFrequencyBadge';
+import { ServicesMultiSelect } from '@/components/technician/ServicesMultiSelect';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,7 +58,6 @@ export default function ChecklistDetail() {
 
   const template = templates.find(t => t.id === id) as (FormTemplate & { questions: FormQuestion[] }) | undefined;
   const serviceTypeIds = ((template as any)?.service_type_ids ?? []) as string[];
-  const appliesToAll = serviceTypeIds.length === 0;
 
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
   const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);
@@ -73,13 +72,17 @@ export default function ChecklistDetail() {
   // Question modal state (create or edit)
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<FormQuestion | null>(null);
-  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[]; answer_mode?: string }>({
+  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[]; answer_mode?: string } & QuestionFrequencyPayload>({
     question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive',
+    freq_kind: null, freq_months: null, freq_days: null, freq_visits: null, start_kind: null, start_visit: null,
   });
   const [newOption, setNewOption] = useState('');
 
   const resetQuestionForm = () => {
-    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive' });
+    setQForm({
+      question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive',
+      freq_kind: null, freq_months: null, freq_days: null, freq_visits: null, start_kind: null, start_visit: null,
+    });
     setNewOption('');
     setEditingQuestion(null);
   };
@@ -104,6 +107,13 @@ export default function ChecklistDetail() {
       allow_multiple_photos: (question as any).allow_multiple_photos !== false,
       answer_types: effectiveTypes,
       answer_mode: (question as any).answer_mode || 'exclusive',
+      // Frequência por pergunta (módulo Contratos) — round-trip dos 6 campos.
+      freq_kind: (question as any).freq_kind ?? null,
+      freq_months: (question as any).freq_months ?? null,
+      freq_days: (question as any).freq_days ?? null,
+      freq_visits: (question as any).freq_visits ?? null,
+      start_kind: (question as any).start_kind ?? null,
+      start_visit: (question as any).start_visit ?? null,
     } as any);
     setNewOption('');
     setQuestionModalOpen(true);
@@ -158,6 +168,19 @@ export default function ChecklistDetail() {
     const optionsToSave = hasSelect && qForm.options && qForm.options.length > 0 ? qForm.options : null;
     const answerMode = effectiveTypes.length >= 2 ? ((qForm as any).answer_mode || 'exclusive') : 'exclusive';
 
+    // Frequência por pergunta — só persiste com o módulo Contratos. Sem ele,
+    // não toca os campos (mantém NULL = toda visita, sem poluir).
+    const freqFields = showFrequency
+      ? {
+          freq_kind: qForm.freq_kind ?? null,
+          freq_months: qForm.freq_months ?? null,
+          freq_days: qForm.freq_days ?? null,
+          freq_visits: qForm.freq_visits ?? null,
+          start_kind: qForm.start_kind ?? null,
+          start_visit: qForm.start_visit ?? null,
+        }
+      : {};
+
     if (editingQuestion) {
       updateQuestion.mutate({
         id: editingQuestion.id,
@@ -170,6 +193,7 @@ export default function ChecklistDetail() {
         allow_multiple_photos: (qForm as any).allow_multiple_photos !== false,
         answer_types: answerTypes,
         answer_mode: answerMode,
+        ...freqFields,
       } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
@@ -190,6 +214,7 @@ export default function ChecklistDetail() {
         allow_multiple_photos: (qForm as any).allow_multiple_photos !== false,
         answer_types: answerTypes,
         answer_mode: answerMode,
+        ...freqFields,
       } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
@@ -328,50 +353,16 @@ export default function ChecklistDetail() {
         </div>
       </div>
 
-      {/* Services section */}
-      <Card>
-        <CardContent className="p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Serviços habilitados</Label>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={appliesToAll}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setTemplateServices.mutate({ templateId: template.id, serviceTypeIds: [] });
-                  } else {
-                    const firstActive = serviceTypes.find(t => t.is_active);
-                    setTemplateServices.mutate({ templateId: template.id, serviceTypeIds: firstActive ? [firstActive.id] : [] });
-                  }
-                }}
-              />
-              <Label className="text-sm">Todos</Label>
-            </div>
-          </div>
-          {!appliesToAll && (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {serviceTypes.filter(t => t.is_active).map((st) => {
-                const isChecked = serviceTypeIds.includes(st.id);
-                return (
-                  <label key={st.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={(checked) => {
-                        const next = checked
-                          ? [...serviceTypeIds, st.id]
-                          : serviceTypeIds.filter(sid => sid !== st.id);
-                        setTemplateServices.mutate({ templateId: template.id, serviceTypeIds: next });
-                      }}
-                    />
-                    <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
-                    {st.name}
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Serviços habilitados — discreto, encostado à direita, sem card/borda */}
+      <div className="flex items-center justify-end gap-2">
+        <Label className="text-sm text-muted-foreground">Serviços habilitados</Label>
+        <ServicesMultiSelect
+          services={serviceTypes.filter(t => t.is_active).map(t => ({ id: t.id, name: t.name, color: t.color }))}
+          selectedIds={serviceTypeIds}
+          onChange={(ids) => setTemplateServices.mutate({ templateId: template.id, serviceTypeIds: ids })}
+          disabled={setTemplateServices.isPending}
+        />
+      </div>
 
       {/* Questions header with button (botão inline só no desktop; mobile usa FAB) */}
       <div className="flex items-center justify-between">
@@ -687,6 +678,26 @@ export default function ChecklistDetail() {
             />
             <Label className="text-sm cursor-pointer">Campo obrigatório</Label>
           </div>
+
+          {/* Frequência por pergunta — só com módulo Contratos. Reusa o MESMO
+              editor do selo inline (FrequencyEditor); aqui ele alimenta o
+              estado local do formulário e é persistido junto no salvar. */}
+          {showFrequency && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm font-medium">Frequência</Label>
+                <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                  {frequencyLabel(qForm)}
+                </Badge>
+              </div>
+              <div className="rounded-lg border overflow-hidden">
+                <FrequencyEditor
+                  value={qForm}
+                  onApply={(payload) => setQForm(prev => ({ ...prev, ...payload }))}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => { setQuestionModalOpen(false); resetQuestionForm(); }}>Cancelar</Button>

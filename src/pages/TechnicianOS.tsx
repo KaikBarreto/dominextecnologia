@@ -1765,6 +1765,30 @@ export default function TechnicianOS() {
       equipmentId ? map.get(equipmentId) ?? null : null;
   })();
 
+  // Contexto de visibilidade por visita (Fase B, fatia B3.1). Só existe quando a
+  // OS pertence a um CONTRATO (`contract_id` + dados de agendamento do contrato);
+  // aí os checklists exibem só as perguntas que "vencem" nesta visita conforme a
+  // frequência por pergunta. OS avulsa → undefined → DynamicFormQuestions não
+  // filtra (render idêntico ao histórico). O helper garante "mostra tudo" em
+  // qualquer incerteza, então isto é seguro mesmo com dados parciais.
+  //
+  // IMPORTANTE: este `useMemo` precisa ficar ANTES de qualquer early-return do
+  // componente (loading / bloqueio de assinatura / OS não encontrada / modo
+  // relatório). Quando estava depois desses returns, o primeiro render (loading)
+  // não chegava nele e o render seguinte (carregado) chamava um hook a mais →
+  // "Rendered more hooks than during the previous render." (crash ao abrir uma
+  // ocorrência do contrato). Hooks são sempre incondicionais, no topo.
+  const checklistVisibility: ContractVisibilityContext | undefined = useMemo(() => {
+    const contractId = (serviceOrder as any)?.contract_id;
+    if (!contractId) return undefined;
+    return {
+      // Datas reais de todas as visitas (FIX 2) = calendário do motor. Vazio
+      // (busca falhou/ainda não chegou) → helper mostra tudo.
+      visitDates: contractVisitDates,
+      scheduledDate: (serviceOrder as any)?.scheduled_date ?? null,
+    };
+  }, [serviceOrder, contractVisitDates]);
+
   if (loading || isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-background p-4 space-y-4">
@@ -2631,23 +2655,6 @@ export default function TechnicianOS() {
   // Em visita PMOC os equipamentos vêm sem questionário (a rotina vem do
   // "Checklist da visita"), então o card "Checklists" não deve aparecer.
   const questionnaireItems = equipmentItems.filter((i) => i.form_template_id);
-
-  // Contexto de visibilidade por visita (Fase B, fatia B3.1). Só existe quando a
-  // OS pertence a um CONTRATO (`contract_id` + dados de agendamento do contrato);
-  // aí os checklists exibem só as perguntas que "vencem" nesta visita conforme a
-  // frequência por pergunta. OS avulsa → undefined → DynamicFormQuestions não
-  // filtra (render idêntico ao histórico). O helper garante "mostra tudo" em
-  // qualquer incerteza, então isto é seguro mesmo com dados parciais.
-  const checklistVisibility: ContractVisibilityContext | undefined = useMemo(() => {
-    const contractId = (serviceOrder as any)?.contract_id;
-    if (!contractId) return undefined;
-    return {
-      // Datas reais de todas as visitas (FIX 2) = calendário do motor. Vazio
-      // (busca falhou/ainda não chegou) → helper mostra tudo.
-      visitDates: contractVisitDates,
-      scheduledDate: (serviceOrder as any)?.scheduled_date ?? null,
-    };
-  }, [serviceOrder, contractVisitDates]);
 
   const interactiveSidebarItems: OsSidebarItem[] = (() => {
     if (!isCheckedIn) return [];

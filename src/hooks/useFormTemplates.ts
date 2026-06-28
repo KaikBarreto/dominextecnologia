@@ -24,6 +24,13 @@ export interface FormQuestionInsert {
   unit?: string | null;
   expected_min?: number | null;
   expected_max?: number | null;
+  // Frequência por pergunta (módulo Contratos). NULL = toda visita.
+  freq_kind?: 'time' | 'visits' | null;
+  freq_months?: number | null;
+  freq_days?: number | null;
+  freq_visits?: number | null;
+  start_kind?: 'contract_start' | 'due_now' | 'visit_n' | null;
+  start_visit?: number | null;
 }
 
 export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[] = [

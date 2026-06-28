@@ -819,24 +819,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (pmocStandardOn) applyStandardPlan(scope);
   };
 
-  // Seed inicial do padrão da norma num contrato PMOC NOVO. Substitui a antiga
-  // auto-carga silenciosa: agora o estado inicial vem do Switch (default ON) +
-  // escopo (default 'ac'). Guards:
-  //  - só em contrato novo (edição reflete o plano salvo, nunca re-empurra);
-  //  - só PMOC, com o padrão ligado, catálogo carregado;
-  //  - `pmocDefaultSeeded` impede re-empurrar na mesma abertura (ex: gestor que
-  //    apagou tudo de propósito não vê reaparecer).
-  // Fase 3: o plano PMOC agora é POR MÁQUINA (montado em machineConfigs na etapa
-  // Ambientes), então NÃO seedamos mais o planActivities por contrato em PMOC. O
-  // seed só vale pra eventual uso futuro do modo manual em contrato comum — aqui
-  // fica desativado pra PMOC pra não criar plano-fantasma a nível de contrato.
+  // Seed inicial do padrão da norma num contrato NOVO — HOJE DESATIVADO.
+  //
+  // Decisão CEO: nem PMOC nem contrato comum semeiam mais o `planActivities` a
+  // nível de contrato num cadastro novo:
+  //  - PMOC monta o plano POR MÁQUINA (machineConfigs) na etapa Ambientes;
+  //  - contrato COMUM usa o Checklist Padrão (frequência por pergunta) e DEVE
+  //    manter o seletor de cadência livre (semanal/quinzenal/a cada X dias…).
+  //
+  // O bug: quando este efeito semeava o `planActivities` no comum novo, o
+  // `usePlanEngine` virava true e a etapa de Frequência trocava o seletor de
+  // cadência pela mensagem fixa "1 visita por mês", travando o comum em mensal.
+  // Mantemos o efeito só por simetria/legado (edição reflete o plano salvo, nunca
+  // re-empurra); os guards abaixo o tornam um no-op para qualquer contrato novo.
   useEffect(() => {
     if (!open || isEditing) return; // só em contrato novo; edição não re-empurra
     if (isPmoc) return; // PMOC usa plano por máquina (Fase 3)
-    if (!pmocStandardOn || pmocDefaultSeeded) return;
-    if (catalogLoading || defaultSectionActivities.length === 0) return;
-    applyStandardPlan(pmocStandardScope);
-    setPmocDefaultSeeded(true);
+    // Contrato comum NOVO usa o Checklist Padrão (frequência por pergunta) e
+    // cadência livre — nunca seeda plano (senão o usePlanEngine esconde o seletor).
+    return;
   }, [open, isEditing, isPmoc, pmocStandardOn, pmocStandardScope, pmocDefaultSeeded, catalogLoading, defaultSectionActivities.length, catalogActivities.length]);
 
   // Pré-preenche a Identificação da Unidade (Seção 1) a partir do CLIENTE

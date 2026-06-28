@@ -31,6 +31,14 @@ export interface CatalogQuestion {
   unit?: string;
   expected_min?: number;
   expected_max?: number;
+  // Frequência herdada do catálogo (só o catálogo PMOC preenche; modelos
+  // curados ficam sem → "toda visita"). Espelha os campos de form_questions.
+  freq_kind?: 'time' | 'visits' | null;
+  freq_months?: number | null;
+  freq_days?: number | null;
+  freq_visits?: number | null;
+  start_kind?: 'contract_start' | 'due_now' | 'visit_n' | null;
+  start_visit?: number | null;
 }
 
 export interface ChecklistTemplate {
