@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none" role="img" aria-label="PMOC — Guia técnico">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#07271f"/>
+      <stop offset="0.55" stop-color="#0a3a2e"/>
+      <stop offset="1" stop-color="#05201a"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00C597"/>
+      <stop offset="1" stop-color="#0f9e7e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.8" cy="0.5" r="0.7">
+      <stop offset="0" stop-color="#00C597" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#00C597" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <g opacity="0.05" stroke="#ffffff" stroke-width="1">
+    <path d="M0 210 H1200 M0 420 H1200 M400 0 V630 M800 0 V630"/>
+  </g>
+
+  <!-- Conteúdo na faixa vertical central (safe-area ~y150..y480), tolera corte topo/baixo -->
+  <!-- eyebrow -->
+  <g transform="translate(96,196)">
+    <rect x="0" y="0" rx="17" width="208" height="36" fill="url(#green)"/>
+    <text x="22" y="24" font-family="Montserrat, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff" letter-spacing="1.6">GUIA TÉCNICO</text>
+  </g>
+
+  <!-- título centralizado verticalmente -->
+  <text x="94" y="330" font-family="Montserrat, Arial, sans-serif" font-size="120" font-weight="800" fill="#ffffff" letter-spacing="-2">PMOC</text>
+  <text x="98" y="392" font-family="Montserrat, Arial, sans-serif" font-size="34" font-weight="700" fill="#ffffff">Como funciona, na prática</text>
+  <text x="100" y="436" font-family="Montserrat, Arial, sans-serif" font-size="22" font-weight="500" fill="#a7c2ba">Plano de Manutenção, Operação e Controle · Lei 13.589/2018</text>
+
+  <!-- ilustração à direita, centralizada na vertical -->
+  <g transform="translate(800,250)">
+    <rect x="0" y="0" rx="22" width="300" height="118" fill="#0c2a22" stroke="#00C597" stroke-width="2.5"/>
+    <rect x="22" y="26" rx="6" width="256" height="10" fill="#00C597" opacity="0.55"/>
+    <rect x="22" y="48" rx="6" width="220" height="10" fill="#ffffff" opacity="0.18"/>
+    <rect x="22" y="70" rx="6" width="240" height="10" fill="#ffffff" opacity="0.18"/>
+    <rect x="214" y="88" rx="5" width="64" height="20" fill="#06241d" stroke="#00C597" stroke-width="1.5"/>
+    <circle cx="226" cy="98" r="3.5" fill="#00C597"/>
+    <g stroke="#00C597" stroke-width="3" stroke-linecap="round" opacity="0.85" fill="none">
+      <path d="M40 146 q30 22 60 0"/>
+      <path d="M120 146 q30 22 60 0"/>
+      <path d="M200 146 q30 22 60 0"/>
+    </g>
+    <g transform="translate(196,146)">
+      <circle cx="56" cy="56" r="56" fill="url(#green)"/>
+      <path d="M34 58 l14 14 l28 -30" stroke="#ffffff" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

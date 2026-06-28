@@ -20,11 +20,11 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { captureUtmParams } from '@/lib/whatsapp';
-import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
-import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
+import BlogNavbar from '@/components/blog/BlogNavbar';
+import { useBlogTheme } from '@/components/blog/useBlogTheme';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
 // Dominex em toda a subárvore (espelha Landing.tsx / QuemSomos.tsx).
@@ -72,6 +72,7 @@ export default function BlogPost() {
   const viewTracked = useRef(false);
   const queryClient = useQueryClient();
   const sessionId = getSessionId();
+  const { theme, toggleTheme } = useBlogTheme();
 
   const [commentName, setCommentName] = useState('');
   const [commentContent, setCommentContent] = useState('');
@@ -263,28 +264,29 @@ export default function BlogPost() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[hsl(0,0%,4%)]">
-        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div>
+        <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-[hsl(0,0%,4%)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[hsl(0,0%,4%)] px-4 text-center"
-        style={DOMINEX_BRAND_VARS}
-      >
-        <Newspaper className="h-12 w-12 text-white/20" />
-        <h1 className="text-xl font-bold text-white">Artigo não encontrado</h1>
-        <p className="text-white/50 max-w-sm">
-          Esse artigo pode ter sido removido ou o endereço está errado.
-        </p>
-        <Link to="/blog">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Voltar ao blog
-          </Button>
-        </Link>
+      <div style={DOMINEX_BRAND_VARS}>
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-neutral-50 px-4 text-center text-neutral-900 dark:bg-[hsl(0,0%,4%)] dark:text-white">
+          <Newspaper className="h-12 w-12 text-neutral-300 dark:text-white/20" />
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Artigo não encontrado</h1>
+          <p className="max-w-sm text-neutral-600 dark:text-white/50">
+            Esse artigo pode ter sido removido ou o endereço está errado.
+          </p>
+          <Link to="/blog">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              Voltar ao blog
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -293,21 +295,19 @@ export default function BlogPost() {
   const hasLiked = !!userLike;
 
   return (
-    <div className="relative min-h-screen" style={DOMINEX_BRAND_VARS}>
-      <div className="fixed inset-0 z-0 bg-[hsl(0,0%,4%)]">
-        <DarkVeilBackground hueShift={53} speed={0.5} />
-        <div className="absolute inset-0 bg-[hsl(0,0%,4%)]/60 pointer-events-none" />
-      </div>
+    // O tema do blog controla `.dark` no <html> (useBlogTheme), pra as variantes
+    // `dark:` resolverem de verdade mesmo com o `.dark` global do index.html.
+    // Container raiz com bg claro OPACO (bg-neutral-50) pra não vazar o body escuro.
+    <div style={DOMINEX_BRAND_VARS}>
+      <div className="relative min-h-screen bg-neutral-50 text-neutral-900 dark:bg-[hsl(0,0%,4%)] dark:text-white">
+        <BlogNavbar theme={theme} onToggleTheme={toggleTheme} />
 
-      <div className="relative z-10">
-        <LandingNavbar />
-
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-28 pb-24">
-          <div className="grid lg:grid-cols-3 gap-10">
-            <article className="lg:col-span-2 min-w-0">
+        <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-3">
+            <article className="min-w-0 lg:col-span-2">
               <Link
                 to="/blog"
-                className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-primary transition-colors mb-6"
+                className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-primary dark:text-white/50"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Voltar ao blog
@@ -317,11 +317,11 @@ export default function BlogPost() {
                 <img
                   src={post.cover_image_url}
                   alt={post.title}
-                  className="w-full h-56 md:h-80 object-cover rounded-2xl mb-8 border border-white/10"
+                  className="mb-8 h-56 w-full rounded-2xl border border-neutral-200 object-cover md:h-80 dark:border-white/10"
                 />
               )}
 
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
+              <div className="mb-4 flex flex-wrap items-center gap-3">
                 {post.category && (
                   <span
                     className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
@@ -331,51 +331,51 @@ export default function BlogPost() {
                   </span>
                 )}
                 {post.published_at && (
-                  <span className="text-sm text-white/40 flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-sm text-neutral-500 dark:text-white/40">
                     <Calendar className="h-3.5 w-3.5" />
                     {format(new Date(post.published_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </span>
                 )}
                 {post.author_name && (
-                  <span className="text-sm text-white/40 flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-sm text-neutral-500 dark:text-white/40">
                     <User className="h-3.5 w-3.5" />
                     {post.author_name}
                   </span>
                 )}
                 <button
                   onClick={handleShare}
-                  className="ml-auto flex items-center gap-1.5 text-xs text-white/40 hover:text-primary transition-colors"
+                  className="ml-auto flex items-center gap-1.5 text-xs text-neutral-500 transition-colors hover:text-primary dark:text-white/40"
                 >
                   <Share2 className="h-3.5 w-3.5" />
                   Compartilhar
                 </button>
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-bold mb-8 text-white leading-tight">
+              <h1 className="mb-8 text-3xl font-bold leading-tight text-neutral-900 md:text-4xl dark:text-white">
                 {post.title}
               </h1>
 
               <div
                 ref={contentRef}
-                className="prose prose-invert prose-sm sm:prose-base max-w-none prose-headings:text-white prose-a:text-primary prose-strong:text-white prose-img:rounded-xl"
+                className="prose prose-sm max-w-none prose-headings:text-neutral-900 prose-a:text-primary prose-strong:text-neutral-900 prose-img:rounded-xl sm:prose-base dark:prose-invert dark:prose-headings:text-white dark:prose-strong:text-white"
                 dangerouslySetInnerHTML={{ __html: post.content || '' }}
               />
 
               {/* Like + contagem */}
-              <div className="mt-10 flex items-center gap-4 border-t border-b border-white/10 py-4">
+              <div className="mt-10 flex items-center gap-4 border-b border-t border-neutral-200 py-4 dark:border-white/10">
                 <button
                   onClick={() => toggleLikeMutation.mutate()}
                   disabled={toggleLikeMutation.isPending}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-colors ${
+                  className={`flex items-center gap-2 rounded-full border px-4 py-2 transition-colors ${
                     hasLiked
-                      ? 'bg-red-500/15 border-red-500/40 text-red-400'
-                      : 'border-white/15 text-white/60 hover:border-red-500/40 hover:text-red-400'
+                      ? 'border-red-500/40 bg-red-500/10 text-red-500 dark:bg-red-500/15 dark:text-red-400'
+                      : 'border-neutral-300 text-neutral-600 hover:border-red-500/40 hover:text-red-500 dark:border-white/15 dark:text-white/60 dark:hover:text-red-400'
                   }`}
                 >
-                  <Heart className={`h-4 w-4 ${hasLiked ? 'fill-red-400' : ''}`} />
+                  <Heart className={`h-4 w-4 ${hasLiked ? 'fill-current' : ''}`} />
                   <span className="text-sm font-medium">{post.likes_count || 0}</span>
                 </button>
-                <span className="flex items-center gap-1.5 text-sm text-white/40">
+                <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/40">
                   <MessageCircle className="h-4 w-4" />
                   {comments.length} comentário{comments.length === 1 ? '' : 's'}
                 </span>
@@ -383,32 +383,32 @@ export default function BlogPost() {
 
               {/* Comentários */}
               <div className="mt-8">
-                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
                   <MessageCircle className="h-5 w-5" />
                   Comentários ({comments.length})
                 </h2>
 
                 {commentSent ? (
-                  <div className="rounded-xl border border-primary/30 bg-primary/[0.06] p-4 mb-6 text-sm text-white/70">
+                  <div className="mb-6 rounded-xl border border-primary/30 bg-primary/[0.06] p-4 text-sm text-neutral-700 dark:text-white/70">
                     Comentário enviado! Ele aparece aqui assim que for aprovado pela nossa equipe.
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 mb-6 space-y-3">
+                  <div className="mb-6 space-y-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]">
                     <Input
                       placeholder="Seu nome"
                       value={commentName}
                       onChange={(e) => setCommentName(e.target.value)}
-                      className="bg-white/[0.04] border-white/15 text-white placeholder:text-white/40"
+                      className="border-neutral-300 bg-white text-neutral-900 placeholder:text-neutral-400 dark:border-white/15 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/40"
                     />
                     <Textarea
                       placeholder="Deixe seu comentário..."
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
                       rows={3}
-                      className="bg-white/[0.04] border-white/15 text-white placeholder:text-white/40"
+                      className="border-neutral-300 bg-white text-neutral-900 placeholder:text-neutral-400 dark:border-white/15 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/40"
                     />
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-[11px] text-white/35">
+                      <p className="text-[11px] text-neutral-500 dark:text-white/35">
                         Seu comentário passa por aprovação antes de aparecer.
                       </p>
                       <Button
@@ -419,7 +419,7 @@ export default function BlogPost() {
                           !commentContent.trim() ||
                           addCommentMutation.isPending
                         }
-                        className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+                        className="shrink-0 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                       >
                         <Send className="h-3.5 w-3.5" />
                         Comentar
@@ -432,30 +432,30 @@ export default function BlogPost() {
                   {comments.map((comment) => (
                     <div
                       key={comment.id}
-                      className="border border-white/10 bg-white/[0.02] rounded-xl p-4"
+                      className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.02]"
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center">
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15">
                           <span className="text-xs font-bold text-primary">
                             {comment.author_name.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <span className="font-medium text-sm text-white/85">
+                        <span className="text-sm font-medium text-neutral-800 dark:text-white/85">
                           {comment.author_name}
                         </span>
-                        <span className="text-xs text-white/35">
+                        <span className="text-xs text-neutral-400 dark:text-white/35">
                           {format(new Date(comment.created_at), "dd/MM/yyyy 'às' HH:mm", {
                             locale: ptBR,
                           })}
                         </span>
                       </div>
-                      <p className="text-sm text-white/65 leading-relaxed whitespace-pre-line">
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-700 dark:text-white/65">
                         {comment.content}
                       </p>
                     </div>
                   ))}
                   {comments.length === 0 && !commentSent && (
-                    <p className="text-center text-white/35 py-6 text-sm">
+                    <p className="py-6 text-center text-sm text-neutral-400 dark:text-white/35">
                       Nenhum comentário ainda. Seja o primeiro!
                     </p>
                   )}
@@ -463,11 +463,11 @@ export default function BlogPost() {
               </div>
 
               {/* CTA final */}
-              <div className="mt-12 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.12] to-primary/[0.03] p-8 text-center">
-                <h2 className="text-2xl font-bold text-white mb-2">
+              <div className="mt-12 rounded-2xl border border-neutral-200 bg-white p-8 text-center dark:border-primary/20 dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
+                <h2 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-white">
                   Pronto pra tirar a operação do papel?
                 </h2>
-                <p className="text-white/55 mb-6 max-w-md mx-auto">
+                <p className="mx-auto mb-6 max-w-md text-neutral-600 dark:text-white/55">
                   Teste a Dominex de graça por 14 dias e veja a ordem de serviço no celular do
                   técnico.
                 </p>
@@ -488,7 +488,12 @@ export default function BlogPost() {
           </div>
         </div>
 
-        <LandingFooter />
+        {/* Rodapé sempre escuro (padrão artigo claro + footer escuro). Wrapper com
+            bg escuro próprio + classe `dark` garante legibilidade no blog-claro
+            E no blog-dark, sem tocar no LandingFooter compartilhado. */}
+        <div className="dark bg-[hsl(0,0%,6%)]">
+          <LandingFooter />
+        </div>
       </div>
       <WhatsAppFloatingButton />
     </div>
