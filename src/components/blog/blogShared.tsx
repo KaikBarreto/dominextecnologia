@@ -161,7 +161,7 @@ export function BlogPostCard({
       to={`/blog/${post.slug}`}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-colors hover:border-primary/40 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-primary/30"
     >
-      <CardCover post={post} className={isHero ? 'h-52 sm:h-64' : 'h-44'} />
+      <CardCover post={post} className="aspect-[1200/630]" />
       <div className={`flex flex-1 flex-col ${isHero ? 'p-6' : 'p-5'}`}>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {post.category && (
@@ -208,8 +208,8 @@ export function MostReadItem({
 }) {
   return (
     <Link to={`/blog/${post.slug}`} className="group flex gap-3">
-      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
-        <CardCover post={post} className="h-16" />
+      <div className="aspect-[1200/630] w-24 flex-shrink-0 overflow-hidden rounded-lg">
+        <CardCover post={post} className="h-full" />
       </div>
       <div className="min-w-0 flex-1">
         {post.category && (
