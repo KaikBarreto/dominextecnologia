@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import {
   groupActivitiesByType,
   isEssentialFor,
+  isInfraEssential,
   type PmocCatalogActivity,
   type PmocCatalogSectionGroup,
 } from '@/hooks/usePmocActivityCatalog';
@@ -130,10 +131,15 @@ export function PmocChecklistPicker({
   const acIds = acActivities.map((a) => a.id);
   const acEssentialIds = acActivities.filter((a) => isEssentialFor(a, essentialScope)).map((a) => a.id);
 
-  // ── Família "Sistemas Centrais" (demais seções) — display por section ───────
+  // ── Família "Sistemas Centrais" (seções de INFRAESTRUTURA) — display por
+  // section. O essencial desta família é o tier 'infra' (torre/bombas/QAI…), não
+  // o base/central da máquina de ar — por isso usa isInfraEssential. As seções de
+  // infra entram DESMARCADAS por default (opt-in); o cliente marca as da torre
+  // quando o equipamento for uma torre. O selo "Essencial" + "Adicionar norma
+  // completa" funcionam por família E por seção (atalho pra montar uma torre).
   const otherActivities = otherSections.flatMap((s) => groupBySection.get(s)?.activities ?? []);
   const otherIds = otherActivities.map((a) => a.id);
-  const otherEssentialIds = otherActivities.filter((a) => isEssentialFor(a, essentialScope)).map((a) => a.id);
+  const otherEssentialIds = otherActivities.filter((a) => isInfraEssential(a)).map((a) => a.id);
 
   const allIds = visibleGroups.flatMap((g) => g.activities.map((a) => a.id));
   const allChecked = allIds.length > 0 && allIds.every((id) => selection.has(id));
@@ -151,6 +157,19 @@ export function PmocChecklistPicker({
     const next = new Set(selection);
     if (groupAllChecked) groupIds.forEach((id) => next.delete(id));
     else groupIds.forEach((id) => next.add(id));
+    onChange(next);
+  };
+
+  // Deixa a seleção de UMA seção EXATAMENTE no seu conjunto essencial: remove o
+  // que não é essencial daquela seção e adiciona o essencial. Atalho pra montar
+  // uma torre/bomba rápido (só o essencial da infra), sem trazer a norma inteira.
+  const setSectionToEssential = (sectionIds: string[], essentialIds: string[]) => {
+    const next = new Set(selection);
+    const essSet = new Set(essentialIds);
+    for (const id of sectionIds) {
+      if (essSet.has(id)) next.add(id);
+      else next.delete(id);
+    }
     onChange(next);
   };
 
@@ -219,20 +238,45 @@ export function PmocChecklistPicker({
   };
 
   // Render de uma seção (AccordionItem) por SECTION — usado em Sistemas Centrais.
+  // Para uma seção de infraestrutura (torre/bombas/QAI…), oferece o atalho do
+  // ESSENCIAL da infra: selo "Essencial" quando a seleção da seção = essencial da
+  // seção, e botão "Adicionar norma completa" que marca tudo da seção. Permite
+  // montar uma torre rápido (só o essencial) ou completo.
   const renderSection = (section: string) => {
     const group = groupBySection.get(section);
     if (!group) return null;
     const groupIds = group.activities.map((a) => a.id);
     const selectedInGroup = groupIds.filter((id) => selection.has(id)).length;
     const groupAllChecked = groupIds.length > 0 && groupIds.every((id) => selection.has(id));
+    // Essencial da infra DESTA seção (tier 'infra'). Vazio = seção sem essencial.
+    const sectionEssentialIds = group.activities.filter((a) => isInfraEssential(a)).map((a) => a.id);
+    const hasEssential = sectionEssentialIds.length > 0;
+    const essentialNow = hasEssential && isEssentialSelection(groupIds, sectionEssentialIds);
     return (
       <AccordionItem key={section} value={section}>
         <AccordionTrigger className="text-[13px]">
-          <span className="flex flex-1 items-center gap-2 text-left">
+          <span className="flex flex-1 flex-wrap items-center gap-2 text-left">
             {group.label}
             <Badge variant="outline" className="text-[10px] shrink-0">{group.activities.length}</Badge>
             {selectedInGroup > 0 && (
               <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
+            )}
+            {essentialNow && (
+              <Badge className="shrink-0 bg-emerald-600 text-white border-transparent text-[10px]">Essencial</Badge>
+            )}
+            {/* Atalho do ESSENCIAL da seção: marca só o essencial da infra (não a
+                norma inteira). Aparece quando a seção tem essencial e ele ainda
+                não está exatamente armado. */}
+            {hasEssential && !essentialNow && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="shrink-0 rounded-md border bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); setSectionToEssential(groupIds, sectionEssentialIds); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); setSectionToEssential(groupIds, sectionEssentialIds); } }}
+              >
+                Marcar essencial
+              </span>
             )}
             <span
               role="button"
@@ -241,7 +285,7 @@ export function PmocChecklistPicker({
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); } }}
             >
-              {groupAllChecked ? 'Desmarcar' : 'Marcar todos'}
+              {groupAllChecked ? 'Desmarcar' : 'Marcar norma completa'}
             </span>
           </span>
         </AccordionTrigger>

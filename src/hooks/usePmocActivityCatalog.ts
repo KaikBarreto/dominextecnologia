@@ -87,6 +87,19 @@ export function isEssentialFor(
   return !!activity.essential_tier && ESSENTIAL_TIERS_BY_SCOPE[scope].has(activity.essential_tier);
 }
 
+/**
+ * A atividade é o essencial de INFRAESTRUTURA (Fase 2)? São os itens de torre,
+ * bombas, tratamento químico, quadros e QAI que o cliente marca rápido ao montar
+ * um equipamento de infraestrutura. Independe do escopo da máquina — o selo
+ * "Essencial" da infra usa este predicado (não o ESSENTIAL_TIERS_BY_SCOPE, que só
+ * cobre base/central da máquina de ar).
+ */
+export function isInfraEssential(
+  activity: Pick<PmocCatalogActivity, 'essential_tier'>,
+): boolean {
+  return activity.essential_tier === 'infra';
+}
+
 // ── Grupos de exibição por TIPO de tarefa (Expansão Direta) ──────────────────
 // Ordem fixa pedida pelo CEO: LIMPEZA · INSPEÇÃO · MEDIÇÕES · TESTES.
 export const PMOC_ACTIVITY_GROUP_ORDER: PmocActivityGroup[] = ['limpeza', 'inspecao', 'medicao', 'teste'];

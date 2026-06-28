@@ -1352,12 +1352,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     });
   };
 
-  // Há ao menos uma máquina de grande porte ('full')? Gate do bucket local.
-  const hasFullMachine = useMemo(
-    () => Object.values(machineConfigs).some(c => c.scope === 'full'),
-    [machineConfigs],
-  );
-
   // Checklists personalizados do tenant (form_templates ativos, não-pmoc-default)
   // pro picker e pro plano. `templateNameById` rotula a linha de plano custom.
   const customTemplateOptions = useMemo(
@@ -3567,12 +3561,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         </div>
                       );
                     })}
-                    {hasFullMachine && (
-                      <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-1.5">
-                        <Info className="h-3.5 w-3.5 shrink-0" />
-                        Inclui as atividades de local da norma (torres, bombas, casa de máquinas…).
-                      </div>
-                    )}
                   </div>
                 )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={isActive ? 'success' : 'outline'}>{isActive ? 'Ativo' : 'Pausado'}</Badge></div>

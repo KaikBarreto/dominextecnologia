@@ -11,9 +11,12 @@ import { PMOC_DEFAULT_SECTION, isEssentialFor } from '@/hooks/usePmocActivityCat
 
 // Escopo da norma POR MÁQUINA. 'ac' = só condicionadores e medições/testes do
 // aparelho; 'full' = toda a norma aplicável ao equipamento (grande porte:
-// VRF/Chiller/Torre…). As seções de LOCAL (casa de máquinas, dutos, torres,
-// bombas…) NÃO entram por máquina — vão pro "bucket local" do contrato, gerado
-// uma vez quando há ≥1 máquina 'full'.
+// VRF/Chiller, ou um equipamento de INFRAESTRUTURA como torre/bombas). As seções
+// de LOCAL (casa de máquinas, dutos, torres, bombas…) deixaram de virar "bucket
+// local" automático do contrato (Fase 2): agora elas são SELECIONÁVEIS no picker
+// de uma máquina 'full' e, quando marcadas, viram atividades DAQUELE equipamento
+// (per_equipment=true). Assim o cliente cadastra "Torre 01" como equipamento
+// normal e marca o checklist de torre nela; cada VRF/chiller carrega só o dele.
 export type PmocMachineScope = 'ac' | 'full';
 
 // Seção sintética das atividades de checklist PERSONALIZADO (form_templates da
@@ -22,9 +25,13 @@ export type PmocMachineScope = 'ac' | 'full';
 // Planilha/checklist saberem agrupar como "personalizados".
 export const PMOC_CUSTOM_SECTION = 'personalizados';
 
-// Seções da norma cujas atividades são de LOCAL (não se repetem por aparelho):
-// casa de máquinas, dutos, torres, bombas, etc. Tudo fora desse conjunto
-// (condicionadores, medições, testes…) é por equipamento por default.
+// Seções da norma cujas atividades descrevem ESTRUTURAS de infraestrutura
+// (torres, bombas, casa de máquinas, dutos, QAI…). Antes viravam um "bucket local"
+// automático do contrato. Fase 2: não viram mais bucket. Elas continuam fora do
+// default e do "reload por escopo" da máquina (não nascem pré-marcadas), MAS são
+// selecionáveis no picker de uma máquina 'full' — quando o cliente cadastra um
+// equipamento de infraestrutura (ex.: "Torre 01") e marca essas seções, elas
+// viram atividades DAQUELE equipamento (per_equipment=true via confirmCatalogPicker).
 export const LOCAL_SCOPE_SECTIONS = new Set<string>([
   'casa_maquinas',
   'dutos',
@@ -81,8 +88,12 @@ export function partitionPickerSections(allSections: string[]): {
   return { acSections, otherSections };
 }
 
-// As atividades do catálogo que se aplicam a UMA máquina, dado o escopo. Sempre
-// exclui seções de local (essas viram o bucket local do contrato).
+// As atividades do catálogo que entram AUTOMATICAMENTE numa máquina, dado o
+// escopo (default e reload-por-escopo). Exclui as seções de infraestrutura
+// (LOCAL_SCOPE_SECTIONS): essas não nascem pré-marcadas e só entram quando o
+// cliente as seleciona no picker para um equipamento de infraestrutura (Fase 2).
+// O picker, ao confirmar, percorre o catálogo CRU (catalogGroups) e por isso
+// consegue anexar as seções de infra à máquina mesmo que não venham daqui.
 export function machineCatalogActivities(
   all: PmocCatalogActivity[],
   scope: PmocMachineScope,
@@ -107,8 +118,11 @@ export function essentialMachineActivities(
   return machineCatalogActivities(all, scope).filter((a) => isEssentialFor(a, scope));
 }
 
-// Atividades de LOCAL do catálogo (casa de máquinas, dutos, torres, bombas…).
-// Entram uma única vez no contrato quando há ao menos uma máquina 'full'.
+// Atividades de INFRAESTRUTURA do catálogo (casa de máquinas, dutos, torres,
+// bombas…). LEGADO da Fase 1: usadas pelo extinto "bucket local" automático.
+// Mantida só pra compat de import; NÃO é mais chamada no fluxo novo (Fase 2 —
+// infra entra por equipamento, via picker). Pode ser removida quando ninguém
+// importar mais.
 export function localCatalogActivities(all: PmocCatalogActivity[]): PmocCatalogActivity[] {
   return all.filter(a => isLocalSection(a.section));
 }
@@ -402,13 +416,16 @@ export function reconstructMachineConfigs(args: {
   return configs;
 }
 
-// Há ao menos uma máquina de grande porte ('full')? Gate do bucket local.
+// Há ao menos uma máquina de grande porte ('full')? (legado do gate do bucket).
 export function hasFullMachine(machineConfigs: Record<string, MachineConfig>): boolean {
   return Object.values(machineConfigs).some(c => c.scope === 'full');
 }
 
-// Atividades de LOCAL do contrato (torres/bombas/casa de máquinas…). Entram uma
-// única vez quando há ≥1 máquina 'full'. contract_item_id null + per_equip false.
+// LEGADO (Fase 1): montava o "bucket local" do contrato (atividades de infra com
+// contract_item_id null + per_equip false) quando havia ≥1 máquina 'full'. Fase 2
+// DESLIGOU isso — a infra virou um equipamento normal e o cliente seleciona o
+// checklist dela no picker daquele equipamento. NÃO é mais chamada em
+// buildPmocPlanFromMachines. Mantida só pra compat de import (sem uso novo).
 export function buildLocalActivityRows(
   catalogActivities: PmocCatalogActivity[],
   machineConfigs: Record<string, MachineConfig>,
@@ -421,9 +438,11 @@ export function buildLocalActivityRows(
   }));
 }
 
-// Plano completo (por máquina + local) que vai pro hook em PMOC. Cada atividade
-// de máquina carrega `equipment_ref` (o hook resolve contract_item_id) e
-// applies_per_equipment=true; as locais ficam sem máquina + per_equip=false.
+// Plano completo POR MÁQUINA que vai pro hook em PMOC. Cada atividade carrega
+// `equipment_ref` (o hook resolve o contract_item_id) e applies_per_equipment=true.
+// Fase 2: NÃO injeta mais o "bucket local" automático — a infraestrutura entra
+// como atividade de um equipamento próprio (torre/bombas cadastrados como
+// equipamento e com as seções de infra marcadas no picker daquele equipamento).
 export function buildPmocPlanFromMachines(args: {
   items: MachineItemRef[];
   machineConfigs: Record<string, MachineConfig>;
@@ -461,7 +480,9 @@ export function buildPmocPlanFromMachines(args: {
       });
     }
   }
-  rows.push(...buildLocalActivityRows(catalogActivities, machineConfigs));
+  // Fase 2: sem bucket local automático. A infra (torres/bombas/casa de máquinas…)
+  // entra como atividade de um equipamento de infraestrutura, já incluída no laço
+  // acima (cfg.activities das seções de infra que o cliente marcou no picker).
   return rows;
 }
 
