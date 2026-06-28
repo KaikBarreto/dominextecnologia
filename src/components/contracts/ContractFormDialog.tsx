@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
-import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
+import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, isMonthlyCadence, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
@@ -1549,6 +1549,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   );
   const usePlanEngine = schedulablePlan.length > 0;
 
+  // Seletor de cadência na etapa Frequência (P1a). Some no COMUM com plano (1
+  // visita/mês fixa), mas APARECE no PMOC mesmo com plano por máquina — o PMOC
+  // passa a oferecer cadência configurável (default Mensal). Quando o seletor
+  // aparece, o campo de Intervalo também aparece.
+  const showCadenceControls = !usePlanEngine || isPmoc;
+  // PMOC com cadência ≠ mensal: a prévia/contagem usa as DATAS REAIS da cadência
+  // (occurrences), não o agrupamento mensal (groupedVisits, que é só mensal).
+  const pmocCustomCadence = isPmoc && !isMonthlyCadence(freqType, freqValue);
+
   // Quando há plano, a prévia/contagem de OS vem do motor de visitas agrupadas
   // (1 OS/mês = união do que vence), não da cadência única. Para PMOC, cada
   // máquina pode estar em fase diferente, mas o nº de visitas/mês continua 1.
@@ -1559,8 +1568,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     [usePlanEngine, startDate, horizonMonths, schedulablePlan],
   );
 
-  // Nº de OS que será gerado (prévia do botão/Revisão).
-  const visitCount = usePlanEngine ? groupedVisits.length : occurrences.length;
+  // Nº de OS que será gerado (prévia do botão/Revisão). PMOC com cadência ≠
+  // mensal: a contagem mensal (groupedVisits) não vale — usa as datas reais da
+  // cadência (occurrences). A geração real ainda filtra o catálogo por visita,
+  // então é uma prévia das visitas candidatas (o checklist personalizado, quando
+  // existe, vai em toda visita).
+  const visitCount = (usePlanEngine && !pmocCustomCadence)
+    ? groupedVisits.length
+    : occurrences.length;
 
 
   // Ambientes no formato de entrada do hook (parse dos números, equip vazio ok).
@@ -2208,10 +2223,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           {/* STEP: Frequência */}
           {currentStepKey === 'frequency' && (
             <div className="space-y-4">
-              {/* Com plano de serviços, o motor SEMPRE gera 1 visita/mês agrupando
-                  o que vence — a cadência única (tipo/atalhos/intervalo) fica
-                  irrelevante e é recolhida. Data de Início e Horizonte continuam. */}
-              {usePlanEngine ? (
+              {/* COMUM com plano de serviços: o motor gera 1 visita/mês agrupando o
+                  que vence — a cadência única fica irrelevante e é recolhida.
+                  PMOC: mostra o MESMO seletor de cadência (P1a). Default Mensal, em
+                  destaque, com a nota da Lei 13.589/2018 (a norma recomenda mensal;
+                  personalizar é por conta do gestor). Data de Início e Horizonte
+                  continuam valendo nos dois casos. */}
+              {usePlanEngine && !isPmoc ? (
                 <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
                   <CalendarCheck className="h-4 w-4 text-info" />
                   <AlertTitle className="text-sm">Como serão as visitas</AlertTitle>
@@ -2223,6 +2241,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 </Alert>
               ) : (
                 <>
+                  {isPmoc && (
+                    <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
+                      <ShieldCheck className="h-4 w-4 text-info" />
+                      <AlertTitle className="text-sm">Cadência das visitas</AlertTitle>
+                      <AlertDescription className="text-xs space-y-1">
+                        <p>
+                          A <strong>Lei 13.589/2018</strong> recomenda visita <strong>mensal</strong> no
+                          PMOC — é o padrão e a escolha mais segura. Você pode personalizar a
+                          cadência (ex.: a cada 14 dias), ciente de que a norma pede mensal.
+                        </p>
+                        {!isMonthlyCadence(freqType, freqValue) && (
+                          <p className="flex items-start gap-1.5 text-warning">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                            <span>Cadência personalizada selecionada — fora do mensal recomendado pela norma.</span>
+                          </p>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <div className="space-y-2">
                     <Label>Tipo de Frequência</Label>
                     <div className="grid grid-cols-2 gap-3">
@@ -2267,8 +2304,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 </>
               )}
 
-              <div className={cn('grid gap-4', usePlanEngine ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
-                {!usePlanEngine && (
+              <div className={cn('grid gap-4', showCadenceControls ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
+                {showCadenceControls && (
                   <div className="space-y-2">
                     <Label>{freqType === 'months' ? 'Intervalo (meses)' : 'Intervalo (dias)'} *</Label>
                     <Input type="number" min={1} value={freqValue} onChange={e => setFreqValue(Number(e.target.value))} />
@@ -2307,15 +2344,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   <Label>Horizonte (meses)</Label>
                   <Input type="number" min={1} max={60} value={horizonMonths} onChange={e => setHorizonMonths(Number(e.target.value))} />
                   <p className="text-xs text-muted-foreground">
-                    = {visitCount} {usePlanEngine ? 'visita(s)' : 'ocorrências'}
+                    = {visitCount} {(usePlanEngine && !pmocCustomCadence) ? 'visita(s)' : 'ocorrências'}
                   </p>
                 </div>
               </div>
 
-              {/* Prévia das datas. Com plano, reflete as VISITAS AGRUPADAS
-                  (datas + quantas atividades vencem em cada mês). Sem plano,
-                  a cadência única. */}
-              {usePlanEngine ? (
+              {/* Prévia das datas. COMUM com plano (e PMOC mensal): VISITAS
+                  AGRUPADAS (datas + quantas atividades vencem no mês). PMOC com
+                  cadência ≠ mensal OU sem plano: as datas reais da cadência. */}
+              {(usePlanEngine && !pmocCustomCadence) ? (
                 groupedVisits.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
@@ -3408,8 +3445,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     <Block title="Frequência e cronograma">
                       O plano começa em <strong>{startLabel}</strong> e cobre{' '}
                       <strong>{horizonMonths}</strong> meses, gerando{' '}
-                      <strong>{visitCount}</strong> {usePlanEngine ? 'visita(s)' : 'ocorrência(s)'}.
-                      {usePlanEngine ? (
+                      <strong>{visitCount}</strong> {(usePlanEngine && !pmocCustomCadence) ? 'visita(s)' : 'ocorrência(s)'}.
+                      {pmocCustomCadence ? (
+                        <> A cadência é <strong>{getFrequencyLabel(freqType, freqValue)}</strong> (personalizada — a Lei 13.589/2018 recomenda mensal). Cada visita reúne o que vence nela; o checklist personalizado de cada equipamento entra em todas as visitas.</>
+                      ) : usePlanEngine ? (
                         <> Em cada mês com atividades a vencer é gerada uma <strong>visita única</strong> que reúne tudo o que vence naquele mês.
                           {freqParts.length > 0 && <> As atividades se distribuem em: <strong>{freqParts.join(', ')}</strong>.</>}</>
                       ) : (
@@ -3458,13 +3497,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Frequência</span>
                   <span className="font-medium text-right">
-                    {usePlanEngine ? `Por serviço (${schedulablePlan.length}) — visita mensal agrupada` : getFrequencyLabel(freqType, freqValue)}
+                    {pmocCustomCadence
+                      ? `${getFrequencyLabel(freqType, freqValue)} — por equipamento`
+                      : usePlanEngine
+                        ? `Por serviço (${schedulablePlan.length}) — visita mensal agrupada`
+                        : getFrequencyLabel(freqType, freqValue)}
                   </span>
                 </div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Início</span><span className="font-medium">{format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy')}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Horizonte</span><span className="font-medium">{horizonMonths} meses</span></div>
                 {!isEditing && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">{usePlanEngine ? 'Visitas' : 'Ocorrências'}</span><span className="font-medium">{visitCount} {usePlanEngine ? 'visitas' : 'datas'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{(usePlanEngine && !pmocCustomCadence) ? 'Visitas' : 'Ocorrências'}</span><span className="font-medium">{visitCount} {(usePlanEngine && !pmocCustomCadence) ? 'visitas' : 'datas'}</span></div>
                 )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Ambientes e Equipamentos</span><span className="font-medium">{environments.length} ({effectiveItems.length} equip.)</span></div>
                 {/* Preview da rotina POR MÁQUINA (Fase 3): em que visita começa

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.20";
+export const APP_VERSION = "1.15.21";
 
-export const VERSION_NOTES = "No PMOC, ao adicionar um checklist personalizado a uma máquina, agora dá para abrir cada pergunta e escolher, uma a uma, se ela entra já na primeira ordem de serviço — igual aos contratos comuns. O que você deixar de fora só aparece quando a frequência da pergunta vencer; os itens de toda visita entram sempre.";
+export const VERSION_NOTES = "O PMOC agora aceita cadência de visita personalizada: o padrão continua mensal (a Lei 13.589 recomenda visita mensal), mas você pode optar por outra cadência, como a cada 14 dias. Nesse caso, os checklists se encaixam nas visitas pela frequência de cada item, igual aos contratos comuns. Quem quiser seguir a norma à risca, é só manter o mensal.";

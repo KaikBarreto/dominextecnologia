@@ -5,8 +5,11 @@ import {
   dueLevelsForPosition,
   isActivityDueForMachine,
   buildPerMachineVisits,
+  buildPerMachineVisitsCustom,
   buildContractVisits,
   generateGroupedVisits,
+  generateOccurrences,
+  isMonthlyCadence,
   machinesFromItemRows,
   dedupPlanActivities,
   shouldRegenerateVisits,
@@ -900,6 +903,201 @@ describe('preserveCodesByMonth', () => {
     expect(preserveCodesByMonth([], [nu('new-feb', '2026-02-15')])).toEqual([]);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// CADÊNCIA CUSTOM (≠ mensal) — sanidade do caminho buildPerMachineVisitsCustom.
+// Mensal = caminho legado (ciclo-12). Qualquer outra cadência (a cada 14 dias,
+// bimestral, …) gera as DATAS reais (generateOccurrences) e encaixa as
+// atividades pelo motor compartilhado (visitScheduleEngine):
+//   • catálogo (M/T/S/A): por TEMPO, âncora 'contract_start' → 1ª ocorrência cai
+//     na 1ª visita com data ≥ a meta;
+//   • checklist personalizado (form_template_id): CONTAINER em TODA visita.
+// ──────────────────────────────────────────────────────────────────────────
+
+describe('isMonthlyCadence', () => {
+  it('true SÓ pra months/1 (default histórico do PMOC)', () => {
+    expect(isMonthlyCadence('months', 1)).toBe(true);
+  });
+  it('false pra qualquer outra cadência', () => {
+    expect(isMonthlyCadence('days', 14)).toBe(false);
+    expect(isMonthlyCadence('days', 30)).toBe(false);
+    expect(isMonthlyCadence('months', 2)).toBe(false);
+    expect(isMonthlyCadence('days', 1)).toBe(false);
+    expect(isMonthlyCadence('months', 3)).toBe(false);
+  });
+});
+
+describe('buildPerMachineVisitsCustom — cadência a cada 14 dias (cenário Glacial)', () => {
+  // 6 meses de visitas a cada 14 dias a partir de START. generateOccurrences é a
+  // MESMA fonte de datas que o roteamento real usa.
+  const HORIZON = 6;
+  const visitDates = generateOccurrences(START, 'days', 14, HORIZON);
+
+  // Índice da 1ª visita com data >= (START + offsetDays). Espelha a regra do
+  // motor: cada meta cai na 1ª visita que a alcança. Calculado a partir das datas
+  // reais pra a asserção não ser frágil com mês de tamanho variável.
+  const firstVisitAtOrAfterDays = (offsetDays: number): number => {
+    const target = addDays(START, offsetDays);
+    return visitDates.findIndex((d) => d.getTime() >= target.getTime());
+  };
+
+  // 1 máquina 'ac' start=12 (a fase do ciclo-12 NÃO se aplica no custom: quem
+  // decide é a frequência por tempo sobre as datas reais).
+  const machines: MachineInput[] = [machine('item-A', 'eq-A', 'ac', 12)];
+  const acts: MachinePlanActivity[] = [
+    ownAct(act('Limpar filtro', 'M', { section: 'condicionadores' }), 'item-A'),
+    ownAct(act('Verificar dreno', 'T', { section: 'condicionadores' }), 'item-A'),
+    ownAct(
+      act('Checklist do gestor', 'M', { section: 'personalizados', form_template_id: 'tpl-1' }),
+      'item-A',
+    ),
+  ];
+
+  const visits = buildPerMachineVisitsCustom(visitDates, machines, acts);
+
+  // Mapa data-da-visita → descrições devidas, pra inspeção por índice de visita.
+  const descsByVisitDate = new Map<number, string[]>();
+  for (const v of visits) {
+    descsByVisitDate.set(
+      v.date.getTime(),
+      v.emissions.map((e) => e.input.description),
+    );
+  }
+  const descsAtVisit = (visitIdx: number): string[] =>
+    descsByVisitDate.get(visitDates[visitIdx].getTime()) ?? [];
+
+  it('gera visitas e todas as datas vêm da cadência real (14 em 14 dias)', () => {
+    expect(visits.length).toBeGreaterThan(0);
+    const validDates = new Set(visitDates.map((d) => d.getTime()));
+    for (const v of visits) expect(validDates.has(v.date.getTime())).toBe(true);
+    // Toda emissão é do único equipamento (1 máquina, sem ×N).
+    for (const v of visits) {
+      for (const e of v.emissions) expect(e.equipmentId).toBe('eq-A');
+    }
+  });
+
+  it('checklist personalizado (container) aparece em TODAS as visitas', () => {
+    // due_now + freqVisits 1 → toda visita carrega o container.
+    expect(visits.length).toBe(visitDates.length);
+    for (const v of visits) {
+      const customs = v.emissions.filter((e) => e.input.form_template_id === 'tpl-1');
+      expect(customs.length).toBe(1);
+      expect(customs[0].input.section).toBe('personalizados');
+    }
+  });
+
+  it('a M (mensal) vence ~a cada 30 dias, na 1ª visita que alcança a meta', () => {
+    // 1ª ocorrência da M: âncora 'contract_start' → meta = START + 1 mês (~30d).
+    const firstM = firstVisitAtOrAfterDays(30);
+    expect(firstM).toBeGreaterThan(0); // NÃO cai na visita 0 (anchor + 1 intervalo)
+    expect(descsAtVisit(firstM)).toContain('Limpar filtro');
+    // Não aparece antes disso.
+    for (let i = 0; i < firstM; i++) expect(descsAtVisit(i)).not.toContain('Limpar filtro');
+    // 2ª ocorrência ~60 dias.
+    const secondM = firstVisitAtOrAfterDays(60);
+    expect(secondM).toBeGreaterThan(firstM);
+    expect(descsAtVisit(secondM)).toContain('Limpar filtro');
+  });
+
+  it('a T (trimestral) vence por volta da visita que cobre ~90 dias', () => {
+    const firstT = firstVisitAtOrAfterDays(90);
+    expect(firstT).toBeGreaterThan(0);
+    expect(descsAtVisit(firstT)).toContain('Verificar dreno');
+    // Antes de ~90 dias, a T não aparece.
+    for (let i = 0; i < firstT; i++) expect(descsAtVisit(i)).not.toContain('Verificar dreno');
+  });
+
+  it('horizonte vazio → sem visitas', () => {
+    expect(buildPerMachineVisitsCustom([], machines, acts)).toEqual([]);
+  });
+});
+
+describe('buildPerMachineVisitsCustom — borda: Anual com horizonte < 12 meses', () => {
+  it('atividade Anual (A) não aparece quando o horizonte não alcança 12 meses', () => {
+    // 6 meses a cada 14 dias: a 1ª meta da anual (START + 12 meses) cai DEPOIS da
+    // última visita → nunca agenda. Consistente com o mensal (start=12 só no k=12).
+    const visitDates = generateOccurrences(START, 'days', 14, 6);
+    const machines: MachineInput[] = [machine('item-A', 'eq-A', 'ac', 12)];
+    const acts: MachinePlanActivity[] = [
+      ownAct(act('Limpar filtro', 'M', { section: 'condicionadores' }), 'item-A'),
+      ownAct(act('Revisão completa', 'A', { section: 'condicionadores' }), 'item-A'),
+    ];
+    const visits = buildPerMachineVisitsCustom(visitDates, machines, acts);
+    const anyAnnual = visits.some((v) =>
+      v.emissions.some((e) => e.input.description === 'Revisão completa'),
+    );
+    expect(anyAnnual).toBe(false);
+    // A mensal, porém, aparece (sanidade de que o conjunto não ficou vazio à toa).
+    const anyMonthly = visits.some((v) =>
+      v.emissions.some((e) => e.input.description === 'Limpar filtro'),
+    );
+    expect(anyMonthly).toBe(true);
+  });
+});
+
+describe('buildContractVisits — roteia mensal vs. custom pela cadência', () => {
+  const machines: MachineInput[] = [machine('item-A', 'eq-A', 'ac', 12)];
+  const planActivities: PlanActivityInput[] = [
+    {
+      description: 'Limpar filtro',
+      freq_code: 'M',
+      section: 'condicionadores',
+      contract_item_id: 'item-A',
+      applies_per_equipment: true,
+    },
+    {
+      description: 'Checklist do gestor',
+      freq_code: 'M',
+      section: 'personalizados',
+      form_template_id: 'tpl-1',
+      contract_item_id: 'item-A',
+      applies_per_equipment: true,
+    },
+  ];
+  const planActivityIds = planActivities.map((_, i) => `pa-${i}`);
+
+  it('cadência custom (days/14) usa as datas reais da cadência (não addMonths mensal)', () => {
+    const visits = buildContractVisits({
+      startDate: START,
+      frequencyType: 'days',
+      frequencyValue: 14,
+      horizonMonths: 6,
+      planActivities,
+      planActivityIds,
+      machines,
+    });
+    const expectedDates = new Set(
+      generateOccurrences(START, 'days', 14, 6).map((d) => d.getTime()),
+    );
+    expect(visits.length).toBeGreaterThan(0);
+    for (const v of visits) expect(expectedDates.has(v.date.getTime())).toBe(true);
+    // A 2ª visita é 14 dias após a 1ª (cadência real), não 1 mês.
+    expect(visits[1].date.getTime()).toBe(addDays(START, 14).getTime());
+  });
+
+  it('cadência mensal (months/1) segue o caminho legado (1ª visita = START exata)', () => {
+    const visits = buildContractVisits({
+      startDate: START,
+      frequencyType: 'months',
+      frequencyValue: 1,
+      horizonMonths: 6,
+      planActivities,
+      planActivityIds,
+      machines,
+    });
+    expect(visits[0].date.getTime()).toBe(START.getTime());
+    // No mensal a 2ª visita é 1 mês depois (não 14 dias).
+    expect(visits[1].date.getTime()).toBe(addMonthsTest(START, 1).getTime());
+  });
+});
+
+// addDays local pra os testes de cadência custom (mesma semântica do date-fns
+// usado no motor): soma dias corridos sem mutar a data original.
+function addDays(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
 
 // addMonths local (mesma semântica do date-fns usado no motor) pra evitar
 // import extra no teste — calcula via Date setMonth respeitando overflow.

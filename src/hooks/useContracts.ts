@@ -7,6 +7,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { addDays, addMonths } from 'date-fns';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
+import {
+  scheduleActivitiesOntoVisits,
+  type ActivitySpec,
+  type VisitInput,
+} from '@/components/contracts/visitScheduleEngine';
 
 export interface Contract {
   id: string;
@@ -511,6 +516,196 @@ export function buildPerMachineVisits(
 }
 
 /**
+ * Cadência MENSAL = o default histórico do PMOC (1 visita por mês). Só essa
+ * cadência usa o caminho `buildPerMachineVisits` (ciclo-12 + addMonths), que é
+ * byte-a-byte o comportamento legado. Qualquer outra cadência (a cada 14 dias,
+ * bimestral, …) roteia pro caminho custom (`buildPerMachineVisitsCustom`), que
+ * gera as datas reais e encaixa as atividades pelo motor compartilhado.
+ *
+ * Função PURA — backward-compat do PMOC mensal depende dela retornar `true`
+ * exatamente quando o contrato é "months / 1".
+ */
+export function isMonthlyCadence(
+  frequencyType: 'days' | 'months',
+  frequencyValue: number,
+): boolean {
+  return frequencyType === 'months' && frequencyValue === 1;
+}
+
+/**
+ * MOTOR POR MÁQUINA — CADÊNCIA CUSTOM (≠ mensal). Espelha `buildPerMachineVisits`
+ * (mesma saída `ResolvedVisit[]`, mesmos buckets/ordenação por máquina), MAS:
+ *
+ *  • As DATAS das visitas vêm da cadência real (`visitDates`, já geradas por
+ *    `generateOccurrences(start, freq_type, freq_value, horizon)`), não de
+ *    `addMonths` mensal. O ciclo-12/positionForMonth NÃO se aplica (é mensal).
+ *  • Quais atividades vencem em cada visita é decidido pelo motor COMPARTILHADO
+ *    `scheduleActivitiesOntoVisits` (visitScheduleEngine), por máquina:
+ *      - Catálogo da norma (sem form_template_id, freq_code M/T/S/A): vira
+ *        ActivitySpec por TEMPO (M=1, T=3, S=6, A=12 meses; E/eventual = não
+ *        agenda), startKind 'contract_start' → a 1ª ocorrência cai na 1ª visita
+ *        com data ≥ a meta (encaixa na visita mais próxima depois de vencer).
+ *      - Checklist personalizado (form_template_id, section 'personalizados'):
+ *        é o CONTAINER, vai em TODA visita (freqKind 'visits', freqVisits 1) —
+ *        as PERGUNTAS dele filtram por frequência no RENDER (v1.15.19/20). Não
+ *        sofre filtro de escopo ac/full.
+ *
+ * Snapshot idêntico ao mensal: cada emissão devida vira 1 linha; mês/visita sem
+ * nenhuma emissão NÃO vira visita (segue o modelo de snapshot do PMOC). O persist
+ * é o mesmo (`persistContractVisit` via `emissions`).
+ *
+ * Determinístico/puro: só usa as datas recebidas. Não gera datas, não usa
+ * Date.now(). É o trilho "comum" (cadência configurável + frequência por
+ * atividade resolvida sobre as datas reais) aplicado ao PMOC.
+ */
+export function buildPerMachineVisitsCustom(
+  visitDates: Date[],
+  machines: MachineInput[],
+  activities: MachinePlanActivity[],
+): ResolvedVisit[] {
+  if (visitDates.length === 0) return [];
+
+  // Rank estável de máquina por bucket (full antes de ac) — idêntico ao mensal.
+  const bucketOf = (m: MachineInput): number => (m.pmocScope === 'full' ? 0 : 1);
+  const machinesSorted = machines
+    .map((m, originalIdx) => ({ m, originalIdx }))
+    .sort((a, b) => bucketOf(a.m) - bucketOf(b.m) || a.originalIdx - b.originalIdx);
+  const machineRank = new Map<string, number>();
+  machinesSorted.forEach(({ m }, rank) => machineRank.set(m.contractItemId, rank));
+
+  // Particiona como no mensal: próprias da máquina, locais, legado.
+  const byMachine = new Map<string, MachinePlanActivity[]>();
+  const localActs: MachinePlanActivity[] = []; // contractItemId null + per_eq=false
+  const legacyActs: MachinePlanActivity[] = []; // contractItemId null + per_eq=true
+  activities.forEach((act) => {
+    if (act.contractItemId) {
+      const arr = byMachine.get(act.contractItemId) ?? [];
+      arr.push(act);
+      byMachine.set(act.contractItemId, arr);
+    } else if (act.appliesPerEquipment === false) {
+      localActs.push(act);
+    } else {
+      legacyActs.push(act);
+    }
+  });
+
+  const hasFull = machines.some((m) => m.pmocScope === 'full');
+
+  // Escopo: igual ao mensal — 'ac' só pega seções de condicionador (ou sem
+  // section); 'personalizados' vale pra qualquer escopo (aditivo do gestor).
+  const scopeAllows = (scope: PmocScope, section: string | null | undefined): boolean => {
+    if (section === 'personalizados') return true;
+    if (scope === 'full') return true;
+    if (!section) return true;
+    return PMOC_AC_SECTIONS.has(section);
+  };
+
+  // Uma atividade do plano → ActivitySpec do motor compartilhado.
+  //  • Checklist personalizado (form_template_id): container em TODA visita.
+  //  • Catálogo: por TEMPO em meses (freq_code → meses; eventual = null → ignora).
+  const toSpec = (act: MachinePlanActivity, specId: string): ActivitySpec | null => {
+    if (act.input.form_template_id) {
+      return { id: specId, freqKind: 'visits', freqVisits: 1, startKind: 'due_now' };
+    }
+    const months = activityPeriodMonths(act.input);
+    if (months <= 0) return null; // eventual / sem período → não agenda
+    return { id: specId, freqKind: 'time', freqMonths: months, startKind: 'contract_start' };
+  };
+
+  const visitInputs: VisitInput[] = visitDates.map((d) => ({ date: d }));
+  // Acumula as emissões por índice de visita; só visitas com emissão viram OS.
+  const perVisit = new Map<number, ResolvedEmission[]>();
+  const pushEmission = (visitIdx: number, e: ResolvedEmission) => {
+    const arr = perVisit.get(visitIdx);
+    if (arr) arr.push(e);
+    else perVisit.set(visitIdx, [e]);
+  };
+
+  // Agenda as atividades de UM conjunto (máquina ou local) sobre as visitas e
+  // empurra as emissões resolvidas. `specToAct` mapeia o id sintético de volta
+  // pra a atividade + sua ordem (activitySort) dentro do conjunto.
+  const scheduleSet = (
+    acts: MachinePlanActivity[],
+    emit: (act: MachinePlanActivity, actSort: number, visitIdx: number) => void,
+  ) => {
+    const specs: ActivitySpec[] = [];
+    const specMeta: Record<string, { act: MachinePlanActivity; actSort: number }> = {};
+    acts.forEach((act, actSort) => {
+      const id = `a${actSort}`;
+      const spec = toSpec(act, id);
+      if (!spec) return;
+      specs.push(spec);
+      specMeta[id] = { act, actSort };
+    });
+    if (specs.length === 0) return;
+    const map = scheduleActivitiesOntoVisits(visitInputs, specs);
+    for (const [visitIdx, ids] of map) {
+      for (const id of ids) {
+        const meta = specMeta[id];
+        if (!meta) continue;
+        emit(meta.act, meta.actSort, visitIdx);
+      }
+    }
+  };
+
+  for (const m of machines) {
+    const bucket = bucketOf(m);
+    const rank = machineRank.get(m.contractItemId) ?? 0;
+
+    // Caso 1: atividades próprias da máquina (filtradas por escopo).
+    const own = (byMachine.get(m.contractItemId) ?? []).filter((act) =>
+      scopeAllows(m.pmocScope, act.input.section),
+    );
+    scheduleSet(own, (act, actSort, visitIdx) => {
+      pushEmission(visitIdx, {
+        input: act.input,
+        planActivityId: act.planActivityId,
+        equipmentId: m.equipmentId,
+        bucket,
+        machineRank: rank,
+        activitySort: actSort,
+      });
+    });
+
+    // Caso 3: legado (sem contract_item_id, per_eq=true) → expande pra cada
+    // máquina, SEM filtro de escopo (preservação idêntica ao mensal).
+    scheduleSet(legacyActs, (act, actSort, visitIdx) => {
+      pushEmission(visitIdx, {
+        input: act.input,
+        planActivityId: act.planActivityId,
+        equipmentId: m.equipmentId,
+        bucket,
+        machineRank: rank,
+        activitySort: actSort,
+      });
+    });
+  }
+
+  // Caso 2: locais — só com ≥1 máquina 'full'; equipamento null; bucket por último.
+  if (hasFull) {
+    scheduleSet(localActs, (act, actSort, visitIdx) => {
+      pushEmission(visitIdx, {
+        input: act.input,
+        planActivityId: act.planActivityId,
+        equipmentId: null,
+        bucket: 2,
+        machineRank: machines.length,
+        activitySort: actSort,
+      });
+    });
+  }
+
+  // Só visitas com emissão viram OS; ordenadas pela data real.
+  const visits: ResolvedVisit[] = [];
+  for (let i = 0; i < visitDates.length && visits.length < 120; i++) {
+    const emissions = perVisit.get(i);
+    if (!emissions || emissions.length === 0) continue;
+    visits.push({ date: visitDates[i], emissions });
+  }
+  return visits;
+}
+
+/**
  * Linha de contract_items (forma mínima) pra montar as máquinas do motor por
  * máquina. Escopo/fase têm default no banco ('ac' / 12), mas tratamos null aqui
  * por robustez (contratos antigos antes do backfill, drift).
@@ -728,7 +923,17 @@ export function buildContractVisits(params: BuildVisitsParams, fromMonthStr?: st
       appliesPerEquipment: a.applies_per_equipment !== false,
     }));
 
-    const resolved = buildPerMachineVisits(startDate, horizonMonths, machines, machineActs);
+    // Roteamento de cadência (P1b): MENSAL = caminho legado intocado (ciclo-12 +
+    // addMonths). CUSTOM (≠ mensal) = datas reais da cadência (generateOccurrences)
+    // + motor compartilhado encaixando as atividades na visita mais próxima.
+    // Backward-compat: PMOC mensal existente segue byte-a-byte o `buildPerMachineVisits`.
+    const resolved = isMonthlyCadence(frequencyType, frequencyValue)
+      ? buildPerMachineVisits(startDate, horizonMonths, machines, machineActs)
+      : buildPerMachineVisitsCustom(
+          generateOccurrences(startDate, frequencyType, frequencyValue, horizonMonths),
+          machines,
+          machineActs,
+        );
     const visits: BuiltVisit[] = resolved.map((rv) => ({
       date: rv.date,
       emissions: rv.emissions,

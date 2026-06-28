@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.21',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PMOC com cadência de visita personalizada',
+        description: 'Os contratos PMOC passam a permitir escolher a cadência das visitas, além do mensal. O padrão continua sendo mensal — a Lei 13.589/2018 recomenda a visita mensal —, mas você pode personalizar (por exemplo, a cada 14 dias) ciente disso. Quando a cadência é personalizada, os checklists se encaixam nas visitas pela frequência de cada pergunta, do mesmo jeito que já acontece nos contratos comuns. Para seguir a norma à risca, basta manter o mensal.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.20',
     date: '28 de junho de 2026',
     type: 'patch',
