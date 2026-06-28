@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Pencil, Trash2, GripVertical, X,
   CheckSquare, Type, Hash, Camera, ListChecks,
-  ChevronUp, ChevronDown, BookOpen, Lock,
+  ChevronUp, ChevronDown, BookOpen, Lock, Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -27,7 +26,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
-import { QuestionFrequencyBadge, FrequencyEditor, frequencyLabel, type QuestionFrequencyPayload } from '@/components/technician/QuestionFrequencyBadge';
+import { QuestionFrequencyBadge, FrequencyEditor, type QuestionFrequencyPayload } from '@/components/technician/QuestionFrequencyBadge';
 import { ServicesMultiSelect } from '@/components/technician/ServicesMultiSelect';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useToast } from '@/hooks/use-toast';
@@ -554,29 +553,38 @@ export default function ChecklistDetail() {
             <p className="text-xs text-muted-foreground mt-1">Visível apenas durante o preenchimento. Não aparece no relatório nem no portal do cliente.</p>
           </div>
 
-          {/* Multi answer types */}
+          {/* Multi answer types — chips toggláveis (multi-seleção). Estado
+              selecionado saturado na cor + check, pra deixar claro que NÃO é
+              um radio: dá pra marcar vários. */}
           <div className="space-y-2">
             <Label>Tipos de resposta</Label>
-            <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de responder.</p>
+            <p className="text-xs text-muted-foreground">Marque uma ou mais formas de responder. Pode combinar.</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {QUESTION_TYPES.map((t) => {
                 const QIcon = t.icon;
                 const isSelected = selectedAnswerTypes.includes(t.value);
                 return (
-                  <label
+                  <button
                     key={t.value}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    onClick={() => handleToggleAnswerType(t.value)}
                     className={cn(
-                      'flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors',
-                      isSelected ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted/50'
+                      'relative flex items-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium text-left transition-colors',
+                      isSelected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/50'
                     )}
                   >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => handleToggleAnswerType(t.value)}
-                    />
-                    <QIcon className="h-4 w-4" />
-                    {t.label}
-                  </label>
+                    <QIcon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t.label}</span>
+                    {isSelected && (
+                      <span className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary-foreground/20">
+                        <Check className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
                 );
               })}
             </div>
@@ -606,8 +614,8 @@ export default function ChecklistDetail() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {(qForm as any).answer_mode === 'combined'
-                  ? 'O técnico poderá preencher todos os tipos de resposta ao mesmo tempo'
-                  : 'Ao responder por um tipo, os demais ficam ocultos automaticamente'}
+                  ? 'O técnico responde todos os tipos juntos nesta pergunta (ex.: marca a opção E anexa a foto).'
+                  : 'O técnico escolhe um único tipo para responder; os outros somem automaticamente.'}
               </p>
             </div>
           )}
@@ -684,18 +692,13 @@ export default function ChecklistDetail() {
               estado local do formulário e é persistido junto no salvar. */}
           {showFrequency && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm font-medium">Frequência</Label>
-                <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                  {frequencyLabel(qForm)}
-                </Badge>
-              </div>
-              <div className="rounded-lg border overflow-hidden">
-                <FrequencyEditor
-                  value={qForm}
-                  onApply={(payload) => setQForm(prev => ({ ...prev, ...payload }))}
-                />
-              </div>
+              <Label className="text-sm font-medium">Frequência</Label>
+              <p className="text-xs text-muted-foreground">Em quais visitas esta pergunta deve aparecer.</p>
+              <FrequencyEditor
+                variant="select"
+                value={qForm}
+                onApply={(payload) => setQForm(prev => ({ ...prev, ...payload }))}
+              />
             </div>
           )}
 

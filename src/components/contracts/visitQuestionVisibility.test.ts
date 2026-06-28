@@ -179,4 +179,113 @@ describe('computeVisibleQuestionIds', () => {
       computeVisibleQuestionIds({ visitDates: VISIT_DATES, scheduledDate: dateOfVisit(0), questions: [] }),
     ).toEqual(new Set());
   });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Fatia F3 — âncora por equipamento (flag first_os_excluded_questions).
+  // A âncora vem do flag (Opção A do CEO) e SOBRESCREVE o start_kind do template:
+  //   incluída → 'due_now' (1ª visita ancora a freq.); excluída → 'contract_start'.
+  // ────────────────────────────────────────────────────────────────────────
+  describe('excludedQuestionIds (âncora por equipamento, fatia F3)', () => {
+    // Mesmo template (start_kind contract_start) pras duas perguntas trimestrais —
+    // o flag por equipamento é quem decide a âncora, não o template.
+    const trimestrais: VisibilityQuestion[] = [
+      { id: 'q-inc', freq_kind: 'time', freq_months: 3, start_kind: 'contract_start' },
+      { id: 'q-exc', freq_kind: 'time', freq_months: 3, start_kind: 'contract_start' },
+    ];
+
+    it('pergunta INCLUÍDA na 1ª OS aparece já na 1ª visita (âncora due_now)', () => {
+      // q-inc NÃO está no set de excluídos → due_now → entra na visita 0.
+      const v0 = computeVisibleQuestionIds({
+        visitDates: VISIT_DATES,
+        scheduledDate: dateOfVisit(0),
+        questions: trimestrais,
+        excludedQuestionIds: new Set(['q-exc']),
+      });
+      expect(v0.has('q-inc')).toBe(true);
+    });
+
+    it('pergunta EXCLUÍDA NÃO aparece na 1ª visita e aparece na 1ª vez que vence', () => {
+      // q-exc está no set → contract_start → não entra na visita 0; trimestral
+      // sobre visitas de 14 dias vence ~3 meses depois (índice > 0).
+      const v0 = computeVisibleQuestionIds({
+        visitDates: VISIT_DATES,
+        scheduledDate: dateOfVisit(0),
+        questions: trimestrais,
+        excludedQuestionIds: new Set(['q-exc']),
+      });
+      expect(v0.has('q-exc')).toBe(false);
+
+      // Em algum índice (1ª vez que a trimestral vence) q-exc aparece.
+      const aparece = VISIT_DATES.some((_, idx) =>
+        computeVisibleQuestionIds({
+          visitDates: VISIT_DATES,
+          scheduledDate: dateOfVisit(idx),
+          questions: trimestrais,
+          excludedQuestionIds: new Set(['q-exc']),
+        }).has('q-exc'),
+      );
+      expect(aparece).toBe(true);
+
+      // E aparece em MENOS visitas que o total (foi filtrada, não é toda visita).
+      const ocorrencias = VISIT_DATES.filter((_, idx) =>
+        computeVisibleQuestionIds({
+          visitDates: VISIT_DATES,
+          scheduledDate: dateOfVisit(idx),
+          questions: trimestrais,
+          excludedQuestionIds: new Set(['q-exc']),
+        }).has('q-exc'),
+      ).length;
+      expect(ocorrencias).toBeGreaterThan(0);
+      expect(ocorrencias).toBeLessThan(VISIT_DATES.length);
+    });
+
+    it('flag SOBRESCREVE o start_kind do template (excluída com template due_now some na 1ª)', () => {
+      // Template diz due_now, mas o equipamento EXCLUIU a pergunta → contract_start.
+      const questions: VisibilityQuestion[] = [
+        { id: 'q-over', freq_kind: 'time', freq_months: 3, start_kind: 'due_now' },
+      ];
+      const v0 = computeVisibleQuestionIds({
+        visitDates: VISIT_DATES,
+        scheduledDate: dateOfVisit(0),
+        questions,
+        excludedQuestionIds: new Set(['q-over']),
+      });
+      expect(v0.has('q-over')).toBe(false);
+    });
+
+    it('pergunta TODA VISITA (sem frequência) aparece sempre, mesmo excluída no flag', () => {
+      // Sem freq_kind → não há o que ancorar; o flag não a esconde.
+      const questions: VisibilityQuestion[] = [{ id: 'q-toda' }];
+      const v0 = computeVisibleQuestionIds({
+        visitDates: VISIT_DATES,
+        scheduledDate: dateOfVisit(0),
+        questions,
+        excludedQuestionIds: new Set(['q-toda']),
+      });
+      expect(v0.has('q-toda')).toBe(true);
+    });
+
+    it('flag vazio (Set vazio) = todas incluídas = todas viram âncora due_now na 1ª', () => {
+      const v0 = computeVisibleQuestionIds({
+        visitDates: VISIT_DATES,
+        scheduledDate: dateOfVisit(0),
+        questions: trimestrais,
+        excludedQuestionIds: new Set(),
+      });
+      expect(v0.has('q-inc')).toBe(true);
+      expect(v0.has('q-exc')).toBe(true);
+    });
+
+    it('SEM excludedQuestionIds (undefined) = comportamento atual (âncora pelo template)', () => {
+      // Sem o flag, trimestral com template contract_start NÃO aparece na 1ª —
+      // idêntico ao teste clássico (nada muda pra OS sem o campo).
+      const v0 = computeVisibleQuestionIds({
+        visitDates: VISIT_DATES,
+        scheduledDate: dateOfVisit(0),
+        questions: trimestrais,
+      });
+      expect(v0.has('q-inc')).toBe(false);
+      expect(v0.has('q-exc')).toBe(false);
+    });
+  });
 });

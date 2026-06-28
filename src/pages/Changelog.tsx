@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.12',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist por equipamento e controle da primeira visita',
+        description: 'Cada equipamento do contrato passa a ter o seu próprio checklist, e ao montar o contrato você decide, pergunta por pergunta, o que já entra na primeira visita. O que você deixar de fora aparece só quando a frequência daquele item vencer pela primeira vez; os itens de "toda visita" entram sempre. Dá para marcar e desmarcar em massa por frequência, e a etapa de revisão do contrato explica em texto claro o que vai acontecer na primeira visita.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tela de criar pergunta mais clara',
+        description: 'No cadastro de uma pergunta de checklist, a frequência virou um seletor compacto (as opções avançadas só aparecem em "Personalizado"), os tipos de resposta ficaram mais fáceis de entender e o modo de resposta múltipla agora explica, em texto, o que cada opção faz.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.11',
     date: '28 de junho de 2026',
     type: 'patch',

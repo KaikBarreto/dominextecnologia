@@ -294,6 +294,12 @@ export default function TechnicianOS() {
   // populado quando a OS tem contract_id; alimenta o calendário do helper de
   // visibilidade por pergunta. Vazio = helper mostra tudo (fallback seguro).
   const [contractVisitDates, setContractVisitDates] = useState<string[]>([]);
+  // Perguntas EXCLUÍDAS da 1ª OS por equipamento (flag
+  // `contract_items.first_os_excluded_questions`, fatia F3). Chave = equipment_id,
+  // valor = Set de question_ids excluídos. Vazio/ausente = sem flag (âncora pelo
+  // template). Só populado quando a OS tem contract_id. Display-only: é a âncora
+  // que o helper de visibilidade usa por equipamento.
+  const [excludedQuestionsByEquipment, setExcludedQuestionsByEquipment] = useState<Map<string, Set<string>>>(new Map());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
   // Checklist da visita no MODO ANÔNIMO: a RLS bloqueia service_order_activities
@@ -726,11 +732,13 @@ export default function TechnicianOS() {
       if (contractId && equipmentIds.length > 0) {
         const { data: ciRows } = await db
           .from('contract_items')
-          .select('equipment_id, sort_order, environment:contract_environments(identificacao)')
+          .select('equipment_id, sort_order, first_os_excluded_questions, environment:contract_environments(identificacao)')
           .eq('contract_id', contractId)
           .in('equipment_id', equipmentIds);
         if (ciRows) {
           const envByEqId = new Map<string, string>();
+          // Âncora por equipamento (fatia F3): question_ids excluídos da 1ª OS.
+          const excludedByEqId = new Map<string, Set<string>>();
           const sorted = [...(ciRows as any[])].sort(
             (a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity)
           );
@@ -739,11 +747,26 @@ export default function TechnicianOS() {
             const env = Array.isArray(row.environment) ? row.environment[0] : row.environment;
             const name = env?.identificacao ?? null;
             if (eqId && name && !envByEqId.has(eqId)) envByEqId.set(eqId, name);
+            // Normaliza o jsonb (array de ids) num Set. 1 contract_item por
+            // equipamento neste contrato → 1ª linha vista vence.
+            if (eqId && !excludedByEqId.has(eqId)) {
+              const raw = row.first_os_excluded_questions;
+              const ids = Array.isArray(raw)
+                ? raw.filter((x: unknown): x is string => typeof x === 'string')
+                : [];
+              excludedByEqId.set(eqId, new Set(ids));
+            }
           }
           items.forEach((it) => {
             it.environment_name = it.equipment_id ? envByEqId.get(it.equipment_id) ?? null : null;
           });
+          setExcludedQuestionsByEquipment(excludedByEqId);
+        } else {
+          setExcludedQuestionsByEquipment(new Map());
         }
+      } else {
+        // OS avulsa ou sem equipamentos → sem flag (âncora pelo template).
+        setExcludedQuestionsByEquipment(new Map());
       }
 
       setEquipmentItems(items);
@@ -1788,6 +1811,24 @@ export default function TechnicianOS() {
       scheduledDate: (serviceOrder as any)?.scheduled_date ?? null,
     };
   }, [serviceOrder, contractVisitDates]);
+
+  // Visibilidade POR EQUIPAMENTO (fatia F3): o contexto base (datas + data da OS)
+  // é o mesmo, mas a ÂNCORA (perguntas excluídas da 1ª OS) é por equipamento.
+  // Monta um contexto específico anexando o Set de excluídos daquele equipamento.
+  // Sem contrato → undefined (OS avulsa, render idêntico). Sem flag pro
+  // equipamento → Set vazio = "nenhuma excluída" = todas viram âncora 'due_now'.
+  const visibilityForEquipment = useCallback(
+    (equipmentId: string | null | undefined): ContractVisibilityContext | undefined => {
+      if (!checklistVisibility) return undefined;
+      return {
+        ...checklistVisibility,
+        excludedQuestionIds: equipmentId
+          ? excludedQuestionsByEquipment.get(equipmentId)
+          : undefined,
+      };
+    },
+    [checklistVisibility, excludedQuestionsByEquipment],
+  );
 
   if (loading || isAuthenticated === null) {
     return (
@@ -3345,7 +3386,7 @@ export default function TechnicianOS() {
                       environmentName={environmentName}
                       onPreviewPhoto={setPreviewPhoto}
                       onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
-                      visibility={checklistVisibility}
+                      visibility={visibilityForEquipment(item.equipment_id)}
                     />
                   );
                 })}
@@ -3411,7 +3452,7 @@ export default function TechnicianOS() {
                   templateId={serviceOrder.form_template_id}
                   readOnly={isPaused}
                   onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
-                  visibility={checklistVisibility}
+                  visibility={visibilityForEquipment((serviceOrder as any)?.equipment_id ?? null)}
                 />
               </div>
             </CardContent>

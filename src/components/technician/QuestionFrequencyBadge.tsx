@@ -6,6 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 // Lógica PURA do rótulo de frequência vive num util compartilhado (reusada pelo
 // documento "Plano de Manutenção" sem arrastar React/Radix). FONTE ÚNICA.
@@ -138,7 +145,30 @@ function isCustomValue(value: QuestionFrequency): boolean {
   return false;
 }
 
-export function FrequencyEditor({ value, onApply }: { value: QuestionFrequency; onApply: (p: QuestionFrequencyPayload) => void | Promise<void> }) {
+/** Valor selecionado no Select compacto (variant="select"). */
+type SelectChoice = 'every' | '1' | '2' | '3' | '6' | '12' | 'custom';
+
+/** Deriva a opção do Select a partir do valor salvo (round-trip). */
+function selectChoiceFromValue(value: QuestionFrequency): SelectChoice {
+  if (!value.freq_kind) return 'every';
+  if (isCustomValue(value)) return 'custom';
+  // Preset de meses conhecido.
+  const m = value.freq_months ?? 0;
+  if (m === 1 || m === 2 || m === 3 || m === 6 || m === 12) return String(m) as SelectChoice;
+  return 'custom';
+}
+
+const SELECT_OPTIONS: { value: SelectChoice; label: string }[] = [
+  { value: 'every', label: 'Toda visita' },
+  { value: '1', label: 'Mensal' },
+  { value: '2', label: 'Bimestral' },
+  { value: '3', label: 'Trimestral' },
+  { value: '6', label: 'Semestral' },
+  { value: '12', label: 'Anual' },
+  { value: 'custom', label: 'Personalizado' },
+];
+
+export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: QuestionFrequency; onApply: (p: QuestionFrequencyPayload) => void | Promise<void>; variant?: 'list' | 'select' }) {
   // Estado local: começa refletindo o valor atual (round-trip months/days/visits).
   const [custom, setCustom] = useState(isCustomValue(value));
   const [mode, setMode] = useState<EditorMode>(initialMode(value));
@@ -215,6 +245,109 @@ export function FrequencyEditor({ value, onApply }: { value: QuestionFrequency; 
 
   const currentIsPreset = (m: number) =>
     value.freq_kind === 'time' && (value.freq_days ?? 0) <= 0 && value.freq_months === m;
+
+  // ── Variante compacta (Select) — usada no modal de criar/editar pergunta.
+  // Recolhida numa linha; os controles extras (a cada X / começa vencida) só
+  // aparecem quando "Personalizado" está escolhido. Reusa o MESMO payload.
+  if (variant === 'select') {
+    const choice = selectChoiceFromValue(value);
+
+    const handleSelect = (next: SelectChoice) => {
+      if (next === 'every') {
+        applyEveryVisit();
+        return;
+      }
+      if (next === 'custom') {
+        // Entra no modo personalizado sem persistir ainda — o usuário ajusta o
+        // intervalo e o "Começa vencida". Mantém o valor atual se já era custom.
+        setCustom(true);
+        return;
+      }
+      // Preset de meses.
+      setCustom(false);
+      applyPreset(parseInt(next, 10));
+    };
+
+    const showCustom = choice === 'custom';
+
+    return (
+      <div className="text-sm space-y-3">
+        <Select value={choice} onValueChange={(v) => handleSelect(v as SelectChoice)}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Toda visita" />
+          </SelectTrigger>
+          <SelectContent>
+            {SELECT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {showCustom && (
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+            {/* Seletor ternário (Meses / Dias / Visitas). */}
+            <div className="grid grid-cols-3 gap-1 rounded-lg border bg-muted/40 p-1">
+              {MODE_OPTIONS.map((opt) => {
+                const active = mode === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setMode(opt.value)}
+                    className={cn(
+                      'rounded-md py-1.5 text-xs font-medium transition-colors',
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-muted/60',
+                    )}
+                    aria-pressed={active}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {mode === 'months' && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+                <NumericInput value={months} onValueChange={setMonths} placeholder="3" className="h-9 text-center" inputMode="numeric" />
+                <span className="text-xs text-muted-foreground shrink-0">meses</span>
+              </div>
+            )}
+            {mode === 'days' && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+                <NumericInput value={days} onValueChange={setDays} placeholder="17" className="h-9 text-center" inputMode="numeric" />
+                <span className="text-xs text-muted-foreground shrink-0">dias</span>
+              </div>
+            )}
+            {mode === 'visits' && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+                <NumericInput value={visits} onValueChange={setVisits} placeholder="2" className="h-9 text-center" inputMode="numeric" />
+                <span className="text-xs text-muted-foreground shrink-0">visitas</span>
+              </div>
+            )}
+
+            {/* Começa vencida — só com frequência ≠ toda visita. No modo
+                personalizado a frequência sempre será definida ao Aplicar. */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <Label className="text-sm cursor-pointer">Começa vencida</Label>
+                <p className="text-[11px] text-muted-foreground leading-snug">Aparece já na 1ª visita aplicável.</p>
+              </div>
+              <Switch checked={dueNow} onCheckedChange={setDueNow} aria-label="Começa vencida" />
+            </div>
+
+            <Button type="button" className="w-full h-9" onClick={applyCustom} disabled={applyDisabled}>
+              <Check className="mr-1.5 h-4 w-4" /> Aplicar
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="text-sm">

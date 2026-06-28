@@ -43,6 +43,15 @@ export interface ContractVisibilityContext {
   visitDates?: (string | null | undefined)[] | null;
   /** scheduled_date desta OS (yyyy-mm-dd). */
   scheduledDate?: string | null;
+  /**
+   * IDs de perguntas EXCLUÍDAS da PRIMEIRA OS DESTE equipamento (flag
+   * `contract_items.first_os_excluded_questions`, fatia F3). É a âncora por
+   * equipamento (Opção A do CEO): incluída → 'due_now', excluída → 'contract_start',
+   * sobrescrevendo o `start_kind` do template. Só afeta perguntas COM frequência.
+   * Ausente = sem flag = comportamento atual. Como é POR EQUIPAMENTO, o pai
+   * (TechnicianOS) monta um contexto específico por acordeão de equipamento.
+   */
+  excludedQuestionIds?: Set<string>;
 }
 
 interface DynamicFormQuestionsProps {
@@ -110,6 +119,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       scheduledDate: visibility.scheduledDate,
       questions,
       answeredQuestionIds,
+      excludedQuestionIds: visibility.excludedQuestionIds,
     });
     // Une as que já apareceram nesta sessão (nunca remove durante o uso).
     for (const id of everShownRef.current) visibleIds.add(id);

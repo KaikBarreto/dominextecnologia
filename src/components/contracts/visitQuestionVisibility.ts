@@ -51,6 +51,20 @@ export interface ComputeVisibleArgs {
   questions: VisibilityQuestion[];
   /** Perguntas que já têm resposta — nunca escondidas. */
   answeredQuestionIds?: Set<string>;
+  /**
+   * IDs de perguntas EXCLUÍDAS da PRIMEIRA OS deste equipamento (vem do flag
+   * `contract_items.first_os_excluded_questions`, fatia F3 — "checklists por
+   * equipamento + primeira OS"). É a ÂNCORA por equipamento (Opção A do CEO),
+   * sobrescrevendo o `start_kind` do template:
+   *   • pergunta INCLUÍDA (id NÃO está no set)  → âncora 'due_now'
+   *     (entra na 1ª visita e conta a frequência a partir dali);
+   *   • pergunta EXCLUÍDA (id está no set)       → âncora 'contract_start'
+   *     (não entra na 1ª OS; aparece só na 1ª vez que a frequência vence).
+   * Só afeta perguntas COM frequência — perguntas "toda visita" (sem freq.)
+   * aparecem sempre, não há o que ancorar. Ausente/undefined = sem flag =
+   * comportamento atual (âncora pelo `start_kind` do template).
+   */
+  excludedQuestionIds?: Set<string>;
 }
 
 /** 'YYYY-MM-DD' de uma string de data (ISO ou data pura), em horário local. */
@@ -76,13 +90,31 @@ function hasFrequency(q: VisibilityQuestion): boolean {
   return q.freq_kind === 'time' || q.freq_kind === 'visits';
 }
 
-/** Mapeia uma pergunta com frequência pra ActivitySpec do motor. */
-function toActivitySpec(q: VisibilityQuestion): ActivitySpec {
+/**
+ * Mapeia uma pergunta com frequência pra ActivitySpec do motor.
+ *
+ * Quando `excludedQuestionIds` é fornecido (OS de contrato com o flag por
+ * equipamento — fatia F3), a ÂNCORA vem do flag e SOBRESCREVE o `start_kind` do
+ * template (Opção A do CEO):
+ *   • pergunta INCLUÍDA (não está no set)  → 'due_now'  (1ª visita ancora a freq.)
+ *   • pergunta EXCLUÍDA (está no set)      → 'contract_start' (só na 1ª vez que vence)
+ * Sem `excludedQuestionIds` → âncora pelo `start_kind` do template (atual).
+ */
+function toActivitySpec(
+  q: VisibilityQuestion,
+  excludedQuestionIds?: Set<string>,
+): ActivitySpec {
   const freqKind = q.freq_kind === 'visits' ? 'visits' : 'time';
-  const startKind: ActivitySpec['startKind'] =
-    q.start_kind === 'due_now' || q.start_kind === 'visit_n'
-      ? q.start_kind
-      : 'contract_start';
+  let startKind: ActivitySpec['startKind'];
+  if (excludedQuestionIds) {
+    // Âncora por equipamento (flag F3) sobrescreve o template.
+    startKind = excludedQuestionIds.has(q.id) ? 'contract_start' : 'due_now';
+  } else {
+    startKind =
+      q.start_kind === 'due_now' || q.start_kind === 'visit_n'
+        ? q.start_kind
+        : 'contract_start';
+  }
   return {
     id: q.id,
     freqKind,
@@ -106,7 +138,7 @@ function toActivitySpec(q: VisibilityQuestion): ActivitySpec {
  * vazio, ou a data da OS não casa com nenhuma visita real.
  */
 export function computeVisibleQuestionIds(args: ComputeVisibleArgs): Set<string> {
-  const { visitDates, scheduledDate, questions, answeredQuestionIds } = args;
+  const { visitDates, scheduledDate, questions, answeredQuestionIds, excludedQuestionIds } = args;
 
   // Sem perguntas → conjunto vazio (nada a mostrar, nada a esconder).
   if (!questions || questions.length === 0) return new Set();
@@ -151,7 +183,7 @@ export function computeVisibleQuestionIds(args: ComputeVisibleArgs): Set<string>
   // (2) Perguntas com frequência → motor decide o que cai nesta visita.
   if (freqQuestions.length > 0) {
     const visits: VisitInput[] = dayKeys.map((k) => ({ date: k }));
-    const specs = freqQuestions.map(toActivitySpec);
+    const specs = freqQuestions.map((q) => toActivitySpec(q, excludedQuestionIds));
     const schedule = scheduleActivitiesOntoVisits(visits, specs);
     const dueHere = schedule.get(visitIndex) ?? [];
     for (const id of dueHere) visible.add(id);

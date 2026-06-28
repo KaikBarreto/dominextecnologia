@@ -47,6 +47,8 @@ import {
   buildPmocItemsWithScope,
 } from '@/components/contracts/pmocMachineRoutine';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
+import { CommonChecklistEditor, type ChecklistTemplateOption } from '@/components/contracts/CommonChecklistEditor';
+import { isEveryVisit } from '@/components/contracts/questionFrequency';
 import { AreaCalculatorModal } from '@/components/contracts/AreaCalculatorModal';
 import { CargaTermicaCalculatorModal } from '@/components/contracts/CargaTermicaCalculatorModal';
 import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
@@ -336,6 +338,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Expansão da config POR MÁQUINA (PMOC). Set de equipment_id expandidos. Fechado
   // por padrão; SEPARADO da membership (abrir/fechar NUNCA remove o equipamento).
   const [expandedEqIds, setExpandedEqIds] = useState<Set<string>>(new Set());
+  // Contrato COMUM (não-PMOC): checklist por equipamento + exclusões da 1ª OS.
+  // Keyed por equipment_id (espelha machineConfigs do PMOC). Cada entrada guarda o
+  // form_template_id escolhido e os ids de perguntas que NÃO entram na 1ª OS
+  // (first_os_excluded_questions). Itens manuais (sem equipment_id) não têm
+  // checklist por equipamento. Só usado em contrato comum.
+  const [commonChecklists, setCommonChecklists] = useState<Record<string, { formTemplateId: string | null; excluded: string[] }>>({});
+  // Em edição, marca que os checklists por equipamento já foram carregados do
+  // banco (evita sobrescrever com vazio antes do contrato chegar).
+  const [commonChecklistsLoaded, setCommonChecklistsLoaded] = useState(false);
   // Picker de equipamentos do ambiente (multi-seleção + busca). envKey = alvo
   // (null = fechado). LOOSE_ENV_KEY = adicionar ao grupo "Sem ambiente".
   const [memberPickerEnvKey, setMemberPickerEnvKey] = useState<string | null>(null);
@@ -463,6 +474,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     // Config por máquina (Fase 3). Guarda a config inteira: escopo, fase, flag
     // de personalização e a listagem de atividades reidratável.
     machineConfigs: Record<string, MachineConfig>;
+    // Contrato comum: checklist por equipamento + exclusões da 1ª OS.
+    commonChecklists: Record<string, { formTemplateId: string | null; excluded: string[] }>;
   };
   const draft = useFormDraft<ContractDraft>({
     key: 'contract-form',
@@ -486,10 +499,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step,
         unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento,
         unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
-        environments, looseItems, machineConfigs,
+        environments, looseItems, machineConfigs, commonChecklists,
       });
     }
-  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, open, isEditing, draft.showResumePrompt]);
+  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, commonChecklists, open, isEditing, draft.showResumePrompt]);
 
   const applyContractDraft = (d: ContractDraft) => {
     setName(d.name || '');
@@ -541,6 +554,11 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       : {};
     setMachineConfigs(restoredConfigs);
     setMachineConfigsLoaded(true);
+    // Checklist por equipamento do contrato comum (rascunho).
+    setCommonChecklists(
+      d.commonChecklists && typeof d.commonChecklists === 'object' ? d.commonChecklists : {},
+    );
+    setCommonChecklistsLoaded(true);
     // Restaura a etapa onde parou (clampa pro range válido — depende de isPmoc).
     const stepsLen = (d.isPmoc ? STEPS_PMOC : STEPS_COMMON).length;
     setStep(Math.min(Math.max(d.step ?? 0, 0), stepsLen - 1));
@@ -554,6 +572,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setShowCatalogPicker(false); setPickerSelection(new Set()); setPickerTemplateSelection(new Set()); setPmocDefaultSeeded(false);
       setPmocStandardOn(true); setPmocStandardScope('ac'); setShowAdvancedFrequency(false);
       setMachineConfigs({}); setMachineConfigsLoaded(false); setPickerMachineEqId(null);
+      setCommonChecklists({}); setCommonChecklistsLoaded(false);
       setSelectedEnvKey(null); setExpandedEqIds(new Set());
       setMemberPickerEnvKey(null); setMemberPickerSearch(''); setMemberPickerSelection(new Set());
       setRemovingEnvKey(null); setRemovingMember(null); setMovingLooseIdx(null);
@@ -611,6 +630,22 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               form_template_id: i.form_template_id || undefined,
             }))
         );
+      }
+      // Contrato comum: reconstrói o checklist por equipamento (form_template_id +
+      // exclusões da 1ª OS) de TODO contract_item com equipment_id (em ambiente ou
+      // solto). Roda uma vez por abertura (guard) pra não sobrescrever edição em
+      // andamento quando o refetch troca a referência de editContract.
+      if (!commonChecklistsLoaded) {
+        const map: Record<string, { formTemplateId: string | null; excluded: string[] }> = {};
+        for (const i of (editContract.contract_items || []) as any[]) {
+          if (!i.equipment_id) continue;
+          const ex = Array.isArray(i.first_os_excluded_questions)
+            ? (i.first_os_excluded_questions as any[]).filter((x) => typeof x === 'string')
+            : [];
+          map[i.equipment_id] = { formTemplateId: i.form_template_id || null, excluded: ex };
+        }
+        setCommonChecklists(map);
+        if (editContract.id) setCommonChecklistsLoaded(true);
       }
       // PMOC — preserva estado existente quando entra em edição.
       const editIsPmoc = !!editContract.is_pmoc;
@@ -679,6 +714,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setPmocStandardOn(true); setPmocStandardScope('ac');
       setLooseItems([]);
       setEnvironments([]);
+      setCommonChecklists({}); setCommonChecklistsLoaded(false);
       // Default: contrato comum.
       setIsPmoc(false);
       setResponsibleTechnicianId('');
@@ -1177,6 +1213,49 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     });
   }, [open, isPmoc, environments, catalogLoading, catalogActivities.length, isEditing, machineConfigsLoaded]);
 
+  // ---- Checklist por equipamento (contrato COMUM) ---------------------------
+  // Conjunto autoritativo de equipamentos do comum = os que estão em algum
+  // ambiente OU soltos (com equipment_id). Poda as entradas de commonChecklists
+  // de equipamentos que saíram do contrato (não acumula lixo). Não cria entrada
+  // default: ausência = "sem checklist" (acesso lazy via getCommonChecklist).
+  useEffect(() => {
+    if (!open || isPmoc) return;
+    const ids = new Set<string>();
+    for (const env of environments) for (const id of env.equipment_ids) ids.add(id);
+    for (const it of looseItems) if (it.equipment_id) ids.add(it.equipment_id);
+    setCommonChecklists(prev => {
+      let changed = false;
+      const next: Record<string, { formTemplateId: string | null; excluded: string[] }> = {};
+      for (const [id, cfg] of Object.entries(prev)) {
+        if (ids.has(id)) next[id] = cfg;
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [open, isPmoc, environments, looseItems]);
+
+  // Leitura segura: equipamento sem entrada → checklist nenhum, sem exclusões.
+  const getCommonChecklist = (eqId: string) =>
+    commonChecklists[eqId] ?? { formTemplateId: null, excluded: [] };
+
+  // Troca o checklist do equipamento. Ao mudar de template, zera as exclusões
+  // (os ids antigos não pertencem ao novo checklist).
+  const setCommonChecklistTemplate = (eqId: string, templateId: string | null) => {
+    setCommonChecklists(prev => {
+      const cur = prev[eqId];
+      if (cur?.formTemplateId === templateId) return prev;
+      return { ...prev, [eqId]: { formTemplateId: templateId, excluded: [] } };
+    });
+  };
+
+  // Atualiza as exclusões da 1ª OS daquele equipamento.
+  const setCommonChecklistExcluded = (eqId: string, excluded: string[]) => {
+    setCommonChecklists(prev => ({
+      ...prev,
+      [eqId]: { formTemplateId: prev[eqId]?.formTemplateId ?? null, excluded },
+    }));
+  };
+
   // Troca o escopo de uma máquina: recarrega a listagem da norma do novo escopo
   // (a menos que o gestor já tenha personalizado — aí preserva e só filtra o que
   // ainda cabe no escopo, mantendo a personalização). Para simplicidade e
@@ -1223,6 +1302,40 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     return map;
   }, [customTemplateOptions]);
 
+  // Checklists personalizados COM perguntas (frequência inclusa) pro editor do
+  // contrato comum. Mesma fonte (templates já trazem `questions`); só normaliza o
+  // shape mínimo que o CommonChecklistEditor consome.
+  const commonChecklistTemplates = useMemo<ChecklistTemplateOption[]>(
+    () =>
+      (templates ?? [])
+        .filter((t: any) => t.is_active && !t.is_pmoc_default)
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          questions: ((t.questions ?? []) as any[]).map((q) => ({
+            id: q.id,
+            question: q.question,
+            position: q.position ?? null,
+            freq_kind: q.freq_kind ?? null,
+            freq_months: q.freq_months ?? null,
+            freq_days: q.freq_days ?? null,
+            freq_visits: q.freq_visits ?? null,
+            start_kind: q.start_kind ?? null,
+            start_visit: q.start_visit ?? null,
+          })),
+        })),
+    [templates],
+  );
+
+  // Mapa de perguntas-toda-visita por template — usado pra NUNCA gravar uma
+  // pergunta obrigatória na lista de exclusões e pra sanitizar exclusões que não
+  // pertencem mais ao template escolhido.
+  const templateQuestionsById = useMemo(() => {
+    const map = new Map<string, ChecklistTemplateOption>();
+    for (const t of commonChecklistTemplates) map.set(t.id, t);
+    return map;
+  }, [commonChecklistTemplates]);
+
   // Plano completo (por máquina + local) que vai pro hook em PMOC, montado pela
   // fonte ÚNICA compartilhada (mesma usada pela aba Ambientes). Cada atividade de
   // máquina carrega `equipment_ref`; as locais ficam sem máquina + per_equip false.
@@ -1247,33 +1360,61 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // (que monta por máquina) e, no comum, SÓ pra preservar/editar um plano legado.
   const showCommonPlanBuilder = !isPmoc && hasLegacyCommonPlan;
 
+  // Campos de checklist por equipamento do contrato comum (form_template_id +
+  // first_os_excluded_questions). Sanitiza as exclusões: só ids que (a) pertencem
+  // ao template escolhido e (b) NÃO são perguntas "toda visita" (que sempre entram
+  // na 1ª OS). Equipamento sem entrada → sem checklist e sem exclusões.
+  const commonChecklistPayload = (eqId: string | null | undefined) => {
+    if (!eqId) return { form_template_id: null as string | null, first_os_excluded_questions: [] as string[] };
+    const cfg = commonChecklists[eqId];
+    const tplId = cfg?.formTemplateId ?? null;
+    if (!tplId) return { form_template_id: null as string | null, first_os_excluded_questions: [] as string[] };
+    const tpl = templateQuestionsById.get(tplId);
+    const validIds = new Set<string>();
+    for (const q of tpl?.questions ?? []) {
+      if (!isEveryVisit(q)) validIds.add(q.id); // toda visita nunca exclui
+    }
+    const excluded = (cfg?.excluded ?? []).filter((id) => validIds.has(id));
+    return { form_template_id: tplId, first_os_excluded_questions: excluded };
+  };
+
   // Itens com escopo/fase por máquina (Fase 3). PMOC anexa pmoc_scope +
   // pmoc_start_visit de cada máquina (via builder compartilhado); comum manda só
-  // o básico.
+  // o básico + o checklist por equipamento (form_template_id + exclusões da 1ª OS).
   const effectiveItemsWithScope = useMemo(() => {
     if (!isPmoc) {
       // Comum: itens dos ambientes (o hook religa environment_id pelos
       // equipment_ids dos ambientes) + itens SOLTOS (environment_id NULL). Soltos
       // que foram movidos pra um ambiente saem daqui (evita chave duplicada).
       const inEnv = new Set(environments.flatMap(e => e.equipment_ids));
-      const envItems = derivedItems.map((i) => ({
-        equipment_id: i.equipment_id || null,
-        item_name: i.item_name,
-        item_description: i.item_description || null,
-        form_template_id: null as string | null,
-      }));
+      const envItems = derivedItems.map((i) => {
+        const ck = commonChecklistPayload(i.equipment_id);
+        return {
+          equipment_id: i.equipment_id || null,
+          item_name: i.item_name,
+          item_description: i.item_description || null,
+          form_template_id: ck.form_template_id,
+          first_os_excluded_questions: ck.first_os_excluded_questions,
+        };
+      });
       const looseItemsPayload = looseItems
         .filter(it => !it.equipment_id || !inEnv.has(it.equipment_id))
-        .map((it) => ({
-          equipment_id: it.equipment_id || null,
-          item_name: it.item_name,
-          item_description: it.item_description || null,
-          form_template_id: it.form_template_id || null,
-        }));
+        .map((it) => {
+          const ck = commonChecklistPayload(it.equipment_id);
+          return {
+            equipment_id: it.equipment_id || null,
+            item_name: it.item_name,
+            item_description: it.item_description || null,
+            // Item COM equipamento usa o checklist por equipamento; item manual
+            // mantém o form_template_id do snapshot (não tem editor por equipamento).
+            form_template_id: it.equipment_id ? ck.form_template_id : (it.form_template_id || null),
+            first_os_excluded_questions: ck.first_os_excluded_questions,
+          };
+        });
       return [...envItems, ...looseItemsPayload];
     }
     return buildPmocItemsWithScope({ items: pmocDerivedItems, machineConfigs });
-  }, [isPmoc, derivedItems, environments, looseItems, pmocDerivedItems, machineConfigs]);
+  }, [isPmoc, derivedItems, environments, looseItems, pmocDerivedItems, machineConfigs, commonChecklists, templateQuestionsById]);
 
   // Atividades do plano efetivo com frequência válida pra cronograma (exclui
   // eventuais). PMOC usa o plano POR MÁQUINA; comum usa o planActivities.
@@ -1454,7 +1595,28 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           .map((it) => itemKey(it)).sort().join('§');
         const currentItemsSig = effectiveItems.map((it: any) => itemKey(it)).sort().join('§');
         const itemsChanged = initialItemsSig !== currentItemsSig;
-        const scheduleChanged = scheduleFieldsChanged || planChanged || itemsChanged;
+
+        // Contrato comum: mudar o checklist por equipamento (template ou exclusões
+        // da 1ª OS) também muda o que a 1ª OS contém → conta como mudança de
+        // cronograma. Assinatura por equipamento: form_template_id + exclusões
+        // ordenadas. Reconstruída IDÊNTICA do banco (contract_items) e do payload
+        // atual (effectiveItemsWithScope) — "salvar sem mudança" fica no-op.
+        const checklistSig = (rows: any[]) =>
+          rows
+            .filter((it) => it.equipment_id)
+            .map((it) => {
+              const ex = Array.isArray(it.first_os_excluded_questions)
+                ? [...it.first_os_excluded_questions].filter((x) => typeof x === 'string').sort()
+                : [];
+              return `eq:${it.equipment_id}|${it.form_template_id ?? ''}|${ex.join(',')}`;
+            })
+            .sort()
+            .join('§');
+        const initialChecklistSig = checklistSig((editContract.contract_items || []) as any[]);
+        const currentChecklistSig = checklistSig(effectiveItemsWithScope as any[]);
+        const checklistChanged = !isPmoc && initialChecklistSig !== currentChecklistSig;
+
+        const scheduleChanged = scheduleFieldsChanged || planChanged || itemsChanged || checklistChanged;
 
         // Quantas OSs futuras não-realizadas seriam refeitas (preview do diálogo).
         const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -2405,19 +2567,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       return (
                         <div key={eqId}>
                           <div className="flex items-center gap-2 px-3 py-2.5">
-                            {isPmoc ? (
-                              <button
-                                type="button"
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
-                                onClick={() => toggleExpanded(eqId)}
-                                aria-label={expanded ? 'Recolher configuração' : 'Expandir configuração'}
-                                aria-expanded={expanded}
-                              >
-                                <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
-                              </button>
-                            ) : (
-                              <div className="w-1" />
-                            )}
+                            <button
+                              type="button"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
+                              onClick={() => toggleExpanded(eqId)}
+                              aria-label={expanded ? 'Recolher configuração' : 'Expandir configuração'}
+                              aria-expanded={expanded}
+                            >
+                              <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
+                            </button>
                             <EquipmentAvatar
                               photoUrl={eq?.photo_url}
                               name={name}
@@ -2515,6 +2673,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               )}
                             </div>
                           )}
+
+                          {/* Contrato comum: checklist por equipamento + "Adicionar
+                              na primeira OS?" por pergunta. */}
+                          {!isPmoc && expanded && (
+                            <div className="bg-muted/30 px-3 pb-3 pt-1">
+                              <CommonChecklistEditor
+                                templates={commonChecklistTemplates}
+                                selectedTemplateId={getCommonChecklist(eqId).formTemplateId}
+                                onChangeTemplate={(tplId) => setCommonChecklistTemplate(eqId, tplId)}
+                                excluded={getCommonChecklist(eqId).excluded}
+                                onChangeExcluded={(next) => setCommonChecklistExcluded(eqId, next)}
+                              />
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -2553,45 +2725,73 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     {looseItems.map((it, looseIdx) => {
                       const eq = it.equipment_id ? equipmentById.get(it.equipment_id) : null;
                       const name = eq?.name ?? it.item_name ?? 'Equipamento';
+                      // Só item COM equipamento tem checklist por equipamento.
+                      const looseExpanded = !!it.equipment_id && expandedEqIds.has(it.equipment_id);
                       return (
-                        <div key={`${it.equipment_id ?? 'manual'}-${looseIdx}`} className="flex items-center gap-2 px-3 py-2.5">
-                          <div className="w-1" />
-                          <EquipmentAvatar
-                            photoUrl={eq?.photo_url}
-                            name={name}
-                            onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{name}</p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {[eq?.brand, eq?.model].filter(Boolean).join(' - ') || it.item_description}
-                              {eq?.location && <span className="text-muted-foreground"> • {eq.location}</span>}
-                            </p>
-                          </div>
-                          {it.equipment_id && environments.length > 0 && (
+                        <div key={`${it.equipment_id ?? 'manual'}-${looseIdx}`}>
+                          <div className="flex items-center gap-2 px-3 py-2.5">
+                            {it.equipment_id ? (
+                              <button
+                                type="button"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
+                                onClick={() => toggleExpanded(it.equipment_id!)}
+                                aria-label={looseExpanded ? 'Recolher checklist' : 'Expandir checklist'}
+                                aria-expanded={looseExpanded}
+                              >
+                                <ChevronDown className={cn('h-4 w-4 transition-transform', looseExpanded && 'rotate-180')} />
+                              </button>
+                            ) : (
+                              <div className="w-1" />
+                            )}
+                            <EquipmentAvatar
+                              photoUrl={eq?.photo_url}
+                              name={name}
+                              onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{name}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {[eq?.brand, eq?.model].filter(Boolean).join(' - ') || it.item_description}
+                                {eq?.location && <span className="text-muted-foreground"> • {eq.location}</span>}
+                              </p>
+                            </div>
+                            {it.equipment_id && environments.length > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 shrink-0 text-muted-foreground active:scale-90 transition-transform rounded-xl"
+                                title="Mover para ambiente"
+                                aria-label="Mover para ambiente"
+                                onClick={() => setMovingLooseIdx(looseIdx)}
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-9 w-9 shrink-0 text-muted-foreground active:scale-90 transition-transform rounded-xl"
-                              title="Mover para ambiente"
-                              aria-label="Mover para ambiente"
-                              onClick={() => setMovingLooseIdx(looseIdx)}
+                              className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
+                              title="Remover do contrato"
+                              aria-label="Remover do contrato"
+                              onClick={() => setRemovingMember({ mode: 'loose', looseIdx })}
                             >
-                              <ChevronRight className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
+                          </div>
+
+                          {it.equipment_id && looseExpanded && (
+                            <div className="bg-muted/30 px-3 pb-3 pt-1">
+                              <CommonChecklistEditor
+                                templates={commonChecklistTemplates}
+                                selectedTemplateId={getCommonChecklist(it.equipment_id).formTemplateId}
+                                onChangeTemplate={(tplId) => setCommonChecklistTemplate(it.equipment_id!, tplId)}
+                                excluded={getCommonChecklist(it.equipment_id).excluded}
+                                onChangeExcluded={(next) => setCommonChecklistExcluded(it.equipment_id!, next)}
+                              />
+                            </div>
                           )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
-                            title="Remover do contrato"
-                            aria-label="Remover do contrato"
-                            onClick={() => setRemovingMember({ mode: 'loose', looseIdx })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       );
                     })}
@@ -2995,6 +3195,46 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         )}
                       </Block>
                     )}
+
+                    {!isPmoc && (() => {
+                      // Resumo da regra da 1ª OS: percorre os equipamentos que têm
+                      // checklist e conta, por pergunta, quantas entram já na
+                      // primeira visita (toda-visita + marcadas) vs quantas ficam
+                      // pra quando a frequência delas vencer (desmarcadas). Só
+                      // aparece no fluxo comum e quando há ao menos um checklist.
+                      let withChecklist = 0;
+                      let firstOsCount = 0;
+                      let deferredCount = 0;
+                      for (const it of effectiveItems) {
+                        const ck = commonChecklistPayload(it.equipment_id);
+                        if (!ck.form_template_id) continue;
+                        const tpl = templateQuestionsById.get(ck.form_template_id);
+                        if (!tpl) continue;
+                        withChecklist += 1;
+                        const excluded = new Set(ck.first_os_excluded_questions);
+                        for (const q of tpl.questions ?? []) {
+                          if (excluded.has(q.id)) deferredCount += 1;
+                          else firstOsCount += 1;
+                        }
+                      }
+                      if (withChecklist === 0) return null;
+                      return (
+                        <Block title="O que entra na primeira visita">
+                          Cada pergunta do checklist pode entrar já na{' '}
+                          <strong>primeira ordem de serviço</strong> ou ficar pra{' '}
+                          depois. Perguntas marcadas para a 1ª OS (e as de{' '}
+                          <strong>toda visita</strong>) aparecem logo na primeira
+                          visita; as demais só aparecem quando a frequência delas
+                          vencer pela primeira vez.
+                          <span className="mt-1.5 block text-xs text-muted-foreground">
+                            • <strong className="text-foreground">{firstOsCount}</strong> pergunta(s) entram na 1ª visita
+                            {deferredCount > 0 && (
+                              <> • <strong className="text-foreground">{deferredCount}</strong> ficam pra quando a frequência vencer</>
+                            )}
+                          </span>
+                        </Block>
+                      );
+                    })()}
 
                     <Block title="Frequência e cronograma">
                       O plano começa em <strong>{startLabel}</strong> e cobre{' '}

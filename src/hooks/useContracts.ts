@@ -74,6 +74,9 @@ export interface ContractItem {
   item_name: string;
   item_description: string | null;
   form_template_id: string | null;
+  // Contrato comum: ids de perguntas (form_questions) que NÃO entram na 1ª OS
+  // deste equipamento. Vazio/ausente = todas entram. (Opção A — fatia 2.)
+  first_os_excluded_questions?: string[] | null;
   sort_order: number;
   equipment?: { id: string; name: string; brand: string | null; model: string | null } | null;
 }
@@ -1470,7 +1473,7 @@ export function useContracts() {
           customers (id, name, document, address, city, state),
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
-          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
+          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
           contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, photo_url, sort_order),
           service_orders (id, order_number, status, scheduled_date)
         `)
@@ -1526,7 +1529,7 @@ export function useContracts() {
       // `pmoc_start_visit` (1/3/6/12) são a rotina POR MÁQUINA (Fase 3): escopo da
       // norma + posição inicial no ciclo de 12 visitas. Defaults do banco quando
       // omitidos ('ac' / 12) — preserva o comportamento de "tudo na 1ª visita".
-      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
+      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; first_os_excluded_questions?: string[]; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
       // Ambientes climatizados (multi-ambiente PMOC). Quando definido, cada
       // ambiente vira uma linha em contract_environments e seus equipment_ids
       // recebem o environment_id correspondente em contract_items. Itens sem
@@ -1677,6 +1680,9 @@ export function useContracts() {
             item_name: item.item_name,
             item_description: item.item_description || null,
             form_template_id: item.form_template_id || null,
+            // Contrato comum: perguntas que NÃO entram na 1ª OS deste equipamento.
+            // Default do banco é [] quando omitido.
+            ...(item.first_os_excluded_questions ? { first_os_excluded_questions: item.first_os_excluded_questions } : {}),
             // Rotina por máquina (Fase 3). Só envia quando informado pela UI; senão
             // deixa o default do banco assumir (não envia chave undefined).
             ...(item.pmoc_scope ? { pmoc_scope: item.pmoc_scope } : {}),
@@ -1938,7 +1944,7 @@ export function useContracts() {
       // `pmoc_scope`/`pmoc_start_visit` (Fase 3): rotina por máquina; mesmo quando
       // o item já existe, esses campos são RE-APLICADOS (UPDATE) pra refletir
       // mudança de escopo/fase sem precisar remover/recriar o equipamento.
-      items?: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
+      items?: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; first_os_excluded_questions?: string[]; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
       // Ambientes climatizados (multi-ambiente PMOC). Quando definido, aplica
       // diff em contract_environments (insere/atualiza/remove) e seta o
       // environment_id dos contract_items pelos equipment_ids de cada ambiente.
@@ -2083,7 +2089,7 @@ export function useContracts() {
       if (items !== undefined) {
         const { data: existingItems } = await supabase
           .from('contract_items')
-          .select('id, equipment_id, item_name, item_description, pmoc_scope, pmoc_start_visit')
+          .select('id, equipment_id, item_name, item_description, form_template_id, first_os_excluded_questions, pmoc_scope, pmoc_start_visit')
           .eq('contract_id', id);
         // FIX B — item manual usa `manual:<nome>:<descrição>` (não só o nome).
         // Antes dois itens manuais homônimos (ex.: dois "Bebedouro") colapsavam
@@ -2097,9 +2103,12 @@ export function useContracts() {
             ? `eq:${it.equipment_id}`
             : `manual:${(it.item_name || '').trim().toLowerCase()}:${(it.item_description || '').trim().toLowerCase()}`;
 
-        const existingByKey = new Map<string, { id: string; pmoc_scope: string | null; pmoc_start_visit: number | null }>();
-        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; item_description: string | null; pmoc_scope: string | null; pmoc_start_visit: number | null }[]) {
-          existingByKey.set(itemKey(it), { id: it.id, pmoc_scope: it.pmoc_scope, pmoc_start_visit: it.pmoc_start_visit });
+        const existingByKey = new Map<string, { id: string; pmoc_scope: string | null; pmoc_start_visit: number | null; form_template_id: string | null; first_os_excluded_questions: string[] }>();
+        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; item_description: string | null; form_template_id: string | null; first_os_excluded_questions: any; pmoc_scope: string | null; pmoc_start_visit: number | null }[]) {
+          const ex = Array.isArray(it.first_os_excluded_questions)
+            ? (it.first_os_excluded_questions as any[]).filter((x) => typeof x === 'string')
+            : [];
+          existingByKey.set(itemKey(it), { id: it.id, pmoc_scope: it.pmoc_scope, pmoc_start_visit: it.pmoc_start_visit, form_template_id: it.form_template_id, first_os_excluded_questions: ex });
         }
         const newKeys = new Set(items.map(itemKey));
 
@@ -2125,6 +2134,7 @@ export function useContracts() {
               item_name: item.item_name,
               item_description: item.item_description || null,
               form_template_id: item.form_template_id || null,
+              ...(item.first_os_excluded_questions ? { first_os_excluded_questions: item.first_os_excluded_questions } : {}),
               ...(item.pmoc_scope ? { pmoc_scope: item.pmoc_scope } : {}),
               ...(item.pmoc_start_visit ? { pmoc_start_visit: item.pmoc_start_visit } : {}),
               sort_order: baseSort + i,
@@ -2143,10 +2153,22 @@ export function useContracts() {
           const wantStart = item.pmoc_start_visit;
           const scopeDiff = wantScope !== undefined && (existing.pmoc_scope ?? 'ac') !== wantScope;
           const startDiff = wantStart !== undefined && (existing.pmoc_start_visit ?? 12) !== wantStart;
-          if (scopeDiff || startDiff) {
+          // Contrato comum: re-aplica checklist por equipamento (form_template_id +
+          // exclusões da 1ª OS) quando a UI mandou e difere do persistido. Só age
+          // quando o campo VEIO no payload (defined) — PMOC não manda esses campos
+          // por item (omitidos = undefined), então nunca são tocados aqui.
+          const wantTpl = item.form_template_id;
+          const tplDiff = wantTpl !== undefined && (existing.form_template_id ?? null) !== (wantTpl || null);
+          const wantExcluded = item.first_os_excluded_questions;
+          const excludedDiff =
+            wantExcluded !== undefined &&
+            [...wantExcluded].sort().join(',') !== [...existing.first_os_excluded_questions].sort().join(',');
+          if (scopeDiff || startDiff || tplDiff || excludedDiff) {
             const upd: any = {};
             if (scopeDiff) upd.pmoc_scope = wantScope;
             if (startDiff) upd.pmoc_start_visit = wantStart;
+            if (tplDiff) upd.form_template_id = wantTpl || null;
+            if (excludedDiff) upd.first_os_excluded_questions = wantExcluded;
             // Defesa em profundidade (P3): filtra por contract_id além do id. (A
             // tabela contract_items NÃO tem company_id — o tenant é herdado do
             // contrato via RLS; contract_id é a fronteira correta aqui.) Permite

@@ -1484,6 +1484,7 @@ export type Database = {
           created_at: string
           environment_id: string | null
           equipment_id: string | null
+          first_os_excluded_questions: Json
           form_template_id: string | null
           id: string
           item_description: string | null
@@ -1497,6 +1498,7 @@ export type Database = {
           created_at?: string
           environment_id?: string | null
           equipment_id?: string | null
+          first_os_excluded_questions?: Json
           form_template_id?: string | null
           id?: string
           item_description?: string | null
@@ -1510,6 +1512,7 @@ export type Database = {
           created_at?: string
           environment_id?: string | null
           equipment_id?: string | null
+          first_os_excluded_questions?: Json
           form_template_id?: string | null
           id?: string
           item_description?: string | null

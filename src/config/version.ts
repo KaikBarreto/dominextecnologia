@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.11";
+export const APP_VERSION = "1.15.12";
 
-export const VERSION_NOTES = "Mais controle sobre os checklists e contratos: a frequência de cada pergunta já pode ser definida na hora de criar a pergunta, importar um checklist do catálogo agora preserva a frequência de cada item, o contrato comum voltou a aceitar cadências personalizadas (a cada X dias), e a escolha de serviços do checklist ficou um seletor com busca. Também corrigimos um erro que travava ao abrir uma ocorrência do contrato.";
+export const VERSION_NOTES = "Agora cada equipamento do contrato tem o seu checklist, e você escolhe, item por item, o que entra já na primeira visita. O que você deixar de fora só aparece quando a frequência dele vencer — e os itens de toda visita entram sempre. A tela de revisão do contrato explica exatamente o que acontece na primeira visita. A tela de criar pergunta também ficou mais clara.";
