@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { CalendarClock, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -75,7 +73,6 @@ interface QuestionFrequencyBadgeProps {
 export function QuestionFrequencyBadge({ value, onChange, disabled, className }: QuestionFrequencyBadgeProps) {
   const [open, setOpen] = useState(false);
   const everyVisit = isEveryVisit(value);
-  const dueNow = value.start_kind === 'due_now';
   const label = frequencyLabel(value);
 
   return (
@@ -98,7 +95,6 @@ export function QuestionFrequencyBadge({ value, onChange, disabled, className }:
           >
             <CalendarClock className="h-3 w-3" />
             <span className="whitespace-nowrap">{label}</span>
-            {!everyVisit && dueNow && <span className="opacity-80">· vencida</span>}
           </Badge>
         </button>
       </PopoverTrigger>
@@ -179,17 +175,17 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
     value.freq_kind === 'time' && (value.freq_days ?? 0) > 0 ? String(value.freq_days) : '',
   );
   const [visits, setVisits] = useState<string>(value.freq_kind === 'visits' && value.freq_visits ? String(value.freq_visits) : '2');
-  const [dueNow, setDueNow] = useState(value.start_kind === 'due_now');
 
-  const everyVisitNow = isEveryVisit(value);
-
+  // start_kind/start_visit são SEMPRE null aqui: a âncora da 1ª OS é decidida
+  // pelo CONTRATO (flag "Adicionar na 1ª OS?" por equipamento), que sobrescreve
+  // no render. O editor de pergunta só configura o INTERVALO.
   const applyPreset = (m: number) => {
     onApply({
       freq_kind: 'time',
       freq_months: m,
       freq_days: null,
       freq_visits: null,
-      start_kind: dueNow ? 'due_now' : 'contract_start',
+      start_kind: null,
       start_visit: null,
     });
   };
@@ -209,7 +205,7 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
         freq_months: null,
         freq_days: null,
         freq_visits: n,
-        start_kind: dueNow ? 'due_now' : 'contract_start',
+        start_kind: null,
         start_visit: null,
       });
     } else if (mode === 'days') {
@@ -220,7 +216,7 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
         freq_months: null,
         freq_days: d,
         freq_visits: null,
-        start_kind: dueNow ? 'due_now' : 'contract_start',
+        start_kind: null,
         start_visit: null,
       });
     } else {
@@ -231,7 +227,7 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
         freq_months: m,
         freq_days: null,
         freq_visits: null,
-        start_kind: dueNow ? 'due_now' : 'contract_start',
+        start_kind: null,
         start_visit: null,
       });
     }
@@ -247,8 +243,8 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
     value.freq_kind === 'time' && (value.freq_days ?? 0) <= 0 && value.freq_months === m;
 
   // ── Variante compacta (Select) — usada no modal de criar/editar pergunta.
-  // Recolhida numa linha; os controles extras (a cada X / começa vencida) só
-  // aparecem quando "Personalizado" está escolhido. Reusa o MESMO payload.
+  // Recolhida numa linha; o controle extra (a cada X) só aparece quando
+  // "Personalizado" está escolhido. Reusa o MESMO payload.
   if (variant === 'select') {
     const choice = selectChoiceFromValue(value);
 
@@ -261,8 +257,8 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
       }
       if (next === 'custom') {
         // Entra no modo personalizado sem persistir ainda — o usuário ajusta o
-        // intervalo e o "Começa vencida". O override local `custom` abre o bloco
-        // mesmo que o valor salvo ainda seja um preset/toda visita.
+        // intervalo. O override local `custom` abre o bloco mesmo que o valor
+        // salvo ainda seja um preset/toda visita.
         setCustom(true);
         return;
       }
@@ -276,9 +272,6 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
     // override que manda no que o Select mostra e em abrir o bloco custom.
     const showCustom = custom || choice === 'custom';
     const selectValue: SelectChoice = custom ? 'custom' : choice;
-    // "Começa vencida" é acessível sempre que houver frequência (preset OU custom),
-    // não só no Personalizado. Em "Toda visita" não faz sentido.
-    const showDueNow = showCustom || choice !== 'every';
 
     return (
       <div className="text-sm space-y-3">
@@ -343,39 +336,6 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
             <Button type="button" className="w-full h-9" onClick={applyCustom} disabled={applyDisabled}>
               <Check className="mr-1.5 h-4 w-4" /> Aplicar
             </Button>
-          </div>
-        )}
-
-        {/* Começa vencida — acessível com QUALQUER frequência ≠ "Toda visita"
-            (preset ou personalizado), não só no bloco custom. Em "Toda visita"
-            fica oculto (não há "1ª visita aplicável" diferente). */}
-        {showDueNow && (
-          <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/20 p-3">
-            <div className="min-w-0">
-              <Label className="text-sm cursor-pointer">Começa vencida</Label>
-              <p className="text-[11px] text-muted-foreground leading-snug">Aparece já na 1ª visita aplicável.</p>
-            </div>
-            <Switch
-              checked={dueNow}
-              onCheckedChange={(checked) => {
-                setDueNow(checked);
-                // No modo personalizado a frequência só é definida ao Aplicar
-                // (applyCustom já lê `dueNow`) → aqui só guarda o state.
-                // Num PRESET já persistido, persiste a mudança na hora mantendo
-                // a frequência atual (payload completo de 6 campos).
-                if (!showCustom && value.freq_kind) {
-                  onApply({
-                    freq_kind: value.freq_kind,
-                    freq_months: value.freq_kind === 'time' ? value.freq_months ?? null : null,
-                    freq_days: value.freq_kind === 'time' ? value.freq_days ?? null : null,
-                    freq_visits: value.freq_kind === 'visits' ? value.freq_visits ?? null : null,
-                    start_kind: checked ? 'due_now' : 'contract_start',
-                    start_visit: null,
-                  });
-                }
-              }}
-              aria-label="Começa vencida"
-            />
           </div>
         )}
       </div>
@@ -459,36 +419,6 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
           <Button type="button" className="w-full h-9" onClick={applyCustom} disabled={applyDisabled}>
             <Check className="mr-1.5 h-4 w-4" /> Aplicar
           </Button>
-        </div>
-      )}
-
-      {/* Começa vencida — só faz sentido com frequência definida. Em "Toda
-          visita" fica oculto (não há "1ª visita aplicável" diferente). */}
-      {!everyVisitNow && (
-        <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-t">
-          <div className="min-w-0">
-            <Label className="text-sm cursor-pointer">Começa vencida</Label>
-            <p className="text-[11px] text-muted-foreground leading-snug">Aparece já na 1ª visita aplicável.</p>
-          </div>
-          <Switch
-            checked={dueNow}
-            onCheckedChange={(checked) => {
-              setDueNow(checked);
-              // Já há frequência configurada → persiste a mudança na hora,
-              // mantendo o payload COMPLETO (6 campos) e o intervalo atual.
-              if (value.freq_kind) {
-                onApply({
-                  freq_kind: value.freq_kind,
-                  freq_months: value.freq_kind === 'time' ? value.freq_months ?? null : null,
-                  freq_days: value.freq_kind === 'time' ? value.freq_days ?? null : null,
-                  freq_visits: value.freq_kind === 'visits' ? value.freq_visits ?? null : null,
-                  start_kind: checked ? 'due_now' : 'contract_start',
-                  start_visit: null,
-                });
-              }
-            }}
-            aria-label="Começa vencida"
-          />
         </div>
       )}
     </div>

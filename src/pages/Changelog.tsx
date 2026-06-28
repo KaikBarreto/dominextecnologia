@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.25',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Frequência da pergunta mais simples de configurar',
+        description: 'Tiramos o controle "começa vencida" de dentro de cada pergunta do checklist. Quando uma pergunta entra já na primeira ordem de serviço do contrato passa a ser definido num lugar só: na opção "aparece na primeira OS", por equipamento, dentro do contrato. Assim você não precisa mais ajustar a mesma coisa em dois lugares diferentes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.24',
     date: '28 de junho de 2026',
     type: 'patch',

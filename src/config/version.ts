@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.24";
+export const APP_VERSION = "1.15.25";
 
-export const VERSION_NOTES = "Mais clareza no PMOC com cadência personalizada: quando a cadência não é mensal, o campo 'começa na visita' por máquina deixa de aparecer (quem manda é a frequência de cada pergunta e o 'aparece na 1ª OS'), e a Planilha da norma ganha um aviso explicando que a matriz mensal é a referência da lei, enquanto o cronograma real segue a cadência do contrato. Também deixamos mais claros os avisos ao ativar ou desativar o PMOC em um contrato.";
+export const VERSION_NOTES = "Ajuste de frequência da pergunta mais simples: o controle 'começa vencida' deixou de aparecer dentro de cada pergunta do checklist. Essa decisão (a pergunta entra já na primeira visita ou não) agora é feita num lugar só — no contrato, pela opção 'aparece na primeira OS' por equipamento — evitando configurar a mesma coisa em dois cantos.";
