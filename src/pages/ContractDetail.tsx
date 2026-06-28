@@ -30,6 +30,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { ContractEnvironmentsTab } from '@/components/contracts/ContractEnvironmentsTab';
 import { ContractMaintenancePlanDocument } from '@/components/contracts/ContractMaintenancePlanDocument';
+import { ContractVisitsReport } from '@/components/contracts/ContractVisitsReport';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
 import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
@@ -116,6 +117,9 @@ export default function ContractDetail() {
   // Documento "Plano de Manutenção" (Fase C) — overlay de impressão. Só contrato
   // comum (PMOC tem a aba Documentos própria). Abre/fecha por estado local.
   const [showMaintenancePlan, setShowMaintenancePlan] = useState(false);
+  // Documento "Relatório de Visitas" (retrospectivo) — overlay de impressão.
+  // Só contrato comum. Abre/fecha por estado local.
+  const [showVisitsReport, setShowVisitsReport] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   // Quantos meses estender no clique de "Renovar / Estender" (default 12).
@@ -945,6 +949,13 @@ export default function ContractDetail() {
                   <Printer className="mr-2 h-4 w-4" /> Plano de Manutenção
                 </Button>
               )}
+              {/* Documento "Relatório de Visitas" (retrospectivo — comprovante das
+                  manutenções do período). Só contrato comum; PMOC usa o Dossiê. */}
+              {!isPmoc && (
+                <Button variant="outline" className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowVisitsReport(true)}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" /> Relatório de Visitas
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -1635,6 +1646,14 @@ export default function ContractDetail() {
         <ContractMaintenancePlanDocument
           contract={contract}
           onClose={() => setShowMaintenancePlan(false)}
+        />
+      )}
+
+      {/* Documento "Relatório de Visitas" — overlay de impressão (contrato comum). */}
+      {showVisitsReport && contract && (
+        <ContractVisitsReport
+          contract={contract}
+          onClose={() => setShowVisitsReport(false)}
         />
       )}
     </div>

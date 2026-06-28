@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.16";
+export const APP_VERSION = "1.15.17";
 
-export const VERSION_NOTES = "Os contratos comuns ficaram mais completos, no nível do PMOC: na visita, o técnico vê a orientação de cada item, o progresso (X de Y respondidas), a frequência de cada pergunta e pode marcar de uma vez os itens de conformidade restantes ao finalizar. Os checklists de cada equipamento agora também podem ser editados direto na tela do contrato. No relatório, os checklists ficam agrupados por equipamento e as medições mostram a faixa esperada. E gerar ordens de serviço de períodos anteriores passou a respeitar o plano e os checklists certos.";
+export const VERSION_NOTES = "Todo contrato agora gera um Relatório de Visitas: um documento pronto pra imprimir ou salvar em PDF que consolida as visitas do período — quantas foram concluídas, datas, técnico responsável, equipamentos atendidos e o resumo de conformidade de cada visita. É o comprovante de manutenção do contrato, num só lugar.";

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.17',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de Visitas do contrato',
+        description: 'Agora todo contrato gera um Relatório de Visitas, pronto para imprimir ou salvar em PDF. Ele consolida tudo o que aconteceu no período: total de visitas e quantas foram concluídas, a porcentagem de conclusão, e visita por visita a data, o técnico responsável, os equipamentos atendidos e o resumo de conformidade (itens conformes, não conformes e respondidos). É o comprovante de manutenção do contrato reunido num único documento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.15.16',
     date: '28 de junho de 2026',
     type: 'patch',
