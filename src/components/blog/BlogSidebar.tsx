@@ -33,7 +33,7 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
   return (
     <aside className="space-y-6">
       {/* CTA Card */}
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-primary/20 dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
+      <div className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-primary/25 dark:bg-[hsl(0,0%,8%)] dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
         <span className="mb-3 inline-flex items-center rounded-full bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
           Pra equipes de campo
         </span>

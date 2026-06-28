@@ -372,7 +372,7 @@ export default function Blog() {
               </section>
 
               {/* CTA inline (mobile, onde a sidebar fica embaixo) */}
-              <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center lg:hidden dark:border-primary/20 dark:bg-primary/[0.06]">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center lg:hidden dark:border-primary/25 dark:bg-[hsl(0,0%,8%)] dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
                 <h3 className="mb-2 text-lg font-bold text-neutral-900 dark:text-white">
                   Tire sua operação do papel
                 </h3>

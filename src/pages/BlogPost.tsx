@@ -476,7 +476,7 @@ export default function BlogPost() {
               </div>
 
               {/* CTA final */}
-              <div className="mt-12 rounded-2xl border border-neutral-200 bg-white p-8 text-center dark:border-primary/20 dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
+              <div className="mt-12 rounded-2xl border border-neutral-200 bg-white p-8 text-center dark:border-primary/25 dark:bg-[hsl(0,0%,8%)] dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
                 <h2 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-white">
                   Pronto pra tirar a operação do papel?
                 </h2>
