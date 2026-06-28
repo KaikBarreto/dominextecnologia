@@ -25,7 +25,7 @@
 // leitura, filtrando status=eq.published. Nenhum dado sensível.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SITE_URL = 'https://dominex.app';
+const SITE_URL = 'https://www.dominex.app';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;

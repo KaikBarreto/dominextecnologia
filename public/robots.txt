@@ -63,4 +63,5 @@ Disallow: /mapa
 Disallow: /questionarios
 Disallow: /cobranca
 
-Sitemap: https://dominex.app/sitemap.xml
+Sitemap: https://www.dominex.app/sitemap.xml
+Sitemap: https://www.dominex.app/blog-sitemap.xml

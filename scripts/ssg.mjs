@@ -102,10 +102,37 @@ function buildHtml(baseHtml, html, head) {
       `<meta property="og:url" content="${attr(head.ogUrl)}" />`
     );
 
+  // JSON-LD por-rota. Em páginas internas (segmento/módulo/institucional) removemos
+  // os blocos GLOBAIS específicos da home (FAQPage e SoftwareApplication) pra não
+  // herdar a FAQ/oferta da home em toda página. Organization e WebSite ficam (são
+  // site-wide e legítimos em qualquer URL). A home (stripGlobalJsonLd=false) mantém
+  // tudo e não injeta nada.
+  if (head.stripGlobalJsonLd) {
+    out = stripGlobalJsonLdBlocks(out);
+  }
+  if (head.jsonLd) {
+    // Injeta os blocos por-rota logo antes de </head>.
+    out = out.replace(/<\/head>/i, `${head.jsonLd}\n  </head>`);
+  }
+
   // #root vazio → preenchido com o HTML renderizado.
   out = out.replace(/<div id="root"><\/div>/, `<div id="root">${html}</div>`);
 
   return out;
+}
+
+/**
+ * Remove do shell os blocos <script type="application/ld+json"> cujo @type é
+ * `FAQPage` ou `SoftwareApplication` (os específicos da home). Preserva
+ * Organization e WebSite. Detecção por conteúdo do bloco, robusta a formatação.
+ */
+function stripGlobalJsonLdBlocks(htmlStr) {
+  return htmlStr.replace(
+    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>\s*/gi,
+    (full, body) => {
+      return /"@type"\s*:\s*"(FAQPage|SoftwareApplication)"/.test(body) ? '' : full;
+    }
+  );
 }
 
 /** Caminho de saída de uma rota: `/` → dist/index.html; senão dist/<rota>/index.html. */

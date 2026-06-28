@@ -1,6 +1,15 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "dominex.app" }],
+      "destination": "https://www.dominex.app/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug" },
+    { "source": "/blog-sitemap.xml", "destination": "/api/blog-sitemap" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
