@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { captureUtmParams } from '@/lib/whatsapp';
 import LandingFooter from '@/components/landing/LandingFooter';
+import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
 import BlogNavbar from '@/components/blog/BlogNavbar';
@@ -396,11 +397,17 @@ export default function Blog() {
           </div>
         </main>
 
-        {/* Rodapé sempre escuro (padrão artigo claro + footer escuro). Wrapper com
-            bg escuro próprio + classe `dark` garante legibilidade no blog-claro
-            E no blog-dark, sem tocar no LandingFooter compartilhado. */}
-        <div className="dark bg-[hsl(0,0%,6%)]">
-          <LandingFooter />
+        {/* Rodapé sempre escuro com DarkVeil de fundo (mesmo veil do login). Wrapper
+            `dark` + bg escuro de base garante legibilidade no blog-claro e no blog-dark
+            e serve de fallback caso o WebGL não monte (mobile/low-end → gradiente).
+            Sem tocar no LandingFooter compartilhado. */}
+        <div className="relative dark overflow-hidden bg-[hsl(0,0%,4%)]">
+          <div className="absolute inset-0">
+            <DarkVeilBackground hueShift={53} speed={0.5} />
+          </div>
+          <div className="relative z-10">
+            <LandingFooter />
+          </div>
         </div>
       </div>
       <WhatsAppFloatingButton />

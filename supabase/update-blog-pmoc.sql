@@ -1,4 +1,4 @@
--- Atualiza o conteudo do artigo do blog 'Como funciona o PMOC' (versao expandida)
+-- Atualiza o conteudo do artigo do blog 'Como funciona o PMOC' (versao expandida + imagens + video)
 -- Aplicar via: npx supabase db query --linked < supabase/update-blog-pmoc.sql  (ou stdin)
 update public.blog_posts
 set
@@ -11,6 +11,19 @@ set
 
 <p>PMOC é a sigla de <strong>Plano de Manutenção, Operação e Controle</strong>. É um documento técnico que descreve, de maneira estruturada, todas as rotinas necessárias para manter os sistemas de climatização de um ambiente funcionando dentro de padrões de <strong>qualidade do ar interior</strong> e de eficiência. Em outras palavras, o PMOC é o "plano de saúde" do ar-condicionado de um edifício.</p>
 
+<p>Se você prefere uma explicação rápida em vídeo antes de mergulhar no guia, assista a este resumo do que é o PMOC:</p>
+
+<figure>
+  <iframe src="https://www.youtube.com/embed/zL9gzpfX6_8" title="O que é PMOC? — WebTV CREA-RJ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <figcaption>Vídeo: "O que é PMOC?" — WebTV CREA-RJ (YouTube).</figcaption>
+</figure>
+
+<figure style="margin:2rem 0;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/01-split-interna.jpg" alt="Unidade interna (evaporadora) de um ar-condicionado split de parede" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/02-split-condensadora.jpg" alt="Unidade externa (condensadora) de um sistema split" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="grid-column:1 / -1;color:#9ca3af;font-size:.85rem;margin-top:.25rem;text-align:center">As duas partes de um split: a unidade interna (evaporadora) que trata o ar do ambiente e a externa (condensadora) que dissipa o calor.</figcaption>
+</figure>
+
 <p>Ele não é uma simples ordem de serviço nem um contrato de manutenção genérico. O PMOC reúne o inventário dos equipamentos, o cronograma de atividades (limpeza, troca de filtros, verificação de componentes), os responsáveis técnicos, os parâmetros a serem monitorados e os registros que comprovam que a manutenção realmente aconteceu. É, ao mesmo tempo, um <strong>plano de ação</strong> e um <strong>histórico de evidências</strong>.</p>
 
 <blockquote>
@@ -20,6 +33,11 @@ set
 <h2>Para que serve e por que existe</h2>
 
 <p>O objetivo central do PMOC é garantir a <strong>qualidade do ar interior (QAI)</strong> em ambientes de uso coletivo climatizados artificialmente. Um sistema de ar-condicionado mal mantido recircula ar contaminado e pode causar a chamada "síndrome do edifício doente": dores de cabeça, alergias, problemas respiratórios e até doenças graves como a legionelose.</p>
+
+<figure style="margin:2rem 0;text-align:center">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/04-filtro-sujo.jpg" alt="Filtro de ar-condicionado obstruído por poeira, comprometendo a qualidade do ar" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Filtro obstruído por poeira: além de recircular ar contaminado, reduz a vazão, força o equipamento e dispara o consumo de energia.</figcaption>
+</figure>
 
 <p>Além da saúde, o PMOC traz benefícios diretos para quem opera o sistema:</p>
 
@@ -66,11 +84,21 @@ set
   <li>Bancos, repartições e qualquer ambiente de uso coletivo com climatização central ou de grande capacidade.</li>
 </ol>
 
+<figure style="margin:2rem 0;text-align:center">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/05-hvac-predial.jpg" alt="Unidade de tratamento de ar de um sistema de climatização predial em casa de máquinas" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Em prédios de uso coletivo, a climatização costuma ser central — unidades de tratamento de ar em casa de máquinas — exatamente o tipo de sistema que a lei obriga a ter PMOC.</figcaption>
+</figure>
+
 <p>A residência unifamiliar (a casa de uma família) normalmente <strong>não</strong> está sujeita à obrigação. O foco da legislação são os ambientes onde muitas pessoas convivem e respiram o mesmo ar tratado artificialmente. Mesmo assim, manter um plano de manutenção em qualquer instalação é sempre recomendável.</p>
 
 <h2>O que compõe o documento PMOC</h2>
 
 <p>Um PMOC bem elaborado não é uma folha solta — é um conjunto organizado de informações. Veja os elementos que não podem faltar:</p>
+
+<figure style="margin:2rem 0;text-align:center">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/06-hvac-cobertura.jpg" alt="Unidades de climatização tipo rooftop na cobertura de um prédio comercial" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Cada uma dessas unidades de cobertura precisa entrar no inventário do PMOC, com tipo, capacidade e os ambientes que atende.</figcaption>
+</figure>
 
 <ul>
   <li><strong>Identificação do estabelecimento:</strong> razão social, endereço, atividade e responsável pela edificação.</li>
@@ -143,6 +171,11 @@ set
 <h2>Rotinas: o que se faz em cada periodicidade</h2>
 
 <p>Saber que existe uma "tarefa trimestral" é só metade da história. Na prática, cada periodicidade tem um <strong>conjunto característico de rotinas</strong>, e é o acúmulo delas ao longo do ano que mantém o sistema saudável. Veja, na ponta do lápis, o que tipicamente compõe cada nível de visita.</p>
+
+<figure style="margin:2rem 0;text-align:center">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/03-tecnico-limpeza.jpg" alt="Técnico de climatização limpando uma unidade de ar-condicionado durante manutenção" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">É na execução em campo que o plano vira saúde do sistema: limpeza, troca de filtros e inspeção, repetidas conforme a periodicidade de cada tarefa.</figcaption>
+</figure>
 
 <h3>Rotina mensal — higiene e inspeção visual</h3>
 
@@ -323,6 +356,11 @@ set
 
 <p>O PMOC não fica "guardado para o caso de alguém pedir": ele existe justamente para ser apresentado quando a fiscalização chega. Entender <strong>quem fiscaliza</strong> e <strong>o que costuma ser pedido</strong> ajuda a empresa de refrigeração e o cliente a chegarem preparados em vez de correndo atrás de papel.</p>
 
+<figure style="margin:2rem 0;text-align:center">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/07-tecnicos-campo.jpg" alt="Equipe de técnicos de climatização em manutenção de campo" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Equipe preparada e com registro de cada visita: é o que faz a diferença entre chegar tranquilo a uma fiscalização ou correr atrás de papel na última hora.</figcaption>
+</figure>
+
 <h3>Os órgãos envolvidos</h3>
 
 <p>A fiscalização da qualidade do ar em ambientes climatizados é, na maioria dos casos, atribuição da <strong>vigilância sanitária</strong>, que atua em nível <strong>municipal e estadual</strong> conforme a organização de cada localidade. Como as competências sanitárias variam de cidade para cidade e de estado para estado, a regra prática é sempre <strong>verificar a legislação local</strong> além das normas federais. Em linhas gerais, podem estar envolvidos:</p>
@@ -429,6 +467,26 @@ set
 
 <h3>Preciso de uma visita por mês e outra por trimestre separadas?</h3>
 <p>Não. As periodicidades se sobrepõem: a visita de maior periodicidade absorve as menores que caem no mesmo mês. No mês da visita trimestral você também faz as tarefas mensais; na anual, faz tudo de uma vez. É sempre uma visita só, com o checklist somado — nunca duas no mesmo mês.</p>
+
+<h2>Créditos das imagens e vídeos</h2>
+
+<p style="color:#9ca3af;font-size:.85rem">As fotos ilustrativas deste artigo são de uso livre, obtidas no Wikimedia Commons:</p>
+
+<ul style="color:#9ca3af;font-size:.85rem">
+  <li>Unidade interna de ar-condicionado split — <a href="https://commons.wikimedia.org/wiki/File:Panasonic_AIR_CONDITIONER_INDOOR_UNIT_CS-C10KJ2_(2).jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
+  <li>Unidade externa (condensadora) de split — <a href="https://commons.wikimedia.org/wiki/File:DAIKIN_AIR_CONDITIONER_OUTDOOR_UNIT_(23).jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
+  <li>Técnico em manutenção de ar-condicionado — <a href="https://commons.wikimedia.org/wiki/Category:United_States_Air_Force" rel="nofollow noopener" target="_blank">Wikimedia Commons</a> (U.S. Air Force), domínio público.</li>
+  <li>Filtro de ar-condicionado obstruído por poeira — <a href="https://commons.wikimedia.org/wiki/File:Dirty_AC_filters_2023_(1)_03.jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
+  <li>Unidade de tratamento de ar predial — <a href="https://commons.wikimedia.org/wiki/File:HVAC_Air_Handler_Unit,_pic1.JPG" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, domínio público / CC0.</li>
+  <li>Unidades rooftop na cobertura de prédio comercial — <a href="https://commons.wikimedia.org/wiki/File:Rooftop_Packaged_Units.JPG" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, domínio público.</li>
+  <li>Equipe de técnicos de climatização em campo — <a href="https://commons.wikimedia.org/wiki/Category:United_States_Air_Force" rel="nofollow noopener" target="_blank">Wikimedia Commons</a> (U.S. Air Force), domínio público.</li>
+</ul>
+
+<p style="color:#9ca3af;font-size:.85rem">Vídeo incorporado:</p>
+
+<ul style="color:#9ca3af;font-size:.85rem">
+  <li>"O que é PMOC?" — <a href="https://www.youtube.com/watch?v=zL9gzpfX6_8" rel="nofollow noopener" target="_blank">WebTV CREA-RJ (YouTube)</a>.</li>
+</ul>
 
 <h2>Conclusão</h2>
 
