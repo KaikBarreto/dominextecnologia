@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run prerender",
+    "build": "vite build && npm run copy-shell && npm run prerender",
     "build:no-prerender": "vite build",
     "build:dev": "vite build --mode development",
+    "copy-shell": "node scripts/copy-shell.mjs",
     "prerender": "node scripts/prerender.mjs",
     "lint": "eslint .",
     "preview": "vite preview",

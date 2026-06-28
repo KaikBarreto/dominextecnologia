@@ -18,8 +18,6 @@ import {
   PRERENDER_ROUTES,
   MARKETING_CONTENT_MARKER,
   NOT_FOUND_MARKER,
-  BLOG_LIST_ROUTE,
-  BLOG_POST_NOT_FOUND_MARKER,
   PREVIEW_PORT,
 } from './prerender.config.mjs';
 
@@ -177,80 +175,14 @@ async function renderRoute(browser, route) {
   return html;
 }
 
-// ── Descobre os slugs de posts a partir do DOM renderizado de /blog ───────────
-// Abordagem: DOM (não REST). A lista /blog renderiza `<a href="/blog/<slug>">`
-// pra cada post publicado (cards + "Mais lidos" da sidebar). Extrair daqui:
-//   • não precisa da anon key nem acoplar o script ao .env/cliente;
-//   • já vem naturalmente escopado a `status=published` (as duas queries da
-//     página filtram por isso) — sem risco de prerenderizar rascunho;
-//   • zero hardcode de slug: qualquer post novo aparece sozinho.
-// Determinístico: ordenamos os slugs (sem Date.now/Math.random).
-function extractBlogSlugs(blogListHtml) {
-  if (!blogListHtml) return [];
-  const slugs = new Set();
-  // href="/blog/<slug>" — captura o segmento após /blog/. Exclui a própria
-  // /blog (sem slug) e qualquer href com mais de um segmento.
-  const re = /href="\/blog\/([^"/?#]+)"/g;
-  let m;
-  while ((m = re.exec(blogListHtml)) !== null) {
-    const slug = m[1].trim();
-    if (slug && slug !== 'blog') slugs.add(slug);
-  }
-  return [...slugs].sort();
-}
-
-// ── Prerenderiza cada post de blog descoberto ────────────────────────────────
-// Salva em dist/blog/<slug>/index.html com a MESMA lógica de settle das outras
-// rotas. Validade do post (pra NÃO salvar o 404 amigável "Artigo não
-// encontrado" como se fosse post):
-//   1. NÃO contém o NotFound da SPA (NOT_FOUND_MARKER);
-//   2. NÃO contém o "Artigo não encontrado" do BlogPost (slug inválido);
-//   3. CONTÉM o CTA "14 dias" (MARKETING_CONTENT_MARKER) — só o post renderizado
-//      tem o CTA final; o estado de erro não tem;
-//   4. CONTÉM um <article ...> com texto — o corpo do post vive dentro de
-//      <article> (o estado de erro renderiza só uma <div>, sem <article>).
-// Graceful: 0 posts → não gera nada, loga "0 posts" e NÃO quebra o build.
-async function prerenderBlogPosts(browser, blogListHtml, results) {
-  const slugs = extractBlogSlugs(blogListHtml);
-  if (slugs.length === 0) {
-    console.log('[prerender] 0 posts de blog publicados — nenhuma página de post gerada.');
-    return;
-  }
-  console.log(`[prerender] ${slugs.length} post(s) de blog descoberto(s) no DOM de /blog.`);
-
-  for (const slug of slugs) {
-    const route = `${BLOG_LIST_ROUTE}/${slug}`;
-    const html = await renderRoute(browser, route);
-
-    if (!html) {
-      results.push({ route, status: 'skip', reason: 'sem HTML' });
-      continue;
-    }
-    if (html.includes(NOT_FOUND_MARKER)) {
-      results.push({ route, status: 'skip', reason: 'rota inexistente (NotFound da SPA)' });
-      continue;
-    }
-    if (html.includes(BLOG_POST_NOT_FOUND_MARKER)) {
-      results.push({ route, status: 'skip', reason: 'post não encontrado (slug inválido)' });
-      continue;
-    }
-    if (!html.includes(MARKETING_CONTENT_MARKER)) {
-      results.push({ route, status: 'skip', reason: 'sem CTA — post não renderizou' });
-      continue;
-    }
-    // <article ...> com conteúdo: o corpo do post real vive aqui; o estado de
-    // erro renderiza só uma <div>, então a ausência de <article> = não é post.
-    if (!/<article[\s>]/i.test(html)) {
-      results.push({ route, status: 'skip', reason: 'sem <article> — não é post válido' });
-      continue;
-    }
-
-    const outPath = routeToOutputPath(route);
-    mkdirSync(dirname(outPath), { recursive: true });
-    writeFileSync(outPath, html, 'utf8');
-    results.push({ route, status: 'ok', out: outPath });
-  }
-}
+// ── Posts individuais do blog: AGORA SÃO RENDER SOB DEMANDA ───────────────────
+// O prerender NÃO gera mais dist/blog/<slug>/index.html. Cada post `/blog/:slug`
+// é renderizado a CADA request pela função serverless api/blog-post.js (via
+// rewrite no vercel.json), buscando o post no Supabase em runtime. Assim um post
+// novo/editado fica crawlável NA HORA, sem rebuild — antes só aparecia no próximo
+// deploy. IMPORTANTE: na Vercel, arquivo estático tem precedência sobre rewrite;
+// gerar o estático aqui SOMBREARIA a função. Por isso ele foi removido.
+// A LISTA /blog continua sendo prerenderizada normalmente (PRERENDER_ROUTES).
 
 async function main() {
   if (!existsSync(join(DIST, 'index.html'))) {
@@ -293,8 +225,6 @@ async function main() {
       ],
     });
 
-    let blogListHtml = null;
-
     for (const route of PRERENDER_ROUTES) {
       const html = await renderRoute(browser, route);
 
@@ -320,17 +250,7 @@ async function main() {
       mkdirSync(dirname(outPath), { recursive: true });
       writeFileSync(outPath, html, 'utf8');
       results.push({ route, status: 'ok', out: outPath });
-
-      // Guarda o HTML da lista de blog pra extrair os slugs dos posts depois.
-      if (route === BLOG_LIST_ROUTE) blogListHtml = html;
     }
-
-    // ── Posts individuais do blog (slug dinâmico, vindos do banco) ───────────
-    // NOTA: posts publicados DEPOIS deste build só viram HTML estático no
-    // próximo build/deploy. No meio-tempo o Google ainda os indexa porque
-    // executa JS (a SPA renderiza o post normalmente) — só os crawlers que NÃO
-    // rodam JS (alguns bots de LLM) é que ficam sem o conteúdo até o rebuild.
-    await prerenderBlogPosts(browser, blogListHtml, results);
   } finally {
     if (browser) await browser.close();
     preview.kill('SIGTERM');
