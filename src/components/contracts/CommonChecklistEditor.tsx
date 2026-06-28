@@ -17,7 +17,7 @@
 // vira um chip "marcar/desmarcar todas". "Toda visita" não aparece nesse controle
 // (é sempre obrigatória).
 import { useMemo } from 'react';
-import { ListChecks } from 'lucide-react';
+import { ListChecks, Check } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -92,6 +92,13 @@ export function CommonChecklistEditor({
   // Pergunta marcada = NÃO está na lista de exclusões. "Toda visita" sempre marcada.
   const isIncluded = (q: ChecklistQuestion) => isEveryVisit(q) || !excludedSet.has(q.id);
 
+  // Quantas perguntas entram na 1ª OS (todas as "toda visita" + as não excluídas).
+  const includedCount = useMemo(
+    () => questions.filter(isIncluded).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [questions, excludedSet],
+  );
+
   const toggleQuestion = (q: ChecklistQuestion) => {
     if (isEveryVisit(q)) return; // travada
     const next = new Set(excludedSet);
@@ -137,80 +144,106 @@ export function CommonChecklistEditor({
 
       {/* Accordion das perguntas — só quando há checklist com perguntas. */}
       {template && questions.length > 0 && (
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion type="single" collapsible defaultValue="questions" className="w-full">
           <AccordionItem value="questions" className="rounded-lg border bg-background">
-            <AccordionTrigger className="px-3 py-2 text-xs hover:no-underline">
+            <AccordionTrigger className="px-3 py-2.5 text-xs hover:no-underline">
               <span className="flex items-center gap-2">
-                <span className="font-medium text-foreground">Perguntas na primeira OS</span>
-                <Badge variant="outline" className="text-[10px] shrink-0">
-                  {questions.filter(isIncluded).length}/{questions.length}
+                <span className="font-medium text-foreground">Perguntas do Checklist</span>
+                <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
+                  {includedCount} de {questions.length} na 1ª OS
                 </Badge>
               </span>
             </AccordionTrigger>
             <AccordionContent className="px-3 pb-3">
               {/* Seleção em massa por frequência. */}
               {frequencyBuckets.length > 0 && (
-                <div className="mb-2 flex flex-wrap items-center gap-1.5 border-b pb-2">
-                  <span className="text-[10px] text-muted-foreground">Por frequência:</span>
-                  {frequencyBuckets.map((b) => {
-                    const allIncluded = b.ids.every((id) => !excludedSet.has(id));
-                    return (
-                      <button
-                        key={b.label}
-                        type="button"
-                        onClick={() => toggleBucket(b.ids, allIncluded)}
-                        className={cn(
-                          'rounded-md border px-2 py-0.5 text-[10px] transition-colors',
-                          allIncluded
-                            ? 'border-info bg-info/10 text-info'
-                            : 'border-border text-muted-foreground hover:bg-muted',
-                        )}
-                        title={allIncluded ? `Desmarcar todas: ${b.label}` : `Marcar todas: ${b.label}`}
-                      >
-                        {b.label} {allIncluded ? '✓' : ''}
-                      </button>
-                    );
-                  })}
+                <div className="mb-2.5 rounded-md bg-muted/40 p-2">
+                  <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">
+                    Marcar/desmarcar todas de uma frequência
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {frequencyBuckets.map((b) => {
+                      const allIncluded = b.ids.every((id) => !excludedSet.has(id));
+                      return (
+                        <button
+                          key={b.label}
+                          type="button"
+                          onClick={() => toggleBucket(b.ids, allIncluded)}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors',
+                            allIncluded
+                              ? 'border-info bg-info text-info-foreground'
+                              : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                          )}
+                          title={
+                            allIncluded
+                              ? `Desmarcar todas as perguntas: ${b.label}`
+                              : `Marcar todas as perguntas: ${b.label}`
+                          }
+                        >
+                          {allIncluded && <Check className="h-3 w-3" />}
+                          {b.label}
+                          <span className="opacity-70">({b.ids.length})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
-              <div className="space-y-0.5">
+              {/* Cabeçalho das colunas. */}
+              <div className="flex items-center gap-2.5 border-b px-1.5 pb-1.5">
+                <span className="min-w-0 flex-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Pergunta
+                </span>
+                <span className="w-[5.5rem] shrink-0 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Frequência
+                </span>
+                <span className="w-12 shrink-0 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Na 1ª OS?
+                </span>
+              </div>
+
+              {/* Lista rolável (pode ter dezenas de perguntas). */}
+              <div className="max-h-72 space-y-0.5 overflow-y-auto pt-1">
                 {questions.map((q) => {
                   const everyVisit = isEveryVisit(q);
                   const included = isIncluded(q);
                   return (
                     <div
                       key={q.id}
-                      className="flex items-start gap-2.5 rounded-md px-1.5 py-1.5 hover:bg-muted/40"
+                      className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 hover:bg-muted/40"
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-foreground">{q.question}</p>
-                      </div>
+                      <p className="min-w-0 flex-1 text-xs leading-snug text-foreground">
+                        {q.question}
+                      </p>
                       <Badge
                         variant={everyVisit ? 'info' : 'outline'}
-                        className="mt-px shrink-0 text-[10px]"
+                        className="w-[5.5rem] shrink-0 justify-center text-[10px] font-normal"
                       >
                         {frequencyLabel(q)}
                       </Badge>
-                      {everyVisit ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="mt-px inline-flex shrink-0">
-                              <Checkbox checked disabled aria-label="Sempre na primeira OS" />
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-[15rem] text-xs">
-                            Itens de toda visita sempre entram na primeira OS.
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <Checkbox
-                          className="mt-px shrink-0"
-                          checked={included}
-                          onCheckedChange={() => toggleQuestion(q)}
-                          aria-label="Adicionar na primeira OS?"
-                        />
-                      )}
+                      <div className="flex w-12 shrink-0 justify-center">
+                        {everyVisit ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Checkbox checked disabled aria-label="Sempre na primeira OS" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[15rem] text-xs">
+                              Itens de toda visita sempre entram na primeira OS.
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Checkbox
+                            checked={included}
+                            onCheckedChange={() => toggleQuestion(q)}
+                            aria-label={`Adicionar na primeira OS: ${q.question}`}
+                            title="Adicionar na 1ª OS?"
+                          />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
