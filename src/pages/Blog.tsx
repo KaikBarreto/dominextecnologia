@@ -7,7 +7,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { captureUtmParams } from '@/lib/whatsapp';
 import LandingFooter from '@/components/landing/LandingFooter';
-import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
 import BlogNavbar from '@/components/blog/BlogNavbar';
@@ -373,7 +372,7 @@ export default function Blog() {
               </section>
 
               {/* CTA inline (mobile, onde a sidebar fica embaixo) */}
-              <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center lg:hidden dark:border-primary/20 dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center lg:hidden dark:border-primary/20 dark:bg-primary/[0.06]">
                 <h3 className="mb-2 text-lg font-bold text-neutral-900 dark:text-white">
                   Tire sua operação do papel
                 </h3>
@@ -397,17 +396,11 @@ export default function Blog() {
           </div>
         </main>
 
-        {/* Rodapé sempre escuro com DarkVeil de fundo (mesmo veil do login). Wrapper
-            `dark` + bg escuro de base garante legibilidade no blog-claro e no blog-dark
-            e serve de fallback caso o WebGL não monte (mobile/low-end → gradiente).
-            Sem tocar no LandingFooter compartilhado. */}
-        <div className="relative dark overflow-hidden bg-[hsl(0,0%,4%)]">
-          <div className="absolute inset-0">
-            <DarkVeilBackground hueShift={53} speed={0.5} />
-          </div>
-          <div className="relative z-10">
-            <LandingFooter />
-          </div>
+        {/* Rodapé sempre escuro sólido. Wrapper `dark` + bg escuro garante
+            legibilidade no blog-claro e no blog-dark. Sem tocar no
+            LandingFooter compartilhado. */}
+        <div className="dark bg-[hsl(0,0%,6%)]">
+          <LandingFooter />
         </div>
       </div>
       <WhatsAppFloatingButton />

@@ -21,7 +21,6 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { captureUtmParams } from '@/lib/whatsapp';
 import LandingFooter from '@/components/landing/LandingFooter';
-import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
 import BlogNavbar from '@/components/blog/BlogNavbar';
@@ -369,11 +368,11 @@ export default function BlogPost() {
                   disabled={toggleLikeMutation.isPending}
                   className={`flex items-center gap-2 rounded-full border px-4 py-2 transition-colors ${
                     hasLiked
-                      ? 'border-red-500/40 bg-red-500/10 text-red-500 dark:bg-red-500/15 dark:text-red-400'
-                      : 'border-neutral-300 text-neutral-600 hover:border-red-500/40 hover:text-red-500 dark:border-white/15 dark:text-white/60 dark:hover:text-red-400'
+                      ? 'border-red-500 bg-red-500 text-white dark:border-red-500 dark:bg-red-500 dark:text-white'
+                      : 'border-neutral-300 text-neutral-600 hover:border-red-500/60 hover:text-red-500 dark:border-white/15 dark:text-white/60 dark:hover:border-red-500/60 dark:hover:text-red-500'
                   }`}
                 >
-                  <Heart className={`h-4 w-4 ${hasLiked ? 'fill-current' : ''}`} />
+                  <Heart className={`h-4 w-4 ${hasLiked ? 'fill-current text-white' : ''}`} />
                   <span className="text-sm font-medium">{post.likes_count || 0}</span>
                 </button>
                 <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/40">
@@ -489,17 +488,11 @@ export default function BlogPost() {
           </div>
         </div>
 
-        {/* Rodapé sempre escuro com DarkVeil de fundo (mesmo veil do login). Wrapper
-            `dark` + bg escuro de base garante legibilidade no blog-claro e no blog-dark
-            e serve de fallback caso o WebGL não monte (mobile/low-end → gradiente).
-            Sem tocar no LandingFooter compartilhado. */}
-        <div className="relative dark overflow-hidden bg-[hsl(0,0%,4%)]">
-          <div className="absolute inset-0">
-            <DarkVeilBackground hueShift={53} speed={0.5} />
-          </div>
-          <div className="relative z-10">
-            <LandingFooter />
-          </div>
+        {/* Rodapé sempre escuro sólido. Wrapper `dark` + bg escuro garante
+            legibilidade no blog-claro e no blog-dark. Sem tocar no
+            LandingFooter compartilhado. */}
+        <div className="dark bg-[hsl(0,0%,6%)]">
+          <LandingFooter />
         </div>
       </div>
       <WhatsAppFloatingButton />

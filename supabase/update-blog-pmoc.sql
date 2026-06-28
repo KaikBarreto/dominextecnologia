@@ -1,9 +1,9 @@
--- Atualiza o conteudo do artigo do blog 'Como funciona o PMOC' (versao expandida + imagens + video)
+-- Atualiza o conteudo do artigo do blog 'Como funciona o PMOC' (versao expandida + imagens + video + referencias)
 -- Aplicar via: npx supabase db query --linked < supabase/update-blog-pmoc.sql  (ou stdin)
 update public.blog_posts
 set
     content = $html$
-<p>Se você trabalha com climatização ou administra um prédio com ar-condicionado, mais cedo ou mais tarde vai esbarrar em uma sigla de quatro letras que mexe com obrigação legal, saúde pública e contrato de manutenção: <strong>PMOC</strong>. Apesar de ser exigido por lei há mais de duas décadas, ainda gera muita confusão — quem precisa ter, o que entra no documento, com que frequência fazer a manutenção e o que acontece se ele não existir.</p>
+<p>Se você trabalha com climatização ou administra um prédio com ar-condicionado, mais cedo ou mais tarde vai esbarrar em uma sigla de quatro letras que mexe com obrigação legal, saúde pública e contrato de manutenção: <strong>PMOC</strong>. Apesar de ser exigido por lei há mais de duas décadas, ainda gera muita confusão: quem precisa ter, o que entra no documento, com que frequência fazer a manutenção e o que acontece se ele não existir.</p>
 
 <p>Neste guia completo, a equipe Dominex explica, de forma técnica e didática, <strong>como funciona o PMOC do começo ao fim</strong>: o conceito, a base legal, quem é obrigado, o conteúdo do plano, a periodicidade da manutenção por componente, as responsabilidades de cada parte, o passo a passo de implantação, os riscos de não ter e como um <a href="/sistema-pmoc">software de PMOC</a> transforma essa obrigação em um processo simples e auditável.</p>
 
@@ -14,20 +14,20 @@ set
 <p>Se você prefere uma explicação rápida em vídeo antes de mergulhar no guia, assista a este resumo do que é o PMOC:</p>
 
 <figure>
-  <iframe src="https://www.youtube.com/embed/zL9gzpfX6_8" title="O que é PMOC? — WebTV CREA-RJ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-  <figcaption>Vídeo: "O que é PMOC?" — WebTV CREA-RJ (YouTube).</figcaption>
+  <iframe src="https://www.youtube.com/embed/zL9gzpfX6_8" title="O que é PMOC? WebTV CREA-RJ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <figcaption>Vídeo: "O que é PMOC?", WebTV CREA-RJ (YouTube).</figcaption>
 </figure>
 
 <figure style="margin:2rem 0;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/01-split-interna.jpg" alt="Unidade interna (evaporadora) de um ar-condicionado split de parede" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
-  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/02-split-condensadora.jpg" alt="Unidade externa (condensadora) de um sistema split" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
-  <figcaption style="grid-column:1 / -1;color:#9ca3af;font-size:.85rem;margin-top:.25rem;text-align:center">As duas partes de um split: a unidade interna (evaporadora) que trata o ar do ambiente e a externa (condensadora) que dissipa o calor.</figcaption>
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/v2/01-split-interna.jpg" alt="Unidade interna (evaporadora) de um ar-condicionado split de parede" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/v2/02-split-condensadora.jpg" alt="Unidade externa (condensadora) de um sistema split" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="grid-column:1 / -1;color:#9ca3af;font-size:.85rem;margin-top:.25rem;text-align:center">As duas partes de um split: a unidade interna (evaporadora), que trata o ar do ambiente, e a externa (condensadora), que dissipa o calor.</figcaption>
 </figure>
 
 <p>Ele não é uma simples ordem de serviço nem um contrato de manutenção genérico. O PMOC reúne o inventário dos equipamentos, o cronograma de atividades (limpeza, troca de filtros, verificação de componentes), os responsáveis técnicos, os parâmetros a serem monitorados e os registros que comprovam que a manutenção realmente aconteceu. É, ao mesmo tempo, um <strong>plano de ação</strong> e um <strong>histórico de evidências</strong>.</p>
 
 <blockquote>
-<p>O PMOC nasceu de uma preocupação concreta de saúde pública: ambientes climatizados artificialmente, quando mal mantidos, acumulam poeira, fungos, bactérias e poluentes que circulam pelo ar e adoecem as pessoas. O caso mais conhecido no Brasil foi a morte de um ministro de Estado em 1998, atribuída à contaminação por uma bactéria proliferada em um sistema de ar-condicionado mal conservado — episódio que acelerou a regulamentação da qualidade do ar em ambientes climatizados.</p>
+<p>O PMOC nasceu de uma preocupação concreta de saúde pública: ambientes climatizados artificialmente, quando mal mantidos, acumulam poeira, fungos, bactérias e poluentes que circulam pelo ar e adoecem as pessoas. O caso mais conhecido no Brasil foi a morte de um ministro de Estado em 1998, atribuída à contaminação por uma bactéria proliferada em um sistema de ar-condicionado mal conservado, episódio que acelerou a regulamentação da qualidade do ar em ambientes climatizados. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/gm/1998/prt3523_28_08_1998.html" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
 </blockquote>
 
 <h2>Para que serve e por que existe</h2>
@@ -35,7 +35,7 @@ set
 <p>O objetivo central do PMOC é garantir a <strong>qualidade do ar interior (QAI)</strong> em ambientes de uso coletivo climatizados artificialmente. Um sistema de ar-condicionado mal mantido recircula ar contaminado e pode causar a chamada "síndrome do edifício doente": dores de cabeça, alergias, problemas respiratórios e até doenças graves como a legionelose.</p>
 
 <figure style="margin:2rem 0;text-align:center">
-  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/04-filtro-sujo.jpg" alt="Filtro de ar-condicionado obstruído por poeira, comprometendo a qualidade do ar" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/v2/04-filtro-sujo.jpg" alt="Filtro de ar-condicionado obstruído por poeira, comprometendo a qualidade do ar" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
   <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Filtro obstruído por poeira: além de recircular ar contaminado, reduz a vazão, força o equipamento e dispara o consumo de energia.</figcaption>
 </figure>
 
@@ -50,23 +50,23 @@ set
 
 <h2>Base legal: as três normas que sustentam o PMOC</h2>
 
-<p>O PMOC não é uma boa prática opcional — é uma exigência legal construída sobre três pilares normativos. Conhecê-los é essencial para qualquer empresa de refrigeração que ofereça esse serviço.</p>
+<p>O PMOC não é uma boa prática opcional, é uma exigência legal construída sobre três pilares normativos. Conhecê-los é essencial para qualquer empresa de refrigeração que ofereça esse serviço.</p>
 
-<h3>Lei nº 13.589/2018 — a lei do PMOC</h3>
+<h3>Lei nº 13.589/2018, a lei do PMOC</h3>
 
 <p>É a norma mais importante e a que dá o nome popular ao tema. A <strong>Lei Federal nº 13.589, de 4 de janeiro de 2018</strong>, tornou obrigatória a manutenção de instalações e equipamentos de sistemas de climatização em edificações de uso público e coletivo.</p>
 
 <blockquote>
-<p>A Lei nº 13.589/2018 determina, em síntese, que todos os edifícios de uso público e coletivo que possuam ambientes de ar interior climatizado artificialmente devem dispor de um Plano de Manutenção, Operação e Controle (PMOC) dos respectivos sistemas, executado por responsável técnico habilitado. (Paráfrase do texto legal — consulte a íntegra publicada no Diário Oficial da União.)</p>
+<p>A Lei nº 13.589/2018 determina, em síntese, que todos os edifícios de uso público e coletivo que possuam ambientes de ar interior climatizado artificialmente devem dispor de um Plano de Manutenção, Operação e Controle (PMOC) dos respectivos sistemas, executado por responsável técnico habilitado. (Paráfrase do texto legal; consulte a íntegra publicada no Diário Oficial da União.) <a href="http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13589.htm" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
 </blockquote>
 
 <h3>Portaria GM/MS nº 3.523/1998</h3>
 
-<p>Anterior à lei, a <strong>Portaria do Ministério da Saúde nº 3.523/1998</strong> foi a primeira norma a exigir o PMOC para sistemas de climatização com capacidade acima de determinado porte, estabelecendo medidas básicas de limpeza, manutenção e controle da qualidade do ar para prevenir riscos à saúde dos ocupantes.</p>
+<p>Anterior à lei, a <strong>Portaria do Ministério da Saúde nº 3.523/1998</strong> foi a primeira norma a exigir o PMOC para sistemas de climatização com capacidade acima de determinado porte, estabelecendo medidas básicas de limpeza, manutenção e controle da qualidade do ar para prevenir riscos à saúde dos ocupantes. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/gm/1998/prt3523_28_08_1998.html" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
 
 <h3>Resolução ANVISA RE nº 9/2003</h3>
 
-<p>A <strong>Resolução RE nº 9, de 16 de janeiro de 2003, da ANVISA</strong>, complementa o arcabouço definindo <strong>padrões referenciais de qualidade do ar interior</strong> em ambientes climatizados artificialmente de uso público e coletivo — como limites para contaminação microbiológica e recomendações de renovação de ar. É a referência técnica para os parâmetros que o PMOC deve monitorar.</p>
+<p>A <strong>Resolução RE nº 9, de 16 de janeiro de 2003, da ANVISA</strong>, complementa o arcabouço definindo <strong>padrões referenciais de qualidade do ar interior</strong> em ambientes climatizados artificialmente de uso público e coletivo, como limites para contaminação microbiológica e recomendações de renovação de ar. É a referência técnica para os parâmetros que o PMOC deve monitorar. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/anvisa/2003/res0009_16_01_2003.html" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
 
 <p>Vale lembrar que, além dessas normas federais, podem existir <strong>regulamentações estaduais e municipais</strong> e exigências específicas da vigilância sanitária local. Sempre verifique as regras da sua região.</p>
 
@@ -85,18 +85,18 @@ set
 </ol>
 
 <figure style="margin:2rem 0;text-align:center">
-  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/05-hvac-predial.jpg" alt="Unidade de tratamento de ar de um sistema de climatização predial em casa de máquinas" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
-  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Em prédios de uso coletivo, a climatização costuma ser central — unidades de tratamento de ar em casa de máquinas — exatamente o tipo de sistema que a lei obriga a ter PMOC.</figcaption>
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/v2/05-hvac-predial.jpg" alt="Unidade de tratamento de ar de um sistema de climatização predial em casa de máquinas" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Em prédios de uso coletivo, a climatização costuma ser central, com unidades de tratamento de ar em casa de máquinas, exatamente o tipo de sistema que a lei obriga a ter PMOC.</figcaption>
 </figure>
 
 <p>A residência unifamiliar (a casa de uma família) normalmente <strong>não</strong> está sujeita à obrigação. O foco da legislação são os ambientes onde muitas pessoas convivem e respiram o mesmo ar tratado artificialmente. Mesmo assim, manter um plano de manutenção em qualquer instalação é sempre recomendável.</p>
 
 <h2>O que compõe o documento PMOC</h2>
 
-<p>Um PMOC bem elaborado não é uma folha solta — é um conjunto organizado de informações. Veja os elementos que não podem faltar:</p>
+<p>Um PMOC bem elaborado não é uma folha solta, é um conjunto organizado de informações. Veja os elementos que não podem faltar:</p>
 
 <figure style="margin:2rem 0;text-align:center">
-  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/06-hvac-cobertura.jpg" alt="Unidades de climatização tipo rooftop na cobertura de um prédio comercial" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/v2/06-hvac-cobertura.jpg" alt="Unidades de climatização tipo rooftop na cobertura de um prédio comercial" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
   <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Cada uma dessas unidades de cobertura precisa entrar no inventário do PMOC, com tipo, capacidade e os ambientes que atende.</figcaption>
 </figure>
 
@@ -107,7 +107,7 @@ set
   <li><strong>Cronograma de atividades:</strong> a tabela de tarefas com periodicidade (diária, mensal, trimestral, semestral, anual).</li>
   <li><strong>Procedimentos de operação e controle:</strong> como o sistema deve ser operado e quais parâmetros monitorar.</li>
   <li><strong>Responsável Técnico (RT):</strong> identificação do profissional habilitado, com registro no conselho de classe (ART/RRT/TRT, conforme a formação).</li>
-  <li><strong>Registros de execução:</strong> o histórico das manutenções realizadas — a comprovação de que o plano saiu do papel.</li>
+  <li><strong>Registros de execução:</strong> o histórico das manutenções realizadas, a comprovação de que o plano saiu do papel.</li>
 </ul>
 
 <figure style="margin:2rem 0;text-align:center">
@@ -137,9 +137,9 @@ set
     <line x1="344" y1="100" x2="370" y2="100" stroke="#00C597" stroke-width="3" marker-end="url(#arrow)"/>
     <line x1="524" y1="100" x2="550" y2="100" stroke="#00C597" stroke-width="3" marker-end="url(#arrow)"/>
     <path d="M629 140 q0 40 -270 40 q-270 0 -270 -40" fill="none" stroke="#374151" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrow)"/>
-    <text x="359" y="195" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#6b7280">ciclo contínuo — repete a cada período</text>
+    <text x="359" y="195" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#6b7280">ciclo contínuo, repete a cada período</text>
   </svg>
-  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">O ciclo do PMOC: planejar, executar, registrar e comprovar — repetido continuamente conforme a periodicidade de cada atividade.</figcaption>
+  <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">O ciclo do PMOC: planejar, executar, registrar e comprovar, repetido continuamente conforme a periodicidade de cada atividade.</figcaption>
 </figure>
 
 <h2>Periodicidade da manutenção por componente</h2>
@@ -173,37 +173,37 @@ set
 <p>Saber que existe uma "tarefa trimestral" é só metade da história. Na prática, cada periodicidade tem um <strong>conjunto característico de rotinas</strong>, e é o acúmulo delas ao longo do ano que mantém o sistema saudável. Veja, na ponta do lápis, o que tipicamente compõe cada nível de visita.</p>
 
 <figure style="margin:2rem 0;text-align:center">
-  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/03-tecnico-limpeza.jpg" alt="Técnico de climatização limpando uma unidade de ar-condicionado durante manutenção" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/v2/03-tecnico-limpeza.jpg" alt="Técnico de climatização limpando uma unidade de ar-condicionado durante manutenção" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
   <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">É na execução em campo que o plano vira saúde do sistema: limpeza, troca de filtros e inspeção, repetidas conforme a periodicidade de cada tarefa.</figcaption>
 </figure>
 
-<h3>Rotina mensal — higiene e inspeção visual</h3>
+<h3>Rotina mensal: higiene e inspeção visual</h3>
 
 <p>É a visita mais frequente e a mais barata de executar, mas a que mais impacta a qualidade do ar no dia a dia. Concentra-se na <strong>limpeza dos filtros</strong> (lavagem ou troca, conforme o tipo), na <strong>verificação das bandejas de condensado</strong> (escoamento e ausência de água parada, que vira foco de mofo e bactérias) e em uma <strong>inspeção visual geral</strong>: gabinete, drenos, ruídos óbvios e funcionamento básico. Em ambientes críticos (hospitais, laboratórios), a periodicidade dos filtros pode ser ainda menor.</p>
 
-<h3>Rotina trimestral — limpeza profunda dos componentes de troca térmica</h3>
+<h3>Rotina trimestral: limpeza profunda dos componentes de troca térmica</h3>
 
-<p>A cada três meses entram as tarefas que exigem mais tempo e ferramenta: <strong>limpeza das serpentinas da evaporadora e do condensador</strong>, higienização do gabinete, limpeza criteriosa das bandejas e drenos, e a <strong>verificação mecânica</strong> — ruídos, vibração, fixação de suportes e estado das hélices/ventiladores. É a manutenção que recupera a eficiência de troca de calor que a sujeira vai roubando ao longo do trimestre.</p>
+<p>A cada três meses entram as tarefas que exigem mais tempo e ferramenta: <strong>limpeza das serpentinas da evaporadora e do condensador</strong>, higienização do gabinete, limpeza criteriosa das bandejas e drenos, e a <strong>verificação mecânica</strong> (ruídos, vibração, fixação de suportes e estado das hélices/ventiladores). É a manutenção que recupera a eficiência de troca de calor que a sujeira vai roubando ao longo do trimestre.</p>
 
-<h3>Rotina semestral — medições e parâmetros</h3>
+<h3>Rotina semestral: medições e parâmetros</h3>
 
 <p>De seis em seis meses o foco passa para os <strong>parâmetros mensuráveis</strong>: medições elétricas (tensão, corrente, consumo), verificação de pressões e carga de gás (indício precoce de vazamento), avaliação do desempenho térmico e, conforme o plano definido pelo RT, a <strong>análise da qualidade do ar interior (QAI)</strong> em referência à RE nº 9/2003. É a visita que detecta problemas antes que virem parada de equipamento.</p>
 
-<h3>Rotina anual — revisão geral e limpeza de dutos</h3>
+<h3>Rotina anual: revisão geral e limpeza de dutos</h3>
 
-<p>Uma vez por ano faz-se a <strong>revisão completa</strong> do sistema: limpeza profunda de dutos e das tomadas de ar externo, conferência geral de toda a instalação, revisão de isolamentos e dampers, e a consolidação do estado de cada equipamento do inventário. É também o momento natural para <strong>revisar o próprio PMOC</strong> — atualizar inventário, ambientes e cronograma diante de qualquer mudança no edifício.</p>
+<p>Uma vez por ano faz-se a <strong>revisão completa</strong> do sistema: limpeza profunda de dutos e das tomadas de ar externo, conferência geral de toda a instalação, revisão de isolamentos e dampers, e a consolidação do estado de cada equipamento do inventário. É também o momento natural para <strong>revisar o próprio PMOC</strong>, atualizando inventário, ambientes e cronograma diante de qualquer mudança no edifício.</p>
 
 <h2>Como as visitas se sobrepõem (e por que isso importa)</h2>
 
 <p>Aqui está o ponto que mais confunde quem está montando um cronograma de PMOC: as periodicidades <strong>não são listas independentes</strong>. Elas se acumulam. Quando chega o mês de uma visita trimestral, o técnico também executa as tarefas mensais daquele mês. Na visita semestral, ele faz semestral <em>+</em> trimestral <em>+</em> mensal. E na anual, faz tudo de uma vez.</p>
 
 <blockquote>
-<p>Regra de ouro: <strong>a visita de maior periodicidade absorve as menores que caem no mesmo mês.</strong> Você nunca manda o técnico duas vezes no mesmo mês para fazer "o mensal" e depois "o trimestral" — é uma visita só, com o checklist somado.</p>
+<p>Regra de ouro: <strong>a visita de maior periodicidade absorve as menores que caem no mesmo mês.</strong> Você nunca manda o técnico duas vezes no mesmo mês para fazer "o mensal" e depois "o trimestral": é uma visita só, com o checklist somado.</p>
 </blockquote>
 
-<p>Isso tem duas consequências práticas. Primeiro, o <strong>esforço de cada visita varia ao longo do ano</strong>: a maioria dos meses é leve (só o mensal), alguns são médios (trimestral acumulado) e um ou dois são pesados (semestral e anual acumulados). Segundo, dimensionar a equipe e o tempo de cada atendimento depende de entender essa sobreposição — senão o mês da visita anual vira um gargalo inesperado.</p>
+<p>Isso tem duas consequências práticas. Primeiro, o <strong>esforço de cada visita varia ao longo do ano</strong>: a maioria dos meses é leve (só o mensal), alguns são médios (trimestral acumulado) e um ou dois são pesados (semestral e anual acumulados). Segundo, dimensionar a equipe e o tempo de cada atendimento depende de entender essa sobreposição, senão o mês da visita anual vira um gargalo inesperado.</p>
 
-<p>O cronograma típico de 12 meses fica assim — o <strong>✅</strong> marca em quais meses cada periodicidade acontece:</p>
+<p>O cronograma típico de 12 meses fica assim, e o <strong>✅</strong> marca em quais meses cada periodicidade acontece:</p>
 
 <table>
   <thead>
@@ -217,22 +217,22 @@ set
     </tr>
   </thead>
   <tbody>
-    <tr><td>1</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
-    <tr><td>2</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
-    <tr><td>3</td><td>✅</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal + Trimestral</td></tr>
-    <tr><td>4</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
-    <tr><td>5</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
-    <tr><td>6</td><td>✅</td><td>✅</td><td>✅</td><td style="color:#9ca3af">—</td><td>Mensal + Trimestral + Semestral</td></tr>
-    <tr><td>7</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
-    <tr><td>8</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
-    <tr><td>9</td><td>✅</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal + Trimestral</td></tr>
-    <tr><td>10</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
-    <tr><td>11</td><td>✅</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td style="color:#9ca3af">—</td><td>Mensal (leve)</td></tr>
+    <tr><td>1</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
+    <tr><td>2</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
+    <tr><td>3</td><td>✅</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal + Trimestral</td></tr>
+    <tr><td>4</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
+    <tr><td>5</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
+    <tr><td>6</td><td>✅</td><td>✅</td><td>✅</td><td style="color:#9ca3af">·</td><td>Mensal + Trimestral + Semestral</td></tr>
+    <tr><td>7</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
+    <tr><td>8</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
+    <tr><td>9</td><td>✅</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal + Trimestral</td></tr>
+    <tr><td>10</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
+    <tr><td>11</td><td>✅</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td style="color:#9ca3af">·</td><td>Mensal (leve)</td></tr>
     <tr><td>12</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>Tudo acumulado (visita pesada)</td></tr>
   </tbody>
 </table>
 
-<p>Repare na lógica: o <strong>mensal acontece nos 12 meses</strong>; o <strong>trimestral cai a cada 3 meses</strong> (3, 6, 9, 12); o <strong>semestral a cada 6</strong> (6 e 12); o <strong>anual uma vez</strong> (12). Nos meses em que coincidem, é uma única visita que executa o checklist somado. O mês 12, onde tudo se encontra, é a visita mais demorada do ciclo — e a que mais precisa de planejamento.</p>
+<p>Repare na lógica: o <strong>mensal acontece nos 12 meses</strong>; o <strong>trimestral cai a cada 3 meses</strong> (3, 6, 9, 12); o <strong>semestral a cada 6</strong> (6 e 12); o <strong>anual uma vez</strong> (12). Nos meses em que coincidem, é uma única visita que executa o checklist somado. O mês 12, onde tudo se encontra, é a visita mais demorada do ciclo, e a que mais precisa de planejamento.</p>
 
 <figure style="margin:2rem 0;text-align:center">
   <svg width="100%" viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Linha do tempo de 12 meses mostrando a sobreposição das visitas mensal, trimestral, semestral e anual">
@@ -249,7 +249,7 @@ set
     <text x="20" y="36" font-family="sans-serif" font-size="10" fill="#6b7280" text-anchor="start" letter-spacing="1">MÊS</text>
 
     <!-- ===== MENSAL ===== label acima, pontos na linha abaixo ===== -->
-    <text x="20" y="66" font-family="sans-serif" font-size="12" font-weight="700" fill="#00C597" text-anchor="start">Mensal — todos os meses</text>
+    <text x="20" y="66" font-family="sans-serif" font-size="12" font-weight="700" fill="#00C597" text-anchor="start">Mensal: todos os meses</text>
     <line x1="56" y1="84" x2="672" y2="84" stroke="#1f3b35" stroke-width="2"/>
     <g fill="#00C597">
       <circle cx="56" cy="84" r="5"/><circle cx="112" cy="84" r="5"/><circle cx="168" cy="84" r="5"/>
@@ -259,21 +259,21 @@ set
     </g>
 
     <!-- ===== TRIMESTRAL ===== -->
-    <text x="20" y="146" font-family="sans-serif" font-size="12" font-weight="700" fill="#38bdf8" text-anchor="start">Trimestral — meses 3, 6, 9, 12</text>
+    <text x="20" y="146" font-family="sans-serif" font-size="12" font-weight="700" fill="#38bdf8" text-anchor="start">Trimestral: meses 3, 6, 9, 12</text>
     <line x1="56" y1="164" x2="672" y2="164" stroke="#22323f" stroke-width="2"/>
     <g fill="#38bdf8">
       <circle cx="168" cy="164" r="6"/><circle cx="336" cy="164" r="6"/><circle cx="504" cy="164" r="6"/><circle cx="672" cy="164" r="6"/>
     </g>
 
     <!-- ===== SEMESTRAL ===== -->
-    <text x="20" y="226" font-family="sans-serif" font-size="12" font-weight="700" fill="#fbbf24" text-anchor="start">Semestral — meses 6 e 12</text>
+    <text x="20" y="226" font-family="sans-serif" font-size="12" font-weight="700" fill="#fbbf24" text-anchor="start">Semestral: meses 6 e 12</text>
     <line x1="56" y1="244" x2="672" y2="244" stroke="#3a3320" stroke-width="2"/>
     <g fill="#fbbf24">
       <circle cx="336" cy="244" r="7"/><circle cx="672" cy="244" r="7"/>
     </g>
 
     <!-- ===== ANUAL ===== -->
-    <text x="20" y="306" font-family="sans-serif" font-size="12" font-weight="700" fill="#f87171" text-anchor="start">Anual — mês 12 (tudo se encontra aqui)</text>
+    <text x="20" y="306" font-family="sans-serif" font-size="12" font-weight="700" fill="#f87171" text-anchor="start">Anual: mês 12 (tudo se encontra aqui)</text>
     <line x1="56" y1="324" x2="672" y2="324" stroke="#3a2424" stroke-width="2"/>
     <circle cx="672" cy="324" r="8" fill="#f87171"/>
 
@@ -284,7 +284,7 @@ set
   <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">As periodicidades se empilham: nos meses 6 e 12 as visitas coincidem e o técnico executa o checklist somado em um único atendimento. O mês 12 reúne mensal, trimestral, semestral e anual.</figcaption>
 </figure>
 
-<p>É justamente essa lógica de sobreposição que um <a href="/sistema-pmoc">software de PMOC</a> calcula sozinho: ao cadastrar as periodicidades de cada atividade, o sistema já agenda a visita certa em cada mês com o checklist correto acumulado — o técnico nunca recebe duas ordens para o mesmo período, e nenhuma tarefa "some" no mês cheio.</p>
+<p>É justamente essa lógica de sobreposição que um <a href="/sistema-pmoc">software de PMOC</a> calcula sozinho: ao cadastrar as periodicidades de cada atividade, o sistema já agenda a visita certa em cada mês com o checklist correto acumulado, o técnico nunca recebe duas ordens para o mesmo período, e nenhuma tarefa "some" no mês cheio.</p>
 
 <h2>Responsabilidades: proprietário, RT e empresa</h2>
 
@@ -313,7 +313,7 @@ set
   </div>
 </div>
 
-<p>A <strong>empresa de refrigeração</strong> contratada, por sua vez, executa as rotinas de manutenção em campo, registra as evidências e dá suporte ao RT. Em muitas operações, a empresa fornece o próprio RT como parte do serviço. É exatamente nesse ponto que ter um processo organizado — apoiado por um <a href="/sistema-para-refrigeracao">sistema para empresas de refrigeração</a> — separa quem entrega um PMOC profissional de quem improvisa em planilha.</p>
+<p>A <strong>empresa de refrigeração</strong> contratada, por sua vez, executa as rotinas de manutenção em campo, registra as evidências e dá suporte ao RT. Em muitas operações, a empresa fornece o próprio RT como parte do serviço. É exatamente nesse ponto que ter um processo organizado, apoiado por um <a href="/sistema-para-refrigeracao">sistema para empresas de refrigeração</a>, separa quem entrega um PMOC profissional de quem improvisa em planilha.</p>
 
 <h2>Passo a passo: como fazer um PMOC</h2>
 
@@ -325,13 +325,13 @@ set
   <li><strong>Elaboração do plano:</strong> o RT monta o cronograma de atividades com periodicidades, procedimentos e parâmetros a controlar.</li>
   <li><strong>Designação do Responsável Técnico:</strong> profissional habilitado assina o documento e emite a anotação de responsabilidade técnica.</li>
   <li><strong>Execução das manutenções:</strong> as equipes realizam as tarefas conforme o cronograma, em campo.</li>
-  <li><strong>Registro e comprovação:</strong> cada atividade é documentada com checklist, fotos e data — gerando o histórico auditável.</li>
+  <li><strong>Registro e comprovação:</strong> cada atividade é documentada com checklist, fotos e data, gerando o histórico auditável.</li>
   <li><strong>Revisão periódica:</strong> o plano é revisado e mantido atualizado conforme mudanças nos equipamentos ou no uso do edifício.</li>
 </ol>
 
 <h2>Multas e riscos de não ter PMOC</h2>
 
-<p>Ignorar o PMOC não é apenas uma falha técnica — é uma exposição legal e financeira concreta. As penalidades variam conforme a legislação aplicável e o órgão fiscalizador (vigilância sanitária estadual ou municipal), mas os tipos de risco são bem definidos:</p>
+<p>Ignorar o PMOC não é apenas uma falha técnica, é uma exposição legal e financeira concreta. As penalidades variam conforme a legislação aplicável e o órgão fiscalizador (vigilância sanitária estadual ou municipal), mas os tipos de risco são bem definidos:</p>
 
 <table>
   <thead>
@@ -352,12 +352,12 @@ set
 
 <p>Além das sanções formais, há o custo silencioso: equipamentos que falham antes da hora, energia desperdiçada e, no pior cenário, danos à reputação por problemas de saúde no ambiente. O PMOC, longe de ser um custo, é uma <strong>apólice de proteção</strong>.</p>
 
-<h2>Quem fiscaliza o PMOC — e como funciona na prática</h2>
+<h2>Quem fiscaliza o PMOC, e como funciona na prática</h2>
 
 <p>O PMOC não fica "guardado para o caso de alguém pedir": ele existe justamente para ser apresentado quando a fiscalização chega. Entender <strong>quem fiscaliza</strong> e <strong>o que costuma ser pedido</strong> ajuda a empresa de refrigeração e o cliente a chegarem preparados em vez de correndo atrás de papel.</p>
 
 <figure style="margin:2rem 0;text-align:center">
-  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/07-tecnicos-campo.jpg" alt="Equipe de técnicos de climatização em manutenção de campo" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
+  <img src="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/posts/pmoc/v2/07-tecnicos-campo.jpg" alt="Equipe de técnicos de climatização em manutenção de campo" loading="lazy" width="1280" height="853" style="width:100%;height:auto;border-radius:12px;display:block">
   <figcaption style="color:#9ca3af;font-size:.85rem;margin-top:.5rem">Equipe preparada e com registro de cada visita: é o que faz a diferença entre chegar tranquilo a uma fiscalização ou correr atrás de papel na última hora.</figcaption>
 </figure>
 
@@ -368,7 +368,7 @@ set
 <ul>
   <li><strong>Vigilância sanitária municipal e/ou estadual:</strong> é o órgão típico para a fiscalização da qualidade do ar interior e da existência e cumprimento do PMOC, com base nas normas de saúde aplicáveis.</li>
   <li><strong>ANVISA:</strong> atua como referência normativa nacional (é dela a RE nº 9/2003, que define os padrões de qualidade do ar interior). A fiscalização de campo em estabelecimentos costuma ser executada pelas vigilâncias locais, dentro da estrutura do sistema de vigilância sanitária.</li>
-  <li><strong>Corpo de Bombeiros:</strong> em determinados contextos e legislações estaduais, aspectos de instalações prediais podem ser objeto de verificação — sempre conforme as exigências locais.</li>
+  <li><strong>Corpo de Bombeiros:</strong> em determinados contextos e legislações estaduais, aspectos de instalações prediais podem ser objeto de verificação, sempre conforme as exigências locais.</li>
   <li><strong>Fiscalização do trabalho / saúde ocupacional:</strong> quando há trabalhadores expostos, a qualidade do ambiente de trabalho pode ser observada sob a ótica de saúde e segurança ocupacional, em paralelo à questão sanitária.</li>
 </ul>
 
@@ -376,11 +376,11 @@ set
 
 <h3>O que a fiscalização costuma pedir</h3>
 
-<p>Numa inspeção, três coisas concentram a atenção do fiscal — e a ausência de qualquer uma delas costuma gerar problema:</p>
+<p>Numa inspeção, três coisas concentram a atenção do fiscal, e a ausência de qualquer uma delas costuma gerar problema:</p>
 
 <ol>
   <li><strong>O documento PMOC:</strong> o plano deve estar disponível no local, com o inventário dos equipamentos, a descrição dos ambientes e o cronograma de atividades.</li>
-  <li><strong>Os registros de execução:</strong> mais do que ter o plano, é preciso <strong>comprovar que ele foi cumprido</strong> — checklists, datas, fotos e relatórios das manutenções realizadas. Plano sem comprovação é tratado como plano não executado.</li>
+  <li><strong>Os registros de execução:</strong> mais do que ter o plano, é preciso <strong>comprovar que ele foi cumprido</strong> com checklists, datas, fotos e relatórios das manutenções realizadas. Plano sem comprovação é tratado como plano não executado.</li>
   <li><strong>A responsabilidade técnica:</strong> a identificação do Responsável Técnico habilitado e a respectiva anotação de responsabilidade técnica (ART/RRT/TRT), demonstrando que profissional legalmente capacitado assina o plano.</li>
 </ol>
 
@@ -390,11 +390,11 @@ set
 
 <h3>O que costuma gerar autuação</h3>
 
-<p>As situações que mais resultam em notificação ou auto de infração são previsíveis: <strong>ausência do PMOC</strong>; PMOC <strong>desatualizado</strong> em relação à instalação real (equipamentos a mais ou a menos do que o inventário); <strong>falta de registros</strong> que comprovem a execução das manutenções; ausência de Responsável Técnico identificado; e <strong>parâmetros de qualidade do ar</strong> fora dos limites de referência sem ação corretiva documentada. Em quase todos os casos, a raiz do problema é a mesma — falta de organização e de comprovação, não falta de competência técnica.</p>
+<p>As situações que mais resultam em notificação ou auto de infração são previsíveis: <strong>ausência do PMOC</strong>; PMOC <strong>desatualizado</strong> em relação à instalação real (equipamentos a mais ou a menos do que o inventário); <strong>falta de registros</strong> que comprovem a execução das manutenções; ausência de Responsável Técnico identificado; e <strong>parâmetros de qualidade do ar</strong> fora dos limites de referência sem ação corretiva documentada. Em quase todos os casos, a raiz do problema é a mesma: falta de organização e de comprovação, não falta de competência técnica.</p>
 
 <h2>Multas e penalidades em detalhe</h2>
 
-<p>Quando a fiscalização identifica uma irregularidade, a resposta não é única: existe uma <strong>gradação de penalidades</strong>, e a faixa de valores depende da legislação aplicável. Vale um cuidado factual aqui: <strong>não existe um valor de multa único e nacional</strong> cravado em lei federal para o descumprimento do PMOC. As sanções e seus valores são definidos pela <strong>legislação sanitária aplicável</strong> — que pode ser estadual ou municipal — e variam conforme a gravidade, o porte do estabelecimento e a reincidência. Desconfie de qualquer fonte que afirme um número fixo "válido em todo o Brasil".</p>
+<p>Quando a fiscalização identifica uma irregularidade, a resposta não é única: existe uma <strong>gradação de penalidades</strong>, e a faixa de valores depende da legislação aplicável. Vale um cuidado factual aqui: <strong>não existe um valor de multa único e nacional</strong> cravado em lei federal para o descumprimento do PMOC. As sanções e seus valores são definidos pela <strong>legislação sanitária aplicável</strong> (que pode ser estadual ou municipal) e variam conforme a gravidade, o porte do estabelecimento e a reincidência. Desconfie de qualquer fonte que afirme um número fixo "válido em todo o Brasil".</p>
 
 <p>De forma geral, as penalidades sanitárias seguem uma escala de severidade. As mais comuns são:</p>
 
@@ -418,8 +418,8 @@ set
 
 <ul>
   <li><strong>Saúde dos ocupantes:</strong> sistemas mal mantidos estão associados à "síndrome do edifício doente" (cefaleias, irritação respiratória, alergias) e a riscos sérios como a proliferação da bactéria <em>Legionella</em>, causadora da legionelose. Em ambientes de saúde, o risco é ainda mais crítico.</li>
-  <li><strong>Responsabilidade civil (e até criminal):</strong> se a má conservação do ar resultar em dano à saúde de terceiros, o proprietário e os responsáveis podem ser responsabilizados — uma exposição que vai muito além do valor da multa.</li>
-  <li><strong>Perda de contrato e de reputação:</strong> para a empresa de refrigeração, não conseguir comprovar o PMOC numa fiscalização do cliente significa perder a conta — e, muitas vezes, a indicação para as próximas. Confiabilidade documental virou critério de contratação.</li>
+  <li><strong>Responsabilidade civil (e até criminal):</strong> se a má conservação do ar resultar em dano à saúde de terceiros, o proprietário e os responsáveis podem ser responsabilizados, uma exposição que vai muito além do valor da multa.</li>
+  <li><strong>Perda de contrato e de reputação:</strong> para a empresa de refrigeração, não conseguir comprovar o PMOC numa fiscalização do cliente significa perder a conta e, muitas vezes, a indicação para as próximas. Confiabilidade documental virou critério de contratação.</li>
   <li><strong>Custo operacional oculto:</strong> equipamentos negligenciados falham antes da hora e consomem mais energia, corroendo a margem mesmo sem nenhuma autuação envolvida.</li>
 </ul>
 
@@ -460,37 +460,52 @@ set
 <p>O documento PMOC disponível no local, a identificação do Responsável Técnico e, principalmente, os <strong>registros que comprovem a execução</strong> das manutenções previstas. Ter o plano sem comprovar que ele foi cumprido não basta.</p>
 
 <h3>Quem fiscaliza o PMOC?</h3>
-<p>Em geral, a vigilância sanitária — que atua em nível municipal e/ou estadual conforme a localidade — com a ANVISA como referência normativa nacional (RE nº 9/2003). Dependendo da legislação local, outros órgãos podem observar aspectos relacionados (como saúde ocupacional, quando há trabalhadores expostos). As competências exatas variam por município e estado, então sempre vale confirmar as regras da sua região.</p>
+<p>Em geral, a vigilância sanitária, que atua em nível municipal e/ou estadual conforme a localidade, com a ANVISA como referência normativa nacional (RE nº 9/2003). Dependendo da legislação local, outros órgãos podem observar aspectos relacionados (como saúde ocupacional, quando há trabalhadores expostos). As competências exatas variam por município e estado, então sempre vale confirmar as regras da sua região.</p>
 
 <h3>Qual o valor da multa por não ter PMOC?</h3>
-<p>Não existe um valor único e nacional fixado em lei federal. As penalidades — que vão de advertência a multa e interdição — e seus valores são definidos pela legislação sanitária aplicável (estadual ou municipal) e variam conforme a gravidade, o porte do estabelecimento e a reincidência. Desconfie de fontes que cravam um número "válido em todo o Brasil".</p>
+<p>Não existe um valor único e nacional fixado em lei federal. As penalidades (que vão de advertência a multa e interdição) e seus valores são definidos pela legislação sanitária aplicável (estadual ou municipal) e variam conforme a gravidade, o porte do estabelecimento e a reincidência. Desconfie de fontes que cravam um número "válido em todo o Brasil".</p>
 
 <h3>Preciso de uma visita por mês e outra por trimestre separadas?</h3>
-<p>Não. As periodicidades se sobrepõem: a visita de maior periodicidade absorve as menores que caem no mesmo mês. No mês da visita trimestral você também faz as tarefas mensais; na anual, faz tudo de uma vez. É sempre uma visita só, com o checklist somado — nunca duas no mesmo mês.</p>
+<p>Não. As periodicidades se sobrepõem: a visita de maior periodicidade absorve as menores que caem no mesmo mês. No mês da visita trimestral você também faz as tarefas mensais; na anual, faz tudo de uma vez. É sempre uma visita só, com o checklist somado, nunca duas no mesmo mês.</p>
 
 <h2>Créditos das imagens e vídeos</h2>
 
 <p style="color:#9ca3af;font-size:.85rem">As fotos ilustrativas deste artigo são de uso livre, obtidas no Wikimedia Commons:</p>
 
 <ul style="color:#9ca3af;font-size:.85rem">
-  <li>Unidade interna de ar-condicionado split — <a href="https://commons.wikimedia.org/wiki/File:Panasonic_AIR_CONDITIONER_INDOOR_UNIT_CS-C10KJ2_(2).jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
-  <li>Unidade externa (condensadora) de split — <a href="https://commons.wikimedia.org/wiki/File:DAIKIN_AIR_CONDITIONER_OUTDOOR_UNIT_(23).jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
-  <li>Técnico em manutenção de ar-condicionado — <a href="https://commons.wikimedia.org/wiki/Category:United_States_Air_Force" rel="nofollow noopener" target="_blank">Wikimedia Commons</a> (U.S. Air Force), domínio público.</li>
-  <li>Filtro de ar-condicionado obstruído por poeira — <a href="https://commons.wikimedia.org/wiki/File:Dirty_AC_filters_2023_(1)_03.jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
-  <li>Unidade de tratamento de ar predial — <a href="https://commons.wikimedia.org/wiki/File:HVAC_Air_Handler_Unit,_pic1.JPG" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, domínio público / CC0.</li>
-  <li>Unidades rooftop na cobertura de prédio comercial — <a href="https://commons.wikimedia.org/wiki/File:Rooftop_Packaged_Units.JPG" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, domínio público.</li>
-  <li>Equipe de técnicos de climatização em campo — <a href="https://commons.wikimedia.org/wiki/Category:United_States_Air_Force" rel="nofollow noopener" target="_blank">Wikimedia Commons</a> (U.S. Air Force), domínio público.</li>
+  <li>Unidade interna de ar-condicionado split, <a href="https://commons.wikimedia.org/wiki/File:Panasonic_AIR_CONDITIONER_INDOOR_UNIT_CS-C10KJ2_(2).jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
+  <li>Unidade externa (condensadora) de split, <a href="https://commons.wikimedia.org/wiki/File:DAIKIN_AIR_CONDITIONER_OUTDOOR_UNIT_(23).jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
+  <li>Técnico em manutenção de ar-condicionado, <a href="https://commons.wikimedia.org/wiki/Category:United_States_Air_Force" rel="nofollow noopener" target="_blank">Wikimedia Commons</a> (U.S. Air Force), domínio público.</li>
+  <li>Filtro de ar-condicionado obstruído por poeira, <a href="https://commons.wikimedia.org/wiki/File:Dirty_AC_filters_2023_(1)_03.jpg" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, CC BY-SA 4.0.</li>
+  <li>Unidade de tratamento de ar predial, <a href="https://commons.wikimedia.org/wiki/File:HVAC_Air_Handler_Unit,_pic1.JPG" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, domínio público / CC0.</li>
+  <li>Unidades rooftop na cobertura de prédio comercial, <a href="https://commons.wikimedia.org/wiki/File:Rooftop_Packaged_Units.JPG" rel="nofollow noopener" target="_blank">Wikimedia Commons</a>, domínio público.</li>
+  <li>Equipe de técnicos de climatização em campo, <a href="https://commons.wikimedia.org/wiki/Category:United_States_Air_Force" rel="nofollow noopener" target="_blank">Wikimedia Commons</a> (U.S. Air Force), domínio público.</li>
 </ul>
 
 <p style="color:#9ca3af;font-size:.85rem">Vídeo incorporado:</p>
 
 <ul style="color:#9ca3af;font-size:.85rem">
-  <li>"O que é PMOC?" — <a href="https://www.youtube.com/watch?v=zL9gzpfX6_8" rel="nofollow noopener" target="_blank">WebTV CREA-RJ (YouTube)</a>.</li>
+  <li>"O que é PMOC?", <a href="https://www.youtube.com/watch?v=zL9gzpfX6_8" rel="nofollow noopener" target="_blank">WebTV CREA-RJ (YouTube)</a>.</li>
 </ul>
+
+<h2>Referências</h2>
+
+<p>O conteúdo deste guia se apoia na legislação federal e nas normas técnicas oficiais que regem o PMOC e a qualidade do ar interior no Brasil. Consulte sempre as fontes na íntegra e verifique a legislação estadual e municipal da sua região:</p>
+
+<ol>
+  <li><strong>Lei nº 13.589, de 4 de janeiro de 2018</strong>, dispõe sobre a manutenção de instalações e equipamentos de sistemas de climatização de ambientes. <a href="http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13589.htm" target="_blank" rel="noopener">planalto.gov.br ↗</a></li>
+  <li><strong>Portaria GM/MS nº 3.523, de 28 de agosto de 1998</strong> (Ministério da Saúde), medidas de controle da qualidade do ar em ambientes climatizados. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/gm/1998/prt3523_28_08_1998.html" target="_blank" rel="noopener">bvsms.saude.gov.br ↗</a></li>
+  <li><strong>Resolução RE nº 9, de 16 de janeiro de 2003</strong> (ANVISA), padrões referenciais de qualidade do ar interior em ambientes climatizados artificialmente de uso público e coletivo. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/anvisa/2003/res0009_16_01_2003.html" target="_blank" rel="noopener">bvsms.saude.gov.br ↗</a></li>
+  <li><strong>ANVISA</strong>, Agência Nacional de Vigilância Sanitária (referência normativa nacional sobre qualidade do ar interior). <a href="https://www.gov.br/anvisa/pt-br" target="_blank" rel="noopener">gov.br/anvisa ↗</a></li>
+</ol>
+
+<p style="color:#9ca3af;font-size:.85rem">As periodicidades de manutenção citadas são referências usuais de mercado; o cronograma definitivo deve ser definido pelo Responsável Técnico conforme o porte e a criticidade da instalação e as recomendações dos fabricantes.</p>
+
+<p style="color:#9ca3af;font-size:.85rem">Conteúdo produzido pela equipe Dominex. O software Dominex é desenvolvido pela Auctus Tecnologia.</p>
 
 <h2>Conclusão</h2>
 
-<p>O PMOC é, ao mesmo tempo, uma obrigação legal, uma ferramenta de saúde pública e uma boa prática de engenharia. Entender como ele funciona — do inventário à comprovação — é o que separa uma empresa de refrigeração que entrega valor de uma que só "vende manutenção".</p>
+<p>O PMOC é, ao mesmo tempo, uma obrigação legal, uma ferramenta de saúde pública e uma boa prática de engenharia. Entender como ele funciona, do inventário à comprovação, é o que separa uma empresa de refrigeração que entrega valor de uma que só "vende manutenção".</p>
 
 <p>Se a sua empresa quer profissionalizar a entrega de PMOC, ganhar escala e nunca mais perder uma comprovação numa fiscalização, conheça o <a href="/sistema-pmoc">sistema de PMOC da Dominex</a> e o nosso <a href="/sistema-para-refrigeracao">sistema completo para empresas de refrigeração</a>. Comece o teste grátis de 14 dias, sem cartão, e veja como transformar a obrigação do PMOC em diferencial competitivo.</p>
 $html$,
