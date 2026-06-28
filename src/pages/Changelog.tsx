@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.13',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Acertos no checklist e no documento de manutenção',
+        description: 'Corrigimos a opção "Personalizado" da frequência na tela de criar pergunta (agora abre os campos certos e dá para usar "começa vencida" em qualquer frequência), fizemos o documento de Plano de Manutenção refletir o checklist de cada equipamento exatamente como o técnico vê em campo, e garantimos que as escolhas do que entra na primeira visita não se percam ao salvar o contrato rapidamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.15.12',
     date: '28 de junho de 2026',
     type: 'patch',

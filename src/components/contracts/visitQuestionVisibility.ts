@@ -100,7 +100,7 @@ function hasFrequency(q: VisibilityQuestion): boolean {
  *   • pergunta EXCLUÍDA (está no set)      → 'contract_start' (só na 1ª vez que vence)
  * Sem `excludedQuestionIds` → âncora pelo `start_kind` do template (atual).
  */
-function toActivitySpec(
+export function toActivitySpec(
   q: VisibilityQuestion,
   excludedQuestionIds?: Set<string>,
 ): ActivitySpec {

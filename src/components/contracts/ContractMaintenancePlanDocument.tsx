@@ -3,7 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Printer, X, CalendarClock, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useContractChecklistQuestions } from '@/hooks/useContractChecklistQuestions';
+import { useChecklistQuestionsByTemplates } from '@/hooks/useContractChecklistQuestions';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import {
   generateOccurrences,
@@ -14,9 +14,9 @@ import {
 } from '@/hooks/useContracts';
 import {
   scheduleActivitiesOntoVisits,
-  type ActivitySpec,
   type VisitInput,
 } from './visitScheduleEngine';
+import { toActivitySpec } from './visitQuestionVisibility';
 import { frequencyLabel } from './questionFrequency';
 import type { FormQuestion } from '@/types/database';
 
@@ -29,14 +29,19 @@ import type { FormQuestion } from '@/types/database';
  * o resto da página, fixa A4 e força as cores). É um documento NOVO e próprio —
  * NÃO é a Planilha PMOC.
  *
- * Conteúdo:
+ * Conteúdo (POR EQUIPAMENTO — o contrato comum guarda o checklist em
+ * `contract_items.form_template_id`, não mais em `contracts.form_template_id`):
  *  1. Cabeçalho com identidade da empresa (white-label se houver) + dados do
  *     contrato (cliente, vigência, frequência das visitas).
  *  2. Ambientes do contrato com seus equipamentos (+ grupo "Sem ambiente").
- *  3. Serviços do checklist + rótulo de frequência de cada um (fonte única:
- *     `frequencyLabel` do util questionFrequency.ts).
- *  4. Planejamento das próximas ~12 visitas × itens do checklist (motor puro
- *     `scheduleActivitiesOntoVisits`).
+ *  3. Para CADA equipamento com checklist: a lista dos seus serviços + frequência
+ *     e a grade visitas × serviços.
+ *
+ * Âncora da grade = a MESMA do técnico (`visitQuestionVisibility.toActivitySpec`,
+ * fonte única): pergunta EXCLUÍDA da 1ª OS do equipamento
+ * (`contract_items.first_os_excluded_questions`) → 'contract_start' (não marca a
+ * 1ª coluna); pergunta INCLUÍDA → 'due_now' (marca a 1ª coluna). Assim o documento
+ * bate coluna-a-coluna com o que o técnico enxerga.
  */
 
 const MAX_VISIT_COLUMNS = 12;
@@ -52,26 +57,10 @@ function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
 }
 
-/** Mapeia uma pergunta com frequência pra ActivitySpec do motor (espelha
- *  visitQuestionVisibility.toActivitySpec). Perguntas SEM frequência viram
- *  freqKind='visits'/freqVisits=1 = "toda visita" → marcam todas as colunas. */
-function questionToActivitySpec(q: FormQuestion): ActivitySpec {
-  const hasFreq = q.freq_kind === 'time' || q.freq_kind === 'visits';
-  if (!hasFreq) {
-    return { id: q.id, freqKind: 'visits', freqVisits: 1, startKind: 'contract_start' };
-  }
-  const freqKind = q.freq_kind === 'visits' ? 'visits' : 'time';
-  const startKind: ActivitySpec['startKind'] =
-    q.start_kind === 'due_now' || q.start_kind === 'visit_n' ? q.start_kind : 'contract_start';
-  return {
-    id: q.id,
-    freqKind,
-    freqMonths: q.freq_months ?? undefined,
-    freqDays: q.freq_days ?? undefined,
-    freqVisits: q.freq_visits ?? undefined,
-    startKind,
-    startVisit: q.start_visit ?? undefined,
-  };
+/** Conjunto de ids excluídos da 1ª OS de um equipamento (flag por equipamento). */
+function excludedSet(item: ContractItem): Set<string> {
+  const raw = item.first_os_excluded_questions;
+  return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []);
 }
 
 export function ContractMaintenancePlanDocument({
@@ -79,9 +68,6 @@ export function ContractMaintenancePlanDocument({
   onClose,
 }: ContractMaintenancePlanDocumentProps) {
   const { settings } = useCompanySettings();
-  const formTemplateId = contract.form_template_id;
-  const { data: questions = [], isLoading: isLoadingQuestions } =
-    useContractChecklistQuestions(formTemplateId);
 
   // Identidade da empresa: respeita white-label quando ligado (mesma regra dos
   // demais documentos). Logo e nome caem pro padrão quando o WL está off.
@@ -157,28 +143,78 @@ export function ContractMaintenancePlanDocument({
     return merged;
   }, [contract]);
 
-  // Motor: pra cada visita (coluna), quais perguntas (linhas) vencem nela.
-  const schedule = useMemo<Map<number, string[]>>(() => {
-    if (questions.length === 0 || visitDates.length === 0) return new Map();
+  // Equipamentos COM checklist (o contrato comum guarda o template por
+  // equipamento em `contract_items.form_template_id`). Itens sem template não
+  // entram. Ordenados por sort_order (mesma ordem dos ambientes).
+  const checklistItems = useMemo<ContractItem[]>(
+    () =>
+      [...items]
+        .filter((it) => !!it.form_template_id)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    [items],
+  );
+
+  // Carrega as perguntas de TODOS os templates dos equipamentos de uma vez,
+  // agrupadas por template_id (hook é a fronteira do Supabase).
+  const templateIds = useMemo(
+    () => checklistItems.map((it) => it.form_template_id!).filter(Boolean),
+    [checklistItems],
+  );
+  const { data: questionsByTemplate, isLoading: isLoadingQuestions } =
+    useChecklistQuestionsByTemplates(templateIds);
+
+  // Para cada equipamento: suas perguntas + a grade visitas × perguntas, usando
+  // a MESMA âncora do técnico (`toActivitySpec` com o Set de excluídos da 1ª OS
+  // daquele equipamento — fonte única com `visitQuestionVisibility`).
+  interface EquipmentChecklist {
+    item: ContractItem;
+    title: string;
+    meta: string | null;
+    questions: FormQuestion[];
+    /** questionId → Set de índices de visita (colunas) em que a pergunta cai. */
+    dueByQuestion: Map<string, Set<number>>;
+  }
+
+  const equipmentChecklists = useMemo<EquipmentChecklist[]>(() => {
+    if (!questionsByTemplate || checklistItems.length === 0) return [];
     const visits: VisitInput[] = visitDates.map((d) => ({ date: d }));
-    const specs = questions.map(questionToActivitySpec);
-    return scheduleActivitiesOntoVisits(visits, specs);
-  }, [questions, visitDates]);
 
-  // Conjunto (linha=pergunta, coluna=visita) marcado: indexa por questionId.
-  const dueByQuestion = useMemo(() => {
-    const map = new Map<string, Set<number>>();
-    for (const [visitIndex, ids] of schedule.entries()) {
-      for (const id of ids) {
-        const set = map.get(id);
-        if (set) set.add(visitIndex);
-        else map.set(id, new Set([visitIndex]));
+    const out: EquipmentChecklist[] = [];
+    for (const item of checklistItems) {
+      const qs = questionsByTemplate.get(item.form_template_id!) ?? [];
+      if (qs.length === 0) continue;
+
+      const excluded = excludedSet(item);
+      const dueByQuestion = new Map<string, Set<number>>();
+
+      if (visits.length > 0) {
+        // Mesma derivação de ActivitySpec do técnico: a âncora vem do flag por
+        // equipamento (excluída → 'contract_start'; incluída → 'due_now').
+        // Pergunta SEM frequência cai em 'visits'/1 = toda visita (todas as
+        // colunas), espelhando o "sempre" do helper.
+        const specs = qs.map((q) =>
+          q.freq_kind === 'time' || q.freq_kind === 'visits'
+            ? toActivitySpec(q, excluded)
+            : { id: q.id, freqKind: 'visits' as const, freqVisits: 1, startKind: 'due_now' as const },
+        );
+        const schedule = scheduleActivitiesOntoVisits(visits, specs);
+        for (const [visitIndex, ids] of schedule.entries()) {
+          for (const id of ids) {
+            const set = dueByQuestion.get(id);
+            if (set) set.add(visitIndex);
+            else dueByQuestion.set(id, new Set([visitIndex]));
+          }
+        }
       }
-    }
-    return map;
-  }, [schedule]);
 
-  const hasChecklist = !!formTemplateId && questions.length > 0;
+      const title = item.equipment?.name || item.item_name;
+      const meta = [item.equipment?.brand, item.equipment?.model].filter(Boolean).join(' · ') || null;
+      out.push({ item, title, meta, questions: qs, dueByQuestion });
+    }
+    return out;
+  }, [questionsByTemplate, checklistItems, visitDates]);
+
+  const hasChecklist = equipmentChecklists.length > 0;
   const frequencyText = getFrequencyLabel(contract.frequency_type, contract.frequency_value);
   const startText = format(parseLocalDate(contract.start_date), 'dd/MM/yyyy');
   const horizonText = `${contract.horizon_months} meses`;
@@ -286,9 +322,9 @@ export function ContractMaintenancePlanDocument({
           )}
         </section>
 
-        {/* ── Serviços do checklist + frequência ── */}
-        <section className="mb-7">
-          <SectionTitle>Serviços e Frequência</SectionTitle>
+        {/* ── Checklist e planejamento POR EQUIPAMENTO ── */}
+        <section className="mb-2">
+          <SectionTitle>Checklist por Equipamento</SectionTitle>
           {isLoadingQuestions ? (
             <p className="flex items-center gap-2 text-sm text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" /> Carregando serviços…
@@ -298,79 +334,110 @@ export function ContractMaintenancePlanDocument({
               Nenhum checklist vinculado a este contrato.
             </p>
           ) : (
-            <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-              {questions.map((q) => (
-                <li key={q.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                  <span className="min-w-0 break-words text-sm text-gray-800">{q.question}</span>
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-medium text-white">
-                    <CalendarClock className="h-3 w-3" />
-                    {frequencyLabel(q)}
-                  </span>
-                </li>
+            <div className="space-y-6">
+              {equipmentChecklists.map((ec) => (
+                <EquipmentChecklistBlock
+                  key={ec.item.id}
+                  title={ec.title}
+                  meta={ec.meta}
+                  questions={ec.questions}
+                  dueByQuestion={ec.dueByQuestion}
+                  visitDates={visitDates}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </section>
-
-        {/* ── Planejamento (grade visitas × serviços) ── */}
-        {hasChecklist && visitDates.length > 0 && (
-          <section className="mb-2">
-            <SectionTitle>Planejamento das Próximas Visitas</SectionTitle>
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr>
-                    <th className="sticky left-0 z-10 border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-semibold text-gray-700">
-                      Serviço
-                    </th>
-                    {visitDates.map((d, i) => (
-                      <th
-                        key={i}
-                        className="border border-gray-300 bg-gray-100 px-1.5 py-1.5 text-center font-semibold text-gray-700"
-                      >
-                        <div className="leading-tight">#{i + 1}</div>
-                        <div className="whitespace-nowrap font-normal text-gray-500">
-                          {format(d, 'dd/MM')}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {questions.map((q) => {
-                    const due = dueByQuestion.get(q.id);
-                    return (
-                      <tr key={q.id}>
-                        <td className="sticky left-0 z-10 border border-gray-300 bg-white px-2 py-1.5 text-gray-800">
-                          {q.question}
-                        </td>
-                        {visitDates.map((_, i) => (
-                          <td
-                            key={i}
-                            className="border border-gray-300 px-1.5 py-1.5 text-center"
-                          >
-                            {due?.has(i) ? (
-                              <Check
-                                className="mx-auto h-3.5 w-3.5 text-gray-900"
-                                strokeWidth={3}
-                              />
-                            ) : (
-                              <span className="text-gray-200">–</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-[11px] text-gray-400">
-              ✓ indica em qual visita cada serviço é executado, conforme a frequência configurada.
-            </p>
-          </section>
-        )}
       </div>
+    </div>
+  );
+}
+
+/** Bloco de UM equipamento: lista de serviços + frequência e a grade de visitas. */
+function EquipmentChecklistBlock({
+  title,
+  meta,
+  questions,
+  dueByQuestion,
+  visitDates,
+}: {
+  title: string;
+  meta: string | null;
+  questions: FormQuestion[];
+  dueByQuestion: Map<string, Set<number>>;
+  visitDates: Date[];
+}) {
+  return (
+    <div className="break-inside-avoid rounded-lg border border-gray-200 p-3">
+      <div className="mb-3 flex items-baseline justify-between gap-3 border-b border-gray-100 pb-2">
+        <p className="min-w-0 break-words text-sm font-bold text-gray-900">{title}</p>
+        {meta && <p className="shrink-0 text-xs text-gray-500">{meta}</p>}
+      </div>
+
+      {/* Serviços + frequência */}
+      <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+        {questions.map((q) => (
+          <li key={q.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+            <span className="min-w-0 break-words text-sm text-gray-800">{q.question}</span>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-medium text-white">
+              <CalendarClock className="h-3 w-3" />
+              {frequencyLabel(q)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Grade visitas × serviços */}
+      {visitDates.length > 0 && (
+        <div className="mt-3">
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-10 border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-semibold text-gray-700">
+                    Serviço
+                  </th>
+                  {visitDates.map((d, i) => (
+                    <th
+                      key={i}
+                      className="border border-gray-300 bg-gray-100 px-1.5 py-1.5 text-center font-semibold text-gray-700"
+                    >
+                      <div className="leading-tight">#{i + 1}</div>
+                      <div className="whitespace-nowrap font-normal text-gray-500">
+                        {format(d, 'dd/MM')}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {questions.map((q) => {
+                  const due = dueByQuestion.get(q.id);
+                  return (
+                    <tr key={q.id}>
+                      <td className="sticky left-0 z-10 border border-gray-300 bg-white px-2 py-1.5 text-gray-800">
+                        {q.question}
+                      </td>
+                      {visitDates.map((_, i) => (
+                        <td key={i} className="border border-gray-300 px-1.5 py-1.5 text-center">
+                          {due?.has(i) ? (
+                            <Check className="mx-auto h-3.5 w-3.5 text-gray-900" strokeWidth={3} />
+                          ) : (
+                            <span className="text-gray-200">–</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[11px] text-gray-400">
+            ✓ indica em qual visita cada serviço é executado, conforme a frequência configurada.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -218,7 +218,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { data: allProfiles } = useProfiles();
   const { teams, teamsWithMembers } = useTeams();
   const { serviceTypes } = useServiceTypes();
-  const { templates } = useFormTemplates();
+  const { templates, isLoading: templatesLoading } = useFormTemplates();
   // Segmento da empresa logada — gateia o PMOC, que é exclusivo de refrigeração.
   const { settings: companySettings } = useCompanySettings();
   // Lista de RTs ativos do tenant — usada quando o contrato é marcado como PMOC.
@@ -736,8 +736,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (!canUsePmoc && isPmoc) {
       setIsPmoc(false);
       setResponsibleTechnicianId('');
+      // FIX 3 (perda silenciosa): avisa que o rascunho/contrato era PMOC mas a
+      // empresa não está habilitada — unidade e RT não serão salvos. Sem isso o
+      // gestor perderia o trabalho de Unidade & RT sem qualquer sinal.
+      toast({
+        variant: 'destructive',
+        title: 'PMOC desativado',
+        description:
+          'Este rascunho era PMOC, mas sua empresa não está habilitada para PMOC — os dados de unidade e responsável técnico não serão salvos.',
+      });
     }
-  }, [canUsePmoc, isPmoc]);
+  }, [canUsePmoc, isPmoc, toast]);
 
   const planSigOf = (rows: { description: string; freq_code: FreqCode; applies_per_equipment?: boolean }[]) =>
     rows.map(a => `${a.description.trim()}|${a.freq_code}|${a.applies_per_equipment === false ? '0' : '1'}`).join('§');
@@ -1360,16 +1369,43 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // (que monta por máquina) e, no comum, SÓ pra preservar/editar um plano legado.
   const showCommonPlanBuilder = !isPmoc && hasLegacyCommonPlan;
 
+  // FIX 2 (hardening): só envia `plan_activities` quando o contrato realmente tem
+  // plano — PMOC (plano por máquina) ou comum LEGADO (plano persistido). Comum sem
+  // plano manda `undefined` (em vez de `[]`) pra não disparar o diff de plano à toa
+  // e desacoplar o checklist por pergunta do motor de plano. NÃO reabre o construtor
+  // de plano do comum (continua só pra legado via showCommonPlanBuilder).
+  const planActivitiesPayload =
+    isPmoc || hasLegacyCommonPlan ? effectivePlanRows.map(planRowToInput) : undefined;
+
   // Campos de checklist por equipamento do contrato comum (form_template_id +
   // first_os_excluded_questions). Sanitiza as exclusões: só ids que (a) pertencem
   // ao template escolhido e (b) NÃO são perguntas "toda visita" (que sempre entram
   // na 1ª OS). Equipamento sem entrada → sem checklist e sem exclusões.
-  const commonChecklistPayload = (eqId: string | null | undefined) => {
-    if (!eqId) return { form_template_id: null as string | null, first_os_excluded_questions: [] as string[] };
+  //
+  // FIX 1 (perda de dado): `first_os_excluded_questions` pode vir `undefined`
+  // quando o template escolhido AINDA NÃO foi resolvido (catálogo de checklists
+  // carregando). Sanitizar contra um catálogo vazio derruba as exclusões salvas
+  // pra `[]` e, como o diff de `useContracts` só PRESERVA quando o campo é
+  // `undefined` (guarda `wantExcluded !== undefined`), gravaríamos `[]` por engano
+  // e todas as perguntas voltariam a entrar na 1ª OS sem o usuário tocar. Ao
+  // mandar `undefined` nesse caso, caímos na guarda de PRESERVAÇÃO (mantém o que
+  // está no banco). Só sanitiza/deriva quando o template está realmente carregado.
+  const commonChecklistPayload = (
+    eqId: string | null | undefined,
+  ): { form_template_id: string | null; first_os_excluded_questions: string[] | undefined } => {
+    if (!eqId) return { form_template_id: null, first_os_excluded_questions: [] };
     const cfg = commonChecklists[eqId];
     const tplId = cfg?.formTemplateId ?? null;
-    if (!tplId) return { form_template_id: null as string | null, first_os_excluded_questions: [] as string[] };
+    if (!tplId) return { form_template_id: null, first_os_excluded_questions: [] };
     const tpl = templateQuestionsById.get(tplId);
+    // Template do item ainda não resolvido (não está no mapa) E o catálogo ainda
+    // está carregando → NÃO sanitizar e NÃO sobrescrever. `undefined` preserva as
+    // exclusões já salvas no banco. (Se o catálogo já carregou e o template
+    // sumiu/não existe mais, `tpl` é undefined porém `validIds` vazio sanitiza
+    // pra `[]` de propósito — exclusões órfãs realmente não valem mais.)
+    if (!tpl && templatesLoading) {
+      return { form_template_id: tplId, first_os_excluded_questions: undefined };
+    }
     const validIds = new Set<string>();
     for (const q of tpl?.questions ?? []) {
       if (!isEveryVisit(q)) validIds.add(q.id); // toda visita nunca exclui
@@ -1500,9 +1536,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       horizon_months: horizonMonths,
       billing_responsible_ids: billingUserIds,
       // Plano de serviços com frequência (Fase 1/2/3). PMOC = plano POR MÁQUINA
-      // (cada atividade com equipment_ref + as locais); comum = planActivities.
+      // (cada atividade com equipment_ref + as locais); comum LEGADO = planActivities.
+      // Comum SEM plano = undefined (não toca contract_plan_activities — preserva).
       // O hook resolve contract_item_id pelo equipment_ref.
-      plan_activities: effectivePlanRows.map(planRowToInput),
+      plan_activities: planActivitiesPayload,
       // Equipamentos/itens (Fase 3). Sempre enviado em edição → o hook aplica
       // diff (insere novos, apaga removidos) e RE-APLICA escopo/fase por máquina;
       // mudança re-expande as visitas. PMOC = derivado dos ambientes c/ escopo+fase.
@@ -1674,8 +1711,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           environments: buildEnvironmentsInput(),
           // Plano de serviços com frequência (Fase 1/2/3). PMOC = plano POR MÁQUINA
           // (cada atividade com equipment_ref; o hook resolve contract_item_id após
-          // inserir os itens). Comum = planActivities. Vazio = frequência única.
-          plan_activities: effectivePlanRows.map(planRowToInput),
+          // inserir os itens). Comum LEGADO = planActivities; comum SEM plano =
+          // undefined (não cria contract_plan_activities). Vazio = frequência única.
+          plan_activities: planActivitiesPayload,
         });
 
         const generatedOsCount = (result as any)?.generatedOsCount ?? 0;

@@ -254,25 +254,35 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
 
     const handleSelect = (next: SelectChoice) => {
       if (next === 'every') {
+        // Sai do override custom e zera a frequência.
+        setCustom(false);
         applyEveryVisit();
         return;
       }
       if (next === 'custom') {
         // Entra no modo personalizado sem persistir ainda — o usuário ajusta o
-        // intervalo e o "Começa vencida". Mantém o valor atual se já era custom.
+        // intervalo e o "Começa vencida". O override local `custom` abre o bloco
+        // mesmo que o valor salvo ainda seja um preset/toda visita.
         setCustom(true);
         return;
       }
-      // Preset de meses.
+      // Preset de meses → limpa o override custom e persiste na hora.
       setCustom(false);
       applyPreset(parseInt(next, 10));
     };
 
-    const showCustom = choice === 'custom';
+    // Separa a ESCOLHA VISUAL do valor persistido: enquanto o usuário não aplicou
+    // "Personalizado", `value` ainda reflete o valor antigo. O state `custom` é o
+    // override que manda no que o Select mostra e em abrir o bloco custom.
+    const showCustom = custom || choice === 'custom';
+    const selectValue: SelectChoice = custom ? 'custom' : choice;
+    // "Começa vencida" é acessível sempre que houver frequência (preset OU custom),
+    // não só no Personalizado. Em "Toda visita" não faz sentido.
+    const showDueNow = showCustom || choice !== 'every';
 
     return (
       <div className="text-sm space-y-3">
-        <Select value={choice} onValueChange={(v) => handleSelect(v as SelectChoice)}>
+        <Select value={selectValue} onValueChange={(v) => handleSelect(v as SelectChoice)}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Toda visita" />
           </SelectTrigger>
@@ -330,19 +340,42 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
               </div>
             )}
 
-            {/* Começa vencida — só com frequência ≠ toda visita. No modo
-                personalizado a frequência sempre será definida ao Aplicar. */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <Label className="text-sm cursor-pointer">Começa vencida</Label>
-                <p className="text-[11px] text-muted-foreground leading-snug">Aparece já na 1ª visita aplicável.</p>
-              </div>
-              <Switch checked={dueNow} onCheckedChange={setDueNow} aria-label="Começa vencida" />
-            </div>
-
             <Button type="button" className="w-full h-9" onClick={applyCustom} disabled={applyDisabled}>
               <Check className="mr-1.5 h-4 w-4" /> Aplicar
             </Button>
+          </div>
+        )}
+
+        {/* Começa vencida — acessível com QUALQUER frequência ≠ "Toda visita"
+            (preset ou personalizado), não só no bloco custom. Em "Toda visita"
+            fica oculto (não há "1ª visita aplicável" diferente). */}
+        {showDueNow && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/20 p-3">
+            <div className="min-w-0">
+              <Label className="text-sm cursor-pointer">Começa vencida</Label>
+              <p className="text-[11px] text-muted-foreground leading-snug">Aparece já na 1ª visita aplicável.</p>
+            </div>
+            <Switch
+              checked={dueNow}
+              onCheckedChange={(checked) => {
+                setDueNow(checked);
+                // No modo personalizado a frequência só é definida ao Aplicar
+                // (applyCustom já lê `dueNow`) → aqui só guarda o state.
+                // Num PRESET já persistido, persiste a mudança na hora mantendo
+                // a frequência atual (payload completo de 6 campos).
+                if (!showCustom && value.freq_kind) {
+                  onApply({
+                    freq_kind: value.freq_kind,
+                    freq_months: value.freq_kind === 'time' ? value.freq_months ?? null : null,
+                    freq_days: value.freq_kind === 'time' ? value.freq_days ?? null : null,
+                    freq_visits: value.freq_kind === 'visits' ? value.freq_visits ?? null : null,
+                    start_kind: checked ? 'due_now' : 'contract_start',
+                    start_visit: null,
+                  });
+                }
+              }}
+              aria-label="Começa vencida"
+            />
           </div>
         )}
       </div>
