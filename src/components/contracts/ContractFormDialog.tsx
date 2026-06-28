@@ -25,6 +25,7 @@ import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog'
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
@@ -216,6 +217,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { teams, teamsWithMembers } = useTeams();
   const { serviceTypes } = useServiceTypes();
   const { templates } = useFormTemplates();
+  // Segmento da empresa logada — gateia o PMOC, que é exclusivo de refrigeração.
+  const { settings: companySettings } = useCompanySettings();
   // Lista de RTs ativos do tenant — usada quando o contrato é marcado como PMOC.
   const { technicians: responsibleTechnicians, isLoading: rtLoading } = useResponsibleTechnicians({ activeOnly: true });
   // Catálogo PMOC (149 atividades da norma) — alimenta o picker por seção e a
@@ -224,6 +227,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { toast } = useToast();
 
   const isEditing = !!editContract;
+  // PMOC é exclusivo do segmento de refrigeração (decisão CEO). Liberamos também
+  // quando o contrato em edição JÁ é PMOC — assim contratos PMOC legados de
+  // empresas que (por qualquer motivo) não estejam marcadas como refrigeração
+  // continuam editáveis sem perder a estrutura PMOC.
+  const canUsePmoc =
+    companySettings?.segment === 'refrigeracao' || (isEditing && !!editContract?.is_pmoc);
 
   const [step, setStep] = useState(0);
   // Etapa mais avançada já visitada — libera o clique direto no cabeçalho do
@@ -684,6 +693,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Repopula o editor "Serviços com frequência própria" com o plano persistido
   // (modo edição). Roda quando a query resolve. Guarda a assinatura inicial pra
   // detectar mudança de plano no submit.
+  // Empresa fora do segmento de refrigeração nunca opera PMOC: garante o flag
+  // desligado mesmo que algum estado anterior o tenha ligado. (canUsePmoc já
+  // permite o PMOC legado em edição, então isso só zera contrato comum/novo.)
+  useEffect(() => {
+    if (!canUsePmoc && isPmoc) {
+      setIsPmoc(false);
+      setResponsibleTechnicianId('');
+    }
+  }, [canUsePmoc, isPmoc]);
+
   const planSigOf = (rows: { description: string; freq_code: FreqCode; applies_per_equipment?: boolean }[]) =>
     rows.map(a => `${a.description.trim()}|${a.freq_code}|${a.applies_per_equipment === false ? '0' : '1'}`).join('§');
 
@@ -1215,6 +1234,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Plano efetivo enviado ao hook: PMOC = derivado das máquinas (por máquina +
   // local); comum/legado = o planActivities da etapa de frequência.
   const effectivePlanRows = isPmoc ? pmocPlanFromMachines : planActivities;
+
+  // Decisão CEO: contrato COMUM nunca usa o "Plano" (frequências por serviço) —
+  // sempre o Checklist Padrão com frequência por pergunta. O construtor de plano
+  // some pro comum. EXCEÇÃO legado: um comum que JÁ tem plano persistido
+  // (`contract_plan_activities`) continua editável e gera OS normalmente — não
+  // forçamos conversão nem apagamos o plano dele. `existingPlan` (undefined
+  // enquanto carrega) só tem linhas quando o contrato salvo realmente tinha plano.
+  const hasLegacyCommonPlan = isEditing && !isPmoc && (existingPlan?.length ?? 0) > 0;
+  // Quando exibir o construtor de plano na etapa de Frequência: nunca em PMOC
+  // (que monta por máquina) e, no comum, SÓ pra preservar/editar um plano legado.
+  const showCommonPlanBuilder = !isPmoc && hasLegacyCommonPlan;
 
   // Itens com escopo/fase por máquina (Fase 3). PMOC anexa pmoc_scope +
   // pmoc_start_visit de cada máquina (via builder compartilhado); comum manda só
@@ -1841,8 +1871,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               {/* PMOC (Onda A v1.9.0) — toggle no TOPO da etapa, logo após o Cliente.
                   Os detalhes (RT, unidade, badge legal) ficam na etapa "Unidade & RT".
                   Equipe, cobrança, tipo de serviço, checklist, observações e status
-                  migraram pra etapa "Equipe & Cobrança". A Identificação fica enxuta. */}
-              {pmocToggleSection}
+                  migraram pra etapa "Equipe & Cobrança". A Identificação fica enxuta.
+                  PMOC é exclusivo de refrigeração — fora desse segmento o toggle
+                  nem aparece (e toda a estrutura PMOC fica oculta). */}
+              {canUsePmoc && pmocToggleSection}
             </div>
           )}
 
@@ -2092,11 +2124,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 </Alert>
               )}
 
-              {/* Opções avançadas — serviços com frequência própria. SÓ em contrato
-                  COMUM (não-PMOC): o PMOC monta o plano por máquina na etapa
-                  Ambientes. Aqui ficam o picker do catálogo, a adição manual e a
-                  lista editável de atividades. */}
-              {!isPmoc && (
+              {/* Opções avançadas — serviços com frequência própria. Decisão CEO:
+                  contrato COMUM novo NÃO usa mais "Plano" — sempre o Checklist
+                  Padrão (frequência por pergunta). O construtor só aparece pra
+                  EDITAR um plano legado já existente (não quebrar contratos
+                  antigos). PMOC monta o plano por máquina na etapa Ambientes. */}
+              {showCommonPlanBuilder && (
               <Collapsible open={showAdvancedFrequency} onOpenChange={setShowAdvancedFrequency}>
                 <CollapsibleTrigger asChild>
                   <button

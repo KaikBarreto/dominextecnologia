@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.10',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contratos mais focados no seu segmento',
+        description: 'A criação de contratos ficou mais enxuta e adequada a cada tipo de empresa: o PMOC, que é específico de refrigeração e climatização, agora aparece apenas para esse segmento. Os demais segmentos passam a ter contratos sempre personalizáveis — com checklist e a frequência de cada item — sem opções avançadas que não se aplicam ao seu serviço.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.9',
     date: '28 de junho de 2026',
     type: 'patch',
