@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.9',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Plano de Manutenção do contrato em documento',
+        description: 'Agora qualquer contrato gera um documento de Plano de Manutenção, pronto para imprimir ou salvar em PDF direto do navegador. Ele reúne os dados da sua empresa e do cliente, os ambientes e os equipamentos de cada um, a lista de serviços do checklist com a frequência de cada item, e uma grade das próximas visitas indicando o que vence em cada uma. É só abrir o contrato e clicar em "Plano de Manutenção".',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.15.8',
     date: '28 de junho de 2026',
     type: 'patch',

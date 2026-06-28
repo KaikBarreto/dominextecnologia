@@ -23,6 +23,7 @@ import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
+import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
 
 interface OSPhoto {
   id: string;
@@ -79,6 +80,11 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
+  // Datas reais das visitas do contrato desta OS (scheduled_date de TODAS as OSs
+  // do mesmo contract_id). Alimenta o filtro de frequência por pergunta — espelha
+  // o `checklistVisibility` do app do técnico. Vazio (OS avulsa, busca falhou) →
+  // o helper mostra tudo. NÃO toca no caminho PMOC (service_order_activities).
+  const [contractVisitDates, setContractVisitDates] = useState<string[]>([]);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -121,6 +127,27 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         service_type: (osData as any).service_type || snapshot?.service_type || null,
       };
       setServiceOrder(enriched as any);
+
+      // OS de CONTRATO: busca as datas reais de TODAS as visitas (scheduled_date
+      // de todas as OSs do mesmo contract_id) pra rodar o filtro de frequência
+      // por pergunta no relatório — mesmo padrão do app do técnico. OS avulsa →
+      // sem contrato → mantém [] → mostra tudo (idêntico ao histórico).
+      const contractId = (osData as any).contract_id || null;
+      if (contractId) {
+        const { data: visitRows } = await supabase
+          .from('service_orders')
+          .select('scheduled_date')
+          .eq('contract_id', contractId)
+          .order('scheduled_date', { ascending: true });
+        setContractVisitDates(
+          ((visitRows || []) as any[])
+            .map((r) => r.scheduled_date as string | null)
+            .filter((d): d is string => !!d),
+        );
+      } else {
+        setContractVisitDates([]);
+      }
+
       const { data: photosData } = await supabase.from('os_photos').select('*').eq('service_order_id', serviceOrderId).order('created_at', { ascending: true });
       setPhotos(photosData || []);
 
@@ -289,7 +316,53 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         </Card>
       )}
 
-      {formResponses.length > 0 && (() => {
+      {(() => {
+        // FATIA B3.2 — consistência com o app do técnico. Em OS de CONTRATO,
+        // o técnico só viu (e respondeu) as perguntas que VENCIAM nesta visita;
+        // o relatório espelha isso escondendo respostas em BRANCO de perguntas que
+        // não eram da vez. Perguntas COM resposta real (valor ou foto) SEMPRE
+        // aparecem — relatório nunca esconde o que foi feito.
+        //
+        // OS avulsa (sem contract_id) ou sem datas de visita → sem filtro
+        // (render idêntico ao histórico). Caminho PMOC (service_order_activities)
+        // não passa por aqui — este bloco lê só form_responses (checklist
+        // personalizado), então fica intacto.
+        const contractId = (serviceOrder as any)?.contract_id || null;
+        let visibleResponses = formResponses;
+        if (contractId && contractVisitDates.length > 0 && formResponses.length > 0) {
+          const hasRealContent = (r: FormResponseData) => {
+            const v = typeof r.response_value === 'string' ? r.response_value.trim() : '';
+            const hasValue = v !== '' && v !== '-';
+            return hasValue || !!r.response_photo_url;
+          };
+          // answeredQuestionIds = só perguntas com conteúdo real (nunca esconde
+          // resposta de verdade, mesmo que não fosse da vez).
+          const answeredQuestionIds = new Set(
+            formResponses.filter(hasRealContent).map((r) => r.question_id),
+          );
+          // Perguntas presentes nas respostas, com os campos de frequência (o
+          // select traz form_questions(*)), deduplicadas por id.
+          const seen = new Set<string>();
+          const questions = formResponses
+            .filter((r) => r.question && !seen.has(r.question_id) && (seen.add(r.question_id), true))
+            .map((r) => ({
+              id: r.question_id,
+              freq_kind: (r.question as any)?.freq_kind ?? null,
+              freq_months: (r.question as any)?.freq_months ?? null,
+              freq_days: (r.question as any)?.freq_days ?? null,
+              freq_visits: (r.question as any)?.freq_visits ?? null,
+              start_kind: (r.question as any)?.start_kind ?? null,
+              start_visit: (r.question as any)?.start_visit ?? null,
+            }));
+          const visibleIds = computeVisibleQuestionIds({
+            visitDates: contractVisitDates,
+            scheduledDate: (serviceOrder as any)?.scheduled_date ?? null,
+            questions,
+            answeredQuestionIds,
+          });
+          visibleResponses = formResponses.filter((r) => visibleIds.has(r.question_id));
+        }
+        if (visibleResponses.length === 0) return null;
         // Render one card per equipment_items row (equip+template).
         // Fallback: when no junction rows, fall back to legacy single template.
         const renderResponse = (response: FormResponseData) => {
@@ -340,7 +413,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             <div className="space-y-3">
               {itemsWithTemplate.map((item, idx) => {
                 // Filter responses by template_id; when also have equipment_id, scope further
-                const itemResponses = formResponses.filter(r => {
+                const itemResponses = visibleResponses.filter(r => {
                   if (r.question?.template_id !== item.form_template_id) return false;
                   if (item.equipment_id) return r.equipment_id === item.equipment_id;
                   return !r.equipment_id;
@@ -389,7 +462,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent className="pt-0 space-y-3">
-                  {formResponses.map(renderResponse)}
+                  {visibleResponses.map(renderResponse)}
                 </CardContent>
               </CollapsibleContent>
             </Collapsible>

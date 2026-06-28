@@ -29,6 +29,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { ContractEnvironmentsTab } from '@/components/contracts/ContractEnvironmentsTab';
+import { ContractMaintenancePlanDocument } from '@/components/contracts/ContractMaintenancePlanDocument';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
 import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
@@ -112,6 +113,9 @@ export default function ContractDetail() {
   const queryClient = useQueryClient();
 
   const [showReceivableModal, setShowReceivableModal] = useState(false);
+  // Documento "Plano de Manutenção" (Fase C) — overlay de impressão. Só contrato
+  // comum (PMOC tem a aba Documentos própria). Abre/fecha por estado local.
+  const [showMaintenancePlan, setShowMaintenancePlan] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   // Quantos meses estender no clique de "Renovar / Estender" (default 12).
@@ -934,6 +938,13 @@ export default function ContractDetail() {
               <Button variant="outline" className="mt-2 w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(true)}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Renovar / Estender
               </Button>
+              {/* Documento "Plano de Manutenção" (imprimir/PDF). Só contrato comum
+                  — PMOC tem a aba Documentos própria com seus documentos legais. */}
+              {!isPmoc && (
+                <Button variant="outline" className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowMaintenancePlan(true)}>
+                  <Printer className="mr-2 h-4 w-4" /> Plano de Manutenção
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -1618,6 +1629,14 @@ export default function ContractDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Documento "Plano de Manutenção" — overlay de impressão (contrato comum). */}
+      {showMaintenancePlan && contract && (
+        <ContractMaintenancePlanDocument
+          contract={contract}
+          onClose={() => setShowMaintenancePlan(false)}
+        />
+      )}
     </div>
   );
 }

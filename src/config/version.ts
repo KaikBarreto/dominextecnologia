@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.8";
+export const APP_VERSION = "1.15.9";
 
-export const VERSION_NOTES = "Nos contratos, cada item do checklist pode ter a sua própria frequência: mensal, trimestral, semestral, anual, a cada N visitas ou personalizado (a cada X dias). O técnico passa a ver em cada visita só o que vence ali — o resto não polui a tela. Itens sem frequência continuam aparecendo em toda visita.";
+export const VERSION_NOTES = "Todo contrato agora gera um Plano de Manutenção pronto pra imprimir ou salvar em PDF: dados da empresa e do cliente, os ambientes e seus equipamentos, os serviços do checklist com a frequência de cada um, e uma grade das próximas visitas mostrando o que vence em cada uma.";
