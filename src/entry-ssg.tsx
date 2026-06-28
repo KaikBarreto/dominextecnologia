@@ -32,6 +32,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import Landing from '@/pages/Landing';
 import QuemSomos from '@/pages/QuemSomos';
 import Blog from '@/pages/Blog';
+import type { BlogProps } from '@/pages/Blog';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfUse from '@/pages/TermsOfUse';
 
@@ -315,12 +316,23 @@ export const SSG_ROUTES = Object.keys(ROUTE_TABLE);
 void moduleBySlug; // mantido para resolução por slug ad-hoc, se necessário.
 
 /**
+ * Dados do blog injetados pelo scripts/ssg.mjs (buscados via REST no build) pra
+ * que a listagem `/blog` saia com os POSTS já renderizados no HTML estático —
+ * crítico pra SEO (cards, links internos e categorias visíveis sem JS).
+ */
+export interface SsgBlogData {
+  posts?: BlogProps['initialPosts'];
+  categories?: BlogProps['initialCategories'];
+}
+
+/**
  * Renderiza UMA rota de marketing para string, com shell de providers mínimo e
  * SSR-safe. Cada render usa um QueryClient novo (sem cache compartilhado entre
- * rotas) — o useQuery não dispara fetch no SSR (effects não rodam), só precisa do
- * provider para não quebrar.
+ * rotas). Pra `/blog`, o `blogData` (quando passado) vira `initialData` do React
+ * Query via props do componente, então o useQuery resolve SÍNCRONO no SSR e os
+ * cards saem no HTML. As demais rotas são puras de dados (data-driven).
  */
-export function renderRoute(route: string): SsgRenderResult {
+export function renderRoute(route: string, blogData?: SsgBlogData): SsgRenderResult {
   const entry = ROUTE_TABLE[route];
   if (!entry) {
     throw new Error(`[entry-ssg] Rota não mapeada no SSG: "${route}".`);
@@ -330,11 +342,17 @@ export function renderRoute(route: string): SsgRenderResult {
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   });
 
+  // Pra /blog, injeta os dados buscados no build como initialData (cards no HTML).
+  const element =
+    route === '/blog'
+      ? <Blog initialPosts={blogData?.posts} initialCategories={blogData?.categories} />
+      : entry.element;
+
   const html = renderToString(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <StaticRouter location={route}>{entry.element}</StaticRouter>
+          <StaticRouter location={route}>{element}</StaticRouter>
         </TooltipProvider>
       </QueryClientProvider>
     </StrictMode>

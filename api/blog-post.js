@@ -59,6 +59,15 @@ function jsonLdSafe(obj) {
   return JSON.stringify(obj).replace(/<\/(script)/gi, '<\\/$1');
 }
 
+/** Headers de leitura REST (anon key). */
+function restHeaders() {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Accept: 'application/json',
+  };
+}
+
 /** Busca o post publicado no Supabase (REST). Devolve o objeto ou null. */
 async function fetchPost(slug) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
@@ -68,19 +77,59 @@ async function fetchPost(slug) {
     `&status=eq.published` +
     `&select=*&limit=1`;
   try {
-    const res = await fetch(url, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json',
-      },
-    });
+    const res = await fetch(url, { headers: restHeaders() });
     if (!res.ok) return null;
     const rows = await res.json();
     return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Busca posts RELACIONADOS pro "Leia também": mesma categoria primeiro, completa
+ * com recentes, exclui o próprio slug, limita a 3. Espelha a regra do
+ * RelatedPosts.tsx. Em falha, devolve [] (a seção simplesmente não aparece).
+ */
+async function fetchRelated(slug, category) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+  const select = 'id,title,slug,excerpt,category,cover_image_url,published_at,author_name';
+  const seen = new Set([slug]);
+  const out = [];
+
+  const pushRows = (rows) => {
+    for (const r of Array.isArray(rows) ? rows : []) {
+      if (seen.has(r.slug)) continue;
+      seen.add(r.slug);
+      out.push(r);
+      if (out.length >= 3) break;
+    }
+  };
+
+  try {
+    if (category) {
+      const catUrl =
+        `${SUPABASE_URL}/rest/v1/blog_posts` +
+        `?status=eq.published` +
+        `&category=eq.${encodeURIComponent(category)}` +
+        `&slug=neq.${encodeURIComponent(slug)}` +
+        `&select=${select}&order=published_at.desc&limit=3`;
+      const catRes = await fetch(catUrl, { headers: restHeaders() });
+      if (catRes.ok) pushRows(await catRes.json());
+    }
+    if (out.length < 3) {
+      const recentUrl =
+        `${SUPABASE_URL}/rest/v1/blog_posts` +
+        `?status=eq.published` +
+        `&slug=neq.${encodeURIComponent(slug)}` +
+        `&select=${select}&order=published_at.desc&limit=6`;
+      const recentRes = await fetch(recentUrl, { headers: restHeaders() });
+      if (recentRes.ok) pushRows(await recentRes.json());
+    }
+  } catch {
+    return out;
+  }
+  return out.slice(0, 3);
 }
 
 /**
@@ -169,11 +218,42 @@ function injectHeadSeo(shell, post) {
 }
 
 /**
+ * Monta o HTML da seção "Leia também" (relacionados) pra ir DENTRO do #root no
+ * SSR. Cada card é um <a href="/blog/<slug>"> = link interno crawlável sem JS.
+ * Devolve '' quando não há relacionados.
+ */
+function renderRelatedHtml(related) {
+  if (!Array.isArray(related) || related.length === 0) return '';
+  const cards = related
+    .map((p) => {
+      const cover = p.cover_image_url
+        ? `<img src="${escapeAttr(p.cover_image_url)}" alt="${escapeAttr(p.title || '')}" loading="lazy" />`
+        : '';
+      const cat = p.category ? `<span>${escapeText(p.category)}</span>` : '';
+      const excerpt = p.excerpt ? `<p>${escapeText(p.excerpt)}</p>` : '';
+      const author = p.author_name ? `<small>${escapeText(p.author_name)}</small>` : '';
+      return `<a href="/blog/${escapeAttr(p.slug)}">
+          ${cover}
+          ${cat}
+          <h3>${escapeText(p.title || '')}</h3>
+          ${excerpt}
+          ${author}
+        </a>`;
+    })
+    .join('\n        ');
+  return `<section>
+        <h2>Leia também</h2>
+        ${cards}
+      </section>`;
+}
+
+/**
  * Injeta o CONTEÚDO do post dentro do <div id="root"></div> pra crawlers sem JS.
  * O `content` é HTML confiável (vem do nosso editor admin). Mantém os scripts do
- * SPA intactos — o React re-renderiza por cima pra humanos.
+ * SPA intactos — o React re-renderiza por cima pra humanos. Inclui o "Leia
+ * também" (relacionados) como links internos crawláveis.
  */
-function injectBody(shell, post) {
+function injectBody(shell, post, related) {
   const coverImg = post.cover_image_url
     ? `<img src="${escapeAttr(post.cover_image_url)}" alt="${escapeAttr(
         post.title
@@ -184,15 +264,18 @@ function injectBody(shell, post) {
   if (post.author_name) meta.push(escapeText(post.author_name));
   if (post.published_at) meta.push(escapeText(String(post.published_at).slice(0, 10)));
 
-  // <article> com o conteúdo. Embrulhado em wrapper escondido visualmente não é
-  // necessário: o React substitui o innerHTML do #root no mount. Os crawlers
-  // sem JS leem este markup.
+  const relatedHtml = renderRelatedHtml(related);
+
+  // <article> com o conteúdo + "Leia também". O React substitui o innerHTML do
+  // #root no mount; os crawlers sem JS leem este markup (incluindo os links
+  // internos dos relacionados).
   const articleHtml = `<article>
       ${coverImg}
       ${post.category ? `<span>${escapeText(post.category)}</span>` : ''}
       <h1>${escapeText(post.title || '')}</h1>
       ${meta.length ? `<p>${meta.join(' · ')}</p>` : ''}
       <div>${post.content || ''}</div>
+      ${relatedHtml}
     </article>`;
 
   // Substitui o root vazio pelo root com o artigo. Cobre tanto o caso vazio
@@ -242,7 +325,10 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Relacionados pro "Leia também" (links internos crawláveis sem JS).
+  const related = await fetchRelated(post.slug, post.category);
+
   let html = injectHeadSeo(shell, post);
-  html = injectBody(html, post);
+  html = injectBody(html, post, related);
   res.status(200).send(html);
 }

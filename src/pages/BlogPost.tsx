@@ -24,6 +24,7 @@ import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
 import { BlogTableOfContents } from '@/components/blog/BlogTableOfContents';
+import { RelatedPosts } from '@/components/blog/RelatedPosts';
 import BlogNavbar from '@/components/blog/BlogNavbar';
 import { useBlogTheme } from '@/components/blog/useBlogTheme';
 
@@ -491,6 +492,15 @@ export default function BlogPost() {
                   Teste grátis 14 dias, sem cartão <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
+
+              {/* Leia também — relacionados (mesma categoria primeiro, completa
+                  com recentes). O equivalente em HTML sai também no SSR
+                  (api/blog-post.js) pra link interno crawlável sem JS. */}
+              <RelatedPosts
+                slug={post.slug}
+                category={post.category}
+                categoryColors={categoryColors}
+              />
             </article>
 
             {/* Sidebar direita: largura ORIGINAL (320px) em todos os breakpoints

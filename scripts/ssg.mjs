@@ -47,6 +47,78 @@ const DIST = join(ROOT, 'dist');
 const SSG_OUT = join(ROOT, 'dist-ssg');
 const ENTRY = join(ROOT, 'src', 'entry-ssg.tsx');
 
+// ── Env do Supabase pra buscar os posts do blog no build ──────────────────────
+// Carrega o .env da raiz (se ainda não estiver no process.env) só pra ler as vars
+// VITE_SUPABASE_* — as MESMAS que o cliente usa (anon/publishable, só leitura).
+function loadEnvFromDotenv() {
+  try {
+    const envPath = join(ROOT, '.env');
+    if (!existsSync(envPath)) return;
+    const raw = readFileSync(envPath, 'utf8');
+    for (const line of raw.split('\n')) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+      if (!m) continue;
+      const key = m[1];
+      let val = m[2].trim();
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      if (process.env[key] === undefined) process.env[key] = val;
+    }
+  } catch {
+    /* sem .env → segue com o que estiver no ambiente (Vercel injeta as vars) */
+  }
+}
+
+const SUPABASE_URL = () => process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = () =>
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+/**
+ * Busca posts publicados + categorias via REST do Supabase (anon key, leitura).
+ * Devolve `{ posts, categories }` pro entry-ssg renderizar a listagem com cards
+ * já no HTML. Em falha, devolve listas vazias (a SPA hidrata e busca no client) —
+ * nunca derruba o build.
+ */
+async function fetchBlogData() {
+  loadEnvFromDotenv();
+  const url = SUPABASE_URL();
+  const key = SUPABASE_ANON_KEY();
+  if (!url || !key) {
+    console.warn('[ssg] Sem VITE_SUPABASE_* — /blog sai sem posts no HTML (SPA hidrata).');
+    return { posts: [], categories: [] };
+  }
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' };
+  try {
+    const postsUrl =
+      `${url}/rest/v1/blog_posts` +
+      `?status=eq.published` +
+      `&select=id,title,slug,excerpt,category,cover_image_url,published_at,view_count,likes_count,comments_count,author_name,content` +
+      `&order=published_at.desc`;
+    const catsUrl = `${url}/rest/v1/blog_categories?select=name,color&order=name`;
+    const [postsRes, catsRes] = await Promise.all([
+      fetch(postsUrl, { headers }),
+      fetch(catsUrl, { headers }),
+    ]);
+    const posts = postsRes.ok ? await postsRes.json() : [];
+    const catsRaw = catsRes.ok ? await catsRes.json() : [];
+    const categories = (Array.isArray(catsRaw) ? catsRaw : []).map((c) => ({
+      name: c.name,
+      color: c.color || 'hsl(160 100% 39%)',
+    }));
+    console.log(
+      `[ssg] Blog: ${Array.isArray(posts) ? posts.length : 0} posts, ${categories.length} categorias.`
+    );
+    return { posts: Array.isArray(posts) ? posts : [], categories };
+  } catch (err) {
+    console.warn('[ssg] Falha ao buscar dados do blog (segue sem posts):', err?.message || err);
+    return { posts: [], categories: [] };
+  }
+}
+
 /** Escapa o texto pra usar dentro de um atributo HTML (content="..."). */
 function attr(text) {
   return String(text)
@@ -179,10 +251,16 @@ async function main() {
   // do SSG mexer no index.html — a função serverless do blog usa shell.html.
   const baseHtml = readFileSync(join(DIST, 'index.html'), 'utf8');
 
+  // Busca os dados do blog UMA vez (se houver /blog nas rotas) pra injetar os
+  // posts no HTML estático da listagem.
+  const blogData = SSG_ROUTES.includes('/blog')
+    ? await fetchBlogData()
+    : { posts: [], categories: [] };
+
   const results = [];
   for (const route of SSG_ROUTES) {
     try {
-      const { html, head } = renderRoute(route);
+      const { html, head } = renderRoute(route, route === '/blog' ? blogData : undefined);
       const finalHtml = buildHtml(baseHtml, html, head);
       const outPath = outPathFor(route);
       mkdirSync(dirname(outPath), { recursive: true });

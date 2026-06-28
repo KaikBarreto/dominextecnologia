@@ -88,24 +88,6 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
           <p className="text-sm text-neutral-500 dark:text-white/35">Ainda não há artigos.</p>
         )}
       </div>
-
-      {/* Categorias */}
-      {categoryColors.length > 0 && (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.02]">
-          <h3 className="mb-4 text-sm font-bold text-neutral-900 dark:text-white">Categorias</h3>
-          <div className="flex flex-wrap gap-2">
-            {categoryColors.map((cat) => (
-              <span
-                key={cat.name}
-                className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
-                style={{ backgroundColor: cat.color }}
-              >
-                {cat.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </aside>
   );
 };
