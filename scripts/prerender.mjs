@@ -192,11 +192,17 @@ async function main() {
 
   const chromePath = findChrome();
   if (!chromePath) {
-    console.error(
-      '[prerender] Chrome/Chromium não encontrado. Defina PUPPETEER_EXECUTABLE_PATH ' +
-        'apontando para um executável do Chrome e rode de novo.'
+    // Sem Chrome (ex.: build do Vercel, que não tem Chromium instalado) NÃO deve
+    // derrubar o deploy inteiro. As landings caem no fallback de SPA (rewrite
+    // /(.*) → /index.html no vercel.json), exatamente como já era antes deste
+    // passo existir. O prerender estático de SEO é um bônus, não um pré-requisito
+    // pra publicar. Pra reativá-lo no Vercel, exponha PUPPETEER_EXECUTABLE_PATH
+    // (ou CHROME_PATH) apontando pra um Chrome instalado no build.
+    console.warn(
+      '[prerender] Chrome/Chromium não encontrado — PULANDO prerender (build segue). ' +
+        'Defina PUPPETEER_EXECUTABLE_PATH pra gerar as páginas estáticas de SEO.'
     );
-    process.exit(1);
+    return;
   }
   console.log(`[prerender] Chrome: ${chromePath}`);
 
