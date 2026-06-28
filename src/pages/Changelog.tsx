@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.27',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PMOC começa enxuto, com o essencial pronto',
+        description: 'Ao criar um contrato PMOC, cada equipamento agora já vem com um checklist enxuto, só com as tarefas essenciais, organizadas por tipo: Limpeza, Inspeção, Medições e Testes. Antes vinha a norma inteira marcada, com dezenas de tarefas por equipamento em cada visita. Se você quiser o checklist completo da norma, é só tocar em "Adicionar norma completa". Os grupos de equipamento ficaram mais claros: Expansão Direta (split, hi-wall, cassete, piso teto, janela, ACJ) e Sistemas Centrais (VRF, chiller, fan coil, UTA, self contained). E estruturas compartilhadas, como torre de resfriamento e bombas, agora você cadastra como um equipamento próprio e marca o checklist delas ali, então são feitas uma vez só. Vale para contratos novos; os que já existem continuam como estão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.26',
     date: '28 de junho de 2026',
     type: 'patch',

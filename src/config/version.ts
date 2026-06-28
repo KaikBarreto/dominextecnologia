@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.26";
+export const APP_VERSION = "1.15.27";
 
-export const VERSION_NOTES = "Agora dá para entrar no sistema com a sua conta do Google: na tela de login, toque em 'Continuar com Google' e escolha a conta, sem precisar digitar email e senha. Funciona com o mesmo email já cadastrado no sistema, e o acesso por email e senha continua disponível normalmente.";
+export const VERSION_NOTES = "Ao criar um contrato PMOC, cada equipamento agora já vem com um checklist enxuto, só com as tarefas essenciais, organizadas por tipo: Limpeza, Inspeção, Medições e Testes. Se quiser a norma inteira, é só tocar em 'Adicionar norma completa'. Os grupos ficaram mais claros (Expansão Direta e Sistemas Centrais) e estruturas compartilhadas, como torre de resfriamento e bombas, você cadastra como um equipamento próprio, para serem feitas uma vez só. Vale para contratos novos.";
