@@ -78,14 +78,15 @@ const customPlan = {
   cta: 'Falar com Consultor',
 };
 
-// Fallback quando o visitante NÃO chegou com utm_source (sem origem capturada).
-const ENTERPRISE_WHATSAPP_FALLBACK =
-  'Olá! Vim pelo site do Dominex e tenho interesse no plano Enterprise (Personalizado). Gostaria de conversar sobre uma solução sob medida.';
+// Fragmento específico do CTA Enterprise (plano Personalizado): preserva a
+// intenção mesmo dentro da frase nova ("Olá! Vim ${fragment} da Dominex...").
+const ENTERPRISE_WHATSAPP_FRAGMENT =
+  'pela página de planos e tenho interesse no plano *Personalizado (Enterprise)*';
 
 // URL montada no CLIQUE (não no load do módulo): garante que a UTM capturada
 // depois do load entre na mensagem e que o rodízio sorteie por clique.
 function openEnterpriseWhatsApp() {
-  const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), ENTERPRISE_WHATSAPP_FALLBACK, 'Site');
+  const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), ENTERPRISE_WHATSAPP_FRAGMENT);
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 

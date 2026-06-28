@@ -1,7 +1,14 @@
 // Helper central das CTAs de WhatsApp da landing / páginas públicas de aquisição.
 //
-// Objetivo: montar a URL final do WhatsApp (wa.me) já com a ORIGEM do lead
-// embutida na mensagem quando a pessoa chegou com `utm_source` na URL.
+// Objetivo: montar a URL final do WhatsApp (wa.me) com uma mensagem que reflete
+// a PÁGINA ATUAL (pathname) + a ORIGEM do lead (utm_source quando houver).
+//
+// Mensagem montada no CLIQUE, então o pathname e a UTM lidos são os do momento
+// do clique:
+//   - Sem utm_source:  "Olá! Vim ${fragment} da Dominex e gostaria de saber mais sobre o sistema."
+//   - Com utm_source:  "Olá! Vim ${fragment} da Dominex, que achei no *${origin}*, e gostaria de saber mais sobre o sistema."
+// onde ${fragment} vem de getPageContextFragment(pathname) e ${origin} de
+// getLeadOriginLabel() (Instagram, Google, etc).
 //
 // Fluxo da UTM:
 //   1. captureUtmParams() roda cedo (mount da landing/páginas públicas) e
@@ -103,30 +110,89 @@ export function getLeadOriginLabel(): string | null {
   return source ? friendlyOriginLabel(source) : null;
 }
 
-/**
- * Monta a mensagem final do WhatsApp.
- * - Com origem: "Oi, cheguei no *Site* do Dominex através do *Instagram* e gostaria de mais informações"
- * - Sem origem: usa `fallbackMessage` (a mensagem que a CTA já usava).
- * @param contextLabel rótulo do contexto de entrada em negrito (default "Site")
- */
-export function buildWhatsAppMessage(
-  fallbackMessage: string,
-  contextLabel = "Site"
-): string {
-  const origin = getLeadOriginLabel();
-  if (!origin) return fallbackMessage;
-  return `Oi, cheguei no *${contextLabel}* do Dominex através do *${origin}* e gostaria de mais informações`;
+// Pathname exato → fragmento da mensagem (em negrito o tópico quando faz sentido).
+// Os paths batem com src/App.tsx (rotas de segmento, módulos e genéricas).
+const PAGE_FRAGMENTS: Record<string, string> = {
+  // Genéricos
+  "/": "pelo site",
+  "/precos": "pela página de planos",
+  "/changelog": "pela página de novidades",
+
+  // Segmentos (/sistema-para-*)
+  "/sistema-para-refrigeracao": "pela página sobre *sistema pra refrigeração*",
+  "/sistema-para-eletricistas": "pela página sobre *sistema pra eletricistas*",
+  "/sistema-para-energia-solar": "pela página sobre *sistema pra energia solar*",
+  "/sistema-para-provedores": "pela página sobre *sistema pra provedores*",
+  "/sistema-para-cftv": "pela página sobre *sistema pra CFTV*",
+  "/sistema-para-construcao-civil": "pela página sobre *sistema pra construção civil*",
+  "/sistema-para-elevadores": "pela página sobre *sistema pra elevadores*",
+  "/sistema-para-limpeza-conservacao": "pela página sobre *sistema pra limpeza e conservação*",
+  "/sistema-para-dedetizacao": "pela página sobre *sistema pra dedetização*",
+
+  // Módulos (aba Soluções)
+  "/os-digital": "pela página sobre *OS Digital*",
+  "/sistema-pmoc": "pela página sobre *PMOC*",
+  "/sistema-crm": "pela página sobre *CRM*",
+  "/controle-financeiro": "pela página sobre *Controle Financeiro*",
+  "/ponto-e-folha": "pela página sobre *Ponto e Folha*",
+  "/emissao-de-nfse": "pela página sobre *Emissão de NFS-e*",
+  "/portal-do-cliente": "pela página sobre *Portal do Cliente*",
+  "/controle-de-estoque": "pela página sobre *Controle de Estoque*",
+  "/orcamentos-e-contratos": "pela página sobre *Orçamentos e Contratos*",
+  "/rastreamento-de-equipes": "pela página sobre *Rastreamento de Equipes*",
+  "/area-do-tecnico": "pela página sobre *Área do Técnico*",
+};
+
+const FRAGMENT_FALLBACK = "pelo site";
+
+/** Normaliza o pathname: tira barra final (exceto a raiz "/"). */
+function normalizePathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.replace(/\/+$/, "") || "/";
+  }
+  return pathname;
 }
 
 /**
- * Monta a URL final wa.me já com a mensagem (com origem quando houver).
+ * Resolve o fragmento da mensagem a partir do pathname atual (ou passado).
+ * - Match exato no mapa PAGE_FRAGMENTS.
+ * - /blog e /blog/:slug → "pelo blog" (por prefixo).
+ * - Qualquer outro não mapeado → "pelo site".
+ */
+export function getPageContextFragment(pathname?: string): string {
+  let path: string;
+  try {
+    path = pathname ?? (typeof window !== "undefined" ? window.location.pathname : "/");
+  } catch {
+    path = "/";
+  }
+  path = normalizePathname(path);
+
+  if (path === "/blog" || path.startsWith("/blog/")) return "pelo blog";
+
+  return PAGE_FRAGMENTS[path] ?? FRAGMENT_FALLBACK;
+}
+
+/**
+ * Monta a mensagem final do WhatsApp refletindo a página atual + a origem.
+ * - Sem utm_source: "Olá! Vim ${fragment} da Dominex e gostaria de saber mais sobre o sistema."
+ * - Com utm_source: "Olá! Vim ${fragment} da Dominex, que achei no *${origin}*, e gostaria de saber mais sobre o sistema."
+ * @param fragmentOverride força o fragmento (default resolve pelo pathname atual).
+ */
+export function buildWhatsAppMessage(fragmentOverride?: string): string {
+  const fragment = fragmentOverride ?? getPageContextFragment();
+  const origin = getLeadOriginLabel();
+  if (!origin) {
+    return `Olá! Vim ${fragment} da Dominex e gostaria de saber mais sobre o sistema.`;
+  }
+  return `Olá! Vim ${fragment} da Dominex, que achei no *${origin}*, e gostaria de saber mais sobre o sistema.`;
+}
+
+/**
+ * Monta a URL final wa.me já com a mensagem (página + origem).
  * Faz encodeURIComponent na mensagem (acentos e `*` passam corretos).
  */
-export function buildWhatsAppUrl(
-  number: string,
-  fallbackMessage: string,
-  contextLabel = "Site"
-): string {
-  const message = buildWhatsAppMessage(fallbackMessage, contextLabel);
+export function buildWhatsAppUrl(number: string, fragmentOverride?: string): string {
+  const message = buildWhatsAppMessage(fragmentOverride);
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }

@@ -21,8 +21,10 @@ export function SegmentLockedScreen({ segment }: SegmentLockedScreenProps) {
   if (!seg) return null;
 
   const handleContact = () => {
-    const mensagem = `Olá! Já uso a Dominex e gostaria de contratar as ferramentas do segmento de ${seg.label}.`;
-    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), mensagem, 'Área do Técnico');
+    // Já é cliente: usa fragmento próprio (a frase vira "Olá! Vim ${fragment}
+    // da Dominex...") preservando a intenção de contratar o segmento bloqueado.
+    const fragmento = `da Área do Técnico e já uso a Dominex, gostaria de contratar as ferramentas do segmento de *${seg.label}*`;
+    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), fragmento);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
