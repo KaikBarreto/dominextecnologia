@@ -14,6 +14,7 @@ import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
+import DeepDiveSection from '@/components/landing/DeepDiveSection';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import type { SegmentData } from './segmentsData';
 
@@ -358,49 +359,20 @@ function SegmentPains({ data }: { data: SegmentData }) {
 
 /* --------------------------- Deep dives ---------------------------- */
 
+/**
+ * Deep dives do segmento. Usa a seção reutilizável `DeepDiveSection` (single
+ * source of truth do efeito foto+parallax), passando a cor do nicho via
+ * `--seg-accent` e preservando o chip de ícone saturado do segmento
+ * (gradiente de acento + ícone branco).
+ */
 function SegmentDeepDives({ data }: { data: SegmentData }) {
-  const ref = useScrollReveal();
   return (
-    <section className="py-24">
-      <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-6 scroll-reveal">
-        {data.deepDives.map((d, i) => {
-          const Icon = d.icon;
-          return (
-            <div
-              key={d.title}
-              className={`grid lg:grid-cols-12 gap-8 items-center rounded-2xl border border-white/10 bg-white/[0.02] p-8 lg:p-12 ${
-                i % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''
-              }`}
-            >
-              <div className="lg:col-span-7">
-                <div
-                  className="inline-flex h-14 w-14 items-center justify-center rounded-xl mb-6 text-white"
-                  style={{ backgroundImage: SEG_ACCENT_BADGE_GRADIENT }}
-                >
-                  <Icon className="h-7 w-7" />
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight">{d.title}</h2>
-                <p className="text-white/55 text-base leading-relaxed">{d.body}</p>
-              </div>
-              <div className="lg:col-span-5">
-                <div
-                  className="aspect-[4/3] rounded-xl border border-white/10 flex items-center justify-center"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(to bottom right, color-mix(in srgb, var(--seg-accent) 7%, transparent), transparent)',
-                  }}
-                >
-                  <Icon
-                    className="h-20 w-20"
-                    style={{ color: 'color-mix(in srgb, var(--seg-accent) 30%, transparent)' }}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+    <DeepDiveSection
+      dives={data.deepDives}
+      accent="var(--seg-accent)"
+      iconChipClassName="text-white"
+      iconChipStyle={{ backgroundImage: SEG_ACCENT_BADGE_GRADIENT }}
+    />
   );
 }
 

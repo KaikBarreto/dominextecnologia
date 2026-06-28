@@ -26,6 +26,7 @@ import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
+import DeepDiveSection from '@/components/landing/DeepDiveSection';
 import { getSiteSegments, getSegment } from '@/utils/companySegments';
 import type { ModuleData } from './modulesData';
 import { TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
@@ -303,36 +304,16 @@ function ModulePains({ data }: { data: ModuleData }) {
 /* --------------------------- Deep dives ---------------------------- */
 
 function ModuleDeepDives({ data }: { data: ModuleData }) {
-  const ref = useScrollReveal();
+  // Mesmo efeito foto+parallax das landings de segmento, via seção reutilizável.
+  // Aqui o acento é o verde de marca (a página aplica DOMINEX_BRAND_VARS, então
+  // `hsl(var(--primary))` é o verde Dominex — público, sem white-label). O chip
+  // de ícone preserva o visual atual do módulo (bg-primary/10 + ícone primary).
   return (
-    <section className="py-24">
-      <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-6 scroll-reveal">
-        {data.deepDives.map((d, i) => {
-          const Icon = d.icon;
-          return (
-            <div
-              key={d.title}
-              className={`grid lg:grid-cols-12 gap-8 items-center rounded-2xl border border-white/10 bg-white/[0.02] p-8 lg:p-12 ${
-                i % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''
-              }`}
-            >
-              <div className="lg:col-span-7">
-                <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-6">
-                  <Icon className="h-7 w-7" />
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight">{d.title}</h2>
-                <p className="text-white/55 text-base leading-relaxed">{d.body}</p>
-              </div>
-              <div className="lg:col-span-5">
-                <div className="aspect-[4/3] rounded-xl border border-white/10 bg-gradient-to-br from-primary/[0.07] to-transparent flex items-center justify-center">
-                  <Icon className="h-20 w-20 text-primary/30" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+    <DeepDiveSection
+      dives={data.deepDives}
+      accent="hsl(var(--primary))"
+      iconChipClassName="bg-primary/10 text-primary"
+    />
   );
 }
 

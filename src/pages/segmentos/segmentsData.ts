@@ -54,6 +54,13 @@ export interface SegmentDeepDive {
   icon: LucideIcon;
   title: string;
   body: string;
+  /**
+   * Foto semântica OPCIONAL do painel-ilustração (hospedada no nosso /public,
+   * nunca hotlink). Quando ausente, o painel cai no fallback do ícone gigante
+   * esmaecido. Fase piloto: só refrigeração tem foto; os demais segmentos
+   * seguem no ícone até a fase 2.
+   */
+  image?: { src: string; alt: string };
 }
 
 export interface SegmentFeature {
@@ -184,16 +191,28 @@ const refrigeracao: SegmentData = {
       icon: Thermometer,
       title: 'Feito para split, câmara fria, chiller e VRF',
       body: 'Cadastre cada equipamento com marca, modelo, capacidade (BTU/TR), tipo de gás e localização. Split, multi-split, VRF, chiller, câmara fria, fancoil ou self-contained — o histórico fica amarrado à máquina, não ao cliente. Quando o técnico volta, ele sabe exatamente o que foi feito da última vez, qual o gás carregado e qual o superaquecimento alvo.',
+      image: {
+        src: '/segmentos/refrigeracao/1.webp',
+        alt: 'Unidades condensadoras de ar-condicionado instaladas na cobertura de um prédio',
+      },
     },
     {
       icon: RefreshCw,
       title: 'PMOC automático conforme a Lei 13.589/2018',
       body: 'O Plano de Manutenção, Operação e Controle exigido por lei é montado a partir dos equipamentos do contrato: o sistema distribui as visitas no ciclo, monta o checklist de cada uma, registra o responsável técnico e gera a planilha PMOC e o relatório de conformidade prontos pra apresentar em fiscalização. Você cumpre a lei sem planilha paralela.',
+      image: {
+        src: '/segmentos/refrigeracao/2.webp',
+        alt: 'Técnico inspecionando a unidade externa de um sistema de climatização',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular do técnico, direto do telhado',
       body: 'O serviço de refrigeração acontece em cobertura, casa de máquinas e subsolo de shopping — e é tudo resolvido pelo celular. O app do Dominex é instalável no aparelho (PWA): o técnico abre a OS, tira foto, mede pressão, preenche o checklist e coleta a assinatura do cliente ali mesmo, no local do serviço. A OS sai pronta na hora, sem voltar pro escritório nem refazer relatório.',
+      image: {
+        src: '/segmentos/refrigeracao/3.webp',
+        alt: 'Técnicos atendendo a unidade externa de ar-condicionado no telhado',
+      },
     },
   ],
 
@@ -364,21 +383,37 @@ const eletricistas: SegmentData = {
       icon: Zap,
       title: 'Histórico por padrão de entrada, quadro e circuito',
       body: 'Cadastre cada cliente com o padrão de entrada (monofásico, bifásico, trifásico), os quadros de distribuição, disjuntores e cargas. Manutenção preventiva, troca de disjuntor, instalação de novo circuito ou laudo — tudo fica amarrado ao ponto de instalação. Quando o eletricista volta ao local, ele já sabe o que existe ali e o que foi feito antes.',
+      image: {
+        src: '/segmentos/eletrica/1.webp',
+        alt: 'Quadro de distribuição elétrica organizado, com disjuntores e fiação codificada por cores',
+      },
     },
     {
       icon: FileSignature,
       title: 'Laudos, ART e relatório de OS com a sua marca',
       body: 'Ao finalizar a visita, o relatório da ordem de serviço sai em PDF com a sua logo e cores, com checklist preenchido, fotos antes/depois e assinatura do cliente na hora. Anexe a ART e o laudo técnico ao registro do cliente e tenha tudo num só lugar para entregar e comprovar o serviço.',
+      image: {
+        src: '/segmentos/eletrica/2.webp',
+        alt: 'Profissional de elétrica inspecionando um painel elétrico industrial para verificar e documentar o serviço',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular do eletricista, direto da obra',
       body: 'Quadro montado, padrão de entrada trocado, inspeção feita — e o registro fica pronto no mesmo instante. O app do Dominex é instalável no celular do eletricista (PWA): no local do serviço ele abre a OS, tira foto antes/depois, percorre o checklist de segurança e coleta a assinatura do cliente ali mesmo. O relatório sai pronto na hora, sem voltar pra anotar no escritório.',
+      image: {
+        src: '/segmentos/eletrica/3.webp',
+        alt: 'Eletricista de capacete usando o celular no local da obra, ao ar livre',
+      },
     },
     {
       icon: RefreshCw,
       title: 'Contratos de manutenção elétrica recorrente',
       body: 'Condomínios, indústrias e comércios precisam de manutenção preventiva periódica do sistema elétrico. Cadastre o contrato com a recorrência certa (mensal, trimestral) e o Dominex gera as ordens de serviço sozinho no intervalo combinado, com o checklist da inspeção pronto. Você cumpre o contrato sem depender da memória de ninguém.',
+      image: {
+        src: '/segmentos/eletrica/4.webp',
+        alt: 'Técnico com EPI fazendo manutenção em painéis elétricos em ambiente industrial',
+      },
     },
   ],
 
@@ -549,16 +584,28 @@ const energiaSolar: SegmentData = {
       icon: Sun,
       title: 'Histórico por usina, inversor e string',
       body: 'Cadastre cada usina fotovoltaica com a quantidade de módulos, potência instalada (kWp), marca e modelo do inversor, string box e estrutura. Cada visita — instalação, limpeza, inspeção ou troca de equipamento — fica amarrada à usina. Quando a equipe volta, ela sabe exatamente o que tem ali e o que foi feito antes, sem depender do projeto original.',
+      image: {
+        src: '/segmentos/solar/1.webp',
+        alt: 'Vista aérea de uma usina fotovoltaica com fileiras de módulos solares em área rural',
+      },
     },
     {
       icon: RefreshCw,
       title: 'Contratos de O&M que geram as OS sozinhos',
       body: 'A operação e manutenção (O&M) de usinas é o que sustenta a geração ao longo dos anos. Cadastre o contrato com a recorrência de limpeza e inspeção (mensal, trimestral, semestral) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina pronto. A manutenção preventiva acontece sem você precisar lembrar.',
+      image: {
+        src: '/segmentos/solar/2.webp',
+        alt: 'Três técnicos uniformizados e de capacete limpando módulos solares no telhado',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular da equipe, direto no telhado',
       body: 'As usinas ficam em telhado, galpão e área rural — e a equipe resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): a equipe abre a OS, tira foto da limpeza dos módulos, preenche o checklist de inspeção do inversor e coleta a assinatura do cliente ali mesmo, na usina. O relatório da visita sai pronto na hora, sem refazer no escritório.',
+      image: {
+        src: '/segmentos/solar/3.webp',
+        alt: 'Técnico de energia solar com EPI trabalhando em módulos no telhado sob céu azul',
+      },
     },
   ],
 
@@ -728,16 +775,28 @@ const provedores: SegmentData = {
       icon: Radio,
       title: 'Histórico de fibra, CTO e ONU por assinante',
       body: 'Cadastre cada assinante com o ponto de conexão: CTO de origem, porta, modelo e número de série da ONU, roteador e drop instalado. Instalação de fibra, troca de equipamento, reparo ou suporte — tudo fica amarrado ao assinante. Quando o técnico volta, ele já sabe a CTO, o equipamento e o que foi feito antes, sem garimpar no sistema da central.',
+      image: {
+        src: '/segmentos/telecom/1.webp',
+        alt: 'Técnico de telecom manuseando cabos de rede em um rack para registrar o ponto de conexão',
+      },
     },
     {
       icon: Calendar,
       title: 'Agendamento de visita e roteirização da equipe',
       body: 'Os chamados de instalação e suporte entram na agenda e são distribuídos pelo técnico mais próximo do endereço. A rota do dia é organizada para reduzir deslocamento e o cliente recebe uma janela de atendimento previsível. Menos visita furada, menos ociosidade do técnico e mais instalações por dia.',
+      image: {
+        src: '/segmentos/telecom/2.webp',
+        alt: 'Torre de telecomunicações com antenas que cobrem a área de atendimento do provedor',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular do técnico, direto no poste',
       body: 'Instalação de fibra acontece em poste, caixa de passagem, subsolo e condomínio — e o técnico resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, registra a CTO e a ONU, tira foto da instalação, preenche o checklist e coleta a assinatura do assinante ali mesmo. A OS sai pronta na hora, sem voltar pra central pra fechar.',
+      image: {
+        src: '/segmentos/telecom/3.webp',
+        alt: 'Técnico com capacete e cinto de segurança trabalhando em cabos no alto de um poste',
+      },
     },
   ],
 
@@ -907,16 +966,28 @@ const cftv: SegmentData = {
       icon: Shield,
       title: 'Histórico de câmeras, alarme e controle de acesso',
       body: 'Cadastre cada cliente com o parque instalado: câmeras (modelo, posição, IP), DVR/NVR, central de alarme, sensores, fechaduras e controle de acesso. Instalação, manutenção corretiva, reposicionamento ou troca de equipamento — tudo fica amarrado ao cliente. Quando o técnico volta, ele já sabe o que existe ali e o que foi feito antes.',
+      image: {
+        src: '/segmentos/cftv/1.webp',
+        alt: 'Conjunto de câmeras de segurança CFTV instaladas em um poste apontando para vários ângulos',
+      },
     },
     {
       icon: RefreshCw,
       title: 'Contratos de monitoramento e manutenção recorrente',
       body: 'O monitoramento e a manutenção periódica do sistema de segurança são a receita recorrente do negócio. Cadastre o contrato com a recorrência de inspeção (mensal, trimestral) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da ronda técnica pronto. A preventiva acontece sem você precisar lembrar.',
+      image: {
+        src: '/segmentos/cftv/2.webp',
+        alt: 'Operador em sala de monitoramento acompanhando imagens das câmeras em vários monitores',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular do técnico, direto na fachada',
       body: 'Instalação e manutenção de CFTV acontecem em laje, fachada e estacionamento — e o técnico resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, fotografa cada câmera, registra o equipamento, preenche o checklist e coleta a assinatura do cliente ali mesmo. A OS sai pronta na hora, sem voltar pro escritório pra fechar.',
+      image: {
+        src: '/segmentos/cftv/3.webp',
+        alt: 'Câmera de segurança tipo dome instalada na fachada de um prédio',
+      },
     },
   ],
 
@@ -1087,16 +1158,28 @@ const construcaoCivil: SegmentData = {
       icon: HardHat,
       title: 'Ordens de serviço para equipes em campo e vistorias',
       body: 'Distribua tarefas e vistorias para as equipes em campo como ordens de serviço, cada uma com checklist, fotos e itens pendentes. Vistoria de entrega, inspeção de etapa, medição de empreiteiro ou correção — tudo fica registrado com responsável, prazo e comprovação fotográfica. O escritório acompanha o andamento sem precisar ir ao canteiro.',
+      image: {
+        src: '/segmentos/construcao/1.webp',
+        alt: 'Operário de capacete inspeciona obra em canteiro de construção',
+      },
     },
     {
       icon: Building,
       title: 'Histórico por unidade e assistência técnica pós-obra',
       body: 'Cadastre cada unidade ou empreendimento e amarre os chamados de assistência técnica a ela. Quando o cliente aciona um reparo dentro da garantia, a equipe abre a OS e já vê o histórico daquela unidade: o que foi entregue, o que já foi corrigido e o que ficou pendente. A assistência deixa de ser improviso e passa a ter rastro.',
+      image: {
+        src: '/segmentos/construcao/2.webp',
+        alt: 'Empreendimento residencial de vários andares em construção com andaimes',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular da equipe, direto no canteiro',
       body: 'A obra é o lugar do serviço: subsolo, estrutura, áreas em construção — e a equipe resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): a equipe abre a OS, registra a vistoria, tira fotos da etapa, preenche o checklist e coleta a assinatura ali mesmo, no canteiro. O relatório sai pronto na hora, sem refazer no escritório.',
+      image: {
+        src: '/segmentos/construcao/3.webp',
+        alt: 'Trabalhador de obra consulta a planta do projeto em um tablet no canteiro',
+      },
     },
   ],
 
@@ -1267,16 +1350,28 @@ const elevadores: SegmentData = {
       icon: Building,
       title: 'Histórico completo por elevador',
       body: 'Cadastre cada elevador com marca, modelo, capacidade, número de paradas, tipo de máquina e localização no edifício. Preventiva, corretiva, troca de peça ou modernização — tudo fica amarrado ao equipamento, não só ao condomínio. Quando o técnico volta, ele sabe exatamente o que foi feito na última visita e quais peças já foram trocadas.',
+      image: {
+        src: '/segmentos/elevadores/1.webp',
+        alt: 'Portas de elevador em aço inox em hall de edifício moderno',
+      },
     },
     {
       icon: RefreshCw,
       title: 'Contratos mensais que geram a preventiva sozinhos',
       body: 'A manutenção preventiva mensal é a base do contrato de elevadores. Cadastre o contrato com a recorrência mensal e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina de preventiva pronto. Você nunca mais perde uma visita contratual nem fica exposto se o cliente questionar a periodicidade.',
+      image: {
+        src: '/segmentos/elevadores/2.webp',
+        alt: 'Técnico realiza manutenção em maquinário industrial',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular do técnico, direto na casa de máquinas',
       body: 'A casa de máquinas, o poço e a caixa de corrida são o lugar do serviço — e o técnico resolve tudo pelo celular ali mesmo. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, preenche o checklist de inspeção, registra peças, tira fotos e coleta a assinatura do responsável no local. O relatório sai pronto na hora, sem refazer no escritório.',
+      image: {
+        src: '/segmentos/elevadores/3.webp',
+        alt: 'Vista do poço industrial de elevador iluminado',
+      },
     },
   ],
 
@@ -1446,16 +1541,28 @@ const limpezaConservacao: SegmentData = {
       icon: Sparkles,
       title: 'Ordens de serviço por contrato e posto',
       body: 'Cadastre cada contrato com seus postos de serviço e as rotinas de limpeza e conservação. Cada visita vira uma ordem de serviço com o checklist da rotina, fotos e assinatura. Você acompanha o que foi cumprido em cada posto e tem o registro pronto para apresentar ao cliente sempre que a execução for questionada.',
+      image: {
+        src: '/segmentos/limpeza/1.webp',
+        alt: 'Equipe de limpeza profissional uniformizada aspirando o piso de um ambiente comercial',
+      },
     },
     {
       icon: MapPin,
       title: 'Ronda e check-in com comprovação de local e horário',
       body: 'A ronda e a rotina de conservação ficam registradas com check-in validado pelo endereço do posto e horário da passagem. Você sabe quem esteve em cada local, a que horas e o que foi executado, com foto e assinatura. A comprovação substitui a palavra da equipe e protege o contrato em qualquer auditoria do cliente.',
+      image: {
+        src: '/segmentos/limpeza/2.webp',
+        alt: 'Profissional de conservação fazendo ronda e limpeza em uma passagem de acesso',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular da equipe, direto no posto',
       body: 'Os postos de limpeza incluem subsolo, garagem e escadaria — e a equipe resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): a equipe abre a OS, marca o checklist da rotina, tira foto antes/depois e coleta a assinatura do responsável ali mesmo, no posto. A comprovação fica registrada na hora, sem depender de anotar depois.',
+      image: {
+        src: '/segmentos/limpeza/3.webp',
+        alt: 'Funcionária de limpeza com equipamento de proteção passando rodo no piso de um galpão',
+      },
     },
   ],
 
@@ -1625,16 +1732,28 @@ const dedetizacao: SegmentData = {
       icon: Droplets,
       title: 'Registro de produtos aplicados e certificado de dedetização',
       body: 'Cada visita registra os produtos aplicados, a dosagem, o método (pulverização, isca, gel), a praga-alvo e o responsável técnico. A partir desse registro, o certificado de dedetização sai pronto em PDF com a sua marca, com validade e os produtos utilizados — pronto para entregar ao cliente e apresentar à fiscalização sanitária. Nada é preenchido à mão depois.',
+      image: {
+        src: '/segmentos/dedetizacao/1.webp',
+        alt: 'Técnico de controle de pragas aplicando termonebulização com máquina de fumaça',
+      },
     },
     {
       icon: RefreshCw,
       title: 'Contratos e agendamento periódico de reaplicação',
       body: 'O controle de pragas depende de reaplicação na frequência certa. Cadastre o contrato com a recorrência (mensal, bimestral, trimestral) e o Dominex gera as ordens de serviço de reaplicação automaticamente no intervalo combinado, com o agendamento já feito. O cliente fica protegido e você não perde a renovação por esquecimento.',
+      image: {
+        src: '/segmentos/dedetizacao/2.webp',
+        alt: 'Aplicadora com equipamento de proteção pulverizando produto durante a reaplicação',
+      },
     },
     {
       icon: Smartphone,
       title: 'Tudo no celular do aplicador, direto no local',
       body: 'A dedetização acontece em galpão, subsolo e depósito — e o aplicador resolve tudo pelo celular ali mesmo. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, registra os produtos e a dosagem, tira foto do serviço, preenche o checklist e coleta a assinatura do cliente no local. O certificado sai pronto na hora, sem refazer no escritório.',
+      image: {
+        src: '/segmentos/dedetizacao/3.webp',
+        alt: 'Aplicador uniformizado realizando dedetização no interior de um galpão',
+      },
     },
   ],
 
