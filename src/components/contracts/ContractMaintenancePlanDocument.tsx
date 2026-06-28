@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Printer, X, CalendarClock, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChecklistQuestionsByTemplates } from '@/hooks/useContractChecklistQuestions';
+import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import {
   generateOccurrences,
@@ -29,13 +30,15 @@ import type { FormQuestion } from '@/types/database';
  * o resto da página, fixa A4 e força as cores). É um documento NOVO e próprio —
  * NÃO é a Planilha PMOC.
  *
- * Conteúdo (POR EQUIPAMENTO — o contrato comum guarda o checklist em
- * `contract_items.form_template_id`, não mais em `contracts.form_template_id`):
+ * Conteúdo (POR EQUIPAMENTO — o contrato comum guarda os checklists em
+ * `contract_items.form_template_ids`, com fallback pro single
+ * `form_template_id`. Um equipamento pode ter VÁRIOS checklists):
  *  1. Cabeçalho com identidade da empresa (white-label se houver) + dados do
  *     contrato (cliente, vigência, frequência das visitas).
  *  2. Ambientes do contrato com seus equipamentos (+ grupo "Sem ambiente").
- *  3. Para CADA equipamento com checklist: a lista dos seus serviços + frequência
- *     e a grade visitas × serviços.
+ *  3. Para CADA equipamento: a UNIÃO dos serviços de todos os seus checklists +
+ *     frequência e a grade visitas × serviços (sub-cabeçalho por checklist
+ *     quando há mais de um).
  *
  * Âncora da grade = a MESMA do técnico (`visitQuestionVisibility.toActivitySpec`,
  * fonte única): pergunta EXCLUÍDA da 1ª OS do equipamento
@@ -63,11 +66,40 @@ function excludedSet(item: ContractItem): Set<string> {
   return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []);
 }
 
+/**
+ * Templates EFETIVOS de um equipamento (contrato de dados do épico "múltiplos
+ * checklists por equipamento"): `form_template_ids` quando não-vazio; senão
+ * `[form_template_id]` quando setado; senão `[]`. Dedup mantendo a ordem.
+ */
+function effectiveTemplateIds(item: ContractItem): string[] {
+  const many = Array.isArray(item.form_template_ids)
+    ? item.form_template_ids.filter((x): x is string => typeof x === 'string' && x.length > 0)
+    : [];
+  const base = many.length > 0 ? many : item.form_template_id ? [item.form_template_id] : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of base) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
 export function ContractMaintenancePlanDocument({
   contract,
   onClose,
 }: ContractMaintenancePlanDocumentProps) {
   const { settings } = useCompanySettings();
+
+  // Nomes dos checklists (templates) pra rotular os sub-cabeçalhos quando um
+  // equipamento tem mais de um checklist. Query já cacheada do app.
+  const { templates: formTemplates } = useFormTemplates();
+  const templateNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of formTemplates || []) map.set(t.id, t.name);
+    return map;
+  }, [formTemplates]);
 
   // Identidade da empresa: respeita white-label quando ligado (mesma regra dos
   // demais documentos). Logo e nome caem pro padrão quando o WL está off.
@@ -143,34 +175,52 @@ export function ContractMaintenancePlanDocument({
     return merged;
   }, [contract]);
 
-  // Equipamentos COM checklist (o contrato comum guarda o template por
-  // equipamento em `contract_items.form_template_id`). Itens sem template não
-  // entram. Ordenados por sort_order (mesma ordem dos ambientes).
+  // Equipamentos COM checklist. Um equipamento pode ter VÁRIOS checklists
+  // (`contract_items.form_template_ids`), com fallback pro single
+  // (`form_template_id`) — ver `effectiveTemplateIds`. Itens sem nenhum template
+  // não entram. Ordenados por sort_order (mesma ordem dos ambientes).
   const checklistItems = useMemo<ContractItem[]>(
     () =>
       [...items]
-        .filter((it) => !!it.form_template_id)
+        .filter((it) => effectiveTemplateIds(it).length > 0)
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     [items],
   );
 
-  // Carrega as perguntas de TODOS os templates dos equipamentos de uma vez,
-  // agrupadas por template_id (hook é a fronteira do Supabase).
+  // Carrega as perguntas de TODOS os templates de TODOS os equipamentos numa
+  // tacada (união deduplicada), agrupadas por template_id (hook é a fronteira do
+  // Supabase). Reusa `useChecklistQuestionsByTemplates`.
   const templateIds = useMemo(
-    () => checklistItems.map((it) => it.form_template_id!).filter(Boolean),
+    () => checklistItems.flatMap((it) => effectiveTemplateIds(it)),
     [checklistItems],
   );
   const { data: questionsByTemplate, isLoading: isLoadingQuestions } =
     useChecklistQuestionsByTemplates(templateIds);
 
-  // Para cada equipamento: suas perguntas + a grade visitas × perguntas, usando
-  // a MESMA âncora do técnico (`toActivitySpec` com o Set de excluídos da 1ª OS
-  // daquele equipamento — fonte única com `visitQuestionVisibility`).
+  // Para cada equipamento: a UNIÃO das perguntas de TODOS os seus checklists + a
+  // grade visitas × perguntas, usando a MESMA âncora do técnico (`toActivitySpec`
+  // com o Set de excluídos da 1ª OS daquele equipamento — fonte única com
+  // `visitQuestionVisibility`). O Set de excluídos é POR EQUIPAMENTO e vale pras
+  // perguntas de todos os templates do item.
+  //
+  // Quando o equipamento tem >1 checklist, agrupamos a lista de serviços por
+  // checklist (sub-cabeçalho) pra ficar legível no documento impresso; a grade e
+  // o motor rodam sobre a união achatada (os ids de pergunta são únicos entre
+  // templates). Com 1 só checklist, não há sub-cabeçalho — fica igual ao atual.
+  interface ChecklistGroup {
+    templateId: string;
+    questions: FormQuestion[];
+  }
   interface EquipmentChecklist {
     item: ContractItem;
     title: string;
     meta: string | null;
+    /** Grupos por checklist (na ordem dos templates do equipamento). */
+    groups: ChecklistGroup[];
+    /** União achatada das perguntas (ordem dos templates, depois position). */
     questions: FormQuestion[];
+    /** Mais de um checklist no equipamento → mostra sub-cabeçalhos. */
+    multipleChecklists: boolean;
     /** questionId → Set de índices de visita (colunas) em que a pergunta cai. */
     dueByQuestion: Map<string, Set<number>>;
   }
@@ -181,8 +231,25 @@ export function ContractMaintenancePlanDocument({
 
     const out: EquipmentChecklist[] = [];
     for (const item of checklistItems) {
-      const qs = questionsByTemplate.get(item.form_template_id!) ?? [];
-      if (qs.length === 0) continue;
+      // União das perguntas de todos os checklists do equipamento. Mantém a
+      // ordem dos templates; deduplica perguntas (se o mesmo template repetir).
+      const tplIds = effectiveTemplateIds(item);
+      const groups: ChecklistGroup[] = [];
+      const flat: FormQuestion[] = [];
+      const seenQ = new Set<string>();
+      for (const tid of tplIds) {
+        const qs = questionsByTemplate.get(tid) ?? [];
+        if (qs.length === 0) continue;
+        const groupQs: FormQuestion[] = [];
+        for (const q of qs) {
+          if (seenQ.has(q.id)) continue;
+          seenQ.add(q.id);
+          groupQs.push(q);
+          flat.push(q);
+        }
+        if (groupQs.length > 0) groups.push({ templateId: tid, questions: groupQs });
+      }
+      if (flat.length === 0) continue;
 
       const excluded = excludedSet(item);
       const dueByQuestion = new Map<string, Set<number>>();
@@ -192,7 +259,7 @@ export function ContractMaintenancePlanDocument({
         // equipamento (excluída → 'contract_start'; incluída → 'due_now').
         // Pergunta SEM frequência cai em 'visits'/1 = toda visita (todas as
         // colunas), espelhando o "sempre" do helper.
-        const specs = qs.map((q) =>
+        const specs = flat.map((q) =>
           q.freq_kind === 'time' || q.freq_kind === 'visits'
             ? toActivitySpec(q, excluded)
             : { id: q.id, freqKind: 'visits' as const, freqVisits: 1, startKind: 'due_now' as const },
@@ -209,7 +276,15 @@ export function ContractMaintenancePlanDocument({
 
       const title = item.equipment?.name || item.item_name;
       const meta = [item.equipment?.brand, item.equipment?.model].filter(Boolean).join(' · ') || null;
-      out.push({ item, title, meta, questions: qs, dueByQuestion });
+      out.push({
+        item,
+        title,
+        meta,
+        groups,
+        questions: flat,
+        multipleChecklists: groups.length > 1,
+        dueByQuestion,
+      });
     }
     return out;
   }, [questionsByTemplate, checklistItems, visitDates]);
@@ -340,9 +415,12 @@ export function ContractMaintenancePlanDocument({
                   key={ec.item.id}
                   title={ec.title}
                   meta={ec.meta}
+                  groups={ec.groups}
                   questions={ec.questions}
+                  multipleChecklists={ec.multipleChecklists}
                   dueByQuestion={ec.dueByQuestion}
                   visitDates={visitDates}
+                  templateNameById={templateNameById}
                 />
               ))}
             </div>
@@ -353,20 +431,36 @@ export function ContractMaintenancePlanDocument({
   );
 }
 
-/** Bloco de UM equipamento: lista de serviços + frequência e a grade de visitas. */
+/**
+ * Bloco de UM equipamento: a UNIÃO dos serviços de todos os seus checklists +
+ * frequência e a grade de visitas. Quando há mais de um checklist
+ * (`multipleChecklists`), a lista de serviços e a grade ganham um sub-cabeçalho
+ * por checklist (nome do template). Com 1 só checklist, fica igual ao layout
+ * antigo (sem sub-cabeçalho).
+ */
 function EquipmentChecklistBlock({
   title,
   meta,
+  groups,
   questions,
+  multipleChecklists,
   dueByQuestion,
   visitDates,
+  templateNameById,
 }: {
   title: string;
   meta: string | null;
+  groups: { templateId: string; questions: FormQuestion[] }[];
   questions: FormQuestion[];
+  multipleChecklists: boolean;
   dueByQuestion: Map<string, Set<number>>;
   visitDates: Date[];
+  templateNameById: Map<string, string>;
 }) {
+  const checklistLabel = (templateId: string, idx: number) =>
+    templateNameById.get(templateId) || `Checklist ${idx + 1}`;
+  const colCount = visitDates.length + 1;
+
   return (
     <div className="break-inside-avoid rounded-lg border border-gray-200 p-3">
       <div className="mb-3 flex items-baseline justify-between gap-3 border-b border-gray-100 pb-2">
@@ -374,21 +468,32 @@ function EquipmentChecklistBlock({
         {meta && <p className="shrink-0 text-xs text-gray-500">{meta}</p>}
       </div>
 
-      {/* Serviços + frequência */}
+      {/* Serviços + frequência (agrupados por checklist quando há vários) */}
       <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-        {questions.map((q) => (
-          <li key={q.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-            <span className="min-w-0 break-words text-sm text-gray-800">{q.question}</span>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-medium text-white">
-              <CalendarClock className="h-3 w-3" />
-              {frequencyLabel(q)}
-            </span>
+        {groups.map((g, gi) => (
+          <li key={g.templateId}>
+            {multipleChecklists && (
+              <p className="bg-gray-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                {checklistLabel(g.templateId, gi)}
+              </p>
+            )}
+            <ul className="divide-y divide-gray-200">
+              {g.questions.map((q) => (
+                <li key={q.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <span className="min-w-0 break-words text-sm text-gray-800">{q.question}</span>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-medium text-white">
+                    <CalendarClock className="h-3 w-3" />
+                    {frequencyLabel(q)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>
 
       {/* Grade visitas × serviços */}
-      {visitDates.length > 0 && (
+      {visitDates.length > 0 && questions.length > 0 && (
         <div className="mt-3">
           <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full border-collapse text-xs">
@@ -411,25 +516,39 @@ function EquipmentChecklistBlock({
                 </tr>
               </thead>
               <tbody>
-                {questions.map((q) => {
-                  const due = dueByQuestion.get(q.id);
-                  return (
-                    <tr key={q.id}>
-                      <td className="sticky left-0 z-10 border border-gray-300 bg-white px-2 py-1.5 text-gray-800">
-                        {q.question}
-                      </td>
-                      {visitDates.map((_, i) => (
-                        <td key={i} className="border border-gray-300 px-1.5 py-1.5 text-center">
-                          {due?.has(i) ? (
-                            <Check className="mx-auto h-3.5 w-3.5 text-gray-900" strokeWidth={3} />
-                          ) : (
-                            <span className="text-gray-200">–</span>
-                          )}
+                {groups.map((g, gi) => (
+                  <Fragment key={g.templateId}>
+                    {multipleChecklists && (
+                      <tr>
+                        <td
+                          colSpan={colCount}
+                          className="sticky left-0 z-10 border border-gray-300 bg-gray-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                        >
+                          {checklistLabel(g.templateId, gi)}
                         </td>
-                      ))}
-                    </tr>
-                  );
-                })}
+                      </tr>
+                    )}
+                    {g.questions.map((q) => {
+                      const due = dueByQuestion.get(q.id);
+                      return (
+                        <tr key={q.id}>
+                          <td className="sticky left-0 z-10 border border-gray-300 bg-white px-2 py-1.5 text-gray-800">
+                            {q.question}
+                          </td>
+                          {visitDates.map((_, i) => (
+                            <td key={i} className="border border-gray-300 px-1.5 py-1.5 text-center">
+                              {due?.has(i) ? (
+                                <Check className="mx-auto h-3.5 w-3.5 text-gray-900" strokeWidth={3} />
+                              ) : (
+                                <span className="text-gray-200">–</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>

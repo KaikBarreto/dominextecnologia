@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.14',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vários checklists por equipamento no contrato',
+        description: 'Cada equipamento do contrato agora pode ter mais de um checklist. Ao montar o contrato, você adiciona quantos checklists quiser a um equipamento — cada um aparece no seu próprio bloco, com suas perguntas, frequências e a escolha do que entra na primeira visita. Na hora da visita, o técnico vê todos os checklists do equipamento, e o documento de Plano de Manutenção reflete todos eles. Também ficou mais fácil abrir os equipamentos: basta clicar em qualquer parte do card.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.15.13',
     date: '28 de junho de 2026',
     type: 'patch',

@@ -343,7 +343,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // form_template_id escolhido e os ids de perguntas que NÃO entram na 1ª OS
   // (first_os_excluded_questions). Itens manuais (sem equipment_id) não têm
   // checklist por equipamento. Só usado em contrato comum.
-  const [commonChecklists, setCommonChecklists] = useState<Record<string, { formTemplateId: string | null; excluded: string[] }>>({});
+  // formTemplateIds = LISTA de checklists do equipamento (ordem de adição). Item
+  // legado salvo com 1 só (form_template_id) é carregado como [esse id].
+  const [commonChecklists, setCommonChecklists] = useState<Record<string, { formTemplateIds: string[]; excluded: string[] }>>({});
   // Em edição, marca que os checklists por equipamento já foram carregados do
   // banco (evita sobrescrever com vazio antes do contrato chegar).
   const [commonChecklistsLoaded, setCommonChecklistsLoaded] = useState(false);
@@ -474,8 +476,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     // Config por máquina (Fase 3). Guarda a config inteira: escopo, fase, flag
     // de personalização e a listagem de atividades reidratável.
     machineConfigs: Record<string, MachineConfig>;
-    // Contrato comum: checklist por equipamento + exclusões da 1ª OS.
-    commonChecklists: Record<string, { formTemplateId: string | null; excluded: string[] }>;
+    // Contrato comum: checklists (lista) por equipamento + exclusões da 1ª OS.
+    commonChecklists: Record<string, { formTemplateIds: string[]; excluded: string[] }>;
   };
   const draft = useFormDraft<ContractDraft>({
     key: 'contract-form',
@@ -554,10 +556,23 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       : {};
     setMachineConfigs(restoredConfigs);
     setMachineConfigsLoaded(true);
-    // Checklist por equipamento do contrato comum (rascunho).
-    setCommonChecklists(
-      d.commonChecklists && typeof d.commonChecklists === 'object' ? d.commonChecklists : {},
-    );
+    // Checklists por equipamento do contrato comum (rascunho). Normaliza rascunho
+    // antigo que guardava `formTemplateId` (single) → lista [esse id].
+    const restoredChecklists: Record<string, { formTemplateIds: string[]; excluded: string[] }> = {};
+    if (d.commonChecklists && typeof d.commonChecklists === 'object') {
+      for (const [eqId, raw] of Object.entries(d.commonChecklists as Record<string, any>)) {
+        const ids = Array.isArray(raw?.formTemplateIds)
+          ? (raw.formTemplateIds as any[]).filter((x) => typeof x === 'string')
+          : raw?.formTemplateId
+            ? [raw.formTemplateId as string]
+            : [];
+        const ex = Array.isArray(raw?.excluded)
+          ? (raw.excluded as any[]).filter((x) => typeof x === 'string')
+          : [];
+        restoredChecklists[eqId] = { formTemplateIds: ids, excluded: ex };
+      }
+    }
+    setCommonChecklists(restoredChecklists);
     setCommonChecklistsLoaded(true);
     // Restaura a etapa onde parou (clampa pro range válido — depende de isPmoc).
     const stepsLen = (d.isPmoc ? STEPS_PMOC : STEPS_COMMON).length;
@@ -636,13 +651,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // solto). Roda uma vez por abertura (guard) pra não sobrescrever edição em
       // andamento quando o refetch troca a referência de editContract.
       if (!commonChecklistsLoaded) {
-        const map: Record<string, { formTemplateId: string | null; excluded: string[] }> = {};
+        const map: Record<string, { formTemplateIds: string[]; excluded: string[] }> = {};
         for (const i of (editContract.contract_items || []) as any[]) {
           if (!i.equipment_id) continue;
           const ex = Array.isArray(i.first_os_excluded_questions)
             ? (i.first_os_excluded_questions as any[]).filter((x) => typeof x === 'string')
             : [];
-          map[i.equipment_id] = { formTemplateId: i.form_template_id || null, excluded: ex };
+          // Lista de checklists: usa form_template_ids se não-vazio; senão cai no
+          // single form_template_id (compat); senão [].
+          const ids = Array.isArray(i.form_template_ids)
+            ? (i.form_template_ids as any[]).filter((x) => typeof x === 'string')
+            : [];
+          const effectiveIds = ids.length > 0 ? ids : i.form_template_id ? [i.form_template_id] : [];
+          map[i.equipment_id] = { formTemplateIds: effectiveIds, excluded: ex };
         }
         setCommonChecklists(map);
         if (editContract.id) setCommonChecklistsLoaded(true);
@@ -1234,7 +1255,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     for (const it of looseItems) if (it.equipment_id) ids.add(it.equipment_id);
     setCommonChecklists(prev => {
       let changed = false;
-      const next: Record<string, { formTemplateId: string | null; excluded: string[] }> = {};
+      const next: Record<string, { formTemplateIds: string[]; excluded: string[] }> = {};
       for (const [id, cfg] of Object.entries(prev)) {
         if (ids.has(id)) next[id] = cfg;
         else changed = true;
@@ -1243,17 +1264,21 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     });
   }, [open, isPmoc, environments, looseItems]);
 
-  // Leitura segura: equipamento sem entrada → checklist nenhum, sem exclusões.
+  // Leitura segura: equipamento sem entrada → nenhum checklist, sem exclusões.
   const getCommonChecklist = (eqId: string) =>
-    commonChecklists[eqId] ?? { formTemplateId: null, excluded: [] };
+    commonChecklists[eqId] ?? { formTemplateIds: [], excluded: [] };
 
-  // Troca o checklist do equipamento. Ao mudar de template, zera as exclusões
-  // (os ids antigos não pertencem ao novo checklist).
-  const setCommonChecklistTemplate = (eqId: string, templateId: string | null) => {
+  // Define a LISTA de checklists do equipamento. As exclusões que não pertencem
+  // mais a nenhum checklist restante são podadas pelo editor antes de chamar
+  // onChangeExcluded; aqui só guardamos a nova lista preservando as exclusões.
+  const setCommonChecklistTemplates = (eqId: string, templateIds: string[]) => {
     setCommonChecklists(prev => {
       const cur = prev[eqId];
-      if (cur?.formTemplateId === templateId) return prev;
-      return { ...prev, [eqId]: { formTemplateId: templateId, excluded: [] } };
+      const sameList =
+        cur && cur.formTemplateIds.length === templateIds.length &&
+        cur.formTemplateIds.every((id, i) => id === templateIds[i]);
+      if (sameList) return prev;
+      return { ...prev, [eqId]: { formTemplateIds: templateIds, excluded: cur?.excluded ?? [] } };
     });
   };
 
@@ -1261,7 +1286,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const setCommonChecklistExcluded = (eqId: string, excluded: string[]) => {
     setCommonChecklists(prev => ({
       ...prev,
-      [eqId]: { formTemplateId: prev[eqId]?.formTemplateId ?? null, excluded },
+      [eqId]: { formTemplateIds: prev[eqId]?.formTemplateIds ?? [], excluded },
     }));
   };
 
@@ -1392,26 +1417,37 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // está no banco). Só sanitiza/deriva quando o template está realmente carregado.
   const commonChecklistPayload = (
     eqId: string | null | undefined,
-  ): { form_template_id: string | null; first_os_excluded_questions: string[] | undefined } => {
-    if (!eqId) return { form_template_id: null, first_os_excluded_questions: [] };
+  ): {
+    form_template_ids: string[];
+    form_template_id: string | null;
+    first_os_excluded_questions: string[] | undefined;
+  } => {
+    if (!eqId) return { form_template_ids: [], form_template_id: null, first_os_excluded_questions: [] };
     const cfg = commonChecklists[eqId];
-    const tplId = cfg?.formTemplateId ?? null;
-    if (!tplId) return { form_template_id: null, first_os_excluded_questions: [] };
-    const tpl = templateQuestionsById.get(tplId);
-    // Template do item ainda não resolvido (não está no mapa) E o catálogo ainda
-    // está carregando → NÃO sanitizar e NÃO sobrescrever. `undefined` preserva as
-    // exclusões já salvas no banco. (Se o catálogo já carregou e o template
-    // sumiu/não existe mais, `tpl` é undefined porém `validIds` vazio sanitiza
-    // pra `[]` de propósito — exclusões órfãs realmente não valem mais.)
-    if (!tpl && templatesLoading) {
-      return { form_template_id: tplId, first_os_excluded_questions: undefined };
+    const tplIds = cfg?.formTemplateIds ?? [];
+    if (tplIds.length === 0) {
+      return { form_template_ids: [], form_template_id: null, first_os_excluded_questions: [] };
+    }
+    // Compat: o primeiro id continua em form_template_id (single).
+    const primaryId = tplIds[0];
+    // Resolve TODOS os templates do item. Se ALGUM ainda não está no mapa E o
+    // catálogo está carregando → NÃO sanitizar/sobrescrever: `undefined` preserva
+    // as exclusões já salvas no banco (a guarda `wantExcluded !== undefined` do
+    // hook mantém o que está persistido). Já carregado e template sumiu → seu set
+    // de perguntas válidas é vazio de propósito (exclusões órfãs caem).
+    const resolved = tplIds.map((id) => templateQuestionsById.get(id));
+    const anyUnresolved = resolved.some((t) => !t);
+    if (anyUnresolved && templatesLoading) {
+      return { form_template_ids: tplIds, form_template_id: primaryId, first_os_excluded_questions: undefined };
     }
     const validIds = new Set<string>();
-    for (const q of tpl?.questions ?? []) {
-      if (!isEveryVisit(q)) validIds.add(q.id); // toda visita nunca exclui
+    for (const tpl of resolved) {
+      for (const q of tpl?.questions ?? []) {
+        if (!isEveryVisit(q)) validIds.add(q.id); // toda visita nunca exclui
+      }
     }
     const excluded = (cfg?.excluded ?? []).filter((id) => validIds.has(id));
-    return { form_template_id: tplId, first_os_excluded_questions: excluded };
+    return { form_template_ids: tplIds, form_template_id: primaryId, first_os_excluded_questions: excluded };
   };
 
   // Itens com escopo/fase por máquina (Fase 3). PMOC anexa pmoc_scope +
@@ -1429,6 +1465,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           equipment_id: i.equipment_id || null,
           item_name: i.item_name,
           item_description: i.item_description || null,
+          form_template_ids: ck.form_template_ids,
           form_template_id: ck.form_template_id,
           first_os_excluded_questions: ck.first_os_excluded_questions,
         };
@@ -1441,8 +1478,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             equipment_id: it.equipment_id || null,
             item_name: it.item_name,
             item_description: it.item_description || null,
-            // Item COM equipamento usa o checklist por equipamento; item manual
-            // mantém o form_template_id do snapshot (não tem editor por equipamento).
+            // Item COM equipamento usa a LISTA de checklists; item manual mantém o
+            // form_template_id do snapshot (não tem editor por equipamento).
+            form_template_ids: it.equipment_id ? ck.form_template_ids : [],
             form_template_id: it.equipment_id ? ck.form_template_id : (it.form_template_id || null),
             first_os_excluded_questions: ck.first_os_excluded_questions,
           };
@@ -1638,6 +1676,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         // cronograma. Assinatura por equipamento: form_template_id + exclusões
         // ordenadas. Reconstruída IDÊNTICA do banco (contract_items) e do payload
         // atual (effectiveItemsWithScope) — "salvar sem mudança" fica no-op.
+        // Lista efetiva de checklists da linha: form_template_ids se não-vazio;
+        // senão [form_template_id] (compat). Reconstruída idêntica do banco e do
+        // payload pra que "salvar sem mudança" continue no-op. Ordenada (a ordem
+        // não é semântica pra detecção de mudança).
+        const effectiveTplIds = (it: any): string[] => {
+          const ids = Array.isArray(it.form_template_ids)
+            ? (it.form_template_ids as any[]).filter((x) => typeof x === 'string')
+            : [];
+          if (ids.length > 0) return ids;
+          return it.form_template_id ? [it.form_template_id] : [];
+        };
         const checklistSig = (rows: any[]) =>
           rows
             .filter((it) => it.equipment_id)
@@ -1645,7 +1694,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               const ex = Array.isArray(it.first_os_excluded_questions)
                 ? [...it.first_os_excluded_questions].filter((x) => typeof x === 'string').sort()
                 : [];
-              return `eq:${it.equipment_id}|${it.form_template_id ?? ''}|${ex.join(',')}`;
+              const tpls = [...effectiveTplIds(it)].sort();
+              return `eq:${it.equipment_id}|${tpls.join(',')}|${ex.join(',')}`;
             })
             .sort()
             .join('§');
@@ -2604,16 +2654,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       const name = eq?.name ?? 'Equipamento';
                       return (
                         <div key={eqId}>
-                          <div className="flex items-center gap-2 px-3 py-2.5">
-                            <button
-                              type="button"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
-                              onClick={() => toggleExpanded(eqId)}
-                              aria-label={expanded ? 'Recolher configuração' : 'Expandir configuração'}
-                              aria-expanded={expanded}
-                            >
+                          <div
+                            className="flex cursor-pointer items-center gap-2 px-3 py-2.5 transition-colors hover:bg-muted/30"
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={expanded}
+                            onClick={() => toggleExpanded(eqId)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(eqId); } }}
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground" aria-hidden="true">
                               <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
-                            </button>
+                            </span>
                             <EquipmentAvatar
                               photoUrl={eq?.photo_url}
                               name={name}
@@ -2633,7 +2684,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
                               title={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
                               aria-label={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
-                              onClick={() => setRemovingMember({ mode: 'env', envKey: env.key, eqId })}
+                              onClick={(e) => { e.stopPropagation(); setRemovingMember({ mode: 'env', envKey: env.key, eqId }); }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -2718,8 +2769,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             <div className="bg-muted/30 px-3 pb-3 pt-1">
                               <CommonChecklistEditor
                                 templates={commonChecklistTemplates}
-                                selectedTemplateId={getCommonChecklist(eqId).formTemplateId}
-                                onChangeTemplate={(tplId) => setCommonChecklistTemplate(eqId, tplId)}
+                                selectedTemplateIds={getCommonChecklist(eqId).formTemplateIds}
+                                onChangeTemplates={(ids) => setCommonChecklistTemplates(eqId, ids)}
                                 excluded={getCommonChecklist(eqId).excluded}
                                 onChangeExcluded={(next) => setCommonChecklistExcluded(eqId, next)}
                               />
@@ -2823,8 +2874,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             <div className="bg-muted/30 px-3 pb-3 pt-1">
                               <CommonChecklistEditor
                                 templates={commonChecklistTemplates}
-                                selectedTemplateId={getCommonChecklist(it.equipment_id).formTemplateId}
-                                onChangeTemplate={(tplId) => setCommonChecklistTemplate(it.equipment_id!, tplId)}
+                                selectedTemplateIds={getCommonChecklist(it.equipment_id).formTemplateIds}
+                                onChangeTemplates={(ids) => setCommonChecklistTemplates(it.equipment_id!, ids)}
                                 excluded={getCommonChecklist(it.equipment_id).excluded}
                                 onChangeExcluded={(next) => setCommonChecklistExcluded(it.equipment_id!, next)}
                               />
@@ -3245,14 +3296,22 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       let deferredCount = 0;
                       for (const it of effectiveItems) {
                         const ck = commonChecklistPayload(it.equipment_id);
-                        if (!ck.form_template_id) continue;
-                        const tpl = templateQuestionsById.get(ck.form_template_id);
-                        if (!tpl) continue;
+                        if (ck.form_template_ids.length === 0) continue;
+                        const tpls = ck.form_template_ids
+                          .map((id) => templateQuestionsById.get(id))
+                          .filter((t): t is ChecklistTemplateOption => !!t);
+                        if (tpls.length === 0) continue;
                         withChecklist += 1;
                         const excluded = new Set(ck.first_os_excluded_questions);
-                        for (const q of tpl.questions ?? []) {
-                          if (excluded.has(q.id)) deferredCount += 1;
-                          else firstOsCount += 1;
+                        // União das perguntas de todos os checklists (dedup por id).
+                        const seenQ = new Set<string>();
+                        for (const tpl of tpls) {
+                          for (const q of tpl.questions ?? []) {
+                            if (seenQ.has(q.id)) continue;
+                            seenQ.add(q.id);
+                            if (excluded.has(q.id)) deferredCount += 1;
+                            else firstOsCount += 1;
+                          }
                         }
                       }
                       if (withChecklist === 0) return null;

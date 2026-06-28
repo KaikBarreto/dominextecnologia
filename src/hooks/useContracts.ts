@@ -74,6 +74,10 @@ export interface ContractItem {
   item_name: string;
   item_description: string | null;
   form_template_id: string | null;
+  // Contrato comum: VÁRIOS checklists por equipamento (jsonb array de template
+  // ids). Fonte da verdade quando não-vazio; senão cai pro `form_template_id`
+  // único (backward-compat). Vazio/ausente = comportamento antigo de 1 checklist.
+  form_template_ids?: string[] | null;
   // Contrato comum: ids de perguntas (form_questions) que NÃO entram na 1ª OS
   // deste equipamento. Vazio/ausente = todas entram. (Opção A — fatia 2.)
   first_os_excluded_questions?: string[] | null;
@@ -517,6 +521,32 @@ export interface ContractItemMachineRow {
   pmoc_scope?: string | null;
   pmoc_start_visit?: number | null;
   sort_order?: number | null;
+  // Checklists do item (M5). `form_template_ids` é a fonte da verdade quando
+  // não-vazio; senão cai pro `form_template_id` (single, compat). Opcionais
+  // porque nem todo SELECT que monta esta linha pede as colunas (ex.: rotas que
+  // só montam máquinas e não geram service_order_equipment).
+  form_template_id?: string | null;
+  form_template_ids?: unknown;
+}
+
+/**
+ * Lista de checklists EFETIVOS de um equipamento (M5 — múltiplos checklists por
+ * equipamento). Regra do contrato de dados:
+ *   - `form_template_ids` (jsonb array) quando tiver ao menos 1 id → fonte da verdade;
+ *   - senão `[form_template_id]` quando o single estiver setado;
+ *   - senão `[]` (equipamento sem checklist próprio).
+ * Sempre dedupa preservando a ordem. Aceita `unknown` no array pra tolerar o
+ * jsonb cru vindo do banco (filtra não-strings).
+ */
+export function effectiveItemTemplateIds(
+  formTemplateIds: unknown,
+  formTemplateId: string | null | undefined,
+): string[] {
+  const fromArray = Array.isArray(formTemplateIds)
+    ? (formTemplateIds as unknown[]).filter((x): x is string => typeof x === 'string' && x.length > 0)
+    : [];
+  const base = fromArray.length > 0 ? fromArray : formTemplateId ? [formTemplateId] : [];
+  return Array.from(new Set(base));
 }
 
 /**
@@ -864,6 +894,15 @@ async function persistContractVisit(args: {
    * (item manual sem equipamento) — nesse caso a linha sai com equipment_id null.
    */
   itemEquipmentMap?: Record<string, string | null>;
+  /**
+   * Checklists EFETIVOS por equipamento (M5): equipment_id → [templateId, ...].
+   * Quando presente e o equipamento tem ao menos 1 template, a junção
+   * `service_order_equipment` emite UMA linha por (equipamento × template) —
+   * o trio (service_order_id, equipment_id, form_template_id) é UNIQUE no banco.
+   * Equipamento ausente do mapa (ou com lista vazia) cai no comportamento legado:
+   * 1 linha com o `formTemplateId` de contrato (ou null) — preserva 1 checklist.
+   */
+  equipmentTemplateMap?: Record<string, string[]>;
   assigneeUserIds: string[];
   createdBy: string | null;
 }): Promise<{ id: string; scheduledDate: string } | null> {
@@ -913,14 +952,29 @@ async function persistContractVisit(args: {
   }
 
   if (args.equipmentIds.length > 0) {
-    const { error: eqErr } = await supabase.from('service_order_equipment').insert(
-      args.equipmentIds.map(eqId => ({
-        service_order_id: os.id,
-        equipment_id: eqId,
-        form_template_id: args.formTemplateId || null,
-      }))
-    );
-    if (eqErr) console.error('Error linking equipment:', eqErr);
+    // M5 — UMA linha de service_order_equipment por (equipamento × checklist
+    // efetivo). Quando o equipamento tem múltiplos checklists no contrato, cada
+    // um vira uma linha (trio UNIQUE no banco). Sem checklists próprios → 1 linha
+    // com o template de contrato (ou null): preserva exatamente o caso de 1
+    // checklist. Dedup por (equipment_id, templateId) protege contra o UNIQUE.
+    const seen = new Set<string>();
+    const eqRows: { service_order_id: string; equipment_id: string; form_template_id: string | null }[] = [];
+    for (const eqId of args.equipmentIds) {
+      const effective = args.equipmentTemplateMap?.[eqId] ?? [];
+      // Equipamento com checklists próprios → uma linha por template. Sem nenhum
+      // → fallback ao template de contrato (ou null), comportamento legado.
+      const templates: (string | null)[] = effective.length > 0 ? effective : [args.formTemplateId || null];
+      for (const tpl of templates) {
+        const key = `${eqId}::${tpl ?? ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        eqRows.push({ service_order_id: os.id, equipment_id: eqId, form_template_id: tpl });
+      }
+    }
+    if (eqRows.length > 0) {
+      const { error: eqErr } = await supabase.from('service_order_equipment').insert(eqRows);
+      if (eqErr) console.error('Error linking equipment:', eqErr);
+    }
   }
 
   if (args.assigneeUserIds.length > 0) {
@@ -1306,6 +1360,8 @@ interface RegenerateFutureVisitsArgs {
   formTemplateId: string | null;
   equipmentIds: string[];
   itemEquipmentMap?: Record<string, string | null>;
+  /** Checklists efetivos por equipamento (M5) — ver persistContractVisit. */
+  equipmentTemplateMap?: Record<string, string[]>;
   assigneeUserIds: string[];
   createdBy: string | null;
   /** Índice base da numeração das visitas (default 0). renew usa baseIndex>0. */
@@ -1410,6 +1466,7 @@ async function regenerateFutureVisits(
           formTemplateId: args.formTemplateId,
           equipmentIds: args.equipmentIds,
           itemEquipmentMap: args.itemEquipmentMap,
+          equipmentTemplateMap: args.equipmentTemplateMap,
           assigneeUserIds: args.assigneeUserIds,
           createdBy: args.createdBy,
         });
@@ -1473,7 +1530,7 @@ export function useContracts() {
           customers (id, name, document, address, city, state),
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
-          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
+          contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, form_template_ids, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
           contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, photo_url, sort_order),
           service_orders (id, order_number, status, scheduled_date)
         `)
@@ -1529,7 +1586,7 @@ export function useContracts() {
       // `pmoc_start_visit` (1/3/6/12) são a rotina POR MÁQUINA (Fase 3): escopo da
       // norma + posição inicial no ciclo de 12 visitas. Defaults do banco quando
       // omitidos ('ac' / 12) — preserva o comportamento de "tudo na 1ª visita".
-      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; first_os_excluded_questions?: string[]; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
+      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; form_template_ids?: string[]; first_os_excluded_questions?: string[]; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
       // Ambientes climatizados (multi-ambiente PMOC). Quando definido, cada
       // ambiente vira uma linha em contract_environments e seus equipment_ids
       // recebem o environment_id correspondente em contract_items. Itens sem
@@ -1680,6 +1737,10 @@ export function useContracts() {
             item_name: item.item_name,
             item_description: item.item_description || null,
             form_template_id: item.form_template_id || null,
+            // Contrato comum: LISTA de checklists do equipamento (M2). Só envia
+            // quando informada (default do banco é [] quando omitido). O
+            // form_template_id acima fica como primeiro/compat.
+            ...(item.form_template_ids ? { form_template_ids: item.form_template_ids } : {}),
             // Contrato comum: perguntas que NÃO entram na 1ª OS deste equipamento.
             // Default do banco é [] quando omitido.
             ...(item.first_os_excluded_questions ? { first_os_excluded_questions: item.first_os_excluded_questions } : {}),
@@ -1788,6 +1849,18 @@ export function useContracts() {
           .filter(i => i.equipment_id)
           .map(i => i.equipment_id!);
 
+        // M5 — checklists efetivos por equipamento (form_template_ids com
+        // fallback form_template_id). Direto do input.items: um equipamento com
+        // vários checklists gera N linhas de service_order_equipment por OS.
+        const equipmentTemplateMap: Record<string, string[]> = {};
+        for (const it of input.items) {
+          if (!it.equipment_id) continue;
+          equipmentTemplateMap[it.equipment_id] = effectiveItemTemplateIds(
+            it.form_template_ids,
+            it.form_template_id,
+          );
+        }
+
         // Determine all user IDs that should be assignees
         const assigneeUserIds = input.assignee_user_ids && input.assignee_user_ids.length > 0
           ? input.assignee_user_ids
@@ -1812,6 +1885,7 @@ export function useContracts() {
             formTemplateId: input.form_template_id || null,
             equipmentIds,
             itemEquipmentMap,
+            equipmentTemplateMap,
             assigneeUserIds,
             createdBy: user?.id || null,
           });
@@ -1944,7 +2018,7 @@ export function useContracts() {
       // `pmoc_scope`/`pmoc_start_visit` (Fase 3): rotina por máquina; mesmo quando
       // o item já existe, esses campos são RE-APLICADOS (UPDATE) pra refletir
       // mudança de escopo/fase sem precisar remover/recriar o equipamento.
-      items?: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; first_os_excluded_questions?: string[]; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
+      items?: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null; form_template_ids?: string[]; first_os_excluded_questions?: string[]; pmoc_scope?: 'ac' | 'full'; pmoc_start_visit?: number }[];
       // Ambientes climatizados (multi-ambiente PMOC). Quando definido, aplica
       // diff em contract_environments (insere/atualiza/remove) e seta o
       // environment_id dos contract_items pelos equipment_ids de cada ambiente.
@@ -2089,7 +2163,7 @@ export function useContracts() {
       if (items !== undefined) {
         const { data: existingItems } = await supabase
           .from('contract_items')
-          .select('id, equipment_id, item_name, item_description, form_template_id, first_os_excluded_questions, pmoc_scope, pmoc_start_visit')
+          .select('id, equipment_id, item_name, item_description, form_template_id, form_template_ids, first_os_excluded_questions, pmoc_scope, pmoc_start_visit')
           .eq('contract_id', id);
         // FIX B — item manual usa `manual:<nome>:<descrição>` (não só o nome).
         // Antes dois itens manuais homônimos (ex.: dois "Bebedouro") colapsavam
@@ -2103,12 +2177,15 @@ export function useContracts() {
             ? `eq:${it.equipment_id}`
             : `manual:${(it.item_name || '').trim().toLowerCase()}:${(it.item_description || '').trim().toLowerCase()}`;
 
-        const existingByKey = new Map<string, { id: string; pmoc_scope: string | null; pmoc_start_visit: number | null; form_template_id: string | null; first_os_excluded_questions: string[] }>();
-        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; item_description: string | null; form_template_id: string | null; first_os_excluded_questions: any; pmoc_scope: string | null; pmoc_start_visit: number | null }[]) {
+        const existingByKey = new Map<string, { id: string; pmoc_scope: string | null; pmoc_start_visit: number | null; form_template_id: string | null; form_template_ids: string[]; first_os_excluded_questions: string[] }>();
+        for (const it of (existingItems ?? []) as { id: string; equipment_id: string | null; item_name: string; item_description: string | null; form_template_id: string | null; form_template_ids: any; first_os_excluded_questions: any; pmoc_scope: string | null; pmoc_start_visit: number | null }[]) {
           const ex = Array.isArray(it.first_os_excluded_questions)
             ? (it.first_os_excluded_questions as any[]).filter((x) => typeof x === 'string')
             : [];
-          existingByKey.set(itemKey(it), { id: it.id, pmoc_scope: it.pmoc_scope, pmoc_start_visit: it.pmoc_start_visit, form_template_id: it.form_template_id, first_os_excluded_questions: ex });
+          const tplIds = Array.isArray(it.form_template_ids)
+            ? (it.form_template_ids as any[]).filter((x) => typeof x === 'string')
+            : [];
+          existingByKey.set(itemKey(it), { id: it.id, pmoc_scope: it.pmoc_scope, pmoc_start_visit: it.pmoc_start_visit, form_template_id: it.form_template_id, form_template_ids: tplIds, first_os_excluded_questions: ex });
         }
         const newKeys = new Set(items.map(itemKey));
 
@@ -2134,6 +2211,7 @@ export function useContracts() {
               item_name: item.item_name,
               item_description: item.item_description || null,
               form_template_id: item.form_template_id || null,
+              ...(item.form_template_ids ? { form_template_ids: item.form_template_ids } : {}),
               ...(item.first_os_excluded_questions ? { first_os_excluded_questions: item.first_os_excluded_questions } : {}),
               ...(item.pmoc_scope ? { pmoc_scope: item.pmoc_scope } : {}),
               ...(item.pmoc_start_visit ? { pmoc_start_visit: item.pmoc_start_visit } : {}),
@@ -2159,15 +2237,23 @@ export function useContracts() {
           // por item (omitidos = undefined), então nunca são tocados aqui.
           const wantTpl = item.form_template_id;
           const tplDiff = wantTpl !== undefined && (existing.form_template_id ?? null) !== (wantTpl || null);
+          // Lista de checklists (M2). Só age quando veio no payload (defined) — a
+          // ordem é semântica (1º = compat/primário), então compara posicional.
+          const wantTplIds = item.form_template_ids;
+          const tplIdsDiff =
+            wantTplIds !== undefined &&
+            (wantTplIds.length !== existing.form_template_ids.length ||
+              wantTplIds.some((idv, i) => idv !== existing.form_template_ids[i]));
           const wantExcluded = item.first_os_excluded_questions;
           const excludedDiff =
             wantExcluded !== undefined &&
             [...wantExcluded].sort().join(',') !== [...existing.first_os_excluded_questions].sort().join(',');
-          if (scopeDiff || startDiff || tplDiff || excludedDiff) {
+          if (scopeDiff || startDiff || tplDiff || tplIdsDiff || excludedDiff) {
             const upd: any = {};
             if (scopeDiff) upd.pmoc_scope = wantScope;
             if (startDiff) upd.pmoc_start_visit = wantStart;
             if (tplDiff) upd.form_template_id = wantTpl || null;
+            if (tplIdsDiff) upd.form_template_ids = wantTplIds;
             if (excludedDiff) upd.first_os_excluded_questions = wantExcluded;
             // Defesa em profundidade (P3): filtra por contract_id além do id. (A
             // tabela contract_items NÃO tem company_id — o tenant é herdado do
@@ -2384,12 +2470,22 @@ export function useContracts() {
       // pra alimentar as máquinas do motor.
       const { data: contractItemsRows } = await supabase
         .from('contract_items')
-        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order, form_template_id, form_template_ids')
         .eq('contract_id', id);
       const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
       const equipmentIds = itemRows
         .map((i) => i.equipment_id)
         .filter(Boolean) as string[];
+      // M5 — checklists efetivos por equipamento (regeneração de visitas futuras
+      // segue a MESMA regra da criação: N linhas por checklist).
+      const equipmentTemplateMap: Record<string, string[]> = {};
+      for (const it of itemRows) {
+        if (!it.equipment_id) continue;
+        equipmentTemplateMap[it.equipment_id] = effectiveItemTemplateIds(
+          it.form_template_ids,
+          it.form_template_id,
+        );
+      }
       // Mapa item→equipamento pra atividades amarradas a um item específico.
       const itemEquipmentMap: Record<string, string | null> = {};
       for (const it of itemRows) {
@@ -2438,6 +2534,7 @@ export function useContracts() {
         formTemplateId: input.form_template_id ?? null,
         equipmentIds,
         itemEquipmentMap,
+        equipmentTemplateMap,
         assigneeUserIds,
         createdBy: user?.id || null,
       });
@@ -2614,12 +2711,22 @@ export function useContracts() {
       // Inclui escopo + fase (motor por máquina). Lê ANTES de buildContractVisits.
       const { data: contractItemsRows } = await supabase
         .from('contract_items')
-        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order, form_template_id, form_template_ids')
         .eq('contract_id', id);
       const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
       const equipmentIds = itemRows
         .map((i) => i.equipment_id)
         .filter(Boolean) as string[];
+      // M5 — checklists efetivos por equipamento (regeneração de visitas futuras
+      // segue a MESMA regra da criação: N linhas por checklist).
+      const equipmentTemplateMap: Record<string, string[]> = {};
+      for (const it of itemRows) {
+        if (!it.equipment_id) continue;
+        equipmentTemplateMap[it.equipment_id] = effectiveItemTemplateIds(
+          it.form_template_ids,
+          it.form_template_id,
+        );
+      }
       const itemEquipmentMap: Record<string, string | null> = {};
       for (const it of itemRows) {
         itemEquipmentMap[it.id] = it.equipment_id ?? null;
@@ -2660,6 +2767,7 @@ export function useContracts() {
         formTemplateId: (current.form_template_id as string | null) ?? null,
         equipmentIds,
         itemEquipmentMap,
+        equipmentTemplateMap,
         assigneeUserIds,
         createdBy: user?.id || null,
       });
@@ -2774,12 +2882,22 @@ export function useContracts() {
       // contrato. Lê ANTES de buildContractVisits pra alimentar o motor por máquina.
       const { data: contractItemsRows } = await supabase
         .from('contract_items')
-        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order')
+        .select('id, equipment_id, pmoc_scope, pmoc_start_visit, sort_order, form_template_id, form_template_ids')
         .eq('contract_id', id);
       const itemRows = (contractItemsRows ?? []) as ContractItemMachineRow[];
       const equipmentIds = itemRows
         .map((i) => i.equipment_id)
         .filter(Boolean) as string[];
+      // M5 — checklists efetivos por equipamento (regeneração de visitas futuras
+      // segue a MESMA regra da criação: N linhas por checklist).
+      const equipmentTemplateMap: Record<string, string[]> = {};
+      for (const it of itemRows) {
+        if (!it.equipment_id) continue;
+        equipmentTemplateMap[it.equipment_id] = effectiveItemTemplateIds(
+          it.form_template_ids,
+          it.form_template_id,
+        );
+      }
       const itemEquipmentMap: Record<string, string | null> = {};
       for (const it of itemRows) {
         itemEquipmentMap[it.id] = it.equipment_id ?? null;
@@ -2842,6 +2960,7 @@ export function useContracts() {
         formTemplateId: (current.form_template_id as string | null) ?? null,
         equipmentIds,
         itemEquipmentMap,
+        equipmentTemplateMap,
         assigneeUserIds,
         createdBy: user?.id || null,
       });
