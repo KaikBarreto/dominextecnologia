@@ -62,6 +62,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2, Calculator } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,7 +89,7 @@ interface ContractFormDialogProps {
 // status — desafogando a Identificação.
 const STEPS_COMMON = [
   { key: 'info', label: 'Identificação' },
-  { key: 'items', label: 'Equipamentos' },
+  { key: 'items', label: 'Ambientes e Equipamentos' },
   { key: 'frequency', label: 'Frequência' },
   { key: 'team', label: 'Equipe & Cobrança' },
   { key: 'review', label: 'Revisão' },
@@ -96,7 +97,7 @@ const STEPS_COMMON = [
 const STEPS_PMOC = [
   { key: 'info', label: 'Identificação' },
   { key: 'unit', label: 'Unidade & RT' },
-  { key: 'items', label: 'Ambientes' },
+  { key: 'items', label: 'Ambientes e Equipamentos' },
   { key: 'frequency', label: 'Frequência' },
   { key: 'team', label: 'Equipe & Cobrança' },
   { key: 'review', label: 'Revisão' },
@@ -173,6 +174,19 @@ interface EnvRow {
   carga_termica_tr: string;
   photo_url?: string | null;
   equipment_ids: string[];
+}
+
+// Chave virtual do grupo "Sem ambiente" (só contrato comum). NÃO é um registro de
+// contract_environments — agrupa contract_items soltos (environment_id NULL).
+const LOOSE_ENV_KEY = '__loose__';
+
+// Item solto do contrato comum (sem ambiente). Espelha contract_items com
+// environment_id NULL: equipment_id (ou item manual) + snapshot pra não perder.
+interface LooseItem {
+  equipment_id?: string;
+  item_name: string;
+  item_description?: string | null;
+  form_template_id?: string | null;
 }
 
 let envKeySeq = 0;
@@ -275,9 +289,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // pra não competir com o caminho principal (cadência mensal pelo plano).
   const [showAdvancedFrequency, setShowAdvancedFrequency] = useState(false);
 
-  // Step 3
-  const [selectedItems, setSelectedItems] = useState<{ equipment_id?: string; item_name: string; item_description?: string; form_template_id?: string }[]>([]);
-  const [itemSearch, setItemSearch] = useState('');
+  // Step 3 (contrato comum) — equipamentos/itens SOLTOS (sem ambiente). Espelham
+  // contract_items com environment_id NULL. No comum o usuário organiza por
+  // ambientes (como o PMOC), mas pode deixar equipamentos/itens manuais soltos.
+  const [looseItems, setLooseItems] = useState<LooseItem[]>([]);
   const [showManualItem, setShowManualItem] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualDesc, setManualDesc] = useState('');
@@ -305,14 +320,27 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // equipamentos do cliente que pertencem a ele. Um equipamento pertence a UM
   // ambiente (exclusivo entre ambientes). Só aparece quando o contrato é PMOC.
   const [environments, setEnvironments] = useState<EnvRow[]>([]);
-  // Accordion dos AMBIENTES: só um aberto por vez (item 2). Guarda a key do
-  // ambiente expandido; null = todos fechados.
-  const [openEnvKey, setOpenEnvKey] = useState<string | null>(null);
-  // Accordion da CONFIG por equipamento dentro do ambiente aberto: só um painel
-  // de máquina expandido por vez (item 2). Guarda o equipment_id aberto.
-  const [openMachineEqId, setOpenMachineEqId] = useState<string | null>(null);
-  // Busca por equipamento dentro de cada ambiente (item 2). Chave = env.key.
-  const [envEquipSearch, setEnvEquipSearch] = useState<Record<string, string>>({});
+  // Master-detail da etapa "Ambientes e Equipamentos" (mesma UX da aba de
+  // detalhe): null = LISTA de ambientes; preenchido = detalhe daquele ambiente.
+  // LOOSE_ENV_KEY abre o grupo virtual "Sem ambiente" (só comum).
+  const [selectedEnvKey, setSelectedEnvKey] = useState<string | null>(null);
+  // Expansão da config POR MÁQUINA (PMOC). Set de equipment_id expandidos. Fechado
+  // por padrão; SEPARADO da membership (abrir/fechar NUNCA remove o equipamento).
+  const [expandedEqIds, setExpandedEqIds] = useState<Set<string>>(new Set());
+  // Picker de equipamentos do ambiente (multi-seleção + busca). envKey = alvo
+  // (null = fechado). LOOSE_ENV_KEY = adicionar ao grupo "Sem ambiente".
+  const [memberPickerEnvKey, setMemberPickerEnvKey] = useState<string | null>(null);
+  const [memberPickerSearch, setMemberPickerSearch] = useState('');
+  const [memberPickerSelection, setMemberPickerSelection] = useState<Set<string>>(new Set());
+  // Confirmação de remover ambiente (key alvo).
+  const [removingEnvKey, setRemovingEnvKey] = useState<string | null>(null);
+  // Confirmação de remover equipamento. mode 'env' = tira do ambiente (no comum
+  // volta pro grupo "Sem ambiente"; no PMOC sai do contrato). mode 'loose' = tira
+  // de vez do contrato. envKey = ambiente alvo (mode 'env').
+  const [removingMember, setRemovingMember] = useState<{ mode: 'env' | 'loose'; envKey?: string; eqId?: string; looseIdx?: number } | null>(null);
+  // "Mover para ambiente": item solto a realocar (null = fechado). looseIdx =
+  // posição no looseItems (cobre itens manuais sem equipment_id).
+  const [movingLooseIdx, setMovingLooseIdx] = useState<number | null>(null);
   // Rotina POR MÁQUINA (Fase 3). Chave = equipment_id. Cada máquina selecionada
   // num ambiente tem escopo da norma + posição inicial no ciclo de 12 visitas +
   // sua listagem própria de atividades (checklists). Defaults bons: 'ac' /
@@ -343,20 +371,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Quick-create de equipamento dentro de um ambiente (PMOC). Guarda a KEY do
   // ambiente que disparou o cadastro pra, no sucesso, marcar o novo equipamento
   // exatamente naquele ambiente.
+  // Criar equipamento do cliente na hora (a partir do picker do ambiente). O alvo
+  // (ambiente ou grupo "Sem ambiente") é o próprio memberPickerEnvKey aberto.
   const [showQuickEquip, setShowQuickEquip] = useState(false);
-  const [quickEquipEnvKey, setQuickEquipEnvKey] = useState<string | null>(null);
   // Calculadora de área (largura × comprimento → m²): guarda a key do ambiente alvo.
   const [areaCalcEnvKey, setAreaCalcEnvKey] = useState<string | null>(null);
   // Calculadora de carga térmica (ferramenta da Área do Técnico → TR): key do ambiente alvo.
   const [cargaCalcEnvKey, setCargaCalcEnvKey] = useState<string | null>(null);
   // Viewer da foto do equipamento (ampliada). null = fechado.
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
-
-  // Abre o EquipmentFormDialog travado no cliente do contrato, lembrando o ambiente.
-  const openQuickEquip = (envKey: string) => {
-    setQuickEquipEnvKey(envKey);
-    setShowQuickEquip(true);
-  };
 
   // Cliente do contrato como lista de 1 — trava a seleção no EquipmentFormDialog.
   const contractCustomerAsList = useMemo(
@@ -388,13 +411,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (open && isEditing) setMaxStepReached(STEPS.length - 1);
   }, [open, isEditing, STEPS.length]);
 
-  // Ao chegar na etapa Ambientes sem nenhum ambiente aberto, expande o primeiro
-  // (accordion single-open) pra o gestor já ver os dados/equipamentos.
+  // Ao SAIR da etapa "Ambientes e Equipamentos", volta o master-detail pra LISTA
+  // (não mantém um ambiente aberto ao avançar/voltar no wizard).
   useEffect(() => {
-    if (open && currentStepKey === 'items' && isPmoc && environments.length > 0 && openEnvKey === null) {
-      setOpenEnvKey(environments[0].key);
-    }
-  }, [open, currentStepKey, isPmoc, environments, openEnvKey]);
+    if (currentStepKey !== 'items' && selectedEnvKey !== null) setSelectedEnvKey(null);
+  }, [currentStepKey, selectedEnvKey]);
+
+  // Esvaziou o grupo "Sem ambiente" (moveu/removeu o último item) → volta à lista.
+  useEffect(() => {
+    if (selectedEnvKey === LOOSE_ENV_KEY && looseItems.length === 0) setSelectedEnvKey(null);
+  }, [selectedEnvKey, looseItems.length]);
 
   // Navega para a etapa `target` clicando no cabeçalho. Permite ir a qualquer
   // etapa já visitada (≤ maxStepReached). Avançar para uma etapa nova só é
@@ -421,10 +447,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     unidadeNome: string; unidadeEndereco: string; unidadeNumero: string;
     unidadeComplemento: string; unidadeBairro: string; unidadeCidade: string;
     unidadeUf: string; unidadeCep: string;
-    // Ambientes (PMOC) — strings cruas + equipamentos por ambiente.
+    // Ambientes (PMOC e comum) — strings cruas + equipamentos por ambiente.
     environments: EnvRow[];
-    // Itens do contrato comum (não-PMOC).
-    selectedItems: { equipment_id?: string; item_name: string; item_description?: string; form_template_id?: string }[];
+    // Itens SOLTOS do contrato comum (sem ambiente; environment_id NULL).
+    looseItems: LooseItem[];
     // Config por máquina (Fase 3). Guarda a config inteira: escopo, fase, flag
     // de personalização e a listagem de atividades reidratável.
     machineConfigs: Record<string, MachineConfig>;
@@ -451,10 +477,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step,
         unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento,
         unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
-        environments, selectedItems, machineConfigs,
+        environments, looseItems, machineConfigs,
       });
     }
-  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, selectedItems, machineConfigs, open, isEditing, draft.showResumePrompt]);
+  }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, open, isEditing, draft.showResumePrompt]);
 
   const applyContractDraft = (d: ContractDraft) => {
     setName(d.name || '');
@@ -495,8 +521,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       };
     });
     setEnvironments(restoredEnvs);
-    // Itens do contrato comum.
-    setSelectedItems(Array.isArray(d.selectedItems) ? d.selectedItems : []);
+    // Itens soltos do contrato comum.
+    setLooseItems(Array.isArray(d.looseItems) ? d.looseItems : []);
     // Config por máquina (Fase 3) — restaura ANTES do auto-sync poder rodar e
     // marca o guard pra que o efeito de auto-sync (que cria defaults) NÃO
     // sobrescreva os configs restaurados; ele só ADICIONA default p/ equipamento
@@ -515,11 +541,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (!open) {
       setStep(0);
       setMaxStepReached(0);
-      setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
+      setShowManualItem(false); setManualName(''); setManualDesc('');
       setShowCatalogPicker(false); setPickerSelection(new Set()); setPickerTemplateSelection(new Set()); setPmocDefaultSeeded(false);
       setPmocStandardOn(true); setPmocStandardScope('ac'); setShowAdvancedFrequency(false);
       setMachineConfigs({}); setMachineConfigsLoaded(false); setPickerMachineEqId(null);
-      setOpenEnvKey(null); setOpenMachineEqId(null); setEnvEquipSearch({});
+      setSelectedEnvKey(null); setExpandedEqIds(new Set());
+      setMemberPickerEnvKey(null); setMemberPickerSearch(''); setMemberPickerSelection(new Set());
+      setRemovingEnvKey(null); setRemovingMember(null); setMovingLooseIdx(null);
+      setLooseItems([]);
       setEnvironmentsLoaded(false);
       return;
     }
@@ -559,14 +588,21 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // useContractPlanActivities resolve (carrega async). Aqui só limpamos o
       // editor de "nova atividade".
       setNewActivityDesc(''); setNewActivityFreq('M');
-      setSelectedItems(
-        (editContract.contract_items || []).map((i: any) => ({
-          equipment_id: i.equipment_id || undefined,
-          item_name: i.item_name,
-          item_description: i.item_description || undefined,
-          form_template_id: i.form_template_id || undefined,
-        }))
-      );
+      // Itens SOLTOS (sem environment_id) → grupo "Sem ambiente" do contrato comum.
+      // Os itens COM environment_id são reconstruídos pelos ambientes (abaixo). No
+      // PMOC todo item vive num ambiente → looseItems fica vazio.
+      if (!environmentsLoaded) {
+        setLooseItems(
+          (editContract.contract_items || [])
+            .filter((i: any) => !i.environment_id)
+            .map((i: any) => ({
+              equipment_id: i.equipment_id || undefined,
+              item_name: i.item_name,
+              item_description: i.item_description || undefined,
+              form_template_id: i.form_template_id || undefined,
+            }))
+        );
+      }
       // PMOC — preserva estado existente quando entra em edição.
       const editIsPmoc = !!editContract.is_pmoc;
       setIsPmoc(editIsPmoc);
@@ -632,7 +668,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setPlanActivities([]); setInitialPlanSig(''); setNewActivityDesc(''); setNewActivityFreq('M');
       // Contrato novo: padrão da norma LIGADO, escopo só ar-condicionado (default).
       setPmocStandardOn(true); setPmocStandardScope('ac');
-      setSelectedItems([]);
+      setLooseItems([]);
       setEnvironments([]);
       // Default: contrato comum.
       setIsPmoc(false);
@@ -879,37 +915,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setShowCatalogPicker(false);
   };
 
-  const filteredEquipment = activeEquipment.filter(eq =>
-    eq.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
-    eq.brand?.toLowerCase().includes(itemSearch.toLowerCase()) ||
-    eq.model?.toLowerCase().includes(itemSearch.toLowerCase())
-  );
+  // Lookup de equipamento por id (lista completa: um membro pode estar inativo).
+  const equipmentById = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const eq of equipment) m.set(eq.id, eq);
+    return m;
+  }, [equipment]);
 
-  const isEquipmentSelected = (eqId: string) => selectedItems.some(i => i.equipment_id === eqId);
-
-  const toggleEquipment = (eq: typeof activeEquipment[0]) => {
-    if (isEquipmentSelected(eq.id)) {
-      setSelectedItems(prev => prev.filter(i => i.equipment_id !== eq.id));
-    } else {
-      setSelectedItems(prev => [...prev, {
-        equipment_id: eq.id,
-        item_name: eq.name,
-        item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined,
-      }]);
-    }
-  };
-
+  // Adiciona um item manual (sem equipment_id) ao grupo "Sem ambiente" (só comum).
   const addManualItem = () => {
     if (!manualName.trim()) return;
-    setSelectedItems(prev => [...prev, { item_name: manualName.trim(), item_description: manualDesc.trim() || undefined }]);
+    setLooseItems(prev => [...prev, { item_name: manualName.trim(), item_description: manualDesc.trim() || null }]);
     setManualName('');
     setManualDesc('');
     setShowManualItem(false);
   };
 
-  // ---- Ambientes climatizados (multi-ambiente PMOC) -------------------------
+  // ---- Ambientes (PMOC e comum) — master-detail -----------------------------
   // Mapa equipment_id → key do ambiente que o reivindica (exclusividade: um
-  // equipamento pertence a UM ambiente). Usado pra desabilitar/realocar no UI.
+  // equipamento pertence a UM ambiente).
   const equipmentOwnerEnvKey = useMemo(() => {
     const map = new Map<string, string>();
     for (const env of environments) {
@@ -921,25 +945,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const addEnvironment = () => {
     const row = newEnvRow();
     setEnvironments(prev => [...prev, row]);
-    // Abre o ambiente recém-criado (accordion single-open).
-    setOpenEnvKey(row.key);
-    setOpenMachineEqId(null);
+    setSelectedEnvKey(row.key); // abre direto o detalhe do ambiente recém-criado
   };
 
   const removeEnvironment = (key: string) => {
     setEnvironments(prev => prev.filter(e => e.key !== key));
-    setOpenEnvKey(prev => (prev === key ? null : prev));
-  };
-
-  // Accordion dos ambientes — abre o clicado e fecha os demais (single-open).
-  const toggleEnv = (key: string) => {
-    setOpenEnvKey(prev => (prev === key ? null : key));
-    setOpenMachineEqId(null);
-  };
-
-  // Accordion da config por máquina — abre a clicada e fecha as demais.
-  const toggleMachine = (eqId: string) => {
-    setOpenMachineEqId(prev => (prev === eqId ? null : eqId));
+    setRemovingEnvKey(null);
+    if (selectedEnvKey === key) setSelectedEnvKey(null); // volta pra lista
   };
 
   const updateEnvironmentField = (key: string, field: keyof EnvRow, value: string) => {
@@ -952,32 +964,114 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setEnvironments(prev => prev.map(e => e.key === key ? { ...e, photo_url: photoUrl } : e));
   };
 
-  // Alterna um equipamento dentro de um ambiente. Exclusivo: ao marcar num
-  // ambiente, é retirado de qualquer outro que o tivesse (sem duplicar).
-  const toggleEnvEquipment = (envKey: string, eqId: string) => {
-    setEnvironments(prev => prev.map(e => {
-      if (e.key === envKey) {
-        const has = e.equipment_ids.includes(eqId);
-        return {
-          ...e,
-          equipment_ids: has
-            ? e.equipment_ids.filter(id => id !== eqId)
-            : [...e.equipment_ids, eqId],
-        };
-      }
-      // Remove o equipamento de outros ambientes quando está sendo adicionado aqui.
-      const ownerKey = equipmentOwnerEnvKey.get(eqId);
-      if (ownerKey && ownerKey !== envKey && !prev.find(x => x.key === envKey)?.equipment_ids.includes(eqId)) {
-        return { ...e, equipment_ids: e.equipment_ids.filter(id => id !== eqId) };
-      }
-      return e;
-    }));
+  // Expande/colapsa a config POR MÁQUINA (PMOC). SEPARADO da membership.
+  const toggleExpanded = (eqId: string) => {
+    setExpandedEqIds(prev => {
+      const next = new Set(prev);
+      if (next.has(eqId)) next.delete(eqId);
+      else next.add(eqId);
+      return next;
+    });
   };
 
-  // Itens (contract_items) derivados pra um contrato PMOC: 1 item por equipamento
-  // atribuído a algum ambiente. Equipamento não atribuído a nenhum ambiente fica
-  // de fora (não entra no contrato). Espelha o shape de selectedItems.
-  const pmocDerivedItems = useMemo(() => {
+  // Adiciona um equipamento ao ambiente (membership), tirando de outros. No comum,
+  // se vinha do grupo "Sem ambiente", deixa de ser solto.
+  const addEquipmentToEnv = (envKey: string, eqId: string) => {
+    setEnvironments(prev => prev.map(e => {
+      if (e.key === envKey) {
+        if (e.equipment_ids.includes(eqId)) return e;
+        return { ...e, equipment_ids: [...e.equipment_ids, eqId] };
+      }
+      return { ...e, equipment_ids: e.equipment_ids.filter(id => id !== eqId) };
+    }));
+    if (!isPmoc) setLooseItems(prev => prev.filter(it => it.equipment_id !== eqId));
+  };
+
+  // Remove o equipamento do ambiente (membership). Colapsa a config também.
+  // PMOC: remover do ambiente = sair do contrato. Comum: volta pro grupo "Sem
+  // ambiente" (continua no contrato), preservando o snapshot do item.
+  const removeEquipmentFromEnv = (envKey: string, eqId: string) => {
+    if (!isPmoc) {
+      const existing = (editContract?.contract_items || []).find((it: any) => it.equipment_id === eqId);
+      const eq = equipmentById.get(eqId);
+      const snapshot: LooseItem = {
+        equipment_id: eqId,
+        item_name: existing?.item_name ?? eq?.name ?? 'Equipamento',
+        item_description: existing?.item_description ?? ([eq?.brand, eq?.model].filter(Boolean).join(' - ') || null),
+        form_template_id: existing?.form_template_id ?? null,
+      };
+      setLooseItems(prev => (prev.some(it => it.equipment_id === eqId) ? prev : [...prev, snapshot]));
+    }
+    setEnvironments(prev => prev.map(e => e.key === envKey ? { ...e, equipment_ids: e.equipment_ids.filter(id => id !== eqId) } : e));
+    setExpandedEqIds(prev => {
+      if (!prev.has(eqId)) return prev;
+      const next = new Set(prev);
+      next.delete(eqId);
+      return next;
+    });
+    setRemovingMember(null);
+  };
+
+  // Remove DE VEZ do contrato (a partir do grupo "Sem ambiente"). looseIdx cobre
+  // itens manuais (sem equipment_id).
+  const removeLooseItem = (looseIdx: number) => {
+    setLooseItems(prev => prev.filter((_, i) => i !== looseIdx));
+    setRemovingMember(null);
+  };
+
+  // Adiciona um equipamento ao grupo virtual "Sem ambiente" (comum). Tira de
+  // qualquer ambiente real (exclusividade) e materializa o snapshot do item.
+  const addEquipmentAsLoose = (eqId: string) => {
+    const existing = (editContract?.contract_items || []).find((it: any) => it.equipment_id === eqId);
+    const eq = equipmentById.get(eqId);
+    const snapshot: LooseItem = {
+      equipment_id: eqId,
+      item_name: existing?.item_name ?? eq?.name ?? 'Equipamento',
+      item_description: existing?.item_description ?? ([eq?.brand, eq?.model].filter(Boolean).join(' - ') || null),
+      form_template_id: existing?.form_template_id ?? null,
+    };
+    setEnvironments(prev => prev.map(e => ({ ...e, equipment_ids: e.equipment_ids.filter(id => id !== eqId) })));
+    setLooseItems(prev => (prev.some(it => it.equipment_id === eqId) ? prev : [...prev, snapshot]));
+  };
+
+  // Move um item solto (looseIdx) pra um ambiente real. Item manual (sem
+  // equipment_id) não pode entrar num ambiente (ambiente liga por equipment_id) —
+  // o botão só aparece pra item com equipamento.
+  const moveLooseToEnv = (looseIdx: number, envKey: string) => {
+    const it = looseItems[looseIdx];
+    if (!it?.equipment_id) { setMovingLooseIdx(null); return; }
+    addEquipmentToEnv(envKey, it.equipment_id);
+    setMovingLooseIdx(null);
+  };
+
+  // ---- Picker de equipamentos do ambiente (membership) ----------------------
+  const openMemberPicker = (envKey: string) => {
+    setMemberPickerEnvKey(envKey);
+    setMemberPickerSearch('');
+    setMemberPickerSelection(new Set());
+  };
+  const toggleMemberPick = (eqId: string) => {
+    setMemberPickerSelection(prev => {
+      const next = new Set(prev);
+      if (next.has(eqId)) next.delete(eqId);
+      else next.add(eqId);
+      return next;
+    });
+  };
+  const confirmMemberPicker = () => {
+    if (!memberPickerEnvKey) return;
+    if (memberPickerEnvKey === LOOSE_ENV_KEY) {
+      for (const eqId of memberPickerSelection) addEquipmentAsLoose(eqId);
+    } else {
+      for (const eqId of memberPickerSelection) addEquipmentToEnv(memberPickerEnvKey, eqId);
+    }
+    setMemberPickerEnvKey(null);
+  };
+
+  // Itens (contract_items) derivados dos ambientes: 1 item por equipamento
+  // atribuído a algum ambiente. Vale pra PMOC e comum. Equipamento não atribuído
+  // a nenhum ambiente fica de fora (no comum vai pelos looseItems).
+  const derivedItems = useMemo(() => {
     const seen = new Set<string>();
     const out: { equipment_id: string; item_name: string; item_description?: string }[] = [];
     for (const env of environments) {
@@ -995,10 +1089,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     }
     return out;
   }, [environments, activeEquipment, equipment]);
+  // Alias mantido pra uso interno PMOC (plano/itens com escopo). Idêntico no PMOC.
+  const pmocDerivedItems = derivedItems;
 
-  // Conjunto de itens/equipamentos efetivo do contrato (vai pro payload `items`).
-  // PMOC = derivado dos ambientes; comum = a lista flat de selectedItems.
-  const effectiveItems = isPmoc ? pmocDerivedItems : selectedItems;
+  // Conjunto efetivo de itens/equipamentos (chaves) do contrato — usado pra
+  // detectar mudança de cronograma. PMOC = só ambientes; comum = ambientes +
+  // soltos (que vão como environment_id NULL).
+  const effectiveItems = useMemo(() => {
+    if (isPmoc) return derivedItems;
+    const inEnv = new Set(environments.flatMap(e => e.equipment_ids));
+    const loose = looseItems.filter(it => !it.equipment_id || !inEnv.has(it.equipment_id));
+    return [...derivedItems, ...loose];
+  }, [isPmoc, derivedItems, environments, looseItems]);
 
   // ---- Rotina POR MÁQUINA (Fase 3) ------------------------------------------
   // Config default de uma máquina: delega à fonte ÚNICA compartilhada (escopo
@@ -1101,15 +1203,28 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // o básico.
   const effectiveItemsWithScope = useMemo(() => {
     if (!isPmoc) {
-      return selectedItems.map((i: any) => ({
+      // Comum: itens dos ambientes (o hook religa environment_id pelos
+      // equipment_ids dos ambientes) + itens SOLTOS (environment_id NULL). Soltos
+      // que foram movidos pra um ambiente saem daqui (evita chave duplicada).
+      const inEnv = new Set(environments.flatMap(e => e.equipment_ids));
+      const envItems = derivedItems.map((i) => ({
         equipment_id: i.equipment_id || null,
         item_name: i.item_name,
         item_description: i.item_description || null,
-        form_template_id: i.form_template_id || null,
+        form_template_id: null as string | null,
       }));
+      const looseItemsPayload = looseItems
+        .filter(it => !it.equipment_id || !inEnv.has(it.equipment_id))
+        .map((it) => ({
+          equipment_id: it.equipment_id || null,
+          item_name: it.item_name,
+          item_description: it.item_description || null,
+          form_template_id: it.form_template_id || null,
+        }));
+      return [...envItems, ...looseItemsPayload];
     }
     return buildPmocItemsWithScope({ items: pmocDerivedItems, machineConfigs });
-  }, [isPmoc, selectedItems, pmocDerivedItems, machineConfigs]);
+  }, [isPmoc, derivedItems, environments, looseItems, pmocDerivedItems, machineConfigs]);
 
   // Atividades do plano efetivo com frequência válida pra cronograma (exclui
   // eventuais). PMOC usa o plano POR MÁQUINA; comum usa o planActivities.
@@ -1202,10 +1317,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // diff (insere novos, apaga removidos) e RE-APLICA escopo/fase por máquina;
       // mudança re-expande as visitas. PMOC = derivado dos ambientes c/ escopo+fase.
       items: effectiveItemsWithScope,
-      // Ambientes climatizados (multi-ambiente PMOC). PMOC envia os cards;
-      // contrato comum envia [] (limpa qualquer ambiente legado e zera
-      // environment_id dos itens).
-      environments: isPmoc ? buildEnvironmentsInput() : [],
+      // Ambientes (PMOC e comum). Ambos enviam os cards; o hook religa
+      // environment_id dos itens pelos equipment_ids de cada ambiente (quem não
+      // está em nenhum ambiente fica NULL = grupo "Sem ambiente").
+      environments: buildEnvironmentsInput(),
       // PMOC (Onda A)
       is_pmoc: isPmoc,
       responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
@@ -1336,9 +1451,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           // Itens do contrato: PMOC = derivados dos ambientes com escopo+fase por
           // máquina (Fase 3); comum = lista flat.
           items: effectiveItemsWithScope,
-          // Ambientes climatizados (multi-ambiente PMOC). Cada ambiente vira uma
-          // linha em contract_environments e amarra seus equipamentos.
-          environments: isPmoc ? buildEnvironmentsInput() : undefined,
+          // Ambientes (PMOC e comum). Cada ambiente vira uma linha em
+          // contract_environments e amarra seus equipamentos (environment_id).
+          environments: buildEnvironmentsInput(),
           // Plano de serviços com frequência (Fase 1/2/3). PMOC = plano POR MÁQUINA
           // (cada atividade com equipment_ref; o hook resolve contract_item_id após
           // inserir os itens). Comum = planActivities. Vazio = frequência única.
@@ -1680,7 +1795,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     <SearchableSelect
                       options={customerOptions}
                       value={customerId}
-                      onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
+                      onValueChange={v => { setCustomerId(v); if (!isEditing) { setLooseItems([]); setEnvironments([]); setSelectedEnvKey(null); } }}
                       placeholder="Selecione o cliente"
                       searchPlaceholder="Buscar cliente..."
                     />
@@ -2086,522 +2201,521 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
-          {/* STEP: Ambientes (PMOC) ou Itens (comum) */}
-          {currentStepKey === 'items' && isPmoc && (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1">
-                <p className="text-sm text-muted-foreground">
-                  Cadastre os ambientes climatizados deste contrato (ex: cada unidade ou sala).
-                  Cada ambiente tem seus dados da Planilha PMOC e seus próprios equipamentos.
-                </p>
-                {!customerId && (
-                  <p className="text-xs text-warning">Selecione o cliente na etapa 1 para escolher equipamentos.</p>
-                )}
-              </div>
+          {/* STEP: Ambientes e Equipamentos (PMOC e comum) — master-detail.
+              LISTA de ambientes → tela do ambiente (campos + equipamentos
+              membros). No comum há o grupo virtual "Sem ambiente" pros itens
+              soltos. Mesma UX da aba de detalhe (ContractEnvironmentsTab). O
+              "Voltar aos ambientes" é interno ao step (NÃO mexe no wizard). */}
+          {currentStepKey === 'items' && (() => {
+            const selectedEnv = selectedEnvKey && selectedEnvKey !== LOOSE_ENV_KEY
+              ? environments.find(e => e.key === selectedEnvKey) ?? null
+              : null;
+            const selectedEnvIdx = selectedEnv ? environments.findIndex(e => e.key === selectedEnv.key) : -1;
+            const isLooseSelected = !isPmoc && selectedEnvKey === LOOSE_ENV_KEY;
+            const totalEquipment = new Set([
+              ...environments.flatMap(e => e.equipment_ids),
+              ...looseItems.map(it => it.equipment_id).filter(Boolean) as string[],
+            ]).size;
 
-              {environments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-8 text-center">
-                  <ShieldCheck className="h-7 w-7 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Nenhum ambiente cadastrado ainda.</p>
-                  <Button type="button" variant="outline" onClick={addEnvironment}>
-                    <Plus className="h-4 w-4 mr-2" /> Adicionar ambiente
+            // Campos do ambiente: PMOC = completo (refrigeração); comum = só os
+            // genéricos (identificação + tipo/uso + foto).
+            const renderEnvFields = (env: EnvRow, idx: number) => (
+              <div className="space-y-3">
+                <EnvironmentPhotoField
+                  value={env.photo_url}
+                  onChange={(url) => setEnvironmentPhoto(env.key, url)}
+                  envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Identificação do ambiente</Label>
+                    <Input value={env.identificacao} onChange={e => updateEnvironmentField(env.key, 'identificacao', e.target.value)} placeholder="Ex: 2º andar — Sala 201" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">{isPmoc ? 'Tipo de atividade' : 'Tipo / uso do ambiente'}</Label>
+                    <Input value={env.tipo_atividade} onChange={e => updateEnvironmentField(env.key, 'tipo_atividade', e.target.value)} placeholder="Ex: Escritório administrativo" />
+                  </div>
+                  {isPmoc && (
+                  <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Área climatizada (m²)</Label>
+                    <div className="flex items-center gap-2">
+                      <NumericInput decimal value={env.area_climatizada_m2} onValueChange={v => updateEnvironmentField(env.key, 'area_climatizada_m2', v)} placeholder="Ex: 120,5" className="flex-1" />
+                      <Button type="button" variant="outline" size="sm" className="h-10 shrink-0 px-3" onClick={() => setAreaCalcEnvKey(env.key)}>
+                        <Calculator className="h-4 w-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Calcular</span>
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs">Carga térmica (TR)</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que é TR?">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
+                      </Tooltip>
+                    </div>
+                    {(() => {
+                      const tr = parseDecimalBR(env.carga_termica_tr);
+                      const showHint = tr && tr > 0;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <NumericInput decimal value={env.carga_termica_tr} onValueChange={v => updateEnvironmentField(env.key, 'carga_termica_tr', v)} placeholder="Ex: 5,0" className={showHint ? 'pr-24' : undefined} />
+                            {showHint && (
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 max-w-[40%] truncate text-xs text-muted-foreground">
+                                = {(tr * 12000).toLocaleString('pt-BR')} BTUs
+                              </span>
+                            )}
+                          </div>
+                          <Button type="button" variant="outline" size="sm" className="h-10 shrink-0 px-3" onClick={() => setCargaCalcEnvKey(env.key)}>
+                            <Calculator className="h-4 w-4 sm:mr-1.5" />
+                            <span className="hidden sm:inline">Calcular</span>
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs">Nº de ocupantes fixos</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes fixos?">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-xs">Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local).</TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <NumericInput value={env.ocupantes_fixos} onValueChange={v => updateEnvironmentField(env.key, 'ocupantes_fixos', v)} placeholder="Ex: 12" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes flutuantes?">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-xs">Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes).</TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <NumericInput value={env.ocupantes_flutuantes} onValueChange={v => updateEnvironmentField(env.key, 'ocupantes_flutuantes', v)} placeholder="Ex: 30" />
+                  </div>
+                  </>
+                  )}
+                </div>
+              </div>
+            );
+
+            // Equipamentos MEMBROS do ambiente: chevron de config (PMOC) SEPARADO
+            // da remoção; picker pra adicionar; criar-na-hora.
+            const renderEnvEquipment = (env: EnvRow) => (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Wrench className="h-3.5 w-3.5 text-info" />
+                    Equipamentos deste ambiente ({env.equipment_ids.length})
+                  </Label>
+                  <Button type="button" variant="outline" size="sm" className="min-h-9 active:scale-[0.98] transition-transform rounded-xl" disabled={!customerId} onClick={() => openMemberPicker(env.key)}>
+                    <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
                   </Button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {environments.map((env, idx) => {
-                    const envEquipmentCount = env.equipment_ids.length;
-                    const envOpen = openEnvKey === env.key;
-                    const search = (envEquipSearch[env.key] ?? '').toLowerCase().trim();
-                    // Equipamentos visíveis neste ambiente: oculta os já atribuídos
-                    // a OUTRO ambiente (item 2 — somem da lista, não esmaecem) e
-                    // aplica a busca por nome/marca/modelo. Os marcados aqui ficam
-                    // sempre visíveis (mesmo fora da busca, pra não "perder" config).
-                    const visibleEquipment = activeEquipment.filter(eq => {
-                      const checked = env.equipment_ids.includes(eq.id);
-                      const ownerKey = equipmentOwnerEnvKey.get(eq.id);
-                      const ownedByOther = !checked && ownerKey && ownerKey !== env.key;
-                      if (ownedByOther) return false;
-                      if (!search) return true;
-                      if (checked) return true;
+
+                {env.equipment_ids.length === 0 ? (
+                  <EmptyState
+                    size="compact"
+                    icon={<Wrench className="h-10 w-10" />}
+                    title="Nenhum equipamento neste ambiente"
+                    description={customerId ? 'Adicione um equipamento do cliente a este ambiente.' : 'Selecione o cliente na etapa 1 primeiro.'}
+                    action={customerId ? { label: 'Adicionar equipamento', onClick: () => openMemberPicker(env.key) } : undefined}
+                  />
+                ) : (
+                  <div className="divide-y overflow-hidden rounded-lg border bg-muted/20">
+                    {env.equipment_ids.map((eqId) => {
+                      const eq = equipmentById.get(eqId);
+                      const cfg = machineConfigs[eqId];
+                      const expanded = expandedEqIds.has(eqId);
+                      const name = eq?.name ?? 'Equipamento';
                       return (
-                        eq.name.toLowerCase().includes(search) ||
-                        (eq.brand?.toLowerCase().includes(search) ?? false) ||
-                        (eq.model?.toLowerCase().includes(search) ?? false)
-                      );
-                    });
-                    return (
-                      <div key={env.key} className={cn('overflow-hidden rounded-2xl border-2 bg-card shadow-sm transition-colors', envOpen && 'border-info/40')}>
-                        {/* Cabeçalho do ambiente — clicável (accordion single-open). */}
-                        <div className={cn('flex items-center justify-between gap-2 p-3', envOpen && 'border-b bg-muted/40')}>
-                          <button
-                            type="button"
-                            onClick={() => toggleEnv(env.key)}
-                            className="flex flex-1 items-center gap-2 min-w-0 text-left"
-                            aria-expanded={envOpen}
-                          >
-                            <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', envOpen && 'rotate-180')} />
-                            <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
-                            <span className="text-sm font-medium truncate">
-                              {env.identificacao.trim() || 'Sem identificação'}
-                            </span>
-                            {envEquipmentCount > 0 && (
-                              <Badge variant="outline" className="shrink-0 text-[10px]">{envEquipmentCount} equip.</Badge>
+                        <div key={eqId}>
+                          <div className="flex items-center gap-2 px-3 py-2.5">
+                            {isPmoc ? (
+                              <button
+                                type="button"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
+                                onClick={() => toggleExpanded(eqId)}
+                                aria-label={expanded ? 'Recolher configuração' : 'Expandir configuração'}
+                                aria-expanded={expanded}
+                              >
+                                <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
+                              </button>
+                            ) : (
+                              <div className="w-1" />
                             )}
-                          </button>
+                            <EquipmentAvatar
+                              photoUrl={eq?.photo_url}
+                              name={name}
+                              onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{name}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {[eq?.brand, eq?.model].filter(Boolean).join(' - ')}
+                                {eq?.location && <span className="text-muted-foreground"> • {eq.location}</span>}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
+                              title={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
+                              aria-label={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
+                              onClick={() => setRemovingMember({ mode: 'env', envKey: env.key, eqId })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {isPmoc && expanded && (
+                            <div className="space-y-2.5 bg-muted/30 px-3 pb-3 pt-1">
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[11px] font-medium text-muted-foreground">Escopo da norma</span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre o escopo">
+                                        <HelpCircle className="h-3.5 w-3.5" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs text-xs">
+                                      "Só ar-condicionado" cobre split/ACJ comum. "Toda a norma" inclui as seções de grande porte (VRF, Chiller, Torre, casa de máquinas…).
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <LabeledSwitch
+                                  value={cfg?.scope ?? 'ac'}
+                                  onChange={(v) => setMachineScope(eqId, v as PmocMachineScope)}
+                                  off={{ value: 'ac', label: 'Só ar-condicionado' }}
+                                  on={{ value: 'full', label: 'Grande Porte (VRF/Chiller…)' }}
+                                  size="default"
+                                  className="[&_button]:text-xs"
+                                  aria-label="Escopo da norma da máquina"
+                                />
+                              </div>
+
+                              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
+                                <div className="flex flex-1 flex-col gap-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                          <HelpCircle className="h-3.5 w-3.5" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-xs text-xs">
+                                        Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                  <Select value={String(cfg?.startVisit ?? 12)} onValueChange={(v) => setMachineStartVisit(eqId, Number(v))}>
+                                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {START_VISIT_OPTIONS.map(o => (
+                                        <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <Button type="button" variant="outline" size="sm" className="h-9 w-full text-xs sm:w-auto" disabled={catalogLoading} onClick={() => openMachinePicker(eqId)}>
+                                  <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
+                                  Checklists da Máquina
+                                </Button>
+                              </div>
+
+                              <span className="block text-[11px] text-muted-foreground">
+                                {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
+                                {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
+                              </span>
+
+                              {cfg && (
+                                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                  <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
+                                  <span>
+                                    Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <Button type="button" variant="outline" size="sm" className="w-full" disabled={!customerId} onClick={() => openMemberPicker(env.key)}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Adicionar / cadastrar equipamento
+                </Button>
+              </div>
+            );
+
+            // Grupo virtual "Sem ambiente" (só comum). Lixeira = remover DO
+            // CONTRATO. "Mover para ambiente" realoca o item pra um ambiente real.
+            const renderLooseEquipment = () => (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Wrench className="h-3.5 w-3.5 text-info" />
+                    Equipamentos sem ambiente ({looseItems.length})
+                  </Label>
+                  <Button type="button" variant="outline" size="sm" className="min-h-9 active:scale-[0.98] transition-transform rounded-xl" disabled={!customerId} onClick={() => openMemberPicker(LOOSE_ENV_KEY)}>
+                    <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
+                  </Button>
+                </div>
+
+                {looseItems.length === 0 ? (
+                  <EmptyState
+                    size="compact"
+                    icon={<Wrench className="h-10 w-10" />}
+                    title="Nenhum equipamento sem ambiente"
+                    description="Todos os equipamentos do contrato já estão em algum ambiente."
+                  />
+                ) : (
+                  <div className="divide-y overflow-hidden rounded-lg border bg-muted/20">
+                    {looseItems.map((it, looseIdx) => {
+                      const eq = it.equipment_id ? equipmentById.get(it.equipment_id) : null;
+                      const name = eq?.name ?? it.item_name ?? 'Equipamento';
+                      return (
+                        <div key={`${it.equipment_id ?? 'manual'}-${looseIdx}`} className="flex items-center gap-2 px-3 py-2.5">
+                          <div className="w-1" />
+                          <EquipmentAvatar
+                            photoUrl={eq?.photo_url}
+                            name={name}
+                            onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{name}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {[eq?.brand, eq?.model].filter(Boolean).join(' - ') || it.item_description}
+                              {eq?.location && <span className="text-muted-foreground"> • {eq.location}</span>}
+                            </p>
+                          </div>
+                          {it.equipment_id && environments.length > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 shrink-0 text-muted-foreground active:scale-90 transition-transform rounded-xl"
+                              title="Mover para ambiente"
+                              aria-label="Mover para ambiente"
+                              onClick={() => setMovingLooseIdx(looseIdx)}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 shrink-0 text-destructive"
-                            onClick={() => removeEnvironment(env.key)}
-                            aria-label="Remover ambiente"
+                            className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
+                            title="Remover do contrato"
+                            aria-label="Remover do contrato"
+                            onClick={() => setRemovingMember({ mode: 'loose', looseIdx })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-
-                        {envOpen && (
-                        <div className="p-3 pt-0 space-y-3">
-                        <EnvironmentPhotoField
-                          value={env.photo_url}
-                          onChange={(url) => setEnvironmentPhoto(env.key, url)}
-                          envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
-                        />
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Identificação do ambiente</Label>
-                            <Input
-                              value={env.identificacao}
-                              onChange={e => updateEnvironmentField(env.key, 'identificacao', e.target.value)}
-                              placeholder="Ex: 2º andar — Sala 201"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Tipo de atividade</Label>
-                            <Input
-                              value={env.tipo_atividade}
-                              onChange={e => updateEnvironmentField(env.key, 'tipo_atividade', e.target.value)}
-                              placeholder="Ex: Escritório administrativo"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Área climatizada (m²)</Label>
-                            <div className="flex items-center gap-2">
-                              <NumericInput
-                                decimal
-                                value={env.area_climatizada_m2}
-                                onValueChange={v => updateEnvironmentField(env.key, 'area_climatizada_m2', v)}
-                                placeholder="Ex: 120,5"
-                                className="flex-1"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-10 shrink-0 px-3"
-                                onClick={() => setAreaCalcEnvKey(env.key)}
-                              >
-                                <Calculator className="h-4 w-4 sm:mr-1.5" />
-                                <span className="hidden sm:inline">Calcular</span>
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1">
-                              <Label className="text-xs">Carga térmica (TR)</Label>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que é TR?">
-                                    <HelpCircle className="h-3.5 w-3.5" />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
-                              </Tooltip>
-                            </div>
-                            {(() => {
-                              const tr = parseDecimalBR(env.carga_termica_tr);
-                              const showHint = tr && tr > 0;
-                              return (
-                                <div className="flex items-center gap-2">
-                                  <div className="relative flex-1">
-                                    <NumericInput
-                                      decimal
-                                      value={env.carga_termica_tr}
-                                      onValueChange={v => updateEnvironmentField(env.key, 'carga_termica_tr', v)}
-                                      placeholder="Ex: 5,0"
-                                      className={showHint ? 'pr-24' : undefined}
-                                    />
-                                    {showHint && (
-                                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 max-w-[40%] truncate text-xs text-muted-foreground">
-                                        = {(tr * 12000).toLocaleString('pt-BR')} BTUs
-                                      </span>
-                                    )}
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-10 shrink-0 px-3"
-                                    onClick={() => setCargaCalcEnvKey(env.key)}
-                                  >
-                                    <Calculator className="h-4 w-4 sm:mr-1.5" />
-                                    <span className="hidden sm:inline">Calcular</span>
-                                  </Button>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1">
-                              <Label className="text-xs">Nº de ocupantes fixos</Label>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes fixos?">
-                                    <HelpCircle className="h-3.5 w-3.5" />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs text-xs">Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local).</TooltipContent>
-                              </Tooltip>
-                            </div>
-                            <NumericInput
-                              value={env.ocupantes_fixos}
-                              onValueChange={v => updateEnvironmentField(env.key, 'ocupantes_fixos', v)}
-                              placeholder="Ex: 12"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1">
-                              <Label className="text-xs">Nº de ocupantes flutuantes</Label>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes flutuantes?">
-                                    <HelpCircle className="h-3.5 w-3.5" />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs text-xs">Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes).</TooltipContent>
-                              </Tooltip>
-                            </div>
-                            <NumericInput
-                              value={env.ocupantes_flutuantes}
-                              onValueChange={v => updateEnvironmentField(env.key, 'ocupantes_flutuantes', v)}
-                              placeholder="Ex: 30"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Equipamentos deste ambiente (exclusivos entre ambientes).
-                            Bloco subordinado ao ambiente, sem borda externa (menos
-                            caixa-dentro-de-caixa). */}
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                            <Wrench className="h-3.5 w-3.5 text-info" />
-                            Equipamentos deste ambiente ({envEquipmentCount})
-                          </Label>
-                          {!customerId ? (
-                            <p className="text-xs text-muted-foreground">Selecione o cliente na etapa 1 primeiro.</p>
-                          ) : activeEquipment.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">O cliente não tem equipamentos ativos cadastrados.</p>
-                          ) : (
-                            <>
-                            {/* Busca por equipamento (item 2). */}
-                            <div className="relative">
-                              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                placeholder="Buscar equipamento..."
-                                value={envEquipSearch[env.key] ?? ''}
-                                onChange={e => setEnvEquipSearch(prev => ({ ...prev, [env.key]: e.target.value }))}
-                                className="pl-8 h-9"
-                              />
-                            </div>
-                            {/* Lista com altura máxima + scroll (item 2). */}
-                            <div className="rounded-lg border bg-muted/20 divide-y max-h-72 overflow-y-auto">
-                              {visibleEquipment.length === 0 ? (
-                                <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-                                  Nenhum equipamento encontrado.
-                                </p>
-                              ) : visibleEquipment.map(eq => {
-                                const checked = env.equipment_ids.includes(eq.id);
-                                const cfg = machineConfigs[eq.id];
-                                const cfgOpen = checked && openMachineEqId === eq.id;
-                                return (
-                                  <div key={eq.id}>
-                                    <div className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/50">
-                                      <input
-                                        type="checkbox"
-                                        className="rounded border-border cursor-pointer"
-                                        checked={checked}
-                                        onChange={() => {
-                                          const wasChecked = checked;
-                                          toggleEnvEquipment(env.key, eq.id);
-                                          // Ao marcar, abre a config dele (single-open); ao desmarcar, fecha.
-                                          setOpenMachineEqId(wasChecked ? null : eq.id);
-                                        }}
-                                      />
-                                      <EquipmentAvatar
-                                        photoUrl={eq.photo_url}
-                                        name={eq.name}
-                                        onPreview={() => setPreviewPhoto({ src: eq.photo_url ?? '', alt: eq.name || 'Equipamento' })}
-                                      />
-                                      <button
-                                        type="button"
-                                        className="flex flex-1 items-center gap-2 min-w-0 text-left"
-                                        onClick={() => {
-                                          if (checked) {
-                                            toggleMachine(eq.id);
-                                          } else {
-                                            toggleEnvEquipment(env.key, eq.id);
-                                            setOpenMachineEqId(eq.id);
-                                          }
-                                        }}
-                                      >
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-sm font-medium truncate">{eq.name}</p>
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {[eq.brand, eq.model].filter(Boolean).join(' - ')}
-                                            {eq.location && (
-                                              <span className="text-muted-foreground"> • {eq.location}</span>
-                                            )}
-                                          </p>
-                                        </div>
-                                        {checked && (
-                                          <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', cfgOpen && 'rotate-180')} />
-                                        )}
-                                      </button>
-                                    </div>
-
-                                    {/* Rotina POR MÁQUINA (Fase 3) — accordion single-open:
-                                        só aparece pro equipamento marcado E aberto. Compacto:
-                                        escopo + começa-na-visita + checklists próprios. */}
-                                    {cfgOpen && (
-                                      <div className="px-3 pb-3 pt-1 space-y-2.5 bg-muted/20">
-                                        {/* 1) Escopo da norma */}
-                                        <div className="flex flex-col gap-1.5">
-                                          <div className="flex items-center gap-1">
-                                            <span className="text-[11px] font-medium text-muted-foreground">Escopo da norma</span>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre o escopo">
-                                                  <HelpCircle className="h-3.5 w-3.5" />
-                                                </button>
-                                              </TooltipTrigger>
-                                              <TooltipContent className="max-w-xs text-xs">
-                                                "Só ar-condicionado" cobre split/ACJ comum. "Toda a norma" inclui as seções de grande porte (VRF, Chiller, Torre, casa de máquinas…).
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </div>
-                                          <LabeledSwitch
-                                            value={cfg?.scope ?? 'ac'}
-                                            onChange={(v) => setMachineScope(eq.id, v as PmocMachineScope)}
-                                            off={{ value: 'ac', label: 'Só ar-condicionado' }}
-                                            on={{ value: 'full', label: 'Grande Porte (VRF/Chiller…)' }}
-                                            size="default"
-                                            className="[&_button]:text-xs"
-                                            aria-label="Escopo da norma da máquina"
-                                          />
-                                        </div>
-
-                                        {/* 2) Começa na visita + Checklists (lado a lado; empilha no mobile) */}
-                                        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
-                                          <div className="flex flex-1 flex-col gap-1.5">
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
-                                                    <HelpCircle className="h-3.5 w-3.5" />
-                                                  </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs text-xs">
-                                                  Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
-                                                </TooltipContent>
-                                              </Tooltip>
-                                            </div>
-                                            <Select
-                                              value={String(cfg?.startVisit ?? 12)}
-                                              onValueChange={(v) => setMachineStartVisit(eq.id, Number(v))}
-                                            >
-                                              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                                              <SelectContent>
-                                                {START_VISIT_OPTIONS.map(o => (
-                                                  <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
-                                                ))}
-                                              </SelectContent>
-                                            </Select>
-                                          </div>
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-9 w-full text-xs sm:w-auto"
-                                            disabled={catalogLoading}
-                                            onClick={() => openMachinePicker(eq.id)}
-                                          >
-                                            <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
-                                            Checklists da Máquina
-                                          </Button>
-                                        </div>
-
-                                        {/* Resumo dos checklists da máquina */}
-                                        <span className="block text-[11px] text-muted-foreground">
-                                          {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
-                                          {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
-                                        </span>
-
-                                        {/* Preview: em que visita começa e o que inclui */}
-                                        {cfg && (
-                                          <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                                            <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
-                                            <span>
-                                              Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            </>
-                          )}
-                          {/* Quick-create de equipamento: sempre disponível (inclusive sem
-                              equipamentos). Abre o EquipmentFormDialog travado no cliente;
-                              no sucesso, o novo equipamento entra marcado neste ambiente. */}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            disabled={!customerId}
-                            onClick={() => openQuickEquip(env.key)}
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1.5" /> Cadastrar equipamento
-                          </Button>
-                        </div>
-                        </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  <Button type="button" variant="outline" className="w-full" onClick={addEnvironment}>
-                    <Plus className="h-4 w-4 mr-2" /> Adicionar outro ambiente
-                  </Button>
-
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Info className="h-3.5 w-3.5 shrink-0" />
-                    {pmocDerivedItems.length} equipamento(s) no total entram neste contrato.
+                      );
+                    })}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
 
-          {currentStepKey === 'items' && !isPmoc && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Selecione os equipamentos do cliente e/ou adicione itens manuais que farão parte deste contrato.
-              </p>
+                {/* Item manual (sem equipamento) — só comum. */}
+                {!showManualItem ? (
+                  <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setShowManualItem(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Adicionar item manual
+                  </Button>
+                ) : (
+                  <div className="rounded-lg border p-3 space-y-3">
+                    <div className="space-y-2">
+                      <Label>Nome do item</Label>
+                      <Input value={manualName} onChange={e => setManualName(e.target.value)} placeholder="Ex: Limpeza de dutos" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Descrição (opcional)</Label>
+                      <Input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="Detalhes adicionais" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setShowManualItem(false)}>Cancelar</Button>
+                      <Button size="sm" onClick={addManualItem} disabled={!manualName.trim()}>Adicionar</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
 
-              {customerId && activeEquipment.length > 0 && (
-                <div className="space-y-2">
+            if (isLooseSelected) {
+              return (
+                <div className="space-y-4">
+                  <Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform" onClick={() => setSelectedEnvKey(null)}>
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Voltar aos ambientes
+                  </Button>
                   <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar equipamento..."
-                        value={itemSearch}
-                        onChange={e => setItemSearch(e.target.value)}
-                        className="pl-8"
-                      />
+                    <Badge variant="outline" className="shrink-0">Sem ambiente</Badge>
+                    <span className="text-base font-semibold">Equipamentos não atribuídos</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Equipamentos deste contrato que ainda não estão em nenhum ambiente. Adicione a um ambiente ou remova do contrato.
+                  </p>
+                  {renderLooseEquipment()}
+                </div>
+              );
+            }
+
+            if (selectedEnv) {
+              return (
+                <div className="space-y-4">
+                  <Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform" onClick={() => setSelectedEnvKey(null)}>
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Voltar aos ambientes
+                  </Button>
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Badge variant="info" className="shrink-0">Ambiente {selectedEnvIdx + 1}</Badge>
+                      <span className="min-w-0 break-words text-base font-semibold">
+                        {selectedEnv.identificacao.trim() || 'Sem identificação'}
+                      </span>
                     </div>
                     <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const allSelected = filteredEquipment.every(eq => isEquipmentSelected(eq.id));
-                        if (allSelected) {
-                          setSelectedItems(prev => prev.filter(i => !filteredEquipment.some(eq => eq.id === i.equipment_id)));
-                        } else {
-                          const newItems = filteredEquipment
-                            .filter(eq => !isEquipmentSelected(eq.id))
-                            .map(eq => ({
-                              equipment_id: eq.id,
-                              item_name: eq.name,
-                              item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined,
-                            }));
-                          setSelectedItems(prev => [...prev, ...newItems]);
-                        }
-                      }}
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
+                      onClick={() => setRemovingEnvKey(selectedEnv.key)}
+                      aria-label="Remover ambiente"
+                      title="Remover ambiente"
                     >
-                      <Check className="h-3.5 w-3.5 mr-1" />
-                      {filteredEquipment.every(eq => isEquipmentSelected(eq.id)) ? 'Desmarcar todos' : 'Selecionar todos'}
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="rounded-md border max-h-52 overflow-y-auto divide-y">
-                    {filteredEquipment.map(eq => (
-                      <label key={eq.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors">
-                        <input
-                          type="checkbox"
-                          className="rounded border-border"
-                          checked={isEquipmentSelected(eq.id)}
-                          onChange={() => toggleEquipment(eq)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{eq.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                  {renderEnvFields(selectedEnv, selectedEnvIdx)}
+                  {renderEnvEquipment(selectedEnv)}
+                </div>
+              );
+            }
+
+            // LISTA de ambientes (default).
+            return (
+              <div className="space-y-4">
+                <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="flex items-center gap-2 text-base font-semibold">
+                      <ShieldCheck className="h-5 w-5 shrink-0 text-info" />
+                      {isPmoc ? 'Ambientes climatizados' : 'Ambientes'} ({environments.length})
+                    </span>
+                    {!customerId && (
+                      <p className="text-xs text-warning">Selecione o cliente na etapa 1 para escolher equipamentos.</p>
+                    )}
+                  </div>
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={addEnvironment}>
+                    <Plus className="mr-1 h-4 w-4" /> Adicionar ambiente
+                  </Button>
+                </div>
+
+                {environments.length === 0 && looseItems.length === 0 ? (
+                  <div className="space-y-2">
+                    <EmptyState
+                      size="compact"
+                      icon={<ShieldCheck className="h-10 w-10" />}
+                      title="Nenhum ambiente cadastrado"
+                      description={isPmoc ? 'Cadastre os ambientes climatizados deste contrato.' : 'Organize os equipamentos deste contrato em ambientes.'}
+                      action={{ label: 'Adicionar ambiente', onClick: addEnvironment }}
+                    />
+                    {/* Comum: também permite adicionar equipamento sem criar ambiente. */}
+                    {!isPmoc && (
+                      <Button type="button" variant="ghost" size="sm" className="w-full justify-center text-muted-foreground" disabled={!customerId} onClick={() => openMemberPicker(LOOSE_ENV_KEY)}>
+                        <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento sem ambiente
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {environments.map((env, idx) => (
+                      <button
+                        key={env.key}
+                        type="button"
+                        onClick={() => setSelectedEnvKey(env.key)}
+                        className="flex w-full min-h-16 items-center gap-3 rounded-2xl border-2 bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/40 active:scale-[0.99]"
+                      >
+                        {env.photo_url ? (
+                          <img src={env.photo_url} alt={env.identificacao.trim() || `Ambiente ${idx + 1}`} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                        ) : (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                            <ShieldCheck className="h-6 w-6" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
+                            <span className="truncate text-sm font-semibold">{env.identificacao.trim() || 'Sem identificação'}</span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {env.tipo_atividade.trim() && <span>{env.tipo_atividade.trim()} • </span>}
+                            <span className="inline-flex items-center gap-1">
+                              <Wrench className="h-3 w-3" /> {env.equipment_ids.length} equipamento(s)
+                            </span>
                           </p>
                         </div>
-                      </label>
+                        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      </button>
                     ))}
-                  </div>
-                </div>
-              )}
 
-              {/* Manual items */}
-              {!showManualItem ? (
-                <Button variant="outline" className="w-full" onClick={() => setShowManualItem(true)}>
-                  <Plus className="h-4 w-4 mr-2" /> Adicionar item manual
-                </Button>
-              ) : (
-                <div className="rounded-lg border p-3 space-y-3">
-                  <div className="space-y-2">
-                    <Label>Nome do item</Label>
-                    <Input value={manualName} onChange={e => setManualName(e.target.value)} placeholder="Ex: Limpeza de dutos" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Descrição (opcional)</Label>
-                    <Input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="Detalhes adicionais" />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowManualItem(false)}>Cancelar</Button>
-                    <Button size="sm" onClick={addManualItem} disabled={!manualName.trim()}>Adicionar</Button>
-                  </div>
-                </div>
-              )}
+                    {!isPmoc && looseItems.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEnvKey(LOOSE_ENV_KEY)}
+                        className="flex w-full min-h-16 items-center gap-3 rounded-2xl border-2 border-dashed bg-muted/20 p-3 text-left shadow-sm transition-colors hover:bg-muted/40 active:scale-[0.99]"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                          <Wrench className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="shrink-0">Sem ambiente</Badge>
+                            <span className="truncate text-sm font-semibold">Equipamentos não atribuídos</span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <Wrench className="h-3 w-3" /> {looseItems.length} equipamento(s)
+                            </span>
+                          </p>
+                        </div>
+                        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      </button>
+                    )}
 
-              {/* Selected summary */}
-              {selectedItems.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Itens selecionados ({selectedItems.length})</Label>
-                  {selectedItems.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 rounded border px-3 py-2 text-sm">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{item.item_name}</p>
-                        {item.item_description && <p className="text-xs text-muted-foreground truncate">{item.item_description}</p>}
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setSelectedItems(prev => prev.filter((_, idx) => idx !== i))}>
-                        ×
+                    {/* Comum sem nenhum loose ainda: atalho pra adicionar item sem ambiente. */}
+                    {!isPmoc && looseItems.length === 0 && (
+                      <Button type="button" variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" disabled={!customerId} onClick={() => { openMemberPicker(LOOSE_ENV_KEY); }}>
+                        <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento sem ambiente
                       </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                    )}
+
+                    <p className="pt-1 text-xs text-muted-foreground">
+                      {totalEquipment} equipamento(s) no total entram neste contrato.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* STEP: Equipe & Cobrança — técnicos executores, responsáveis pela
               cobrança, tipo de serviço (só comum), checklist padrão (sem plano),
@@ -2707,7 +2821,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 const templateName = templates?.find((t: any) => t.id === formTemplateId)?.name;
                 const rt = responsibleTechnicians.find((r) => r.id === responsibleTechnicianId);
                 const startLabel = format(new Date(startDate + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-                const totalEquip = isPmoc ? pmocDerivedItems.length : selectedItems.length;
+                const totalEquip = effectiveItems.length;
                 const unidadeLocal = [unidadeCidade.trim(), unidadeUf.trim()].filter(Boolean).join('/');
 
                 // Resumo de frequência por código (M/T/S/A) das atividades agendáveis.
@@ -2806,8 +2920,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     )}
 
                     {!isPmoc && (
-                      <Block title="Equipamentos do contrato">
-                        Este contrato cobre <strong>{selectedItems.length}</strong> item(ns)/equipamento(s).
+                      <Block title="Ambientes e equipamentos">
+                        Este contrato tem <strong>{environments.length}</strong> ambiente(s) e cobre{' '}
+                        <strong>{totalEquip}</strong> item(ns)/equipamento(s) no total
+                        {looseItems.length > 0 && <> (<strong>{looseItems.length}</strong> sem ambiente)</>}.
+                        {environments.length > 0 && (
+                          <span className="mt-1.5 block space-y-0.5">
+                            {environments.map((env, i) => (
+                              <span key={env.key} className="block text-xs text-muted-foreground">
+                                • <strong className="text-foreground">{env.identificacao.trim() || `Ambiente ${i + 1}`}</strong>
+                                {` — ${env.equipment_ids.length} equipamento(s)`}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </Block>
                     )}
 
@@ -2872,11 +2998,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 {!isEditing && (
                   <div className="flex justify-between"><span className="text-muted-foreground">{usePlanEngine ? 'Visitas' : 'Ocorrências'}</span><span className="font-medium">{visitCount} {usePlanEngine ? 'visitas' : 'datas'}</span></div>
                 )}
-                {isPmoc ? (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Ambientes</span><span className="font-medium">{environments.length} ({pmocDerivedItems.length} equip.)</span></div>
-                ) : (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Itens</span><span className="font-medium">{selectedItems.length}</span></div>
-                )}
+                <div className="flex justify-between"><span className="text-muted-foreground">Ambientes e Equipamentos</span><span className="font-medium">{environments.length} ({effectiveItems.length} equip.)</span></div>
                 {/* Preview da rotina POR MÁQUINA (Fase 3): em que visita começa
                     cada equipamento e o que a 1ª visita inclui. */}
                 {isPmoc && pmocDerivedItems.length > 0 && (
@@ -3001,7 +3123,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         const result = await createCustomer.mutateAsync(data as CustomerInput);
         if (result?.id) {
           setCustomerId(result.id);
-          setSelectedItems([]);
+          setLooseItems([]);
+          setEnvironments([]);
+          setSelectedEnvKey(null);
         }
         setShowQuickCustomer(false);
       }}
@@ -3020,13 +3144,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       }}
     />
 
-    {/* Quick-create de equipamento dentro de um ambiente (PMOC). Reaproveita o
-        EquipmentFormDialog (mesma fiação do EquipmentPanel), mas trava o cliente
-        no cliente do contrato. No sucesso, marca o novo equipamento no ambiente
-        que disparou o cadastro. */}
+    {/* Criar equipamento do cliente na hora (a partir do picker do ambiente).
+        Reaproveita o EquipmentFormDialog (mesma fiação do EquipmentPanel), mas
+        trava o cliente no cliente do contrato. No sucesso, já adiciona o novo
+        equipamento ao alvo do picker aberto (ambiente real ou grupo "Sem
+        ambiente"). A lista do cliente recarrega via react-query. */}
     <EquipmentFormDialog
       open={showQuickEquip}
-      onOpenChange={(v) => { setShowQuickEquip(v); if (!v) setQuickEquipEnvKey(null); }}
+      onOpenChange={setShowQuickEquip}
       customers={contractCustomerAsList}
       categories={equipmentCategories}
       isLoading={createEquipment.isPending}
@@ -3034,19 +3159,194 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       onSubmit={async (data) => {
         const created = await createEquipment.mutateAsync({ ...data, customer_id: customerId } as any);
         const newId = (created as any)?.id as string | undefined;
-        if (newId && quickEquipEnvKey) {
-          // Marca o novo equipamento no ambiente que abriu o cadastro. A lista do
-          // cliente recarrega sozinha via react-query (invalidate no hook).
-          setEnvironments(prev => prev.map(e =>
-            e.key === quickEquipEnvKey && !e.equipment_ids.includes(newId)
-              ? { ...e, equipment_ids: [...e.equipment_ids, newId] }
-              : e,
-          ));
+        if (newId && memberPickerEnvKey) {
+          if (memberPickerEnvKey === LOOSE_ENV_KEY) addEquipmentAsLoose(newId);
+          else addEquipmentToEnv(memberPickerEnvKey, newId);
         }
         setShowQuickEquip(false);
-        setQuickEquipEnvKey(null);
+        setMemberPickerEnvKey(null);
       }}
     />
+
+    {/* Picker de equipamentos do cliente pro ambiente (ou grupo "Sem ambiente").
+        Multi-seleção + busca, espelha a aba de detalhe. Inclui criar-na-hora. */}
+    <ResponsiveModal
+      open={!!memberPickerEnvKey && !showQuickEquip}
+      onOpenChange={(v) => { if (!v) setMemberPickerEnvKey(null); }}
+      title={memberPickerEnvKey === LOOSE_ENV_KEY ? 'Adicionar equipamento ao contrato' : 'Adicionar equipamento ao ambiente'}
+    >
+      {(() => {
+        const inTarget = memberPickerEnvKey === LOOSE_ENV_KEY
+          ? new Set(looseItems.map(it => it.equipment_id).filter(Boolean) as string[])
+          : new Set(environments.find(e => e.key === memberPickerEnvKey)?.equipment_ids ?? []);
+        const q = memberPickerSearch.trim().toLowerCase();
+        const pickerAvailable = activeEquipment.filter((eq: any) => {
+          if (inTarget.has(eq.id)) return false;
+          // Exclusividade entre ambientes: oculta o que já está em OUTRO ambiente.
+          const ownerKey = equipmentOwnerEnvKey.get(eq.id);
+          if (ownerKey && ownerKey !== memberPickerEnvKey) return false;
+          if (!q) return true;
+          return (
+            eq.name?.toLowerCase().includes(q) ||
+            eq.brand?.toLowerCase().includes(q) ||
+            eq.model?.toLowerCase().includes(q)
+          );
+        });
+        return (
+          <div className="space-y-3 p-1">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar equipamento do cliente..." value={memberPickerSearch} onChange={(e) => setMemberPickerSearch(e.target.value)} className="pl-8" />
+            </div>
+
+            <Button variant="outline" className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" disabled={!customerId} onClick={() => setShowQuickEquip(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Criar novo equipamento
+            </Button>
+
+            {pickerAvailable.length === 0 ? (
+              memberPickerSearch.trim() ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Nenhum equipamento encontrado para "{memberPickerSearch.trim()}".
+                </p>
+              ) : (
+                <EmptyState
+                  size="compact"
+                  icon={<Wrench className="h-10 w-10" />}
+                  title={activeEquipment.length === 0 ? 'Cliente sem equipamentos ativos' : 'Todos já estão em algum ambiente'}
+                  description={activeEquipment.length === 0 ? 'Crie um equipamento para adicioná-lo.' : 'Os equipamentos do cliente já foram distribuídos nos ambientes.'}
+                />
+              )
+            ) : (
+              <div className="max-h-72 divide-y overflow-y-auto rounded-md border">
+                {pickerAvailable.map((eq: any) => {
+                  const selected = memberPickerSelection.has(eq.id);
+                  return (
+                    <button
+                      key={eq.id}
+                      type="button"
+                      onClick={() => toggleMemberPick(eq.id)}
+                      className={cn('flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors min-h-11', selected ? 'bg-primary/5' : 'hover:bg-muted/50')}
+                    >
+                      <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors', selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border')}>
+                        {selected && <Check className="h-3.5 w-3.5" />}
+                      </div>
+                      <EquipmentAvatar photoUrl={eq.photo_url} name={eq.name} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{eq.name}</p>
+                        {[eq.brand, eq.model].filter(Boolean).length > 0 && (
+                          <p className="truncate text-xs text-muted-foreground">{[eq.brand, eq.model].filter(Boolean).join(' - ')}</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <Button className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={confirmMemberPicker} disabled={memberPickerSelection.size === 0}>
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar {memberPickerSelection.size > 0 ? `${memberPickerSelection.size} ` : ''}
+              equipamento{memberPickerSelection.size !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        );
+      })()}
+    </ResponsiveModal>
+
+    {/* Confirmação de remover ambiente (etapa Ambientes). */}
+    <AlertDialog open={!!removingEnvKey} onOpenChange={(o) => { if (!o) setRemovingEnvKey(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remover ambiente?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {(() => {
+              const n = removingEnvKey ? (environments.find(e => e.key === removingEnvKey)?.equipment_ids.length ?? 0) : 0;
+              return n > 0
+                ? `Os ${n} equipamento(s) deste ambiente sairão do ambiente. ${isPmoc ? 'Eles deixam o contrato.' : 'Eles voltam para o grupo "Sem ambiente".'}`
+                : 'O ambiente sai do contrato.';
+            })()}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (!removingEnvKey) return;
+              // No comum, devolve os equipamentos do ambiente pro grupo "Sem ambiente".
+              if (!isPmoc) {
+                const env = environments.find(e => e.key === removingEnvKey);
+                for (const eqId of env?.equipment_ids ?? []) addEquipmentAsLoose(eqId);
+              }
+              removeEnvironment(removingEnvKey);
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            <Trash2 className="mr-2 h-4 w-4" /> Remover
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirmação de remover equipamento (do ambiente ou do contrato). */}
+    <AlertDialog open={!!removingMember} onOpenChange={(o) => { if (!o) setRemovingMember(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {removingMember?.mode === 'loose'
+              ? 'Remover equipamento do contrato?'
+              : !isPmoc ? 'Tirar equipamento do ambiente?' : 'Remover equipamento do ambiente?'}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            <strong>
+              {removingMember?.mode === 'loose'
+                ? (removingMember.looseIdx != null ? (looseItems[removingMember.looseIdx]?.item_name ?? 'Equipamento') : 'Equipamento')
+                : (removingMember?.eqId ? (equipmentById.get(removingMember.eqId)?.name ?? 'Equipamento') : 'Equipamento')}
+            </strong>{' '}
+            {removingMember?.mode === 'loose'
+              ? 'sai do contrato.'
+              : !isPmoc ? 'volta para o grupo "Sem ambiente" (continua no contrato).' : 'sai deste ambiente e do contrato.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (!removingMember) return;
+              if (removingMember.mode === 'loose' && removingMember.looseIdx != null) removeLooseItem(removingMember.looseIdx);
+              else if (removingMember.envKey && removingMember.eqId) removeEquipmentFromEnv(removingMember.envKey, removingMember.eqId);
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {removingMember?.mode === 'env' && !isPmoc ? 'Tirar do ambiente' : 'Remover'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* "Mover para ambiente": escolhe o ambiente destino do item solto. */}
+    <ResponsiveModal
+      open={movingLooseIdx != null}
+      onOpenChange={(v) => { if (!v) setMovingLooseIdx(null); }}
+      title="Mover para ambiente"
+    >
+      <div className="space-y-2 p-1">
+        {environments.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nenhum ambiente cadastrado ainda.</p>
+        ) : environments.map((env, idx) => (
+          <button
+            key={env.key}
+            type="button"
+            onClick={() => { if (movingLooseIdx != null) moveLooseToEnv(movingLooseIdx, env.key); }}
+            className="flex w-full min-h-12 items-center gap-3 rounded-xl border-2 bg-card p-3 text-left transition-colors hover:bg-muted/40 active:scale-[0.99]"
+          >
+            <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{env.identificacao.trim() || 'Sem identificação'}</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+        ))}
+      </div>
+    </ResponsiveModal>
 
     {/* Picker do catálogo PMOC (Fase 2). Drawer no mobile, dialog no desktop.
         Navegação por seção (accordion); cada item é um checkbox com o selo de

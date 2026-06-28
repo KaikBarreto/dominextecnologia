@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.6',
+    date: '27 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Equipamentos organizados por ambiente em qualquer contrato',
+        description: 'Agora qualquer contrato (não só os de manutenção) pode organizar os equipamentos por ambiente — sala, área, andar, o que fizer sentido. Cada ambiente virou uma lista; ao clicar, abre a tela daquele ambiente pra gerir os equipamentos com calma: adicionar buscando pelo nome, cadastrar um equipamento novo na hora, ver a foto, e abrir/fechar os detalhes de cada um sem o risco de remover sem querer. Equipamentos que ainda não estão em nenhum ambiente ficam num grupo "Sem ambiente" e podem ser movidos quando você quiser.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.5',
     date: '27 de junho de 2026',
     type: 'patch',

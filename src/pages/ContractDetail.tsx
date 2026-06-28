@@ -28,7 +28,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
-import { ContractEquipmentTab } from '@/components/contracts/ContractEquipmentTab';
 import { ContractEnvironmentsTab } from '@/components/contracts/ContractEnvironmentsTab';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
@@ -727,7 +726,7 @@ export default function ContractDetail() {
         const commonSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
-          { value: 'equipamentos', label: 'Equipamentos', icon: Wrench },
+          { value: 'equipamentos', label: 'Ambientes e Equipamentos', icon: Wrench },
           { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
         ];
 
@@ -1295,9 +1294,7 @@ export default function ContractDetail() {
             {pmocTab === 'overview' && overviewContent}
             {pmocTab === 'ocorrencias' && occurrencesContent}
             {pmocTab === 'equipamentos' && (
-              isPmoc
-                ? <ContractEnvironmentsTab contract={contract} />
-                : <ContractEquipmentTab contract={contract} />
+              <ContractEnvironmentsTab contract={contract} />
             )}
             {isPmoc && pmocTab === 'historico' && id && (
               <PmocExecutionHistoryTab contractId={id} isPmoc={isPmoc} />

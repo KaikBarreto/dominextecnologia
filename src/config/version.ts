@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.5";
+export const APP_VERSION = "1.15.6";
 
-export const VERSION_NOTES = "A aba de Equipamentos do contrato ficou mais visual: cada equipamento aparece com foto, marca, modelo e capacidade, e dá pra buscar por nome, marca ou modelo. A lista saiu da Visão Geral pra não repetir, e nos contratos de manutenção a aba passou a se chamar Ambientes e Equipamentos.";
+export const VERSION_NOTES = "Agora qualquer contrato pode organizar os equipamentos por ambiente (sala, área, andar…), não só os de manutenção. Cada ambiente tem sua própria tela pra gerir os equipamentos: adicionar com busca, cadastrar na hora, ver a foto, e abrir/fechar os detalhes sem risco de remover sem querer. Equipamentos sem ambiente ficam agrupados e podem ser movidos quando você quiser.";
