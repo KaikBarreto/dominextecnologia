@@ -29,6 +29,7 @@ import {
   X,
   Menu,
   LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,42 +119,65 @@ interface EquipmentItem {
 }
 
 /**
- * Um equipamento do accordion de checklists da OS NORMAL (não-PMOC). Componente
- * próprio pra hospedar o `useStickyStuck` de cada cabeçalho (hooks não rodam
- * dentro de `.map`). Espelha o VisitChecklistItem do PMOC: cabeçalho gruda no
- * topo (logo abaixo do header laranja) enquanto o equipamento ABERTO é rolado,
- * com sombra quando "stuck". Só o equipamento aberto fica sticky (single-open).
+ * Um CHECKLIST (par equipamento×template) já com sua chave estável por par.
+ * Validação/respostas/visibilidade continuam keyed por `itemKey` — o agrupamento
+ * por equipamento é só VISUAL (vários destes dentro de um cabeçalho).
+ */
+interface EquipmentChecklist {
+  item: EquipmentItem;
+  /** Chave estável por par (`equipment_id::form_template_id` ou standalone). */
+  itemKey: string;
+}
+
+/**
+ * Um EQUIPAMENTO do accordion de checklists da OS NORMAL (não-PMOC) — agora pode
+ * carregar VÁRIOS checklists aninhados (1 cabeçalho por equipamento, igual à
+ * visita PMOC). Componente próprio pra hospedar o `useStickyStuck` de cada
+ * cabeçalho (hooks não rodam dentro de `.map`). Espelha o VisitChecklistItem do
+ * PMOC: cabeçalho gruda no topo (logo abaixo do header laranja) enquanto o
+ * equipamento ABERTO é rolado, com sombra quando "stuck". Só o equipamento aberto
+ * fica sticky (single-open). As perguntas vêm de `DynamicFormQuestions` POR
+ * checklist; quando há mais de um, cada um ganha um bloco com o nome do checklist.
  */
 function OsEquipmentAccordionItem({
-  item,
-  itemKey,
+  groupKey,
+  equipment,
+  checklists,
   serviceOrderId,
   stickyTopPx,
   isOpen,
   readOnly,
+  /** Resumo agregado dos checklists deste equipamento (somatório dos pares). */
   isComplete,
   pendingCount,
-  hasMultipleOnSameEquip,
   environmentName,
   onPreviewPhoto,
   onValidationChange,
   visibility,
+  validations,
 }: {
-  item: EquipmentItem;
-  itemKey: string;
+  /** Chave do accordion = por EQUIPAMENTO (equipment_id ou standalone). */
+  groupKey: string;
+  equipment: EquipmentItem['equipment'];
+  checklists: EquipmentChecklist[];
   serviceOrderId: string;
   stickyTopPx?: number;
   isOpen: boolean;
   readOnly: boolean;
   isComplete: boolean;
   pendingCount: number;
-  hasMultipleOnSameEquip: boolean;
   /** Ambiente do equipamento (contrato) ou, na ausência, o local cadastrado. */
   environmentName: string | null;
   onPreviewPhoto: (url: string) => void;
-  onValidationChange: (result: FormValidationResult) => void;
-  /** Contexto de visibilidade por visita (OS de contrato). Undefined = OS avulsa. */
+  /** Callback de validação POR par (itemKey + resultado). */
+  onValidationChange: (itemKey: string, result: FormValidationResult) => void;
+  /** Resolve o contexto de visibilidade POR equipamento. Undefined = OS avulsa. */
   visibility?: ContractVisibilityContext;
+  /**
+   * Mapa de validação POR par (itemKey → resultado), espelho do estado do pai.
+   * Usado só pra montar o selo de pendência/concluído de CADA checklist aninhado.
+   */
+  validations: Record<string, FormValidationResult>;
 }) {
   // SÓ o equipamento ABERTO fica sticky (mesmo critério do PMOC) — evita
   // empilhamento de cabeçalhos sobrepostos e briga de z-index.
@@ -177,10 +201,35 @@ function OsEquipmentAccordionItem({
     headerHeight,
     mountStuckBg,
   );
-  const brandModel = [item.equipment?.brand, item.equipment?.model].filter(Boolean).join(' ');
+  const brandModel = [equipment?.brand, equipment?.model].filter(Boolean).join(' ');
+  // Vários checklists no MESMO equipamento → cada um aninhado num bloco com o nome
+  // do checklist (igual ao TemplateActivityBlock do PMOC). Um só → render direto
+  // (visual limpo, sem sub-título redundante).
+  const hasMultiple = checklists.length > 1;
+  // Título do cabeçalho: o nome do equipamento; sem equipamento real e com um só
+  // checklist, o título vira o nome do próprio checklist (geral da OS).
+  const headerName =
+    equipment?.name ||
+    (checklists.length === 1 ? checklists[0].item.form_template?.name : null) ||
+    'Checklist';
+
+  // Estado de colapso dos checklists ANINHADOS num ÚNICO useState (Set de itemKeys
+  // ABERTOS). Espelha o single-open-do-primeiro do PMOC, mas permite abrir vários
+  // (toggle independente). Nada de hook dentro do .map — só este Set no pai do
+  // bloco. Default: só o 1º checklist aberto. `checklists` é estável por render.
+  const [openChecklistKeys, setOpenChecklistKeys] = useState<Set<string>>(
+    () => new Set(checklists.length > 0 ? [checklists[0].itemKey] : []),
+  );
+  const toggleChecklist = (itemKey: string) =>
+    setOpenChecklistKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemKey)) next.delete(itemKey);
+      else next.add(itemKey);
+      return next;
+    });
 
   return (
-    <AccordionItem value={itemKey} id={`os-eq-${itemKey}`} className="border-0 scroll-mt-28">
+    <AccordionItem value={groupKey} id={`os-eq-${groupKey}`} className="border-0 scroll-mt-28">
       {/* Sentinel do sticky: 0px logo acima do cabeçalho (detecta stuck). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
       {/* Fundo do cabeçalho grudado (full-bleed da viewport interna) — cor `bg-card`
@@ -198,14 +247,15 @@ function OsEquipmentAccordionItem({
       >
         <EquipmentChecklistHeader
           // Checklist sem equipamento real (geral da OS): em vez do quadrado de foto,
-          // um ícone discreto de checklist; o TÍTULO já é o NOME do checklist (fallback
-          // form_template.name). Equipamento real mantém foto (ou fallback Wrench).
-          leadingIcon={!item.equipment ? <ClipboardCheck className="h-5 w-5 text-primary" /> : undefined}
-          photo={item.equipment?.photo_url ?? null}
-          name={item.equipment?.name || item.form_template?.name || 'Checklist'}
-          category={item.equipment?.category ?? null}
-          // Subtítulo (nome do checklist) só quando o mesmo equipamento tem vários.
-          subtitle={hasMultipleOnSameEquip && item.form_template?.name ? item.form_template.name : undefined}
+          // um ícone discreto de checklist; o TÍTULO já é o NOME do checklist.
+          // Equipamento real mantém foto (ou fallback Wrench).
+          leadingIcon={!equipment ? <ClipboardCheck className="h-5 w-5 text-primary" /> : undefined}
+          photo={equipment?.photo_url ?? null}
+          name={headerName}
+          category={equipment?.category ?? null}
+          // Contagem de checklists só quando há mais de um (evita ruído no caso
+          // comum de 1 checklist por equipamento).
+          itemsLabel={hasMultiple ? `${checklists.length} checklists` : undefined}
           brandModel={brandModel}
           environmentName={environmentName}
           onPreviewPhoto={onPreviewPhoto}
@@ -223,14 +273,84 @@ function OsEquipmentAccordionItem({
         />
       </AccordionTrigger>
       <AccordionContent>
-        <DynamicFormQuestions
-          serviceOrderId={serviceOrderId}
-          templateId={item.form_template_id!}
-          equipmentId={item.equipment_id || undefined}
-          readOnly={readOnly}
-          onValidationChange={onValidationChange}
-          visibility={visibility}
-        />
+        {/* Um checklist → render direto. Vários → cada um num bloco com o nome do
+            checklist (mesmo padrão do TemplateActivityBlock da visita PMOC), mas
+            cada par mantém sua própria validação/respostas/visibilidade. */}
+        {hasMultiple ? (
+          <div className="space-y-4 pt-1">
+            {checklists.map(({ item, itemKey }) => {
+              // Cabeçalho clicável que expande/colapsa AS PERGUNTAS deste checklist
+              // (igual à abertura/fechamento de cada bloco da visita PMOC). O
+              // DynamicFormQuestions fica SEMPRE montado (mesmo colapsado) pra não
+              // perder validação/respostas/foco — só escondemos visualmente. Assim a
+              // contagem "N pendentes" agregada do equipamento continua intacta.
+              const open = openChecklistKeys.has(itemKey);
+              const v = validations[itemKey];
+              // Selo do checklist: válido → "Concluído"; senão N pendentes (sem
+              // validação ainda = pendente, mesma régua do agregado do equipamento).
+              const checklistPending = v ? v.missingQuestions.length : null;
+              const checklistComplete = v ? v.isValid : false;
+              return (
+                <div
+                  key={itemKey}
+                  className="rounded-lg border border-primary/30 bg-primary/[0.03] overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => toggleChecklist(itemKey)}
+                    className="flex w-full items-center gap-2 p-2.5 text-left transition-colors hover:bg-primary/[0.06]"
+                  >
+                    <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                    <p className="text-sm font-semibold text-foreground flex-1 min-w-0 break-words">
+                      {item.form_template?.name || 'Checklist'}
+                    </p>
+                    {checklistComplete ? (
+                      <Badge variant="success" className="gap-1 shrink-0 text-[10px]">
+                        <Check className="h-3 w-3" /> Concluído
+                      </Badge>
+                    ) : checklistPending && checklistPending > 0 ? (
+                      <Badge variant="destructive" className="shrink-0 text-[10px]">
+                        {checklistPending} pendente{checklistPending > 1 ? 's' : ''}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        Pendente
+                      </Badge>
+                    )}
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 text-muted-foreground shrink-0 transition-transform',
+                        open && 'rotate-180',
+                      )}
+                    />
+                  </button>
+                  {/* SEMPRE montado: colapsado só esconde (hidden) — preserva
+                      validação/respostas/foco do DynamicFormQuestions. */}
+                  <div className={cn('px-2.5 pb-2.5 pt-0.5', !open && 'hidden')}>
+                    <DynamicFormQuestions
+                      serviceOrderId={serviceOrderId}
+                      templateId={item.form_template_id!}
+                      equipmentId={item.equipment_id || undefined}
+                      readOnly={readOnly}
+                      onValidationChange={(result) => onValidationChange(itemKey, result)}
+                      visibility={visibility}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <DynamicFormQuestions
+            serviceOrderId={serviceOrderId}
+            templateId={checklists[0].item.form_template_id!}
+            equipmentId={checklists[0].item.equipment_id || undefined}
+            readOnly={readOnly}
+            onValidationChange={(result) => onValidationChange(checklists[0].itemKey, result)}
+            visibility={visibility}
+          />
+        )}
       </AccordionContent>
       {/* Sentinel da BASE: 0px logo após o conteúdo. Marca o fim do item — quando
           ele cruza a linha (sticky + altura do cabeçalho), o cabeçalho desgruda e
@@ -1830,6 +1950,57 @@ export default function TechnicianOS() {
     [checklistVisibility, excludedQuestionsByEquipment],
   );
 
+  // Agrupa os checklists POR EQUIPAMENTO pro render (1 cabeçalho por equipamento,
+  // checklists daquele equipamento aninhados — igual à visita PMOC). A chave de
+  // grupo (do accordion single-open) é o equipment_id; checklists sem equipamento
+  // real (geral da OS) recebem uma chave standalone própria (1 por checklist).
+  // CRÍTICO: cada checklist mantém seu `itemKey` por PAR (equipment_id::template),
+  // que é a chave de validação/respostas/visibilidade — só o agrupamento é visual.
+  // A fórmula do itemKey (incluindo o `idx` do standalone) é IDÊNTICA à usada na
+  // sidebar e no render legado, pra não quebrar `formValidations`.
+  //
+  // IMPORTANTE: este `useMemo` (como `checklistVisibility`/`visibilityForEquipment`
+  // acima) precisa ficar ANTES de qualquer early-return do componente. Quando
+  // estava depois dos returns (loading / bloqueio / OS não encontrada / relatório),
+  // o primeiro render não chegava nele e o seguinte chamava um hook a mais →
+  // "Rendered more hooks than during the previous render." Hooks sempre no topo.
+  const equipmentChecklistGroups = useMemo(() => {
+    const groups: {
+      groupKey: string;
+      equipment: EquipmentItem['equipment'];
+      checklists: EquipmentChecklist[];
+    }[] = [];
+    const byEquipment = new Map<string, number>(); // equipment_id → índice em groups
+    equipmentItems.forEach((item, idx) => {
+      if (!item.form_template_id) return;
+      const itemKey = item.equipment_id
+        ? `${item.equipment_id}::${item.form_template_id}`
+        : `standalone-${item.form_template_id}-${idx}`;
+      if (item.equipment_id) {
+        // Agrupa por equipamento: o 1º checklist cria o grupo; os demais entram nele.
+        const existing = byEquipment.get(item.equipment_id);
+        if (existing === undefined) {
+          byEquipment.set(item.equipment_id, groups.length);
+          groups.push({
+            groupKey: item.equipment_id,
+            equipment: item.equipment,
+            checklists: [{ item, itemKey }],
+          });
+        } else {
+          groups[existing].checklists.push({ item, itemKey });
+        }
+      } else {
+        // Sem equipamento real: cada checklist é seu próprio "grupo" (chave única).
+        groups.push({
+          groupKey: itemKey,
+          equipment: item.equipment,
+          checklists: [{ item, itemKey }],
+        });
+      }
+    });
+    return groups;
+  }, [equipmentItems]);
+
   if (loading || isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-background p-4 space-y-4">
@@ -2701,18 +2872,21 @@ export default function TechnicianOS() {
     if (!isCheckedIn) return [];
     const items: OsSidebarItem[] = [];
     const seen = new Set<string>();
-    equipmentItems.forEach((item, idx) => {
-      if (!item.form_template_id) return;
-      const itemKey = item.equipment_id
-        ? `${item.equipment_id}::${item.form_template_id}`
-        : `standalone-${item.form_template_id}-${idx}`;
-      if (seen.has(itemKey)) return;
-      seen.add(itemKey);
-      const validation = formValidations[itemKey];
-      const formPending = validation ? !validation.isValid : true;
+    // UMA entrada por EQUIPAMENTO (não por checklist) — espelha o cabeçalho único
+    // do render. A chave casa com o `groupKey` do accordion pra o clique abrir o
+    // equipamento certo. Status agregado: somatório das validações dos checklists
+    // daquele equipamento (qualquer pendente → pendente) + conformidade da visita.
+    equipmentChecklistGroups.forEach((group) => {
+      if (seen.has(group.groupKey)) return;
+      seen.add(group.groupKey);
+      const firstItem = group.checklists[0].item;
+      const formPending = group.checklists.some(({ itemKey }) => {
+        const v = formValidations[itemKey];
+        return v ? !v.isValid : true;
+      });
       // Conformidade do checklist da visita pro mesmo equipamento (se houver).
-      const grp = item.equipment_id
-        ? checklistGroups.find((g) => g.equipmentId === item.equipment_id)
+      const grp = firstItem.equipment_id
+        ? checklistGroups.find((g) => g.equipmentId === firstItem.equipment_id)
         : undefined;
       const naoConforme = grp?.activities.some((a) => a.conformity_status === 'nao_conforme');
       const status: OsSidebarStatus = naoConforme
@@ -2720,13 +2894,17 @@ export default function TechnicianOS() {
         : formPending
           ? 'pendente'
           : 'concluido';
+      const checklistCount = group.checklists.length;
       items.push({
-        key: itemKey,
-        anchorId: `os-eq-${itemKey}`,
-        label: item.equipment?.name || item.form_template?.name || 'Checklist',
-        sublabel: item.equipment?.model || item.equipment?.brand || item.form_template?.name || null,
-        photoUrl: item.equipment?.photo_url,
-        categoryColor: item.equipment?.category?.color || null,
+        key: group.groupKey,
+        anchorId: `os-eq-${group.groupKey}`,
+        label: group.equipment?.name || firstItem.form_template?.name || 'Checklist',
+        sublabel:
+          checklistCount > 1
+            ? `${checklistCount} checklists`
+            : group.equipment?.model || group.equipment?.brand || firstItem.form_template?.name || null,
+        photoUrl: group.equipment?.photo_url,
+        categoryColor: group.equipment?.category?.color || null,
         status,
       });
     });
@@ -3351,42 +3529,49 @@ export default function TechnicianOS() {
                 onValueChange={(v) => handleExecUserOpen(v || null)}
                 className={`w-full space-y-3 ${isPaused ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
-                {equipmentItems.map((item, idx) => {
-                  if (!item.form_template_id) return null;
-                  // Composite key — same equipment can carry multiple templates
-                  const itemKey = item.equipment_id
-                    ? `${item.equipment_id}::${item.form_template_id}`
-                    : `standalone-${item.form_template_id}-${idx}`;
-                  const validation = formValidations[itemKey];
-                  const isComplete = validation && validation.isValid;
-                  const pendingCount = validation ? validation.missingQuestions.length : 0;
-                  // When multiple templates share the same equipment, show template name as subtitle
-                  const sameEquipCount = item.equipment_id
-                    ? equipmentItems.filter(i => i.equipment_id === item.equipment_id).length
-                    : 0;
-                  const hasMultipleOnSameEquip = sameEquipCount > 1;
+                {equipmentChecklistGroups.map((group) => {
+                  const firstItem = group.checklists[0].item;
+                  // Resumo AGREGADO do equipamento: soma as validações de todos os
+                  // checklists dele. Completo só quando TODOS os checklists do
+                  // equipamento estão válidos; pendências = soma das faltas.
+                  let pendingCount = 0;
+                  let allValid = true;
+                  for (const { itemKey } of group.checklists) {
+                    const v = formValidations[itemKey];
+                    if (!v) {
+                      // Sem validação ainda = considera pendente (não some o badge).
+                      allValid = false;
+                    } else {
+                      if (!v.isValid) allValid = false;
+                      pendingCount += v.missingQuestions.length;
+                    }
+                  }
+                  const isComplete = allValid;
                   // Ambiente do equipamento (igual ao PMOC): ambiente do contrato
                   // quando existe; senão o local cadastrado no equipamento.
                   const environmentName =
-                    environmentByEquipmentId(item.equipment_id) ||
-                    item.equipment?.location ||
+                    environmentByEquipmentId(firstItem.equipment_id) ||
+                    group.equipment?.location ||
                     null;
                   return (
                     <OsEquipmentAccordionItem
-                      key={itemKey}
-                      item={item}
-                      itemKey={itemKey}
+                      key={group.groupKey}
+                      groupKey={group.groupKey}
+                      equipment={group.equipment}
+                      checklists={group.checklists}
                       serviceOrderId={resolvedOsId!}
                       stickyTopPx={headerHeight}
-                      isOpen={openExecKey === itemKey}
+                      isOpen={openExecKey === group.groupKey}
                       readOnly={isPaused}
-                      isComplete={!!isComplete}
+                      isComplete={isComplete}
                       pendingCount={pendingCount}
-                      hasMultipleOnSameEquip={hasMultipleOnSameEquip}
                       environmentName={environmentName}
                       onPreviewPhoto={setPreviewPhoto}
-                      onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
-                      visibility={visibilityForEquipment(item.equipment_id)}
+                      onValidationChange={(itemKey, result) =>
+                        setFormValidations(prev => ({ ...prev, [itemKey]: result }))
+                      }
+                      visibility={visibilityForEquipment(firstItem.equipment_id)}
+                      validations={formValidations}
                     />
                   );
                 })}

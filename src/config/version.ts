@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.14";
+export const APP_VERSION = "1.15.15";
 
-export const VERSION_NOTES = "Agora cada equipamento do contrato pode ter mais de um checklist. Na criação do contrato, é só adicionar quantos checklists quiser ao equipamento — cada um aparece no seu próprio bloco com perguntas e frequências, e o técnico vê todos eles na visita. O documento de Plano de Manutenção também passa a refletir todos os checklists de cada equipamento.";
+export const VERSION_NOTES = "Refinamos a experiência com vários checklists por equipamento: na visita, o técnico vê um único cabeçalho por equipamento com os checklists agrupados e que abrem e fecham individualmente; na criação do contrato, os checklists do equipamento ficam num acordeão (abre um, fecha os outros); e o campo de assinatura ficou mais claro (o botão de confirmar só aparece depois de assinar).";

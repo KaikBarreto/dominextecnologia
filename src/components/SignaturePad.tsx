@@ -231,26 +231,24 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
             />
           </div>
           {!disabled && (
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap items-stretch gap-1.5">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={openFullscreen}
-                className="min-w-0 flex-1 gap-1.5 px-2"
+                className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm"
               >
-                <Maximize2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Tela cheia</span>
+                <Maximize2 className="h-4 w-4 shrink-0" />
+                Tela cheia
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={() => onChange(null)}
-                className="min-w-0 flex-1 gap-1.5 px-2"
+                className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm"
               >
-                <Eraser className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Limpar</span>
+                <Eraser className="h-4 w-4 shrink-0" />
+                Limpar
               </Button>
             </div>
           )}
@@ -270,48 +268,51 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
             disabled={disabled}
           />
           {!disabled && (
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap items-stretch gap-1.5">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={openFullscreen}
                 disabled={disabled}
-                className="min-w-0 flex-1 gap-1.5 px-2"
+                className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm"
               >
-                <Maximize2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Tela cheia</span>
+                <Maximize2 className="h-4 w-4 shrink-0" />
+                Tela cheia
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  inlinePadRef.current?.clear();
-                  setDraft(null);
-                }}
-                disabled={disabled}
-                className="min-w-0 flex-1 gap-1.5 px-2"
-              >
-                <Eraser className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Limpar</span>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => {
-                  const url = inlinePadRef.current?.getDataUrl() ?? draft;
-                  if (url) {
-                    onChange(url);
+              {/* "Limpar" só faz sentido com algo desenhado. */}
+              {inlineDirty && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    inlinePadRef.current?.clear();
                     setDraft(null);
-                  }
-                }}
-                disabled={disabled || !inlineDirty}
-                className="min-w-0 flex-1 gap-1.5 px-2 bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                <Check className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Confirmar</span>
-              </Button>
+                  }}
+                  disabled={disabled}
+                  className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm"
+                >
+                  <Eraser className="h-4 w-4 shrink-0" />
+                  Limpar
+                </Button>
+              )}
+              {/* "Confirmar" só aparece quando há traço no canvas. */}
+              {inlineDirty && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const url = inlinePadRef.current?.getDataUrl() ?? draft;
+                    if (url) {
+                      onChange(url);
+                      setDraft(null);
+                    }
+                  }}
+                  disabled={disabled}
+                  className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Check className="h-4 w-4 shrink-0" />
+                  Confirmar
+                </Button>
+              )}
             </div>
           )}
         </div>

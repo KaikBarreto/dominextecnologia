@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.15',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Visita e contrato com vários checklists mais organizados',
+        description: 'Quando um equipamento tem mais de um checklist, a visita agora mostra um único cabeçalho por equipamento, com os checklists agrupados e que abrem e fecham individualmente — sem cabeçalhos repetidos. Na criação do contrato, os checklists de um equipamento ficam em acordeão (abrir um fecha os outros), e o campo de assinatura ficou mais claro: o botão de confirmar só aparece depois que há uma assinatura.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.14',
     date: '28 de junho de 2026',
     type: 'patch',

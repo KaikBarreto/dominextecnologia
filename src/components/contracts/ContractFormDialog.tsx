@@ -3203,8 +3203,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 return (
                   <div className="space-y-3 rounded-lg border bg-muted/20 p-3.5">
                     <Block title="Identificação">
-                      Este é um contrato{' '}
-                      <strong>{isPmoc ? 'PMOC' : 'de manutenção comum'}</strong>
+                      Este é um contrato{isPmoc ? <> <strong>PMOC</strong></> : null}
                       {name?.trim() ? <> chamado <strong>{name.trim()}</strong></> : null}
                       {' '}para o cliente <strong>{clientName}</strong>.
                       {serviceTypeName ? <> O tipo de serviço é <strong>{serviceTypeName}</strong>.</> : null}

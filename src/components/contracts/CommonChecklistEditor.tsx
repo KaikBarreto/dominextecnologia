@@ -21,8 +21,8 @@
 // Seleção em massa por frequência: dentro de CADA bloco, cada frequência distinta
 // presente NAQUELE checklist vira um chip "marcar/desmarcar todas". "Toda visita"
 // não aparece nesse controle (é sempre obrigatória).
-import { useMemo } from 'react';
-import { ListChecks, Check, Plus, Trash2 } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { ListChecks, Check, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -90,6 +90,25 @@ export function CommonChecklistEditor({
     [selectedTemplates],
   );
 
+  // Accordion single-open: qual checklist está expandido. Default = o primeiro.
+  // Abrir um fecha os outros; clicar no aberto fecha (collapsible).
+  const [openTemplateId, setOpenTemplateId] = useState<string | null>(
+    () => selectedTemplateIds[0] ?? null,
+  );
+
+  // Mantém o accordion coerente quando a lista muda: se o aberto sumiu, abre o
+  // primeiro restante; se nada estava aberto e há blocos, abre o primeiro.
+  useEffect(() => {
+    if (selectedTemplateIds.length === 0) {
+      if (openTemplateId !== null) setOpenTemplateId(null);
+      return;
+    }
+    if (!openTemplateId || !selectedTemplateIds.includes(openTemplateId)) {
+      setOpenTemplateId(selectedTemplateIds[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplateIds]);
+
   const excludedSet = useMemo(() => new Set(excluded), [excluded]);
 
   // Pergunta marcada = NÃO está na lista de exclusões. "Toda visita" sempre marcada.
@@ -116,6 +135,7 @@ export function CommonChecklistEditor({
   const addTemplate = (templateId: string) => {
     if (selectedTemplateIds.includes(templateId)) return;
     onChangeTemplates([...selectedTemplateIds, templateId]);
+    setOpenTemplateId(templateId); // abre o recém-adicionado (fecha os outros)
   };
 
   // Remove um checklist do equipamento. As exclusões de perguntas que NÃO existem
@@ -169,19 +189,27 @@ export function CommonChecklistEditor({
         </Select>
       </div>
 
-      {/* Um BLOCO por checklist do equipamento. */}
-      {blocks.map(({ template, questions }) => (
+      {/* Accordion single-open: um BLOCO por checklist; abrir um fecha os outros. */}
+      {blocks.length > 0 && (
+        <div className="divide-y overflow-hidden rounded-lg border bg-background">
+          {blocks.map(({ template, questions }) => (
         <ChecklistBlock
           key={template.id}
           template={template}
           questions={questions}
           excludedSet={excludedSet}
           isIncluded={isIncluded}
+          open={openTemplateId === template.id}
+          onToggleOpen={() =>
+            setOpenTemplateId((cur) => (cur === template.id ? null : template.id))
+          }
           onToggleQuestion={toggleQuestion}
           onToggleBucket={toggleBucket}
           onRemove={() => removeTemplate(template.id)}
         />
-      ))}
+          ))}
+        </div>
+      )}
 
       {selectedTemplates.length === 0 && (
         <p className="text-[11px] text-muted-foreground">
@@ -201,6 +229,8 @@ interface ChecklistBlockProps {
   questions: ChecklistQuestion[];
   excludedSet: Set<string>;
   isIncluded: (q: ChecklistQuestion) => boolean;
+  open: boolean;
+  onToggleOpen: () => void;
   onToggleQuestion: (q: ChecklistQuestion) => void;
   onToggleBucket: (ids: string[], allIncluded: boolean) => void;
   onRemove: () => void;
@@ -211,6 +241,8 @@ function ChecklistBlock({
   questions,
   excludedSet,
   isIncluded,
+  open,
+  onToggleOpen,
   onToggleQuestion,
   onToggleBucket,
   onRemove,
@@ -236,9 +268,15 @@ function ChecklistBlock({
   }, [questions]);
 
   return (
-    <div className="rounded-lg border bg-background">
-      {/* Cabeçalho do bloco: título + contador + remover. */}
-      <div className="flex items-center gap-2 border-b px-3 py-2.5">
+    <div className="bg-background">
+      {/* Cabeçalho-trigger do accordion: clicar abre/fecha este bloco (e fecha os
+          outros). O botão remover não pode alternar — stopPropagation. */}
+      <button
+        type="button"
+        onClick={onToggleOpen}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
+      >
         <ListChecks className="h-3.5 w-3.5 shrink-0 text-info" />
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
           Perguntas do Checklist — {template.name}
@@ -246,18 +284,36 @@ function ChecklistBlock({
         <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
           {includedCount} de {questions.length} na 1ª OS
         </Badge>
-        <button
-          type="button"
-          onClick={onRemove}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemove();
+            }
+          }}
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
           aria-label={`Remover checklist ${template.name}`}
           title="Remover checklist"
         >
           <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
+        </span>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
 
-      <div className="px-3 pb-3 pt-2.5">
+      {open && (
+      <div className="border-t px-3 pb-3 pt-2.5">
         {questions.length === 0 ? (
           <p className="px-1.5 py-1 text-[11px] text-muted-foreground">
             Este checklist ainda não tem perguntas.
@@ -360,6 +416,7 @@ function ChecklistBlock({
           </>
         )}
       </div>
+      )}
     </div>
   );
 }
