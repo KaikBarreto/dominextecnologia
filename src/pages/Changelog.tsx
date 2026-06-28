@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.22',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Plano de Manutenção também no PMOC, com os dados da norma',
+        description: 'O documento "Plano de Manutenção" (pronto para imprimir ou salvar em PDF) passou a estar disponível também nos contratos PMOC. No PMOC, ele vem com o título completo "PMOC — Plano de Manutenção, Operação e Controle" e traz os dados da norma por ambiente (área climatizada, carga térmica e número de ocupantes), além da grade de tarefas na cadência configurada do contrato. É especialmente útil quando o PMOC usa uma cadência personalizada.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.21',
     date: '28 de junho de 2026',
     type: 'patch',

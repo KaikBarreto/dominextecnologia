@@ -947,13 +947,13 @@ export default function ContractDetail() {
               <Button variant="outline" className="mt-2 w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(true)}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Renovar / Estender
               </Button>
-              {/* Documento "Plano de Manutenção" (imprimir/PDF). Só contrato comum
-                  — PMOC tem a aba Documentos própria com seus documentos legais. */}
-              {!isPmoc && (
-                <Button variant="outline" className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowMaintenancePlan(true)}>
-                  <Printer className="mr-2 h-4 w-4" /> Plano de Manutenção
-                </Button>
-              )}
+              {/* Documento "Plano de Manutenção" (imprimir/PDF). Disponível no
+                  contrato comum E no PMOC. No PMOC ganha a cara da norma (título +
+                  campos de identificação por ambiente) — é documento ADICIONAL, não
+                  substitui a Planilha-da-norma da aba Documentos. */}
+              <Button variant="outline" className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowMaintenancePlan(true)}>
+                <Printer className="mr-2 h-4 w-4" /> Plano de Manutenção
+              </Button>
               {/* Documento "Relatório de Visitas" (retrospectivo — comprovante das
                   manutenções do período). Só contrato comum; PMOC usa o Dossiê. */}
               {!isPmoc && (

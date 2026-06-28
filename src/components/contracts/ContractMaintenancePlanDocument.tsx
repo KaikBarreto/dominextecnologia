@@ -55,6 +55,19 @@ interface ContractMaintenancePlanDocumentProps {
   onClose: () => void;
 }
 
+/** Título e eyebrow do documento. PMOC ganha a cara da norma; comum mantém o título antigo. */
+const DOC_EYEBROW = 'Documento';
+const COMMON_TITLE = 'Plano de Manutenção';
+const PMOC_TITLE = 'PMOC — Plano de Manutenção, Operação e Controle';
+const PMOC_EYEBROW = 'Documento · Lei Federal 13.589/2018';
+
+/** Formata um número opcional (área, ocupantes etc.), com sufixo opcional. '-' quando vazio. */
+function formatOptionalNumber(value: number | null | undefined, suffix = ''): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '-';
+  const text = Number.isInteger(value) ? String(value) : String(value).replace('.', ',');
+  return suffix ? `${text} ${suffix}` : text;
+}
+
 /** Parse 'YYYY-MM-DD' como data local (evita shift de fuso). */
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
@@ -91,6 +104,13 @@ export function ContractMaintenancePlanDocument({
   onClose,
 }: ContractMaintenancePlanDocumentProps) {
   const { settings } = useCompanySettings();
+
+  // PMOC ganha a cara da norma: título/eyebrow próprios e os campos de
+  // identificação de cada ambiente (área climatizada, carga térmica, ocupantes,
+  // tipo/uso). No contrato comum nada disso aparece — segue exatamente como antes.
+  const isPmoc = (contract as { is_pmoc?: boolean }).is_pmoc === true;
+  const docTitle = isPmoc ? PMOC_TITLE : COMMON_TITLE;
+  const docEyebrow = isPmoc ? PMOC_EYEBROW : DOC_EYEBROW;
 
   // Nomes dos checklists (templates) pra rotular os sub-cabeçalhos quando um
   // equipamento tem mais de um checklist. Query já cacheada do app.
@@ -303,7 +323,7 @@ export function ContractMaintenancePlanDocument({
       {/* Barra de ações (some na impressão). */}
       <div className="print:hidden sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-black/10 bg-white px-4 py-3 shadow-sm">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">Plano de Manutenção</p>
+          <p className="truncate text-sm font-semibold text-gray-900">{docTitle}</p>
           <p className="truncate text-xs text-gray-500">{contract.name}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -350,10 +370,10 @@ export function ContractMaintenancePlanDocument({
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                Documento
+                {docEyebrow}
               </p>
-              <p className="text-base font-black leading-tight text-gray-900">
-                Plano de Manutenção
+              <p className="max-w-[260px] text-base font-black leading-tight text-gray-900">
+                {docTitle}
               </p>
             </div>
           </div>
@@ -383,6 +403,7 @@ export function ContractMaintenancePlanDocument({
                   tipo={env.tipo_atividade}
                   photoUrl={(env as { photo_url?: string | null }).photo_url}
                   items={itemsByEnvironment.map.get(env.id) || []}
+                  norma={isPmoc ? env : null}
                 />
               ))}
               {itemsByEnvironment.noEnv.length > 0 && (
@@ -391,6 +412,7 @@ export function ContractMaintenancePlanDocument({
                   tipo={null}
                   photoUrl={null}
                   items={itemsByEnvironment.noEnv}
+                  norma={null}
                 />
               )}
             </div>
@@ -581,12 +603,26 @@ function EnvironmentBlock({
   tipo,
   photoUrl,
   items,
+  norma,
 }: {
   identificacao: string;
   tipo: string | null;
   photoUrl: string | null | undefined;
   items: ContractItem[];
+  /** Identificações da norma PMOC do ambiente. `null` no contrato comum. */
+  norma: ContractEnvironment | null;
 }) {
+  // Identificações da norma (só PMOC). Renderiza apenas os campos preenchidos.
+  const normaFields = norma
+    ? ([
+        { label: 'Tipo / uso', value: norma.tipo_atividade?.trim() || null },
+        { label: 'Área climatizada', value: norma.area_climatizada_m2 != null ? formatOptionalNumber(norma.area_climatizada_m2, 'm²') : null },
+        { label: 'Carga térmica', value: norma.carga_termica_tr != null ? formatOptionalNumber(norma.carga_termica_tr, 'TR') : null },
+        { label: 'Ocupantes fixos', value: norma.ocupantes_fixos != null ? formatOptionalNumber(norma.ocupantes_fixos) : null },
+        { label: 'Ocupantes flutuantes', value: norma.ocupantes_flutuantes != null ? formatOptionalNumber(norma.ocupantes_flutuantes) : null },
+      ].filter((f) => f.value !== null) as { label: string; value: string }[])
+    : [];
+
   return (
     <div className="break-inside-avoid rounded-lg border border-gray-200 p-3">
       <div className="flex items-start gap-3">
@@ -599,9 +635,20 @@ function EnvironmentBlock({
         )}
         <div className="min-w-0 flex-1">
           <p className="break-words font-semibold text-gray-900">{identificacao}</p>
-          {tipo && <p className="text-xs text-gray-500">{tipo}</p>}
+          {tipo && !norma && <p className="text-xs text-gray-500">{tipo}</p>}
         </div>
       </div>
+      {/* Identificações da norma PMOC — grade compacta (só quando PMOC e há dado). */}
+      {normaFields.length > 0 && (
+        <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-gray-100 pt-2.5 sm:grid-cols-3">
+          {normaFields.map((f) => (
+            <div key={f.label} className="min-w-0">
+              <dt className="text-[10px] uppercase tracking-wider text-gray-400">{f.label}</dt>
+              <dd className="break-words text-sm font-medium text-gray-800">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       {items.length > 0 ? (
         <ul className="mt-2.5 space-y-1.5 border-t border-gray-100 pt-2.5">
           {items.map((it) => {

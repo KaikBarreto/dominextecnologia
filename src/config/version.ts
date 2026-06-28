@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.21";
+export const APP_VERSION = "1.15.22";
 
-export const VERSION_NOTES = "O PMOC agora aceita cadência de visita personalizada: o padrão continua mensal (a Lei 13.589 recomenda visita mensal), mas você pode optar por outra cadência, como a cada 14 dias. Nesse caso, os checklists se encaixam nas visitas pela frequência de cada item, igual aos contratos comuns. Quem quiser seguir a norma à risca, é só manter o mensal.";
+export const VERSION_NOTES = "O contrato PMOC também passa a gerar o documento 'Plano de Manutenção' (imprimir/PDF), agora com o título e os dados da norma — ambientes com carga térmica, área climatizada e ocupantes — além da grade de tarefas na cadência configurada. Útil principalmente quando o PMOC usa uma cadência personalizada.";
