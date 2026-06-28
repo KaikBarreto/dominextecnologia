@@ -26,6 +26,7 @@ import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG, REPORT_HEADER_DARK_GRADIENT } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
 import { ReportPmocChecklist, pmocGroupKeysFor } from './ReportPmocChecklist';
+import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
 import { ContractInfoCard } from './ContractInfoCard';
 import type { ReportChecklistItem } from './ReportChecklist';
 import { OsActionFooter } from './OsDesktopShell';
@@ -196,6 +197,13 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
+  // Filtro de visibilidade por visita (mesma régua do app do técnico e da espiada):
+  // datas reais de TODAS as visitas do contrato + âncora "1ª OS" POR EQUIPAMENTO.
+  // Só populado no modo AUTENTICADO (onde temos acesso a contract_items/visitas);
+  // no modo público anon ficam vazios → o helper mostra tudo (idêntico ao histórico,
+  // "respondida sempre aparece"). Chave de excludedByEquipment = equipment_id.
+  const [contractVisitDates, setContractVisitDates] = useState<string[]>([]);
+  const [excludedByEquipment, setExcludedByEquipment] = useState<Map<string, Set<string>>>(new Map());
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
   const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
@@ -378,12 +386,70 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     || (r.question?.template_id ? templateNameById.get(r.question.template_id) : undefined)
     || 'Checklist';
 
+  // Visibilidade por visita (MESMA regra da espiada/técnico) para o checklist
+  // PERSONALIZADO de contrato: uma resposta só entra se a pergunta VENCEU nesta
+  // visita (frequência por pergunta + âncora "1ª OS" POR EQUIPAMENTO) OU foi
+  // respondida (proteção de histórico — answered nunca some). Conjunto de pares
+  // (equipment_id, question_id) visíveis. Sem contrato/visitas (modo público anon,
+  // OS avulsa) → vazio aqui e o gate abaixo libera tudo: "na dúvida, mostra".
+  const visibleVisitPairs = (() => {
+    const contractId = (serviceOrder as any)?.contract_id || null;
+    if (!contractId || contractVisitDates.length === 0 || otherResponses.length === 0) {
+      return null; // sem filtro → mantém comportamento histórico
+    }
+    const hasRealContent = (r: FormResponseData) => {
+      const v = typeof r.response_value === 'string' ? r.response_value.trim() : '';
+      return (v !== '' && v !== '-') || !!r.response_photo_url;
+    };
+    const scheduledDate = (serviceOrder as any)?.scheduled_date ?? null;
+    const byEquipment = new Map<string, FormResponseData[]>();
+    for (const r of otherResponses) {
+      const key = r.equipment_id ?? '__none__';
+      const arr = byEquipment.get(key);
+      if (arr) arr.push(r);
+      else byEquipment.set(key, [r]);
+    }
+    const pairs = new Set<string>();
+    for (const [key, group] of byEquipment) {
+      const answeredQuestionIds = new Set(
+        group.filter(hasRealContent).map((r) => r.question_id),
+      );
+      const seen = new Set<string>();
+      const questions = group
+        .filter((r) => r.question && !seen.has(r.question_id) && (seen.add(r.question_id), true))
+        .map((r) => ({
+          id: r.question_id,
+          freq_kind: (r.question as any)?.freq_kind ?? null,
+          freq_months: (r.question as any)?.freq_months ?? null,
+          freq_days: (r.question as any)?.freq_days ?? null,
+          freq_visits: (r.question as any)?.freq_visits ?? null,
+          start_kind: (r.question as any)?.start_kind ?? null,
+          start_visit: (r.question as any)?.start_visit ?? null,
+        }));
+      const ids = computeVisibleQuestionIds({
+        visitDates: contractVisitDates,
+        scheduledDate,
+        questions,
+        answeredQuestionIds,
+        excludedQuestionIds: key === '__none__' ? undefined : excludedByEquipment.get(key),
+      });
+      for (const id of ids) pairs.add(`${key}::${id}`);
+    }
+    return pairs;
+  })();
+  const isVisibleInVisit = (r: FormResponseData): boolean =>
+    visibleVisitPairs === null ||
+    visibleVisitPairs.has(`${r.equipment_id ?? '__none__'}::${r.question_id}`);
+
   // Map groupKey → sub-blocos { templateName, responses }, só com respostas não
-  // vazias e excluindo assinaturas (que têm seção própria mais abaixo).
+  // vazias, VISÍVEIS nesta visita (regra da espiada/técnico) e excluindo
+  // assinaturas (que têm seção própria mais abaixo). Relatório nunca mostra linha
+  // em branco (`isResponseEmpty`) — answered (não-vazia) é sempre visível.
   const personalizedByGroup = (() => {
     const groups = new Map<string, Map<string, FormResponseData[]>>();
     for (const r of otherResponses) {
       if (isResponseEmpty(r)) continue;
+      if (!isVisibleInVisit(r)) continue;
       const eqId = r.equipment_id ?? null;
       const groupKey = (eqId && equipmentNameById.get(eqId)) || GENERAL_KEY;
       const tplName = checklistNameFor(r);
@@ -626,19 +692,35 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       // ou sem ambiente: campo fica null e o cabeçalho não mostra " | ambiente".
       const contractId = (serviceOrder as any).contract_id || null;
       if (contractId) {
+        // Datas reais de TODAS as visitas do contrato = calendário do filtro de
+        // frequência por pergunta (mesmo padrão da espiada/técnico). RLS bloqueia
+        // pro anon → vazio → mostra tudo.
+        const { data: visitRows } = await db
+          .from('service_orders')
+          .select('scheduled_date')
+          .eq('contract_id', contractId)
+          .order('scheduled_date', { ascending: true });
+        setContractVisitDates(
+          ((visitRows || []) as any[])
+            .map((r) => r.scheduled_date as string | null)
+            .filter((d): d is string => !!d),
+        );
+
         const equipmentIds = Array.from(
           new Set(normalized.map((it: any) => it.equipment_id).filter(Boolean))
         );
         if (equipmentIds.length > 0) {
           const { data: ciRows } = await db
             .from('contract_items')
-            .select('equipment_id, sort_order, environment:contract_environments(identificacao)')
+            .select('equipment_id, sort_order, first_os_excluded_questions, environment:contract_environments(identificacao)')
             .eq('contract_id', contractId)
             .in('equipment_id', equipmentIds);
           if (ciRows) {
             // equipment_id → environment_name (1º ambiente por sort_order; ignora
             // linhas sem ambiente, igual o subselect do get_public_os).
             const envByEqId = new Map<string, string>();
+            // Âncora "1ª OS" POR EQUIPAMENTO (fatia F3) — mesma do técnico/espiada.
+            const excludedByEqId = new Map<string, Set<string>>();
             const sorted = [...(ciRows as any[])].sort(
               (a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity)
             );
@@ -647,12 +729,23 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               const env = unwrapJoin(row.environment);
               const name = env?.identificacao ?? null;
               if (eqId && name && !envByEqId.has(eqId)) envByEqId.set(eqId, name);
+              if (eqId && !excludedByEqId.has(eqId)) {
+                const raw = row.first_os_excluded_questions;
+                const ids = Array.isArray(raw)
+                  ? raw.filter((x: unknown): x is string => typeof x === 'string')
+                  : [];
+                excludedByEqId.set(eqId, new Set(ids));
+              }
             }
             normalized.forEach((it: any) => {
               it.environment_name = it.equipment_id ? envByEqId.get(it.equipment_id) ?? null : null;
             });
+            setExcludedByEquipment(excludedByEqId);
           }
         }
+      } else {
+        setContractVisitDates([]);
+        setExcludedByEquipment(new Map());
       }
 
       setEquipmentItems(normalized as unknown as EquipmentItem[]);

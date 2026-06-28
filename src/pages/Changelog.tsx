@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.23',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist consistente entre técnico, gestão e relatório',
+        description: 'O técnico, a visualização rápida da ordem de serviço e o relatório agora mostram exatamente o mesmo conjunto de perguntas previstas para a visita — incluindo a regra de "entra na primeira ordem de serviço" por equipamento. Também corrigimos um caso em que uma OS de contrato PMOC podia ficar impossível de finalizar porque uma pergunta obrigatória que nem aparecia na visita contava como pendente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.15.22',
     date: '28 de junho de 2026',
     type: 'patch',

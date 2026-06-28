@@ -64,7 +64,7 @@ import { RateServiceAffordance } from '@/components/technician/RateServiceAfford
 import type { PublicOsRating, PublicNpsConfig, PublicNpsCriterion } from '@/hooks/useServiceRatings';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { useOsActivityChecklist, isTemplateActivityComplete } from '@/hooks/useOsActivityChecklist';
-import { VisitChecklistPanel } from '@/components/technician/VisitChecklistPanel';
+import { VisitChecklistPanel, visibleQuestionsForActivity } from '@/components/technician/VisitChecklistPanel';
 import {
   EquipmentChecklistHeader,
   equipmentChecklistHeaderClasses,
@@ -74,7 +74,7 @@ import {
 } from '@/components/technician/EquipmentChecklistHeader';
 import { type ReportChecklistItem } from '@/components/technician/ReportChecklist';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
-import type { ServiceOrder, OsStatus } from '@/types/database';
+import type { ServiceOrder, OsStatus, FormQuestion } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { RouteToCustomerMap } from '@/components/schedule/RouteToCustomerMap';
 import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress, haversineDistance, resolveOsDestination } from '@/utils/geolocation';
@@ -1590,9 +1590,18 @@ export default function TechnicianOS() {
       ).length;
       // Checklists personalizados (form_template) com perguntas OBRIGATÓRIAS
       // ainda sem resposta — contam como pendência (não podem ser auto-marcadas).
+      // CRÍTICO: considera SÓ as perguntas VISÍVEIS nesta visita (mesma fonte do
+      // VisitChecklistPanel — frequência por pergunta + âncora "1ª OS" por
+      // equipamento). Pergunta que não vence nesta visita não aparece na tela e
+      // não pode bloquear a finalização, senão a OS PMOC fica impossível de fechar.
       const templateBlanks = checklistActivities.filter((a) => {
         if (!a.form_template_id) return false;
-        const qs = checklistFormQuestions[a.form_template_id] ?? [];
+        const qs = visibleQuestionsForActivity(
+          a,
+          checklistFormQuestions,
+          visibilityForEquipment,
+          getChecklistFormResponse,
+        );
         return !isTemplateActivityComplete(qs, (qid) =>
           getChecklistFormResponse(a.equipment_id ?? null, qid)
         );
@@ -2975,21 +2984,41 @@ export default function TechnicianOS() {
         const groupKey = group.equipmentId ?? '__local__';
         if (seen.has(groupKey)) return;
         seen.add(groupKey);
-        const total = group.activities.length;
-        // "Feita": conformidade marcada OU checklist personalizado com todas as
-        // perguntas obrigatórias respondidas.
-        const answered = group.activities.filter((a) => {
+        // Perguntas VISÍVEIS por atividade nesta visita (mesma fonte do painel):
+        // checklist personalizado cujas perguntas TODAS foram filtradas (nenhuma
+        // vence agora) some do painel — então não conta no total nem na pendência.
+        const visibleQsById = new Map<string, FormQuestion[]>();
+        for (const a of group.activities) {
           if (a.form_template_id) {
-            const qs = checklistFormQuestions[a.form_template_id] ?? [];
+            visibleQsById.set(
+              a.id,
+              visibleQuestionsForActivity(
+                a,
+                checklistFormQuestions,
+                visibilityForEquipment,
+                getChecklistFormResponse,
+              ),
+            );
+          }
+        }
+        const renderedActivities = group.activities.filter((a) =>
+          a.form_template_id ? (visibleQsById.get(a.id) ?? []).length > 0 : true
+        );
+        const total = renderedActivities.length;
+        // "Feita": conformidade marcada OU checklist personalizado com todas as
+        // perguntas obrigatórias VISÍVEIS respondidas.
+        const answered = renderedActivities.filter((a) => {
+          if (a.form_template_id) {
+            const qs = visibleQsById.get(a.id) ?? [];
             return isTemplateActivityComplete(qs, (qid) =>
               getChecklistFormResponse(a.equipment_id ?? null, qid)
             );
           }
           return !!a.conformity_status;
         }).length;
-        const naoConforme = group.activities.some((a) => {
+        const naoConforme = renderedActivities.some((a) => {
           if (a.form_template_id) {
-            const qs = checklistFormQuestions[a.form_template_id] ?? [];
+            const qs = visibleQsById.get(a.id) ?? [];
             return qs.some(
               (q) =>
                 q.question_type === 'boolean' &&
@@ -3701,6 +3730,18 @@ export default function TechnicianOS() {
                 </div>
               )}
               <div className={isPaused ? 'opacity-60 cursor-not-allowed' : ''}>
+                {/* CAMINHO LEGADO: só roda quando NÃO há linhas de junção com
+                    template (questionnaireItems.length === 0) e a OS tem um
+                    form_template_id direto (shape pré-F3). A âncora "1ª OS" POR
+                    EQUIPAMENTO (excludedQuestionsByEquipment) é montada a partir das
+                    LINHAS DE JUNÇÃO (service_order_equipment); sem elas o mapa fica
+                    vazio, então visibilityForEquipment devolve excludedQuestionIds
+                    undefined → âncora pelo start_kind do template. Isso é correto: o
+                    flag F3 por equipamento vive em contract_items resolvido pelas
+                    linhas de junção, que aqui não existem — uma OS de contrato
+                    MODERNA sempre tem junção e NÃO cai neste fallback. O filtro de
+                    FREQUÊNCIA por pergunta (datas reais das visitas) continua valendo,
+                    pois vem de checklistVisibility, independente da âncora. */}
                 <DynamicFormQuestions
                   serviceOrderId={resolvedOsId!}
                   templateId={serviceOrder.form_template_id}

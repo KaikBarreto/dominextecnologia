@@ -66,6 +66,57 @@ function visibleTemplateQuestions(
   return questions.filter((q) => visibleIds.has(q.id));
 }
 
+/**
+ * Forma mínima de uma atividade de checklist da visita pro cálculo de
+ * visibilidade: só precisamos do template e do equipamento (a âncora "1ª OS" é
+ * por equipamento). Aceita o `ChecklistActivity` completo sem acoplar a ele.
+ */
+export interface VisibilityActivityRef {
+  form_template_id: string | null;
+  equipment_id: string | null;
+}
+
+/**
+ * FONTE ÚNICA da visibilidade de perguntas de um checklist PERSONALIZADO numa
+ * visita de OS de contrato. Reusada PELO RENDER (VisitChecklistPanel) E PELO
+ * GATE de finalização (TechnicianOS) pra que pendência e tela nunca divirjam:
+ * uma pergunta que não vence nesta visita não aparece na tela E não bloqueia a
+ * finalização.
+ *
+ * Aplica a âncora "1ª OS" POR EQUIPAMENTO via `visibilityForEquipment` (que
+ * carrega o `excludedQuestionIds` do equipamento certo). Perguntas já respondidas
+ * nunca somem. Catálogo da norma (sem `form_template_id`) → lista vazia (não
+ * passa por aqui). Sem contrato/visibilidade → todas (régua "na dúvida mostra").
+ *
+ * PURA (sem hooks) — segura de chamar dentro de map de render ou de filtro.
+ */
+export function visibleQuestionsForActivity(
+  activity: VisibilityActivityRef,
+  formQuestionsByTemplate: Record<string, FormQuestion[]>,
+  visibilityForEquipment:
+    | ((equipmentId: string | null) => ContractVisibilityContext | undefined)
+    | undefined,
+  getFormResponse: (
+    equipmentId: string | null,
+    questionId: string,
+  ) => ChecklistFormResponse | undefined,
+): FormQuestion[] {
+  if (!activity.form_template_id) return [];
+  const all = formQuestionsByTemplate[activity.form_template_id] ?? [];
+  if (all.length === 0) return all;
+  const equipmentId = activity.equipment_id ?? null;
+  const answeredQuestionIds = new Set(
+    all
+      .filter((q) => isFormResponseAnswered(getFormResponse(equipmentId, q.id)))
+      .map((q) => q.id),
+  );
+  return visibleTemplateQuestions(
+    all,
+    visibilityForEquipment?.(equipmentId),
+    answeredQuestionIds,
+  );
+}
+
 interface Props {
   /** OS dona das atividades — usado no path das fotos no bucket. */
   serviceOrderId: string;
@@ -917,18 +968,12 @@ export function VisitChecklistPanel({
    */
   const visibleQuestionsFor = (a: ChecklistActivity): FormQuestion[] => {
     if (!canRenderTemplates || !a.form_template_id) return [];
-    const all = questionsByTemplate[a.form_template_id] ?? [];
-    if (all.length === 0) return all;
-    const equipmentId = a.equipment_id ?? null;
-    const answeredQuestionIds = new Set(
-      all
-        .filter((q) => isFormResponseAnswered(getFormResponse!(equipmentId, q.id)))
-        .map((q) => q.id),
-    );
-    return visibleTemplateQuestions(
-      all,
-      visibilityForEquipment?.(equipmentId),
-      answeredQuestionIds,
+    // FONTE ÚNICA compartilhada com o gate de finalização do TechnicianOS.
+    return visibleQuestionsForActivity(
+      a,
+      questionsByTemplate,
+      visibilityForEquipment,
+      getFormResponse!,
     );
   };
 

@@ -85,6 +85,10 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   // o `checklistVisibility` do app do técnico. Vazio (OS avulsa, busca falhou) →
   // o helper mostra tudo. NÃO toca no caminho PMOC (service_order_activities).
   const [contractVisitDates, setContractVisitDates] = useState<string[]>([]);
+  // Perguntas EXCLUÍDAS da 1ª OS POR EQUIPAMENTO (contract_items.first_os_excluded_questions,
+  // fatia F3). É a MESMA âncora que o app do técnico usa: sem isto, o filtro de
+  // visibilidade da espiada divergiria do que o técnico viu. Chave = equipment_id.
+  const [excludedByEquipment, setExcludedByEquipment] = useState<Map<string, Set<string>>>(new Map());
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -144,8 +148,30 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             .map((r) => r.scheduled_date as string | null)
             .filter((d): d is string => !!d),
         );
+
+        // Âncora "1ª OS" POR EQUIPAMENTO (mesma do app do técnico): question_ids
+        // excluídos da primeira visita por equipamento. Sem isto, a espiada
+        // divergiria do que o técnico viu (perguntas incluídas/excluídas na 1ª
+        // visita ancoram a frequência de forma diferente). 1 contract_item por
+        // equipamento → normaliza o jsonb (array de ids) num Set por equipment_id.
+        const { data: ciRows } = await supabase
+          .from('contract_items')
+          .select('equipment_id, first_os_excluded_questions')
+          .eq('contract_id', contractId);
+        const excludedByEqId = new Map<string, Set<string>>();
+        for (const row of ((ciRows || []) as any[])) {
+          const eqId = row.equipment_id;
+          if (!eqId || excludedByEqId.has(eqId)) continue;
+          const raw = row.first_os_excluded_questions;
+          const ids = Array.isArray(raw)
+            ? raw.filter((x: unknown): x is string => typeof x === 'string')
+            : [];
+          excludedByEqId.set(eqId, new Set(ids));
+        }
+        setExcludedByEquipment(excludedByEqId);
       } else {
         setContractVisitDates([]);
+        setExcludedByEquipment(new Map());
       }
 
       const { data: photosData } = await supabase.from('os_photos').select('*').eq('service_order_id', serviceOrderId).order('created_at', { ascending: true });
@@ -335,32 +361,52 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             const hasValue = v !== '' && v !== '-';
             return hasValue || !!r.response_photo_url;
           };
-          // answeredQuestionIds = só perguntas com conteúdo real (nunca esconde
-          // resposta de verdade, mesmo que não fosse da vez).
-          const answeredQuestionIds = new Set(
-            formResponses.filter(hasRealContent).map((r) => r.question_id),
+          const scheduledDate = (serviceOrder as any)?.scheduled_date ?? null;
+          // Filtro POR EQUIPAMENTO (igual ao app do técnico): cada equipamento tem
+          // sua própria âncora "1ª OS" (excludedByEquipment), e a mesma pergunta
+          // pode vencer ou não dependendo do equipamento. Agrupa as respostas por
+          // equipment_id, roda o helper por grupo com o Set de excluídos daquele
+          // equipamento, e une os ids visíveis. Respostas sem equipamento usam um
+          // grupo próprio (sem âncora). É a MESMA derivação que o técnico viu.
+          const byEquipment = new Map<string, FormResponseData[]>();
+          for (const r of formResponses) {
+            const key = r.equipment_id ?? '__none__';
+            const arr = byEquipment.get(key);
+            if (arr) arr.push(r);
+            else byEquipment.set(key, [r]);
+          }
+          // Visibilidade é por (equipamento, pergunta): mantém a resposta só se a
+          // pergunta vence PARA O equipamento daquela resposta. Como a mesma
+          // pergunta pode aparecer em equipamentos diferentes, filtramos por par.
+          const visiblePairs = new Set<string>();
+          for (const [key, group] of byEquipment) {
+            const answeredQuestionIds = new Set(
+              group.filter(hasRealContent).map((r) => r.question_id),
+            );
+            const seen = new Set<string>();
+            const questions = group
+              .filter((r) => r.question && !seen.has(r.question_id) && (seen.add(r.question_id), true))
+              .map((r) => ({
+                id: r.question_id,
+                freq_kind: (r.question as any)?.freq_kind ?? null,
+                freq_months: (r.question as any)?.freq_months ?? null,
+                freq_days: (r.question as any)?.freq_days ?? null,
+                freq_visits: (r.question as any)?.freq_visits ?? null,
+                start_kind: (r.question as any)?.start_kind ?? null,
+                start_visit: (r.question as any)?.start_visit ?? null,
+              }));
+            const ids = computeVisibleQuestionIds({
+              visitDates: contractVisitDates,
+              scheduledDate,
+              questions,
+              answeredQuestionIds,
+              excludedQuestionIds: key === '__none__' ? undefined : excludedByEquipment.get(key),
+            });
+            for (const id of ids) visiblePairs.add(`${key}::${id}`);
+          }
+          visibleResponses = formResponses.filter((r) =>
+            visiblePairs.has(`${r.equipment_id ?? '__none__'}::${r.question_id}`),
           );
-          // Perguntas presentes nas respostas, com os campos de frequência (o
-          // select traz form_questions(*)), deduplicadas por id.
-          const seen = new Set<string>();
-          const questions = formResponses
-            .filter((r) => r.question && !seen.has(r.question_id) && (seen.add(r.question_id), true))
-            .map((r) => ({
-              id: r.question_id,
-              freq_kind: (r.question as any)?.freq_kind ?? null,
-              freq_months: (r.question as any)?.freq_months ?? null,
-              freq_days: (r.question as any)?.freq_days ?? null,
-              freq_visits: (r.question as any)?.freq_visits ?? null,
-              start_kind: (r.question as any)?.start_kind ?? null,
-              start_visit: (r.question as any)?.start_visit ?? null,
-            }));
-          const visibleIds = computeVisibleQuestionIds({
-            visitDates: contractVisitDates,
-            scheduledDate: (serviceOrder as any)?.scheduled_date ?? null,
-            questions,
-            answeredQuestionIds,
-          });
-          visibleResponses = formResponses.filter((r) => visibleIds.has(r.question_id));
         }
         if (visibleResponses.length === 0) return null;
         // Render one card per equipment_items row (equip+template).
