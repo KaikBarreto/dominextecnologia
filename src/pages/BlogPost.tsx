@@ -23,6 +23,7 @@ import { captureUtmParams } from '@/lib/whatsapp';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
+import { BlogTableOfContents } from '@/components/blog/BlogTableOfContents';
 import BlogNavbar from '@/components/blog/BlogNavbar';
 import { useBlogTheme } from '@/components/blog/useBlogTheme';
 
@@ -302,9 +303,21 @@ export default function BlogPost() {
       <div className="relative min-h-screen bg-neutral-50 text-neutral-900 dark:bg-[hsl(0,0%,4%)] dark:text-white">
         <BlogNavbar theme={theme} onToggleTheme={toggleTheme} />
 
-        <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-3">
-            <article className="min-w-0 lg:col-span-2">
+        <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8 2xl:max-w-[1550px]">
+          {/* Layout:
+              - mobile: 1 coluna (só artigo, sidebar empilha abaixo)
+              - lg → 2xl: layout ORIGINAL [conteúdo 1fr | sidebar 320px], SEM TOC
+              - 2xl+: alarga o container e adiciona o TOC à esquerda no espaço EXTRA,
+                travando o conteúdo em 856px (mesma largura de antes do TOC) e a
+                sidebar em 320px. O conteúdo NÃO encolhe vs. o layout original. */}
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[230px_minmax(0,856px)_320px]">
+            {/* Índice (estrutura do documento) — só quando há espaço extra (2xl+), à esquerda.
+                O próprio BlogTableOfContents já é sticky internamente. */}
+            <aside className="hidden 2xl:block">
+              <BlogTableOfContents contentRef={contentRef} contentKey={post.id} />
+            </aside>
+
+            <article className="min-w-0">
               <Link
                 to="/blog"
                 className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-primary dark:text-white/50"
@@ -480,7 +493,9 @@ export default function BlogPost() {
               </div>
             </article>
 
-            <div className="lg:col-span-1">
+            {/* Sidebar direita: largura ORIGINAL (320px) em todos os breakpoints
+                de desktop — sempre a última coluna do grid. */}
+            <div>
               <div className="sticky top-24">
                 <BlogSidebar categoryColors={categoryColors} />
               </div>

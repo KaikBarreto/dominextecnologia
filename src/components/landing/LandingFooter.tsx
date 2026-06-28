@@ -52,7 +52,7 @@ export default function LandingFooter() {
               <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
             </div>
             <p className="text-sm text-white/30 mb-4">
-              Gestão de equipes de campo e ordens de serviço.
+              Domine a execução do seu negócio.
             </p>
           </div>
 
