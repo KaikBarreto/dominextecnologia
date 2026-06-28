@@ -56,17 +56,38 @@ export default function LandingFooter() {
             </p>
           </div>
 
-          {/* Soluções — coluna vertical única (11 itens) */}
+          {/* Soluções — coluna vertical única (11 itens). Mesma micro-interação
+              dos Segmentos: o texto desliza pra direita e o ícone do módulo faz
+              fade-in à esquerda no hover/foco. Diferença: o ícone é SEMPRE o verde
+              fixo da marca (#00C597, BRAND_GREEN) — nada de cor por item. HEX literal
+              de propósito: o site público não pode puxar --primary, senão o
+              white-label de um tenant logado vazaria a cor dele aqui. */}
           <div>
             <h3 className="text-sm font-semibold text-white mb-4">Soluções</h3>
             <ul className="space-y-2">
-              {MODULE_NAV_LINKS.map((mod) => (
-                <li key={mod.slug}>
-                  <Link to={`/${mod.slug}`} className={footerLinkClass}>
-                    {mod.label}
-                  </Link>
-                </li>
-              ))}
+              {MODULE_NAV_LINKS.map((mod) => {
+                const Icon = mod.icon;
+                return (
+                  <li key={mod.slug}>
+                    <Link
+                      to={`/${mod.slug}`}
+                      className="group relative flex items-center text-sm text-white/55 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none"
+                    >
+                      {/* Ícone do módulo no verde da marca — invisível e um pouco
+                          à esquerda; entra (fade + slide) no hover/foco. */}
+                      <Icon
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-0 h-4 w-4 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
+                        style={{ color: '#00C597' }}
+                      />
+                      {/* Texto: desliza pra direita pra dar espaço ao ícone. */}
+                      <span className="transition-transform duration-300 group-hover:translate-x-6 group-focus-visible:translate-x-6">
+                        {mod.label}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
