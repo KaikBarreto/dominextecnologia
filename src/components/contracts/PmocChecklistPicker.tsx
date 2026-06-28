@@ -411,15 +411,17 @@ export function PmocChecklistPicker({
         </p>
       )}
 
-      {/* DUAS fontes de checklist desta máquina, cada uma num container destacado:
+      {/* DUAS fontes de checklist desta máquina. Cada fonte é uma SEÇÃO achatada:
+          label forte (h3) + selos + divisor, sem caixa em volta — o conteúdo fica
+          direto abaixo.
           1) "Catálogo PMOC" — agrupa AC (Split/ACJ) + Grande porte por dentro.
-          2) "Personalizados" — checklists próprios da empresa (só no modo máquina).
-          Cada fonte tem cabeçalho forte + selo de total/selecionados. */}
+          2) "Checklists Personalizados" — checklists próprios da empresa (só no
+             modo máquina). */}
 
       {/* ── Fonte 1: Catálogo PMOC ────────────────────────────────────────── */}
       {allIds.length > 0 && (
-        <section className="rounded-lg border-2 border-info/40 bg-info/5 p-2.5 space-y-2">
-          <header className="flex items-center gap-2 px-1">
+        <section className="space-y-2">
+          <header className="flex items-center gap-2 border-b border-border pb-1.5">
             <h3 className="text-sm font-bold text-foreground">Catálogo PMOC</h3>
             <Badge variant="outline" className="text-[10px] shrink-0">{allIds.length}</Badge>
             {selectedCatalogCount > 0 && (
@@ -429,9 +431,11 @@ export function PmocChecklistPicker({
 
           {/* Nota de conformidade: o default vem enxuto (essencial), a norma
               completa fica a um clique por família. */}
-          <p className="px-1 text-[11px] leading-snug text-muted-foreground">{ESSENTIAL_COMPLIANCE_NOTE}</p>
+          <p className="text-[11px] leading-snug text-muted-foreground">{ESSENTIAL_COMPLIANCE_NOTE}</p>
 
-          {/* Famílias (single-open): Expansão Direta → Sistemas Centrais.
+          {/* Famílias (single-open): Expansão Direta → Sistemas Centrais. Borda
+              leve única na família; o conteúdo de tipo/seção fica achatado dentro
+              (só indentação por linha à esquerda, sem outra caixa).
               - Expansão Direta agrupa por TIPO de tarefa (Limpeza/Inspeção/
                 Medições/Testes).
               - Sistemas Centrais agrupa por section (infra/central têm
@@ -466,13 +470,14 @@ export function PmocChecklistPicker({
         </section>
       )}
 
-      {/* ── Fonte 2: Personalizados ───────────────────────────────────────────
+      {/* ── Fonte 2: Checklists Personalizados ────────────────────────────────
           Só no modo por-máquina (há customTemplates / onChangeTemplates). No modo
-          geral fica oculta pra não sobrar uma fonte só "solta". */}
+          geral fica oculta pra não sobrar uma fonte só "solta". Mesma seção
+          achatada: label + divisor, lista direta abaixo (sem caixa em volta). */}
       {showCustomSection && (
-        <section className="rounded-lg border-2 border-border bg-muted/20 p-2.5 space-y-2">
-          <header className="flex items-center gap-2 px-1">
-            <h3 className="text-sm font-bold text-foreground">Personalizados</h3>
+        <section className="space-y-2">
+          <header className="flex items-center gap-2 border-b border-border pb-1.5">
+            <h3 className="text-sm font-bold text-foreground">Checklists Personalizados</h3>
             {customTemplates.length > 0 && (
               <Badge variant="outline" className="text-[10px] shrink-0">{customTemplates.length}</Badge>
             )}
@@ -491,12 +496,12 @@ export function PmocChecklistPicker({
           </header>
 
           {customTemplates.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-1 py-1">
+            <p className="text-xs text-muted-foreground py-1">
               Nenhum checklist personalizado. Crie em <span className="font-medium">Checklists</span> e ele aparece aqui
               para anexar a esta máquina.
             </p>
           ) : (
-            <div className="space-y-1 rounded-md border bg-background p-1.5">
+            <div className="space-y-1">
               {customTemplates.map((tpl) => (
                 <CustomTemplateRow
                   key={tpl.id}
@@ -564,7 +569,7 @@ function CustomTemplateRow({
   }, [questions]);
 
   return (
-    <div className="rounded-md bg-background">
+    <div className="rounded-md border border-border bg-background">
       <div className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/50 transition-colors">
         <input
           type="checkbox"

@@ -2836,8 +2836,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 <LabeledSwitch
                                   value={cfg?.scope ?? 'ac'}
                                   onChange={(v) => setMachineScope(eqId, v as PmocMachineScope)}
-                                  off={{ value: 'ac', label: 'Expansão Direta' }}
-                                  on={{ value: 'full', label: 'Sistemas Centrais' }}
+                                  off={{
+                                    value: 'ac',
+                                    label: (
+                                      <span className="flex flex-col leading-tight">
+                                        <span>Expansão Direta</span>
+                                        <span className="text-[10px] font-normal text-muted-foreground">(Split, Cassete, Piso Teto, Hi-wall, Janela, ACJ)</span>
+                                      </span>
+                                    ),
+                                  }}
+                                  on={{
+                                    value: 'full',
+                                    label: (
+                                      <span className="flex flex-col leading-tight">
+                                        <span>Sistemas Centrais</span>
+                                        <span className="text-[10px] font-normal text-muted-foreground">(VRF, Chiller, Fan Coil, UTA, Self Contained)</span>
+                                      </span>
+                                    ),
+                                  }}
                                   size="default"
                                   className="[&_button]:text-xs"
                                   aria-label="Escopo da norma da máquina"
@@ -3894,6 +3910,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       open={showCatalogPicker}
       onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) { setPickerMachineEqId(null); setPickerMachineScope(null); } }}
       title={pickerMachineEqId ? 'Checklists da Máquina' : 'Catálogo de atividades PMOC'}
+      className="sm:max-w-3xl"
       footer={
         <div className="flex flex-row items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">
