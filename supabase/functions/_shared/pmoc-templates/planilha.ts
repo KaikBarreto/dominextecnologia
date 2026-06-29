@@ -164,6 +164,13 @@ export interface PlanilhaPerQuestionRow {
   freqCode: string | null;
   /** 12 meses (0..11): true = mês previsto (bolinha verde). VEM PRONTO. */
   hits: boolean[];
+  /**
+   * 12 meses (0..11): true = existe visita real naquele mês. Em cadência MENSAL
+   * todos true. Em cadência supra-mensal (bimestral, etc.) os meses SEM visita
+   * ficam false → a célula recebe sombreado leve (≠ "tem visita mas não vence").
+   * Opcional (legado/v12 não manda → tratado como "todos têm visita").
+   */
+  monthHasVisit?: boolean[];
   /** Unidade/min/max (medições) — exibidos como o legado exibe. */
   unit: string | null;
   min: number | null;
@@ -1497,10 +1504,24 @@ function drawPerQuestionRow(
     font: helvBold,
     color: COLORS.accent,
   });
-  // Matriz de meses — usa os hits JÁ calculados (sem monthsHit).
+  // Matriz de meses — usa os hits JÁ calculados (sem monthsHit). Em cadência
+  // supra-mensal há meses SEM visita: a célula recebe sombreado leve pra
+  // diferenciar "não há visita" de "tem visita mas a tarefa não vence nela"
+  // (célula em branco). Sem `monthHasVisit` (legado/mensal) → todos têm visita.
   const hits = r.hits ?? new Array(12).fill(false);
+  const hasVisit = r.monthHasVisit;
   for (let m = 0; m < 12; m++) {
     const mx = g.matrixX + m * g.monthW;
+    // Sombreado de "mês sem visita" sob a borda da célula.
+    if (hasVisit && !hasVisit[m]) {
+      p.drawRectangle({
+        x: mx,
+        y: ctx.cursorY - thisRowH,
+        width: g.monthW,
+        height: thisRowH,
+        color: COLORS.lightGray,
+      });
+    }
     drawRowCellBorder(mx, g.monthW);
     if (hits[m]) {
       p.drawCircle({

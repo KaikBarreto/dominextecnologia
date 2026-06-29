@@ -266,6 +266,7 @@ Deno.serve(async (req) => {
           "start_date",
           "frequency_type",
           "frequency_value",
+          "horizon_months",
           // Seção 1 — identificação da UNIDADE/local (1 contrato = 1 unidade).
           // Pode ter endereço próprio (≠ do cliente/proprietário). Vazio → a
           // Seção 1 cai pro endereço/nome do cliente (fallback abaixo).
@@ -734,13 +735,22 @@ Deno.serve(async (req) => {
         // Âncora da 1ª OS deste equipamento (flag F3) — sobrescreve o template.
         const excluded = new Set(toStringArray(ci.first_os_excluded_questions));
 
-        // Cadência: matriz mensal de 12 visitas a partir do início do contrato.
-        // Para cadência NÃO-mensal, a matriz continua sendo o cronograma de
-        // referência da norma (passo mensal) — a Seção 5 imprime o aviso, igual
-        // o legado. (A projeção de datas reais não-mensais é evolução futura;
-        // hoje o aviso textual cobre a divergência, sem regra nova inventada.)
+        // Cadência: a matriz projeta as DATAS REAIS de visita a partir da
+        // cadência do contrato (frequency_type/value + horizon_months), via o
+        // port FIEL de `generateOccurrences` — as MESMAS datas que geram as OSs.
+        // O motor por-pergunta agenda sobre essas datas; cada mês marca se
+        // ALGUMA visita do mês vence a pergunta. MENSAL (months/1) reduz ao
+        // calendário de 12 visitas (idêntico ao comportamento anterior). Meses
+        // SEM visita (cadência supra-mensal) vêm em `monthHasVisit=false` e o
+        // template os sombreia em vez de marcar verde.
         const matrix = buildPerQuestionMonthMatrix(questions, excluded, {
           startDate: (contract.start_date ?? undefined) as string | undefined,
+          frequencyType: (contract.frequency_type ?? null) as
+            | "days"
+            | "months"
+            | null,
+          frequencyValue: (contract.frequency_value ?? null) as number | null,
+          horizonMonths: (contract.horizon_months ?? null) as number | null,
         });
 
         const rows: PlanilhaPerQuestionRow[] = matrix.map((m) => ({
@@ -748,6 +758,7 @@ Deno.serve(async (req) => {
           freqLabel: m.freqLabel,
           freqCode: freqCodeFor(m.question),
           hits: m.hits,
+          monthHasVisit: m.monthHasVisit,
           unit: m.unit,
           min: m.min,
           max: m.max,
@@ -768,6 +779,12 @@ Deno.serve(async (req) => {
             d: r.description,
             f: r.freqCode,
             h: r.hits.map((b) => (b ? 1 : 0)).join(""),
+            // `monthHasVisit` entra no seed: cadência supra-mensal muda quais
+            // meses têm visita (sombreado) sem mudar `hits` → o cache precisa
+            // invalidar quando a cadência muda.
+            mv: (r.monthHasVisit ?? new Array(12).fill(true))
+              .map((b) => (b ? 1 : 0))
+              .join(""),
             u: r.unit,
             mn: r.min,
             mx: r.max,
@@ -976,13 +993,25 @@ Deno.serve(async (req) => {
       // `perQuestionHashSeed` (templates + perguntas + exclusões + hits) entra no
       // hash pra invalidar o cache quando o checklist/frequência/âncora mudarem.
       // Itens legados (form_template_ids vazio) seguem idênticos ao v11.
-      v: "planilha_v12",
+      // planilha_v13: a matriz por-pergunta (modelo NOVO) passa a derivar as
+      // DATAS REAIS de visita da CADÊNCIA do contrato (não mais um passo mensal
+      // fixo) — bimestral, a-cada-N-dias etc. agora marcam os meses certos e
+      // sombreiam os meses SEM visita. MENSAL fica idêntico ao v12. A cadência
+      // (`cadence`) e o `monthHasVisit` por linha entram no hash pra o cache
+      // regenerar quando a cadência muda. Itens legados seguem idênticos.
+      v: "planilha_v13",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
       unidade: planilhaData.unidade,
       rt: planilhaData.rt,
       contract: planilhaData.contract,
+      // Cadência crua no seed (a matriz nova depende dela diretamente).
+      cadence: {
+        type: (contract.frequency_type ?? null) as string | null,
+        value: (contract.frequency_value ?? null) as number | null,
+        horizon: (contract.horizon_months ?? null) as number | null,
+      },
       ambientes,
       planMachines,
       perQuestion: perQuestionHashSeed,

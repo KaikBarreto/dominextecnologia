@@ -46,19 +46,37 @@ export interface MatrixQuestion {
 export interface BuildMatrixOpts {
   /**
    * Datas REAIS das 12 (ou N) visitas projetadas, 'YYYY-MM-DD', JÁ ORDENADAS.
-   * Quando ausente, a matriz monta um calendário MENSAL de 12 visitas a partir
-   * de `startDate` (ou de uma âncora neutra). Pra cadência NÃO-mensal, a edge
-   * projeta as datas reais e passa aqui (mês de cada visita marca a coluna).
+   * Quando ausente, a matriz projeta as datas a partir da CADÊNCIA do contrato
+   * (`frequencyType`/`frequencyValue`/`horizonMonths`, port fiel de
+   * `generateOccurrences`) ou, se nada vier, de um calendário MENSAL de 12
+   * visitas a partir de `startDate`.
    */
   visitDates?: string[];
   /** Início do contrato/1ª visita (âncora) quando `visitDates` é gerado aqui. */
   startDate?: string;
+  /**
+   * Cadência do contrato (mesma de `contracts.frequency_type`). Com ela +
+   * `frequencyValue` + `horizonMonths` a matriz projeta as datas REAIS de visita
+   * (port de `generateOccurrences`) — mês de cada visita marca a coluna. MENSAL
+   * (`months`/1) reduz EXATAMENTE ao calendário mensal de 12 visitas de hoje.
+   */
+  frequencyType?: "days" | "months" | string | null;
+  frequencyValue?: number | null;
+  horizonMonths?: number | null;
 }
 
 export interface MatrixRow {
   question: MatrixQuestion;
   /** 12 posições (mês 0..11): true = a pergunta vence naquele mês. */
   hits: boolean[];
+  /**
+   * 12 posições (mês 0..11): true = existe AO MENOS uma visita real naquele mês.
+   * Em cadência MENSAL todos os 12 são true. Em cadência supra-mensal (bimestral,
+   * etc.) os meses sem visita ficam false — o render diferencia "sem visita" de
+   * "tem visita mas a tarefa não vence". Idêntico em TODAS as linhas (a cadência
+   * é do contrato, não da pergunta); repetido por linha só por conveniência.
+   */
+  monthHasVisit: boolean[];
   /** Rótulo PT-BR da frequência (Mensal/Trimestral/Semestral/Anual/…). */
   freqLabel: string;
   unit: string | null;
@@ -286,6 +304,133 @@ function buildMonthlyCalendar(startDate?: string): string[] {
   return out;
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Port FIEL do gerador de ocorrências do contrato (src/hooks/useContracts.ts
+// → `generateOccurrences`). A geração REAL das visitas (e portanto das OSs) do
+// contrato NOVO de cadência não-mensal usa `generateOccurrences(start, type,
+// value, horizon)`, que por sua vez usa date-fns `addMonths`/`addDays`. A
+// matriz TEM que usar as MESMAS datas, senão o doc mente. Por isso replicamos
+// aqui, BIT A BIT, a semântica do date-fns:
+//   • addDays  → soma `n` dias de calendário.
+//   • addMonths→ avança `n` meses e, se o dia original não existe no mês alvo
+//                 (ex.: 31 em fevereiro), CLAMPA pro último dia do mês alvo
+//                 (NÃO transborda pro mês seguinte, ao contrário do setMonth nativo).
+// A equivalência é provada por teste (vitest), que importa ESTE port E o
+// `generateOccurrences` real e prova que produzem as MESMAS datas.
+// ──────────────────────────────────────────────────────────────────────────
+
+/** date-fns `addDays`: soma `amount` dias de calendário (campos locais). */
+function dfAddDays(date: Date, amount: number): Date {
+  const d = new Date(date.getTime());
+  d.setDate(d.getDate() + amount);
+  return d;
+}
+
+/**
+ * date-fns `addMonths`: avança `amount` meses preservando o dia, mas CLAMPANDO
+ * pro último dia do mês alvo quando o dia original não existe nele. Espelha o
+ * algoritmo do date-fns v3 (define o dia 1, soma os meses, e só então tenta
+ * restaurar o dia — se estourar, fica no último dia do mês).
+ */
+function dfAddMonths(date: Date, amount: number): Date {
+  const d = new Date(date.getTime());
+  const dayOfMonth = d.getDate();
+  // Data candidata no dia 1 do mês alvo (não transborda).
+  const endOfDesiredMonth = new Date(d.getTime());
+  endOfDesiredMonth.setMonth(d.getMonth() + amount + 1, 0); // dia 0 = último dia do mês alvo
+  const daysInMonth = endOfDesiredMonth.getDate();
+  if (dayOfMonth >= daysInMonth) {
+    // Dia original não cabe no mês alvo → clampa pro último dia.
+    return endOfDesiredMonth;
+  }
+  d.setFullYear(
+    endOfDesiredMonth.getFullYear(),
+    endOfDesiredMonth.getMonth(),
+    dayOfMonth,
+  );
+  return d;
+}
+
+/**
+ * Port FIEL de `generateOccurrences` (useContracts.ts). Mesmos limites (≤120
+ * datas, fim = início + `horizonMonths`), mesmo stepping (dias vs meses),
+ * mesmo tratamento de borda (via dfAddMonths/dfAddDays). Recebe e devolve
+ * objetos Date em horário LOCAL (campos Y-M-D), como o gerador real.
+ */
+export function generateOccurrencesPure(
+  startDate: Date,
+  frequencyType: "days" | "months",
+  frequencyValue: number,
+  horizonMonths: number,
+): Date[] {
+  const dates: Date[] = [];
+  const endDate = dfAddMonths(startDate, horizonMonths);
+  let current = new Date(startDate.getTime());
+  while (current.getTime() <= endDate.getTime() && dates.length < 120) {
+    dates.push(new Date(current.getTime()));
+    if (frequencyType === "months") {
+      current = dfAddMonths(current, frequencyValue);
+    } else {
+      current = dfAddDays(current, frequencyValue);
+    }
+  }
+  return dates;
+}
+
+/**
+ * Calendário das visitas REAIS a partir da cadência do contrato, em
+ * 'YYYY-MM-DD'. Usa o port de `generateOccurrences`. MENSAL (`months`/1) cai no
+ * MESMO conjunto de datas que `buildMonthlyCalendar` produziria a partir do
+ * mesmo `startDate` (com a diferença correta de que fim-de-mês CLAMPA, igual à
+ * geração real — `buildMonthlyCalendar` antigo transbordava; só importava em
+ * início no dia 29/30/31, caso em que o antigo já divergia da OS gerada).
+ * Sem `startDate` → âncora neutra (2000-01-01): o que importa é a cadência
+ * relativa, não o ano.
+ */
+function buildCadenceCalendar(
+  startDate: string | undefined,
+  frequencyType: "days" | "months",
+  frequencyValue: number,
+  horizonMonths: number,
+): string[] {
+  let y0 = 2000, m0 = 0, d0 = 1;
+  if (startDate) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(startDate.trim());
+    if (m) {
+      y0 = Number(m[1]);
+      m0 = Number(m[2]) - 1;
+      d0 = Number(m[3]);
+    }
+  }
+  const anchor = new Date(y0, m0, d0);
+  const dates = generateOccurrencesPure(
+    anchor,
+    frequencyType,
+    frequencyValue,
+    horizonMonths,
+  );
+  return dates.map((d) => {
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${da}`;
+  });
+}
+
+/**
+ * Índice de mês (0-based) de uma data de visita RELATIVO ao mês de início.
+ * Conta meses de calendário (não dias): (ano−ano0)*12 + (mês−mês0). Garante que
+ * 2 visitas no mesmo mês caiam na mesma coluna e que a coluna seja o "mês k" da
+ * planilha (igual ao índice de visita no caso mensal).
+ */
+function monthOffset(visitISO: string, anchorY: number, anchorM: number): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(visitISO.trim());
+  if (!m) return -1;
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  return (y - anchorY) * 12 + (mo - anchorM);
+}
+
 /** Rótulo PT-BR da frequência a partir dos campos da pergunta. */
 export function freqLabelFor(q: MatrixQuestion): string {
   if (q.freq_kind === "visits") {
@@ -341,23 +486,49 @@ export function buildPerQuestionMonthMatrix(
   excludedQuestionIds: Set<string> | undefined,
   opts: BuildMatrixOpts = {},
 ): MatrixRow[] {
-  // Calendário das visitas: usa as datas reais (cadência não-mensal projetada)
-  // ou monta um calendário mensal de 12 visitas a partir do início.
-  const visitDates =
-    opts.visitDates && opts.visitDates.length > 0
-      ? opts.visitDates.slice(0, 12)
-      : buildMonthlyCalendar(opts.startDate);
+  // ── 1. Datas REAIS das visitas. Prioridade:
+  //      (a) `visitDates` explícitas (já projetadas pela edge), senão
+  //      (b) projeção pela cadência do contrato (port de generateOccurrences),
+  //          que para MENSAL reduz ao calendário mensal de 12 visitas, senão
+  //      (c) calendário mensal de 12 visitas a partir de `startDate` (legado).
+  let visitDates: string[];
+  const freqType =
+    opts.frequencyType === "days" || opts.frequencyType === "months"
+      ? opts.frequencyType
+      : null;
+  const freqValue = opts.frequencyValue && opts.frequencyValue > 0
+    ? Math.round(opts.frequencyValue)
+    : null;
+  const horizon = opts.horizonMonths && opts.horizonMonths > 0
+    ? Math.round(opts.horizonMonths)
+    : 12;
+  if (opts.visitDates && opts.visitDates.length > 0) {
+    visitDates = opts.visitDates;
+  } else if (freqType && freqValue) {
+    visitDates = buildCadenceCalendar(opts.startDate, freqType, freqValue, horizon);
+  } else {
+    visitDates = buildMonthlyCalendar(opts.startDate);
+  }
 
-  // Quantas colunas (meses) a matriz tem. Mensal = 12; se vierem menos visitas
-  // reais (cadência não-mensal num horizonte curto), respeita o que veio.
-  const monthCount = Math.min(12, Math.max(1, visitDates.length));
+  // ── 2. Âncora (mês 0 da planilha) = mês da 1ª visita. Cada visita é mapeada
+  //      ao seu deslocamento de meses; só interessam os 12 primeiros meses.
+  const first = visitDates[0] ?? buildMonthlyCalendar(opts.startDate)[0];
+  const am = /^(\d{4})-(\d{2})/.exec(first.trim());
+  const anchorY = am ? Number(am[1]) : 2000;
+  const anchorM = am ? Number(am[2]) - 1 : 0;
 
-  // Roda o motor UMA vez pras perguntas com frequência.
+  // Mapa visitIndex → mês-offset (0..) e quais meses têm visita.
+  const monthOfVisit = visitDates.map((v) => monthOffset(v, anchorY, anchorM));
+  const monthHasVisitBase = new Array(12).fill(false) as boolean[];
+  for (const mo of monthOfVisit) if (mo >= 0 && mo < 12) monthHasVisitBase[mo] = true;
+
+  // ── 3. Motor por-pergunta sobre as datas REAIS (uma vez pras perguntas com
+  //      frequência). Devolve visitIndex → ids.
   const freqQuestions = questions.filter(hasFrequency);
   const specs = freqQuestions.map((q) => toActivitySpec(q, excludedQuestionIds));
   const schedule = scheduleActivitiesOntoVisits(visitDates, specs);
 
-  // Inverte o schedule: visitIndex → ids ⇒ id → Set<visitIndex>.
+  // Inverte: id → Set<visitIndex>.
   const hitsByQuestion = new Map<string, Set<number>>();
   for (const [visitIndex, ids] of schedule) {
     for (const id of ids) {
@@ -370,15 +541,23 @@ export function buildPerQuestionMonthMatrix(
   return questions.map((q) => {
     const hits = new Array(12).fill(false) as boolean[];
     if (!hasFrequency(q)) {
-      // Sem frequência → "toda visita": todos os meses cobertos pelo calendário.
-      for (let k = 0; k < monthCount; k++) hits[k] = true;
+      // Sem frequência → "toda visita": marca todos os meses que TÊM visita
+      // (não os 12 cegamente — mês sem visita não recebe marca).
+      for (let m = 0; m < 12; m++) if (monthHasVisitBase[m]) hits[m] = true;
     } else {
+      // Cada visita em que a pergunta vence marca o MÊS daquela visita.
       const set = hitsByQuestion.get(q.id);
-      if (set) for (const idx of set) if (idx >= 0 && idx < 12) hits[idx] = true;
+      if (set) {
+        for (const idx of set) {
+          const mo = monthOfVisit[idx];
+          if (mo >= 0 && mo < 12) hits[mo] = true;
+        }
+      }
     }
     return {
       question: q,
       hits,
+      monthHasVisit: monthHasVisitBase.slice(),
       freqLabel: freqLabelFor(q),
       unit: q.unit ?? null,
       min: q.expected_min ?? null,

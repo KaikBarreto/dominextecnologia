@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   buildPerQuestionMonthMatrix,
+  generateOccurrencesPure,
   freqLabelFor,
   type MatrixQuestion,
 } from '../../../supabase/functions/_shared/pmoc-templates/perQuestionMatrix';
@@ -22,6 +23,7 @@ import {
   type ActivitySpec,
 } from './visitScheduleEngine';
 import { toActivitySpec } from './visitQuestionVisibility';
+import { generateOccurrences } from '../../hooks/useContracts';
 
 // Calendário mensal de 12 visitas a partir de 01/01 (mês 0..11). Mesma âncora
 // que a matriz usa quando recebe esse startDate.
@@ -221,5 +223,222 @@ describe('buildPerQuestionMonthMatrix — equivalência com o motor real', () =>
     expect(freqLabelFor({ id: '4', question: null, freq_kind: 'time', freq_months: 12 })).toBe('Anual');
     expect(freqLabelFor({ id: '5', question: null, freq_kind: null })).toBe('Toda visita');
     expect(freqLabelFor({ id: '6', question: null, freq_kind: 'visits', freq_visits: 2 })).toBe('A cada 2 visitas');
+  });
+});
+
+// =============================================================================
+// CADÊNCIA NÃO-MENSAL — a matriz tem que projetar as datas REAIS de visita pela
+// MESMA lógica de `generateOccurrences` (useContracts.ts) e rodar o motor sobre
+// elas. Prova: (1) port de datas == gerador real; (2) mensal reduz ao calendário
+// atual de 12 visitas (não-regressão); (3) bimestral e a-cada-15-dias batem com
+// o motor real sobre as MESMAS datas que `generateOccurrences` gera.
+// =============================================================================
+
+/** Date (campos locais Y-M-D) → 'YYYY-MM-DD'. */
+function fmt(d: Date): string {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const da = String(d.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${da}`;
+}
+
+/**
+ * hits[12] do MOTOR REAL pra uma pergunta sobre as datas REAIS `dates`
+ * (geradas por `generateOccurrences`), mapeadas pro mês de cada visita relativo
+ * ao mês de início. Espelho da agregação que a matriz faz.
+ */
+function engineHitsOnDates(
+  q: MatrixQuestion,
+  dates: Date[],
+  excluded?: Set<string>,
+): boolean[] {
+  const spec: ActivitySpec = toActivitySpec(q, excluded);
+  // Alimenta o motor com as MESMAS datas (T00:00:00 = meia-noite LOCAL, mesmo
+  // dia que a matriz vê ao parsear 'YYYY-MM-DD' como meia-dia local).
+  const schedule = scheduleActivitiesOntoVisits(
+    dates.map((d) => ({ date: `${fmt(d)}T00:00:00` })),
+    [spec],
+  );
+  const anchorY = dates[0].getFullYear();
+  const anchorM = dates[0].getMonth();
+  const hits = new Array(12).fill(false) as boolean[];
+  for (const [visitIndex, ids] of schedule) {
+    if (!ids.includes(q.id)) continue;
+    const d = dates[visitIndex];
+    const off = (d.getFullYear() - anchorY) * 12 + (d.getMonth() - anchorM);
+    if (off >= 0 && off < 12) hits[off] = true;
+  }
+  return hits;
+}
+
+describe('buildPerQuestionMonthMatrix — cadência não-mensal (datas reais)', () => {
+  it('port generateOccurrencesPure == generateOccurrences real (mensal/bimestral/15 dias)', () => {
+    const start = new Date(2026, 0, 1); // 2026-01-01 local
+    for (const [type, value] of [
+      ['months', 1],
+      ['months', 2],
+      ['days', 15],
+      ['days', 7],
+    ] as const) {
+      const real = generateOccurrences(start, type, value, 12).map(fmt);
+      const port = generateOccurrencesPure(start, type, value, 12).map(fmt);
+      expect(port).toEqual(real);
+    }
+  });
+
+  it('port == real também em início de FIM DE MÊS (clamp do addMonths)', () => {
+    // 31/01: +1 mês deve CLAMPAR pra 28/02 (date-fns), não transbordar pra 03/03.
+    const start = new Date(2026, 0, 31);
+    const real = generateOccurrences(start, 'months', 1, 12).map(fmt);
+    const port = generateOccurrencesPure(start, 'months', 1, 12).map(fmt);
+    expect(port).toEqual(real);
+    expect(port[1]).toBe('2026-02-28'); // clampou
+  });
+
+  it('MENSAL via cadência reduz ao calendário atual (não-regressão): trimestral 0,3,6,9', () => {
+    const q: MatrixQuestion = {
+      id: 'q-trim',
+      question: 'Trimestral',
+      freq_kind: 'time',
+      freq_months: 3,
+      start_kind: 'due_now',
+    };
+    // Passando a cadência mensal explicitamente — tem que dar o MESMO que hoje
+    // (sem cadência, branch do calendário mensal legado).
+    const viaCadence = buildPerQuestionMonthMatrix([q], undefined, {
+      startDate: START,
+      frequencyType: 'months',
+      frequencyValue: 1,
+      horizonMonths: 12,
+    })[0];
+    const viaLegacy = buildPerQuestionMonthMatrix([q], undefined, {
+      startDate: START,
+    })[0];
+    expect(viaCadence.hits).toEqual(viaLegacy.hits);
+    expect(marked(viaCadence.hits)).toEqual([0, 3, 6, 9]);
+    // Mensal → todos os 12 meses têm visita.
+    expect(viaCadence.monthHasVisit.every(Boolean)).toBe(true);
+  });
+
+  it('BIMESTRAL (months/2): visitas só nos meses pares; ímpares sem visita; == motor', () => {
+    const start = new Date(2026, 0, 1);
+    const dates = generateOccurrences(start, 'months', 2, 12);
+    const visitDates = dates.map(fmt);
+
+    const q: MatrixQuestion = {
+      id: 'q-mensal-pergunta',
+      question: 'Pergunta mensal numa cadência bimestral',
+      freq_kind: 'time',
+      freq_months: 1, // vence "sempre que possível" → toda visita real (a cada 2 meses)
+      start_kind: 'due_now',
+    };
+    const row = buildPerQuestionMonthMatrix([q], undefined, { visitDates })[0];
+
+    // Meses com visita: 0,2,4,6,8,10. Ímpares NÃO têm visita.
+    expect(marked(row.monthHasVisit)).toEqual([0, 2, 4, 6, 8, 10]);
+    // A pergunta vence nas visitas reais → mesmos meses pares.
+    expect(marked(row.hits)).toEqual([0, 2, 4, 6, 8, 10]);
+    // Concorda com o motor real sobre as MESMAS datas.
+    expect(row.hits).toEqual(engineHitsOnDates(q, dates));
+  });
+
+  it('BIMESTRAL: semestral por-pergunta cai em 0,6 (visitas reais 0,2,4,6,8,10) e == motor', () => {
+    const start = new Date(2026, 0, 1);
+    const dates = generateOccurrences(start, 'months', 2, 12);
+    const visitDates = dates.map(fmt);
+    const q: MatrixQuestion = {
+      id: 'q-sem',
+      question: 'Semestral',
+      freq_kind: 'time',
+      freq_months: 6,
+      start_kind: 'due_now',
+    };
+    const row = buildPerQuestionMonthMatrix([q], undefined, { visitDates })[0];
+    expect(marked(row.hits)).toEqual([0, 6]);
+    expect(row.hits).toEqual(engineHitsOnDates(q, dates));
+    // Mês ímpar nunca marca (não há visita lá).
+    for (const odd of [1, 3, 5, 7, 9, 11]) expect(row.hits[odd]).toBe(false);
+  });
+
+  it('BIMESTRAL: pergunta SEM frequência marca só meses COM visita (não os 12)', () => {
+    const start = new Date(2026, 0, 1);
+    const visitDates = generateOccurrences(start, 'months', 2, 12).map(fmt);
+    const q: MatrixQuestion = { id: 'q-null', question: 'Toda visita', freq_kind: null };
+    const row = buildPerQuestionMonthMatrix([q], undefined, { visitDates })[0];
+    expect(marked(row.hits)).toEqual([0, 2, 4, 6, 8, 10]);
+    expect(marked(row.monthHasVisit)).toEqual([0, 2, 4, 6, 8, 10]);
+  });
+
+  it('A CADA 15 DIAS (days/15): ~2 visitas/mês; mês marca se QUALQUER visita vence; == motor', () => {
+    const start = new Date(2026, 0, 1);
+    const dates = generateOccurrences(start, 'days', 15, 12);
+    const visitDates = dates.map(fmt);
+    // Há mais de uma visita por mês → vários meses têm visita.
+    expect(dates.length).toBeGreaterThan(12);
+
+    const q: MatrixQuestion = {
+      id: 'q-quinzenal',
+      question: 'Vence a cada visita (cadência 15 dias)',
+      freq_kind: null, // toda visita
+    };
+    const row = buildPerQuestionMonthMatrix([q], undefined, { visitDates })[0];
+    // Todo mês dentro do horizonte tem ao menos 1 visita a cada 15 dias.
+    expect(row.monthHasVisit.every(Boolean)).toBe(true);
+    expect(row.hits.every(Boolean)).toBe(true);
+
+    // Pergunta MENSAL sobre cadência de 15 dias: vence ~1×/mês → concorda com o
+    // motor sobre as MESMAS datas reais.
+    const qm: MatrixQuestion = {
+      id: 'q-mensal-15',
+      question: 'Mensal numa cadência de 15 dias',
+      freq_kind: 'time',
+      freq_months: 1,
+      start_kind: 'due_now',
+    };
+    const rowM = buildPerQuestionMonthMatrix([qm], undefined, { visitDates })[0];
+    expect(rowM.hits).toEqual(engineHitsOnDates(qm, dates));
+    // Vence em todos os 12 meses (uma vez por mês basta pra marcar).
+    expect(rowM.hits.every(Boolean)).toBe(true);
+  });
+
+  it('A CADA 15 DIAS: trimestral por-pergunta concorda com o motor sobre as datas reais', () => {
+    const start = new Date(2026, 0, 1);
+    const dates = generateOccurrences(start, 'days', 15, 12);
+    const visitDates = dates.map(fmt);
+    const q: MatrixQuestion = {
+      id: 'q-trim-15',
+      question: 'Trimestral numa cadência de 15 dias',
+      freq_kind: 'time',
+      freq_months: 3,
+      start_kind: 'due_now',
+    };
+    const row = buildPerQuestionMonthMatrix([q], undefined, { visitDates })[0];
+    expect(row.hits).toEqual(engineHitsOnDates(q, dates));
+    // Trimestral due_now → meses 0,3,6,9 (a 1ª visita ≥ meta cai nesses meses).
+    expect(marked(row.hits)).toEqual([0, 3, 6, 9]);
+  });
+
+  it('cadência projetada internamente (sem visitDates) == projeção externa via generateOccurrences', () => {
+    // Garante que buildCadenceCalendar (interno) usa as MESMAS datas do gerador.
+    const start = new Date(2026, 0, 1);
+    const dates = generateOccurrences(start, 'months', 2, 12);
+    const q: MatrixQuestion = {
+      id: 'q-cmp',
+      question: 'Trimestral',
+      freq_kind: 'time',
+      freq_months: 3,
+      start_kind: 'due_now',
+    };
+    const internal = buildPerQuestionMonthMatrix([q], undefined, {
+      startDate: START,
+      frequencyType: 'months',
+      frequencyValue: 2,
+      horizonMonths: 12,
+    })[0];
+    const external = buildPerQuestionMonthMatrix([q], undefined, {
+      visitDates: dates.map(fmt),
+    })[0];
+    expect(internal.hits).toEqual(external.hits);
+    expect(internal.monthHasVisit).toEqual(external.monthHasVisit);
   });
 });
