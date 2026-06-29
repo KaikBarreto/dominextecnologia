@@ -29,11 +29,39 @@ import {
   PlanilhaAmbienteBlock,
   PlanilhaData,
   PlanilhaEquipment,
+  PlanilhaPerQuestionBlock,
+  PlanilhaPerQuestionRow,
 } from "../_shared/pmoc-templates/planilha.ts";
+import {
+  buildPerQuestionMonthMatrix,
+  MatrixQuestion,
+} from "../_shared/pmoc-templates/perQuestionMatrix.ts";
 import {
   dateToExtenso,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
+
+// Sigla curta da coluna FREQ pro modelo NOVO (por-pergunta). Deriva de
+// freq_kind/months/days/visits — espelha freqLabelFor (perQuestionMatrix.ts),
+// só que compacta pra caber na célula. "—" = sem periodicidade fixa (toda visita).
+function freqCodeFor(q: MatrixQuestion): string {
+  if (q.freq_kind === "visits") {
+    const n = q.freq_visits && q.freq_visits >= 1 ? Math.floor(q.freq_visits) : 1;
+    return n <= 1 ? "—" : `V${n}`;
+  }
+  if (q.freq_kind === "time") {
+    const days = q.freq_days && q.freq_days > 0 ? Math.floor(q.freq_days) : 0;
+    if (days > 0) return `${days}d`;
+    const m = q.freq_months && q.freq_months > 0 ? Math.floor(q.freq_months) : 0;
+    if (m === 1) return "M";
+    if (m === 3) return "T";
+    if (m === 6) return "S";
+    if (m === 12) return "A";
+    if (m === 0) return "E";
+    return `${m}m`;
+  }
+  return "—";
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -344,7 +372,7 @@ Deno.serve(async (req) => {
       supabase
         .from("contract_items")
         .select(
-          "id, environment_id, equipment_id, item_name, sort_order, pmoc_scope, pmoc_start_visit, equipment:equipment(name, brand, model, capacity, location, serial_number)",
+          "id, environment_id, equipment_id, item_name, sort_order, pmoc_scope, pmoc_start_visit, form_template_ids, first_os_excluded_questions, equipment:equipment(name, brand, model, capacity, location, serial_number)",
         )
         .eq("contract_id", contract.id)
         .order("sort_order", { ascending: true }),
@@ -451,6 +479,10 @@ Deno.serve(async (req) => {
       sort_order: number | null;
       pmoc_scope: string | null;
       pmoc_start_visit: number | null;
+      // Modelo NOVO (P4): discriminador. form_template_ids não-vazio → matriz
+      // derivada por-pergunta. first_os_excluded_questions = âncora da 1ª OS.
+      form_template_ids: unknown;
+      first_os_excluded_questions: unknown;
       equipment:
         | {
             name: string | null;
@@ -612,6 +644,138 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Plano POR-PERGUNTA (P4) --------------------------------------------
+    // Discriminador POR ITEM: contract_item com `form_template_ids` não-vazio usa
+    // o checklist por-pergunta → matriz 12 meses DERIVADA da frequência de cada
+    // pergunta (espelha o motor real de visitas). Itens legados (form_template_ids
+    // vazio) seguem o caminho acima (planMachines/activities) intocados.
+    const toStringArray = (v: unknown): string[] => {
+      if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
+      return [];
+    };
+
+    // Itens novos: têm ≥1 template no form_template_ids.
+    const newModelItems = itemRows.filter(
+      (ci) => toStringArray(ci.form_template_ids).length > 0,
+    );
+
+    // Hash dos dados do modelo novo (entra no content_hash p/ invalidar cache).
+    const perQuestionHashSeed: unknown[] = [];
+    const perQuestionBlocks: PlanilhaPerQuestionBlock[] = [];
+
+    if (newModelItems.length > 0) {
+      // Carrega TODOS os templates referenciados + suas perguntas de uma vez.
+      const allTemplateIds = Array.from(
+        new Set(newModelItems.flatMap((ci) => toStringArray(ci.form_template_ids))),
+      );
+
+      const { data: questionRows } = await supabase
+        .from("form_questions")
+        .select(
+          "id, template_id, question, question_type, freq_kind, freq_months, freq_days, freq_visits, start_kind, start_visit, unit, expected_min, expected_max, pmoc_section, pmoc_group, position",
+        )
+        .in("template_id", allTemplateIds)
+        .order("position", { ascending: true });
+
+      type QRow = {
+        id: string;
+        template_id: string;
+        question: string | null;
+        freq_kind: string | null;
+        freq_months: number | null;
+        freq_days: number | null;
+        freq_visits: number | null;
+        start_kind: string | null;
+        start_visit: number | null;
+        unit: string | null;
+        expected_min: number | null;
+        expected_max: number | null;
+        pmoc_section: string | null;
+        pmoc_group: string | null;
+        position: number | null;
+      };
+      const qByTemplate = new Map<string, QRow[]>();
+      for (const q of (questionRows ?? []) as QRow[]) {
+        const arr = qByTemplate.get(q.template_id) ?? [];
+        arr.push(q);
+        qByTemplate.set(q.template_id, arr);
+      }
+
+      // Ordena os itens novos pela ordem do cadastro (igual planMachines/checklist).
+      const orderedNew = newModelItems
+        .slice()
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+      for (const ci of orderedNew) {
+        const templateIds = toStringArray(ci.form_template_ids);
+        // Perguntas do(s) template(s) do equipamento, na ordem dos templates.
+        const questions: MatrixQuestion[] = [];
+        for (const tid of templateIds) {
+          for (const q of qByTemplate.get(tid) ?? []) {
+            questions.push({
+              id: q.id,
+              question: q.question,
+              freq_kind: q.freq_kind,
+              freq_months: q.freq_months,
+              freq_days: q.freq_days,
+              freq_visits: q.freq_visits,
+              start_kind: q.start_kind,
+              start_visit: q.start_visit,
+              unit: q.unit,
+              expected_min: q.expected_min,
+              expected_max: q.expected_max,
+              pmoc_section: q.pmoc_section,
+              pmoc_group: q.pmoc_group,
+            });
+          }
+        }
+        if (questions.length === 0) continue;
+
+        // Âncora da 1ª OS deste equipamento (flag F3) — sobrescreve o template.
+        const excluded = new Set(toStringArray(ci.first_os_excluded_questions));
+
+        // Cadência: matriz mensal de 12 visitas a partir do início do contrato.
+        // Para cadência NÃO-mensal, a matriz continua sendo o cronograma de
+        // referência da norma (passo mensal) — a Seção 5 imprime o aviso, igual
+        // o legado. (A projeção de datas reais não-mensais é evolução futura;
+        // hoje o aviso textual cobre a divergência, sem regra nova inventada.)
+        const matrix = buildPerQuestionMonthMatrix(questions, excluded, {
+          startDate: (contract.start_date ?? undefined) as string | undefined,
+        });
+
+        const rows: PlanilhaPerQuestionRow[] = matrix.map((m) => ({
+          description: m.question.question,
+          freqLabel: m.freqLabel,
+          freqCode: freqCodeFor(m.question),
+          hits: m.hits,
+          unit: m.unit,
+          min: m.min,
+          max: m.max,
+          section: m.section,
+          group: m.group,
+        }));
+
+        perQuestionBlocks.push({
+          title: ci.equipment?.name ?? ci.item_name ?? "Equipamento",
+          rows,
+        });
+
+        perQuestionHashSeed.push({
+          item: ci.id,
+          templates: templateIds,
+          excluded: Array.from(excluded).sort(),
+          rows: rows.map((r) => ({
+            d: r.description,
+            f: r.freqCode,
+            h: r.hits.map((b) => (b ? 1 : 0)).join(""),
+            u: r.unit,
+            mn: r.min,
+            mx: r.max,
+          })),
+        });
+      }
+    }
+
     // Seção "Registro de Execução" removida (2026-06): dado dinâmico (visitas/
     // conformidade) congelava no PDF baixado e ficava desatualizado. A planilha
     // termina na legenda do plano + "Documento gerado em …".
@@ -765,6 +929,9 @@ Deno.serve(async (req) => {
       },
       // Plano por equipamento (Fase 4); vazio → template usa `activities` (legado).
       planMachines,
+      // Plano POR-PERGUNTA (P4): blocos derivados da frequência por-pergunta do
+      // checklist (itens com form_template_ids). Renderizados ANTES do legado.
+      perQuestionBlocks,
       activities,
       generated_at_extenso: dateToExtenso(new Date()),
       // Rodapé Dominex (linha + logo + dominex.app) em toda página — oculto em
@@ -802,7 +969,14 @@ Deno.serve(async (req) => {
       // explicando que a matriz de 12 meses é o cronograma de referência da
       // norma (passo mensal) e que as visitas reais seguem a cadência do
       // contrato. Contrato mensal (months/1) fica idêntico ao v10 (sem aviso).
-      v: "planilha_v11",
+      // planilha_v12 (P4): contratos NOVOS (contract_items.form_template_ids
+      // não-vazio) ganham a Seção 5 POR-PERGUNTA — um bloco por equipamento com
+      // a matriz de 12 meses DERIVADA da frequência de cada pergunta do checklist
+      // (espelha o motor real de visitas → o doc legal bate com a OS gerada).
+      // `perQuestionHashSeed` (templates + perguntas + exclusões + hits) entra no
+      // hash pra invalidar o cache quando o checklist/frequência/âncora mudarem.
+      // Itens legados (form_template_ids vazio) seguem idênticos ao v11.
+      v: "planilha_v12",
       tenant: { name: tenantName, cnpj, logo: !!logoBytes },
       white_label: useWhiteLabel,
       customer: planilhaData.customer,
@@ -811,6 +985,7 @@ Deno.serve(async (req) => {
       contract: planilhaData.contract,
       ambientes,
       planMachines,
+      perQuestion: perQuestionHashSeed,
       activities,
     });
     const contentHash = await sha256Hex(hashInput);
@@ -949,6 +1124,7 @@ Deno.serve(async (req) => {
       equipments: itemRows.length,
       activities: activities.length,
       plan_machines: planMachines.length,
+      per_question_blocks: perQuestionBlocks.length,
       pdf_size_bytes: pdfBytes.length,
       duration_ms: Date.now() - t0,
     });

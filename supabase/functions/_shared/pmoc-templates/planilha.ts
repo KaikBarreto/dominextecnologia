@@ -149,6 +149,37 @@ export interface PlanilhaMachineBlock {
   activities: PlanilhaActivity[];
 }
 
+// ── Modelo NOVO (P4): bloco POR EQUIPAMENTO com matriz 12 meses DERIVADA da
+// frequência POR-PERGUNTA do checklist (form_template_ids não-vazio). A matriz
+// vem PRONTA da edge (via buildPerQuestionMonthMatrix), que espelha o motor real
+// de visitas — então a Planilha bate EXATAMENTE com a OS gerada. Cada linha tem
+// `hits[12]` já calculado; o template só desenha. Coexiste com o legado e com o
+// modelo Fase 4 (planMachines): a edge decide por contract_item.
+export interface PlanilhaPerQuestionRow {
+  /** Texto da pergunta (descrição do serviço). */
+  description: string | null;
+  /** Rótulo PT-BR da frequência (Mensal/Trimestral/Semestral/Anual/…). */
+  freqLabel: string;
+  /** Sigla curta pra coluna FREQ (M/T/S/A/E/V/—) derivada na edge. */
+  freqCode: string | null;
+  /** 12 meses (0..11): true = mês previsto (bolinha verde). VEM PRONTO. */
+  hits: boolean[];
+  /** Unidade/min/max (medições) — exibidos como o legado exibe. */
+  unit: string | null;
+  min: number | null;
+  max: number | null;
+  /** Agrupamento visual (espelha pmoc_section/group). */
+  section: string | null;
+  group: string | null;
+}
+
+export interface PlanilhaPerQuestionBlock {
+  /** Nome do equipamento — cabeçalho do bloco. */
+  title: string;
+  /** Linhas (perguntas) já com a matriz calculada. */
+  rows: PlanilhaPerQuestionRow[];
+}
+
 export interface PlanilhaData {
   tenant: {
     name: string;
@@ -212,6 +243,14 @@ export interface PlanilhaData {
    * cai sempre no legado.
    */
   planMachines?: PlanilhaMachineBlock[];
+  /**
+   * Modelo NOVO (P4): blocos por equipamento com matriz 12 meses DERIVADA da
+   * frequência por-pergunta (contratos com `contract_items.form_template_ids`
+   * não-vazio). Quando há blocos aqui, a Seção 5 os renderiza ANTES dos
+   * `planMachines`/`activities`. Os hits já vêm calculados pela edge (espelhando
+   * o motor real de visitas) — o template só desenha. Vazio/ausente → ignorado.
+   */
+  perQuestionBlocks?: PlanilhaPerQuestionBlock[];
   activities: PlanilhaActivity[];
   generated_at_extenso: string;
   /**
@@ -1002,10 +1041,19 @@ function drawCadenceWarning(ctx: Ctx): void {
 //  - ausente/vazio → LEGADO: lista única agrupada por seção, matriz não-faseada
 //    (idêntico ao planilha_v8). Garante back-compat de contratos antigos.
 function drawPlanTable(ctx: Ctx): void {
+  // Modelo NOVO (P4): blocos por-pergunta primeiro (matriz já derivada da
+  // frequência por-pergunta do checklist, espelhando o motor real de visitas).
+  const perQuestion = ctx.data.perQuestionBlocks ?? [];
+  if (perQuestion.length > 0) {
+    drawPlanPerQuestion(ctx, perQuestion);
+  }
+  // Modelo Fase 4 (planMachines) e/ou legado pros itens que NÃO usam o checklist
+  // por-pergunta. Um contrato pode misturar; cada caminho cobre seus itens.
   const machines = ctx.data.planMachines ?? [];
   if (machines.length > 0) {
     drawPlanPerMachine(ctx, machines);
-  } else {
+  } else if (perQuestion.length === 0) {
+    // Só cai no legado quando NÃO há nem máquinas (Fase 4) nem blocos novos.
     drawPlanLegacy(ctx);
   }
   drawPlanLegend(ctx);
@@ -1303,6 +1351,169 @@ function drawPlanPerMachine(ctx: Ctx, machines: PlanilhaMachineBlock[]): void {
   }
 }
 
+// CAMINHO POR-PERGUNTA (P4): um bloco por equipamento, matriz 12 meses DERIVADA
+// da frequência por-pergunta do checklist. Os `hits[12]` já vêm calculados pela
+// edge (via buildPerQuestionMonthMatrix, que espelha o motor real de visitas) —
+// aqui só desenhamos. Mesmo grid visual do caminho por máquina.
+function drawPlanPerQuestion(ctx: Ctx, blocks: PlanilhaPerQuestionBlock[]): void {
+  let itemNum = 0;
+  for (const b of blocks) {
+    drawPerQuestionMachineHeader(ctx, b.title);
+    if (b.rows.length === 0) {
+      ensureSpace(ctx, 16);
+      ctx.page.drawText("Sem perguntas com periodicidade neste checklist.", {
+        x: MARGIN_X,
+        y: ctx.cursorY - 10,
+        size: 8,
+        font: ctx.helv,
+        color: COLORS.gray,
+      });
+      ctx.cursorY -= 18;
+      continue;
+    }
+    drawMatrixHeader(ctx);
+    // Agrupa as perguntas por seção (pmoc_section) pra leitura, igual o legado.
+    const bySection = new Map<string, PlanilhaPerQuestionRow[]>();
+    for (const r of b.rows) {
+      const key = r.section ?? "outros";
+      const arr = bySection.get(key) ?? [];
+      arr.push(r);
+      bySection.set(key, arr);
+    }
+    let rowIdx = 0;
+    for (const [section, rows] of bySection) {
+      drawGroupBand(ctx, sectionLabel(section));
+      for (const r of rows) {
+        itemNum++;
+        drawPerQuestionRow(ctx, r, itemNum, rowIdx, () => drawMatrixHeader(ctx));
+        rowIdx++;
+      }
+    }
+    ctx.cursorY -= 8;
+  }
+}
+
+// Cabeçalho de bloco do modelo NOVO: nome do equipamento + selo "checklist
+// por-pergrunta". Mesma faixa escura do caminho por máquina, sem fase de norma
+// (a matriz já reflete a frequência de cada pergunta).
+function drawPerQuestionMachineHeader(ctx: Ctx, title: string): void {
+  const headH = 26;
+  if (ctx.cursorY - (headH + 20) < FOOTER_RESERVED_H) newPage(ctx);
+  const { page, helv, helvBold } = ctx;
+  page.drawRectangle({
+    x: MARGIN_X,
+    y: ctx.cursorY - headH,
+    width: CONTENT_W,
+    height: headH,
+    color: COLORS.accent,
+  });
+  let t = safe(title || "Equipamento");
+  while (t.length > 1 && helvBold.widthOfTextAtSize(t, 9.5) > CONTENT_W - 12) {
+    t = t.slice(0, -2) + "…";
+  }
+  page.drawText(t, {
+    x: MARGIN_X + 6,
+    y: ctx.cursorY - 12,
+    size: 9.5,
+    font: helvBold,
+    color: COLORS.white,
+  });
+  page.drawText("Periodicidade por item do checklist", {
+    x: MARGIN_X + 6,
+    y: ctx.cursorY - 22,
+    size: 7,
+    font: helv,
+    color: COLORS.white,
+  });
+  ctx.cursorY -= headH + 4;
+}
+
+// Uma linha do modelo NOVO: usa os `hits[12]` JÁ calculados (não chama
+// monthsHit). DESCRIÇÃO inclui unidade/min-max das medições, como o legado.
+function drawPerQuestionRow(
+  ctx: Ctx,
+  r: PlanilhaPerQuestionRow,
+  itemNum: number,
+  rowIdx: number,
+  redrawHeader: () => void,
+): void {
+  const { helv, helvBold } = ctx;
+  const g = GEO();
+  // Descrição + faixa de medição (ex.: "Superaquecimento  ·  5–8 °C").
+  let descText = safe(r.description ?? "");
+  const range =
+    r.min != null || r.max != null
+      ? `${r.min != null ? fmtNum(r.min) : ""}${r.min != null && r.max != null ? "-" : ""}${r.max != null ? fmtNum(r.max) : ""}`
+      : "";
+  const meas = [range, r.unit ?? ""].filter((s) => s && s.trim()).join(" ");
+  if (meas) descText = descText ? `${descText}  -  ${meas}` : meas;
+
+  const descLines = wrapText(helv, descText, 7.5, g.descW - 2 * g.padCell);
+  const thisRowH = Math.max(15, descLines.length * 9 + 6);
+  if (ctx.cursorY - thisRowH < FOOTER_RESERVED_H) {
+    newPage(ctx);
+    redrawHeader();
+  }
+  const p = ctx.page;
+  const drawRowCellBorder = (x: number, w: number) => {
+    if (rowIdx % 2 === 1) {
+      p.drawRectangle({ x, y: ctx.cursorY - thisRowH, width: w, height: thisRowH, color: COLORS.rowAlt });
+    }
+    p.drawRectangle({
+      x,
+      y: ctx.cursorY - thisRowH,
+      width: w,
+      height: thisRowH,
+      borderColor: COLORS.border,
+      borderWidth: 0.6,
+    });
+  };
+  // ITEM
+  drawRowCellBorder(g.itemX, g.itemW);
+  const itemLbl = String(itemNum);
+  const ilw = helv.widthOfTextAtSize(itemLbl, 7.5);
+  p.drawText(itemLbl, {
+    x: g.itemX + (g.itemW - ilw) / 2,
+    y: ctx.cursorY - thisRowH / 2 - 3,
+    size: 7.5,
+    font: helv,
+    color: COLORS.black,
+  });
+  // DESCRIÇÃO
+  drawRowCellBorder(g.descX, g.descW);
+  let ly = ctx.cursorY - 10;
+  for (const ln of descLines) {
+    p.drawText(ln, { x: g.descX + g.padCell, y: ly, size: 7.5, font: helv, color: COLORS.black });
+    ly -= 9;
+  }
+  // FREQ (sigla curta vinda da edge).
+  drawRowCellBorder(g.freqX, g.freqW);
+  const fLabel = r.freqCode ?? "—";
+  const flw = helvBold.widthOfTextAtSize(fLabel, 7.5);
+  p.drawText(fLabel, {
+    x: g.freqX + (g.freqW - flw) / 2,
+    y: ctx.cursorY - thisRowH / 2 - 3,
+    size: 7.5,
+    font: helvBold,
+    color: COLORS.accent,
+  });
+  // Matriz de meses — usa os hits JÁ calculados (sem monthsHit).
+  const hits = r.hits ?? new Array(12).fill(false);
+  for (let m = 0; m < 12; m++) {
+    const mx = g.matrixX + m * g.monthW;
+    drawRowCellBorder(mx, g.monthW);
+    if (hits[m]) {
+      p.drawCircle({
+        x: mx + g.monthW / 2,
+        y: ctx.cursorY - thisRowH / 2,
+        size: 2.2,
+        color: COLORS.mark,
+      });
+    }
+  }
+  ctx.cursorY -= thisRowH;
+}
+
 // CAMINHO LEGADO (planilha_v8): lista única agrupada por seção, matriz NÃO
 // faseada. Comportamento original preservado para contratos antigos.
 function drawPlanLegacy(ctx: Ctx): void {
@@ -1362,6 +1573,16 @@ function drawPlanLegend(ctx: Ctx): void {
     color: COLORS.gray,
   });
   ctx.cursorY -= 8;
+  // Modelo NOVO (por-pergunta): a sigla FREQ pode trazer também V=por visita e
+  // P=personalizado (a cada N dias/meses). Linha extra só quando há blocos novos.
+  if ((ctx.data.perQuestionBlocks ?? []).length > 0) {
+    ensureSpace(ctx, 12);
+    ctx.page.drawText(
+      "V=A cada N visitas   P=Personalizado (a cada N dias/meses)   -=sem periodicidade fixa (toda visita)",
+      { x: MARGIN_X, y: ctx.cursorY, size: 7.5, font: helv, color: COLORS.gray },
+    );
+    ctx.cursorY -= 8;
+  }
 }
 
 // -- Data de geração (rodapé textual, sem selo regulatório) ------------------

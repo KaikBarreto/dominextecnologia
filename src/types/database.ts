@@ -156,6 +156,9 @@ export interface FormTemplate {
   service_type_id?: string;
   service_type_ids?: string[];
   applies_to_all_services?: boolean;
+  // Template "de norma" PMOC (materializado do catálogo). Não aparece na gestão
+  // de checklists comum e some do seletor comum.
+  is_pmoc_default?: boolean;
   created_by?: string;
   created_at: string;
   updated_at: string;

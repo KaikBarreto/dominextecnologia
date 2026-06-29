@@ -50,7 +50,10 @@ export default function ChecklistsPage() {
   const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
 
-  const activeTemplates = templates.filter((template) => template.is_active);
+  // Templates de norma PMOC (is_pmoc_default) são materializados/gerenciados pelo
+  // fluxo de contrato PMOC e referenciados por contrato — não devem aparecer (nem
+  // ser excluídos) na gestão de checklists comum.
+  const activeTemplates = templates.filter((template) => template.is_active && !template.is_pmoc_default);
   const filteredTemplates = activeTemplates.filter((t) => fuzzyIncludes(t.name, searchTerm));
   const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(filteredTemplates);
   const pagination = useDataPagination(sortedTemplates, 10, 'checklists-list');

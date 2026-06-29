@@ -49,6 +49,8 @@ import {
 } from '@/components/contracts/pmocMachineRoutine';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import { CommonChecklistEditor, type ChecklistTemplateOption } from '@/components/contracts/CommonChecklistEditor';
+import { usePmocNormTemplates, familyForScope, type PmocNormTemplate } from '@/hooks/usePmocNormTemplates';
+import { useUserCompany } from '@/hooks/useUserCompany';
 import { isEveryVisit } from '@/components/contracts/questionFrequency';
 import { AreaCalculatorModal } from '@/components/contracts/AreaCalculatorModal';
 import { CargaTermicaCalculatorModal } from '@/components/contracts/CargaTermicaCalculatorModal';
@@ -237,6 +239,26 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const canUsePmoc =
     companySettings?.segment === 'refrigeracao' || (isEditing && !!editContract?.is_pmoc);
 
+  // ── Discriminador PMOC NOVO (editor inline) vs PMOC LEGADO (picker + fase) ──
+  // P2: o PMOC novo unifica o checklist no motor do contrato comum
+  // (CommonChecklistEditor por máquina + select agrupado por família). Um PMOC
+  // EXISTENTE criado pelo caminho antigo (catálogo + contract_plan_activities +
+  // pmoc_start_visit) deve continuar na UI ANTIGA — coexistência (prova legal).
+  //
+  // Regra (explícita): é LEGADO quando estamos EDITANDO um PMOC cujos itens NÃO
+  // têm `form_template_ids` (a marca do editor de norma). Contrato NOVO, ou um
+  // PMOC já migrado/criado pelo caminho novo (algum item com form_template_ids),
+  // usa o editor INLINE. `isLegacyPmocEdit` é estável por abertura (depende só do
+  // contrato carregado), então não oscila enquanto o gestor edita.
+  const isLegacyPmocEdit = useMemo(() => {
+    if (!isEditing || !editContract?.is_pmoc) return false;
+    const items = (editContract.contract_items || []) as any[];
+    const anyNormTemplates = items.some(
+      (i) => Array.isArray(i.form_template_ids) && i.form_template_ids.length > 0,
+    );
+    return !anyNormTemplates;
+  }, [isEditing, editContract]);
+
   const [step, setStep] = useState(0);
   // Etapa mais avançada já visitada — libera o clique direto no cabeçalho do
   // wizard pra navegar livremente (ida e volta) entre etapas já alcançadas, sem
@@ -397,6 +419,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { equipment, createEquipment } = useEquipment(customerId || undefined);
   const { categories: equipmentCategories } = useEquipmentCategories();
   const activeEquipment = equipment.filter(eq => eq.status === 'active');
+
+  // ── PMOC novo: editor inline de checklist da norma (P2) ─────────────────────
+  // O ramo PMOC NOVO usa o CommonChecklistEditor por máquina, alimentado pelos 4
+  // templates de norma da empresa (2 famílias × essencial/complementar). Carrega
+  // (e materializa) só quando o modal está aberto, é PMOC e NÃO é edição de um
+  // PMOC legado — assim um PMOC antigo nunca dispara a RPC nem troca de UI.
+  const { companyId } = useUserCompany();
+  const usesInlinePmocEditor = isPmoc && !isLegacyPmocEdit;
+  const { templates: pmocNormTemplates, isLoading: pmocNormLoading, findTemplate: findNormTemplate } =
+    usePmocNormTemplates({ companyId, enabled: open && usesInlinePmocEditor });
 
   // Quick-create de equipamento dentro de um ambiente (PMOC). Guarda a KEY do
   // ambiente que disparou o cadastro pra, no sucesso, marcar o novo equipamento
@@ -1344,7 +1376,27 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         applies_per_equipment: true,
         equipment_ref: eqId,
       }));
-      return { ...prev, [eqId]: { ...cur, scope, activities: acts, customized: false } };
+      // P2 (PMOC novo): trocar o escopo troca a FAMÍLIA → recarrega o template de
+      // norma Essencial da nova família (some o da família anterior). Só no ramo
+      // inline (quando os templates de norma estão carregados); senão preserva.
+      const nextNorm = usesInlinePmocEditor
+        ? (() => {
+            const ess = findNormTemplate(familyForScope(scope), 'essencial');
+            return ess ? [ess.id] : (cur.normTemplateIds ?? []);
+          })()
+        : cur.normTemplateIds;
+      return {
+        ...prev,
+        [eqId]: {
+          ...cur,
+          scope,
+          activities: acts,
+          customized: false,
+          normTemplateIds: nextNorm,
+          // Recomeça a 1ª OS limpa ao trocar de família (perguntas mudam).
+          firstOsExcludedQuestions: usesInlinePmocEditor ? [] : cur.firstOsExcludedQuestions,
+        },
+      };
     });
   };
 
@@ -1355,6 +1407,91 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       return { ...prev, [eqId]: { ...cur, startVisit } };
     });
   };
+
+  // ── PMOC novo: editor inline de norma por máquina (P2) ──────────────────────
+  // Leitura segura dos campos do editor inline na config da máquina.
+  const getMachineNorm = (eqId: string) => {
+    const cfg = machineConfigs[eqId];
+    return {
+      normTemplateIds: cfg?.normTemplateIds ?? [],
+      excluded: cfg?.firstOsExcludedQuestions ?? [],
+    };
+  };
+
+  // Define a LISTA de templates de norma da máquina (CommonChecklistEditor). O
+  // editor já podou as exclusões órfãs antes de chamar onChangeExcluded; aqui só
+  // guardamos a nova lista preservando as exclusões.
+  //
+  // Decisão CEO: o item "Norma completa" do select é o template COMPLEMENTAR (o
+  // resto da norma). Como complemento sem essencial deixaria a máquina sem os
+  // itens obrigatórios, ao ENTRAR um complementar garantimos que o ESSENCIAL da
+  // mesma família entre junto — num clique a máquina fica com norma completa de
+  // verdade (essencial + complemento). Não duplica os já marcados, não toca em
+  // templates de outras famílias e não força nada na REMOÇÃO (gestor pode tirar o
+  // complemento e ficar só com o essencial). Abordagem (b): o value do select
+  // continua sendo o id do complementar — não muda a API pública do editor comum.
+  const setMachineNormTemplates = (eqId: string, templateIds: string[]) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      const prevIds = cur.normTemplateIds ?? [];
+      // Quais ids são NOVOS nesta chamada (entraram agora).
+      const prevSet = new Set(prevIds);
+      let nextIds = [...templateIds];
+      for (const id of templateIds) {
+        if (prevSet.has(id)) continue; // já estava — não é entrada nova
+        const t = normTemplateById.get(id);
+        if (!t || t.tier !== 'complementar') continue;
+        // Entrou um complementar → garante o essencial da MESMA família.
+        const essencial = findNormTemplate(t.family, 'essencial');
+        if (essencial && !nextIds.includes(essencial.id)) {
+          // Coloca o essencial logo ANTES do complementar (ordem de leitura natural).
+          const at = nextIds.indexOf(id);
+          nextIds.splice(at, 0, essencial.id);
+        }
+      }
+      const same =
+        prevIds.length === nextIds.length &&
+        prevIds.every((id, i) => id === nextIds[i]);
+      if (same) return prev;
+      // Marca como personalizado quando o gestor mexe na seleção (≠ default por escopo).
+      return { ...prev, [eqId]: { ...cur, normTemplateIds: nextIds, customized: true } };
+    });
+  };
+
+  // Atualiza as exclusões da 1ª OS da máquina (perguntas dos templates de norma).
+  const setMachineNormExcluded = (eqId: string, excluded: string[]) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      return { ...prev, [eqId]: { ...cur, firstOsExcludedQuestions: excluded } };
+    });
+  };
+
+  // Default por ESCOPO no editor inline: 'ac' → Essencial da Expansão Direta;
+  // 'full' → Essencial dos Sistemas Centrais. Semeia o normTemplateIds da máquina
+  // com o template essencial da família correspondente (uma vez por máquina, sem
+  // sobrescrever escolha do gestor). Só roda no ramo PMOC novo, com os templates
+  // já materializados.
+  useEffect(() => {
+    if (!open || !usesInlinePmocEditor) return;
+    if (pmocNormLoading || pmocNormTemplates.length === 0) return;
+    // Em edição, espera as configs serem reconstruídas do banco antes de semear.
+    if (isEditing && !machineConfigsLoaded) return;
+    setMachineConfigs(prev => {
+      let changed = false;
+      const next: Record<string, MachineConfig> = { ...prev };
+      for (const [eqId, cfg] of Object.entries(prev)) {
+        // Só semeia quem ainda não tem template de norma escolhido.
+        if ((cfg.normTemplateIds ?? []).length > 0) continue;
+        const essencial = findNormTemplate(familyForScope(cfg.scope), 'essencial');
+        if (!essencial) continue;
+        next[eqId] = { ...cfg, normTemplateIds: [essencial.id] };
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [open, usesInlinePmocEditor, pmocNormLoading, pmocNormTemplates.length, isEditing, machineConfigsLoaded, machineConfigs, findNormTemplate]);
 
   // Checklists personalizados do tenant (form_templates ativos, não-pmoc-default)
   // pro picker e pro plano. `templateNameById` rotula a linha de plano custom.
@@ -1422,6 +1559,36 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     return map;
   }, [commonChecklistTemplates]);
 
+  // ── PMOC novo: templates de norma como ChecklistTemplateOption + seções ─────
+  // O CommonChecklistEditor por máquina consome `pmocNormTemplates` (já vêm no
+  // shape ChecklistTemplateOption). Mapa id→template pra resolução rápida.
+  const normTemplateById = useMemo(() => {
+    const map = new Map<string, PmocNormTemplate>();
+    for (const t of pmocNormTemplates) map.set(t.id, t);
+    return map;
+  }, [pmocNormTemplates]);
+
+  // Seções do select "Adicionar checklist da norma" (estilo régua de gases):
+  // família como cabeçalho; Essencial e Norma completa como itens. Só monta
+  // quando os 4 templates já materializaram; ordem Expansão Direta → Sistemas
+  // Centrais (espelha o PmocChecklistPicker).
+  const normAddOptionSections = useMemo(() => {
+    const families: { family: 'expansao_direta' | 'sistemas_centrais'; label: string }[] = [
+      { family: 'expansao_direta', label: 'Expansão Direta' },
+      { family: 'sistemas_centrais', label: 'Sistemas Centrais' },
+    ];
+    const sections: { label: string; options: { id: string; label: string }[] }[] = [];
+    for (const f of families) {
+      const essencial = findNormTemplate(f.family, 'essencial');
+      const complementar = findNormTemplate(f.family, 'complementar');
+      const options: { id: string; label: string }[] = [];
+      if (essencial) options.push({ id: essencial.id, label: 'Essencial' });
+      if (complementar) options.push({ id: complementar.id, label: 'Norma completa' });
+      if (options.length > 0) sections.push({ label: f.label, options });
+    }
+    return sections;
+  }, [findNormTemplate]);
+
   // Perguntas (id + everyVisit) por template pra sanitizar a âncora da 1ª OS dos
   // personalizados ao montar os itens PMOC (buildPmocItemsWithScope).
   const templateQuestionsRefById = useMemo(() => {
@@ -1429,8 +1596,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     for (const t of commonChecklistTemplates) {
       map[t.id] = t.questions.map((q) => ({ id: q.id, everyVisit: isEveryVisit(q) }));
     }
+    // P2: funde os templates de NORMA (PMOC novo) no mesmo mapa, pra o
+    // buildPmocItemsWithScope sanitizar a 1ª OS contra as perguntas da norma.
+    for (const t of pmocNormTemplates) {
+      map[t.id] = t.questions.map((q) => ({ id: q.id, everyVisit: isEveryVisit(q) }));
+    }
     return map;
-  }, [commonChecklistTemplates]);
+  }, [commonChecklistTemplates, pmocNormTemplates]);
 
   // Plano completo (por máquina + local) que vai pro hook em PMOC, montado pela
   // fonte ÚNICA compartilhada (mesma usada pela aba Ambientes). Cada atividade de
@@ -1549,8 +1721,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         });
       return [...envItems, ...looseItemsPayload];
     }
-    return buildPmocItemsWithScope({ items: pmocDerivedItems, machineConfigs, templateQuestions: templateQuestionsRefById, templatesLoading });
-  }, [isPmoc, derivedItems, environments, looseItems, pmocDerivedItems, machineConfigs, commonChecklists, templateQuestionsById, templateQuestionsRefById, templatesLoading]);
+    return buildPmocItemsWithScope({
+      items: pmocDerivedItems,
+      machineConfigs,
+      templateQuestions: templateQuestionsRefById,
+      // P2: enquanto os templates de norma carregam, a guarda anti-perda-de-dado
+      // preserva first_os_excluded_questions do banco (não sanitiza contra vazio).
+      templatesLoading: templatesLoading || (usesInlinePmocEditor && pmocNormLoading),
+    });
+  }, [isPmoc, derivedItems, environments, looseItems, pmocDerivedItems, machineConfigs, commonChecklists, templateQuestionsById, templateQuestionsRefById, templatesLoading, usesInlinePmocEditor, pmocNormLoading]);
 
   // Atividades do plano efetivo com frequência válida pra cronograma (exclui
   // eventuais). PMOC usa o plano POR MÁQUINA; comum usa o planActivities.
@@ -2860,64 +3039,93 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 />
                               </div>
 
-                              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
-                                {/* Fase "Começa na visita" é um conceito do ciclo mensal
-                                    da norma (12 meses). Em cadência personalizada a
-                                    geração ignora pmoc_start_visit — quem manda é a
-                                    frequência por pergunta + "Adicionar na 1ª OS" —, então
-                                    o seletor de fase fica enganoso e some. */}
-                                {!pmocCustomCadence && (
-                                  <div className="flex flex-1 flex-col gap-1.5">
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
-                                            <HelpCircle className="h-3.5 w-3.5" />
-                                          </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs text-xs">
-                                          Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </div>
-                                    <Select value={String(cfg?.startVisit ?? 12)} onValueChange={(v) => setMachineStartVisit(eqId, Number(v))}>
-                                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                                      <SelectContent>
-                                        {START_VISIT_OPTIONS.map(o => (
-                                          <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                              {/* PMOC NOVO (P2): editor INLINE por máquina — mesmo
+                                  CommonChecklistEditor do contrato comum, alimentado
+                                  pelos templates de NORMA. Default por escopo:
+                                  'ac'→Expansão Direta (Essencial); 'full'→Sistemas
+                                  Centrais (Essencial). Sem select de fase: a "1ª OS"
+                                  é por pergunta (checkbox do editor). A geração pelo
+                                  caminho comum fica pra P3. */}
+                              {usesInlinePmocEditor ? (
+                                <div className="pt-1">
+                                  {pmocNormLoading ? (
+                                    <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      Preparando os checklists da norma…
+                                    </span>
+                                  ) : (
+                                    <CommonChecklistEditor
+                                      templates={pmocNormTemplates}
+                                      selectedTemplateIds={getMachineNorm(eqId).normTemplateIds}
+                                      onChangeTemplates={(ids) => setMachineNormTemplates(eqId, ids)}
+                                      excluded={getMachineNorm(eqId).excluded}
+                                      onChangeExcluded={(next) => setMachineNormExcluded(eqId, next)}
+                                      addOptionSections={normAddOptionSections}
+                                      groupLabel="Checklists da norma desta máquina"
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <>
+                                  {/* PMOC LEGADO: picker (modal) + fase "Começa na
+                                      visita" — coexistência (prova legal). Em cadência
+                                      personalizada a geração ignora pmoc_start_visit, então
+                                      o seletor de fase some. */}
+                                  <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
+                                    {!pmocCustomCadence && (
+                                      <div className="flex flex-1 flex-col gap-1.5">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                                <HelpCircle className="h-3.5 w-3.5" />
+                                              </button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs text-xs">
+                                              Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </div>
+                                        <Select value={String(cfg?.startVisit ?? 12)} onValueChange={(v) => setMachineStartVisit(eqId, Number(v))}>
+                                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            {START_VISIT_OPTIONS.map(o => (
+                                              <SelectItem key={o.value} value={String(o.value)} className="text-xs">{o.label}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+                                    <Button type="button" variant="outline" size="sm" className="h-9 w-full text-xs sm:w-auto" disabled={catalogLoading} onClick={() => openMachinePicker(eqId)}>
+                                      <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
+                                      Checklists da Máquina
+                                    </Button>
                                   </div>
-                                )}
-                                <Button type="button" variant="outline" size="sm" className="h-9 w-full text-xs sm:w-auto" disabled={catalogLoading} onClick={() => openMachinePicker(eqId)}>
-                                  <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
-                                  Checklists da Máquina
-                                </Button>
-                              </div>
 
-                              <span className="block text-[11px] text-muted-foreground">
-                                {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
-                                {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
-                              </span>
-
-                              {cfg && !pmocCustomCadence && (
-                                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                                  <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
-                                  <span>
-                                    Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                                  <span className="block text-[11px] text-muted-foreground">
+                                    {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
+                                    {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
                                   </span>
-                                </div>
-                              )}
 
-                              {pmocCustomCadence && (
-                                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                                  <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
-                                  <span>
-                                    Na cadência personalizada, o que entra em cada visita é definido pela frequência de cada pergunta e pelo "Adicionar na 1ª OS".
-                                  </span>
-                                </div>
+                                  {cfg && !pmocCustomCadence && (
+                                    <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                      <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
+                                      <span>
+                                        Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {pmocCustomCadence && (
+                                    <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                      <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
+                                      <span>
+                                        Na cadência personalizada, o que entra em cada visita é definido pela frequência de cada pergunta e pelo "Adicionar na 1ª OS".
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
@@ -3411,6 +3619,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           {pmocDerivedItems.map((it) => {
                             const cfg = machineConfigs[it.equipment_id];
                             if (!cfg) return null;
+                            // P2 (PMOC novo): resume os checklists de norma escolhidos
+                            // (Essencial/Norma completa por família) + perguntas na 1ª OS.
+                            if (usesInlinePmocEditor) {
+                              const tpls = (cfg.normTemplateIds ?? [])
+                                .map((id) => normTemplateById.get(id))
+                                .filter((t): t is PmocNormTemplate => !!t);
+                              const tplLabel = tpls.length > 0
+                                ? tpls.map((t) => (t.tier === 'essencial' ? 'Essencial' : 'Norma completa')).join(' + ')
+                                : 'sem checklist da norma';
+                              const totalQ = tpls.reduce((n, t) => n + t.questions.length, 0);
+                              return (
+                                <span key={it.equipment_id} className="block text-xs text-muted-foreground">
+                                  • <strong className="text-foreground">{it.item_name}</strong>
+                                  {` — ${cfg.scope === 'full' ? 'Sistemas Centrais' : 'Expansão Direta'}`}
+                                  {`, ${tplLabel}`}
+                                  {`, ${totalQ} pergunta(s)`}.
+                                </span>
+                              );
+                            }
                             return (
                               <span key={it.equipment_id} className="block text-xs text-muted-foreground">
                                 • <strong className="text-foreground">{it.item_name}</strong>

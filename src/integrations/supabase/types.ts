@@ -3646,6 +3646,10 @@ export type Database = {
           id: string
           is_required: boolean
           options: Json | null
+          pmoc_catalog_activity_id: string | null
+          pmoc_essential_tier: string | null
+          pmoc_group: string | null
+          pmoc_section: string | null
           position: number
           question: string
           question_type: string
@@ -3671,6 +3675,10 @@ export type Database = {
           id?: string
           is_required?: boolean
           options?: Json | null
+          pmoc_catalog_activity_id?: string | null
+          pmoc_essential_tier?: string | null
+          pmoc_group?: string | null
+          pmoc_section?: string | null
           position?: number
           question: string
           question_type?: string
@@ -3696,6 +3704,10 @@ export type Database = {
           id?: string
           is_required?: boolean
           options?: Json | null
+          pmoc_catalog_activity_id?: string | null
+          pmoc_essential_tier?: string | null
+          pmoc_group?: string | null
+          pmoc_section?: string | null
           position?: number
           question?: string
           question_type?: string
@@ -3706,6 +3718,13 @@ export type Database = {
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "form_questions_pmoc_catalog_activity_id_fkey"
+            columns: ["pmoc_catalog_activity_id"]
+            isOneToOne: false
+            referencedRelation: "pmoc_activity_catalog"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "form_questions_template_id_fkey"
             columns: ["template_id"]
@@ -3816,6 +3835,8 @@ export type Database = {
           is_active: boolean
           is_pmoc_default: boolean
           name: string
+          pmoc_family: string | null
+          pmoc_tier: string | null
           service_type_id: string | null
           updated_at: string
         }
@@ -3828,6 +3849,8 @@ export type Database = {
           is_active?: boolean
           is_pmoc_default?: boolean
           name: string
+          pmoc_family?: string | null
+          pmoc_tier?: string | null
           service_type_id?: string | null
           updated_at?: string
         }
@@ -3840,6 +3863,8 @@ export type Database = {
           is_active?: boolean
           is_pmoc_default?: boolean
           name?: string
+          pmoc_family?: string | null
+          pmoc_tier?: string | null
           service_type_id?: string | null
           updated_at?: string
         }
@@ -7618,6 +7643,10 @@ export type Database = {
       }
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
+        Returns: undefined
+      }
+      ensure_pmoc_norm_templates: {
+        Args: { p_company_id: string }
         Returns: undefined
       }
       fisqal_next_dps_number: {

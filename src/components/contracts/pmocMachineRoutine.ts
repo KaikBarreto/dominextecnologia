@@ -195,6 +195,14 @@ export interface MachineConfig {
   // NUNCA entram aqui (sempre na 1ª OS). Default []. Só vale pros personalizados —
   // o catálogo da norma tem fase própria (pmoc_start_visit).
   firstOsExcludedQuestions: string[];
+  // P2 (PMOC novo no motor comum): ids de form_templates de NORMA escolhidos no
+  // editor inline desta máquina (CommonChecklistEditor). Espelha
+  // `contract_items.form_template_ids`. Default []/undefined. Coexiste com o
+  // caminho LEGADO (`activities` do catálogo + `customTemplateIds` dos
+  // personalizados): um PMOC novo usa `normTemplateIds` (com
+  // `firstOsExcludedQuestions` apontando pras perguntas dos templates de norma);
+  // um PMOC legado deixa esse campo vazio e segue no catálogo.
+  normTemplateIds?: string[];
 }
 
 // Item/equipamento do contrato no formato mínimo usado pelos builders.
@@ -294,6 +302,11 @@ export interface PersistedContractItem {
   // Âncora por equipamento dos personalizados (jsonb array de ids). Carregada na
   // reconstrução pra a config saber quais perguntas o gestor tirou da 1ª OS.
   first_os_excluded_questions?: unknown;
+  // P2: templates de NORMA do editor inline (jsonb array). Quando NÃO-vazio, o
+  // contrato foi criado/editado pelo caminho NOVO (motor comum) → a reconstrução
+  // carrega `normTemplateIds` e o componente abre o editor inline. Vazio/ausente
+  // = PMOC legado (catálogo + pmoc_start_visit) → UI antiga.
+  form_template_ids?: unknown;
 }
 export interface PersistedPlanRow {
   description: string;
@@ -318,7 +331,7 @@ export function reconstructMachineConfigs(args: {
 }): Record<string, MachineConfig> {
   const { items, plan, catalogActivities } = args;
   const itemIdToEquip: Record<string, string> = {};
-  const itemMeta: Record<string, { scope: PmocMachineScope; startVisit: number; firstOsExcludedQuestions: string[] }> = {};
+  const itemMeta: Record<string, { scope: PmocMachineScope; startVisit: number; firstOsExcludedQuestions: string[]; normTemplateIds: string[] }> = {};
   for (const it of items) {
     if (it.equipment_id) {
       itemIdToEquip[it.id] = it.equipment_id;
@@ -327,6 +340,10 @@ export function reconstructMachineConfigs(args: {
         startVisit: typeof it.pmoc_start_visit === 'number' && it.pmoc_start_visit >= 1 ? it.pmoc_start_visit : 12,
         firstOsExcludedQuestions: Array.isArray(it.first_os_excluded_questions)
           ? (it.first_os_excluded_questions as unknown[]).filter((x): x is string => typeof x === 'string')
+          : [],
+        // P2: templates de norma do editor inline (discriminador novo-vs-legado).
+        normTemplateIds: Array.isArray(it.form_template_ids)
+          ? (it.form_template_ids as unknown[]).filter((x): x is string => typeof x === 'string')
           : [],
       };
     }
@@ -367,7 +384,7 @@ export function reconstructMachineConfigs(args: {
     }
     for (const it of items) {
       if (!it.equipment_id) continue;
-      const meta = itemMeta[it.equipment_id] ?? { scope: 'ac' as PmocMachineScope, startVisit: 12, firstOsExcludedQuestions: [] };
+      const meta = itemMeta[it.equipment_id] ?? { scope: 'ac' as PmocMachineScope, startVisit: 12, firstOsExcludedQuestions: [], normTemplateIds: [] };
       const acts = byEquip[it.equipment_id] ?? [];
       // "Personalizado" = a listagem da máquina não bate com NENHUM dos dois
       // baselines não-customizados do escopo:
@@ -390,6 +407,7 @@ export function reconstructMachineConfigs(args: {
         customized: acts.length > 0 && acts.length !== essentialCount && acts.length !== normaCount,
         customTemplateIds: customByEquip[it.equipment_id] ?? [],
         firstOsExcludedQuestions: meta.firstOsExcludedQuestions,
+        normTemplateIds: meta.normTemplateIds,
       };
     }
   } else {
@@ -409,6 +427,7 @@ export function reconstructMachineConfigs(args: {
         customized: false,
         customTemplateIds: [],
         firstOsExcludedQuestions: meta?.firstOsExcludedQuestions ?? [],
+        normTemplateIds: meta?.normTemplateIds ?? [],
       };
     }
   }
@@ -456,8 +475,19 @@ export function buildPmocPlanFromMachines(args: {
   for (const item of items) {
     const cfg = machineConfigs[item.equipment_id];
     if (!cfg) continue;
-    for (const a of cfg.activities) {
-      rows.push({ ...a, applies_per_equipment: true, equipment_ref: item.equipment_id });
+    // P3 (PMOC novo no motor comum): DISCRIMINADOR ACORDADO = `normTemplateIds`
+    // não-vazio. Máquina NOVA tira o checklist dos form_templates de norma
+    // (renderizados e filtrados por `computeVisibleQuestionIds`), então NÃO
+    // materializa as atividades do catálogo no plano — assim o contrato não
+    // grava `contract_plan_activities`/`service_order_activities` pra essa
+    // máquina e a geração cai na cadência (motor comum por form_template), não no
+    // `buildPerMachineVisits`. Máquina LEGADA (normTemplateIds vazio) segue
+    // EXATAMENTE como antes: empurra `cfg.activities` do catálogo pro plano.
+    const usingNorm = (cfg.normTemplateIds ?? []).length > 0;
+    if (!usingNorm) {
+      for (const a of cfg.activities) {
+        rows.push({ ...a, applies_per_equipment: true, equipment_ref: item.equipment_id });
+      }
     }
     // Uma linha de plano por checklist personalizado da máquina. Feita em TODA
     // visita (freq Mensal) e ALÉM das atividades da norma. catalog_activity_id
@@ -493,12 +523,16 @@ export interface PmocItemWithScope {
   item_name: string;
   item_description: string | null;
   form_template_id: string | null;
+  // P2 (PMOC novo): lista de form_templates de NORMA do editor inline. `[]` no
+  // caminho LEGADO (máquina sem normTemplateIds) — o hook só grava
+  // `form_template_ids` quando há ao menos 1 id, então `[]` não regride o legado.
+  form_template_ids: string[];
   pmoc_scope: PmocMachineScope;
   pmoc_start_visit: number;
-  // Âncora por equipamento dos personalizados (1ª-OS por pergunta). Sanitizada:
-  // só ids de perguntas que pertencem aos templates personalizados selecionados
-  // da máquina; "toda visita" nunca entra.
-  // `undefined` = templates ainda carregando e a máquina tem personalizados não
+  // Âncora por equipamento (1ª-OS por pergunta). Sanitizada: só ids de perguntas
+  // que pertencem aos templates SELECIONADOS da máquina (personalizados no legado,
+  // OU templates de NORMA no PMOC novo); "toda visita" nunca entra.
+  // `undefined` = templates ainda carregando e a máquina tem templates não
   // resolvidos → não dá pra sanitizar com segurança; o hook preserva o valor do
   // banco em vez de zerar (mesma guarda do checklist comum, evita perda de dado).
   first_os_excluded_questions: string[] | undefined;
@@ -530,18 +564,27 @@ export function buildPmocItemsWithScope(args: {
   const { items, machineConfigs, templateQuestions = {}, templatesLoading = false } = args;
   return items.map((i) => {
     const cfg = machineConfigs[i.equipment_id];
-    const customTemplateIds = cfg?.customTemplateIds ?? [];
-    // Guarda anti-perda-de-dado: templates carregando E há personalizado cujas
-    // perguntas ainda não resolveram → devolve undefined (hook preserva o banco).
+    // P2: a fonte da âncora da 1ª OS depende do caminho da máquina:
+    //  - PMOC NOVO  → templates de NORMA escolhidos no editor inline (normTemplateIds);
+    //  - PMOC legado→ personalizados do picker (customTemplateIds).
+    // Quando há normTemplateIds (não-vazio) usamos eles (e gravamos form_template_ids);
+    // senão caímos no comportamento legado. Os dois usam o MESMO `templateQuestions`
+    // (o chamador funde norma + personalizados nesse mapa).
+    const normTemplateIds = cfg?.normTemplateIds ?? [];
+    const usingNorm = normTemplateIds.length > 0;
+    const selectedTemplateIds = usingNorm ? normTemplateIds : (cfg?.customTemplateIds ?? []);
+    // Guarda anti-perda-de-dado: templates carregando E há template selecionado
+    // cujas perguntas ainda não resolveram → devolve undefined (hook preserva o banco).
     if (
       templatesLoading &&
-      customTemplateIds.some((tplId) => templateQuestions[tplId] === undefined)
+      selectedTemplateIds.some((tplId) => templateQuestions[tplId] === undefined)
     ) {
       return {
         equipment_id: i.equipment_id || null,
         item_name: i.item_name,
         item_description: i.item_description || null,
         form_template_id: null,
+        form_template_ids: usingNorm ? normTemplateIds : [],
         pmoc_scope: (cfg?.scope ?? 'ac') as PmocMachineScope,
         pmoc_start_visit: cfg?.startVisit ?? 12,
         first_os_excluded_questions: undefined,
@@ -549,7 +592,7 @@ export function buildPmocItemsWithScope(args: {
     }
     // Ids válidos pra exclusão: perguntas não-toda-visita dos templates escolhidos.
     const validExcludable = new Set<string>();
-    for (const tplId of customTemplateIds) {
+    for (const tplId of selectedTemplateIds) {
       for (const q of templateQuestions[tplId] ?? []) {
         if (!q.everyVisit) validExcludable.add(q.id);
       }
@@ -560,6 +603,7 @@ export function buildPmocItemsWithScope(args: {
       item_name: i.item_name,
       item_description: i.item_description || null,
       form_template_id: null,
+      form_template_ids: usingNorm ? normTemplateIds : [],
       pmoc_scope: (cfg?.scope ?? 'ac') as PmocMachineScope,
       pmoc_start_visit: cfg?.startVisit ?? 12,
       first_os_excluded_questions: excluded,

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.28',
+    date: '28 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PMOC: monte o checklist item a item, na mesma tela',
+        description: 'Ao montar um contrato PMOC, o checklist de cada equipamento agora aparece direto na tela, item por item, sem abrir uma janela à parte. Em cada tarefa você marca se ela já entra na primeira visita, e com um toque dá pra marcar ou desmarcar todas as tarefas de uma mesma frequência. Para incluir a norma, há um seletor organizado por grupo (Expansão Direta e Sistemas Centrais), com a opção de começar pelo essencial ou já trazer a norma completa. Vale para contratos novos; os que já existem continuam como estão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.27',
     date: '28 de junho de 2026',
     type: 'patch',

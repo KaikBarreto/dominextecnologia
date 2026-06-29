@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.27";
+export const APP_VERSION = "1.15.28";
 
-export const VERSION_NOTES = "Ao criar um contrato PMOC, cada equipamento agora já vem com um checklist enxuto, só com as tarefas essenciais, organizadas por tipo: Limpeza, Inspeção, Medições e Testes. Se quiser a norma inteira, é só tocar em 'Adicionar norma completa'. Os grupos ficaram mais claros (Expansão Direta e Sistemas Centrais) e estruturas compartilhadas, como torre de resfriamento e bombas, você cadastra como um equipamento próprio, para serem feitas uma vez só. Vale para contratos novos.";
+export const VERSION_NOTES = "Ao montar um contrato PMOC, o checklist de cada equipamento agora aparece direto na tela, item por item, sem abrir uma janela à parte. Em cada tarefa você marca se ela já entra na primeira visita, e com um toque dá pra marcar ou desmarcar todas as tarefas de uma mesma frequência. Para incluir a norma, há um seletor organizado por grupo (Expansão Direta e Sistemas Centrais), com a opção de começar pelo essencial ou já trazer a norma completa. Vale para contratos novos; os que já existem continuam como estão.";

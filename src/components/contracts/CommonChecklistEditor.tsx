@@ -25,7 +25,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { ListChecks, Check, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectSectionLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/components/contracts/questionFrequency';
 import { cn } from '@/lib/utils';
@@ -53,6 +53,16 @@ interface CommonChecklistEditorProps {
   // Ids de perguntas EXCLUÍDAS da 1ª OS (estado persistido, união de todos os checklists).
   excluded: string[];
   onChangeExcluded: (next: string[]) => void;
+  // OPCIONAL (P2 — PMOC novo no motor comum). Quando fornecido, o select
+  // "Adicionar checklist" é renderizado AGRUPADO por seção (estilo régua de
+  // gases), em vez da lista flat. Cada seção tem um cabeçalho (família) e seus
+  // itens (ex.: Essencial / Norma completa). Os ids referenciam `templates`; só
+  // os ainda NÃO selecionados aparecem. Ausente = comportamento comum (flat) —
+  // o contrato comum não passa essa prop e nada muda pra ele.
+  addOptionSections?: { label: string; options: { id: string; label: string }[] }[];
+  // Rótulo do grupo "Checklists deste equipamento" (default mantém o texto comum).
+  // PMOC novo usa "Checklists da norma desta máquina".
+  groupLabel?: string;
 }
 
 // Constante sentinela do Select (Radix não aceita value="").
@@ -64,6 +74,8 @@ export function CommonChecklistEditor({
   onChangeTemplates,
   excluded,
   onChangeExcluded,
+  addOptionSections,
+  groupLabel = 'Checklists deste equipamento',
 }: CommonChecklistEditorProps) {
   // Checklists escolhidos, na ordem de adição, resolvidos pra opção completa.
   const selectedTemplates = useMemo(
@@ -78,6 +90,25 @@ export function CommonChecklistEditor({
   const availableTemplates = useMemo(
     () => templates.filter((t) => !selectedTemplateIds.includes(t.id)),
     [templates, selectedTemplateIds],
+  );
+
+  // P2: seções do select agrupado (PMOC novo). Filtra pra mostrar só as opções
+  // ainda NÃO selecionadas; seção sem nenhuma opção restante some. Vazio quando a
+  // prop não foi passada (modo comum/flat).
+  const sectionsToShow = useMemo(() => {
+    if (!addOptionSections) return [];
+    return addOptionSections
+      .map((sec) => ({
+        label: sec.label,
+        options: sec.options.filter((o) => !selectedTemplateIds.includes(o.id)),
+      }))
+      .filter((sec) => sec.options.length > 0);
+  }, [addOptionSections, selectedTemplateIds]);
+
+  const hasSectionedOptions = !!addOptionSections;
+  const sectionedAvailableCount = useMemo(
+    () => sectionsToShow.reduce((n, s) => n + s.options.length, 0),
+    [sectionsToShow],
   );
 
   // Perguntas de cada checklist escolhido, ordenadas por posição (estável).
@@ -158,35 +189,71 @@ export function CommonChecklistEditor({
       <div className="flex flex-col gap-1.5">
         <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
           <ListChecks className="h-3.5 w-3.5 text-info" />
-          Checklists deste equipamento
+          {groupLabel}
         </span>
-        <Select
-          value={ADD_PLACEHOLDER}
-          onValueChange={(v) => {
-            if (v !== ADD_PLACEHOLDER) addTemplate(v);
-          }}
-          disabled={availableTemplates.length === 0}
-        >
-          <SelectTrigger className="h-9 text-xs">
-            <SelectValue placeholder="Adicionar checklist">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <Plus className="h-3.5 w-3.5" />
-                {availableTemplates.length === 0
-                  ? selectedTemplateIds.length > 0
-                    ? 'Todos os checklists adicionados'
-                    : 'Nenhum checklist disponível'
-                  : 'Adicionar checklist'}
-              </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {availableTemplates.map((t) => (
-              <SelectItem key={t.id} value={t.id} className="text-xs">
-                {t.name} ({t.questions.length})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {hasSectionedOptions ? (
+          // P2 — select AGRUPADO por seção (família), estilo régua de gases.
+          <Select
+            value={ADD_PLACEHOLDER}
+            onValueChange={(v) => {
+              if (v !== ADD_PLACEHOLDER) addTemplate(v);
+            }}
+            disabled={sectionedAvailableCount === 0}
+          >
+            <SelectTrigger className="h-9 text-xs">
+              <SelectValue placeholder="Adicionar checklist">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <Plus className="h-3.5 w-3.5" />
+                  {sectionedAvailableCount === 0
+                    ? selectedTemplateIds.length > 0
+                      ? 'Tudo da norma adicionado'
+                      : 'Nenhum checklist disponível'
+                    : 'Adicionar checklist da norma'}
+                </span>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {sectionsToShow.map((sec) => (
+                <SelectGroup key={sec.label}>
+                  <SelectSectionLabel>{sec.label}</SelectSectionLabel>
+                  {sec.options.map((o) => (
+                    <SelectItem key={o.id} value={o.id} className="text-xs">
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select
+            value={ADD_PLACEHOLDER}
+            onValueChange={(v) => {
+              if (v !== ADD_PLACEHOLDER) addTemplate(v);
+            }}
+            disabled={availableTemplates.length === 0}
+          >
+            <SelectTrigger className="h-9 text-xs">
+              <SelectValue placeholder="Adicionar checklist">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <Plus className="h-3.5 w-3.5" />
+                  {availableTemplates.length === 0
+                    ? selectedTemplateIds.length > 0
+                      ? 'Todos os checklists adicionados'
+                      : 'Nenhum checklist disponível'
+                    : 'Adicionar checklist'}
+                </span>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {availableTemplates.map((t) => (
+                <SelectItem key={t.id} value={t.id} className="text-xs">
+                  {t.name} ({t.questions.length})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Accordion single-open: um BLOCO por checklist; abrir um fecha os outros. */}
