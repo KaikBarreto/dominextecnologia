@@ -40,6 +40,8 @@
 
 Toda resposta no chat **DEVE** começar com a tag de quem está falando. **Toda AÇÃO concreta** (chamada de tool, leitura de código, edição, comando) também é precedida por linha curta com o rótulo do agente que executa.
 
+> **O rótulo SEMPRE inclui o modelo em uso**, no formato `[<tag> — <Haiku|Sonnet 4.6|Opus 4.8>]`. Pro CEO/PM/Tech Lead na conversa direta é o modelo da sessão principal; pro Dev despachado é o `model` escolhido no `Agent`. Como o Tech Lead escolhe o modelo: ver [docs/team/arquitetura/tech-lead.md](docs/team/arquitetura/tech-lead.md) → "Seleção de modelo por tarefa".
+
 | Tag | Quem |
 |---|---|
 | `[CEO]` | Você (Kaik) ou eu repassando decisão sua |
@@ -63,8 +65,9 @@ Toda resposta no chat **DEVE** começar com a tag de quem está falando. **Toda 
 
 Toda chamada `Agent` precisa de:
 
-- **(a)** Linha de texto `[🏗️ Tech Lead] Despachando **dev-X** para <ação curta>.` ANTES do tool call.
-- **(b)** Campo `description` do `Agent` no formato `"<emoji> dev-X — <ação curta>"` (ex: `"🗄️ dev-database — criar RPC X"`).
+- **(0)** **Escolher o modelo** (haiku/sonnet/opus) pela rubrica de [docs/team/arquitetura/tech-lead.md](docs/team/arquitetura/tech-lead.md) → "Seleção de modelo por tarefa" — o mais barato que resolve com segurança; domínio crítico (RLS/auth/financeiro/PMOC/Asaas) sobe pra opus.
+- **(a)** Linha de texto `[🏗️ Tech Lead — <modelo>] Despachando **dev-X** (modelo <Haiku|Sonnet 4.6|Opus 4.8>) para <ação curta>.` ANTES do tool call.
+- **(b)** Campo `description` do `Agent` no formato `"<emoji> dev-X (<modelo>) — <ação curta>"` (ex: `"🗄️ dev-database (Sonnet 4.6) — criar RPC X"`), batendo com o `model` passado no `Agent`.
 - **(c)** `prompt` autossuficiente seguindo o template de [docs/team/processo/protocolo-plano.md](docs/team/processo/protocolo-plano.md) (subagente NÃO vê o histórico do chat).
 
 **Quando passos são independentes**, despachar **N Devs em paralelo** num único bloco de tool calls. Se há dependência, sequencial.
@@ -209,7 +212,7 @@ Convenção: todo plano de implementação não-trivial vira `YYYY-MM-DD-<slug>.
 9. **Não escrever nada em `src/TMP/`** (gitignored, dados de migração antiga).
 10. **Não bumpar versão sem passar pelo 🚀 Release Manager.**
 11. **CEO autoriza commit/push final.** Time não dá push sem ok explícito.
-12. **🚨 Hierarquia é estrita**: CEO/PM **nunca** falam direto com Dev. **Toda fala de Dev tem que ser precedida por delegação explícita do 🏗️ Tech Lead** (linha `[🏗️ Tech Lead] Despachando dev-X para …` + `description` no formato `"<emoji> dev-X — <ação>"`). Se o orquestrador pular o Tech Lead, é regressão de processo — corrigir e re-rotular.
+12. **🚨 Hierarquia é estrita**: CEO/PM **nunca** falam direto com Dev. **Toda fala de Dev tem que ser precedida por delegação explícita do 🏗️ Tech Lead** (linha `[🏗️ Tech Lead — <modelo>] Despachando dev-X (modelo <Haiku|Sonnet 4.6|Opus 4.8>) para …` + `description` no formato `"<emoji> dev-X (<modelo>) — <ação>"`). Se o orquestrador pular o Tech Lead, é regressão de processo — corrigir e re-rotular.
 13. **Planos têm vida finita**: todo arquivo em `docs/planos/` é **excluído** após o push do release que o concretizou. Plano não-executado fica; plano executado morre.
 14. **Novo agente em `.claude/agents/` só carrega na próxima sessão.** Ao criar/editar arquivo lá, avisar o CEO pra reabrir a sessão antes de tentar invocar.
 15. **Aplicação de migration / edge function é responsabilidade do `dev-database` ou `dev-plataforma-multitenant`** (conforme escopo). Não deixar pro Kaik rodar comando depois.
