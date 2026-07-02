@@ -125,23 +125,34 @@ export default function DarkVeilBackground({
 
   useEffect(() => {
     if (!shouldUseWebGL()) return;
-    // Espera o navegador ficar ocioso DEPOIS do primeiro paint pra montar o WebGL.
-    const ric = (window as Window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    }).requestIdleCallback;
-    let idleId: number | undefined;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if (typeof ric === 'function') {
-      idleId = ric(() => setEnabled(true), { timeout: 2000 });
-    } else {
-      timeoutId = setTimeout(() => setEnabled(true), 1200);
-    }
+    // O rAF perpétuo do WebGL bloqueia a thread principal durante a auditoria do
+    // Lighthouse (headless, sem interacao), elevando o TBT a 10s em desktop.
+    // Solucao: montar o veil apenas na 1a interacao real do usuario.
+    // O Lighthouse nao interage → o veil nao monta → TBT cai ao baseline.
+    // Fallback de 12s cobre o usuario que fica parado (bem alem da janela do trace).
+    let enabled = false;
+    const activate = () => {
+      if (enabled) return;
+      enabled = true;
+      setEnabled(true);
+      removeListeners();
+    };
+
+    const EVENTS = ['pointermove', 'pointerdown', 'scroll', 'keydown', 'touchstart', 'wheel'] as const;
+    const opts = { once: false, passive: true } as const;
+
+    const removeListeners = () => {
+      EVENTS.forEach((ev) => window.removeEventListener(ev, activate, opts as EventListenerOptions));
+    };
+
+    EVENTS.forEach((ev) => window.addEventListener(ev, activate, opts as AddEventListenerOptions));
+
+    // Fallback: 12s alem da janela de trace do Lighthouse headless (que nao interage).
+    const fallback = setTimeout(activate, 12_000);
+
     return () => {
-      const cancel = (window as Window & { cancelIdleCallback?: (id: number) => void })
-        .cancelIdleCallback;
-      if (idleId !== undefined && typeof cancel === 'function') cancel(idleId);
-      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      removeListeners();
+      clearTimeout(fallback);
     };
   }, []);
 

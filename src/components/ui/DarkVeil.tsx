@@ -83,15 +83,20 @@ export default function DarkVeil({
   speed = 0.5,
   scanlineFrequency = 0,
   warpAmount = 0,
-  resolutionScale = 1,
+  // Renderiza em metade da resolucao e deixa o CSS fazer upscale.
+  // O veil e fundo borrado — ninguem percebe a diferenca, mas cada frame
+  // fica muito mais barato (1/4 dos fragmentos vs resolutionScale=1, dpr=2).
+  resolutionScale = 0.5,
 }: DarkVeilProps) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = ref.current as HTMLCanvasElement;
     const parent = canvas.parentElement as HTMLElement;
+    // dpr fixado em 1: junto com resolutionScale=0.5 elimina o custo quadratico
+    // de pixels em telas retina sem prejuizo visual (veil e suavizado pelo CSS).
     const renderer = new Renderer({
-      dpr: Math.min(window.devicePixelRatio, 2),
+      dpr: 1,
       canvas,
     });
     const gl = renderer.gl;
@@ -122,7 +127,10 @@ export default function DarkVeil({
 
     const start = performance.now();
     let frame = 0;
+    let running = true; // guarda se o loop deve estar ativo
+
     const loop = () => {
+      if (!running) return; // seguranca: nao acumular loops ao retomar
       program.uniforms.uTime.value = ((performance.now() - start) / 1000) * speed;
       program.uniforms.uHueShift.value = hueShift;
       program.uniforms.uNoise.value = noiseIntensity;
@@ -132,11 +140,41 @@ export default function DarkVeil({
       renderer.render({ scene: mesh });
       frame = requestAnimationFrame(loop);
     };
+
+    const pause = () => {
+      if (!running) return;
+      running = false;
+      cancelAnimationFrame(frame);
+    };
+
+    const resume = () => {
+      if (running) return;
+      running = true;
+      loop();
+    };
+
+    // Pausa o rAF quando a aba fica oculta — poupa CPU/bateria do usuario real
+    // e evita que o trace do Lighthouse acumule long tasks em segundo plano.
+    const onVisibility = () => {
+      if (document.hidden) pause(); else resume();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // Pausa quando o canvas sai da viewport (usuario rolou pra longe da hero).
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) resume(); else pause(); },
+      { threshold: 0 }
+    );
+    observer.observe(canvas);
+
     loop();
 
     return () => {
+      running = false;
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', onVisibility);
+      observer.disconnect();
     };
   }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale]);
 
