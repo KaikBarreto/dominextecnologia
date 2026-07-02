@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
@@ -6,6 +6,10 @@ import iphoneFrame from '@/assets/iphone-17-pro-deep-blue.svg';
 
 const HERO_VIDEO_URL =
   'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/Dominex%20-%20Completo.MP4';
+// Capa estática leve (~16KB) — frame ~0,8s do vídeo. Evita baixar o MP4 de 38MB só pra
+// pintar o pôster (o truque #t=10 era o que travava o LCP no PageSpeed).
+const HERO_POSTER_URL =
+  'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/hero-poster.webp';
 
 const FULL_TEXT_PRE = 'Domine a execução do ';
 const FULL_TEXT_HIGHLIGHT = 'seu negócio.';
@@ -14,7 +18,6 @@ const TOTAL_LENGTH = FULL_TEXT_PRE.length + FULL_TEXT_HIGHLIGHT.length;
 export default function HeroSection() {
   const ref = useScrollReveal();
   const [typedCount, setTypedCount] = useState(0);
-  const heroVideoStarted = useRef(false);
 
   useEffect(() => {
     if (typedCount >= TOTAL_LENGTH) return;
@@ -117,17 +120,11 @@ export default function HeroSection() {
               </svg>
               {/* Vídeo na área da tela — ATRÁS da moldura. Cantos/ilha vêm do SVG por cima. */}
               <video
-                src={`${HERO_VIDEO_URL}#t=10`}
+                src={HERO_VIDEO_URL}
+                poster={HERO_POSTER_URL}
                 controls
-                preload="metadata"
+                preload="none"
                 playsInline
-                onPlay={(e) => {
-                  // A capa é o frame do segundo 10 (via #t=10), mas o play começa do zero.
-                  if (!heroVideoStarted.current) {
-                    heroVideoStarted.current = true;
-                    e.currentTarget.currentTime = 0;
-                  }
-                }}
                 className="absolute object-cover bg-black"
                 style={{ top: '2.29%', left: '4.32%', width: '91.36%', height: '95.41%', clipPath: 'url(#iphone-screen-clip)' }}
                 aria-label="Demonstração do Dominex"
