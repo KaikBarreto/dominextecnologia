@@ -6,20 +6,36 @@ O Dominex é um software web para empresas que prestam serviços técnicos em ca
 
 ## Páginas principais
 
-- [Home](https://dominex.app/): visão geral do Dominex, planos, recursos e perguntas frequentes.
-- [Sistema para Refrigeração](https://dominex.app/sistema-para-refrigeracao): gestão de OS e PMOC para empresas de refrigeração e climatização.
-- [Sistema para Eletricistas](https://dominex.app/sistema-para-eletricistas): ordens de serviço e equipes de campo para instalações elétricas.
-- [Sistema para Energia Solar](https://dominex.app/sistema-para-energia-solar): gestão de instalações e manutenção de energia solar.
-- [Sistema para Provedores](https://dominex.app/sistema-para-provedores): OS e campo para provedores de internet e telecomunicações.
-- [Sistema para CFTV](https://dominex.app/sistema-para-cftv): gestão de instalações de CFTV e segurança eletrônica.
-- [Sistema para Construção Civil](https://dominex.app/sistema-para-construcao-civil): controle de equipes e serviços na construção civil.
-- [Sistema para Elevadores](https://dominex.app/sistema-para-elevadores): manutenção e contratos recorrentes para empresas de elevadores.
-- [Sistema para Limpeza e Conservação](https://dominex.app/sistema-para-limpeza-conservacao): gestão de equipes de limpeza e conservação predial.
-- [Sistema para Dedetização](https://dominex.app/sistema-para-dedetizacao): ordens de serviço e contratos para empresas de dedetização.
-- [Sistema PMOC](https://dominex.app/sistema-pmoc): geração automática de OS de PMOC e calendário de manutenção por equipamento.
-- [OS Digital](https://dominex.app/os-digital): ordens de serviço digitais com fotos, checklist e assinatura.
-- [Novidades](https://dominex.app/changelog): histórico de atualizações e novos recursos do Dominex.
+- [Home](https://www.dominex.app/): visão geral do Dominex, planos, recursos e perguntas frequentes.
+- [Sistema para Refrigeração](https://www.dominex.app/sistema-para-refrigeracao): gestão de OS e PMOC para empresas de refrigeração e climatização.
+- [Sistema para Eletricistas](https://www.dominex.app/sistema-para-eletricistas): ordens de serviço e equipes de campo para instalações elétricas.
+- [Sistema para Energia Solar](https://www.dominex.app/sistema-para-energia-solar): gestão de instalações e manutenção de energia solar.
+- [Sistema para Provedores](https://www.dominex.app/sistema-para-provedores): OS e campo para provedores de internet e telecomunicações.
+- [Sistema para CFTV](https://www.dominex.app/sistema-para-cftv): gestão de instalações de CFTV e segurança eletrônica.
+- [Sistema para Construção Civil](https://www.dominex.app/sistema-para-construcao-civil): controle de equipes e serviços na construção civil.
+- [Sistema para Elevadores](https://www.dominex.app/sistema-para-elevadores): manutenção e contratos recorrentes para empresas de elevadores.
+- [Sistema para Limpeza e Conservação](https://www.dominex.app/sistema-para-limpeza-conservacao): gestão de equipes de limpeza e conservação predial.
+- [Sistema para Dedetização](https://www.dominex.app/sistema-para-dedetizacao): ordens de serviço e contratos para empresas de dedetização.
+- [Novidades](https://www.dominex.app/changelog): histórico de atualizações e novos recursos do Dominex.
+
+## Módulos
+
+- [Ordem de Serviço Digital](https://www.dominex.app/os-digital): ordens de serviço digitais com fotos, checklist e assinatura, no celular do técnico.
+- [PMOC](https://www.dominex.app/sistema-pmoc): geração automática de plano de manutenção por equipamento e calendário PMOC conforme a Lei 13.589/2018.
+- [CRM e Vendas](https://www.dominex.app/sistema-crm): funil de vendas em kanban, do lead ao contrato, com conversão direta em ordem de serviço.
+- [Financeiro](https://www.dominex.app/controle-financeiro): controle de contas a pagar e a receber, fluxo de caixa e DRE para empresas de serviço.
+- [Ponto e Folha](https://www.dominex.app/ponto-e-folha): ponto eletrônico com selfie e geolocalização, banco de horas e folha de pagamento para equipes de campo.
+- [NFS-e](https://www.dominex.app/emissao-de-nfse): emissão de nota fiscal de serviço por cliente, com conformidade municipal, sem sistema à parte.
+- [Portal do Cliente](https://www.dominex.app/portal-do-cliente): área onde o cliente acompanha a ordem de serviço, vê o histórico e aprova o orçamento por link.
+- [Estoque](https://www.dominex.app/controle-de-estoque): controle de peças e materiais com baixa automática por ordem de serviço e inventário.
+- [Orçamentos e Contratos](https://www.dominex.app/orcamentos-e-contratos): orçamentos profissionais por link, contratos recorrentes que geram as ordens de serviço sozinhos.
+- [Rastreamento e Agenda](https://www.dominex.app/rastreamento-de-equipes): localização da equipe em tempo real no mapa, agenda do dia e check-in validado pelo endereço do cliente.
+- [Área do Técnico](https://www.dominex.app/area-do-tecnico): app instalável no celular com OS, ferramentas de cálculo técnico e catálogo de equipamentos para o técnico em campo.
+
+## Blog e conteúdo
+
+- [Blog](https://www.dominex.app/blog): artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel.
 
 ## Sobre
 
-- [Dominex](https://dominex.app/): conheça o sistema e comece o teste grátis 14 dias, sem cartão de crédito.
+- [Dominex](https://www.dominex.app/): conheça o sistema e comece o teste grátis 14 dias, sem cartão de crédito.
