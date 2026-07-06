@@ -83,20 +83,21 @@ export default function DarkVeil({
   speed = 0.5,
   scanlineFrequency = 0,
   warpAmount = 0,
-  // Renderiza em metade da resolucao e deixa o CSS fazer upscale.
-  // O veil e fundo borrado — ninguem percebe a diferenca, mas cada frame
-  // fica muito mais barato (1/4 dos fragmentos vs resolutionScale=1, dpr=2).
-  resolutionScale = 0.5,
+  // resolutionScale TEM que ficar em 1: o setSize() da OGL escreve
+  // canvas.style.width/height EM PX (= w*resolutionScale), sobrescrevendo o
+  // `w-full h-full` do Tailwind. Com 0.5 o canvas encolhia pra 1/4 da tela
+  // (retângulo no canto) e o veil sumia do resto do fundo. NÃO baixar daqui.
+  resolutionScale = 1,
 }: DarkVeilProps) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = ref.current as HTMLCanvasElement;
     const parent = canvas.parentElement as HTMLElement;
-    // dpr fixado em 1: junto com resolutionScale=0.5 elimina o custo quadratico
-    // de pixels em telas retina sem prejuizo visual (veil e suavizado pelo CSS).
+    // dpr no valor original (a matiz/escala do shader dependem do dpr via
+    // uResolution). O ganho de TBT vem do gate por interação, não do dpr.
     const renderer = new Renderer({
-      dpr: 1,
+      dpr: Math.min(window.devicePixelRatio, 2),
       canvas,
     });
     const gl = renderer.gl;
