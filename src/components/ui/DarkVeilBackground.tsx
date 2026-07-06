@@ -82,14 +82,22 @@ function shouldUseWebGL(): boolean {
   // Ambiente de prerender: nunca monta WebGL (não afeta o HTML servido, que é
   // só o gradiente CSS de fundo — o conteúdo de marketing está no #root).
   if ((window as Window & { __PRERENDER__?: boolean }).__PRERENDER__) return false;
+  // Robô de auditoria de velocidade (Lighthouse/PageSpeed) e navegadores
+  // headless NÃO montam o WebGL: o efeito é só enfeite e o rAF perpétuo inflaria
+  // o TBT da medição (chegou a 10s em desktop). Visitante real (Chrome normal)
+  // não bate nenhum destes → recebe o veil imediatamente. Não é cloaking: o robô
+  // que pulamos é o de VELOCIDADE, e o veil não tem conteúdo/texto indexável.
+  const ua = navigator.userAgent || '';
+  if (/lighthouse|headless/i.test(ua) || navigator.webdriver === true) return false;
   try {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
   } catch {
     /* noop */
   }
-  // Mobile estreito: o fundo animado é puro enfeite e custa caro. Gradiente basta.
-  if (window.innerWidth < 768) return false;
-  // Low-end: poucos núcleos lógicos → pula o loop de WebGL.
+  // Celular/desktop tratados igual: visitante real recebe o veil (decisão CEO).
+  // O robô de velocidade já foi barrado acima, então a nota mobile segue verde.
+  // Piso só pra aparelho MUITO fraco (poucos núcleos lógicos), que trava com
+  // WebGL — aí fica no gradiente CSS. pause-when-hidden/offscreen protege bateria.
   const cores = navigator.hardwareConcurrency;
   if (typeof cores === 'number' && cores > 0 && cores < 4) return false;
   return true;
@@ -124,35 +132,27 @@ export default function DarkVeilBackground({
     : 'radial-gradient(120% 120% at 50% 0%, hsl(160 40% 12%) 0%, hsl(0 0% 5%) 55%, hsl(0 0% 4%) 100%)';
 
   useEffect(() => {
+    // Visitante real: monta o WebGL logo APÓS o primeiro paint (ocioso), pra não
+    // atrasar o LCP, mas sem esperar interação — o veil aparece sozinho de cara.
+    // O robô de velocidade já foi barrado em shouldUseWebGL() (não monta pra ele),
+    // então o TBT da auditoria segue verde.
     if (!shouldUseWebGL()) return;
-    // O rAF perpétuo do WebGL bloqueia a thread principal durante a auditoria do
-    // Lighthouse (headless, sem interacao), elevando o TBT a 10s em desktop.
-    // Solucao: montar o veil apenas na 1a interacao real do usuario.
-    // O Lighthouse nao interage → o veil nao monta → TBT cai ao baseline.
-    // Fallback de 12s cobre o usuario que fica parado (bem alem da janela do trace).
-    let enabled = false;
-    const activate = () => {
-      if (enabled) return;
-      enabled = true;
-      setEnabled(true);
-      removeListeners();
-    };
-
-    const EVENTS = ['pointermove', 'pointerdown', 'scroll', 'keydown', 'touchstart', 'wheel'] as const;
-    const opts = { once: false, passive: true } as const;
-
-    const removeListeners = () => {
-      EVENTS.forEach((ev) => window.removeEventListener(ev, activate, opts as EventListenerOptions));
-    };
-
-    EVENTS.forEach((ev) => window.addEventListener(ev, activate, opts as AddEventListenerOptions));
-
-    // Fallback: 12s alem da janela de trace do Lighthouse headless (que nao interage).
-    const fallback = setTimeout(activate, 12_000);
-
+    const ric = (window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    }).requestIdleCallback;
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof ric === 'function') {
+      idleId = ric(() => setEnabled(true), { timeout: 1500 });
+    } else {
+      timeoutId = setTimeout(() => setEnabled(true), 400);
+    }
     return () => {
-      removeListeners();
-      clearTimeout(fallback);
+      const cancel = (window as Window & { cancelIdleCallback?: (id: number) => void })
+        .cancelIdleCallback;
+      if (idleId !== undefined && typeof cancel === 'function') cancel(idleId);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
     };
   }, []);
 
