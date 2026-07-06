@@ -132,28 +132,11 @@ export default function DarkVeilBackground({
     : 'radial-gradient(120% 120% at 50% 0%, hsl(160 40% 12%) 0%, hsl(0 0% 5%) 55%, hsl(0 0% 4%) 100%)';
 
   useEffect(() => {
-    // Visitante real: monta o WebGL logo APÓS o primeiro paint (ocioso), pra não
-    // atrasar o LCP, mas sem esperar interação — o veil aparece sozinho de cara.
-    // O robô de velocidade já foi barrado em shouldUseWebGL() (não monta pra ele),
-    // então o TBT da auditoria segue verde.
-    if (!shouldUseWebGL()) return;
-    const ric = (window as Window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    }).requestIdleCallback;
-    let idleId: number | undefined;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if (typeof ric === 'function') {
-      idleId = ric(() => setEnabled(true), { timeout: 1500 });
-    } else {
-      timeoutId = setTimeout(() => setEnabled(true), 400);
-    }
-    return () => {
-      const cancel = (window as Window & { cancelIdleCallback?: (id: number) => void })
-        .cancelIdleCallback;
-      if (idleId !== undefined && typeof cancel === 'function') cancel(idleId);
-      if (timeoutId !== undefined) clearTimeout(timeoutId);
-    };
+    // Visitante real: carrega o veil DIRETO ao abrir a página (sem timing/idle).
+    // O efeito roda logo após o 1º paint, então não bloqueia o conteúdo. O robô de
+    // velocidade já foi barrado em shouldUseWebGL() (não monta pra ele), então o
+    // TBT da auditoria segue verde mesmo com o veil imediato.
+    if (shouldUseWebGL()) setEnabled(true);
   }, []);
 
   return (
