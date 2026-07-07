@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.28";
+export const APP_VERSION = "1.15.29";
 
-export const VERSION_NOTES = "Ao montar um contrato PMOC, o checklist de cada equipamento agora aparece direto na tela, item por item, sem abrir uma janela à parte. Em cada tarefa você marca se ela já entra na primeira visita, e com um toque dá pra marcar ou desmarcar todas as tarefas de uma mesma frequência. Para incluir a norma, há um seletor organizado por grupo (Expansão Direta e Sistemas Centrais), com a opção de começar pelo essencial ou já trazer a norma completa. Vale para contratos novos; os que já existem continuam como estão.";
+export const VERSION_NOTES = "No relatório das Ordens de Serviço pelo celular, o gráfico de OS por status não vaza mais para fora da tela. Os nomes de cada status agora aparecem numa legenda organizada logo abaixo do gráfico, com a cor, a quantidade e a porcentagem, tudo dentro da largura da tela.";

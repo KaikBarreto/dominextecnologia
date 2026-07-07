@@ -139,6 +139,8 @@ export function OsReportDashboard() {
     statusData.map(s => [s.name, { label: s.name, color: s.color }])
   );
 
+  const totalStatus = statusData.reduce((s, d) => s + d.value, 0);
+
   const formatMinutes = (m: number) => {
     if (m < 60) return `${m}min`;
     const h = Math.floor(m / 60);
@@ -196,28 +198,43 @@ export function OsReportDashboard() {
         {/* OS by status pie */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">OS por Status</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             {statusData.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Sem dados</p>
             ) : (
-              <ChartContainer config={pieConfig} className="h-[260px] w-full">
-                <PieChart>
-                  <defs>
-                    {statusData.map((entry, i) => (
-                      <linearGradient key={i} id={`os-grad-status-${i}`} x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor={entry.color} stopOpacity={1.0} />
-                        <stop offset="100%" stopColor={entry.color} stopOpacity={0.55} />
-                      </linearGradient>
-                    ))}
-                  </defs>
-                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                    {statusData.map((entry, i) => (
-                      <Cell key={i} fill={`url(#os-grad-status-${i})`} stroke={entry.color} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ChartContainer>
+              <>
+                <ChartContainer config={pieConfig} className="h-[220px] w-full">
+                  <PieChart>
+                    <defs>
+                      {statusData.map((entry, i) => (
+                        <linearGradient key={i} id={`os-grad-status-${i}`} x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor={entry.color} stopOpacity={1.0} />
+                          <stop offset="100%" stopColor={entry.color} stopOpacity={0.55} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}>
+                      {statusData.map((entry, i) => (
+                        <Cell key={i} fill={`url(#os-grad-status-${i})`} stroke={entry.color} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ChartContainer>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-2">
+                  {statusData.map((entry, i) => {
+                    const pct = totalStatus > 0 ? Math.round((entry.value / totalStatus) * 100) : 0;
+                    return (
+                      <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                        <span>{entry.name}</span>
+                        <span className="font-medium text-foreground">{entry.value}</span>
+                        <span>({pct}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

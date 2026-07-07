@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.29',
+    date: '07 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de OS no celular: gráfico dentro da tela',
+        description: 'No relatório das Ordens de Serviço pelo celular, o gráfico de OS por status não vaza mais para fora da tela. Os nomes de cada status agora aparecem numa legenda organizada logo abaixo do gráfico, com a cor, a quantidade e a porcentagem, tudo dentro da largura da tela.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.15.28',
     date: '28 de junho de 2026',
     type: 'patch',
