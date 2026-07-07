@@ -114,12 +114,31 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     }
   };
 
+  const footer = account ? (
+    <div className="flex justify-end gap-3">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+        Cancelar
+      </Button>
+      <Button type="button" onClick={handleConfirm} disabled={submitting || isNeutral}>
+        {submitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Ajustando...
+          </>
+        ) : (
+          'Confirmar ajuste'
+        )}
+      </Button>
+    </div>
+  ) : undefined;
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={(v) => { if (!v && !submitting) onOpenChange(false); }}
       title={account ? `Ajustar saldo · ${account.name}` : 'Ajustar saldo'}
       className="sm:max-w-[440px]"
+      footer={footer}
     >
       {account && (
         <div className="space-y-4">
@@ -171,21 +190,6 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-1">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-              Cancelar
-            </Button>
-            <Button type="button" onClick={handleConfirm} disabled={submitting || isNeutral}>
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Ajustando...
-                </>
-              ) : (
-                'Confirmar ajuste'
-              )}
-            </Button>
-          </div>
         </div>
       )}
     </ResponsiveModal>

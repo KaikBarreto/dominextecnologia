@@ -90,8 +90,18 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
 
   const canSubmit = toPay > 0 && accountId && !isPending;
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button onClick={() => onSubmit({ valeDiscount, accountId, description: description || undefined })} disabled={!canSubmit}>
+        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Confirmar Pagamento
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={handleOpenChange} title={`Pagamento — ${employeeName}`}>
+    <ResponsiveModal open={open} onOpenChange={handleOpenChange} title={`Pagamento — ${employeeName}`} footer={footer}>
       <div className="space-y-4 p-1">
         {financialTransactionId && (
           <div className="rounded-lg border-2 border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
@@ -211,14 +221,6 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => onSubmit({ valeDiscount, accountId, description: description || undefined })} disabled={!canSubmit}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirmar Pagamento
-          </Button>
-        </div>
       </div>
     </ResponsiveModal>
   );

@@ -216,8 +216,17 @@ function CreateUserModal({
     onError: (e: any) => toast.error(e?.message || 'Erro ao criar'),
   });
 
+  const footer = (
+    <div className="flex gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
+      <Button onClick={() => create.mutate()} disabled={create.isPending} className="flex-1">
+        {create.isPending ? 'Criando...' : 'Criar'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Novo usuário admin" description="Crie um acesso ao painel administrativo">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Novo usuário admin" description="Crie um acesso ao painel administrativo" footer={footer}>
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5"><Label>Nome</Label><Input value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
@@ -241,12 +250,6 @@ function CreateUserModal({
           </Select>
         </div>
         <PermissionsPicker selected={selected} onToggle={toggle} />
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
-          <Button onClick={() => create.mutate()} disabled={create.isPending} className="flex-1">
-            {create.isPending ? 'Criando...' : 'Criar'}
-          </Button>
-        </div>
       </div>
     </ResponsiveModal>
   );
@@ -295,8 +298,17 @@ function EditPermissionsModal({
     onError: (e: any) => toast.error(e?.message || 'Erro ao salvar'),
   });
 
+  const footer = (
+    <div className="flex gap-2">
+      <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+      <Button onClick={() => save.mutate()} disabled={save.isPending} className="flex-1">
+        {save.isPending ? 'Salvando...' : 'Salvar'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={!!user} onOpenChange={(o) => !o && onClose()} title="Editar permissões" description={user?.email ?? ''}>
+    <ResponsiveModal open={!!user} onOpenChange={(o) => !o && onClose()} title="Editar permissões" description={user?.email ?? ''} footer={footer}>
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label>Vincular a vendedor</Label>
@@ -309,12 +321,6 @@ function EditPermissionsModal({
           </Select>
         </div>
         <PermissionsPicker selected={selected} onToggle={toggle} />
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending} className="flex-1">
-            {save.isPending ? 'Salvando...' : 'Salvar'}
-          </Button>
-        </div>
       </div>
     </ResponsiveModal>
   );
@@ -344,8 +350,17 @@ function ResetPasswordModal({ user, onClose }: { user: AdminUser | null; onClose
     onError: (e: any) => toast.error(e?.message || 'Erro'),
   });
 
+  const footer = (
+    <div className="flex gap-2">
+      <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+      <Button onClick={() => reset.mutate()} disabled={reset.isPending} className="flex-1">
+        {reset.isPending ? 'Salvando...' : 'Salvar'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={!!user} onOpenChange={(o) => !o && onClose()} title="Resetar senha" description={user?.email ?? ''}>
+    <ResponsiveModal open={!!user} onOpenChange={(o) => !o && onClose()} title="Resetar senha" description={user?.email ?? ''} footer={footer}>
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label>Nova senha</Label>
@@ -353,12 +368,6 @@ function ResetPasswordModal({ user, onClose }: { user: AdminUser | null; onClose
             <Input value={password} onChange={(e) => setPassword(e.target.value)} />
             <Button type="button" variant="outline" onClick={generatePassword}>Gerar</Button>
           </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-          <Button onClick={() => reset.mutate()} disabled={reset.isPending} className="flex-1">
-            {reset.isPending ? 'Salvando...' : 'Salvar'}
-          </Button>
         </div>
       </div>
     </ResponsiveModal>

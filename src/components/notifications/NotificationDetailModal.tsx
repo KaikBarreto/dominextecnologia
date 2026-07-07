@@ -48,8 +48,29 @@ export function NotificationDetailModal({
     window.dispatchEvent(new CustomEvent('dominex:open-terms'));
   };
 
+  const footer = (
+    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+      <Button variant="outline" onClick={() => onOpenChange(false)}>
+        Fechar
+      </Button>
+      {isTermsUpdate ? (
+        <Button onClick={handleOpenTerms} className="gap-2">
+          <FileText className="h-4 w-4" />
+          Ler Termos de Uso
+        </Button>
+      ) : (
+        hasAction && (
+          <Button onClick={() => onActionClick(notification)} className="gap-2">
+            <ExternalLink className="h-4 w-4" />
+            Abrir
+          </Button>
+        )
+      )}
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={notification.title}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={notification.title} footer={footer}>
       <div className="space-y-4">
         <div className="flex items-start gap-3">
           <div
@@ -83,25 +104,6 @@ export function NotificationDetailModal({
             </strong>
           </div>
         )}
-
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-          {isTermsUpdate ? (
-            <Button onClick={handleOpenTerms} className="gap-2">
-              <FileText className="h-4 w-4" />
-              Ler Termos de Uso
-            </Button>
-          ) : (
-            hasAction && (
-              <Button onClick={() => onActionClick(notification)} className="gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Abrir
-              </Button>
-            )
-          )}
-        </div>
       </div>
     </ResponsiveModal>
   );

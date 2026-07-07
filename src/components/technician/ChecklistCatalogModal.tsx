@@ -492,7 +492,25 @@ export function ChecklistCatalogModal({
   // -------------------------------------------------------------------------
   if (isCreate && nameStep) {
     return (
-      <ResponsiveModal open={open} onOpenChange={handleOpenChange} title="Nome do novo checklist">
+      <ResponsiveModal
+        open={open}
+        onOpenChange={handleOpenChange}
+        title="Nome do novo checklist"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setNameStep(false)} disabled={busy}>
+              Voltar
+            </Button>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleCreate}
+              disabled={!newName.trim() || busy}
+            >
+              Criar checklist
+            </Button>
+          </div>
+        }
+      >
         <div className="space-y-4">
           <button
             type="button"
@@ -520,19 +538,6 @@ export function ChecklistCatalogModal({
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } }}
               className="mt-1"
             />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setNameStep(false)} disabled={busy}>
-              Voltar
-            </Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleCreate}
-              disabled={!newName.trim() || busy}
-            >
-              Criar checklist
-            </Button>
           </div>
         </div>
       </ResponsiveModal>

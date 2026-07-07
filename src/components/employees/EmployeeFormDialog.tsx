@@ -183,8 +183,18 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
   const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="submit" form="employee-form" disabled={isPending}>
+        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {employee ? 'Salvar' : 'Criar Funcionário'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={employee ? 'Editar Funcionário' : 'Novo Funcionário'}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={employee ? 'Editar Funcionário' : 'Novo Funcionário'} footer={footer}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -197,7 +207,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           setSalary(''); setMonthlyCost(''); setMonthlyCostBreakdown(null); setHireDate(''); setAddress(''); setPixKey('');
         }}
       />
-      <form onSubmit={handleSubmit} className="space-y-4 p-1">
+      <form id="employee-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="space-y-4">
           <TabsList className="mx-auto flex w-full max-w-md">
             <TabsTrigger
@@ -508,14 +518,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </TabsContent>
         </Tabs>
 
-        {/* Rodapé de ações fixo — sempre visível independente da aba ativa */}
-        <div className="flex justify-end gap-2 pt-2 border-t mt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {employee ? 'Salvar' : 'Criar Funcionário'}
-          </Button>
-        </div>
       </form>
       <MonthlyCostCalculatorModal
         open={showCostCalc}

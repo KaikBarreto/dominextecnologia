@@ -263,14 +263,25 @@ export function EquipmentFormDialog({
   const builtInVisible = visibleFields.filter(f => builtInFieldKeys.has(f.field_key));
   const customVisible = visibleFields.filter(f => !builtInFieldKeys.has(f.field_key));
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="submit" form="equipment-form" disabled={isLoading || uploadingPhoto}>
+        {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {equipment ? 'Salvar' : 'Criar'}
+      </Button>
+    </div>
+  );
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title={equipment ? 'Editar Equipamento' : 'Novo Equipamento'}
+      footer={footer}
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <form id="equipment-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Photo upload */}
             <div className="sm:col-span-2">
@@ -506,13 +517,6 @@ export function EquipmentFormDialog({
                 </FormItem>
               )}
             />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={isLoading || uploadingPhoto}>
-              {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {equipment ? 'Salvar' : 'Criar'}
-            </Button>
           </div>
         </form>
       </Form>

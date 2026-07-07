@@ -1324,6 +1324,17 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         open={!!memberPickerEnvKey}
         onOpenChange={(v) => { if (!v) setMemberPickerEnvKey(null); }}
         title={memberPickerEnvKey === LOOSE_ENV_KEY ? 'Adicionar equipamento ao contrato' : 'Adicionar equipamento ao ambiente'}
+        footer={
+          <Button
+            className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
+            onClick={confirmMemberPicker}
+            disabled={memberPickerSelection.size === 0}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar {memberPickerSelection.size > 0 ? `${memberPickerSelection.size} ` : ''}
+            equipamento{memberPickerSelection.size !== 1 ? 's' : ''}
+          </Button>
+        }
       >
         <div className="space-y-3 p-1">
           <div className="relative">
@@ -1401,16 +1412,6 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               })}
             </div>
           )}
-
-          <Button
-            className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
-            onClick={confirmMemberPicker}
-            disabled={memberPickerSelection.size === 0}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar {memberPickerSelection.size > 0 ? `${memberPickerSelection.size} ` : ''}
-            equipamento{memberPickerSelection.size !== 1 ? 's' : ''}
-          </Button>
         </div>
       </ResponsiveModal>
 

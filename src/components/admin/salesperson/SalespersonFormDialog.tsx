@@ -251,14 +251,24 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
 
   const isPending = submitting || saveMutation.isPending || uploading;
 
+  const footer = (
+    <div className="flex gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
+      <Button type="submit" form="salesperson-form" disabled={isPending} className="flex-1">
+        {isPending ? 'Salvando...' : 'Salvar'}
+      </Button>
+    </div>
+  );
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title={editingSalesperson ? 'Editar Vendedor' : 'Novo Vendedor'}
       description="Preencha as informações do vendedor"
+      footer={footer}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="salesperson-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Foto do vendedor */}
         <div className="flex flex-col items-center gap-2">
           <label className="relative cursor-pointer group">
@@ -354,12 +364,6 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
             </div>
             <Switch id="sp-noc" checked={formData.no_commission} onCheckedChange={(c) => setFormData({ ...formData, no_commission: c })} />
           </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
-          <Button type="submit" disabled={isPending} className="flex-1">
-            {isPending ? 'Salvando...' : 'Salvar'}
-          </Button>
         </div>
       </form>
     </ResponsiveModal>

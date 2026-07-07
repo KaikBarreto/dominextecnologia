@@ -298,6 +298,14 @@ export function ServiceTypesPanel() {
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editingId ? 'Editar Tipo de Serviço' : 'Novo Tipo de Serviço'}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={!form.name.trim()}>
+              {editingId ? 'Salvar' : 'Criar'}
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -437,12 +445,6 @@ export function ServiceTypesPanel() {
             </div>
           )}
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={!form.name.trim()}>
-              {editingId ? 'Salvar' : 'Criar'}
-            </Button>
-          </div>
         </div>
       </ResponsiveModal>
 

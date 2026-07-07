@@ -44,9 +44,19 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
 
   const activeAccounts = accounts.filter(a => a.is_active);
 
+  const footer = (
+    <div className="flex justify-end gap-3">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="submit" form="transfer-form" disabled={isLoading || !fromId || !toId || fromId === toId || amount <= 0}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Transferir
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Transferência entre Contas" className="sm:max-w-[460px]">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Transferência entre Contas" className="sm:max-w-[460px]" footer={footer}>
+      <form id="transfer-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
           <div className="space-y-1.5">
             <Label>Origem</Label>
@@ -85,13 +95,6 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
           <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex: Transferência para pagar fornecedor" rows={2} />
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" disabled={isLoading || !fromId || !toId || fromId === toId || amount <= 0}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Transferir
-          </Button>
-        </div>
       </form>
     </ResponsiveModal>
   );

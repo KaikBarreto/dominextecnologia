@@ -193,8 +193,20 @@ export function CustomerFormDialog({
   // o usuário veja a mensagem mesmo se estiver na aba Fiscal ao salvar.
   const onInvalid = () => setActiveTab('contato');
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        Cancelar
+      </Button>
+      <Button type="submit" form="customer-form" disabled={isLoading || uploadingPhoto}>
+        {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {customer ? 'Salvar' : 'Criar'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? 'Editar Cliente' : 'Novo Cliente'}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? 'Editar Cliente' : 'Novo Cliente'} footer={footer}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -208,7 +220,7 @@ export function CustomerFormDialog({
       />
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="space-y-4">
+        <form id="customer-form" onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="space-y-4">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contato' | 'fiscal')}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="contato" className="flex items-center gap-2 text-xs sm:text-sm">
@@ -473,17 +485,6 @@ export function CustomerFormDialog({
               </div>
             </TabsContent>
           </Tabs>
-
-          {/* Footer */}
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading || uploadingPhoto}>
-              {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {customer ? 'Salvar' : 'Criar'}
-            </Button>
-          </div>
         </form>
       </Form>
     </ResponsiveModal>

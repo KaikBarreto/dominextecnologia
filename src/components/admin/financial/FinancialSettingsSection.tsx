@@ -113,8 +113,15 @@ function CategoryFormModal({ category, type, onClose, onSave }: {
   useState(() => { setForm(initial); });
   if (!open) return null;
 
+  const footer = (
+    <div className="flex gap-2">
+      <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+      <Button onClick={() => onSave({ id: category?.id, ...form })} className="flex-1">Salvar</Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={(o) => !o && onClose()} title={category ? 'Editar categoria' : 'Nova categoria'}>
+    <ResponsiveModal open={open} onOpenChange={(o) => !o && onClose()} title={category ? 'Editar categoria' : 'Nova categoria'} footer={footer}>
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
@@ -141,10 +148,6 @@ function CategoryFormModal({ category, type, onClose, onSave }: {
             <Label>Cor</Label>
             <ColorPicker value={form.color} onChange={(c) => setForm({ ...form, color: c })} />
           </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-          <Button onClick={() => onSave({ id: category?.id, ...form })} className="flex-1">Salvar</Button>
         </div>
       </div>
     </ResponsiveModal>

@@ -238,6 +238,12 @@ export function TimeSettingsPanel() {
         onOpenChange={() => setEditingEmployee(null)}
         title={`Jornada — ${editingEmp?.name || ''}`}
         className="sm:max-w-[500px]"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setEditingEmployee(null)}>Cancelar</Button>
+            <Button onClick={saveSchedule}>Salvar jornada</Button>
+          </div>
+        }
       >
         <div className="space-y-3 py-2">
           {WEEKDAYS.map((day, i) => (
@@ -260,7 +266,6 @@ export function TimeSettingsPanel() {
               )}
             </div>
           ))}
-          <Button className="w-full mt-2" onClick={saveSchedule}>Salvar jornada</Button>
         </div>
       </ResponsiveModal>
     </div>

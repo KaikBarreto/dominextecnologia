@@ -350,7 +350,22 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
       </Card>
 
       {/* Picker de equipamentos do cliente (multi-seleção). */}
-      <ResponsiveModal open={showPicker} onOpenChange={setShowPicker} title="Adicionar equipamentos">
+      <ResponsiveModal
+        open={showPicker}
+        onOpenChange={setShowPicker}
+        title="Adicionar equipamentos"
+        footer={
+          <Button
+            className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
+            onClick={confirmPicker}
+            disabled={pickerSelection.size === 0}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar {pickerSelection.size > 0 ? `${pickerSelection.size} ` : ''}
+            equipamento{pickerSelection.size !== 1 ? 's' : ''}
+          </Button>
+        }
+      >
         <div className="space-y-3 p-1">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -403,16 +418,6 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
               })}
             </div>
           )}
-
-          <Button
-            className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
-            onClick={confirmPicker}
-            disabled={pickerSelection.size === 0}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar {pickerSelection.size > 0 ? `${pickerSelection.size} ` : ''}
-            equipamento{pickerSelection.size !== 1 ? 's' : ''}
-          </Button>
         </div>
       </ResponsiveModal>
 

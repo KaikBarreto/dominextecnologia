@@ -125,8 +125,18 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
   const currentPhotoSrc = photoPreview || photoUrl;
   const SelectedIcon = ICON_OPTIONS.find(i => i.name === iconName)?.icon || UsersRound;
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button onClick={handleSubmit} disabled={isLoading || uploading || !name.trim()}>
+        {(isLoading || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {team ? 'Salvar' : 'Criar Equipe'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={team ? 'Editar Equipe' : 'Nova Equipe'}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={team ? 'Editar Equipe' : 'Nova Equipe'} footer={footer}>
       <div className="space-y-4">
         <div className="space-y-2">
           <Label>Nome *</Label>
@@ -238,13 +248,6 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={isLoading || uploading || !name.trim()}>
-            {(isLoading || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {team ? 'Salvar' : 'Criar Equipe'}
-          </Button>
-        </div>
       </div>
     </ResponsiveModal>
   );

@@ -234,7 +234,17 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
         </CardContent>
       </Card>
 
-      <ResponsiveModal open={confirmOpen} onOpenChange={setConfirmOpen} title="Confirmar Pagamento">
+      <ResponsiveModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirmar Pagamento"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} className="flex-1">Cancelar</Button>
+            <Button onClick={confirmPayment} disabled={createPayment.isPending} className="flex-1">Confirmar</Button>
+          </div>
+        }
+      >
         {selected && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -263,15 +273,21 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setConfirmOpen(false)} className="flex-1">Cancelar</Button>
-              <Button onClick={confirmPayment} disabled={createPayment.isPending} className="flex-1">Confirmar</Button>
-            </div>
           </div>
         )}
       </ResponsiveModal>
 
-      <ResponsiveModal open={!!editPayment} onOpenChange={(o) => !o && setEditPayment(null)} title="Editar Data do Pagamento">
+      <ResponsiveModal
+        open={!!editPayment}
+        onOpenChange={(o) => !o && setEditPayment(null)}
+        title="Editar Data do Pagamento"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setEditPayment(null)} className="flex-1">Cancelar</Button>
+            <Button onClick={confirmEditDate} disabled={updatePaymentDate.isPending} className="flex-1">Salvar</Button>
+          </div>
+        }
+      >
         {editPayment && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -293,15 +309,21 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setEditPayment(null)} className="flex-1">Cancelar</Button>
-              <Button onClick={confirmEditDate} disabled={updatePaymentDate.isPending} className="flex-1">Salvar</Button>
-            </div>
           </div>
         )}
       </ResponsiveModal>
 
-      <ResponsiveModal open={!!deletePayment} onOpenChange={(o) => !o && setDeletePayment(null)} title="Excluir Pagamento">
+      <ResponsiveModal
+        open={!!deletePayment}
+        onOpenChange={(o) => !o && setDeletePayment(null)}
+        title="Excluir Pagamento"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setDeletePayment(null)} className="flex-1">Cancelar</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={removePayment.isPending} className="flex-1">Excluir</Button>
+          </div>
+        }
+      >
         {deletePayment && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -309,10 +331,6 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
               <strong>{fmt(Number(deletePayment.total_amount) || 0)}</strong>? As despesas de salário e
               comissão lançadas no financeiro também serão removidas.
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setDeletePayment(null)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={confirmDelete} disabled={removePayment.isPending} className="flex-1">Excluir</Button>
-            </div>
           </div>
         )}
       </ResponsiveModal>

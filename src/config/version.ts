@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.31";
+export const APP_VERSION = "1.15.32";
 
-export const VERSION_NOTES = "As Categorias do Financeiro agora ficam numa aba própria, ao lado da Visão Geral e do DRE, mais fáceis de achar e organizar. E agora dá pra reiniciar a contagem do DRE a partir de uma data, começando o resultado do zero sem perder nenhuma movimentação já lançada.";
+export const VERSION_NOTES = "Suas janelas de cadastro ficaram mais seguras no celular e no computador: não fecham mais ao tocar fora sem querer, só pelo novo botão FECHAR, pelo Cancelar ou arrastando para baixo. Os botões de salvar ficam fixos na base, e você não perde mais o preenchimento quando sai uma atualização. O rascunho do contrato agora fica guardado no celular, e a barra do topo do app instalado acompanha o tema.";

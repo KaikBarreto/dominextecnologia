@@ -157,8 +157,18 @@ export function EmployeeMovementModal({
       : 0;
   const bankHoursDiscount = type === 'falta' && faltaMode === 'banco' ? dailyHours : 0;
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="submit" form="employee-movement-form" disabled={isPending}>
+        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Registrar {typeLabels[type]}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registrar ${typeLabels[type]} — ${employeeName}`}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registrar ${typeLabels[type]} — ${employeeName}`} footer={footer}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -174,7 +184,7 @@ export function EmployeeMovementModal({
           setDescription('');
         }}
       />
-      <form onSubmit={handleSubmit} className="space-y-4 p-1">
+      <form id="employee-movement-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <div className="rounded-lg bg-muted p-3 text-sm">
           Saldo atual: <span className={currentBalance >= 0 ? 'text-green-600 font-semibold' : 'text-destructive font-semibold'}>
             {currentBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -326,13 +336,6 @@ export function EmployeeMovementModal({
           <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Observação opcional..." rows={2} />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Registrar {typeLabels[type]}
-          </Button>
-        </div>
       </form>
     </ResponsiveModal>
   );

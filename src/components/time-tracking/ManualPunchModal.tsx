@@ -43,8 +43,17 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
     }
   };
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button onClick={handleSubmit} disabled={!time || !notes.trim() || loading}>
+        {loading ? 'Salvando...' : 'Registrar'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registro manual — ${employeeName}`}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registro manual — ${employeeName}`} footer={footer}>
       <div className="space-y-4 py-2">
         <div className="space-y-2">
           <Label>Tipo de registro</Label>
@@ -63,9 +72,6 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
           <Label>Justificativa *</Label>
           <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Motivo do registro manual..." />
         </div>
-        <Button className="w-full" onClick={handleSubmit} disabled={!time || !notes.trim() || loading}>
-          {loading ? 'Salvando...' : 'Registrar'}
-        </Button>
       </div>
     </ResponsiveModal>
   );

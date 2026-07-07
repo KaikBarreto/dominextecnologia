@@ -808,9 +808,38 @@ export function ServiceOrderFormDialog({
 
   // Edit mode: same multi-step form as create
   if (serviceOrder) {
+    const editFooter = (
+      <div className="flex justify-between w-full">
+        <div>
+          {step > 0 && (
+            <Button type="button" variant="outline" onClick={goBack}>
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          {isLastStep ? (
+            <Button type="submit" form="os-edit-form" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          ) : (
+            <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
+              Próximo
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+
     return (
       <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS" className="sm:max-w-[920px]">
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS" className="sm:max-w-[920px]" footer={editFooter}>
         {isPmocOrder && (
           <PmocComplianceBadge variant="ribbon" withTooltip className="mb-4" />
         )}
@@ -838,7 +867,7 @@ export function ServiceOrderFormDialog({
         </div>
 
         <Form {...form}>
-          <form onSubmit={(e) => { e.preventDefault(); if (isLastStep) form.handleSubmit(handleEditSubmit)(); }} className="space-y-4">
+          <form id="os-edit-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) form.handleSubmit(handleEditSubmit)(); }} className="space-y-4">
             <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
             {/* Step 1: Client & Service */}
             {currentStepKey === 'client' && (
@@ -1147,34 +1176,6 @@ export function ServiceOrderFormDialog({
               </div>
             )}
             </StepTransition>
-
-            {/* Navigation */}
-            <div className="flex justify-between pt-4 border-t">
-              <div>
-                {step > 0 && (
-                  <Button type="button" variant="outline" onClick={goBack}>
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Voltar
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancelar
-                </Button>
-                {isLastStep ? (
-                  <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Salvar
-                  </Button>
-                ) : (
-                  <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
-                    Próximo
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
           </form>
         </Form>
       </ResponsiveModal>
@@ -1228,8 +1229,37 @@ export function ServiceOrderFormDialog({
     );
   }
 
+  const createFooter = (
+    <div className="flex justify-between w-full">
+      <div>
+        {step > 0 && (
+          <Button type="button" variant="outline" onClick={goBack}>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Cancelar
+        </Button>
+        {isLastStep ? (
+          <Button type="submit" form="os-create-form" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {recurrenceEnabled ? 'Criar OS Recorrentes' : 'Criar OS'}
+          </Button>
+        ) : (
+          <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
+            Próximo
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço" className="sm:max-w-[920px]">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço" className="sm:max-w-[920px]" footer={createFooter}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -1275,7 +1305,7 @@ export function ServiceOrderFormDialog({
       </div>
 
       <Form {...form}>
-        <form onSubmit={(e) => { e.preventDefault(); if (isLastStep) handleCreateSubmit(); }} className="space-y-4">
+        <form id="os-create-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) handleCreateSubmit(); }} className="space-y-4">
           <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
           {/* Step 1: Client & Service */}
           {currentStepKey === 'client' && (
@@ -1737,34 +1767,6 @@ export function ServiceOrderFormDialog({
             </div>
           )}
           </StepTransition>
-
-          {/* Navigation */}
-          <div className="flex justify-between pt-4 border-t">
-            <div>
-              {step > 0 && (
-                <Button type="button" variant="outline" onClick={goBack}>
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Voltar
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              {isLastStep ? (
-                <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {recurrenceEnabled ? 'Criar OS Recorrentes' : 'Criar OS'}
-                </Button>
-              ) : (
-                <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
-                  Próximo
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
         </form>
       </Form>
 

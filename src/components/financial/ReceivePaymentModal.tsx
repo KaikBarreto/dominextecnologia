@@ -155,12 +155,28 @@ export function ReceivePaymentModal({
     });
   };
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+        Cancelar
+      </Button>
+      <Button
+        onClick={handleSubmit}
+        disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido}
+        className="bg-success hover:bg-success/90 text-white"
+      >
+        {isSubmitting ? 'Confirmando...' : 'Confirmar recebimento'}
+      </Button>
+    </div>
+  );
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title={title}
       description={description ?? `Valor: ${fmt(amount)}`}
+      footer={footer}
     >
       <div className="space-y-4">
         {/* Valor recebido — primeiro campo lógico, só renderiza quando parcial habilitado */}
@@ -309,18 +325,6 @@ export function ReceivePaymentModal({
           </Card>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido}
-            className="bg-success hover:bg-success/90 text-white"
-          >
-            {isSubmitting ? 'Confirmando...' : 'Confirmar recebimento'}
-          </Button>
-        </div>
       </div>
     </ResponsiveModal>
   );

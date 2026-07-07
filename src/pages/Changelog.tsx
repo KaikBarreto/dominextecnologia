@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.32',
+    date: '07 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Janelas de cadastro mais seguras e organizadas',
+        description: 'No celular e no computador, as janelas de cadastro não fecham mais quando você toca ou clica fora por engano. Agora elas fecham só pelo novo botão FECHAR (no topo direito), pelo Cancelar, ou arrastando para baixo pela barrinha, no celular. Além disso, os botões de Salvar e Criar passaram a ficar fixos na base da janela, sempre à mão, mesmo em formulários grandes ou com várias etapas. Acabou o preenchimento perdido por um toque errado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Sua janela não fecha mais no meio do preenchimento',
+        description: 'Se sair uma atualização do sistema enquanto você preenche algo, a janela aberta não é mais fechada no meio do caminho: o sistema espera você terminar para atualizar. E no celular, o gesto de puxar a tela para atualizar não dispara mais por engano dentro de uma janela, só funciona na tela principal.',
+        category: 'correcao',
+      },
+      {
+        title: 'Rascunho do contrato guardado no celular',
+        description: 'Ao criar um contrato pelo celular, se a janela fechar antes de você terminar, o rascunho agora fica guardado. É só reabrir que o sistema oferece continuar de onde você parou, sem perder o que já tinha preenchido.',
+        category: 'correcao',
+      },
+      {
+        title: 'App instalado: barra do topo acompanha o tema',
+        description: 'Para quem usa o sistema instalado na tela inicial do celular, a barra do topo agora fica branca no tema claro e escura no tema escuro. Antes ela ficava roxa, destoando do restante do app.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.31',
     date: '07 de julho de 2026',
     type: 'patch',

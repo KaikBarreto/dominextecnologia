@@ -227,9 +227,13 @@ function TopbarShell() {
 // ============================================================
 function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
   const handleRefresh = async () => {
+    // Defense-in-depth: o gate principal é o MobilePullToRefresh, que nem inicia
+    // o gesto com modal/drawer aberto. Ainda assim, se por algum caminho um
+    // modal estiver aberto aqui, não recarregamos (mataria o formulário).
+    if (document.querySelector('[data-state="open"]')) return;
     // Efeito literal de F5: reload completo. Aceito perder estado de UI
-    // temporário (filtros, modais) em troca de garantir refresh de tudo
-    // (caches de imagem, contexts, service worker). CEO 2026-05-23.
+    // temporário (filtros) em troca de garantir refresh de tudo (caches de
+    // imagem, contexts, service worker). CEO 2026-05-23.
     window.location.reload();
   };
 

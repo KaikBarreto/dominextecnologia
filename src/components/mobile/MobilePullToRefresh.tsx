@@ -40,6 +40,11 @@ export function MobilePullToRefresh({
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (disabled || isRefreshing) return;
+      // Nunca puxa pra atualizar com modal/drawer aberto: dentro de um modal o
+      // gesto deve rolar o conteúdo do modal, não recarregar a página inteira
+      // (e um reload aqui mataria o formulário aberto). Radix/vaul marcam
+      // data-state="open" enquanto abertos — mesmo seletor do SwipeBackProvider.
+      if (document.querySelector('[data-state="open"]')) return;
       const scrollEl = containerRef.current;
       // Só inicia se o usuário está no topo do scroll
       if (scrollEl && scrollEl.scrollTop > 0) return;

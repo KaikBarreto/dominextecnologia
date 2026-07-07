@@ -78,12 +78,23 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
 
   const screenCategories = Object.keys(SCREEN_CATEGORIES);
 
+  const footer = showForm ? (
+    <div className="flex justify-end gap-3">
+      <Button variant="outline" onClick={() => { setEditing(null); setIsCreating(false); }}>Cancelar</Button>
+      <Button onClick={handleSave} disabled={loading || !form.name}>
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {editing ? 'Salvar' : 'Criar Cargo'}
+      </Button>
+    </div>
+  ) : undefined;
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title="Configurações de Cargos"
       description="Crie e edite perfis de acesso com permissões pré-definidas"
+      footer={footer}
     >
       <div className="space-y-0">
         {!showForm ? (
@@ -195,13 +206,6 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => { setEditing(null); setIsCreating(false); }}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={loading || !form.name}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editing ? 'Salvar' : 'Criar Cargo'}
-              </Button>
-            </div>
           </div>
         )}
       </div>

@@ -158,9 +158,19 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
     avatar_url: p.avatar_url,
   }));
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="submit" form="task-form" disabled={isLoading || !title.trim()}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isEditing ? 'Salvar' : 'Criar Tarefa'}
+      </Button>
+    </div>
+  );
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? 'Editar Tarefa' : 'Nova Tarefa'}>
-      <form onSubmit={handleSubmit} className="space-y-4 p-1">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? 'Editar Tarefa' : 'Nova Tarefa'} footer={footer}>
+      <form id="task-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <div className="space-y-2">
           <Label>Título da Tarefa *</Label>
           <Input
@@ -307,13 +317,6 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" disabled={isLoading || !title.trim()}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditing ? 'Salvar' : 'Criar Tarefa'}
-          </Button>
-        </div>
       </form>
     </ResponsiveModal>
   );

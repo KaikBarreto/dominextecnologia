@@ -411,6 +411,49 @@ export function ModulesManagementCard({
         onOpenChange={handleOpenChange}
         title="Gerenciar meu plano"
         className="sm:max-w-2xl"
+        footer={
+          activeTab === 'custom' ? (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setOpen(false)} disabled={planChange.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={planChange.isPending || customMonthly <= 0}
+                onClick={() => handleConfirm('personalizado', customMonthly, BASE_USERS + customExtraUsers)}
+              >
+                {planChange.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Atualizando...</>
+                ) : (
+                  <>Aplicar <ArrowRight className="h-4 w-4 ml-1.5" /></>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setOpen(false)} disabled={planChange.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={!selectedPlan || planChange.isPending}
+                onClick={() => {
+                  if (!selectedPlan) return;
+                  const sel = presetPlans.find((p) => p.code === selectedPlan);
+                  const price = sel?.price ?? 0;
+                  const targetMaxUsers = sel?.max_users ?? 0;
+                  handleConfirm(selectedPlan, price, targetMaxUsers);
+                }}
+              >
+                {planChange.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Atualizando...</>
+                ) : (
+                  <>Confirmar <ArrowRight className="h-4 w-4 ml-1.5" /></>
+                )}
+              </Button>
+            </div>
+          )
+        }
       >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-1">
           <TabsList className="grid w-full grid-cols-2">
@@ -495,29 +538,6 @@ export function ModulesManagementCard({
             {selectedPlan && (
               <ChangeNotice newValue={presetPlans.find((p) => p.code === selectedPlan)?.price ?? 0} />
             )}
-
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setOpen(false)} disabled={planChange.isPending}>
-                Cancelar
-              </Button>
-              <Button
-                className="flex-1"
-                disabled={!selectedPlan || planChange.isPending}
-                onClick={() => {
-                  if (!selectedPlan) return;
-                  const sel = presetPlans.find((p) => p.code === selectedPlan);
-                  const price = sel?.price ?? 0;
-                  const targetMaxUsers = sel?.max_users ?? 0;
-                  handleConfirm(selectedPlan, price, targetMaxUsers);
-                }}
-              >
-                {planChange.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Atualizando...</>
-                ) : (
-                  <>Confirmar <ArrowRight className="h-4 w-4 ml-1.5" /></>
-                )}
-              </Button>
-            </div>
           </TabsContent>
 
           {/* ---------------- Personalizado ---------------- */}
@@ -628,23 +648,6 @@ export function ModulesManagementCard({
             </div>
 
             <ChangeNotice newValue={customMonthly} />
-
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setOpen(false)} disabled={planChange.isPending}>
-                Cancelar
-              </Button>
-              <Button
-                className="flex-1"
-                disabled={planChange.isPending || customMonthly <= 0}
-                onClick={() => handleConfirm('personalizado', customMonthly, BASE_USERS + customExtraUsers)}
-              >
-                {planChange.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Atualizando...</>
-                ) : (
-                  <>Aplicar <ArrowRight className="h-4 w-4 ml-1.5" /></>
-                )}
-              </Button>
-            </div>
           </TabsContent>
         </Tabs>
       </ResponsiveModal>

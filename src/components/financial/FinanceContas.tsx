@@ -998,6 +998,28 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         onOpenChange={(v) => { if (!v) setPayingDespesaTxn(null); }}
         title="Confirmar pagamento"
         description={payingDespesaTxn ? `${payingDespesaTxn.description} — ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(payingDespesaTxn.amount))}` : undefined}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">Cancelar</Button>
+            <Button
+              disabled={!payDespAccountId || !payDespDate}
+              className="min-h-11 rounded-xl"
+              onClick={async () => {
+                if (!payingDespesaTxn || !payDespAccountId) return;
+                await onMarkAsPaid({
+                  id: payingDespesaTxn.id,
+                  account_id: payDespAccountId,
+                  payment_method: payDespMethod,
+                  paid_date: payDespDate,
+                  notes: payDespNotes.trim() || undefined,
+                });
+                setPayingDespesaTxn(null);
+              }}
+            >
+              Confirmar
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -1045,27 +1067,6 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               rows={2}
               className="resize-none"
             />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">Cancelar</Button>
-            <Button
-              disabled={!payDespAccountId || !payDespDate}
-              className="min-h-11 rounded-xl"
-              onClick={async () => {
-                if (!payingDespesaTxn || !payDespAccountId) return;
-                await onMarkAsPaid({
-                  id: payingDespesaTxn.id,
-                  account_id: payDespAccountId,
-                  payment_method: payDespMethod,
-                  paid_date: payDespDate,
-                  notes: payDespNotes.trim() || undefined,
-                });
-                setPayingDespesaTxn(null);
-              }}
-            >
-              Confirmar
-            </Button>
           </div>
         </div>
       </ResponsiveModal>

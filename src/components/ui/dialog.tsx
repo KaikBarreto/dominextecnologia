@@ -7,6 +7,36 @@ import { cn } from "@/lib/utils";
 import { useIsCompact } from "@/hooks/use-mobile";
 
 /**
+ * Botão "FECHAR" rotulado, canto superior direito do header do modal.
+ *
+ * Estado normal: discreto (só texto/ícone muted, sem fundo). Em hover E
+ * active/pressed (pra funcionar também no toque), vira vermelho destrutivo com
+ * ícone e texto brancos. Fechamento deliberado — o clique-fora não fecha mais.
+ *
+ * `asChild` permite embrulhar num `DialogPrimitive.Close` (desktop) mantendo o
+ * fechamento nativo do Radix; no drawer usamos `onClick` direto.
+ */
+const modalCloseButtonClass =
+  "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-destructive hover:text-white active:bg-destructive active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none";
+
+const ModalCloseButton = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => (
+  <button
+    ref={ref}
+    type="button"
+    aria-label="Fechar"
+    className={cn(modalCloseButtonClass, className)}
+    {...props}
+  >
+    <X className="h-4 w-4" aria-hidden="true" />
+    <span>FECHAR</span>
+  </button>
+));
+ModalCloseButton.displayName = "ModalCloseButton";
+
+/**
  * Modo de renderização do `Dialog` propagado via contexto. Em mobile, troca
  * automaticamente Radix Dialog por vaul Drawer (bottom sheet, app-like).
  *
@@ -49,6 +79,8 @@ function Dialog({
           defaultOpen={defaultOpen}
           shouldScaleBackground
           repositionInputs={false}
+          // Só o handle (barra de cima) arrasta pra fechar; arrastar no conteúdo rola.
+          handleOnly
         >
           {children}
         </DrawerPrimitive.Root>
@@ -175,8 +207,15 @@ const DialogContent = React.forwardRef<
           style={{ maxHeight: "90dvh" }}
           onOpenAutoFocus={(e) => e.preventDefault()}
           {...(props as unknown as React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>)}
+          // Clique/tap no backdrop NUNCA fecha — depois do spread pra sempre vencer.
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
         >
-          <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted shrink-0" />
+          {/* Handle real do vaul: com handleOnly, é o único ponto de arraste-pra-fechar. */}
+          <DrawerPrimitive.Handle className="mx-auto mt-3 h-1.5 w-12 shrink-0 rounded-full bg-muted" />
+          <DrawerPrimitive.Close asChild>
+            <ModalCloseButton className="absolute right-3 top-3 z-10" />
+          </DrawerPrimitive.Close>
           <div
             ref={innerRef}
             className="flex flex-col flex-1 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2"
@@ -198,11 +237,13 @@ const DialogContent = React.forwardRef<
           className,
         )}
         {...props}
+        // Clique fora NUNCA fecha (depois do spread pra sempre vencer). Escape segue ativo.
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+        <DialogPrimitive.Close asChild>
+          <ModalCloseButton className="absolute right-4 top-4" />
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPortal>
@@ -319,4 +360,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  ModalCloseButton,
 };

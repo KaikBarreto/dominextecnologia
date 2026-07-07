@@ -146,12 +146,22 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
   const selectedOrigin = origins.find(o => o.name === form.source);
   const selectedResponsible = salespeople.find((s: any) => s.user_id === form.responsible_id);
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
+      <Button onClick={handleSubmit} disabled={isSaving}>
+        {isSaving ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar Lead'}
+      </Button>
+    </div>
+  );
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title={isEditing ? 'Editar Lead' : 'Novo Lead'}
       description="Preencha o essencial. Você pode complementar os dados depois."
+      footer={footer}
     >
       <div className="space-y-5">
         {/* Seção Essenciais */}
@@ -362,12 +372,6 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={isSaving}>
-            {isSaving ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar Lead'}
-          </Button>
-        </div>
       </div>
     </ResponsiveModal>
   );

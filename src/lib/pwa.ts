@@ -7,13 +7,71 @@
 //      sem esperar o usuário fechar abas.
 //   3. clientsClaim faz o SW novo assumir controle das abas existentes.
 //   4. `controllerchange` dispara → recarregamos a aba uma única vez para
-//      o usuário pegar o bundle JS novo.
+//      o usuário pegar o bundle JS novo. Se houver um modal/drawer aberto no
+//      momento, o reload é ADIADO até o modal fechar (ver reloadWhenSafe),
+//      pra não matar o que o usuário está preenchendo.
 //
 // Sem o reload no `controllerchange`, o JS continuaria sendo o do SW velho
 // (foi o que causou o incidente 1.8.10 — clientes presos a versão antiga
 // até "limpar cache" manualmente a cada ~10 min).
 
 let reloadingForUpdate = false;
+
+// ---------------------------------------------------------------------------
+// Reload ADIADO enquanto há modal/drawer aberto.
+//
+// Quando um deploy novo entra (controllerchange) ou um chunk some (chunk-error),
+// a defesa é recarregar a aba. Só que um reload seco mata qualquer modal aberto
+// e joga fora o que o usuário estava preenchendo (incidente relatado: modal de
+// OS/formulário evaporando no meio do atendimento quando saía versão nova).
+//
+// Decisão CEO: reload SILENCIOSO-ADIADO — se há modal aberto, não recarrega
+// agora; espera o usuário fechar. Sem banner novo.
+//
+// Detecção de "modal aberto": Radix e vaul (drawer) marcam data-state="open" no
+// overlay/content enquanto abertos. Mesmo seletor usado no SwipeBackProvider.
+
+const MODAL_OPEN_SELECTOR = '[data-state="open"]';
+// Enquanto um reload está adiado, verificamos a cada 1.5s se o modal fechou.
+const RELOAD_POLL_INTERVAL_MS = 1500;
+
+let pendingReloadTimer: ReturnType<typeof setInterval> | null = null;
+
+function hasOpenModal(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.querySelector(MODAL_OPEN_SELECTOR) !== null;
+}
+
+// Centraliza a decisão "recarrega agora ou adia":
+//   - Sem modal aberto → reload imediato (comportamento de hoje, intocado).
+//   - Com modal aberto → agenda um polling leve que só roda enquanto adiado e
+//     recarrega assim que o último modal fechar.
+//
+// A guarda anti-duplicação vive AQUI: se já há um adiamento em curso
+// (pendingReloadTimer != null) não abrimos um segundo. E reloadingForUpdate
+// continua sendo setado pelos chamadores ANTES de chamar isto, então nenhum
+// outro gatilho (controllerchange/chunk) dispara um reload concorrente.
+function reloadWhenSafe() {
+  if (!hasOpenModal()) {
+    window.location.reload();
+    return;
+  }
+
+  // Já existe um adiamento aguardando o modal fechar — não duplica o interval.
+  if (pendingReloadTimer !== null) return;
+
+  console.warn(
+    "Atualização pronta, mas há um modal aberto — recarrego assim que fechar.",
+  );
+  pendingReloadTimer = setInterval(() => {
+    if (hasOpenModal()) return; // ainda aberto: aguarda o próximo tick
+    if (pendingReloadTimer !== null) {
+      clearInterval(pendingReloadTimer);
+      pendingReloadTimer = null;
+    }
+    window.location.reload();
+  }, RELOAD_POLL_INTERVAL_MS);
+}
 
 export async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
@@ -23,7 +81,10 @@ export async function registerServiceWorker() {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;
     reloadingForUpdate = true;
-    window.location.reload();
+    // Adia se houver modal aberto (não mata o formulário do usuário); recarrega
+    // na hora caso contrário. reloadingForUpdate já ficou true, então nenhum
+    // outro gatilho dispara reload concorrente enquanto este está pendente.
+    reloadWhenSafe();
   });
 
   try {
@@ -139,7 +200,11 @@ function recoverFromChunkError(reason: string) {
   // Reaproveita a guarda do controllerchange pra não colidir com o reload de SW.
   reloadingForUpdate = true;
   console.warn("Chunk ausente (provável deploy novo) — recarregando.", reason);
-  window.location.reload();
+  // Mesmo adiamento por modal aberto (rede de segurança, raro aqui, mas mantém
+  // consistência). O teto de tentativas já foi contabilizado por
+  // shouldReloadForChunkError acima — o contador anti-loop está correto mesmo
+  // que o reload em si só aconteça depois do modal fechar.
+  reloadWhenSafe();
 }
 
 // Limpa a trava anti-loop, mas SÓ se a sessão estiver comprovadamente saudável.

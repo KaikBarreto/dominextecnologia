@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
@@ -533,18 +533,54 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     ],
   });
 
+  // Monta o snapshot completo do rascunho a partir do estado atual das etapas.
+  // Fonte ÚNICA usada tanto pelo save contínuo quanto pelo flush do fechar/unmount.
+  const buildDraftSnapshot = (): ContractDraft => ({
+    name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc,
+    responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step,
+    unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento,
+    unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
+    environments, looseItems, machineConfigs, commonChecklists,
+  });
+
   // Persiste a cada mudança (só criação, e não enquanto o prompt de retomar está aberto).
   useEffect(() => {
     if (open && !isEditing && !draft.showResumePrompt) {
-      draft.saveDraft({
-        name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc,
-        responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step,
-        unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento,
-        unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
-        environments, looseItems, machineConfigs, commonChecklists,
-      });
+      draft.saveDraft(buildDraftSnapshot());
     }
   }, [name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc, responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step, unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento, unidadeBairro, unidadeCidade, unidadeUf, unidadeCep, environments, looseItems, machineConfigs, commonChecklists, open, isEditing, draft.showResumePrompt]);
+
+  // Espelho do snapshot atual num ref (atualizado a CADA render, sem gate). É a
+  // fonte que o flush do UNMOUNT lê — cobre o mobile, onde o drawer vaul DESMONTA
+  // o conteúdo ao fechar e o efeito de save do último valor nunca roda com
+  // `open=true`. Guardar o próprio `draft` num ref evita re-assinar o cleanup.
+  const latestDraftRef = useRef<ContractDraft | null>(null);
+  latestDraftRef.current = !isEditing ? buildDraftSnapshot() : null;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  // Flush no UNMOUNT: persiste o último snapshot conhecido antes do conteúdo sumir
+  // (o hook decide não gravar quando o rascunho é vazio/só-defaults). Roda só ao
+  // desmontar — o caminho de fechar por interação usa `handleUserClose` (abaixo).
+  useEffect(() => {
+    return () => {
+      if (latestDraftRef.current) draftRef.current.flush(latestDraftRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fechamento por INTERAÇÃO do usuário (X, arrastar o drawer, Cancelar, Escape):
+  // captura o snapshot ATUAL e o persiste ANTES de fechar/resetar — assim o último
+  // valor digitado sobrevive mesmo no mobile, onde digitar+fechar caem no mesmo
+  // tick. Edição não tem rascunho; sucesso do submit fecha por `onOpenChange`
+  // direto (após `clearDraft`, que já neutraliza o flush).
+  const handleUserClose = () => {
+    if (!isEditing) draft.flush(buildDraftSnapshot());
+    onOpenChange(false);
+  };
+  const handleModalOpenChange = (v: boolean) => {
+    if (v) onOpenChange(true);
+    else handleUserClose();
+  };
 
   const applyContractDraft = (d: ContractDraft) => {
     setName(d.name || '');
@@ -3852,7 +3888,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // conteúdo rolável, no desktop e no mobile).
   const wizardFooter = (
     <div className="flex flex-row justify-between gap-2">
-      <Button variant="outline" onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)} disabled={submitting}>
+      <Button variant="outline" onClick={() => step === 0 ? handleUserClose() : setStep(step - 1)} disabled={submitting}>
         {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Voltar</>}
       </Button>
       {step < STEPS.length - 1 ? (
@@ -3871,10 +3907,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   return (
     <>
-    {/* Container do wizard: modal central no desktop, drawer de baixo no mobile. */}
+    {/* Container do wizard: modal central no desktop, drawer de baixo no mobile.
+        `handleModalOpenChange` intercepta o FECHAR por interação (X, arrastar o
+        drawer, Escape) pra flushar o rascunho antes do conteúdo desmontar. */}
     <ResponsiveModal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleModalOpenChange}
       title={isEditing ? 'Editar Contrato' : 'Novo Contrato'}
       className="sm:max-w-[920px]"
       footer={wizardFooter}

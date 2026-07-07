@@ -129,14 +129,24 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
     ? creditLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
+  const footer = (
+    <div className="flex justify-end gap-3">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="submit" form="account-form" disabled={!name || createAccount.isPending || updateAccount.isPending}>
+        {editing ? 'Salvar' : type === 'cartao' ? 'Criar Cartão' : 'Criar Conta'}
+      </Button>
+    </div>
+  );
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title={editing ? (editing.type === 'cartao' ? 'Editar Cartão' : 'Editar Conta') : (type === 'cartao' ? 'Novo Cartão' : 'Nova Conta')}
       className="sm:max-w-[480px]"
+      footer={footer}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="account-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <Label>Nome da Conta *</Label>
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Nubank Crédito" required />
@@ -271,12 +281,6 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
           </Card>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" disabled={!name || createAccount.isPending || updateAccount.isPending}>
-            {editing ? 'Salvar' : type === 'cartao' ? 'Criar Cartão' : 'Criar Conta'}
-          </Button>
-        </div>
       </form>
     </ResponsiveModal>
   );

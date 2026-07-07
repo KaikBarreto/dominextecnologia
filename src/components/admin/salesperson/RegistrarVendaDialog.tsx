@@ -139,12 +139,24 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
     }
   };
 
+  const footer = (
+    <div className="flex gap-2">
+      <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+        Cancelar
+      </Button>
+      <Button onClick={handleSubmit} disabled={!canSubmit} className="flex-1">
+        {createSale.isPending ? 'Registrando...' : 'Registrar Venda'}
+      </Button>
+    </div>
+  );
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title="Registrar Venda"
       description="Comissão dividida automaticamente entre Closer e SDR"
+      footer={footer}
     >
       <div className="space-y-4">
         <div className="space-y-2">
@@ -246,14 +258,6 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit} className="flex-1">
-            {createSale.isPending ? 'Registrando...' : 'Registrar Venda'}
-          </Button>
-        </div>
       </div>
     </ResponsiveModal>
   );

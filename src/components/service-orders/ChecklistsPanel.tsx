@@ -268,7 +268,23 @@ export function ChecklistsPanel() {
       )}
 
       {/* Create Modal */}
-      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Checklist">
+      <ResponsiveModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        title="Novo Checklist"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleCreate}
+              disabled={!newName.trim() || createTemplate.isPending}
+            >
+              Criar
+            </Button>
+          </div>
+        }
+      >
         <div className="space-y-4">
           <div>
             <Label>Nome do checklist</Label>
@@ -304,17 +320,6 @@ export function ChecklistsPanel() {
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleCreate}
-              disabled={!newName.trim() || createTemplate.isPending}
-            >
-              Criar
-            </Button>
           </div>
         </div>
       </ResponsiveModal>
