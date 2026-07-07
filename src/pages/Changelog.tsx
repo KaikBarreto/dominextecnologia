@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.30',
+    date: '07 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda no celular: busca em todas as Ordens de Serviço',
+        description: 'Ao tocar na lupa da Agenda pelo celular, agora abre uma janela de busca que procura em todas as suas Ordens de Serviço, de qualquer data. Antes a busca só encontrava as OS que estavam no período que você estava vendo na tela, agora acha qualquer uma pelo número, cliente, equipamento, tipo de serviço ou responsável.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Preenchimento da OS: campo de texto volta a permitir edição',
+        description: 'No preenchimento da Ordem de Serviço pelo celular, o campo de resposta em texto voltou a permitir edição pelo botão de lápis. Antes, depois de escrever e sair do campo, ele ficava travado e não dava para reabrir para digitar de novo. Agora é só tocar no lápis para continuar escrevendo na hora, mesmo com a internet lenta.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.15.29',
     date: '07 de julho de 2026',
     type: 'patch',

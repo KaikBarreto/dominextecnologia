@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.15.29";
+export const APP_VERSION = "1.15.30";
 
-export const VERSION_NOTES = "No relatório das Ordens de Serviço pelo celular, o gráfico de OS por status não vaza mais para fora da tela. Os nomes de cada status agora aparecem numa legenda organizada logo abaixo do gráfico, com a cor, a quantidade e a porcentagem, tudo dentro da largura da tela.";
+export const VERSION_NOTES = "A busca da Agenda pelo celular agora abre uma janela que procura em todas as suas Ordens de Serviço, de qualquer data, e não só nas que estão na tela do período atual. E no preenchimento da OS, o campo de texto voltou a permitir edição pelo lápis no celular, dá pra reabrir e continuar digitando na hora.";

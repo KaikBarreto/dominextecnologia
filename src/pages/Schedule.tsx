@@ -1,8 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette, Search as SearchIcon, X as XIcon } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
@@ -114,21 +113,8 @@ export default function Schedule() {
   const [customerFilter, setCustomerFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
-  // Busca inline na Agenda (mobile): lupa do header expande input no lugar do título
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Busca modal paginada (desktop) — ResponsiveModal com 10/página
+  // Busca modal paginada (desktop e mobile) — ResponsiveModal com 10/página
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-
-  // Foca o input quando a busca abre
-  useEffect(() => {
-    if (searchOpen) {
-      const t = setTimeout(() => searchInputRef.current?.focus(), 60);
-      return () => clearTimeout(t);
-    }
-  }, [searchOpen]);
 
   // Get team IDs the current user belongs to
   const myTeamIds = useMemo(() => {
@@ -208,15 +194,6 @@ export default function Schedule() {
       }
       if (customerFilter.length > 0 && (!order.customer_id || !customerFilter.includes(order.customer_id))) return false;
       if (statusFilter.length > 0 && !statusFilter.includes(order.status)) return false;
-      if (searchTerm.trim()) {
-        const t = searchTerm.trim().toLowerCase();
-        const matches =
-          order.customer?.name?.toLowerCase().includes(t) ||
-          (order as any).task_title?.toLowerCase().includes(t) ||
-          (order as any).service_type?.name?.toLowerCase().includes(t) ||
-          String(order.order_number).includes(t);
-        if (!matches) return false;
-      }
       return true;
     }).map(order => {
       const { assignees, team } = getAssignees(order);
@@ -273,7 +250,37 @@ export default function Schedule() {
     }
 
     return [...expanded, ...financialEvents];
-  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, searchTerm, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees, canViewAllSchedule]);
+  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees, canViewAllSchedule]);
+
+  // Fonte de dados para o modal de busca: aplica APENAS as regras de visibilidade
+  // de negócio/segurança (tarefa sem acesso total e filtro de técnico), sem aplicar
+  // filtros de navegação (técnico/cliente/status), sem expandir retomadas e sem
+  // financialEvents. O modal tem busca textual própria e pagina os resultados.
+  const searchableOrders = useMemo(() => {
+    return serviceOrders
+      .filter((order) => {
+        // Visibilidade de TAREFAS: sem acesso total, só aparece pra quem é responsável.
+        if ((order as any).entry_type === 'tarefa' && !canViewAllSchedule) {
+          const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
+          const isMine =
+            (!!user?.id && (assigneeIds?.includes(user.id) || order.technician_id === user.id)) ||
+            (!!order.team_id && myTeamIds.includes(order.team_id));
+          if (!isMine) return false;
+        }
+        // Técnico só enxerga as próprias OSs / times.
+        if (isTechnician && user?.id) {
+          const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
+          const isAssignedToMe = assigneeIds?.includes(user.id) || order.technician_id === user.id;
+          const isAssignedToMyTeam = order.team_id && myTeamIds.includes(order.team_id);
+          if (!isAssignedToMe && !isAssignedToMyTeam) return false;
+        }
+        return true;
+      })
+      .map((order) => {
+        const { assignees, team } = getAssignees(order);
+        return { ...order, _assignees: assignees, _team: team };
+      });
+  }, [serviceOrders, isTechnician, user?.id, myTeamIds, canViewAllSchedule, getAssignees]);
 
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
@@ -555,7 +562,7 @@ export default function Schedule() {
       <div className="flex items-center gap-1">
         <button
           type="button"
-          onClick={() => setSearchOpen(true)}
+          onClick={() => setIsSearchModalOpen(true)}
           aria-label="Buscar tarefa ou OS"
           className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors active:bg-muted/80 hover:text-foreground"
         >
@@ -586,35 +593,12 @@ export default function Schedule() {
 
     return (
       <div className="flex flex-col gap-4 pb-24">
-        {searchOpen ? (
-          <div className="flex items-center gap-2 h-14 mb-3 animate-in slide-in-from-top-2 duration-200">
-            <div className="relative flex-1">
-              <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar tarefa, OS, cliente, equipamento..."
-                className="pl-10 h-10"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => { setSearchOpen(false); setSearchTerm(''); }}
-              aria-label="Fechar busca"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:bg-muted/80 transition-colors shrink-0"
-            >
-              <XIcon className="h-5 w-5" />
-            </button>
-          </div>
-        ) : (
-          <MobilePageHeader
-            title="Agenda"
-            subtitle="Gerencie suas tarefas e compromissos"
-            icon={CalendarIcon}
-            actions={headerActions}
-          />
-        )}
+        <MobilePageHeader
+          title="Agenda"
+          subtitle="Gerencie suas tarefas e compromissos"
+          icon={CalendarIcon}
+          actions={headerActions}
+        />
 
         {/* Navegação de período: prev / current / next + "Hoje" */}
         <div className="flex items-center justify-between gap-2">
@@ -878,6 +862,12 @@ export default function Schedule() {
           onViewDetails={handleViewPausedDetails}
           onResume={handleResumePaused}
         />
+        <OsSearchDialog
+          open={isSearchModalOpen}
+          onOpenChange={setIsSearchModalOpen}
+          orders={searchableOrders as any}
+          onSelect={(order) => handleSearchResultSelect(order as any)}
+        />
       </div>
     );
   }
@@ -1003,7 +993,7 @@ export default function Schedule() {
       <OsSearchDialog
         open={isSearchModalOpen}
         onOpenChange={setIsSearchModalOpen}
-        orders={filteredOrders as any}
+        orders={searchableOrders as any}
         onSelect={(order) => handleSearchResultSelect(order as any)}
       />
     </div>

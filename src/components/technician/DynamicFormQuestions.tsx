@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Check, X, Pencil, AlertTriangle, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -128,6 +127,34 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
+
+  // Refs dos campos de TEXTO/NÚMERO por pergunta. Ao entrar em edição (lápis), o
+  // técnico já quer digitar — damos foco automático no campo correspondente sem
+  // exigir um segundo toque. Guardamos por id porque há N perguntas na tela.
+  const textInputRefs = useRef<Record<string, HTMLTextAreaElement | HTMLInputElement | null>>({});
+  const setTextInputRef = useCallback(
+    (id: string) => (el: HTMLTextAreaElement | HTMLInputElement | null) => {
+      textInputRefs.current[id] = el;
+    },
+    [],
+  );
+
+  // Foca o campo quando ELE entra em edição. Roda quando `editingQuestion` muda;
+  // o rAF garante que o input já foi montado (troca read-only → editável) antes
+  // do .focus(). Só age no campo que acabou de abrir — não rouba foco de outros.
+  useEffect(() => {
+    if (!editingQuestion) return;
+    const raf = requestAnimationFrame(() => {
+      const el = textInputRefs.current[editingQuestion];
+      if (el) {
+        el.focus();
+        // Cursor no fim do texto já existente (em vez de selecionar tudo).
+        const len = el.value?.length ?? 0;
+        try { el.setSelectionRange(len, len); } catch { /* input number não suporta */ }
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [editingQuestion]);
 
   // Mantém a callback do pai sempre fresca SEM colocá-la nas deps do effect.
   // O pai (TechnicianOS) passa um arrow inline recriado a cada render; se ele
@@ -556,7 +583,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
       case 'text':
         return (
+          // disabled só em OS pausada (readOnly), NÃO durante o save. O save é
+          // otimista (responses já foi atualizado no onChange), então travar o
+          // campo enquanto a escrita está em voo só impedia o técnico de digitar
+          // ao reabrir a edição — era metade do bug do lápis. ref = foco automático.
           <Textarea
+            ref={setTextInputRef(question.id)}
             placeholder="Digite sua resposta..."
             value={value}
             onChange={(e) => setResponses((prev) => ({
@@ -565,13 +597,14 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             }))}
             onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
             rows={2}
-            disabled={isSaving}
+            disabled={readOnly}
           />
         );
 
       case 'number':
         return (
           <NumericInput
+            ref={setTextInputRef(question.id)}
             decimal
             placeholder="Digite o valor..."
             value={value}
@@ -580,7 +613,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               [question.id]: { ...prev[question.id], question_id: question.id, response_value: v, response_photo_url: prev[question.id]?.response_photo_url || null },
             }))}
             onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
-            disabled={isSaving}
+            disabled={readOnly}
           />
         );
 
@@ -820,9 +853,25 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         
         return (
           <div key={question.id} className="space-y-2 p-3 rounded-lg bg-muted/30">
-            <Label className="flex items-start gap-2">
+            {/* Cabeçalho como <div> (NÃO <label>): um <label> nativo envolvendo os
+                botões reencaminha o toque como clique sintético pro controle
+                associado. No mobile, esse clique-fantasma chega DEPOIS do
+                re-render que troca lápis↔check e cai no botão errado — fechando a
+                edição que o técnico acabou de abrir. Reabrir "tocando no nome"
+                agora é intencional (onClick abaixo), não efeito colateral. */}
+            <div
+              className={cn(
+                'flex items-start gap-2',
+                hasAnswer && !isEditing && !readOnly && 'cursor-pointer',
+              )}
+              onClick={
+                hasAnswer && !isEditing && !readOnly
+                  ? () => setEditingQuestion(question.id)
+                  : undefined
+              }
+            >
               <span className="font-bold text-muted-foreground">{index + 1}.</span>
-              <span className="flex-1">
+              <span className="flex-1 text-sm font-medium leading-none">
                 {question.question}
                 {question.is_required && <span className="text-destructive ml-1">*</span>}
               </span>
@@ -830,7 +879,10 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 <button
                   type="button"
                   className="p-1 rounded hover:bg-muted transition-colors shrink-0"
-                  onClick={() => setEditingQuestion(question.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingQuestion(question.id);
+                  }}
                   title="Editar resposta"
                 >
                   <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
@@ -840,13 +892,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 <button
                   type="button"
                   className="p-1 rounded hover:bg-muted transition-colors shrink-0"
-                  onClick={() => setEditingQuestion(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingQuestion(null);
+                  }}
                   title="Fechar edição"
                 >
                   <Check className="h-3.5 w-3.5 text-primary" />
                 </button>
               )}
-            </Label>
+            </div>
             {/* Selo discreto de frequência (item 9) — SÓ em OS de contrato
                 (visibility presente). Em OS avulsa não há frequência → não mostra.
                 Mesmo estilo do PMOC (outline, 10px). */}
