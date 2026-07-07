@@ -57,11 +57,8 @@ const DrawerContent = React.forwardRef<
         style={{ maxHeight: '90dvh' }}
         onOpenAutoFocus={(e) => e.preventDefault()}
         {...props}
-        // Clique/tap no backdrop NUNCA fecha (depois do spread pra sempre vencer).
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
       >
-        {/* Handle real do vaul: com handleOnly no Root, é o único ponto de arraste-pra-fechar. */}
+        {/* Handle visual do vaul: com handleOnly no Root, é o ponto de arraste-pra-fechar. */}
         <DrawerPrimitive.Handle className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
         <div ref={innerRef} className="flex flex-col flex-1 overflow-hidden">
           {children}

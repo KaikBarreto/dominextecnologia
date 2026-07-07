@@ -11,7 +11,8 @@ import { useIsCompact } from "@/hooks/use-mobile";
  *
  * Estado normal: discreto (só texto/ícone muted, sem fundo). Em hover E
  * active/pressed (pra funcionar também no toque), vira vermelho destrutivo com
- * ícone e texto brancos. Fechamento deliberado — o clique-fora não fecha mais.
+ * ícone e texto brancos. Close rotulado — útil em qualquer dialog, inclusive
+ * nos de formulário (ResponsiveModal) onde o clique-fora não fecha.
  *
  * `asChild` permite embrulhar num `DialogPrimitive.Close` (desktop) mantendo o
  * fechamento nativo do Radix; no drawer usamos `onClick` direto.
@@ -79,8 +80,6 @@ function Dialog({
           defaultOpen={defaultOpen}
           shouldScaleBackground
           repositionInputs={false}
-          // Só o handle (barra de cima) arrasta pra fechar; arrastar no conteúdo rola.
-          handleOnly
         >
           {children}
         </DrawerPrimitive.Root>
@@ -207,11 +206,8 @@ const DialogContent = React.forwardRef<
           style={{ maxHeight: "90dvh" }}
           onOpenAutoFocus={(e) => e.preventDefault()}
           {...(props as unknown as React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>)}
-          // Clique/tap no backdrop NUNCA fecha — depois do spread pra sempre vencer.
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
         >
-          {/* Handle real do vaul: com handleOnly, é o único ponto de arraste-pra-fechar. */}
+          {/* Handle visual do vaul. Tap-fora fecha por default; consumidor pode gate via props. */}
           <DrawerPrimitive.Handle className="mx-auto mt-3 h-1.5 w-12 shrink-0 rounded-full bg-muted" />
           <DrawerPrimitive.Close asChild>
             <ModalCloseButton className="absolute right-3 top-3 z-10" />
@@ -237,9 +233,6 @@ const DialogContent = React.forwardRef<
           className,
         )}
         {...props}
-        // Clique fora NUNCA fecha (depois do spread pra sempre vencer). Escape segue ativo.
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
       >
         {children}
         <DialogPrimitive.Close asChild>

@@ -51,7 +51,13 @@ export function ResponsiveModal({
     return (
       // handleOnly: só o handle de cima arrasta pra fechar; arrastar no conteúdo rola.
       <Drawer open={open} onOpenChange={onOpenChange} handleOnly>
-        <DrawerContent className="flex max-h-[90dvh] flex-col">
+        <DrawerContent
+          className="flex max-h-[90dvh] flex-col"
+          // Modal de formulário: tap/clique fora NUNCA fecha. Fecha só por FECHAR,
+          // pelos botões do rodapé, ou arrastando o handle de cima.
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DrawerHeader className="relative shrink-0 pr-24">
             <DrawerTitle>{title}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
@@ -74,10 +80,13 @@ export function ResponsiveModal({
   }
 
   return (
-    // Clique fora não fecha (bloqueado por padrão no DialogContent); Escape segue ativo.
+    // Modal de formulário: clique fora NUNCA fecha (bloqueado aqui, não no primitivo). Escape segue ativo.
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn('flex max-h-[90vh] flex-col sm:max-w-[600px]', className)}
+        // Clique fora não fecha; Escape segue ativo (não bloqueado).
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
         // Com description, o Radix faz o wiring de aria-describedby sozinho.
         // Sem description, opta-se por não descrever (evita o warning de a11y do Radix).
         {...(description ? {} : { 'aria-describedby': undefined })}
