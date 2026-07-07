@@ -32,19 +32,26 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   const { categories: financialCategories } = useFinancialCategories();
   const isMobile = useIsMobile();
 
+  // Leitura tolerante a types ainda não regenerados — quando a migration
+  // adicionar dre_start_date em company_settings, este cast vai funcionar sem
+  // precisar regen imediato do types.ts.
+  const dreStartDate = (settings as any)?.dre_start_date as string | null | undefined;
+
   // Filter out inter-account transfers, unpaid transactions, credit card bill
   // payments AND balance adjustments from DRE. Transfers/bill payments são itens
   // de balanço (não P&L); o "Ajuste de saldo" é conciliação de caixa (neutro) —
   // entra no extrato da conta mas NÃO é receita/despesa real, então não pode
   // inflar/distorcer o resultado do DRE.
+  // Se dreStartDate estiver preenchida, filtra só transações a partir dessa data.
   const transactions = useMemo(
     () => rawTransactions.filter(t =>
       !t.transfer_pair_id &&
       t.is_paid &&
       t.category !== 'Pagamento de Fatura' &&
-      t.category !== ADJUSTMENT_CATEGORY
+      t.category !== ADJUSTMENT_CATEGORY &&
+      (dreStartDate ? parseISO(t.transaction_date) >= parseISO(dreStartDate) : true)
     ),
-    [rawTransactions]
+    [rawTransactions, dreStartDate]
   );
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
@@ -427,8 +434,11 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
       </Card>
 
       <p className="text-xs text-muted-foreground text-center">
-        * O DRE é classificado automaticamente com base no campo "Grupo DRE" de cada categoria financeira. 
+        * O DRE é classificado automaticamente com base no campo "Grupo DRE" de cada categoria financeira.
         Categorias marcadas como "Impostos" vão para deduções, "CMV" para custo do serviço, e "OPEX" para despesas operacionais.
+        {dreStartDate && (
+          <> DRE contabilizado a partir de {format(parseISO(dreStartDate), 'dd/MM/yyyy')}.</>
+        )}
       </p>
     </div>
   );

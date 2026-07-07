@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.31',
+    date: '07 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Categorias do Financeiro ganharam aba própria',
+        description: 'As Categorias do Financeiro saíram de dentro de um botão na tela de Movimentações e agora ficam numa aba própria, ao lado da Visão Geral e do DRE. Ficou mais fácil achar, criar e organizar suas categorias de receitas e despesas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Reiniciar a contagem do DRE a partir de uma data',
+        description: 'Agora dá pra começar o resultado do DRE do zero a partir de uma data escolhida, ideal pra quem quer separar um novo ciclo. Todo o histórico de movimentações continua guardado e visível na tela de Movimentações, só a conta do resultado é que passa a valer da data em diante.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.30',
     date: '07 de julho de 2026',
     type: 'patch',

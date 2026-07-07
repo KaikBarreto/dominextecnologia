@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { LayoutDashboard, FileBarChart } from 'lucide-react';
+import { LayoutDashboard, FileBarChart, Tags } from 'lucide-react';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { FinanceOverview } from './FinanceOverview';
 import { FinanceDRE } from './FinanceDRE';
+import { FinanceCategorias } from './FinanceCategorias';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction } from '@/types/database';
 
@@ -48,6 +49,7 @@ export function FinanceRelatorio({
     ...(hasAdvanced
       ? [{ value: 'dre', label: 'DRE - Resultado', icon: FileBarChart } as SettingsTab]
       : []),
+    { value: 'categorias', label: 'Categorias', icon: Tags },
   ];
 
   // Deep-link `?tab=dre` num tenant sem finance_advanced (downgrade/link antigo)
@@ -62,6 +64,8 @@ export function FinanceRelatorio({
     <SettingsSidebarLayout tabs={tabs} activeTab={safeTab} onTabChange={onTabChange}>
       {safeTab === 'dre' ? (
         <FinanceDRE transactions={transactions} />
+      ) : safeTab === 'categorias' ? (
+        <FinanceCategorias />
       ) : (
         <FinanceOverview
           transactions={transactions}

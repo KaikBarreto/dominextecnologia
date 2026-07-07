@@ -5,7 +5,6 @@ import { AccountFormDialog } from './AccountFormDialog';
 import { AdjustBalanceDialog } from './AdjustBalanceDialog';
 import { CreditCardBillPanel } from './CreditCardBillPanel';
 import { TransferFormDialog } from './TransferFormDialog';
-import { FinanceCategorias } from './FinanceCategorias';
 import { BankLogo } from './BankInstitutionCombobox';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useRecalculateBills } from '@/hooks/useRecalculateBills';
@@ -20,7 +19,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  MoreVertical, Pencil, Trash2, ArrowLeftRight, Tags, Plus, CreditCard,
+  MoreVertical, Pencil, Trash2, ArrowLeftRight, Plus, CreditCard,
   Landmark, Wallet, LayoutDashboard, Calculator, Loader2, SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -125,7 +124,6 @@ export function FinanceMovimentacoes({
   const [formDefaultType, setFormDefaultType] = useState('banco');
 
   const [transferOpen, setTransferOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState<FinancialAccount | null>(null);
   const [recalcCard, setRecalcCard] = useState<FinancialAccount | null>(null);
   // Conta cujo saldo será ajustado (abre o AdjustBalanceDialog).
@@ -404,9 +402,9 @@ export function FinanceMovimentacoes({
   };
 
   // Botões globais do topo da tela. No mobile vira um único "+" com menu
-  // (Nova Conta / Novo Cartão / Categorias) pra não poluir o topo; no desktop
-  // sobra só "Categorias" — criar conta/cartão vive no footer de cada grupo do
-  // sidebar (evita botão duplicado no topo).
+  // (Nova Conta / Novo Cartão) pra não poluir o topo; no desktop o topo fica
+  // limpo — criar conta/cartão vive no footer de cada grupo do sidebar.
+  // Categorias foi movida para a aba própria na tela de Relatório.
   const globalActions = isMobile ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -422,19 +420,9 @@ export function FinanceMovimentacoes({
         <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openNewAccount('cartao')}>
           <CreditCard className="h-4 w-4" /> Novo Cartão
         </DropdownMenuItem>
-        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setCategoriesOpen(true)}>
-          <Tags className="h-4 w-4" /> Categorias
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  ) : (
-    <div className="flex items-center gap-2 flex-wrap justify-end">
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => setCategoriesOpen(true)}>
-        <Tags className="h-4 w-4" />
-        Categorias
-      </Button>
-    </div>
-  );
+  ) : null;
 
   // Botão tracejado de "adicionar" no fim de cada seção do sidebar (desktop).
   const addButton = (label: string, onClick: () => void) => (
@@ -681,16 +669,6 @@ export function FinanceMovimentacoes({
         onSubmit={async (d) => { await transfer.mutateAsync(d); }}
         isLoading={transfer.isPending}
       />
-
-      {/* Gerenciar Categorias */}
-      <ResponsiveModal
-        open={categoriesOpen}
-        onOpenChange={setCategoriesOpen}
-        title="Categorias do Financeiro"
-        className="sm:max-w-4xl"
-      >
-        <FinanceCategorias />
-      </ResponsiveModal>
 
       {/* Drawer de ações da conta (mobile) */}
       <ResponsiveModal

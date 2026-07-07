@@ -993,6 +993,7 @@ export type Database = {
           complement: string | null
           created_at: string
           document: string | null
+          dre_start_date: string | null
           email: string | null
           id: string
           logo_url: string | null
@@ -1029,6 +1030,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           document?: string | null
+          dre_start_date?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -1065,6 +1067,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           document?: string | null
+          dre_start_date?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -1262,7 +1265,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
-          numero?: number
+          numero: number
           status?: string
           title: string
           updated_at?: string
@@ -1526,13 +1529,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "contract_items_environment_id_fkey"
-            columns: ["environment_id"]
-            isOneToOne: false
-            referencedRelation: "contract_environments"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "contract_items_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
@@ -1544,6 +1540,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_items_environment_id_fkey"
+            columns: ["environment_id"]
+            isOneToOne: false
+            referencedRelation: "contract_environments"
             referencedColumns: ["id"]
           },
           {
@@ -1574,9 +1577,9 @@ export type Database = {
           description: string
           expected_max: number | null
           expected_min: number | null
+          form_template_id: string | null
           freq_code: string | null
           freq_months: number | null
-          form_template_id: string | null
           guidance: string | null
           id: string
           is_active: boolean
@@ -1597,9 +1600,9 @@ export type Database = {
           description: string
           expected_max?: number | null
           expected_min?: number | null
+          form_template_id?: string | null
           freq_code?: string | null
           freq_months?: number | null
-          form_template_id?: string | null
           guidance?: string | null
           id?: string
           is_active?: boolean
@@ -1620,9 +1623,9 @@ export type Database = {
           description?: string
           expected_max?: number | null
           expected_min?: number | null
+          form_template_id?: string | null
           freq_code?: string | null
           freq_months?: number | null
-          form_template_id?: string | null
           guidance?: string | null
           id?: string
           is_active?: boolean
@@ -3624,6 +3627,13 @@ export type Database = {
             foreignKeyName: "financial_transactions_service_order_id_fkey"
             columns: ["service_order_id"]
             isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
             referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
@@ -3779,6 +3789,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "form_questions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_responses_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
           },
           {
             foreignKeyName: "form_responses_service_order_id_fkey"
@@ -4042,6 +4059,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory_movements"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
           },
           {
             foreignKeyName: "inventory_movements_service_order_id_fkey"
@@ -4596,6 +4620,13 @@ export type Database = {
             foreignKeyName: "os_photos_service_order_id_fkey"
             columns: ["service_order_id"]
             isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "os_photos_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
             referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
@@ -4980,6 +5011,13 @@ export type Database = {
             foreignKeyName: "pmoc_schedules_service_order_id_fkey"
             columns: ["service_order_id"]
             isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "pmoc_schedules_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
             referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
@@ -5343,6 +5381,7 @@ export type Database = {
           financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
+          last_viewed_at?: string | null
           notes?: string | null
           proposal_template_id?: string | null
           prospect_email?: string | null
@@ -6122,6 +6161,13 @@ export type Database = {
             foreignKeyName: "service_order_activities_service_order_id_fkey"
             columns: ["service_order_id"]
             isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "service_order_activities_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
             referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
@@ -6147,6 +6193,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_order_assignees_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
           {
             foreignKeyName: "service_order_assignees_service_order_id_fkey"
             columns: ["service_order_id"]
@@ -6192,6 +6245,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "form_templates"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_equipment_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
           },
           {
             foreignKeyName: "service_order_equipment_service_order_id_fkey"
@@ -6559,6 +6619,13 @@ export type Database = {
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_ratings_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: true
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
           {
             foreignKeyName: "service_ratings_service_order_id_fkey"
             columns: ["service_order_id"]
@@ -7090,6 +7157,13 @@ export type Database = {
             foreignKeyName: "technician_locations_service_order_id_fkey"
             columns: ["service_order_id"]
             isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "technician_locations_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
             referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
@@ -7511,6 +7585,71 @@ export type Database = {
       }
     }
     Views: {
+      contract_activity_execution: {
+        Row: {
+          activity_id: string | null
+          company_id: string | null
+          component: string | null
+          conformity_status: string | null
+          contract_id: string | null
+          contract_item_id: string | null
+          contract_name: string | null
+          description: string | null
+          equipment_id: string | null
+          equipment_name: string | null
+          freq_code: string | null
+          is_measurement: boolean | null
+          measured_value: number | null
+          order_number: number | null
+          plan_activity_id: string | null
+          responded_at: string | null
+          responded_by: string | null
+          responded_by_name: string | null
+          scheduled_date: string | null
+          section: string | null
+          service_order_id: string | null
+          sort_order: number | null
+          unit: string | null
+          visit_conformity: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_plan_activities_contract_item_id_fkey"
+            columns: ["contract_item_id"]
+            isOneToOne: false
+            referencedRelation: "contract_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_activities_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_activities_plan_activity_id_fkey"
+            columns: ["plan_activity_id"]
+            isOneToOne: false
+            referencedRelation: "contract_plan_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "service_orders_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_health_status: {
         Row: {
           company_id: string | null
@@ -7609,7 +7748,6 @@ export type Database = {
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       can_bootstrap_admin: { Args: never; Returns: boolean }
-      check_email_available: { Args: { _email: string }; Returns: boolean }
       can_manage_billing_reminder: {
         Args: { p_transaction_id: string; p_user_id: string }
         Returns: boolean
@@ -7617,6 +7755,7 @@ export type Database = {
       can_manage_contracts: { Args: { _user_id: string }; Returns: boolean }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      check_email_available: { Args: { _email: string }; Returns: boolean }
       company_has_module: {
         Args: { p_company_id: string; p_module_code: string }
         Returns: boolean
@@ -7658,26 +7797,20 @@ export type Database = {
         Returns: number
       }
       generate_pmoc_token: { Args: never; Returns: string }
-      generate_ponto_slug: {
-        Args: { p_employee_id: string }
-        Returns: string
-      }
-      generate_public_short_code: {
-        Args: { p_len?: number }
-        Returns: string
-      }
+      generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
+      generate_public_short_code: { Args: { p_len?: number }; Returns: string }
       get_company_health_scores: {
         Args: never
         Returns: {
           company_id: string
           company_name: string
-          subscription_status: string
-          subscription_plan: string
-          last_activity_at: string
-          events_7d: number
           events_14d: number
           events_30d: number
+          events_7d: number
           health_status: string
+          last_activity_at: string
+          subscription_plan: string
+          subscription_status: string
         }[]
       }
       get_nps_criteria_averages: {
@@ -7745,6 +7878,7 @@ export type Database = {
           financial_transaction_id: string | null
           id: string
           include_gifts: boolean
+          last_viewed_at: string | null
           notes: string | null
           proposal_template_id: string | null
           prospect_email: string | null
@@ -7758,6 +7892,7 @@ export type Database = {
           total_value: number | null
           updated_at: string
           valid_until: string | null
+          view_count: number
         }[]
         SetofOptions: {
           from: "*"
@@ -7820,10 +7955,7 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
-      next_compra_numero: {
-        Args: { p_company_id: string }
-        Returns: number
-      }
+      next_compra_numero: { Args: { p_company_id: string }; Returns: number }
       next_equipment_identifier: {
         Args: { p_company_id: string }
         Returns: string
@@ -7855,20 +7987,24 @@ export type Database = {
         }
         Returns: Json
       }
+      reassign_contract_pending_orders: {
+        Args: {
+          p_contract_id: string
+          p_team_id: string
+          p_technician_id: string
+        }
+        Returns: number
+      }
       recalc_amount_received: {
         Args: { p_parent_id: string }
         Returns: undefined
       }
       recompute_time_sheet: {
-        Args: { p_company_id: string; p_employee_id: string; p_date: string }
+        Args: { p_company_id: string; p_date: string; p_employee_id: string }
         Returns: undefined
       }
       record_quote_view: {
-        Args: {
-          _token: string
-          _fingerprint?: string
-          _user_agent?: string
-        }
+        Args: { _fingerprint?: string; _token: string; _user_agent?: string }
         Returns: number
       }
       regenerate_pmoc_token: {
@@ -7879,22 +8015,35 @@ export type Database = {
         Args: {
           p_inventory_id: string
           p_movement_type: string
+          p_notes?: string
           p_quantity: number
+          p_related_movement_id?: string
+          p_service_order_id?: string
           p_supplier_id?: string
           p_unit_cost?: number
-          p_notes?: string
-          p_service_order_id?: string
-          p_related_movement_id?: string
         }
-        Returns: Database["public"]["Tables"]["inventory_movements"]["Row"]
-      }
-      reassign_contract_pending_orders: {
-        Args: {
-          p_contract_id: string
-          p_team_id: string
-          p_technician_id: string
+        Returns: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_id: string
+          movement_type: string
+          notes: string | null
+          quantity: number
+          related_movement_id: string | null
+          service_order_id: string | null
+          stock_after: number | null
+          stock_before: number | null
+          supplier_id: string | null
+          unit_cost: number | null
         }
-        Returns: number
+        SetofOptions: {
+          from: "*"
+          to: "inventory_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       register_manual_company_payment: {
         Args: {
