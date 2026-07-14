@@ -110,6 +110,36 @@ export const ptBr = {
     madeBy: 'Criado por',
   },
 
+  // ── Chrome das páginas de segmento/módulo (strings cravadas no JSX) ────────
+  // Reutilizado por SegmentLandingPage e ModuleLandingPage. Só o "chrome"
+  // (headings/labels de seção/CTAs); o conteúdo dos itens vem de content/<locale>.
+  pageChrome: {
+    ctaTrial: 'Teste grátis 14 dias, sem cartão',
+    seePlans: 'Ver planos',
+    seeAllPlans: 'Ver todos os planos',
+    faqHeading: 'Perguntas frequentes',
+    problemLabel: 'O problema',
+    withDominex: 'Com o Dominex',
+    // Preços (ponte). Generalizado no en (sem R$/OS); pt-br mantém o texto atual.
+    pricing: {
+      heading: 'Preços transparentes, sem surpresa',
+      subtitle:
+        'Planos a partir de R$ 197/mês com OS ilimitadas. Veja a tabela completa e escolha o que cabe na sua operação.',
+    },
+    // Só do SEGMENTO (no módulo essas seções vêm do data.*).
+    segment: {
+      painsHeading: 'As dores do dia a dia, resolvidas',
+      painsSubheading: 'Onde a operação trava no improviso, o Dominex entra no controle',
+      featuresHeading: 'Tudo que sua operação precisa, em um só lugar',
+      featuresSubheading:
+        'Do chamado ao relatório, o Dominex cobre cada etapa do serviço em campo',
+      testimonialsHeading: 'Quem usa o Dominex, não volta para o improviso',
+    },
+    // Seletor de nicho (Área do Técnico™).
+    nicheSearchPlaceholder: 'Buscar nicho...',
+    nicheEmpty: 'Nenhum nicho encontrado.',
+  },
+
   // ── Home ────────────────────────────────────────────────────────────────
   home: {
     hero: {

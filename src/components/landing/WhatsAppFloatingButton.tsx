@@ -1,5 +1,6 @@
 import { getRandomWhatsAppNumber } from "@/components/landing/whatsappNumbers";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { useLocale } from "@/lib/i18n";
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -8,10 +9,13 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 export default function WhatsAppFloatingButton() {
+  const { locale } = useLocale();
+
   // URL montada no CLIQUE (não no render): garante que a UTM capturada após o
-  // load entre na mensagem e que o rodízio sorteie um número por clique.
+  // load entre na mensagem e que o rodízio sorteie um número por clique. Passa o
+  // locale atual pra mensagem sair no idioma da página.
   const handleClick = () => {
-    const url = buildWhatsAppUrl(getRandomWhatsAppNumber());
+    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), undefined, locale);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

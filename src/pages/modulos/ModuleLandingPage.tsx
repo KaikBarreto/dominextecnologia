@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight, Check, ChevronDown } from 'lucide-react';
-import { useLocale } from '@/lib/i18n';
+import { useLocale, useCanonicalSlugRedirect } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash } from '@/lib/i18n/localizeHash';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,9 @@ const DOMINEX_BRAND_VARS = {
  * Mantém o MESMO design system das landings de segmento (não reinventa estética).
  */
 export default function ModuleLandingPage({ data }: { data: ModuleData }) {
+  // Redirect canônico: sob /:lang, leva o slug pt-br pro slug do idioma atual.
+  useCanonicalSlugRedirect(data.slug);
+
   useEffect(() => {
     document.title = data.metaTitle;
     const meta = document.querySelector('meta[name="description"]');
@@ -109,7 +112,7 @@ export default function ModuleLandingPage({ data }: { data: ModuleData }) {
 
 function ModuleHero({ data }: { data: ModuleData }) {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
   const { hero, icon: Icon } = data;
 
   const idx = hero.h1.indexOf(hero.h1Highlight);
@@ -158,7 +161,7 @@ function ModuleHero({ data }: { data: ModuleData }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
             asChild
           >
-            <Link to="/cadastro?origem=Site">Teste grátis 14 dias, sem cartão</Link>
+            <Link to="/cadastro?origem=Site">{messages.pageChrome.ctaTrial}</Link>
           </Button>
           <Button
             size="lg"
@@ -166,7 +169,7 @@ function ModuleHero({ data }: { data: ModuleData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{messages.pageChrome.seePlans}</Link>
           </Button>
         </div>
       </div>
@@ -198,6 +201,8 @@ function ModuleMetrics({ data }: { data: ModuleData }) {
 
 function ModulePains({ data }: { data: ModuleData }) {
   const ref = useScrollReveal();
+  const { messages } = useLocale();
+  const c = messages.pageChrome;
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
@@ -221,7 +226,7 @@ function ModulePains({ data }: { data: ModuleData }) {
                 <div className="flex items-center gap-2 mb-2.5">
                   <XCircle className="h-4 w-4 text-destructive/80 shrink-0" />
                   <span className="text-[0.7rem] font-bold uppercase tracking-wider text-destructive/80">
-                    O problema
+                    {c.problemLabel}
                   </span>
                 </div>
                 <p className="text-white/55 text-[0.95rem] leading-relaxed">{p.pain}</p>
@@ -240,7 +245,7 @@ function ModulePains({ data }: { data: ModuleData }) {
                     className="text-[0.7rem] font-bold uppercase tracking-wider"
                     style={{ color: 'var(--seg-accent)' }}
                   >
-                    Com o Dominex
+                    {c.withDominex}
                   </span>
                 </div>
                 <p className="text-white font-medium text-[0.95rem] leading-relaxed">
@@ -257,7 +262,7 @@ function ModulePains({ data }: { data: ModuleData }) {
             <div className="flex items-center justify-center gap-2.5 px-7 py-5">
               <XCircle className="h-6 w-6 text-destructive shrink-0" />
               <span className="text-lg sm:text-xl font-bold text-white text-center">
-                O problema
+                {c.problemLabel}
               </span>
             </div>
             <div
@@ -269,7 +274,7 @@ function ModulePains({ data }: { data: ModuleData }) {
             >
               <CheckCircle2 className="h-6 w-6 shrink-0" style={{ color: 'var(--seg-accent)' }} />
               <span className="text-lg sm:text-xl font-bold text-white text-center">
-                Com o Dominex
+                {c.withDominex}
               </span>
             </div>
           </div>
@@ -324,18 +329,21 @@ function ModuleDeepDives({ data }: { data: ModuleData }) {
 /* --------------------------- Funcionalidades ----------------------- */
 
 /** CTA verde reaproveitado no rodapé da seção de funcionalidades. */
-const FEATURES_CTA = (
-  <Button
-    size="lg"
-    className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl"
-    asChild
-  >
-    <Link to="/cadastro?origem=Site">
-      Teste grátis 14 dias, sem cartão
-      <ArrowRight className="ml-2 h-5 w-5" />
-    </Link>
-  </Button>
-);
+function FeaturesCta() {
+  const { messages } = useLocale();
+  return (
+    <Button
+      size="lg"
+      className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl"
+      asChild
+    >
+      <Link to="/cadastro?origem=Site">
+        {messages.pageChrome.ctaTrial}
+        <ArrowRight className="ml-2 h-5 w-5" />
+      </Link>
+    </Button>
+  );
+}
 
 function ModuleFeatures({ data }: { data: ModuleData }) {
   // Opt-in EXCLUSIVO da landing /area-do-tecnico: seletor de nicho + ferramentas
@@ -356,7 +364,7 @@ function ModuleFeatures({ data }: { data: ModuleData }) {
       features={features}
       heading={data.featuresHeading}
       subheading={data.featuresSubheading}
-      footer={FEATURES_CTA}
+      footer={<FeaturesCta />}
     />
   );
 }
@@ -389,7 +397,7 @@ function ModuleFeaturesWithNiche({ data }: { data: ModuleData }) {
             <NicheSelect selected={activeSeg} onSelect={setActiveSeg} />
           </div>
         }
-        footer={FEATURES_CTA}
+        footer={<FeaturesCta />}
       />
     </div>
   );
@@ -410,6 +418,7 @@ function NicheSelect({
   onSelect: (segment: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { messages } = useLocale();
   const segments = getSiteSegments();
   const selectedSeg = getSegment(selected);
 
@@ -434,9 +443,9 @@ function NicheSelect({
       </PopoverTrigger>
       <PopoverContent align="center" className="z-[70] w-[260px] p-0 sm:w-[320px]">
         <Command>
-          <CommandInput placeholder="Buscar nicho..." />
+          <CommandInput placeholder={messages.pageChrome.nicheSearchPlaceholder} />
           <CommandList>
-            <CommandEmpty>Nenhum nicho encontrado.</CommandEmpty>
+            <CommandEmpty>{messages.pageChrome.nicheEmpty}</CommandEmpty>
             <CommandGroup>
               {segments.map((seg) => {
                 const isSelected = seg.value === selected;
@@ -513,16 +522,17 @@ function ModuleTestimonials({ data }: { data: ModuleData }) {
 
 function ModulePricingCta() {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const c = messages.pageChrome;
   return (
     <section className="py-20">
       <div ref={ref} className="mx-auto max-w-4xl px-4 scroll-reveal">
         <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] to-transparent p-10 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-            Preços transparentes, sem surpresa
+            {c.pricing.heading}
           </h2>
           <p className="text-white/50 mb-8 max-w-xl mx-auto">
-            Planos a partir de R$ 197/mês com OS ilimitadas. Veja a tabela completa e escolha o que cabe na sua operação.
+            {c.pricing.subtitle}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
@@ -530,7 +540,7 @@ function ModulePricingCta() {
               className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base shadow-brand-glow"
               asChild
             >
-              <Link to="/cadastro?origem=Site">Teste grátis 14 dias, sem cartão</Link>
+              <Link to="/cadastro?origem=Site">{c.ctaTrial}</Link>
             </Button>
             <Button
               size="lg"
@@ -539,7 +549,7 @@ function ModulePricingCta() {
               asChild
             >
               <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
-                Ver todos os planos <ChevronRight className="ml-1 h-4 w-4" />
+                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -553,11 +563,12 @@ function ModulePricingCta() {
 
 function ModuleFaq({ data }: { data: ModuleData }) {
   const ref = useScrollReveal();
+  const { messages } = useLocale();
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-12">
-          Perguntas frequentes
+          {messages.pageChrome.faqHeading}
         </h2>
         <Accordion type="single" collapsible className="grid md:grid-cols-2 gap-3">
           {data.faq.map((faq, i) => (
@@ -584,7 +595,8 @@ function ModuleFaq({ data }: { data: ModuleData }) {
 
 function ModuleFinalCta({ data }: { data: ModuleData }) {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const c = messages.pageChrome;
   return (
     <section className="relative py-32 overflow-hidden">
       <div
@@ -606,7 +618,7 @@ function ModuleFinalCta({ data }: { data: ModuleData }) {
             asChild
           >
             <Link to="/cadastro?origem=Site">
-              Teste grátis 14 dias, sem cartão <ArrowRight className="ml-2 h-4 w-4" />
+              {c.ctaTrial} <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           <Button
@@ -615,7 +627,7 @@ function ModuleFinalCta({ data }: { data: ModuleData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{c.seePlans}</Link>
           </Button>
         </div>
       </div>

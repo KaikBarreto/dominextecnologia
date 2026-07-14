@@ -1,7 +1,7 @@
 import { useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight } from 'lucide-react';
-import { useLocale } from '@/lib/i18n';
+import { useLocale, useCanonicalSlugRedirect } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash } from '@/lib/i18n/localizeHash';
 import { Button } from '@/components/ui/button';
@@ -69,6 +69,9 @@ const DOMINEX_BRAND_VARS = {
  * Onda 2 = mais entradas em segmentsData + rota; ZERO conteúdo hard-coded aqui.
  */
 export default function SegmentLandingPage({ data }: { data: SegmentData }) {
+  // Redirect canônico: sob /:lang, leva o slug pt-br pro slug do idioma atual.
+  useCanonicalSlugRedirect(data.slug);
+
   useEffect(() => {
     // <title>/<meta> por rota (sem react-helmet no projeto). usePageTitle roda
     // antes (componente irmão montado primeiro), então este effect vence e fixa
@@ -130,7 +133,7 @@ export default function SegmentLandingPage({ data }: { data: SegmentData }) {
 
 function SegmentHero({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
   const { hero, icon: Icon } = data;
 
   // Quebra o H1 ao redor do highlight pra colorir só a keyword, mantendo o H1
@@ -197,7 +200,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
             }}
             asChild
           >
-            <Link to={cadastroLink(data.slug)}>Teste grátis 14 dias, sem cartão</Link>
+            <Link to={cadastroLink(data.slug)}>{messages.pageChrome.ctaTrial}</Link>
           </Button>
           <Button
             size="lg"
@@ -205,7 +208,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{messages.pageChrome.seePlans}</Link>
           </Button>
         </div>
       </div>
@@ -242,15 +245,17 @@ function SegmentMetrics({ data }: { data: SegmentData }) {
 
 function SegmentPains({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
+  const { messages } = useLocale();
+  const c = messages.pageChrome;
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            As dores do dia a dia, resolvidas
+            {c.segment.painsHeading}
           </h2>
           <p className="text-white/55 max-w-2xl mx-auto">
-            Onde a operação trava no improviso, o Dominex entra no controle
+            {c.segment.painsSubheading}
           </p>
         </div>
 
@@ -268,7 +273,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
                 <div className="flex items-center gap-2 mb-2.5">
                   <XCircle className="h-4 w-4 text-destructive/80 shrink-0" />
                   <span className="text-[0.7rem] font-bold uppercase tracking-wider text-destructive/80">
-                    O problema
+                    {c.problemLabel}
                   </span>
                 </div>
                 <p className="text-white/55 text-[0.95rem] leading-relaxed">{p.pain}</p>
@@ -289,7 +294,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
                     className="text-[0.7rem] font-bold uppercase tracking-wider"
                     style={{ color: 'var(--seg-accent)' }}
                   >
-                    Com o Dominex
+                    {c.withDominex}
                   </span>
                 </div>
                 <p className="text-white font-medium text-[0.95rem] leading-relaxed">
@@ -306,7 +311,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
             <div className="flex items-center justify-center gap-2.5 px-7 py-5">
               <XCircle className="h-6 w-6 text-destructive shrink-0" />
               <span className="text-lg sm:text-xl font-bold text-white text-center">
-                O problema
+                {c.problemLabel}
               </span>
             </div>
             <div
@@ -321,7 +326,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
                 style={{ color: 'var(--seg-accent)' }}
               />
               <span className="text-lg sm:text-xl font-bold text-white text-center">
-                Com o Dominex
+                {c.withDominex}
               </span>
             </div>
           </div>
@@ -389,6 +394,8 @@ function SegmentDeepDives({ data }: { data: SegmentData }) {
  * Mapeia `desc` → `description` (a prop do componente).
  */
 function SegmentFeatures({ data }: { data: SegmentData }) {
+  const { messages } = useLocale();
+  const c = messages.pageChrome;
   const features = data.features.map((f) => ({
     icon: f.icon,
     title: f.title,
@@ -398,8 +405,8 @@ function SegmentFeatures({ data }: { data: SegmentData }) {
   return (
     <ScrollSyncFeatures
       features={features}
-      heading="Tudo que sua operação precisa, em um só lugar"
-      subheading="Do chamado ao relatório, o Dominex cobre cada etapa do serviço em campo"
+      heading={c.segment.featuresHeading}
+      subheading={c.segment.featuresSubheading}
       footer={
         <Button
           size="lg"
@@ -408,7 +415,7 @@ function SegmentFeatures({ data }: { data: SegmentData }) {
           asChild
         >
           <Link to={cadastroLink(data.slug)}>
-            Teste grátis 14 dias, sem cartão
+            {c.ctaTrial}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Link>
         </Button>
@@ -421,11 +428,12 @@ function SegmentFeatures({ data }: { data: SegmentData }) {
 
 function SegmentTestimonials({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
+  const { messages } = useLocale();
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
-          Quem usa o Dominex, não volta para o improviso
+          {messages.pageChrome.segment.testimonialsHeading}
         </h2>
         <div className="grid gap-6 md:grid-cols-3">
           {data.testimonials.map((t) => (
@@ -454,7 +462,8 @@ function SegmentTestimonials({ data }: { data: SegmentData }) {
 
 function SegmentPricingCta({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const c = messages.pageChrome;
   return (
     <section className="py-20">
       <div ref={ref} className="mx-auto max-w-4xl px-4 scroll-reveal">
@@ -467,10 +476,10 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
           }}
         >
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-            Preços transparentes, sem surpresa
+            {c.pricing.heading}
           </h2>
           <p className="text-white/50 mb-8 max-w-xl mx-auto">
-            Planos a partir de R$ 197/mês com OS ilimitadas. Veja a tabela completa e escolha o que cabe na sua operação.
+            {c.pricing.subtitle}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
@@ -482,7 +491,7 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
               }}
               asChild
             >
-              <Link to={cadastroLink(data.slug)}>Teste grátis 14 dias, sem cartão</Link>
+              <Link to={cadastroLink(data.slug)}>{c.ctaTrial}</Link>
             </Button>
             <Button
               size="lg"
@@ -491,7 +500,7 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
               asChild
             >
               <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
-                Ver todos os planos <ChevronRight className="ml-1 h-4 w-4" />
+                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -505,11 +514,12 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
 
 function SegmentFaq({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
+  const { messages } = useLocale();
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-12">
-          Perguntas frequentes
+          {messages.pageChrome.faqHeading}
         </h2>
         <Accordion type="single" collapsible className="grid md:grid-cols-2 gap-3">
           {data.faq.map((faq, i) => (
@@ -536,7 +546,8 @@ function SegmentFaq({ data }: { data: SegmentData }) {
 
 function SegmentFinalCta({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const c = messages.pageChrome;
   return (
     <section className="relative py-32 overflow-hidden">
       <div
@@ -562,7 +573,7 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
             asChild
           >
             <Link to={cadastroLink(data.slug)}>
-              Teste grátis 14 dias, sem cartão <ArrowRight className="ml-2 h-4 w-4" />
+              {c.ctaTrial} <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           <Button
@@ -571,7 +582,7 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{c.seePlans}</Link>
           </Button>
         </div>
       </div>

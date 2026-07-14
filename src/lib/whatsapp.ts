@@ -17,6 +17,11 @@
 //   2. buildWhatsAppUrl() lê a origem do sessionStorage OU da URL atual
 //      (o que existir) e injeta na mensagem.
 
+import { MESSAGES } from "@/lib/i18n/messages";
+import { DEFAULT_LOCALE, type LocaleCode } from "@/lib/i18n/locales";
+import { localeFromPath, stripLocale } from "@/lib/i18n/paths";
+import { resolveSlug } from "@/lib/i18n/slugRegistry";
+
 const SESSION_KEY = "dominex_utm_params";
 
 // utm_source cru → nome amigável exibido na mensagem.
@@ -110,40 +115,92 @@ export function getLeadOriginLabel(): string | null {
   return source ? friendlyOriginLabel(source) : null;
 }
 
-// Pathname exato → fragmento da mensagem (em negrito o tópico quando faz sentido).
-// Os paths batem com src/App.tsx (rotas de segmento, módulos e genéricas).
-const PAGE_FRAGMENTS: Record<string, string> = {
-  // Genéricos
-  "/": "pelo site",
-  "/precos": "pela página de planos",
-  "/changelog": "pela página de novidades",
+// ── Fragmento da mensagem, por LOCALE ─────────────────────────────────────────
+//
+// O fragmento reflete a PÁGINA atual e é montado por LOCALE + slug-aware:
+//   • Genéricos (home, planos, blog, novidades): mapa fixo por locale.
+//   • Segmento/módulo: resolvido pela KEY canônica (via resolveSlug) e o LABEL
+//     traduzido do i18n (MESSAGES[locale].segmentLabels/moduleLabels), embrulhado
+//     no template "sobre *X*" / "about *X*" do idioma. Assim /en/refrigeration-hvac-
+//     software vira "about *Refrigeration & HVAC*", sem duplicar rótulos.
+//
+// Cada locale sem template próprio cai no pt-br (fonte). es/fr por ora reusam a
+// estrutura pt-br via fallback (deixe pronto pra traduzir depois).
 
-  // Segmentos (/sistema-para-*)
-  "/sistema-para-refrigeracao": "pela página sobre *sistema pra refrigeração*",
-  "/sistema-para-eletricistas": "pela página sobre *sistema pra eletricistas*",
-  "/sistema-para-energia-solar": "pela página sobre *sistema pra energia solar*",
-  "/sistema-para-provedores": "pela página sobre *sistema pra provedores*",
-  "/sistema-para-cftv": "pela página sobre *sistema pra CFTV*",
-  "/sistema-para-construcao-civil": "pela página sobre *sistema pra construção civil*",
-  "/sistema-para-elevadores": "pela página sobre *sistema pra elevadores*",
-  "/sistema-para-limpeza-conservacao": "pela página sobre *sistema pra limpeza e conservação*",
-  "/sistema-para-dedetizacao": "pela página sobre *sistema pra dedetização*",
+interface FragmentPack {
+  /** Fragmentos de páginas genéricas (chave estável, independente de idioma). */
+  generic: {
+    home: string;
+    pricing: string;
+    changelog: string;
+    blog: string;
+  };
+  /** Fallback quando a página não é reconhecida. */
+  fallback: string;
+  /** Monta "sobre *X*" a partir do label já traduzido do segmento/módulo. */
+  aboutTopic: (topicLabel: string) => string;
+}
 
-  // Módulos (aba Soluções)
-  "/os-digital": "pela página sobre *OS Digital*",
-  "/sistema-pmoc": "pela página sobre *PMOC*",
-  "/sistema-crm": "pela página sobre *CRM*",
-  "/controle-financeiro": "pela página sobre *Controle Financeiro*",
-  "/ponto-e-folha": "pela página sobre *Ponto e Folha*",
-  "/emissao-de-nfse": "pela página sobre *Emissão de NFS-e*",
-  "/portal-do-cliente": "pela página sobre *Portal do Cliente*",
-  "/controle-de-estoque": "pela página sobre *Controle de Estoque*",
-  "/orcamentos-e-contratos": "pela página sobre *Orçamentos e Contratos*",
-  "/rastreamento-de-equipes": "pela página sobre *Rastreamento de Equipes*",
-  "/area-do-tecnico": "pela página sobre *Área do Técnico*",
+const FRAGMENTS: Record<LocaleCode, FragmentPack> = {
+  "pt-br": {
+    generic: {
+      home: "pelo site",
+      pricing: "pela página de planos",
+      changelog: "pela página de novidades",
+      blog: "pelo blog",
+    },
+    fallback: "pelo site",
+    aboutTopic: (t) => `pela página sobre *${t}*`,
+  },
+  en: {
+    generic: {
+      home: "from the website",
+      pricing: "from the pricing page",
+      changelog: "from the changelog page",
+      blog: "from the blog",
+    },
+    fallback: "from the website",
+    aboutTopic: (t) => `from the *${t}* page`,
+  },
+  // es/fr: por ora reusam o pacote pt-br (fallback). Estrutura pronta pra traduzir.
+  es: null as unknown as FragmentPack,
+  fr: null as unknown as FragmentPack,
 };
 
-const FRAGMENT_FALLBACK = "pelo site";
+/** Pacote de fragmentos do locale (com fallback pt-br pros ainda não traduzidos). */
+function fragmentPack(locale: LocaleCode): FragmentPack {
+  return FRAGMENTS[locale] ?? FRAGMENTS[DEFAULT_LOCALE];
+}
+
+// ── Templates da mensagem completa, por LOCALE ────────────────────────────────
+
+interface MessagePack {
+  /** Sem origem (utm_source). */
+  noOrigin: (fragment: string) => string;
+  /** Com origem amigável. */
+  withOrigin: (fragment: string, origin: string) => string;
+}
+
+const MESSAGE_TEMPLATES: Record<LocaleCode, MessagePack> = {
+  "pt-br": {
+    noOrigin: (f) => `Olá! Vim ${f} da Dominex e gostaria de saber mais sobre o sistema.`,
+    withOrigin: (f, o) =>
+      `Olá! Vim ${f} da Dominex, que achei no *${o}*, e gostaria de saber mais sobre o sistema.`,
+  },
+  en: {
+    noOrigin: (f) => `Hi! I came ${f} from Dominex and I'd like to learn more about the software.`,
+    withOrigin: (f, o) =>
+      `Hi! I came ${f} from Dominex, which I found on *${o}*, and I'd like to learn more about the software.`,
+  },
+  // es/fr: fallback pt-br por ora (estrutura pronta pra traduzir).
+  es: null as unknown as MessagePack,
+  fr: null as unknown as MessagePack,
+};
+
+/** Pacote de mensagem do locale (com fallback pt-br pros ainda não traduzidos). */
+function messagePack(locale: LocaleCode): MessagePack {
+  return MESSAGE_TEMPLATES[locale] ?? MESSAGE_TEMPLATES[DEFAULT_LOCALE];
+}
 
 /** Normaliza o pathname: tira barra final (exceto a raiz "/"). */
 function normalizePathname(pathname: string): string {
@@ -154,45 +211,76 @@ function normalizePathname(pathname: string): string {
 }
 
 /**
- * Resolve o fragmento da mensagem a partir do pathname atual (ou passado).
- * - Match exato no mapa PAGE_FRAGMENTS.
- * - /blog e /blog/:slug → "pelo blog" (por prefixo).
- * - Qualquer outro não mapeado → "pelo site".
+ * Resolve o fragmento da mensagem a partir do pathname atual (ou passado) + locale.
+ * - Genéricos (home, planos, novidades, blog): mapa por locale.
+ * - Segmento/módulo: resolve a KEY canônica (slug-aware, funciona sob /en/<slug-en>)
+ *   e usa o label traduzido do i18n embrulhado em "sobre *X*"/"about *X*".
+ * - Qualquer outro não reconhecido → fallback do locale.
+ * O locale, se não informado, é derivado do próprio pathname.
  */
-export function getPageContextFragment(pathname?: string): string {
-  let path: string;
+export function getPageContextFragment(pathname?: string, locale?: LocaleCode): string {
+  let rawPath: string;
   try {
-    path = pathname ?? (typeof window !== "undefined" ? window.location.pathname : "/");
+    rawPath = pathname ?? (typeof window !== "undefined" ? window.location.pathname : "/");
   } catch {
-    path = "/";
+    rawPath = "/";
   }
-  path = normalizePathname(path);
+  rawPath = normalizePathname(rawPath);
 
-  if (path === "/blog" || path.startsWith("/blog/")) return "pelo blog";
+  const loc = locale ?? localeFromPath(rawPath);
+  const pack = fragmentPack(loc);
 
-  return PAGE_FRAGMENTS[path] ?? FRAGMENT_FALLBACK;
+  // Path canônico pt-br (sem prefixo de idioma) pra casar genéricos e o slug.
+  const base = stripLocale(rawPath);
+
+  if (base === "/") return pack.generic.home;
+  if (base === "/precos") return pack.generic.pricing;
+  if (base === "/changelog") return pack.generic.changelog;
+  if (base === "/blog" || base.startsWith("/blog/")) return pack.generic.blog;
+
+  // Segmento/módulo: 1º segmento do path é o slug do idioma → resolve pra KEY.
+  const slug = base.replace(/^\/+/, "").split("/")[0];
+  if (slug) {
+    const key = resolveSlug(slug, loc);
+    if (key) {
+      const msgs = MESSAGES[loc] ?? MESSAGES[DEFAULT_LOCALE];
+      const label =
+        (msgs.segmentLabels as Record<string, string>)[key] ??
+        (msgs.moduleLabels as Record<string, string>)[key];
+      if (label) return pack.aboutTopic(label);
+    }
+  }
+
+  return pack.fallback;
 }
 
 /**
- * Monta a mensagem final do WhatsApp refletindo a página atual + a origem.
- * - Sem utm_source: "Olá! Vim ${fragment} da Dominex e gostaria de saber mais sobre o sistema."
- * - Com utm_source: "Olá! Vim ${fragment} da Dominex, que achei no *${origin}*, e gostaria de saber mais sobre o sistema."
- * @param fragmentOverride força o fragmento (default resolve pelo pathname atual).
+ * Monta a mensagem final do WhatsApp refletindo a página atual + a origem, no
+ * idioma informado (default = derivado do pathname atual).
+ * - Sem utm_source: template `noOrigin` do locale.
+ * - Com utm_source: template `withOrigin` do locale (com a origem amigável).
+ * @param fragmentOverride força o fragmento (default resolve pelo pathname/locale).
+ * @param locale idioma da mensagem (default = derivado do pathname atual).
  */
-export function buildWhatsAppMessage(fragmentOverride?: string): string {
-  const fragment = fragmentOverride ?? getPageContextFragment();
+export function buildWhatsAppMessage(fragmentOverride?: string, locale?: LocaleCode): string {
+  const loc = locale ?? localeFromPath(
+    typeof window !== "undefined" ? window.location.pathname : "/",
+  );
+  const fragment = fragmentOverride ?? getPageContextFragment(undefined, loc);
   const origin = getLeadOriginLabel();
-  if (!origin) {
-    return `Olá! Vim ${fragment} da Dominex e gostaria de saber mais sobre o sistema.`;
-  }
-  return `Olá! Vim ${fragment} da Dominex, que achei no *${origin}*, e gostaria de saber mais sobre o sistema.`;
+  const pack = messagePack(loc);
+  return origin ? pack.withOrigin(fragment, origin) : pack.noOrigin(fragment);
 }
 
 /**
- * Monta a URL final wa.me já com a mensagem (página + origem).
+ * Monta a URL final wa.me já com a mensagem (página + origem), no idioma dado.
  * Faz encodeURIComponent na mensagem (acentos e `*` passam corretos).
  */
-export function buildWhatsAppUrl(number: string, fragmentOverride?: string): string {
-  const message = buildWhatsAppMessage(fragmentOverride);
+export function buildWhatsAppUrl(
+  number: string,
+  fragmentOverride?: string,
+  locale?: LocaleCode,
+): string {
+  const message = buildWhatsAppMessage(fragmentOverride, locale);
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }

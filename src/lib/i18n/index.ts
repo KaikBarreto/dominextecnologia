@@ -11,6 +11,7 @@ export { MESSAGES } from './messages';
 export type { Messages } from './messages';
 export { localizeInternal } from './localizeInternal';
 export { localizeHash } from './localizeHash';
+export { useCanonicalSlugRedirect } from './useCanonicalSlugRedirect';
 export type { AnchorKey } from './localizeHash';
 export {
   slugFor,

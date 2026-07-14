@@ -94,6 +94,30 @@ export const enOverrides: MessagesOverride = {
     madeBy: 'Built by',
   },
 
+  pageChrome: {
+    ctaTrial: 'Start free for 14 days, no card',
+    seePlans: 'See plans',
+    seeAllPlans: 'See all plans',
+    faqHeading: 'Frequently asked questions',
+    problemLabel: 'The problem',
+    withDominex: 'With Dominex',
+    pricing: {
+      heading: 'Transparent pricing, no surprises',
+      subtitle:
+        'Plans that scale with your operation. See the full lineup and pick what fits.',
+    },
+    segment: {
+      painsHeading: 'The daily headaches, solved',
+      painsSubheading: 'Where the operation stalls on improvisation, Dominex takes control',
+      featuresHeading: 'Everything your operation needs, in one place',
+      featuresSubheading:
+        'From the service call to the report, Dominex covers every step of the field job',
+      testimonialsHeading: 'Those who use Dominex never go back to improvising',
+    },
+    nicheSearchPlaceholder: 'Search industry...',
+    nicheEmpty: 'No industry found.',
+  },
+
   home: {
     hero: {
       typedPre: 'Master how your ',
