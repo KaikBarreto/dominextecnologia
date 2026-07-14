@@ -543,31 +543,49 @@ const AppRoutes = () => (
 
     {/* Mesmas rotas sob /en, /es, /fr (idiomas novos, Fase 1 = conteúdo pt-br).
         Rotas FILHAS via <Outlet /> — o `index` casa em /en (não usa <Routes>
-        aninhado, que não resolvia o root do idioma). */}
+        aninhado, que não resolvia o root do idioma). As rotas de AUTH localizadas
+        (login/cadastro/reset-password) entram AQUI como filhas: renderizam os
+        MESMOS componentes das versões sem prefixo (Auth/Registration/ResetPassword).
+        pt-br continua sem prefixo (bloco de auth abaixo); /auth/callback fica
+        sempre sem prefixo. O catch-all fica por ÚLTIMO pra não engolir as rotas
+        estáticas acima. */}
     <Route path="/:lang" element={<LocalizedMarketingLayout />}>
       {localizedMarketingRoutes()}
+      <Route path="login" element={<Auth />} />
+      <Route
+        path="cadastro"
+        element={
+          <PublicRoute>
+            <Registration />
+          </PublicRoute>
+        }
+      />
+      <Route path="reset-password" element={<ResetPassword />} />
       <Route path="*" element={<NotFound />} />
     </Route>
 
-    {/* Auth routes */}
-    <Route
-      path="/login"
-      element={<Auth />}
-    />
+    {/* Auth routes (pt-br, SEM prefixo). Envoltas no PublicMarketingLayout pra
+       herdar a auto-detecção de idioma client-side (só humano): sem cookie e com
+       navigator.language en/es/fr, /cadastro redireciona pra /en/cadastro (as
+       versões prefixadas ficam no bloco /:lang acima). /auth/callback e /auth
+       ficam FORA disso (nunca prefixados, sem redirect). */}
+    <Route element={<PublicMarketingLayout />}>
+      <Route path="/login" element={<Auth />} />
+      <Route
+        path="/cadastro"
+        element={
+          <PublicRoute>
+            <Registration />
+          </PublicRoute>
+        }
+      />
+      <Route path="/reset-password" element={<ResetPassword />} />
+    </Route>
     {/* Retorno do OAuth (Google) — público, sem AppLayout. A página espera a
        sessão se estabelecer e decide acesso/destino (sem auto-cadastro). */}
     <Route path="/auth/callback" element={<AuthCallback />} />
     {/* Legacy /auth redirect */}
     <Route path="/auth" element={<Navigate to="/login" replace />} />
-    <Route
-      path="/cadastro"
-      element={
-        <PublicRoute>
-          <Registration />
-        </PublicRoute>
-      }
-    />
-    <Route path="/reset-password" element={<ResetPassword />} />
     
     {/* Technician OS - Public route with OS ID */}
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />

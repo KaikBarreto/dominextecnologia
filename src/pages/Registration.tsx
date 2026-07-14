@@ -26,6 +26,9 @@ import { StepTransition } from '@/components/ui/step-transition';
 import { getSelectableSegments } from '@/utils/companySegments';
 import { ORIGIN_OPTIONS, getOrigin } from '@/utils/companyOrigins';
 import { SelectableCardGrid } from '@/components/registration/SelectableCardGrid';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
 interface RegistrationFormData {
   company_name: string;
@@ -38,7 +41,7 @@ interface RegistrationFormData {
 }
 
 // Ordem das etapas: Dados (1) → Segmento (2) → Origem (3) → Acesso (4) → Sucesso.
-const STEP_LABELS = ['Dados', 'Segmento', 'Origem', 'Acesso', 'Sucesso'];
+// Os rótulos vêm de `messages.registration.steps` (i18n) dentro do componente.
 
 interface AddressData {
   cep: string;
@@ -63,6 +66,10 @@ export default function Registration() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  // i18n do SITE PÚBLICO. `locale` também vai no body da edge self-register
+  // (que devolve a mensagem de erro no idioma). `t` = grupo de strings do cadastro.
+  const { locale, messages } = useLocale();
+  const t = messages.registration;
   const [step, setStep] = useState(1);
   const [selectedOrigin, setSelectedOrigin] = useState('');
   // Segmento de atuação — obrigatório no cadastro da empresa. Só a Dominex
@@ -91,7 +98,7 @@ export default function Registration() {
       if (!res.ok) throw new Error('cep');
       const data = await res.json();
       if (data?.erro) {
-        toast({ variant: 'destructive', title: 'CEP não encontrado', description: 'Confira o número e tente de novo.' });
+        toast({ variant: 'destructive', title: t.toastCepNotFound, description: t.toastCepNotFoundDesc });
         return;
       }
       setAddressData((prev) => ({
@@ -103,7 +110,7 @@ export default function Registration() {
         codigo_ibge: data.ibge || prev.codigo_ibge,
       }));
     } catch {
-      toast({ variant: 'destructive', title: 'Não foi possível buscar o CEP', description: 'Preencha o endereço manualmente.' });
+      toast({ variant: 'destructive', title: t.toastCepError, description: t.toastCepErrorDesc });
     } finally {
       setCepLoading(false);
     }
@@ -128,7 +135,7 @@ export default function Registration() {
       if (error) { setEmailTaken(false); return false; } // rede/RPC falhou → não trava
       if (data === false) {
         setEmailTaken(true);
-        setEmailError('Este e-mail já está em uso. Faça login ou use outro e-mail.');
+        setEmailError(t.emailTaken);
         return true;
       }
       setEmailTaken(false);
@@ -251,6 +258,8 @@ export default function Registration() {
           company_address: formattedAddress || null,
           origin: selectedOrigin || null,
           segment: companySegment || null,
+          // Idioma atual → a edge devolve a mensagem de erro no mesmo idioma.
+          locale,
           // Link/affiliate params
           link_type: linkType || null,
           locked_plan: lockedPlan,
@@ -269,7 +278,7 @@ export default function Registration() {
 
       if (result?.error) throw new Error(result.error);
       if (error) {
-        let msg = 'Erro ao realizar cadastro';
+        let msg = t.toastErrorFallback;
         // FunctionsHttpError: `error.context` é a Response da edge (não { body }).
         // Lê o JSON de erro pra extrair a mensagem real (ex.: e-mail duplicado).
         const ctx = (error as any)?.context;
@@ -285,13 +294,13 @@ export default function Registration() {
         } catch { /* ignore */ }
         throw new Error(msg);
       }
-      if (!result?.success) throw new Error('Erro inesperado ao realizar cadastro');
+      if (!result?.success) throw new Error(t.toastErrorFallback);
       return result;
     },
     onSuccess: async (_, variables) => {
       toast({
-        title: 'Cadastro realizado!',
-        description: isSale ? 'Redirecionando para o pagamento...' : 'Redirecionando...',
+        title: t.toastSuccess,
+        description: isSale ? t.toastRedirectingPayment : t.toastRedirecting,
       });
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email: variables.company_email,
@@ -306,15 +315,26 @@ export default function Registration() {
       }
     },
     onError: (error: any) => {
-      const msg = error?.message || 'Erro ao realizar cadastro';
-      if (msg.includes('já está cadastrado') || msg.includes('already registered')) {
+      const msg = error?.message || t.toastErrorFallback;
+      // Detecção de e-mail duplicado tolerante a idioma: a edge devolve a
+      // mensagem no idioma do body; cobrimos pt/en/es/fr por substring. Se não
+      // casar, cai no toast genérico (que já exibe a mensagem devolvida).
+      const lower = msg.toLowerCase();
+      const isDuplicate =
+        lower.includes('já está cadastrado') ||
+        lower.includes('already registered') ||
+        lower.includes('já está em uso') ||
+        lower.includes('already in use') ||
+        lower.includes('ya está') ||
+        lower.includes('déjà');
+      if (isDuplicate) {
         // E-mail já em uso → leva o usuário de volta à etapa Dados e mostra
         // a mensagem vermelha inline abaixo do input de e-mail.
-        setEmailError('Este e-mail já está em uso. Faça login ou use outro e-mail.');
+        setEmailError(t.emailTaken);
         setStep(1);
-        toast({ variant: 'destructive', title: 'Email já cadastrado', description: 'Faça login ou use outro email.' });
+        toast({ variant: 'destructive', title: t.toastEmailTakenTitle, description: t.toastEmailTakenDesc });
       } else {
-        toast({ variant: 'destructive', title: 'Erro no cadastro', description: msg });
+        toast({ variant: 'destructive', title: t.toastError, description: msg });
       }
     },
   });
@@ -324,7 +344,7 @@ export default function Registration() {
   // propagado no mesmo tick do clique). Pula Origem quando veio de URL.
   const advanceFromSegment = (segment: string) => {
     if (!segment) {
-      toast({ variant: 'destructive', title: 'Selecione o segmento', description: 'Informe o segmento de atuação da sua empresa.' });
+      toast({ variant: 'destructive', title: t.toastSelectSegment, description: t.toastSelectSegmentDesc });
       return;
     }
     setStep(skipOriginStep ? 4 : 3);
@@ -333,7 +353,7 @@ export default function Registration() {
   // Avança a partir da Origem (step 3) → Acesso (step 4).
   const advanceFromOrigin = (origin: string) => {
     if (!origin) {
-      toast({ variant: 'destructive', title: 'Selecione uma origem', description: 'Como você nos conheceu?' });
+      toast({ variant: 'destructive', title: t.toastSelectOrigin, description: t.toastSelectOriginDesc });
       return;
     }
     setStep(4);
@@ -361,7 +381,7 @@ export default function Registration() {
       if (emailCheckTimer.current) { clearTimeout(emailCheckTimer.current); emailCheckTimer.current = null; }
       const taken = emailTaken || (await checkEmailAvailable(data.company_email));
       if (taken) {
-        setEmailError('Este e-mail já está em uso. Faça login ou use outro e-mail.');
+        setEmailError(t.emailTaken);
         return;
       }
       setStep(2);
@@ -373,11 +393,11 @@ export default function Registration() {
       const valid = await trigger(['password', 'confirm_password']);
       if (!valid) return;
       if (data.password !== data.confirm_password) {
-        toast({ variant: 'destructive', title: 'Senhas não coincidem' });
+        toast({ variant: 'destructive', title: t.toastPasswordMismatch });
         return;
       }
       if (!isPasswordStrong(data.password)) {
-        toast({ variant: 'destructive', title: 'Senha fraca', description: 'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.' });
+        toast({ variant: 'destructive', title: t.toastPasswordWeak, description: t.toastPasswordWeakDesc });
         return;
       }
       registerMutation.mutate(data);
@@ -391,8 +411,8 @@ export default function Registration() {
 
   // Dynamic step labels — quando a origem vem da URL, a etapa Origem some.
   const displayLabels = skipOriginStep
-    ? ['Dados', 'Segmento', 'Acesso', 'Sucesso']
-    : STEP_LABELS;
+    ? [t.steps.data, t.steps.segment, t.steps.access, t.steps.success]
+    : [t.steps.data, t.steps.segment, t.steps.origin, t.steps.access, t.steps.success];
   const displayStep = skipOriginStep && step >= 4 ? step - 1 : step;
 
   return (
@@ -401,11 +421,15 @@ export default function Registration() {
         <DarkVeil hueShift={53} speed={0.5} />
       </div>
 
+      {/* Seletor de idioma fixo no canto superior direito (via portal). Troca de
+          idioma preservando query, pelo switchLocalePath do próprio seletor. */}
+      <LanguageSelector variant="corner" />
+
       <div className="relative z-10 w-full max-w-2xl lg:max-w-4xl flex flex-col flex-1 sm:flex-initial">
         {/* Logo — desktop fica no topo, mobile fica flutuando sobre o veil */}
         <div className="flex flex-col items-center px-6 pt-[max(env(safe-area-inset-top),2rem)] pb-6 sm:p-0 sm:mb-8">
           <img src={logoWhite} alt="Dominex" className="h-14 w-auto mb-2" />
-          <p className="text-white/80 text-xs sm:text-sm tracking-wider sm:tracking-normal">Domine a execução do seu negócio.</p>
+          <p className="text-white/80 text-xs sm:text-sm tracking-wider sm:tracking-normal">{t.logoTagline}</p>
         </div>
 
         <Card className="border-0 border-t border-white/10 sm:border sm:border-white/15 bg-black/30 sm:bg-black/40 backdrop-blur-2xl sm:backdrop-blur-xl shadow-2xl rounded-t-[28px] sm:rounded-xl flex-1 sm:flex-initial animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:fade-in duration-500 ease-out">
@@ -416,10 +440,10 @@ export default function Registration() {
               {/* Header */}
               <div className="text-center space-y-2">
                 <h1 className="text-xl font-medium text-white uppercase tracking-[0.15em]">
-                  Cadastro
+                  {t.title}
                 </h1>
                 <p className="text-white/50 text-xs uppercase tracking-[0.1em]">
-                  Teste grátis por 14 dias · Sem compromisso · Acesso total
+                  {t.subtitle}
                 </p>
               </div>
 
@@ -460,7 +484,7 @@ export default function Registration() {
               {/* Resumo do plano personalizado bloqueado pelo link */}
               {isCustomPlan && lockedModuleInfo.length > 0 && step <= 4 && (
                 <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 space-y-2">
-                  <p className="text-sm text-primary font-medium">Seu plano personalizado</p>
+                  <p className="text-sm text-primary font-medium">{t.customPlanTitle}</p>
                   <ul className="text-xs text-white/70 space-y-1">
                     {lockedModuleInfo.map((m) => (
                       <li key={m.code} className="flex items-center gap-1.5">
@@ -469,8 +493,8 @@ export default function Registration() {
                     ))}
                   </ul>
                   <p className="text-xs text-white/50 pt-2 border-t border-white/10">
-                    Valor mensal: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(customPlanPrice)}
-                    {lockedPrice && promoMonths ? ` pelos primeiros ${promoMonths} meses` : ''}
+                    {t.customPlanMonthly} {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(customPlanPrice)}
+                    {lockedPrice && promoMonths ? t.customPlanPromoSuffix(promoMonths) : ''}
                   </p>
                 </div>
               )}
@@ -482,12 +506,12 @@ export default function Registration() {
                 {step === 1 && (
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Nome da Empresa*</Label>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.companyName}</Label>
                       <div className="relative mt-1">
                         <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                         <Input
-                          {...register('company_name', { required: 'Nome da empresa é obrigatório' })}
-                          placeholder="Ex: Minha Empresa Ltda"
+                          {...register('company_name', { required: t.errorCompanyNameRequired })}
+                          placeholder={t.companyNamePlaceholder}
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
@@ -495,12 +519,12 @@ export default function Registration() {
                     </div>
 
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Seu Nome Completo*</Label>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.contactName}</Label>
                       <div className="relative mt-1">
                         <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                         <Input
-                          {...register('contact_name', { required: 'Nome é obrigatório' })}
-                          placeholder="Ex: João Silva"
+                          {...register('contact_name', { required: t.errorContactNameRequired })}
+                          placeholder={t.contactNamePlaceholder}
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
@@ -509,14 +533,14 @@ export default function Registration() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Email*</Label>
+                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.email}</Label>
                         <div className="relative mt-1">
                           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                           <Input
                             type="email"
                             {...register('company_email', {
-                              required: 'Email é obrigatório',
-                              pattern: { value: EMAIL_REGEX, message: 'Email inválido' },
+                              required: t.errorEmailRequired,
+                              pattern: { value: EMAIL_REGEX, message: t.errorEmailInvalid },
                               // Ao editar: limpa o erro/trava e agenda checagem com debounce
                               // de ~500ms quando o e-mail tem formato válido.
                               onChange: (e) => {
@@ -536,7 +560,7 @@ export default function Registration() {
                                 checkEmailAvailable(e.target.value);
                               },
                             })}
-                            placeholder="email@exemplo.com"
+                            placeholder={t.emailPlaceholder}
                             aria-invalid={emailError ? true : undefined}
                             aria-describedby={emailError ? 'company-email-error' : undefined}
                             className={cn(
@@ -547,20 +571,20 @@ export default function Registration() {
                           {emailChecking && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-white/50" />}
                         </div>
                         {errors.company_email && <p className="text-sm text-destructive mt-1">{errors.company_email.message}</p>}
-                        {emailChecking && !emailError && <p className="text-xs text-white/50 mt-1">Verificando disponibilidade…</p>}
+                        {emailChecking && !emailError && <p className="text-xs text-white/50 mt-1">{t.emailChecking}</p>}
                         {emailError && <p id="company-email-error" className="text-xs text-destructive mt-1">{emailError}</p>}
                       </div>
 
                       <div>
-                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Telefone*</Label>
+                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.phone}</Label>
                         <div className="relative mt-1">
                           <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                           <Input
                             {...register('company_phone', {
-                              required: 'Telefone é obrigatório',
+                              required: t.errorPhoneRequired,
                               onChange: (e) => { e.target.value = phoneMask(e.target.value); },
                             })}
-                            placeholder="(21) 98765-4321"
+                            placeholder={t.phonePlaceholder}
                             maxLength={15}
                             className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
@@ -578,8 +602,8 @@ export default function Registration() {
                         >
                           <span className="flex items-center gap-2 text-sm text-white/80">
                             <MapPin className="h-4 w-4 text-white/50" />
-                            Endereço da empresa
-                            <span className="text-[11px] text-white/40">(opcional)</span>
+                            {t.addressTitle}
+                            <span className="text-[11px] text-white/40">{t.addressOptional}</span>
                           </span>
                           <ChevronDown className={cn('h-4 w-4 text-white/50 transition-transform', addressOpen && 'rotate-180')} />
                         </button>
@@ -588,7 +612,7 @@ export default function Registration() {
                         <div className="space-y-4 pt-4">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="sm:col-span-1">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">CEP</Label>
+                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.cep}</Label>
                               <div className="relative mt-1">
                                 <Input
                                   inputMode="numeric"
@@ -599,7 +623,7 @@ export default function Registration() {
                                     if (masked.replace(/\D/g, '').length === 8) handleCepLookup(masked);
                                   }}
                                   onBlur={(e) => handleCepLookup(e.target.value)}
-                                  placeholder="00000-000"
+                                  placeholder={t.cepPlaceholder}
                                   maxLength={9}
                                   className="bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary pr-9"
                                 />
@@ -607,11 +631,11 @@ export default function Registration() {
                               </div>
                             </div>
                             <div className="sm:col-span-2">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Logradouro</Label>
+                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.street}</Label>
                               <Input
                                 value={addressData.logradouro}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, logradouro: e.target.value }))}
-                                placeholder="Rua, avenida..."
+                                placeholder={t.streetPlaceholder}
                                 className="mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                               />
                             </div>
@@ -619,51 +643,51 @@ export default function Registration() {
 
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Número</Label>
+                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.number}</Label>
                               <Input
                                 value={addressData.numero}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, numero: e.target.value }))}
-                                placeholder="123"
+                                placeholder={t.numberPlaceholder}
                                 className="mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                               />
                             </div>
                             <div className="sm:col-span-2">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Complemento</Label>
+                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.complement}</Label>
                               <Input
                                 value={addressData.complemento}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, complemento: e.target.value }))}
-                                placeholder="Sala, bloco..."
+                                placeholder={t.complementPlaceholder}
                                 className="mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                               />
                             </div>
                           </div>
 
                           <div>
-                            <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Bairro</Label>
+                            <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.neighborhood}</Label>
                             <Input
                               value={addressData.bairro}
                               onChange={(e) => setAddressData((prev) => ({ ...prev, bairro: e.target.value }))}
-                              placeholder="Bairro"
+                              placeholder={t.neighborhoodPlaceholder}
                               className="mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                             />
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="sm:col-span-2">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Cidade</Label>
+                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.city}</Label>
                               <Input
                                 value={addressData.cidade}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, cidade: e.target.value }))}
-                                placeholder="Cidade"
+                                placeholder={t.cityPlaceholder}
                                 className="mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                               />
                             </div>
                             <div>
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">UF</Label>
+                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.state}</Label>
                               <Input
                                 value={addressData.uf}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, uf: e.target.value.toUpperCase().slice(0, 2) }))}
-                                placeholder="UF"
+                                placeholder={t.statePlaceholder}
                                 maxLength={2}
                                 className="mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary uppercase"
                               />
@@ -678,8 +702,8 @@ export default function Registration() {
                 {/* Step 2: Segmento — clicar num card já avança */}
                 {step === 2 && (
                   <SelectableCardGrid
-                    title="Qual o segmento do seu negócio?"
-                    subtitle="Selecione pra personalizar sua experiência"
+                    title={t.segmentTitle}
+                    subtitle={t.segmentSubtitle}
                     options={getSelectableSegments()}
                     selectedValue={companySegment}
                     onSelect={handleSegmentSelect}
@@ -689,8 +713,8 @@ export default function Registration() {
                 {/* Step 3: Origem — mesmos cards do Segmento, clicar já avança */}
                 {step === 3 && (
                   <SelectableCardGrid
-                    title="Como você nos conheceu?"
-                    subtitle="Selecione de onde você veio"
+                    title={t.originTitle}
+                    subtitle={t.originSubtitle}
                     options={ORIGIN_OPTIONS}
                     selectedValue={selectedOrigin}
                     onSelect={handleOriginSelect}
@@ -702,17 +726,17 @@ export default function Registration() {
                   <div className="space-y-4">
                     <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
                       <p className="text-sm text-white/70">
-                        <strong className="text-white">Email de acesso:</strong> {emailValue}
+                        <strong className="text-white">{t.accessEmailLabel}</strong> {emailValue}
                       </p>
                     </div>
 
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Senha*</Label>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.password}</Label>
                       <div className="relative mt-1">
                         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
                         <PasswordInput
-                          {...register('password', { required: 'Senha é obrigatória', validate: (v) => isPasswordStrong(v) || 'Senha não atende aos requisitos mínimos' })}
-                          placeholder="Crie sua senha"
+                          {...register('password', { required: t.errorPasswordRequired, validate: (v) => isPasswordStrong(v) || t.errorPasswordMinReqs })}
+                          placeholder={t.passwordPlaceholder}
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
@@ -721,12 +745,12 @@ export default function Registration() {
                     </div>
 
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Confirmar Senha*</Label>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.confirmPassword}</Label>
                       <div className="relative mt-1">
                         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
                         <PasswordInput
-                          {...register('confirm_password', { required: 'Confirme a senha' })}
-                          placeholder="Repita a senha"
+                          {...register('confirm_password', { required: t.errorConfirmPasswordRequired })}
+                          placeholder={t.confirmPasswordPlaceholder}
                           matchAgainst={passwordValue}
                           value={confirmValue}
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
@@ -737,8 +761,8 @@ export default function Registration() {
 
                     {/* Trial info — texto simples, sem card */}
                     <div className="text-center space-y-0.5">
-                      <p className="text-sm text-white/70">14 dias grátis com acesso total</p>
-                      <p className="text-xs text-white/50">Sem cartão de crédito, sem compromisso</p>
+                      <p className="text-sm text-white/70">{t.trialLine1}</p>
+                      <p className="text-xs text-white/50">{t.trialLine2}</p>
                     </div>
                   </div>
                 )}
@@ -754,7 +778,7 @@ export default function Registration() {
                         onClick={handlePrevious}
                         className="gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white hover:border-white/30 uppercase tracking-widest text-xs"
                       >
-                        <ArrowLeft className="h-4 w-4" /> Voltar
+                        <ArrowLeft className="h-4 w-4" /> {t.back}
                       </Button>
                     )}
                     <Button
@@ -763,11 +787,11 @@ export default function Registration() {
                       disabled={registerMutation.isPending}
                     >
                       {registerMutation.isPending ? (
-                        <><Loader2 className="h-4 w-4 animate-spin" /> Cadastrando...</>
+                        <><Loader2 className="h-4 w-4 animate-spin" /> {t.creating}</>
                       ) : step === 4 ? (
-                        'Criar Conta'
+                        t.createAccount
                       ) : (
-                        <>Continuar <ArrowRight className="h-4 w-4" /></>
+                        <>{t.continue} <ArrowRight className="h-4 w-4" /></>
                       )}
                     </Button>
                   </div>
@@ -777,9 +801,9 @@ export default function Registration() {
               {/* Login link */}
               {step <= 4 && (
                 <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
-                  Já tem uma conta?{' '}
-                  <Link to="/login" className="text-white font-bold hover:text-primary transition-colors">
-                    Fazer login
+                  {t.haveAccount}{' '}
+                  <Link to={localizeInternal('/login', locale)} className="text-white font-bold hover:text-primary transition-colors">
+                    {t.doLogin}
                   </Link>
                 </div>
               )}

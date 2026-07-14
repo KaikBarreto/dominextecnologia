@@ -611,7 +611,7 @@ export default function LandingNavbar() {
               (variant="corner", fixed no canto) não sobrepor o CTA "Criar Conta". */}
           <div className="hidden md:flex items-center gap-3 md:mr-24">
             <Button variant="ghost" className="text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
-              <Link to="/login">
+              <Link to={localizeInternal('/login', locale)}>
                 <LogIn className="h-4 w-4" />
                 {m.login}
               </Link>
@@ -623,7 +623,7 @@ export default function LandingNavbar() {
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to="/cadastro">{m.signup}</Link>
+              <Link to={localizeInternal('/cadastro', locale)}>{m.signup}</Link>
             </Button>
           </div>
 
@@ -646,7 +646,7 @@ export default function LandingNavbar() {
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(0,0%,5%)]/95 backdrop-blur-xl px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <div className="flex items-center gap-3">
               <Link
-                to="/cadastro?origem=Site"
+                to={localizeInternal('/cadastro?origem=Site', locale)}
                 className="flex-1 inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-base font-semibold hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: ctaBg, color: ctaFg }}
               >
@@ -827,7 +827,7 @@ export default function LandingNavbar() {
             {/* Seletor de idioma dentro do menu (mobile) — verde fixo da marca (site público). */}
             <LanguageSelector surface="dark" fullWidth />
             <Button variant="ghost" className="w-full text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
-              <Link to="/login">
+              <Link to={localizeInternal('/login', locale)}>
                 <LogIn className="h-4 w-4" />
                 {m.login}
               </Link>
@@ -837,7 +837,7 @@ export default function LandingNavbar() {
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to="/cadastro">{m.signup}</Link>
+              <Link to={localizeInternal('/cadastro', locale)}>{m.signup}</Link>
             </Button>
           </div>
           </div>

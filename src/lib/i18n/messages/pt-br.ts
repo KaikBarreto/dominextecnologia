@@ -614,6 +614,120 @@ export const ptBr = {
     s12Title: '12. Contato',
     s12Pre: 'Dúvidas sobre estes Termos: ',
   },
+
+  // ── Cadastro (/cadastro) — stepper de 5 etapas ─────────────────────────────
+  // Texto EXATO cravado hoje no Registration.tsx (só movido pra chave). Site
+  // público: sem white-label, marca "Dominex". en/es/fr traduzem; ausências
+  // caem no pt-br.
+  registration: {
+    // Logo + header
+    logoTagline: 'Domine a execução do seu negócio.',
+    title: 'Cadastro',
+    subtitle: 'Teste grátis por 14 dias · Sem compromisso · Acesso total',
+
+    // Rótulos das etapas (stepper). "steps" = versão completa (5 passos);
+    // "stepsNoOrigin" = quando a origem vem da URL e a etapa Origem some.
+    steps: {
+      data: 'Dados',
+      segment: 'Segmento',
+      origin: 'Origem',
+      access: 'Acesso',
+      success: 'Sucesso',
+    },
+
+    // Etapa 1 — Dados da empresa
+    companyName: 'Nome da Empresa*',
+    companyNamePlaceholder: 'Ex: Minha Empresa Ltda',
+    contactName: 'Seu Nome Completo*',
+    contactNamePlaceholder: 'Ex: João Silva',
+    email: 'Email*',
+    emailPlaceholder: 'email@exemplo.com',
+    phone: 'Telefone*',
+    phonePlaceholder: '(21) 98765-4321',
+    emailChecking: 'Verificando disponibilidade…',
+    emailTaken: 'Este e-mail já está em uso. Faça login ou use outro e-mail.',
+
+    // Endereço (opcional, accordion)
+    addressTitle: 'Endereço da empresa',
+    addressOptional: '(opcional)',
+    cep: 'CEP',
+    cepPlaceholder: '00000-000',
+    street: 'Logradouro',
+    streetPlaceholder: 'Rua, avenida...',
+    number: 'Número',
+    numberPlaceholder: '123',
+    complement: 'Complemento',
+    complementPlaceholder: 'Sala, bloco...',
+    neighborhood: 'Bairro',
+    neighborhoodPlaceholder: 'Bairro',
+    city: 'Cidade',
+    cityPlaceholder: 'Cidade',
+    state: 'UF',
+    statePlaceholder: 'UF',
+
+    // Etapa 2 — Segmento
+    segmentTitle: 'Qual o segmento do seu negócio?',
+    segmentSubtitle: 'Selecione pra personalizar sua experiência',
+
+    // Etapa 3 — Origem
+    originTitle: 'Como você nos conheceu?',
+    originSubtitle: 'Selecione de onde você veio',
+
+    // Etapa 4 — Acesso
+    accessEmailLabel: 'Email de acesso:',
+    password: 'Senha*',
+    passwordPlaceholder: 'Crie sua senha',
+    confirmPassword: 'Confirmar Senha*',
+    confirmPasswordPlaceholder: 'Repita a senha',
+    trialLine1: '14 dias grátis com acesso total',
+    trialLine2: 'Sem cartão de crédito, sem compromisso',
+
+    // Botões
+    back: 'Voltar',
+    continue: 'Continuar',
+    createAccount: 'Criar Conta',
+    creating: 'Cadastrando...',
+
+    // Rodapé
+    haveAccount: 'Já tem uma conta?',
+    doLogin: 'Fazer login',
+
+    // Plano personalizado (link de venda)
+    customPlanTitle: 'Seu plano personalizado',
+    customPlanMonthly: 'Valor mensal:',
+    customPlanPromoSuffix: (months: string) => ` pelos primeiros ${months} meses`,
+
+    // Toasts / validações (título + descrição)
+    toastCepNotFound: 'CEP não encontrado',
+    toastCepNotFoundDesc: 'Confira o número e tente de novo.',
+    toastCepError: 'Não foi possível buscar o CEP',
+    toastCepErrorDesc: 'Preencha o endereço manualmente.',
+    toastSuccess: 'Cadastro realizado!',
+    toastRedirectingPayment: 'Redirecionando para o pagamento...',
+    toastRedirecting: 'Redirecionando...',
+    toastEmailTakenTitle: 'Email já cadastrado',
+    toastEmailTakenDesc: 'Faça login ou use outro email.',
+    toastError: 'Erro no cadastro',
+    toastErrorFallback: 'Erro ao realizar cadastro',
+    toastSelectSegment: 'Selecione o segmento',
+    toastSelectSegmentDesc: 'Informe o segmento de atuação da sua empresa.',
+    toastSelectOrigin: 'Selecione uma origem',
+    toastSelectOriginDesc: 'Como você nos conheceu?',
+    toastPasswordMismatch: 'Senhas não coincidem',
+    toastPasswordWeak: 'Senha fraca',
+    toastPasswordWeakDesc:
+      'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.',
+
+    // Mensagens de validação inline (react-hook-form)
+    errorCompanyNameRequired: 'Nome da empresa é obrigatório',
+    errorContactNameRequired: 'Nome é obrigatório',
+    errorEmailRequired: 'Email é obrigatório',
+    errorEmailInvalid: 'Email inválido',
+    errorPhoneRequired: 'Telefone é obrigatório',
+    errorPasswordRequired: 'Senha é obrigatória',
+    errorPasswordMinReqs: 'Senha não atende aos requisitos mínimos',
+    errorConfirmPasswordRequired: 'Confirme a senha',
+  },
 } as const;
 
 /** Shape canônico das mensagens de UI. en/es/fr fazem fallback pra ele. */

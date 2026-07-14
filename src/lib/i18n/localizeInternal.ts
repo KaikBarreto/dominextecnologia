@@ -1,17 +1,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// localizeInternal — aplica o prefixo de locale SOMENTE a rotas públicas do
-// site de marketing. Auth/app passam sem prefixo; externos passam intocados.
+// localizeInternal — aplica o prefixo de locale a rotas públicas do site de
+// marketing E às rotas de auth localizadas (login, cadastro, reset-password).
+// App autenticado e /auth/* passam sem prefixo; externos passam intocados.
 //
 // Regras:
-//   • Rotas de auth/app (login, cadastro, reset-password, dashboard, etc.) →
-//     devolvidas SEM prefixo, exatamente como vieram.
+//   • Auth localizada (login, cadastro, reset-password) → prefixada como as
+//     rotas públicas: sob /en vira /en/cadastro, no pt-br fica /cadastro. Cada
+//     uma existe nos dois formatos (App.tsx monta as versões com e sem prefixo).
+//   • Rotas do APP autenticado (dashboard, /os/, /admin, etc.) e o retorno do
+//     OAuth (/auth/) → devolvidas SEM prefixo, exatamente como vieram.
 //   • Links externos (http/https/mailto/tel/wa.me) e âncoras vazias → intocados.
 //   • Tudo o mais (slug de segmento, módulo, blog, páginas institucionais, /) →
 //     prefixado via localizePath para o locale alvo.
 //
 // Por quê um helper centralizado: evita repetir a condicional em cada <Link>
-// dos componentes públicos e garante que auth/app nunca ganhem prefixo, mesmo
-// se alguém adicionar um link novo.
+// dos componentes públicos e garante que o app autenticado nunca ganhe prefixo,
+// mesmo se alguém adicionar um link novo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { localizePath, stripLocale } from './paths';
@@ -19,13 +23,13 @@ import type { LocaleCode } from './locales';
 import { isLocalizableSlugKey, resolveSlug, slugFor } from './slugRegistry';
 
 /**
- * Prefixos de rota que NÃO devem ser localizados (auth/app autenticado).
- * Acrescente aqui se novas rotas de auth/app forem criadas.
+ * Prefixos de rota do APP AUTENTICADO que NÃO devem ser localizados.
+ * `login`, `cadastro` e `reset-password` NÃO entram aqui de propósito: são as
+ * rotas de auth localizadas (existem com e sem prefixo — ver App.tsx). O retorno
+ * do OAuth (`/auth/`) segue sem prefixo. Acrescente aqui se novas rotas do app
+ * autenticado forem criadas.
  */
 const AUTH_APP_PREFIXES = [
-  '/login',
-  '/cadastro',
-  '/reset-password',
   '/auth/',
   '/dashboard',
   '/agenda',
@@ -49,9 +53,12 @@ const AUTH_APP_PREFIXES = [
  *
  * Retorna o path original (sem prefixo) para:
  *   • Links externos (começa com http/https/mailto/tel) ou âncoras (#xxx, /).
- *   • Rotas de auth/app (login, cadastro, dashboard, etc.).
+ *   • Rotas do app autenticado (dashboard, /os/, /admin, etc.) e /auth/.
  *
- * @param path   Caminho sem prefixo de locale (ex: '/', '/blog', '/os-digital').
+ * Auth localizada (login, cadastro, reset-password) É prefixada — query string
+ * é preservada por vir junto do último segmento do path.
+ *
+ * @param path   Caminho sem prefixo de locale (ex: '/', '/blog', '/cadastro').
  * @param locale Locale alvo derivado do `useLocale()`.
  */
 export function localizeInternal(path: string, locale: LocaleCode): string {
