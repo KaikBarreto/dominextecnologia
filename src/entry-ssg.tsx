@@ -74,6 +74,12 @@ export interface SsgHead {
   ogDescription: string;
   ogUrl: string;
   /**
+   * Valor da meta `og:locale` desta página (pt_BR, en_US, es_ES, fr_FR). O shell
+   * (index.html) cravava `pt_BR` em todas as páginas; o ssg.mjs reescreve pelo
+   * locale real desta rota.
+   */
+  ogLocale: string;
+  /**
    * Blocos <script type="application/ld+json"> JÁ SERIALIZADOS e escapados, prontos
    * pra injeção no <head>. Quando presente (rotas de segmento/módulo), o ssg.mjs
    * REMOVE os blocos globais de JSON-LD do shell (FAQ/SoftwareApplication da home)
@@ -152,24 +158,43 @@ function hreflangBlock(basePath: string): string {
   return links.join('\n    ');
 }
 
-// ── Head da home e das páginas institucionais/legais ──────────────────────────
-// As landings de segmento/módulo têm metaTitle/metaDescription no próprio data;
-// estas não, então cravamos aqui (espelham o que o componente seta via
-// document.title no client e o que vive no index.html da home).
-const HOME_TITLE =
-  'Dominex — Sistema de Ordem de Serviço, PMOC e Gestão para Refrigeração e Equipes de Campo';
-const HOME_DESCRIPTION =
-  'Sistema de ordem de serviço digital, PMOC e gestão para refrigeração, climatização e equipes de campo. App do técnico em campo. Teste grátis 14 dias, sem cartão.';
+// ── Head da home e das páginas institucionais/legais POR LOCALE ───────────────
+// As landings de segmento/módulo têm metaTitle/metaDescription no próprio data
+// (já traduzido por idioma); estas páginas não, então cravamos aqui.
+//
+// pt-br é BYTE-IDÊNTICO ao que vive no index.html/shell (referência de ranking).
+// en/es/fr são GENERALIZADOS: sem citar PMOC, NFS-e, ISS, lei brasileira nem R$
+// (termos locais do Brasil não fazem sentido pro leitor internacional). A marca
+// "Dominex" é preservada e não há travessão (—) na copy.
+
+const HOME_TITLES: Record<LocaleCode, string> = {
+  'pt-br':
+    'Dominex — Sistema de Ordem de Serviço, PMOC e Gestão para Refrigeração e Equipes de Campo',
+  en: 'Dominex | Work Order and Field Service Management Software',
+  es: 'Dominex | Software de Órdenes de Servicio y Gestión de Equipos de Campo',
+  fr: 'Dominex | Logiciel de Bons de Travail et Gestion des Équipes Terrain',
+};
+const HOME_DESCRIPTIONS: Record<LocaleCode, string> = {
+  'pt-br':
+    'Sistema de ordem de serviço digital, PMOC e gestão para refrigeração, climatização e equipes de campo. App do técnico em campo. Teste grátis 14 dias, sem cartão.',
+  en:
+    'Digital work order software and management for service companies and field teams. Scheduling, technician app, customers and reports in one place. Free 14-day trial, no card required.',
+  es:
+    'Software de órdenes de servicio digital y gestión para empresas de servicio y equipos de campo. Agenda, app del técnico, clientes e informes en un solo lugar. Prueba gratis de 14 días, sin tarjeta.',
+  fr:
+    'Logiciel de bons de travail numériques et gestion pour les entreprises de service et les équipes terrain. Planning, application du technicien, clients et rapports au même endroit. Essai gratuit de 14 jours, sans carte.',
+};
 
 // ── Head das páginas institucionais/legais por locale ────────────────────────
-// pt-br é inalterado (referência anterior). en é generalizado: sem citar LGPD,
-// lei brasileira, ISS ou NFS-e. es/fr fazem fallback ao pt-br até serem traduzidos.
+// pt-br é inalterado (referência anterior). en/es/fr são generalizados: sem citar
+// LGPD, lei brasileira, ISS, PMOC ou NFS-e (termos locais do Brasil). Sem
+// travessão (—) na copy; marca "Dominex" preservada.
 
 const QUEM_SOMOS_TITLES: Record<LocaleCode, string> = {
   'pt-br': 'Quem somos — Dominex | Gestão para equipes de campo',
   en: 'About Us — Dominex | Management for Field Service Teams',
-  es: 'Quem somos — Dominex | Gestão para equipes de campo',
-  fr: 'Quem somos — Dominex | Gestão para equipes de campo',
+  es: 'Quiénes somos — Dominex | Gestión para equipos de campo',
+  fr: 'Qui sommes-nous — Dominex | Gestion pour les équipes terrain',
 };
 const QUEM_SOMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
   'pt-br':
@@ -177,16 +202,16 @@ const QUEM_SOMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
   en:
     'Meet Dominex: work order, maintenance and management software for field service companies, covering HVAC, electrical, solar energy, pest control and more. Built for teams that master the field.',
   es:
-    'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.',
+    'Conoce Dominex: software de órdenes de servicio y gestión para empresas de servicio y equipos de campo, como climatización, electricidad, energía solar y más. Hecho para quien domina el campo.',
   fr:
-    'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.',
+    'Découvrez Dominex : logiciel de bons de travail et gestion pour les entreprises de service et les équipes terrain, comme le CVC, l’électricité, l’énergie solaire et plus. Conçu pour ceux qui maîtrisent le terrain.',
 };
 
 const BLOG_TITLES: Record<LocaleCode, string> = {
   'pt-br': 'Blog — Dominex | Gestão para equipes de campo',
   en: 'Blog — Dominex | Field Service Management',
-  es: 'Blog — Dominex | Gestão para equipes de campo',
-  fr: 'Blog — Dominex | Gestão para equipes de campo',
+  es: 'Blog — Dominex | Gestión para equipos de campo',
+  fr: 'Blog — Dominex | Gestion pour les équipes terrain',
 };
 const BLOG_DESCRIPTIONS: Record<LocaleCode, string> = {
   'pt-br':
@@ -194,15 +219,15 @@ const BLOG_DESCRIPTIONS: Record<LocaleCode, string> = {
   en:
     'Practical articles on work orders, maintenance plans, team management and how to bring your field operation under control. Content by Dominex.',
   es:
-    'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
+    'Artículos prácticos sobre órdenes de servicio, gestión de equipos y cómo llevar el control de tu operación de campo. Contenido de Dominex.',
   fr:
-    'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
+    'Articles pratiques sur les bons de travail, la gestion des équipes et comment maîtriser votre opération terrain. Contenu Dominex.',
 };
 
 const PRIVACIDADE_TITLES: Record<LocaleCode, string> = {
   'pt-br': 'Política de Privacidade — Dominex',
   en: 'Privacy Policy — Dominex',
-  es: 'Política de Privacidade — Dominex',
+  es: 'Política de Privacidad — Dominex',
   fr: 'Politique de Confidentialité — Dominex',
 };
 const PRIVACIDADE_DESCRIPTIONS: Record<LocaleCode, string> = {
@@ -211,7 +236,7 @@ const PRIVACIDADE_DESCRIPTIONS: Record<LocaleCode, string> = {
   en:
     'Dominex Privacy Policy: how we process personal data on the platform, following applicable data protection law.',
   es:
-    'Política de Privacidade da Dominex: como tratamos os dados pessoais na plataforma, conforme a Lei nº 13.709/2018 (LGPD).',
+    'Política de Privacidad de Dominex: cómo tratamos los datos personales en la plataforma, conforme a la legislación de protección de datos aplicable.',
   fr:
     'Politique de confidentialité de Dominex: comment nous traitons les données personnelles sur la plateforme, conformément aux lois applicables en matière de protection des données.',
 };
@@ -219,7 +244,7 @@ const PRIVACIDADE_DESCRIPTIONS: Record<LocaleCode, string> = {
 const TERMOS_TITLES: Record<LocaleCode, string> = {
   'pt-br': 'Termos de Uso — Dominex',
   en: 'Terms of Use — Dominex',
-  es: 'Termos de Uso — Dominex',
+  es: 'Términos de Uso — Dominex',
   fr: "Conditions d'utilisation — Dominex",
 };
 const TERMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
@@ -228,7 +253,7 @@ const TERMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
   en:
     'Dominex Terms of Use: registration conditions, service usage and responsibilities for service companies and field teams.',
   es:
-    'Termos de Uso da plataforma Dominex: condições de cadastro, uso do serviço e responsabilidades para empresas de serviço e equipes de campo.',
+    'Términos de Uso de la plataforma Dominex: condiciones de registro, uso del servicio y responsabilidades para empresas de servicio y equipos de campo.',
   fr:
     "Conditions d'utilisation de la plateforme Dominex: conditions d'inscription, utilisation du service et responsabilités pour les entreprises de service.",
 };
@@ -360,8 +385,8 @@ function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | und
   if (basePath === '/') {
     return {
       element: <Landing />,
-      title: HOME_TITLE,
-      description: HOME_DESCRIPTION,
+      title: HOME_TITLES[locale] ?? HOME_TITLES['pt-br'],
+      description: HOME_DESCRIPTIONS[locale] ?? HOME_DESCRIPTIONS['pt-br'],
       kind: 'home',
     };
   }
@@ -407,7 +432,14 @@ function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | und
         title: QUEM_SOMOS_TITLES[locale] ?? QUEM_SOMOS_TITLES['pt-br'],
         description: QUEM_SOMOS_DESCRIPTIONS[locale] ?? QUEM_SOMOS_DESCRIPTIONS['pt-br'],
         kind: 'institutional',
-        breadcrumbName: locale === 'en' ? 'About Us' : 'Quem somos',
+        breadcrumbName:
+          locale === 'en'
+            ? 'About Us'
+            : locale === 'es'
+              ? 'Quiénes somos'
+              : locale === 'fr'
+                ? 'Qui sommes-nous'
+                : 'Quem somos',
       };
     case '/blog':
       return {
@@ -426,9 +458,11 @@ function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | und
         breadcrumbName:
           locale === 'en'
             ? 'Privacy Policy'
-            : locale === 'fr'
-              ? 'Politique de Confidentialité'
-              : 'Política de Privacidade',
+            : locale === 'es'
+              ? 'Política de Privacidad'
+              : locale === 'fr'
+                ? 'Politique de Confidentialité'
+                : 'Política de Privacidade',
       };
     case '/termos':
       return {
@@ -439,9 +473,11 @@ function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | und
         breadcrumbName:
           locale === 'en'
             ? 'Terms of Use'
-            : locale === 'fr'
-              ? "Conditions d'utilisation"
-              : 'Termos de Uso',
+            : locale === 'es'
+              ? 'Términos de Uso'
+              : locale === 'fr'
+                ? "Conditions d'utilisation"
+                : 'Termos de Uso',
       };
     default:
       return undefined;
@@ -604,6 +640,7 @@ export function renderRoute(
     ogTitle: entry.title,
     ogDescription: entry.description,
     ogUrl: pageUrl,
+    ogLocale: getLocaleDef(locale).ogLocale,
     jsonLd,
     stripGlobalJsonLd,
     htmlLang: getLocaleDef(locale).htmlLang,
@@ -755,6 +792,7 @@ export function renderBlogPost(
     ogTitle: fullTitle,
     ogDescription: description,
     ogUrl: pageUrl,
+    ogLocale: getLocaleDef(locale).ogLocale,
     jsonLd,
     stripGlobalJsonLd: true,
     htmlLang: getLocaleDef(locale).htmlLang,

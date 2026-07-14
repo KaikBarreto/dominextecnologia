@@ -18,6 +18,11 @@ export interface LocaleDef {
   label: string;
   /** Valor do atributo <html lang="...">. */
   htmlLang: string;
+  /**
+   * Valor da meta Open Graph `og:locale` (formato `ll_CC`: pt_BR, en_US, es_ES,
+   * fr_FR). Usado pelo SSG pra emitir o og:locale certo por página.
+   */
+  ogLocale: string;
   /** true só no pt-br (default sem prefixo). */
   isDefault: boolean;
 }
@@ -26,10 +31,10 @@ export const DEFAULT_LOCALE: LocaleCode = 'pt-br';
 
 /** Ordem = ordem de exibição no seletor. pt-br primeiro (default). */
 export const LOCALES: LocaleDef[] = [
-  { code: 'pt-br', label: 'Português', htmlLang: 'pt-BR', isDefault: true },
-  { code: 'en', label: 'English', htmlLang: 'en', isDefault: false },
-  { code: 'es', label: 'Español', htmlLang: 'es', isDefault: false },
-  { code: 'fr', label: 'Français', htmlLang: 'fr', isDefault: false },
+  { code: 'pt-br', label: 'Português', htmlLang: 'pt-BR', ogLocale: 'pt_BR', isDefault: true },
+  { code: 'en', label: 'English', htmlLang: 'en', ogLocale: 'en_US', isDefault: false },
+  { code: 'es', label: 'Español', htmlLang: 'es', ogLocale: 'es_ES', isDefault: false },
+  { code: 'fr', label: 'Français', htmlLang: 'fr', ogLocale: 'fr_FR', isDefault: false },
 ];
 
 /** Só os prefixos de URL (idiomas não-default). Usado no roteamento. */

@@ -198,6 +198,14 @@ function buildHtml(baseHtml, html, head) {
     .replace(
       /<meta property="og:url" content="[\s\S]*?" \/>/,
       `<meta property="og:url" content="${attr(head.ogUrl)}" />`
+    )
+    // og:locale — o shell crava pt_BR em todas; reescreve pelo locale da rota
+    // (pt_BR/en_US/es_ES/fr_FR). Só emite se a rota forneceu (compat defensivo).
+    .replace(
+      /<meta property="og:locale" content="[\s\S]*?" \/>/,
+      head.ogLocale
+        ? `<meta property="og:locale" content="${attr(head.ogLocale)}" />`
+        : '$&'
     );
 
   // JSON-LD por-rota. Em páginas internas (segmento/módulo/institucional) removemos

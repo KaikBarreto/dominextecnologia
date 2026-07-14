@@ -43,7 +43,6 @@ import { localizeHash, type AnchorKey } from '@/lib/i18n/localizeHash';
 
 /** Chaves canônicas das âncoras do nav. Hash + label localizados no render. */
 const NAV_ANCHOR_KEYS: { key: AnchorKey }[] = [
-  { key: 'recursos' },
   { key: 'precos' },
 ];
 
@@ -234,7 +233,6 @@ export default function LandingNavbar() {
     return { label: anchorLabel(item.key), key: item.key, id: hash, href: `#${hash}` };
   });
   // Hash localizados das âncoras principais — usados nos comparadores de activeId.
-  const hashRecursos = localizeHash('recursos', locale);
   const hashPrecos   = localizeHash('precos', locale);
 
   // CTA "Criar Conta": cor do segmento na respectiva landing, verde da marca no
@@ -378,21 +376,6 @@ export default function LandingNavbar() {
 
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-8">
-            <a
-              href={anchorTo('recursos')}
-              className={cn(
-                'relative text-sm transition-colors py-1',
-                activeId === hashRecursos ? 'text-white font-medium' : 'text-white/60 hover:text-white'
-              )}
-            >
-              {m.platform}
-              <span
-                className={cn(
-                  'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
-                  activeId === hashRecursos ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
-                )}
-              />
-            </a>
             {/* Soluções — dropdown (hover no desktop, focável/clicável p/ teclado) */}
             <div
               ref={solutionsRef}
@@ -728,20 +711,6 @@ export default function LandingNavbar() {
               />
             </Link>
           </div>
-          {navLinks.slice(0, 1).map((l) => (
-            <a
-              key={l.href}
-              href={anchorTo(l.key)}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                'block py-3 text-sm border-b border-white/5 transition-colors',
-                activeId === l.id ? 'text-white font-medium border-l-2 border-l-primary pl-3' : 'text-white/70 hover:text-white'
-              )}
-            >
-              {l.label}
-            </a>
-          ))}
-
           {/* Soluções — grupo expansível no mobile */}
           <button
             type="button"
