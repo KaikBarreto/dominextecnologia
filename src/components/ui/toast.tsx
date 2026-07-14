@@ -14,9 +14,10 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      // Mobile: rodapé (bottom) com margem da borda inferior + safe-area, pra não
-      // colar na borda nem no rodapé sticky de ações. Desktop: canto inferior direito.
-      "fixed bottom-0 left-0 right-0 top-auto z-[100] flex max-h-screen w-full flex-col gap-2 p-4 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))] sm:right-0 sm:left-auto sm:pb-[max(1rem,env(safe-area-inset-bottom))] md:max-w-[420px]",
+      // Mobile/tablet: sobe o rodapé pra ficar ACIMA da MobileBottomNav (~4rem +
+      // safe-area), senão o toast cobre o menu enquanto não some. Desktop (lg):
+      // não tem bottom nav, volta pra margem curta no canto inferior direito.
+      "fixed bottom-0 left-0 right-0 top-auto z-[100] flex max-h-screen w-full flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:right-0 sm:left-auto md:max-w-[420px] lg:pb-[max(1rem,env(safe-area-inset-bottom))]",
       className,
     )}
     {...props}
@@ -69,11 +70,12 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      // X SEMPRE visível (não só no hover) e com contraste em ambos os temas de
-      // toast: chip translúcido + ícone claro no destrutivo, escuro no padrão.
-      "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full opacity-100 transition-colors",
-      "bg-foreground/10 text-foreground/70 hover:bg-foreground/20 hover:text-foreground",
-      "group-[.destructive]:bg-white/20 group-[.destructive]:text-white group-[.destructive]:hover:bg-white/30 group-[.destructive]:hover:text-white",
+      // X SEMPRE visível e explícito (não só no hover): chip maior, com contorno e
+      // mais contraste, pra deixar óbvio que dá pra fechar. Ícone claro no
+      // destrutivo, escuro no padrão.
+      "absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border opacity-100 transition-colors",
+      "border-foreground/15 bg-foreground/10 text-foreground/80 hover:bg-foreground/20 hover:text-foreground",
+      "group-[.destructive]:border-white/30 group-[.destructive]:bg-white/20 group-[.destructive]:text-white group-[.destructive]:hover:bg-white/30 group-[.destructive]:hover:text-white",
       "focus:outline-none focus:ring-2 focus:ring-ring group-[.destructive]:focus:ring-white/60",
       className,
     )}
