@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.34',
+    date: '14 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso de salvar foto fecha de primeira no celular',
+        description: 'Ao tirar uma foto na ordem de serviço pelo celular, o aviso perguntando se você quer salvar a foto no aparelho agora fecha na hora ao tocar em fechar. Antes, em alguns casos, era preciso tocar duas vezes para dispensar o aviso.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.15.33',
     date: '14 de julho de 2026',
     type: 'patch',

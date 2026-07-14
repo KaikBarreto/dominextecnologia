@@ -211,11 +211,15 @@ export function OsPhotoField({
       }
 
       await onChange(uploadedUrls.join(','));
-      toast({ title: `${selectedFiles.length > 1 ? `${selectedFiles.length} fotos enviadas` : 'Foto enviada'}!` });
 
-      // Só ABRE o modal perguntando se quer salvar no aparelho (câmera + toggle ON).
+      // Câmera + toggle ON: abre o modal "Salvar no aparelho?", que JÁ confirma o
+      // envio. Nesse caminho NÃO dispara o toast "Foto enviada!" — ele sobe por cima
+      // do modal (z acima) e come o toque no "FECHAR"/rodapé. Nos demais casos
+      // (galeria, ou toggle OFF) o toast de sucesso segue normal.
       if (fromCamera && saveToDeviceEnabled && rawFiles.length) {
         setPhotosToSave(rawFiles);
+      } else {
+        toast({ title: `${selectedFiles.length > 1 ? `${selectedFiles.length} fotos enviadas` : 'Foto enviada'}!` });
       }
     } catch (error: any) {
       toast({
