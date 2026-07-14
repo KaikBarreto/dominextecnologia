@@ -188,9 +188,9 @@ const MESSAGE_TEMPLATES: Record<LocaleCode, MessagePack> = {
       `Olá! Vim ${f} da Dominex, que achei no *${o}*, e gostaria de saber mais sobre o sistema.`,
   },
   en: {
-    noOrigin: (f) => `Hi! I came ${f} from Dominex and I'd like to learn more about the software.`,
+    noOrigin: (f) => `Hi! I came ${f} and I'd like to learn more about Dominex.`,
     withOrigin: (f, o) =>
-      `Hi! I came ${f} from Dominex, which I found on *${o}*, and I'd like to learn more about the software.`,
+      `Hi! I came ${f}, which I found on *${o}*, and I'd like to learn more about Dominex.`,
   },
   // es/fr: fallback pt-br por ora (estrutura pronta pra traduzir).
   es: null as unknown as MessagePack,
