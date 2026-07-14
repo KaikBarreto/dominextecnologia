@@ -144,21 +144,21 @@ function buildLlmsTxt(siteUrl, locale, urlByBaseLocale, descriptionsByBaseLocale
 // hreflang code por locale (pt-BR, en, es, fr).
 const HREFLANG = { 'pt-br': 'pt-BR', en: 'en', es: 'es', fr: 'fr' };
 
-/** URL absoluta localizada de um post (pt-br sem prefixo, outros com /xx/). */
-function postUrl(siteUrl, locale, slug) {
-  return locale === 'pt-br' ? `${siteUrl}/blog/${slug}` : `${siteUrl}/${locale}/blog/${slug}`;
-}
-
 /**
- * Gera dist/sitemap.xml (todas as URLs × idioma + alternates hreflang) e os
- * llms.txt por idioma. `tasks` = SSG_TASKS; `siteUrl` = SITE_URL do entry-ssg.
- * `blogData` = { posts, categories } do build: cada post publicado entra no
- * sitemap na URL do seu locale, com alternates hreflang por translation_group.
+ * Gera dist/sitemap.xml (páginas de marketing/institucional + LISTAGEM /blog ×
+ * idioma, cada uma com alternates hreflang) e os llms.txt por idioma.
+ * `tasks` = SSG_TASKS; `siteUrl` = SITE_URL do entry-ssg.
+ *
+ * Os POSTS individuais do blog NÃO entram aqui: eles são servidos pelo sitemap
+ * DINÂMICO (api/blog-sitemap.js → /blog-sitemap.xml), que é a fonte única e
+ * sempre fresca (pega post publicado pós-build, no idioma certo, com hreflang).
+ * Colocá-los também no estático duplicaria URLs e ficaria defasado.
+ *
  * `descriptionsByBaseLocale` = Map basePath → (locale → description) gerado
  * pelo ssg.mjs durante a renderização das páginas; permite que o llms.txt emita
  * a descrição do módulo/segmento no idioma certo em vez de pt-br fixo.
  */
-export function generateArtifacts({ tasks, siteUrl, distDir, blogData, descriptionsByBaseLocale }) {
+export function generateArtifacts({ tasks, siteUrl, distDir, descriptionsByBaseLocale }) {
   const lastmod = today();
 
   // Agrupa as tasks por path base pra montar os <alternate> recíprocos.
@@ -209,51 +209,9 @@ export function generateArtifacts({ tasks, siteUrl, distDir, blogData, descripti
     }
   }
 
-  // ── Posts do blog no sitemap (URL por locale + alternates por translation_group) ──
-  const posts = (blogData && Array.isArray(blogData.posts) ? blogData.posts : []).filter(
-    (p) => p && p.slug
-  );
-  const byTg = new Map();
-  for (const p of posts) {
-    const tg = p.translation_group || p.id;
-    if (!byTg.has(tg)) byTg.set(tg, []);
-    byTg.get(tg).push(p);
-  }
-  for (const versions of byTg.values()) {
-    // Alternates recíprocos = todas as versões PUBLICADAS deste artigo + x-default
-    // (versão pt-br, se existir). Cada versão tem seu PRÓPRIO slug.
-    const ptBr = versions.find((v) => (v.locale || 'pt-br') === 'pt-br');
-    const alt = versions
-      .map((v) => {
-        const loc = v.locale || 'pt-br';
-        return `    <xhtml:link rel="alternate" hreflang="${HREFLANG[loc]}" href="${xmlEsc(
-          postUrl(siteUrl, loc, v.slug)
-        )}" />`;
-      })
-      .concat(
-        ptBr
-          ? [
-              `    <xhtml:link rel="alternate" hreflang="x-default" href="${xmlEsc(
-                postUrl(siteUrl, 'pt-br', ptBr.slug)
-              )}" />`,
-            ]
-          : []
-      )
-      .join('\n');
-    for (const v of versions) {
-      const loc = v.locale || 'pt-br';
-      const loc0 = postUrl(siteUrl, loc, v.slug);
-      const mod = (v.updated_at || v.published_at || '').slice(0, 10) || lastmod;
-      urlBlocks.push(
-        `  <url>\n` +
-          `    <loc>${xmlEsc(loc0)}</loc>\n` +
-          `    <lastmod>${mod}</lastmod>\n` +
-          `    <priority>0.6</priority>\n` +
-          `${alt}\n` +
-          `  </url>`
-      );
-    }
-  }
+  // NOTA: os posts individuais do blog NÃO entram no sitemap estático — ficam no
+  // sitemap DINÂMICO (api/blog-sitemap.js → /blog-sitemap.xml), fonte única sempre
+  // fresca. Aqui só entra a LISTAGEM /blog (por idioma), já incluída em `tasks`.
 
   const sitemap =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +

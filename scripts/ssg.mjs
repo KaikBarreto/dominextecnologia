@@ -383,8 +383,11 @@ async function main() {
   }
 
   // ── Artefatos de indexação (gerados, não mais manuais) ──────────────────────
-  // sitemap.xml com todas as URLs × idioma + alternates hreflang, e llms.txt por
-  // idioma. Fonte única = SSG_TASKS, então nunca desalinha das páginas geradas.
+  // sitemap.xml com as páginas de marketing/institucional + LISTAGEM /blog ×
+  // idioma + alternates hreflang, e llms.txt por idioma. Fonte única = SSG_TASKS,
+  // então nunca desalinha das páginas geradas. Os POSTS individuais NÃO entram
+  // aqui — vão no sitemap dinâmico (api/blog-sitemap.js → /blog-sitemap.xml),
+  // fonte única e sempre fresca deles.
   // descriptionsByBaseLocale: basePath → (locale → description) — usado pelo
   // llms.txt para emitir a descrição do módulo/segmento no idioma certo em vez de
   // pt-br fixo.
@@ -393,7 +396,6 @@ async function main() {
       tasks: SSG_TASKS,
       siteUrl: SITE_URL,
       distDir: DIST,
-      blogData,
       descriptionsByBaseLocale,
     })
   );
