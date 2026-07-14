@@ -44,7 +44,7 @@ export default function SegmentsSection() {
   return (
     <section id="segmentos" className="py-24 overflow-hidden">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 break-words">
           {t.heading}
         </h2>
         <p className="text-white/55 mb-12">{t.subheading}</p>
@@ -111,7 +111,7 @@ export default function SegmentsSection() {
                       className="h-6 w-6 transition-transform group-hover/card:scale-110"
                       style={{ color: meta?.color }}
                     />
-                    <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">
+                    <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl break-words">
                       {label}
                     </h3>
                   </div>

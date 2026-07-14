@@ -16,6 +16,7 @@ import {
   UserCircle,
   Package,
   Map,
+  ArrowRight,
   type LucideProps,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -366,6 +367,23 @@ export default function LandingNavbar() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
+          {/* Header mobile: [☰ esquerda] [logo centro] [idioma direita]. Os dois
+              elementos das pontas são `md:hidden` e ABSOLUTOS nas bordas — assim
+              não empurram o logo (que segue centralizado via max-md:absolute) e
+              não interferem no cluster desktop (hidden md:flex). left-0/right-0
+              alinham nas bordas do container, que já carrega o px do wrapper. */}
+          {/* Hambúrguer mobile — só ícone, à esquerda. Abre o overlay do menu.
+              Branco pra ficar legível sobre o hero escuro antes do scroll. */}
+          <button
+            type="button"
+            aria-label={m.openMenuAria}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen(true)}
+            className="md:hidden absolute left-0 inline-flex h-10 w-10 items-center justify-center text-white"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+
           {/* Logo — esquerda no desktop, centralizado no mobile (absolute + flex). */}
           <Link
             to={localizeInternal('/', locale)}
@@ -373,6 +391,13 @@ export default function LandingNavbar() {
           >
             <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
           </Link>
+
+          {/* Seletor de idioma mobile — mesmo visual do desktop (variante compact:
+              bandeira edge-to-edge + código + chevron), à direita. flex + h-16
+              centraliza o pill (h-30px) verticalmente no header. */}
+          <div className="md:hidden absolute right-0 flex h-16 items-center">
+            <LanguageSelector surface="dark" variant="compact" />
+          </div>
 
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-8">
@@ -619,23 +644,24 @@ export default function LandingNavbar() {
             {/* Criar Conta — verde da marca na home/módulos; cor do segmento na
                 landing daquele segmento. Texto via idealForeground (contraste). */}
             <Button
-              className="hover:opacity-90 transition-opacity"
+              className="gap-2 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to={localizeInternal('/cadastro', locale)}>{m.signup}</Link>
+              <Link to={localizeInternal('/cadastro', locale)}>
+                {m.signup}
+                <ArrowRight className="ml-0 h-4 w-4 shrink-0" />
+              </Link>
             </Button>
           </div>
 
-          {/* No mobile o header tem APENAS o logo centralizado — o menu agora é
-              aberto pelo botão "Menu" do rodapé sticky (abaixo). */}
         </div>
       </div>
 
       {/* Rodapé sticky mobile — aparece ao rolar (scrolled) e some quando o
-          overlay do menu está aberto. CTA grande de conversão + botão "Menu".
-          z-40: abaixo do overlay (z-50) e acima do conteúdo. Respeita a
-          safe-area inferior do iPhone.
+          overlay do menu está aberto. SÓ o CTA de conversão, full-width e fino
+          (o menu agora abre pelo hambúrguer do header). z-40: abaixo do overlay
+          (z-50) e acima do conteúdo. Respeita a safe-area inferior do iPhone.
           PORTAL p/ document.body: o <nav> tem `backdrop-blur` (backdrop-filter),
           que cria um containing block — um `fixed bottom-0` descendente do nav
           ancoraria no topo do nav, não no rodapé da viewport. O portal escapa
@@ -643,26 +669,15 @@ export default function LandingNavbar() {
       {scrolled &&
         !mobileOpen &&
         createPortal(
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(0,0%,5%)]/95 backdrop-blur-xl px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-            <div className="flex items-center gap-3">
-              <Link
-                to={localizeInternal('/cadastro?origem=Site', locale)}
-                className="flex-1 inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-base font-semibold hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: ctaBg, color: ctaFg }}
-              >
-                {m.trialSticky}
-              </Link>
-              <button
-                type="button"
-                aria-label={m.openMenuAria}
-                aria-expanded={mobileOpen}
-                onClick={() => setMobileOpen(true)}
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/15 px-4 py-3.5 text-base font-medium text-white hover:bg-white/5 transition-colors"
-              >
-                <Menu className="h-5 w-5" />
-                {m.openMenu}
-              </button>
-            </div>
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(0,0%,5%)]/95 backdrop-blur-xl px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+            <Link
+              to={localizeInternal('/cadastro?origem=Site', locale)}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold whitespace-normal text-center leading-tight hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: ctaBg, color: ctaFg }}
+            >
+              {m.trialSticky}
+              <ArrowRight className="h-4 w-4 shrink-0" />
+            </Link>
           </div>,
           document.body
         )}
@@ -823,9 +838,9 @@ export default function LandingNavbar() {
             Blog
           </Link>
 
+          {/* Seletor de idioma agora vive no header (variante compact), à direita:
+              fora do overlay pra não empilhar controles no menu. */}
           <div className="mt-4 flex flex-col gap-3">
-            {/* Seletor de idioma dentro do menu (mobile) — verde fixo da marca (site público). */}
-            <LanguageSelector surface="dark" fullWidth />
             <Button variant="ghost" className="w-full text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
               <Link to={localizeInternal('/login', locale)}>
                 <LogIn className="h-4 w-4" />
@@ -833,11 +848,14 @@ export default function LandingNavbar() {
               </Link>
             </Button>
             <Button
-              className="w-full hover:opacity-90 transition-opacity"
+              className="w-full gap-2 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to={localizeInternal('/cadastro', locale)}>{m.signup}</Link>
+              <Link to={localizeInternal('/cadastro', locale)}>
+                {m.signup}
+                <ArrowRight className="h-4 w-4 shrink-0" />
+              </Link>
             </Button>
           </div>
           </div>

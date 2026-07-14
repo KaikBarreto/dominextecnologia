@@ -65,12 +65,12 @@ export default function HomeFeatures() {
       footer={
         <Button
           size="lg"
-          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl transition-transform hover:scale-[1.02]"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl transition-transform hover:scale-[1.02] whitespace-normal h-auto text-center leading-tight"
           asChild
         >
           <Link to="/cadastro">
             {t.cta}
-            <ArrowRight className="ml-2 h-5 w-5" />
+            <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
           </Link>
         </Button>
       }

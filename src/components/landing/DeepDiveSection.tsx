@@ -144,15 +144,15 @@ function DeepDiveCard({
         flip ? 'lg:[&>*:first-child]:order-2' : ''
       }`}
     >
-      <div className="lg:col-span-7">
+      <div className="min-w-0 lg:col-span-7">
         <div
           className={`inline-flex h-14 w-14 items-center justify-center rounded-xl mb-6 ${iconChipClassName}`}
           style={iconChipStyle}
         >
           <Icon className="h-7 w-7" />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight">{dive.title}</h2>
-        <p className="text-white/55 text-base leading-relaxed">{dive.body}</p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight break-words">{dive.title}</h2>
+        <p className="text-white/55 text-base leading-relaxed break-words">{dive.body}</p>
       </div>
       <div className="lg:col-span-5">
         {dive.image ? (

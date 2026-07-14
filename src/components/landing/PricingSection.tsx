@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { cn } from '@/lib/utils';
@@ -62,7 +62,7 @@ export default function PricingSection() {
   return (
     <section id={localizeHash('precos', locale)} className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4 break-words">
           {t.heading}
         </h2>
 
@@ -110,7 +110,7 @@ export default function PricingSection() {
                   </div>
                 )}
 
-                <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                <h3 className="text-xl font-bold text-white break-words">{plan.name}</h3>
                 <p className="text-sm text-white/55 mb-5">{plan.desc}</p>
 
                 <div className="mb-5">
@@ -155,7 +155,7 @@ export default function PricingSection() {
 
                 <Button
                   className={cn(
-                    'w-full font-semibold rounded-md',
+                    'w-full font-semibold rounded-md whitespace-normal h-auto py-3 text-center leading-tight',
                     plan.popular
                       ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                       : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
@@ -163,7 +163,10 @@ export default function PricingSection() {
                   size="lg"
                   asChild
                 >
-                  <Link to={plan.ctaLink}>{plan.cta}</Link>
+                  <Link to={plan.ctaLink}>
+                    {plan.cta}
+                    <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
+                  </Link>
                 </Button>
               </div>
             );
@@ -178,14 +181,14 @@ export default function PricingSection() {
               <div className="inline-flex items-center gap-2 mb-2">
                 <Badge className="bg-white/10 text-white/80 text-[10px] uppercase tracking-widest">{t.enterpriseBadge}</Badge>
               </div>
-              <h3 className="text-2xl font-bold text-white">{customPlan.name}</h3>
+              <h3 className="text-2xl font-bold text-white break-words">{customPlan.name}</h3>
               <p className="text-sm text-white/50 mt-1">{customPlan.desc}</p>
             </div>
 
             {/* CTA */}
             <div className="flex md:justify-end">
               <Button
-                className="bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold rounded-md w-full md:w-auto px-8 gap-2"
+                className="bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold rounded-md w-full md:w-auto px-8 gap-2 whitespace-normal h-auto py-3 text-center leading-tight"
                 size="lg"
                 onClick={openEnterpriseWhatsApp}
               >

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import iphoneFrame from '@/assets/iphone-17-pro-deep-blue.svg';
@@ -61,8 +62,11 @@ export default function HeroSection() {
       <div ref={ref} className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-32 scroll-reveal">
         <div className="grid lg:grid-cols-2 gap-6 lg:gap-16 items-center">
           {/* Left — texto (depois do video no mobile) */}
-          <div className="space-y-5 lg:space-y-8 order-2 lg:order-1 text-center lg:text-left">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[2.5em]">
+          <div className="min-w-0 space-y-5 lg:space-y-8 order-2 lg:order-1 text-center lg:text-left">
+            <h1
+              lang={locale === 'pt-br' ? 'pt-BR' : locale}
+              className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[2.5em] break-words hyphens-auto"
+            >
               {/* Texto estável keyword-rico para SEO/leitores de tela —
                   invisível visualmente, mas é conteúdo real do H1 lido por SR. */}
               <span className="sr-only">{t.srHeadline}</span>
@@ -71,7 +75,7 @@ export default function HeroSection() {
                   opacidade. aria-hidden p/ não duplicar leitura no SR. */}
               <span aria-hidden="true">
                 <span>{renderTyped(FULL_TEXT_PRE, 0)}</span>
-                <span className="whitespace-nowrap bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
                   {renderTyped(FULL_TEXT_HIGHLIGHT, FULL_TEXT_PRE.length)}
                 </span>
                 <span
@@ -90,15 +94,18 @@ export default function HeroSection() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Button
                 size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
                 asChild
               >
-                <Link to="/cadastro?origem=Site">{t.ctaPrimary}</Link>
+                <Link to="/cadastro?origem=Site">
+                  {t.ctaPrimary}
+                  <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
+                </Link>
               </Button>
               <Button
                 size="lg"
                 variant="ghost"
-                className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
+                className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
                 asChild
               >
                 <a href={`#${localizeHash('precos', locale)}`}>{t.ctaSecondary}</a>

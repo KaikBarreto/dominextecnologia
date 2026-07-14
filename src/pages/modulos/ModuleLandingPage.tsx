@@ -141,7 +141,10 @@ function ModuleHero({ data }: { data: ModuleData }) {
           <span className="text-xs font-semibold text-white">{hero.eyebrow}</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight">
+        <h1
+          lang={locale === 'pt-br' ? 'pt-BR' : locale}
+          className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight break-words hyphens-auto"
+        >
           {before}
           {idx >= 0 && (
             <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
@@ -158,15 +161,18 @@ function ModuleHero({ data }: { data: ModuleData }) {
         <div className="mt-9 flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">{messages.pageChrome.ctaTrial}</Link>
+            <Link to="/cadastro?origem=Site">
+              {messages.pageChrome.ctaTrial}
+              <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
+            </Link>
           </Button>
           <Button
             size="lg"
             variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
+            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{messages.pageChrome.seePlans}</Link>
@@ -207,7 +213,7 @@ function ModulePains({ data }: { data: ModuleData }) {
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 break-words">
             {data.painsHeading}
           </h2>
           <p className="text-white/55 max-w-2xl mx-auto">
@@ -334,12 +340,12 @@ function FeaturesCta() {
   return (
     <Button
       size="lg"
-      className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl"
+      className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl whitespace-normal h-auto text-center leading-tight"
       asChild
     >
       <Link to="/cadastro?origem=Site">
         {messages.pageChrome.ctaTrial}
-        <ArrowRight className="ml-2 h-5 w-5" />
+        <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
       </Link>
     </Button>
   );
@@ -528,7 +534,7 @@ function ModulePricingCta() {
     <section className="py-20">
       <div ref={ref} className="mx-auto max-w-4xl px-4 scroll-reveal">
         <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] to-transparent p-10 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 break-words">
             {c.pricing.heading}
           </h2>
           <p className="text-white/50 mb-8 max-w-xl mx-auto">
@@ -537,19 +543,22 @@ function ModulePricingCta() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base shadow-brand-glow"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
               asChild
             >
-              <Link to="/cadastro?origem=Site">{c.ctaTrial}</Link>
+              <Link to="/cadastro?origem=Site">
+                {c.ctaTrial}
+                <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
+              </Link>
             </Button>
             <Button
               size="lg"
               variant="ghost"
-              className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
+              className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
               asChild
             >
               <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
-                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4" />
+                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4 shrink-0" />
               </Link>
             </Button>
           </div>
@@ -607,24 +616,24 @@ function ModuleFinalCta({ data }: { data: ModuleData }) {
         }}
       />
       <div ref={ref} className="relative mx-auto max-w-3xl px-4 text-center scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 break-words">
           {data.finalCta.title}
         </h2>
         <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">{data.finalCta.subtitle}</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to="/cadastro?origem=Site">
-              {c.ctaTrial} <ArrowRight className="ml-2 h-4 w-4" />
+              {c.ctaTrial} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
             </Link>
           </Button>
           <Button
             size="lg"
             variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
+            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{c.seePlans}</Link>

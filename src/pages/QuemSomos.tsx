@@ -101,7 +101,10 @@ function Hero() {
           <span className="text-xs font-semibold text-white">{t.heroBadge}</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight">
+        <h1
+          lang={locale === 'pt-br' ? 'pt-BR' : locale}
+          className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight break-words hyphens-auto"
+        >
           {t.heroTitlePre}{' '}
           <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
             {t.heroTitleHighlight}
@@ -115,15 +118,18 @@ function Hero() {
         <div className="mt-9 flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">{t.ctaTrial}</Link>
+            <Link to="/cadastro?origem=Site">
+              {t.ctaTrial}
+              <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
+            </Link>
           </Button>
           <Button
             size="lg"
             variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
+            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{t.ctaPricing}</Link>
@@ -219,7 +225,7 @@ function FinalCta() {
         }}
       />
       <div ref={ref} className="relative mx-auto max-w-3xl px-4 text-center scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 break-words">
           {t.finalCtaTitle}
         </h2>
         <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">
@@ -228,17 +234,17 @@ function FinalCta() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to="/cadastro?origem=Site">
-              {t.ctaTrial} <ArrowRight className="ml-2 h-4 w-4" />
+              {t.ctaTrial} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
             </Link>
           </Button>
           <Button
             size="lg"
             variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
+            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{t.ctaPricing}</Link>

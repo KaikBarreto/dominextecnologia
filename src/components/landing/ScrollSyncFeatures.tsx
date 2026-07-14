@@ -381,8 +381,8 @@ function FeaturesHeader({
   return (
     <>
       <div className={`text-center ${compact ? 'mb-6' : 'mb-10 lg:mb-12'}`}>
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">{heading}</h2>
-        <p className="text-white/55 max-w-2xl mx-auto">{subheading}</p>
+        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3 break-words">{heading}</h2>
+        <p className="text-white/55 max-w-2xl mx-auto break-words">{subheading}</p>
       </div>
       {control ? (
         <div className={compact ? 'mb-8' : 'mb-8 lg:mb-10'}>{control}</div>
@@ -419,7 +419,7 @@ function DesktopGrid({
                 onClick={() => onActivate(i)}
                 aria-label={`Ir para ${f.title}`}
                 aria-current={isActive ? 'true' : undefined}
-                className="group w-full text-left flex items-center gap-4 rounded-2xl px-5 py-4 transition-all duration-300 cursor-pointer hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                className="group w-full min-w-0 text-left flex items-center gap-4 rounded-2xl px-5 py-4 transition-all duration-300 cursor-pointer hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 style={
                   isActive
                     ? {
@@ -439,7 +439,7 @@ function DesktopGrid({
                   }}
                 />
                 <h3
-                  className="text-lg font-bold transition-colors duration-300"
+                  className="text-lg font-bold transition-colors duration-300 min-w-0 break-words"
                   style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.55)' }}
                 >
                   {f.title}
@@ -480,8 +480,8 @@ function DesktopGrid({
                   className="h-10 w-10 mb-6"
                   style={{ color: ACCENT }}
                 />
-                <h3 className="text-2xl font-bold text-white mb-4">{f.title}</h3>
-                <p className="text-white/60 text-base leading-relaxed">
+                <h3 className="text-2xl font-bold text-white mb-4 break-words">{f.title}</h3>
+                <p className="text-white/60 text-base leading-relaxed break-words">
                   {f.description}
                 </p>
               </div>
@@ -558,9 +558,9 @@ function MobileList({
                     : `color-mix(in srgb, ${ACCENT} 60%, #9ca3af)`,
                 }}
               />
-              <div>
-                <h3 className="text-base font-bold text-white mb-1.5">{f.title}</h3>
-                <p className="text-white/60 text-sm leading-relaxed">
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-white mb-1.5 break-words">{f.title}</h3>
+                <p className="text-white/60 text-sm leading-relaxed break-words">
                   {f.description}
                 </p>
               </div>

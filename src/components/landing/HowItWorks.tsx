@@ -18,7 +18,7 @@ export default function HowItWorks() {
   return (
     <section id="como-funciona" className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16 break-words">
           {t.heading}
         </h2>
 
@@ -33,7 +33,7 @@ export default function HowItWorks() {
                   <s.icon className="h-7 w-7 text-primary" />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">{s.title}</h3>
+              <h3 className="text-lg font-semibold text-white mb-2 break-words">{s.title}</h3>
               <p className="text-sm text-white/55 max-w-xs mx-auto">{s.desc}</p>
             </div>
           ))}

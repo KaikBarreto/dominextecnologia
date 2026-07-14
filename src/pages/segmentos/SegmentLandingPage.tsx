@@ -170,7 +170,10 @@ function SegmentHero({ data }: { data: SegmentData }) {
           <span className="text-xs font-semibold text-white">{hero.eyebrow}</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight">
+        <h1
+          lang={locale === 'pt-br' ? 'pt-BR' : locale}
+          className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight break-words hyphens-auto"
+        >
           {before}
           {idx >= 0 && (
             <span
@@ -193,19 +196,22 @@ function SegmentHero({ data }: { data: SegmentData }) {
         <div className="mt-9 flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="text-white text-base px-8 py-6 w-full sm:w-auto border-0 transition-opacity hover:opacity-90"
+            className="text-white text-base px-8 py-6 w-full sm:w-auto border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
             style={{
               backgroundColor: 'var(--seg-accent)',
               boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
             }}
             asChild
           >
-            <Link to={cadastroLink(data.slug)}>{messages.pageChrome.ctaTrial}</Link>
+            <Link to={cadastroLink(data.slug)}>
+              {messages.pageChrome.ctaTrial}
+              <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
+            </Link>
           </Button>
           <Button
             size="lg"
             variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
+            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{messages.pageChrome.seePlans}</Link>
@@ -251,7 +257,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 break-words">
             {c.segment.painsHeading}
           </h2>
           <p className="text-white/55 max-w-2xl mx-auto">
@@ -410,13 +416,13 @@ function SegmentFeatures({ data }: { data: SegmentData }) {
       footer={
         <Button
           size="lg"
-          className="text-white font-semibold px-8 py-6 text-base rounded-xl border-0 transition-opacity hover:opacity-90"
+          className="text-white font-semibold px-8 py-6 text-base rounded-xl border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
           style={{ backgroundColor: 'var(--seg-accent)' }}
           asChild
         >
           <Link to={cadastroLink(data.slug)}>
             {c.ctaTrial}
-            <ArrowRight className="ml-2 h-5 w-5" />
+            <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
           </Link>
         </Button>
       }
@@ -475,7 +481,7 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
               'linear-gradient(to bottom right, color-mix(in srgb, var(--seg-accent) 8%, transparent), transparent)',
           }}
         >
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 break-words">
             {c.pricing.heading}
           </h2>
           <p className="text-white/50 mb-8 max-w-xl mx-auto">
@@ -484,23 +490,26 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="text-white px-8 py-6 text-base border-0 transition-opacity hover:opacity-90"
+              className="text-white px-8 py-6 text-base border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
               style={{
                 backgroundColor: 'var(--seg-accent)',
                 boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
               }}
               asChild
             >
-              <Link to={cadastroLink(data.slug)}>{c.ctaTrial}</Link>
+              <Link to={cadastroLink(data.slug)}>
+                {c.ctaTrial}
+                <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
+              </Link>
             </Button>
             <Button
               size="lg"
               variant="ghost"
-              className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
+              className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
               asChild
             >
               <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
-                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4" />
+                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4 shrink-0" />
               </Link>
             </Button>
           </div>
@@ -558,14 +567,14 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
         }}
       />
       <div ref={ref} className="relative mx-auto max-w-3xl px-4 text-center scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 break-words">
           {data.finalCta.title}
         </h2>
         <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">{data.finalCta.subtitle}</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="text-white px-10 py-6 text-base border-0 transition-opacity hover:opacity-90"
+            className="text-white px-10 py-6 text-base border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
             style={{
               backgroundColor: 'var(--seg-accent)',
               boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
@@ -573,13 +582,13 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
             asChild
           >
             <Link to={cadastroLink(data.slug)}>
-              {c.ctaTrial} <ArrowRight className="ml-2 h-4 w-4" />
+              {c.ctaTrial} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
             </Link>
           </Button>
           <Button
             size="lg"
             variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
+            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{c.seePlans}</Link>
