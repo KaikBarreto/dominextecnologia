@@ -797,6 +797,54 @@ export const enOverrides: MessagesOverride = {
     s12Title: '12. Contact',
     s12Pre: 'Questions about these Terms: ',
   },
+
+  // ── Blog (chrome/layout) ────────────────────────────────────────────────────
+  blog: {
+    badge: 'Dominex Blog',
+    heroLine1: 'Content for those who',
+    heroHighlight: 'run the field',
+    subtitle: 'Work orders, preventive maintenance, team management and how to take your operation off paper.',
+    searchPlaceholder: 'Search articles...',
+
+    resultsSingular: (query: string) => `result for “${query}”`,
+    resultsPlural: (query: string) => `results for “${query}”`,
+
+    featured: 'Featured',
+    recent: 'Recent',
+
+    emptySearch: 'No articles found for this search.',
+    emptyAll: 'No articles yet. Check back soon.',
+    emptyCategory: 'No articles in this category.',
+
+    ctaMobileTitle: 'Take your operation off paper',
+    ctaMobileBody: 'Try Dominex for free and see the work order in the technician’s pocket.',
+    ctaTrialNoCard: 'Start free for 14 days, no card',
+
+    sidebar: {
+      eyebrow: 'For field teams',
+      ctaTitle: 'Want to take your operation off paper?',
+      ctaBody:
+        'Dominex puts work orders, maintenance and your team in the technician’s pocket, no notebook and no WhatsApp group.',
+      ctaButton: 'Start your 14-day free trial',
+      noCard: 'No credit card required.',
+      mostRead: 'Most read',
+      reads: 'reads',
+      empty: 'No articles yet.',
+    },
+
+    backToSite: 'Back to site',
+
+    defaultAuthor: 'Dominex Team',
+    minSuffix: 'min',
+  },
+
+  // ── System footer ───────────────────────────────────────────────────────────
+  systemFooter: {
+    developedBy: 'Developed by',
+    rights: 'All Rights Reserved',
+    refreshTitle: 'Refresh app',
+    refreshing: 'Refreshing app...',
+  },
 };
 
 export default enOverrides;

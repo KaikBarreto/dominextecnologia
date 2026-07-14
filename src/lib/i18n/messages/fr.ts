@@ -798,6 +798,54 @@ export const frOverrides: MessagesOverride = {
     s12Title: '12. Contact',
     s12Pre: 'Questions concernant ces Conditions : ',
   },
+
+  // ── Blog (chrome/layout) ────────────────────────────────────────────────────
+  blog: {
+    badge: 'Blog Dominex',
+    heroLine1: 'Du contenu pour celles et ceux qui',
+    heroHighlight: 'maîtrisent le terrain',
+    subtitle: 'Ordres de travail, maintenance préventive, gestion d’équipe et comment sortir votre activité du papier.',
+    searchPlaceholder: 'Rechercher des articles...',
+
+    resultsSingular: (query: string) => `résultat pour « ${query} »`,
+    resultsPlural: (query: string) => `résultats pour « ${query} »`,
+
+    featured: 'À la une',
+    recent: 'Récents',
+
+    emptySearch: 'Aucun article trouvé pour cette recherche.',
+    emptyAll: 'Aucun article pour l’instant. Revenez bientôt.',
+    emptyCategory: 'Aucun article dans cette catégorie.',
+
+    ctaMobileTitle: 'Sortez votre activité du papier',
+    ctaMobileBody: 'Essayez Dominex gratuitement et voyez l’ordre de travail dans la poche du technicien.',
+    ctaTrialNoCard: 'Commencez gratuitement pendant 14 jours, sans carte',
+
+    sidebar: {
+      eyebrow: 'Pour les équipes de terrain',
+      ctaTitle: 'Envie de sortir votre activité du papier ?',
+      ctaBody:
+        'Dominex met les ordres de travail, la maintenance et l’équipe dans la poche du technicien, sans carnet et sans groupe WhatsApp.',
+      ctaButton: 'Commencez votre essai gratuit de 14 jours',
+      noCard: 'Sans carte bancaire.',
+      mostRead: 'Les plus lus',
+      reads: 'lectures',
+      empty: 'Aucun article pour l’instant.',
+    },
+
+    backToSite: 'Retour au site',
+
+    defaultAuthor: 'Équipe Dominex',
+    minSuffix: 'min',
+  },
+
+  // ── Pied de page système ────────────────────────────────────────────────────
+  systemFooter: {
+    developedBy: 'Développé par',
+    rights: 'Tous droits réservés',
+    refreshTitle: 'Actualiser l’application',
+    refreshing: 'Actualisation de l’application...',
+  },
 };
 
 export default frOverrides;

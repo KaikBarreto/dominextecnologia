@@ -120,6 +120,8 @@ function CardCover({
 
 /** Rodapé do card: avatar + autor + data + tempo de leitura. */
 function CardMeta({ post }: { post: BlogPostCardData }) {
+  const { messages } = useLocale();
+  const t = messages.blog;
   const mins = readingMinutes(post.content, post.excerpt);
   const date = shortDate(post.published_at);
   return (
@@ -128,12 +130,12 @@ function CardMeta({ post }: { post: BlogPostCardData }) {
         {authorInitials(post.author_name)}
       </span>
       <span className="truncate font-medium text-neutral-600 dark:text-white/60">
-        {post.author_name || 'Equipe Dominex'}
+        {post.author_name || t.defaultAuthor}
       </span>
       {date && (
         <>
           <span className="text-neutral-300 dark:text-white/20">•</span>
-          <span className="whitespace-nowrap">{mins} min</span>
+          <span className="whitespace-nowrap">{mins} {t.minSuffix}</span>
         </>
       )}
     </div>
@@ -209,7 +211,7 @@ export function MostReadItem({
   post: BlogPostCardData;
   categoryColors: CategoryColor[];
 }) {
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
   return (
     <Link to={localizeInternal(`/blog/${post.slug}`, locale)} className="group flex gap-3">
       <div className="aspect-[1200/630] w-24 flex-shrink-0 overflow-hidden rounded-lg">
@@ -228,7 +230,7 @@ export function MostReadItem({
         </h4>
         <p className="mt-1 flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/40">
           <User className="h-3 w-3" />
-          {post.author_name || 'Equipe Dominex'}
+          {post.author_name || messages.blog.defaultAuthor}
         </p>
       </div>
     </Link>

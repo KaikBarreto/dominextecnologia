@@ -27,18 +27,19 @@ export default function BlogNavbar({
   onToggleTheme: () => void;
 }) {
   const isDark = theme === 'dark';
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const t = messages.blog;
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-[hsl(0,0%,5%)]/85">
       <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* ESQUERDA — Voltar ao site (mobile: só a seta) */}
         <Link
           to={localizeInternal('/', locale)}
-          aria-label="Voltar ao site"
+          aria-label={t.backToSite}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 dark:text-white/60 dark:hover:text-white"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline">Voltar ao site</span>
+          <span className="hidden sm:inline">{t.backToSite}</span>
         </Link>
 
         {/* CENTRO — logo centralizado de verdade (absolute), clicável → home */}

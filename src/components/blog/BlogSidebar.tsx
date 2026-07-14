@@ -18,7 +18,8 @@ type TopPost = {
 const CTA_LINK = '/cadastro?origem=Blog';
 
 export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: CategoryColor[] }) => {
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const t = messages.blog.sidebar;
   const { data: topPosts } = useQuery({
     queryKey: ['blog-most-read', locale],
     queryFn: async () => {
@@ -39,24 +40,23 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
       {/* CTA Card */}
       <div className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-primary/25 dark:bg-[hsl(0,0%,8%)] dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
         <span className="mb-3 inline-flex items-center rounded-full bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
-          Pra equipes de campo
+          {t.eyebrow}
         </span>
         <h3 className="mb-2 text-lg font-bold leading-snug text-neutral-900 dark:text-white">
-          Quer tirar a operação do papel?
+          {t.ctaTitle}
         </h3>
         <p className="mb-5 text-sm leading-relaxed text-neutral-600 dark:text-white/55">
-          A Dominex coloca ordem de serviço, PMOC e equipe no celular do técnico — sem caderno e
-          sem grupo de WhatsApp.
+          {t.ctaBody}
         </p>
         <Link
           to={CTA_LINK}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          Teste grátis 14 dias
+          {t.ctaButton}
           <ArrowRight className="h-4 w-4" />
         </Link>
         <p className="mt-2 text-center text-[11px] text-neutral-500 dark:text-white/35">
-          Sem cartão de crédito.
+          {t.noCard}
         </p>
       </div>
 
@@ -64,7 +64,7 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
       <div className="rounded-2xl border border-neutral-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.02]">
         <div className="mb-4 flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Mais lidos</h3>
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-white">{t.mostRead}</h3>
         </div>
         {topPosts && topPosts.length > 0 ? (
           <ol className="space-y-4">
@@ -82,14 +82,14 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
                   </Link>
                   <p className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-white/35">
                     <Eye className="h-3 w-3" />
-                    {(post.view_count ?? 0).toLocaleString('pt-BR')} leituras
+                    {(post.view_count ?? 0).toLocaleString(locale)} {t.reads}
                   </p>
                 </div>
               </li>
             ))}
           </ol>
         ) : (
-          <p className="text-sm text-neutral-500 dark:text-white/35">Ainda não há artigos.</p>
+          <p className="text-sm text-neutral-500 dark:text-white/35">{t.empty}</p>
         )}
       </div>
     </aside>

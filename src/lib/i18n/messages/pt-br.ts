@@ -857,6 +857,72 @@ export const ptBr = {
       toastErrorTitle: 'Erro',
     },
   },
+
+  // ── Blog (chrome/layout: Blog.tsx + BlogSidebar + BlogNavbar + blogShared) ──
+  // Só o "chrome" (badges, títulos de seção, busca, empty states, CTA da sidebar
+  // e rótulos de card). O CONTEÚDO dos posts vem do banco, filtrado por locale,
+  // e NÃO passa por aqui. Texto EXATO cravado hoje no JSX (só movido pra chave).
+  // Site público: marca "Dominex", sem white-label. Sem travessão (—).
+  blog: {
+    // Cabeçalho da listagem
+    badge: 'Blog da Dominex',
+    heroLine1: 'Conteúdo pra quem',
+    heroHighlight: 'domina o campo',
+    subtitle: 'Ordem de serviço, PMOC, gestão de equipe e como tirar a operação do papel.',
+    searchPlaceholder: 'Buscar artigos...',
+
+    // Linha de resultado da busca: "N resultado(s) para “q”"
+    resultsSingular: (query: string) => `resultado para “${query}”`,
+    resultsPlural: (query: string) => `resultados para “${query}”`,
+
+    // Seções e filtro de categoria
+    featured: 'Em destaque',
+    recent: 'Recentes',
+
+    // Empty states da grade
+    emptySearch: 'Nenhum artigo encontrado pra essa busca.',
+    emptyAll: 'Nenhum artigo ainda. Volte em breve.',
+    emptyCategory: 'Nenhum artigo nessa categoria.',
+
+    // CTA inline (mobile) da listagem
+    ctaMobileTitle: 'Tire sua operação do papel',
+    ctaMobileBody: 'Teste a Dominex de graça e veja a ordem de serviço no celular do técnico.',
+    ctaTrialNoCard: 'Teste grátis 14 dias, sem cartão',
+
+    // Sidebar (BlogSidebar)
+    sidebar: {
+      eyebrow: 'Pra equipes de campo',
+      ctaTitle: 'Quer tirar a operação do papel?',
+      ctaBody:
+        'A Dominex coloca ordem de serviço, PMOC e equipe no celular do técnico, sem caderno e sem grupo de WhatsApp.',
+      ctaButton: 'Teste grátis 14 dias',
+      noCard: 'Sem cartão de crédito.',
+      mostRead: 'Mais lidos',
+      // Sufixo de leituras: "1.234 leituras"
+      reads: 'leituras',
+      empty: 'Ainda não há artigos.',
+    },
+
+    // Navbar do blog (BlogNavbar)
+    backToSite: 'Voltar ao site',
+
+    // Rótulos de card compartilhados (blogShared)
+    defaultAuthor: 'Equipe Dominex',
+    // Sufixo do tempo de leitura no card: "5 min"
+    minSuffix: 'min',
+  },
+
+  // ── Rodapé do sistema (SystemFooter) ────────────────────────────────────────
+  // Usado no login/cadastro (páginas públicas, i18n-aware sob /en, /es, /fr) e
+  // no app logado (rotas sem prefixo → cai no pt-br, que é o idioma do app hoje).
+  // "Dominex vX" e "Auctus" (marca/versão) NÃO traduzem.
+  systemFooter: {
+    developedBy: 'Desenvolvido por',
+    // "Copyright © 2026 | Todos os Direitos Reservados"
+    rights: 'Todos os Direitos Reservados',
+    refreshTitle: 'Atualizar sistema',
+    refreshing: 'Atualizando sistema...',
+  },
 } as const;
 
 /** Shape canônico das mensagens de UI. en/es/fr fazem fallback pra ele. */

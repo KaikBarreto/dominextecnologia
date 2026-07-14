@@ -797,6 +797,54 @@ export const esOverrides: MessagesOverride = {
     s12Title: '12. Contacto',
     s12Pre: 'Dudas sobre estos Términos: ',
   },
+
+  // ── Blog (chrome/layout) ────────────────────────────────────────────────────
+  blog: {
+    badge: 'Blog de Dominex',
+    heroLine1: 'Contenido para quien',
+    heroHighlight: 'domina el campo',
+    subtitle: 'Órdenes de trabajo, mantenimiento preventivo, gestión de equipo y cómo sacar tu operación del papel.',
+    searchPlaceholder: 'Buscar artículos...',
+
+    resultsSingular: (query: string) => `resultado para “${query}”`,
+    resultsPlural: (query: string) => `resultados para “${query}”`,
+
+    featured: 'Destacado',
+    recent: 'Recientes',
+
+    emptySearch: 'No se encontraron artículos para esta búsqueda.',
+    emptyAll: 'Todavía no hay artículos. Vuelve pronto.',
+    emptyCategory: 'No hay artículos en esta categoría.',
+
+    ctaMobileTitle: 'Saca tu operación del papel',
+    ctaMobileBody: 'Prueba Dominex gratis y ve la orden de trabajo en el bolsillo del técnico.',
+    ctaTrialNoCard: 'Empieza gratis por 14 días, sin tarjeta',
+
+    sidebar: {
+      eyebrow: 'Para equipos de campo',
+      ctaTitle: '¿Quieres sacar tu operación del papel?',
+      ctaBody:
+        'Dominex pone las órdenes de trabajo, el mantenimiento y el equipo en el bolsillo del técnico, sin cuaderno y sin grupo de WhatsApp.',
+      ctaButton: 'Empieza tu prueba gratis de 14 días',
+      noCard: 'Sin tarjeta de crédito.',
+      mostRead: 'Más leídos',
+      reads: 'lecturas',
+      empty: 'Todavía no hay artículos.',
+    },
+
+    backToSite: 'Volver al sitio',
+
+    defaultAuthor: 'Equipo Dominex',
+    minSuffix: 'min',
+  },
+
+  // ── Pie del sistema ─────────────────────────────────────────────────────────
+  systemFooter: {
+    developedBy: 'Desarrollado por',
+    rights: 'Todos los Derechos Reservados',
+    refreshTitle: 'Actualizar la aplicación',
+    refreshing: 'Actualizando la aplicación...',
+  },
 };
 
 export default esOverrides;
