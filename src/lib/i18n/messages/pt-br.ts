@@ -728,6 +728,135 @@ export const ptBr = {
     errorPasswordMinReqs: 'Senha não atende aos requisitos mínimos',
     errorConfirmPasswordRequired: 'Confirme a senha',
   },
+
+  // ── Login (/login) + Recuperar senha (/reset-password) ─────────────────────
+  // Texto EXATO cravado hoje no Auth.tsx, ResetPassword.tsx e ForgotPasswordFlow
+  // (só movido pra chave). Site público: sem white-label, marca "Dominex".
+  // en/es/fr traduzem; ausências caem no pt-br. `gotrueErrors` mapeia os erros
+  // crus (inglês) do Supabase Auth pra mensagem localizada.
+  auth: {
+    // Header / branding
+    logoTagline: 'Domine a execução do seu negócio.',
+    orDivider: 'ou',
+
+    // Login (form)
+    loginTitle: 'Login',
+    emailLabel: 'Email',
+    emailPlaceholder: 'seu@email.com',
+    passwordLabel: 'Senha',
+    passwordPlaceholder: '••••••••',
+    rememberMe: 'Lembrar-me',
+    forgotPassword: 'Esqueci minha senha',
+    signIn: 'Entrar',
+    signingIn: 'Entrando...',
+    continueWithGoogle: 'Continuar com Google',
+    noAccount: 'Ainda não tem conta?',
+    signUp: 'Cadastre-se',
+
+    // Validações inline do login (react-hook-form)
+    errorEmailRequired: 'Email é obrigatório',
+    errorEmailInvalid: 'Email inválido',
+    errorPasswordRequired: 'Senha é obrigatória',
+
+    // Toasts do login
+    toastWelcomeTitle: 'Bem-vindo!',
+    toastWelcomeDesc: 'Login realizado com sucesso',
+    toastPendingPaymentTitle: 'Pagamento pendente',
+    toastPendingPaymentDesc: 'Finalize o pagamento para acessar a plataforma.',
+    toastOtherSessionsDisconnected: 'Outras sessões desconectadas',
+    toastLoginCanceled: 'Login cancelado',
+
+    // Erros do login (Alert)
+    errorUnexpected: 'Ocorreu um erro inesperado. Tente novamente.',
+    errorContinueLogin: 'Erro ao continuar login.',
+
+    // Mensagens de erro do Supabase Auth (recebidas em inglês) → localizadas.
+    // Casamento por substring; `generic` é o fallback quando nada bate.
+    gotrueErrors: {
+      invalidCredentials: 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.',
+      emailNotConfirmed: 'Email não confirmado. Verifique sua caixa de entrada.',
+      rateLimited: 'Muitas tentativas. Aguarde alguns instantes e tente novamente.',
+      networkError: 'Sem conexão com a internet. Verifique sua rede e tente novamente.',
+      generic: 'Ocorreu um erro inesperado. Tente novamente.',
+    },
+
+    // ── Recuperar senha embutida no login (ForgotPasswordFlow) ──────────────
+    forgot: {
+      // Etapa email
+      emailStepTitle: 'Recuperar senha',
+      emailStepSubtitle: 'Informe seu email para receber o código',
+      emailLabel: 'Email',
+      emailPlaceholder: 'seu@email.com',
+      sendCode: 'ENVIAR CÓDIGO',
+      sending: 'Enviando...',
+      backToLogin: 'Voltar ao login',
+      errorEmailInvalid: 'Email inválido',
+
+      // Etapa código
+      codeStepTitle: 'Digite o código',
+      // Ex.: "Enviamos um código de 8 dígitos para"
+      codeStepSubtitle: (length: string) => `Enviamos um código de ${length} dígitos para`,
+      verifyContinue: 'CONTINUAR',
+      verifying: 'Verificando...',
+      resendIn: (seconds: string) => `Reenviar em ${seconds}s`,
+      resendCode: 'Reenviar código',
+      changeEmail: 'Trocar email',
+
+      // Etapa nova senha
+      passwordStepTitle: 'Nova senha',
+      passwordStepSubtitle: 'Defina sua nova senha de acesso',
+      newPasswordLabel: 'Nova senha',
+      newPasswordPlaceholder: 'Mínimo 6 caracteres',
+      confirmPasswordLabel: 'Confirmar senha',
+      confirmPasswordPlaceholder: 'Repita a senha',
+      submit: 'REDEFINIR SENHA',
+      submitting: 'Redefinindo...',
+      back: 'Voltar',
+      errorPasswordMin: 'Senha deve ter no mínimo 6 caracteres',
+      errorPasswordMismatch: 'As senhas não conferem',
+
+      // Etapa concluída
+      doneTitle: 'Senha redefinida!',
+      doneSubtitle: 'Você já pode entrar com a nova senha.',
+
+      // Toasts
+      toastCodeSentTitle: 'Código enviado',
+      toastCodeSentDesc: 'Verifique seu email — pode levar até 1 minuto.',
+      toastErrorTitle: 'Erro',
+      toastSendCodeFallback: 'Não foi possível enviar o código',
+      toastInvalidCodeTitle: 'Código inválido',
+      toastInvalidCodeFallback: 'Verifique e tente novamente',
+      toastResetErrorTitle: 'Erro ao redefinir senha',
+      toastResetFallback: 'Tente novamente',
+    },
+
+    // ── Tela dedicada de redefinição (/reset-password) ──────────────────────
+    reset: {
+      verifying: 'Validando seu link de recuperação…',
+      invalidTitle: 'Link inválido',
+      invalidLinkMessage: 'Link inválido. Solicite uma nova recuperação no login.',
+      invalidCodeFallback: 'Código inválido ou expirado',
+      invalidValidateFallback: 'Falha ao validar código',
+      backToLogin: 'Voltar ao login',
+      successTitle: 'Senha redefinida!',
+      successSubtitle: 'Entrando no sistema…',
+      readyTitle: 'Nova Senha',
+      readySubtitlePre: 'Recuperação validada para',
+      newPasswordLabel: 'Nova Senha',
+      newPasswordPlaceholder: 'Crie uma senha segura',
+      confirmPasswordLabel: 'Confirmar Senha',
+      confirmPasswordPlaceholder: 'Repita a senha',
+      submit: 'REDEFINIR SENHA',
+      submitting: 'Redefinindo...',
+      errorPasswordMin: 'Senha deve ter no mínimo 8 caracteres',
+      errorPasswordReqs: 'Senha não atende aos requisitos mínimos',
+      errorPasswordMismatch: 'Senhas não conferem',
+      resetErrorFallback: 'Erro ao redefinir senha',
+      toastResetTitle: 'Senha redefinida',
+      toastResetDesc: 'Faça login com a nova senha.',
+      toastErrorTitle: 'Erro',
+    },
+  },
 } as const;
 
 /** Shape canônico das mensagens de UI. en/es/fr fazem fallback pra ele. */

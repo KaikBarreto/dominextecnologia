@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +19,6 @@ import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
-import { getErrorMessage } from '@/utils/errorMessages';
 import { trackUsage } from '@/lib/trackUsage';
 import { getDeviceInfo } from '@/lib/sessionUtils';
 import { registerSession, resolvePostLoginRedirect } from '@/lib/postLogin';
@@ -28,14 +27,17 @@ import {
   addCurrentSessionToSavedStandalone,
   clearAddAccountFlagStandalone,
 } from '@/lib/savedSessions';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
+import { mapGotrueError } from '@/utils/authErrorMessages';
 
-const loginSchema = z.object({
-  email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
-  password: z.string().min(1, 'Senha é obrigatória'),
-  rememberMe: z.boolean().default(false),
-});
-
-type LoginForm = z.infer<typeof loginSchema>;
+// Mensagens do schema vêm do i18n (montado dentro do componente via useMemo).
+type LoginForm = {
+  email: string;
+  password: string;
+  rememberMe: boolean;
+};
 
 // Logo "G" oficial multicolor do Google (lucide não tem). SVG inline pra não
 // adicionar asset/rede. Mantém proporção via viewBox.
@@ -62,12 +64,13 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-// Divisor "ou" entre o form de email/senha e o botão do Google.
-function OrDivider() {
+// Divisor "ou" entre o form de email/senha e o botão do Google. O rótulo vem
+// do i18n (passado pelo chamador) pra acompanhar o idioma da tela.
+function OrDivider({ label }: { label: string }) {
   return (
     <div className="relative flex items-center">
       <div className="flex-1 border-t border-white/15" />
-      <span className="px-3 text-[10px] uppercase tracking-widest text-white/40">ou</span>
+      <span className="px-3 text-[10px] uppercase tracking-widest text-white/40">{label}</span>
       <div className="flex-1 border-t border-white/15" />
     </div>
   );
@@ -94,6 +97,20 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { locale, messages } = useLocale();
+  const t = messages.auth;
+
+  // Schema montado com as mensagens do locale atual (react-hook-form usa a
+  // instância criada no primeiro render; o locale de auth não muda em runtime).
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        email: z.string().trim().min(1, t.errorEmailRequired).email(t.errorEmailInvalid),
+        password: z.string().min(1, t.errorPasswordRequired),
+        rememberMe: z.boolean().default(false),
+      }),
+    [t],
+  );
 
   // Erro vindo do retorno do Google (AuthCallback): chega via location.state
   // ({ authError }) ou query param ?auth_error=. Mostramos na montagem e
@@ -119,7 +136,7 @@ export default function Auth() {
     setAuthError(null);
     const { error } = await signInWithGoogle();
     if (error) {
-      setAuthError(getErrorMessage(error));
+      setAuthError(mapGotrueError(error, t.gotrueErrors));
       setIsLoading(false);
     }
   };
@@ -226,7 +243,7 @@ export default function Auth() {
 
     // Instrumentação MVP — fire-and-forget, não bloqueia UX
     trackUsage('login');
-    toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
+    toast({ title: t.toastWelcomeTitle, description: t.toastWelcomeDesc });
 
     // Destino pós-login: árvore de decisão compartilhada (super_admin →
     // /admin/empresas; pending_payment sem bypass → /checkout; técnico →
@@ -236,8 +253,8 @@ export default function Auth() {
     // pagamento pendente. (O OAuth não emite esse toast.)
     if (destination === '/checkout') {
       toast({
-        title: 'Pagamento pendente',
-        description: 'Finalize o pagamento para acessar a plataforma.',
+        title: t.toastPendingPaymentTitle,
+        description: t.toastPendingPaymentDesc,
       });
     }
     navigate(destination);
@@ -290,18 +307,13 @@ export default function Auth() {
         }
 
         loginInProgressRef.current = false;
-        if (error.message.includes('Invalid login credentials')) {
-          setAuthError('Email ou senha incorretos. Verifique suas credenciais e tente novamente.');
-        } else if (error.message.includes('Email not confirmed')) {
-          setAuthError('Email não confirmado. Verifique sua caixa de entrada.');
-        } else {
-          setAuthError(getErrorMessage(error));
-        }
+        // Erros do Supabase Auth chegam em inglês → mapeados pro locale atual.
+        setAuthError(mapGotrueError(error, t.gotrueErrors));
         return;
       }
 
       const userId = authData.user?.id;
-      if (!userId) throw new Error('Falha na autenticação');
+      if (!userId) throw new Error('Authentication failed');
 
       // Check for existing active sessions from OTHER devices
       const currentToken = localStorage.getItem("session_token");
@@ -332,7 +344,7 @@ export default function Auth() {
       await completeLogin(data, userId);
     } catch {
       loginInProgressRef.current = false;
-      setAuthError('Ocorreu um erro inesperado. Tente novamente.');
+      setAuthError(t.errorUnexpected);
     } finally {
       setIsLoading(false);
     }
@@ -346,7 +358,7 @@ export default function Auth() {
 
       if (disconnectOthers) {
         await disconnectOtherSessions(pendingUserId);
-        toast({ title: 'Outras sessões desconectadas' });
+        toast({ title: t.toastOtherSessionsDisconnected });
       }
 
       setSessionDialogOpen(false);
@@ -354,7 +366,7 @@ export default function Auth() {
       setPendingUserId(null);
       setExistingSessionsInfo([]);
     } catch {
-      setAuthError('Erro ao continuar login.');
+      setAuthError(t.errorContinueLogin);
     } finally {
       setIsLoading(false);
     }
@@ -370,7 +382,7 @@ export default function Auth() {
     // o default 'global' revogaria os tokens dos outros dispositivos que o
     // usuário escolheu preservar.
     supabase.auth.signOut({ scope: 'local' });
-    toast({ title: 'Login cancelado' });
+    toast({ title: t.toastLoginCanceled });
   };
 
   // Show skeleton while auth state is loading
@@ -410,11 +422,14 @@ export default function Auth() {
           <DarkVeil hueShift={53} speed={0.5} />
         </div>
 
+        {/* Seletor de idioma fixo no canto (via portal), preserva query. */}
+        <LanguageSelector variant="corner" />
+
         <div className="relative z-10 flex flex-col min-h-[100dvh]">
           {/* Logo flutuante sobre o veil */}
           <div className="flex-1 flex flex-col items-center justify-end px-6 pb-10 pt-[max(env(safe-area-inset-top),2rem)]">
             <img src={logoWhite} alt="Dominex" className="h-14 w-auto" onError={() => {}} />
-            <p className="text-white/80 text-xs mt-2 tracking-wider">Domine a execução do seu negócio.</p>
+            <p className="text-white/80 text-xs mt-2 tracking-wider">{t.logoTagline}</p>
           </div>
 
           {/* Bottom sheet com o form */}
@@ -423,7 +438,7 @@ export default function Auth() {
 
             {!showForgotPassword && (
               <div className="text-center mb-5">
-                <h1 className="text-xl font-semibold uppercase tracking-widest">Login</h1>
+                <h1 className="text-xl font-semibold uppercase tracking-widest">{t.loginTitle}</h1>
               </div>
             )}
 
@@ -447,14 +462,14 @@ export default function Auth() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">Email</FormLabel>
+                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">{t.emailLabel}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                               <Input
                                 {...field}
                                 type="email"
-                                placeholder="seu@email.com" autoCapitalize="none"
+                                placeholder={t.emailPlaceholder} autoCapitalize="none"
                                 autoComplete="email"
                                 disabled={isLoading}
                                 className="pl-10 h-12 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
@@ -471,14 +486,14 @@ export default function Auth() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">Senha</FormLabel>
+                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">{t.passwordLabel}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                               <Input
                                 {...field}
                                 type={showPassword ? 'text' : 'password'}
-                                placeholder="••••••••"
+                                placeholder={t.passwordPlaceholder}
                                 autoComplete="current-password"
                                 disabled={isLoading}
                                 className="pl-10 pr-10 h-12 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
@@ -512,7 +527,7 @@ export default function Auth() {
                               />
                             </FormControl>
                             <FormLabel className="text-xs text-white/60 cursor-pointer">
-                              Lembrar-me
+                              {t.rememberMe}
                             </FormLabel>
                           </FormItem>
                         )}
@@ -523,7 +538,7 @@ export default function Auth() {
                         className="text-xs text-primary hover:underline uppercase tracking-wider font-medium"
                         disabled={isLoading}
                       >
-                        Esqueci minha senha
+                        {t.forgotPassword}
                       </button>
                     </div>
 
@@ -531,16 +546,16 @@ export default function Auth() {
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Entrando...
+                          {t.signingIn}
                         </>
                       ) : (
-                        'Entrar'
+                        t.signIn
                       )}
                     </Button>
                   </form>
                 </Form>
 
-                <OrDivider />
+                <OrDivider label={t.orDivider} />
 
                 <button
                   type="button"
@@ -549,13 +564,13 @@ export default function Auth() {
                   className="flex h-12 w-full items-center justify-center gap-3 rounded-md bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <GoogleIcon className="h-5 w-5" />
-                  Continuar com Google
+                  {t.continueWithGoogle}
                 </button>
 
                 <div className="text-center text-[11px] text-white/60 pt-2 border-t uppercase tracking-wider">
-                  Ainda não tem conta?{' '}
-                  <Link to="/cadastro" className="text-primary font-semibold hover:underline">
-                    Cadastre-se
+                  {t.noAccount}{' '}
+                  <Link to={localizeInternal('/cadastro', locale)} className="text-primary font-semibold hover:underline">
+                    {t.signUp}
                   </Link>
                 </div>
               </div>
@@ -588,10 +603,14 @@ export default function Auth() {
       <div className="absolute inset-0 z-0">
         <DarkVeil hueShift={53} speed={0.5} />
       </div>
+
+      {/* Seletor de idioma fixo no canto (via portal), preserva query. */}
+      <LanguageSelector variant="corner" />
+
       <div className="w-full max-w-md relative z-10">
         <div className="mb-8 flex flex-col items-center">
           <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" onError={() => {}} />
-          <p className="text-white/80 text-sm">Domine a execução do seu negócio.</p>
+          <p className="text-white/80 text-sm">{t.logoTagline}</p>
         </div>
 
         <Card className="border-0 bg-black/60 backdrop-blur-md shadow-2xl">
@@ -604,7 +623,7 @@ export default function Auth() {
             ) : (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h1 className="text-xl font-semibold text-white uppercase tracking-widest">Login</h1>
+                  <h1 className="text-xl font-semibold text-white uppercase tracking-widest">{t.loginTitle}</h1>
                 </div>
 
                 {authError && (
@@ -620,14 +639,14 @@ export default function Auth() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Email</FormLabel>
+                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.emailLabel}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 {...field}
                                 type="email"
-                                placeholder="seu@email.com"
+                                placeholder={t.emailPlaceholder}
                                 autoComplete="email"
                                 autoFocus
                                 disabled={isLoading}
@@ -645,14 +664,14 @@ export default function Auth() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Senha</FormLabel>
+                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.passwordLabel}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 {...field}
                                 type={showPassword ? 'text' : 'password'}
-                                placeholder="••••••••"
+                                placeholder={t.passwordPlaceholder}
                                 autoComplete="current-password"
                                 disabled={isLoading}
                                 className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
@@ -687,7 +706,7 @@ export default function Auth() {
                               />
                             </FormControl>
                             <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60 cursor-pointer">
-                              Lembrar-me
+                              {t.rememberMe}
                             </FormLabel>
                           </FormItem>
                         )}
@@ -698,7 +717,7 @@ export default function Auth() {
                         className="text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors text-left"
                         disabled={isLoading}
                       >
-                        Esqueci minha senha
+                        {t.forgotPassword}
                       </button>
                     </div>
 
@@ -706,16 +725,16 @@ export default function Auth() {
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Entrando...
+                          {t.signingIn}
                         </>
                       ) : (
-                        'Entrar'
+                        t.signIn
                       )}
                     </Button>
                   </form>
                 </Form>
 
-                <OrDivider />
+                <OrDivider label={t.orDivider} />
 
                 <button
                   type="button"
@@ -724,13 +743,13 @@ export default function Auth() {
                   className="flex h-11 w-full items-center justify-center gap-3 rounded-md bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <GoogleIcon className="h-5 w-5" />
-                  Continuar com Google
+                  {t.continueWithGoogle}
                 </button>
 
                 <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
-                  Ainda não tem conta?{' '}
-                  <Link to="/cadastro" className="text-white font-bold hover:text-primary transition-colors">
-                    Cadastre-se
+                  {t.noAccount}{' '}
+                  <Link to={localizeInternal('/cadastro', locale)} className="text-white font-bold hover:text-primary transition-colors">
+                    {t.signUp}
                   </Link>
                 </div>
               </div>

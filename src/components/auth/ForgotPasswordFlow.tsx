@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { StepTransition } from '@/components/ui/step-transition';
+import { useLocale } from '@/lib/i18n';
 
 type Step = 'email' | 'code' | 'password' | 'done';
 
@@ -20,19 +21,33 @@ interface ForgotPasswordFlowProps {
   onBack: () => void;
 }
 
-const emailSchema = z.object({ email: z.string().email('Email inválido') });
-const passwordSchema = z.object({
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: 'As senhas não conferem',
-  path: ['confirmPassword'],
-});
-
 const CODE_LENGTH = 8;
 
 export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowProps) {
   const { toast } = useToast();
+  const { messages } = useLocale();
+  const t = messages.auth.forgot;
+
+  // Schemas montados com as mensagens do locale (o locale de auth não muda em
+  // runtime; a instância criada no primeiro render é usada pelo react-hook-form).
+  const emailSchema = useMemo(
+    () => z.object({ email: z.string().email(t.errorEmailInvalid) }),
+    [t],
+  );
+  const passwordSchema = useMemo(
+    () =>
+      z
+        .object({
+          password: z.string().min(6, t.errorPasswordMin),
+          confirmPassword: z.string(),
+        })
+        .refine((d) => d.password === d.confirmPassword, {
+          message: t.errorPasswordMismatch,
+          path: ['confirmPassword'],
+        }),
+    [t],
+  );
+
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState(initialEmail ?? '');
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
@@ -68,9 +83,9 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
       setStep('code');
       setResendCooldown(60);
       setCode(Array(CODE_LENGTH).fill(''));
-      toast({ title: 'Código enviado', description: 'Verifique seu email — pode levar até 1 minuto.' });
+      toast({ title: t.toastCodeSentTitle, description: t.toastCodeSentDesc });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err, 'Não foi possível enviar o código') });
+      toast({ variant: 'destructive', title: t.toastErrorTitle, description: getErrorMessage(err, t.toastSendCodeFallback) });
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +130,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
       setStep('password');
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Código inválido', description: getErrorMessage(err, 'Verifique e tente novamente') });
+      toast({ variant: 'destructive', title: t.toastInvalidCodeTitle, description: getErrorMessage(err, t.toastInvalidCodeFallback) });
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +159,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
       // Sessao criada — o AuthContext detecta e redireciona automaticamente
       setStep('done');
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao redefinir senha', description: getErrorMessage(err, 'Tente novamente') });
+      toast({ variant: 'destructive', title: t.toastResetErrorTitle, description: getErrorMessage(err, t.toastResetFallback) });
     } finally {
       setIsLoading(false);
     }
@@ -157,10 +172,10 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
         <div className="mx-auto w-12 h-12 rounded-full bg-primary flex items-center justify-center">
           <CheckCircle className="h-6 w-6 text-white" />
         </div>
-        <h3 className="text-lg font-semibold text-white">Senha redefinida!</h3>
-        <p className="text-sm text-white/60">Você já pode entrar com a nova senha.</p>
+        <h3 className="text-lg font-semibold text-white">{t.doneTitle}</h3>
+        <p className="text-sm text-white/60">{t.doneSubtitle}</p>
         <Button variant="outline" onClick={onBack} className="border-white/20 text-white hover:bg-background">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao login
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t.backToLogin}
         </Button>
       </div>
     );
@@ -173,8 +188,8 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
           <div className="mx-auto w-10 h-10 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
             <Lock className="h-4 w-4 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Nova senha</h3>
-          <p className="text-sm text-white/60">Defina sua nova senha de acesso</p>
+          <h3 className="text-lg font-semibold text-white">{t.passwordStepTitle}</h3>
+          <p className="text-sm text-white/60">{t.passwordStepSubtitle}</p>
         </div>
 
         <Form {...passwordForm}>
@@ -184,11 +199,11 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Nova senha</FormLabel>
+                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.newPasswordLabel}</FormLabel>
                   <FormControl>
                     <PasswordInput
                       {...field}
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder={t.newPasswordPlaceholder}
                       className="bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
                       disabled={isLoading}
                     />
@@ -203,11 +218,11 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Confirmar senha</FormLabel>
+                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.confirmPasswordLabel}</FormLabel>
                   <FormControl>
                     <PasswordInput
                       {...field}
-                      placeholder="Repita a senha"
+                      placeholder={t.confirmPasswordPlaceholder}
                       className="bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
                       disabled={isLoading}
                     />
@@ -218,13 +233,13 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
             />
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redefinindo...</> : 'REDEFINIR SENHA'}
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.submitting}</> : t.submit}
             </Button>
           </form>
         </Form>
 
         <button type="button" onClick={() => setStep('code')} className="w-full text-center text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors">
-          Voltar
+          {t.back}
         </button>
       </div>
     );
@@ -238,9 +253,9 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
           <div className="mx-auto w-10 h-10 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
             <KeyRound className="h-4 w-4 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Digite o código</h3>
+          <h3 className="text-lg font-semibold text-white">{t.codeStepTitle}</h3>
           <p className="text-sm text-white/60">
-            Enviamos um código de {CODE_LENGTH} dígitos para<br />
+            {t.codeStepSubtitle(String(CODE_LENGTH))}<br />
             <span className="font-medium text-white">{email}</span>
           </p>
         </div>
@@ -264,7 +279,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
         </div>
 
         <Button type="button" className="w-full" onClick={verifyCode} disabled={!codeFilled || isLoading}>
-          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verificando...</> : 'CONTINUAR'}
+          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.verifying}</> : t.verifyContinue}
         </Button>
 
         <div className="flex items-center justify-between text-xs">
@@ -275,10 +290,10 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
             className="text-white/60 hover:text-primary uppercase tracking-widest transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
           >
             <RotateCw className="h-3 w-3" />
-            {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : 'Reenviar código'}
+            {resendCooldown > 0 ? t.resendIn(String(resendCooldown)) : t.resendCode}
           </button>
           <button type="button" onClick={() => setStep('email')} className="text-white/60 hover:text-primary uppercase tracking-widest transition-colors">
-            Trocar email
+            {t.changeEmail}
           </button>
         </div>
       </div>
@@ -289,8 +304,8 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
   return (
     <div className="space-y-4">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold text-white">Recuperar senha</h3>
-        <p className="text-sm text-white/60">Informe seu email para receber o código</p>
+        <h3 className="text-lg font-semibold text-white">{t.emailStepTitle}</h3>
+        <p className="text-sm text-white/60">{t.emailStepSubtitle}</p>
       </div>
 
       <Form {...emailForm}>
@@ -300,14 +315,14 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Email</FormLabel>
+                <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.emailLabel}</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                     <Input
                       {...field}
                       type="email"
-                      placeholder="seu@email.com"
+                      placeholder={t.emailPlaceholder}
                       className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40 focus:border-primary"
                       disabled={isLoading}
                     />
@@ -319,13 +334,13 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : 'ENVIAR CÓDIGO'}
+            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.sending}</> : t.sendCode}
           </Button>
         </form>
       </Form>
 
       <button type="button" onClick={onBack} className="w-full text-center text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors">
-        Voltar ao login
+        {t.backToLogin}
       </button>
     </div>
     );

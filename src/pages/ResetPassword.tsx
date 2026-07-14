@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,14 +16,9 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { getFriendlyPasswordError } from '@/utils/passwordHelpers';
 import { getErrorMessage } from '@/utils/errorMessages';
-
-const schema = z.object({
-  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').refine(isPasswordStrong, 'Senha não atende aos requisitos mínimos'),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: 'Senhas não conferem',
-  path: ['confirmPassword'],
-});
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
 type Status = 'verifying' | 'invalid' | 'ready' | 'success';
 
@@ -31,12 +26,30 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { locale, messages } = useLocale();
+  const t = messages.auth.reset;
   const [status, setStatus] = useState<Status>('verifying');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
   const email = (searchParams.get('email') || '').trim().toLowerCase();
   const code = (searchParams.get('code') || '').replace(/\D/g, '');
+
+  // Schema montado com as mensagens do locale (o locale de auth não muda em
+  // runtime; a instância criada no primeiro render é usada pelo react-hook-form).
+  const schema = useMemo(
+    () =>
+      z
+        .object({
+          password: z.string().min(8, t.errorPasswordMin).refine(isPasswordStrong, t.errorPasswordReqs),
+          confirmPassword: z.string(),
+        })
+        .refine((d) => d.password === d.confirmPassword, {
+          message: t.errorPasswordMismatch,
+          path: ['confirmPassword'],
+        }),
+    [t],
+  );
 
   const form = useForm({
     resolver: zodResolver(schema),
@@ -51,7 +64,7 @@ export default function ResetPassword() {
     async function verify() {
       if (!email || !code) {
         setStatus('invalid');
-        setErrorMessage('Link inválido. Solicite uma nova recuperação no login.');
+        setErrorMessage(t.invalidLinkMessage);
         return;
       }
       try {
@@ -62,19 +75,20 @@ export default function ResetPassword() {
         if (error || (data as any)?.error) {
           // Edge function pode retornar erro em PT-BR via (data as any)?.error;
           // se vier só o error genérico do Supabase, normaliza via getErrorMessage.
-          setErrorMessage((data as any)?.error || getErrorMessage(error, 'Código inválido ou expirado'));
+          setErrorMessage((data as any)?.error || getErrorMessage(error, t.invalidCodeFallback));
           setStatus('invalid');
           return;
         }
         setStatus('ready');
       } catch (err: any) {
         if (cancelled) return;
-        setErrorMessage(getErrorMessage(err, 'Falha ao validar código'));
+        setErrorMessage(getErrorMessage(err, t.invalidValidateFallback));
         setStatus('invalid');
       }
     }
     verify();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, code]);
 
   const handleSubmit = async (data: { password: string }) => {
@@ -84,7 +98,7 @@ export default function ResetPassword() {
         body: { email, code, newPassword: data.password },
       });
       if (error || (respData as any)?.error) {
-        throw new Error((respData as any)?.error || error?.message || 'Erro ao redefinir senha');
+        throw new Error((respData as any)?.error || error?.message || t.resetErrorFallback);
       }
 
       // Auto-login com a nova senha
@@ -95,10 +109,10 @@ export default function ResetPassword() {
       if (signInError) {
         // Senha foi atualizada mas auto-login falhou — manda pro login para o usuario tentar manualmente
         toast({
-          title: 'Senha redefinida',
-          description: 'Faça login com a nova senha.',
+          title: t.toastResetTitle,
+          description: t.toastResetDesc,
         });
-        setTimeout(() => navigate('/login'), 1500);
+        setTimeout(() => navigate(localizeInternal('/login', locale)), 1500);
         return;
       }
 
@@ -107,7 +121,7 @@ export default function ResetPassword() {
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro',
+        title: t.toastErrorTitle,
         description: getFriendlyPasswordError(error),
       });
     } finally {
@@ -120,6 +134,10 @@ export default function ResetPassword() {
       <div className="absolute inset-0 z-0">
         <DarkVeil hueShift={53} speed={0.5} />
       </div>
+
+      {/* Seletor de idioma fixo no canto (via portal), preserva query. */}
+      <LanguageSelector variant="corner" />
+
       <div className="w-full max-w-md relative z-10">
         <div className="mb-8 flex flex-col items-center">
           <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" />
@@ -130,7 +148,7 @@ export default function ResetPassword() {
             {status === 'verifying' && (
               <div className="space-y-4 text-center">
                 <Loader2 className="mx-auto h-8 w-8 text-primary animate-spin" />
-                <p className="text-sm text-white/70">Validando seu link de recuperação…</p>
+                <p className="text-sm text-white/70">{t.verifying}</p>
               </div>
             )}
 
@@ -139,10 +157,10 @@ export default function ResetPassword() {
                 <div className="mx-auto w-14 h-14 rounded-full bg-destructive/20 border border-destructive/40 flex items-center justify-center">
                   <AlertCircle className="h-7 w-7 text-destructive" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">Link inválido</h3>
+                <h3 className="text-lg font-semibold text-white">{t.invalidTitle}</h3>
                 <p className="text-sm text-white/70">{errorMessage}</p>
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" onClick={() => navigate('/login')}>
-                  Voltar ao login
+                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" onClick={() => navigate(localizeInternal('/login', locale))}>
+                  {t.backToLogin}
                 </Button>
               </div>
             )}
@@ -152,17 +170,17 @@ export default function ResetPassword() {
                 <div className="mx-auto w-14 h-14 rounded-full bg-primary flex items-center justify-center">
                   <CheckCircle className="h-7 w-7 text-white" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">Senha redefinida!</h3>
-                <p className="text-sm text-white/70">Entrando no sistema…</p>
+                <h3 className="text-lg font-semibold text-white">{t.successTitle}</h3>
+                <p className="text-sm text-white/70">{t.successSubtitle}</p>
               </div>
             )}
 
             {status === 'ready' && (
               <div className="space-y-6">
                 <div className="text-center space-y-2">
-                  <h2 className="text-xl font-semibold text-white uppercase tracking-widest">Nova Senha</h2>
+                  <h2 className="text-xl font-semibold text-white uppercase tracking-widest">{t.readyTitle}</h2>
                   <p className="text-sm text-white/60">
-                    Recuperação validada para<br />
+                    {t.readySubtitlePre}<br />
                     <span className="text-white font-medium">{email}</span>
                   </p>
                 </div>
@@ -174,13 +192,13 @@ export default function ResetPassword() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Nova Senha</FormLabel>
+                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.newPasswordLabel}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
                               <PasswordInput
                                 {...field}
-                                placeholder="Crie uma senha segura"
+                                placeholder={t.newPasswordPlaceholder}
                                 className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                               />
                             </div>
@@ -196,13 +214,13 @@ export default function ResetPassword() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Confirmar Senha</FormLabel>
+                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.confirmPasswordLabel}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
                               <PasswordInput
                                 {...field}
-                                placeholder="Repita a senha"
+                                placeholder={t.confirmPasswordPlaceholder}
                                 matchAgainst={passwordValue}
                                 className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                               />
@@ -217,10 +235,10 @@ export default function ResetPassword() {
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Redefinindo...
+                          {t.submitting}
                         </>
                       ) : (
-                        'REDEFINIR SENHA'
+                        t.submit
                       )}
                     </Button>
                   </form>
