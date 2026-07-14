@@ -17,6 +17,8 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { SegmentToolsSwitcher } from '@/components/technician-area/SegmentToolsSwitcher';
 import { SegmentLockedScreen } from '@/components/technician-area/SegmentLockedScreen';
 import { getTechToolsForSegment, getTeaserToolsForSegment } from '@/config/technicianArea';
+import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
+import { getSegment } from '@/utils/companySegments';
 import { Inicio } from '@/components/technician-area/Inicio';
 import { CargaTermica } from '@/components/technician-area/CargaTermica';
 import { Conversao, type ConversaoInicial } from '@/components/technician-area/Conversao';
@@ -137,6 +139,12 @@ interface ShellProps {
   onSwitchTab: (tab: string) => void;
   onSelectSegment: (value: string) => void;
   content: React.ReactNode;
+  /**
+   * Quando true (exclusivo do modo embedded), renderiza o cabeçalho com DarkVeil
+   * full-bleed na cor do segmento selecionado. Modo rota nunca passa esta prop
+   * (default false) — zero regressão.
+   */
+  showSegmentVeil?: boolean;
 }
 
 function ToolsShell({
@@ -152,25 +160,78 @@ function ToolsShell({
   onSwitchTab,
   onSelectSegment,
   content,
+  showSegmentVeil = false,
 }: ShellProps) {
+  // Cor do veil: segmento selecionado > segmento da empresa > verde Dominex.
+  const veilColor =
+    getSegment(effectiveSegment)?.color ??
+    getSegment(companySegment)?.color ??
+    '#00C597';
+
+  // Miolo do cabeçalho — reutilizado tanto no modo veil quanto no modo padrão.
+  // `withVeil` alterna as cores de texto para branco forçado (legibilidade sobre fundo escuro colorido).
+  const headerInner = (withVeil: boolean) => (
+    <div className="flex flex-col items-start gap-2">
+      <div className="flex items-center gap-2">
+        <AreaTecnicoIcon
+          className={cn(
+            'h-6 w-6 shrink-0 lg:h-7 lg:w-7',
+            withVeil ? 'text-white/90' : 'text-foreground/70',
+          )}
+        />
+        <h1
+          className={cn(
+            'text-lg font-semibold tracking-tight lg:text-2xl',
+            withVeil && 'text-white',
+          )}
+        >
+          Área do Técnico™
+        </h1>
+      </div>
+      {companySegment && (
+        <SegmentToolsSwitcher
+          selected={effectiveSegment ?? ''}
+          companySegment={companySegment}
+          onSelect={onSelectSegment}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 lg:space-y-6">
       {/* Header — hub raiz das Ferramentas. Título em cima, seletor de nicho
           EMBAIXO (empilhado) em todas as larguras — mobile e desktop (régua
           CEO: no desktop o select fica abaixo do título, não ao lado). */}
-      <div className="flex flex-col items-start gap-2">
-        <div className="flex items-center gap-2">
-          <AreaTecnicoIcon className="h-6 w-6 text-foreground/70 shrink-0 lg:h-7 lg:w-7" />
-          <h1 className="text-lg font-semibold tracking-tight lg:text-2xl">Área do Técnico™</h1>
+      {showSegmentVeil ? (
+        /* Faixa full-bleed com DarkVeil na cor do segmento. As margens negativas
+           compensam o padding lateral do container pai (p-5 / sm:p-6) e o
+           marginTop negativo sobe até o topo, cobrindo o paddingTop do overlay
+           (incluindo safe-area-inset-top). O overflow-hidden garante que o veil
+           não vaze para fora da faixa do cabeçalho. */
+        <div
+          className="relative -mx-5 overflow-hidden sm:-mx-6"
+          style={{ marginTop: 'calc(-1 * max(1.25rem, env(safe-area-inset-top)))' }}
+        >
+          {/* Camada 1: DarkVeil animado na cor do segmento */}
+          <div className="absolute inset-0">
+            <DarkVeilBackground accentColor={veilColor} speed={1.2} forceWebGL />
+          </div>
+          {/* Camada 2: scrim leve pra garantir legibilidade do título sobre o veil */}
+          <div aria-hidden className="absolute inset-0 bg-black/25" />
+          {/* Camada 3: conteúdo do header. paddingTop com folga extra (safe-area +
+              2rem) — respiro maior no topo ao abrir o overlay, sem descolar o veil
+              do topo (o marginTop negativo do container continua chegando na borda). */}
+          <div
+            className="relative z-10 px-5 pb-5 sm:px-6"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)' }}
+          >
+            {headerInner(true)}
+          </div>
         </div>
-        {companySegment && (
-          <SegmentToolsSwitcher
-            selected={effectiveSegment ?? ''}
-            companySegment={companySegment}
-            onSelect={onSelectSegment}
-          />
-        )}
-      </div>
+      ) : (
+        headerInner(false)
+      )}
 
       {/* Pills (mobile). */}
       {(isLocked || (isOwnSegment && activeTab !== 'inicio')) && (
@@ -527,6 +588,7 @@ function EmbeddedTools() {
       onSwitchTab={switchTab}
       onSelectSegment={handleSelectSegment}
       content={content}
+      showSegmentVeil
     />
   );
 }

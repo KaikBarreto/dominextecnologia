@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -51,6 +51,18 @@ interface SpeedDialFABProps {
    * backdrop z-40 e o FAB deve ficar borrado/escurecido junto. Default false.
    */
   dimmed?: boolean;
+  /**
+   * Cor do glow (disco radial desfocado atrás do FAB). Hex, ex. '#06b6d4'.
+   * Default '#00C597' (verde Dominex — comportamento anterior).
+   */
+  glowColor?: string;
+  /**
+   * Nó React a ser usado como FUNDO do botão principal (preenche absolute inset-0,
+   * atrás do ícone). Quando setado, ignora `mainImageUrl` e renderiza esse node
+   * como plano de fundo com o `mainIcon` sobreposto (relative z-10).
+   * Ideal pra DarkVeilBackground tingido na cor do segmento.
+   */
+  mainBackgroundNode?: ReactNode;
 }
 
 /**
@@ -74,15 +86,22 @@ export function SpeedDialFAB({
   ariaLabel,
   directWhenSingle = false,
   dimmed = false,
+  glowColor = '#00C597',
+  mainBackgroundNode,
 }: SpeedDialFABProps) {
   const [open, setOpen] = useState(false);
   // Imagem do FAB falhou ao carregar → cai pro ícone/accent (fallback).
   const [imageFailed, setImageFailed] = useState(false);
   // FAB de função única: o toque dispara a ação direto, sem speed-dial.
   const isDirect = directWhenSingle && actions.length === 1;
-  // Mostra a imagem quando há URL válida e o FAB não está no estado "aberto"
-  // (que mostra o X de fechar). Em isDirect nunca há estado aberto.
-  const showImage = !!mainImageUrl && !imageFailed && (isDirect || !open);
+  // mainBackgroundNode tem prioridade sobre mainImageUrl.
+  const hasCustomBg = !!mainBackgroundNode;
+  // Mostra a imagem quando há URL válida (sem node de fundo custom) e o FAB
+  // não está no estado "aberto" (que mostra o X de fechar). Em isDirect nunca
+  // há estado aberto.
+  const showImage = !hasCustomBg && !!mainImageUrl && !imageFailed && (isDirect || !open);
+  // Glow ativo no modo imagem OU no modo fundo-custom (veil), mas nunca quando dimmed.
+  const showGlow = (showImage || (hasCustomBg && (isDirect || !open))) && !dimmed;
 
   // Esc fecha (desktop).
   useEffect(() => {
@@ -159,18 +178,18 @@ export function SpeedDialFAB({
             o ícone próprio (ex.: ferramenta). Senão → speed-dial (abre/fecha).
             Wrapper relativo SEM overflow pro glow vazar pra fora do círculo. */}
         <div className="relative">
-          {/* Glow: disco no VERDE DA MARCA DOMINEX (#00C597) — FIXO, NÃO segue o
-              white-label do tenant (decisão CEO: o glow do FAB de Ferramentas é
-              sempre o verde Dominex). Desfocado, blend de adição (ilumina o fundo
-              escuro do rodapé ao redor do FAB). Decorativo, não é a cópia da
-              imagem. Escondido quando dimmed: o plus-lighter ilumina e "fura" o
-              escurecimento da tela (stacking context isolado), o que deixava o
-              FAB aceso por cima do backdrop. */}
-          {showImage && !dimmed && (
+          {/* Glow: disco radial desfocado atrás do FAB. Por padrão verde-Dominex;
+              quando glowColor é passado, usa essa cor (ex.: cor do segmento).
+              Escondido quando dimmed: plus-lighter "fura" backdrops via stacking
+              context isolado, deixando o FAB aceso por cima do escurecimento. */}
+          {showGlow && (
             <span
               aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 scale-[1.5] rounded-full bg-[radial-gradient(circle,#00C597_0%,#00C597_45%,transparent_72%)] blur-2xl opacity-80"
-              style={{ mixBlendMode: 'plus-lighter' }}
+              className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 scale-[1.5] rounded-full blur-2xl opacity-80"
+              style={{
+                background: `radial-gradient(circle, ${glowColor} 0%, ${glowColor} 45%, transparent 72%)`,
+                mixBlendMode: 'plus-lighter',
+              }}
             />
           )}
           <button
@@ -192,12 +211,28 @@ export function SpeedDialFAB({
             aria-expanded={isDirect ? undefined : open}
             className={cn(
               'relative z-10 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full shadow-lg transition-transform active:scale-90',
-              showImage
-                ? 'bg-card ring-1 ring-black/10 shadow-black/30'
-                : 'bg-primary text-primary-foreground shadow-primary/30',
+              // Modo fundo-custom (veil): sem bg concorrente, o node preenche.
+              // Modo imagem: bg-card como fundo de fallback enquanto carrega.
+              // Modo padrão (só ícone): bg-primary com cor de texto e sombra.
+              hasCustomBg
+                ? 'shadow-black/30'
+                : showImage
+                  ? 'bg-card ring-1 ring-black/10 shadow-black/30'
+                  : 'bg-primary text-primary-foreground shadow-primary/30',
             )}
           >
-            {showImage ? (
+            {/* Modo fundo-custom: node de fundo (absolute inset-0) + ícone por cima */}
+            {hasCustomBg && (isDirect || !open) ? (
+              <>
+                <span aria-hidden className="absolute inset-0 rounded-full overflow-hidden">
+                  {mainBackgroundNode}
+                </span>
+                {/* Ícone 32px (h-8 w-8) centralizado pelo flex do botão 56px. */}
+                <span className="relative z-10 text-white">
+                  <MainIcon className="h-8 w-8" />
+                </span>
+              </>
+            ) : showImage ? (
               <img
                 src={mainImageUrl}
                 alt=""

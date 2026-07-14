@@ -93,6 +93,8 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import TechnicianArea from '@/pages/TechnicianArea';
 import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { getSegment } from '@/utils/companySegments';
+import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { useSubscriptionBlock } from '@/hooks/useSubscriptionBlock';
 
@@ -784,6 +786,10 @@ export default function TechnicianOS() {
   // Enquanto settings carrega (undefined/null), showTools é false → atalho oculto.
   const { settings } = useCompanySettings();
   const showTools = settings?.segment === 'refrigeracao';
+  // Cor canônica do segmento da empresa (ex.: #06b6d4 p/ refrigeração).
+  // Fallback para o verde Dominex se o segmento não estiver mapeado.
+  const segColor = getSegment(settings?.segment)?.color ?? '#00C597';
+
   // FAB é EXCLUSIVO de "Área do Técnico™" (função única, ícone de ferramenta
   // — não 3 pontinhos). Copiar link público mudou pro 3-pontinhos do rodapé.
   const speedDialActions: SpeedDialAction[] = [
@@ -4348,8 +4354,14 @@ export default function TechnicianOS() {
           // max-w-screen-2xl = 1536px, padding lg:px-8 = 2rem) — cai sobre a
           // coluna do sidebar do grid, não solto no canto do viewport.
           className="lg:left-[max(1rem,calc((100vw-min(100vw,1536px))/2+2rem))]"
-          mainImageUrl="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/app/ferramentas-tecnico-fab-v4.jpg"
+          // Fundo do botão = DarkVeil tingido na cor do segmento da empresa.
+          // Para refrigeração (#06b6d4) fica azul-ciano; outros segmentos
+          // recebem a cor canônica de companySegments.ts.
+          mainBackgroundNode={<DarkVeilBackground accentColor={segColor} speed={1.2} forceWebGL />}
+          // Ícone da Área do Técnico, centralizado por cima do veil.
           mainIcon={AreaTecnicoIcon}
+          // Glow atrás do botão na cor do segmento (não mais verde fixo).
+          glowColor={segColor}
           ariaLabel="Área do Técnico™"
           directWhenSingle
           // Rebaixa o FAB pra trás do backdrop quando o menu hambúrguer do rodapé

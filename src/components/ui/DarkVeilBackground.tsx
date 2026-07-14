@@ -29,6 +29,18 @@ interface DarkVeilBackgroundProps {
    * cravar shifts calibrados no browser quando o modelo linear não bate 100%.
    */
   veilHueShiftOverride?: number;
+  /**
+   * Força a montagem do WebGL IGNORANDO o gate de performance de
+   * `shouldUseWebGL()` (núcleos/viewport/webdriver). Ideal pra contextos
+   * pequenos (ex.: FAB de 56px) onde o canvas é minúsculo e o custo é ínfimo.
+   *
+   * Ainda respeita as guardas essenciais: SSR (`typeof window`), `__PRERENDER__`
+   * e `prefers-reduced-motion`. Ou seja, só bypassa o gate de perf, nunca o de
+   * acessibilidade ou renderização estática.
+   *
+   * Default false — mantém o comportamento atual para landing/segmentos.
+   */
+  forceWebGL?: boolean;
 }
 
 // ── Calibração do hue do veil ──────────────────────────────────────────────
@@ -103,11 +115,29 @@ function shouldUseWebGL(): boolean {
   return true;
 }
 
+/**
+ * Gate mínimo de segurança para o `forceWebGL`: bypassa o gate de perf
+ * (núcleos/viewport/webdriver) mas ainda respeita SSR, prerender e
+ * prefers-reduced-motion. Retorna true quando é seguro montar o WebGL mesmo
+ * em aparelhos que não passariam no `shouldUseWebGL()` completo.
+ */
+function canForceWebGL(): boolean {
+  if (typeof window === 'undefined') return false;
+  if ((window as Window & { __PRERENDER__?: boolean }).__PRERENDER__) return false;
+  try {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+  } catch {
+    /* noop */
+  }
+  return true;
+}
+
 export default function DarkVeilBackground({
   hueShift = 53,
   speed = 0.5,
   accentColor,
   veilHueShiftOverride,
+  forceWebGL = false,
 }: DarkVeilBackgroundProps) {
   const [enabled, setEnabled] = useState(false);
 
@@ -136,8 +166,12 @@ export default function DarkVeilBackground({
     // O efeito roda logo após o 1º paint, então não bloqueia o conteúdo. O robô de
     // velocidade já foi barrado em shouldUseWebGL() (não monta pra ele), então o
     // TBT da auditoria segue verde mesmo com o veil imediato.
-    if (shouldUseWebGL()) setEnabled(true);
-  }, []);
+    //
+    // forceWebGL=true: bypassa o gate de perf (núcleos/viewport) mas ainda
+    // respeita SSR/prerender/reduced-motion via canForceWebGL(). Uso típico:
+    // FABs pequenos onde o canvas é ~56px e o custo WebGL é ínfimo.
+    if (forceWebGL ? canForceWebGL() : shouldUseWebGL()) setEnabled(true);
+  }, [forceWebGL]);
 
   return (
     <>
