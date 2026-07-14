@@ -41,10 +41,10 @@ import { resolveSlug } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash, type AnchorKey } from '@/lib/i18n/localizeHash';
 
-/** Chaves canônicas das âncoras do nav (pt-br). Hash localizado calculado no render. */
-const NAV_ANCHOR_KEYS: { label: string; key: AnchorKey }[] = [
-  { label: 'Plataforma', key: 'recursos' },
-  { label: 'Preços',     key: 'precos' },
+/** Chaves canônicas das âncoras do nav. Hash + label localizados no render. */
+const NAV_ANCHOR_KEYS: { key: AnchorKey }[] = [
+  { key: 'recursos' },
+  { key: 'precos' },
 ];
 
 type MenuIcon = ComponentType<LucideProps>;
@@ -183,22 +183,9 @@ const SOLUTION_LINKS: SolutionLink[] = [
   },
 ];
 
-/**
- * Taglines curtas do mega menu de Segmentos (copy de Growth, foco no benefício).
- * Chaveadas pelo slug de SEGMENT_NAV_LINKS (segmentsData.ts é a fonte de
- * label+slug+ícone; aqui só a copy de vitrine). Mobile omite a tagline.
- */
-const SEGMENT_TAGLINES: Record<string, string> = {
-  'sistema-para-refrigeracao': 'OS, PMOC e controle de gás por equipamento.',
-  'sistema-para-eletricistas': 'Laudos, ART e instalações sob controle.',
-  'sistema-para-energia-solar': 'Projeto, instalação e O&M de usinas.',
-  'sistema-para-provedores': 'Instalação, suporte e visita técnica de FTTH.',
-  'sistema-para-cftv': 'Câmeras, alarmes e ronda com histórico.',
-  'sistema-para-construcao-civil': 'Obras, equipes e medições no campo.',
-  'sistema-para-elevadores': 'Manutenção preventiva e chamados em dia.',
-  'sistema-para-limpeza-conservacao': 'Postos, rondas e equipes organizados.',
-  'sistema-para-dedetizacao': 'Certificados, MIP e contratos recorrentes.',
-};
+// Taglines/labels dos mega-menus agora vivem no sistema i18n (messages.nav.*):
+// aqui os arrays só definem slug/ícone/imagem/ordem; a copy exibida é resolvida
+// por locale no render (pt-br idêntico ao texto anterior).
 
 export default function LandingNavbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -213,7 +200,18 @@ export default function LandingNavbar() {
   const solutionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const location = useLocation();
-  const { locale, stripLocale } = useLocale();
+  const { locale, stripLocale, messages } = useLocale();
+  const m = messages.nav;
+  // Label e tagline exibidos vêm das mensagens (por slug); pt-br é idêntico ao
+  // texto cravado de antes. O array define slug/ícone/imagem/ordem, não a copy.
+  const moduleLabelBySlug = (slug: string) =>
+    (messages.moduleLabels as Record<string, string>)[slug.replace(/^\//, '')] ?? '';
+  const solutionTaglineBySlug = (slug: string) =>
+    (m.solutionTaglines as Record<string, string>)[slug.replace(/^\//, '')] ?? '';
+  const segmentLabelBySlug = (slug: string) =>
+    (messages.segmentLabels as Record<string, string>)[slug] ?? '';
+  const segmentTaglineBySlug = (slug: string) =>
+    (m.segmentTaglines as Record<string, string>)[slug] ?? '';
   // Path canônico pt-br para comparações de estado ativo: remove o prefixo de
   // idioma E, se o 1º segmento for slug de segmento/módulo traduzido, resolve pra
   // key pt-br (senão o highlight quebraria quando o slug do idioma diferir).
@@ -229,9 +227,11 @@ export default function LandingNavbar() {
   const onHome = canonicalPath === '/';
 
   // navLinks localizados: id e href usam o hash traduzido pro locale atual.
+  // O label do primeiro item (Plataforma) sai das mensagens.
+  const anchorLabel = (key: AnchorKey) => (key === 'recursos' ? m.platform : m.pricing);
   const navLinks = NAV_ANCHOR_KEYS.map((item) => {
     const hash = localizeHash(item.key, locale);
-    return { label: item.label, key: item.key, id: hash, href: `#${hash}` };
+    return { label: anchorLabel(item.key), key: item.key, id: hash, href: `#${hash}` };
   });
   // Hash localizados das âncoras principais — usados nos comparadores de activeId.
   const hashRecursos = localizeHash('recursos', locale);
@@ -385,7 +385,7 @@ export default function LandingNavbar() {
                 activeId === hashRecursos ? 'text-white font-medium' : 'text-white/60 hover:text-white'
               )}
             >
-              Plataforma
+              {m.platform}
               <span
                 className={cn(
                   'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
@@ -417,7 +417,7 @@ export default function LandingNavbar() {
                   solutionsOpen ? 'text-white font-medium' : 'text-white/60 hover:text-white'
                 )}
               >
-                Soluções
+                {m.solutions}
                 <ChevronDown
                   className={cn('h-4 w-4 transition-transform', solutionsOpen && 'rotate-180')}
                 />
@@ -430,11 +430,11 @@ export default function LandingNavbar() {
               {solutionsOpen && (
                 <div
                   role="menu"
-                  aria-label="Nossas soluções"
+                  aria-label={m.solutionsMenuAria}
                   className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-white/10 bg-[hsl(0,0%,8%)] p-4 shadow-2xl"
                 >
                   <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/55">
-                    Tudo o que a plataforma faz
+                    {m.solutionsMenuHeader}
                   </p>
                   <div className="grid grid-cols-3 gap-1">
                     {SOLUTION_LINKS.map((sol) => {
@@ -476,10 +476,10 @@ export default function LandingNavbar() {
                                 'group-hover:text-white group-focus-visible:text-white'
                               )}
                             >
-                              {sol.label}
+                              {moduleLabelBySlug(sol.slug)}
                             </span>
                             <span className="mt-0.5 block text-xs leading-snug text-white/45 transition-colors duration-200 group-hover:text-white/90 group-focus-visible:text-white/90">
-                              {sol.tagline}
+                              {solutionTaglineBySlug(sol.slug)}
                             </span>
                           </span>
                         </Link>
@@ -514,7 +514,7 @@ export default function LandingNavbar() {
                   segmentsOpen ? 'text-white font-medium' : 'text-white/60 hover:text-white'
                 )}
               >
-                Segmentos
+                {m.segments}
                 <ChevronDown
                   className={cn('h-4 w-4 transition-transform', segmentsOpen && 'rotate-180')}
                 />
@@ -525,18 +525,18 @@ export default function LandingNavbar() {
               {segmentsOpen && (
                 <div
                   role="menu"
-                  aria-label="Nossos segmentos"
+                  aria-label={m.segmentsMenuAria}
                   className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-white/10 bg-[hsl(0,0%,8%)] p-4 shadow-2xl"
                 >
                   <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/55">
-                    Nossos segmentos
+                    {m.segmentsMenuHeader}
                   </p>
                   <div className="grid grid-cols-3 gap-1">
                     {SEGMENT_NAV_LINKS.map((seg) => {
                       const Icon = seg.icon;
                       const path = `/${seg.slug}`;
                       const isCurrent = canonicalPath === path;
-                      const tagline = SEGMENT_TAGLINES[seg.slug];
+                      const tagline = segmentTaglineBySlug(seg.slug);
                       const accent = segmentAccent(seg.slug);
                       return (
                         <Link
@@ -571,7 +571,7 @@ export default function LandingNavbar() {
                                 'group-hover:text-[var(--seg-fg)] group-focus-visible:text-[var(--seg-fg)]'
                               )}
                             >
-                              {seg.label}
+                              {segmentLabelBySlug(seg.slug)}
                             </span>
                             {tagline && (
                               <span className="mt-0.5 block text-xs leading-snug text-white/45 transition-colors duration-200 group-hover:text-[var(--seg-fg)] group-focus-visible:text-[var(--seg-fg)] group-hover:opacity-90 group-focus-visible:opacity-90">
@@ -594,7 +594,7 @@ export default function LandingNavbar() {
                 activeId === hashPrecos ? 'text-white font-medium' : 'text-white/60 hover:text-white'
               )}
             >
-              Preços
+              {m.pricing}
               <span
                 className={cn(
                   'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
@@ -630,7 +630,7 @@ export default function LandingNavbar() {
             <Button variant="ghost" className="text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
               <Link to="/login">
                 <LogIn className="h-4 w-4" />
-                Entrar
+                {m.login}
               </Link>
             </Button>
             {/* Criar Conta — verde da marca na home/módulos; cor do segmento na
@@ -640,7 +640,7 @@ export default function LandingNavbar() {
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to="/cadastro">Criar Conta</Link>
+              <Link to="/cadastro">{m.signup}</Link>
             </Button>
           </div>
 
@@ -667,17 +667,17 @@ export default function LandingNavbar() {
                 className="flex-1 inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-base font-semibold hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: ctaBg, color: ctaFg }}
               >
-                Testar grátis por 14 dias
+                {m.trialSticky}
               </Link>
               <button
                 type="button"
-                aria-label="Abrir menu"
+                aria-label={m.openMenuAria}
                 aria-expanded={mobileOpen}
                 onClick={() => setMobileOpen(true)}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/15 px-4 py-3.5 text-base font-medium text-white hover:bg-white/5 transition-colors"
               >
                 <Menu className="h-5 w-5" />
-                Menu
+                {m.openMenu}
               </button>
             </div>
           </div>,
@@ -699,7 +699,7 @@ export default function LandingNavbar() {
             <button
               type="button"
               className="text-white"
-              aria-label="Fechar menu"
+              aria-label={m.closeMenuAria}
               onClick={() => setMobileOpen(false)}
             >
               <X className="h-7 w-7" />
@@ -749,7 +749,7 @@ export default function LandingNavbar() {
             onClick={() => setMobileSolutionsOpen((o) => !o)}
             className="flex w-full items-center justify-between py-3 text-sm text-white/70 border-b border-white/5 transition-colors hover:text-white"
           >
-            <span>Soluções</span>
+            <span>{m.solutions}</span>
             <ChevronDown
               className={cn('h-4 w-4 transition-transform', mobileSolutionsOpen && 'rotate-180')}
             />
@@ -781,7 +781,7 @@ export default function LandingNavbar() {
                         {Icon && <Icon className="h-[18px] w-[18px]" />}
                       </span>
                     )}
-                    {sol.label}
+                    {moduleLabelBySlug(sol.slug)}
                   </Link>
                 );
               })}
@@ -795,7 +795,7 @@ export default function LandingNavbar() {
             onClick={() => setMobileSegmentsOpen((o) => !o)}
             className="flex w-full items-center justify-between py-3 text-sm text-white/70 border-b border-white/5 transition-colors hover:text-white"
           >
-            <span>Segmentos</span>
+            <span>{m.segments}</span>
             <ChevronDown
               className={cn('h-4 w-4 transition-transform', mobileSegmentsOpen && 'rotate-180')}
             />
@@ -822,7 +822,7 @@ export default function LandingNavbar() {
                     >
                       <Icon className="h-4 w-4" />
                     </span>
-                    {seg.label}
+                    {segmentLabelBySlug(seg.slug)}
                   </Link>
                 );
               })}
@@ -837,7 +837,7 @@ export default function LandingNavbar() {
               activeId === hashPrecos ? 'text-white font-medium border-l-2 border-l-primary pl-3' : 'text-white/70 hover:text-white'
             )}
           >
-            Preços
+            {m.pricing}
           </a>
 
           {/* Blog — rota própria (/blog), Link SPA (não recarrega). */}
@@ -860,7 +860,7 @@ export default function LandingNavbar() {
             <Button variant="ghost" className="w-full text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
               <Link to="/login">
                 <LogIn className="h-4 w-4" />
-                Entrar
+                {m.login}
               </Link>
             </Button>
             <Button
@@ -868,7 +868,7 @@ export default function LandingNavbar() {
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to="/cadastro">Criar Conta</Link>
+              <Link to="/cadastro">{m.signup}</Link>
             </Button>
           </div>
           </div>

@@ -36,38 +36,8 @@ const META_TITLE = 'Quem somos — Dominex | Gestão para equipes de campo';
 const META_DESCRIPTION =
   'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.';
 
-const VALUES = [
-  {
-    icon: Smartphone,
-    title: 'Tudo no celular do técnico',
-    body: 'Equipe em campo precisa de tudo na mão. O app é instalável no celular e o técnico abre a ordem de serviço, registra foto, checklist e assinatura direto no local do serviço — sem papel e sem voltar pro escritório.',
-  },
-  {
-    icon: HardHat,
-    title: 'Feito pra quem domina o campo',
-    body: 'Nascemos perto da operação de serviço, não da planilha. Cada tela é pensada pro técnico na rua e pro gestor que precisa enxergar tudo de longe.',
-  },
-  {
-    icon: Gauge,
-    title: 'Rápido de começar',
-    body: 'Sem implantação interminável. Você cria a conta, cadastra sua equipe e já está emitindo ordem de serviço no mesmo dia — sem cartão pra testar.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Seus dados são seus',
-    body: 'Isolamento por empresa, controle de acesso por permissão e documentos sempre rastreáveis. Cada cliente vê só o que é dele.',
-  },
-  {
-    icon: MapPin,
-    title: 'Do orçamento ao recibo',
-    body: 'CRM, orçamento, ordem de serviço, PMOC, financeiro e folha no mesmo lugar. Um sistema só pra conduzir o serviço de ponta a ponta.',
-  },
-  {
-    icon: HeartHandshake,
-    title: 'Suporte que entende o ramo',
-    body: 'Falamos a língua de quem presta serviço de campo. Quando você chama, do outro lado tem gente que conhece a sua rotina.',
-  },
-];
+// Ícones dos valores, na ORDEM do array messages.quemSomos.values.
+const VALUE_ICONS = [Smartphone, HardHat, Gauge, ShieldCheck, MapPin, HeartHandshake];
 
 export default function QuemSomos() {
   useEffect(() => {
@@ -110,7 +80,8 @@ export default function QuemSomos() {
 
 function Hero() {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const t = messages.quemSomos;
   return (
     <section className="relative min-h-[70vh] flex items-center pt-16 overflow-hidden">
       <div className="absolute inset-0">
@@ -127,19 +98,18 @@ function Hero() {
       <div ref={ref} className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center scroll-reveal">
         <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] px-4 py-1.5 mb-7">
           <HeartHandshake className="h-4 w-4 text-white" />
-          <span className="text-xs font-semibold text-white">Sobre a Dominex</span>
+          <span className="text-xs font-semibold text-white">{t.heroBadge}</span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight">
-          Quem domina o campo,{' '}
+          {t.heroTitlePre}{' '}
           <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
-            domina a operação
+            {t.heroTitleHighlight}
           </span>
         </h1>
 
         <p className="mt-7 text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
-          A Dominex existe para tirar da papelada o trabalho de quem presta serviço de campo. Um
-          sistema só, no celular e no computador, pra conduzir a operação do orçamento ao recibo.
+          {t.heroSubtitle}
         </p>
 
         <div className="mt-9 flex flex-col sm:flex-row gap-4 justify-center">
@@ -148,7 +118,7 @@ function Hero() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
             asChild
           >
-            <Link to="/cadastro?origem=Site">Teste grátis 14 dias, sem cartão</Link>
+            <Link to="/cadastro?origem=Site">{t.ctaTrial}</Link>
           </Button>
           <Button
             size="lg"
@@ -156,7 +126,7 @@ function Hero() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{t.ctaPricing}</Link>
           </Button>
         </div>
       </div>
@@ -168,31 +138,24 @@ function Hero() {
 
 function Mission() {
   const ref = useScrollReveal();
+  const t = useLocale().messages.quemSomos;
+  // missionP1 tem o marcador {strong}; renderiza a parte em negrito no meio.
+  const [p1Before, p1After] = t.missionP1.split('{strong}');
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 lg:p-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 leading-tight">
-            Nossa missão
+            {t.missionTitle}
           </h2>
           <div className="space-y-5 text-white/55 text-base leading-relaxed">
             <p>
-              A Dominex é um sistema de <strong className="text-white/80">ordem de serviço, PMOC e
-              gestão</strong> feito para empresas de serviço e equipes de campo — refrigeração e
-              climatização, elétrica, energia solar, CFTV, provedores de internet, elevadores,
-              dedetização, limpeza e conservação, construção e muito mais.
+              {p1Before}
+              <strong className="text-white/80">{t.missionP1Strong}</strong>
+              {p1After}
             </p>
-            <p>
-              Acreditamos que o técnico não deveria perder tempo com ordem de serviço em papel,
-              nem o gestor deveria ficar no escuro sobre o que acontece na rua. Por isso reunimos
-              num lugar só o que antes vivia espalhado em caderno, grupo de WhatsApp e planilha:
-              CRM, orçamento, contrato, ordem de serviço, PMOC, rastreamento de equipe, controle
-              de estoque, financeiro e folha.
-            </p>
-            <p>
-              Nosso compromisso é simples: deixar a operação organizada, rastreável e fácil de
-              tocar — pra você focar no serviço bem feito, não na burocracia.
-            </p>
+            <p>{t.missionP2}</p>
+            <p>{t.missionP3}</p>
           </div>
         </div>
       </div>
@@ -204,20 +167,22 @@ function Mission() {
 
 function Values() {
   const ref = useScrollReveal();
+  const t = useLocale().messages.quemSomos;
+  const values = t.values.map((v, i) => ({ icon: VALUE_ICONS[i], title: v.title, body: v.body }));
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            No que a gente acredita
+            {t.valuesTitle}
           </h2>
           <p className="text-white/55 max-w-2xl mx-auto">
-            Os princípios que guiam cada decisão sobre o produto.
+            {t.valuesSubtitle}
           </p>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {VALUES.map((v) => {
+          {values.map((v) => {
             const Icon = v.icon;
             return (
               <div
@@ -242,7 +207,8 @@ function Values() {
 
 function FinalCta() {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const t = messages.quemSomos;
   return (
     <section className="relative py-32 overflow-hidden">
       <div
@@ -254,11 +220,10 @@ function FinalCta() {
       />
       <div ref={ref} className="relative mx-auto max-w-3xl px-4 text-center scroll-reveal">
         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
-          Experimente a Dominex na sua operação
+          {t.finalCtaTitle}
         </h2>
         <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">
-          São 14 dias grátis, sem cartão de crédito. Cadastre sua equipe e comece a emitir ordem
-          de serviço hoje mesmo.
+          {t.finalCtaSubtitle}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
@@ -267,7 +232,7 @@ function FinalCta() {
             asChild
           >
             <Link to="/cadastro?origem=Site">
-              Teste grátis 14 dias, sem cartão <ArrowRight className="ml-2 h-4 w-4" />
+              {t.ctaTrial} <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           <Button
@@ -276,7 +241,7 @@ function FinalCta() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{t.ctaPricing}</Link>
           </Button>
         </div>
       </div>

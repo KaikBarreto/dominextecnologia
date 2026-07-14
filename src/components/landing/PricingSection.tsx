@@ -11,74 +11,13 @@ import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n';
 import { localizeHash } from '@/lib/i18n/localizeHash';
 
-const plans = [
-  {
-    code: 'start',
-    name: 'Essencial',
-    desc: 'Gestão básica para pequenas equipes',
-    monthly: 197,
-    annual: 158,
-    popular: false,
-    features: [
-      'OS ilimitadas',
-      '5 usuários inclusos',
-      'App para técnicos',
-      'Agenda e calendário',
-      'Portal do cliente',
-      'Relatórios básicos',
-      'Suporte por email',
-    ],
-    cta: 'Testar 14 Dias Grátis',
-    ctaLink: '/cadastro?plano=start&origem=Site',
-  },
-  {
-    code: 'avancado',
-    name: 'Pro',
-    desc: 'Para empresas que precisam de RH e finanças',
-    monthly: 447,
-    annual: 358,
-    popular: true,
-    features: [
-      'Tudo do Essencial +',
-      '10 usuários inclusos',
-      'Módulo Funcionários / RH',
-      'Financeiro avançado',
-      'Contas a pagar/receber',
-      'DRE e relatórios financeiros',
-      'Gestão de Contratos e PMOC',
-    ],
-    cta: 'Testar 14 Dias Grátis',
-    ctaLink: '/cadastro?plano=avancado&origem=Site',
-  },
-  {
-    code: 'master',
-    name: 'Business',
-    desc: 'Operação completa com CRM e portal',
-    monthly: 697,
-    annual: 558,
-    popular: false,
-    features: [
-      'Tudo do Pro +',
-      '15 usuários inclusos',
-      'CRM / Funil de vendas',
-      'NFS-e integrada',
-      'Precificação avançada (BDI)',
-      'Gestão de Contratos e PMOC',
-      'Portal do Cliente/Portal do Contrato',
-      'White Label (sua marca)',
-      'Suporte prioritário',
-    ],
-    cta: 'Testar 14 Dias Grátis',
-    ctaLink: '/cadastro?plano=master&origem=Site',
-  },
-];
-
-const customPlan = {
-  code: 'personalizado',
-  name: 'Plano Enterprise',
-  desc: 'Personalize seu plano sob medida para a sua operação.',
-  cta: 'Falar com Consultor',
-};
+// Configuração NÃO-TEXTUAL dos planos (preços, ctaLink, code, destaque). Nome,
+// descrição, features e CTA vêm do i18n (messages.home.pricing.plans[code]).
+const PLAN_CONFIG = [
+  { code: 'start', monthly: 197, annual: 158, popular: false, ctaLink: '/cadastro?plano=start&origem=Site' },
+  { code: 'avancado', monthly: 447, annual: 358, popular: true, ctaLink: '/cadastro?plano=avancado&origem=Site' },
+  { code: 'master', monthly: 697, annual: 558, popular: false, ctaLink: '/cadastro?plano=master&origem=Site' },
+] as const;
 
 // Fragmento específico do CTA Enterprise (plano Personalizado): preserva a
 // intenção mesmo dentro da frase nova ("Olá! Vim ${fragment} da Dominex...").
@@ -95,17 +34,28 @@ function openEnterpriseWhatsApp() {
 export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const t = messages.home.pricing;
+  // Junta config (preço/link) + texto i18n (nome/desc/features) por code.
+  const plans = PLAN_CONFIG.map((cfg) => {
+    const copy = t.plans[cfg.code];
+    return { ...cfg, name: copy.name, desc: copy.desc, features: copy.features, cta: t.ctaTrial };
+  });
+  const customPlan = {
+    name: t.plans.enterprise.name,
+    desc: t.plans.enterprise.desc,
+    cta: t.plans.enterprise.cta,
+  };
 
   return (
     <section id={localizeHash('precos', locale)} className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
-          Planos que crescem com a sua operação
+          {t.heading}
         </h2>
 
         <div className="flex items-center justify-center gap-4 mb-16 relative">
-          <span className={cn('text-sm font-medium', !annual ? 'text-white' : 'text-white/55')}>Mensal</span>
+          <span className={cn('text-sm font-medium', !annual ? 'text-white' : 'text-white/55')}>{t.monthly}</span>
           <button
             onClick={() => setAnnual(!annual)}
             role="switch"
@@ -117,8 +67,8 @@ export default function PricingSection() {
               className={cn('absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform', annual ? 'translate-x-5' : 'translate-x-0.5')}
             />
           </button>
-          <span className={cn('text-sm font-medium', annual ? 'text-white' : 'text-white/55')}>Anual</span>
-          <Badge className={cn('bg-emerald-500 text-white transition-opacity ml-5', annual ? 'opacity-100' : 'opacity-0 pointer-events-none')}>-20%</Badge>
+          <span className={cn('text-sm font-medium', annual ? 'text-white' : 'text-white/55')}>{t.annual}</span>
+          <Badge className={cn('bg-emerald-500 text-white transition-opacity ml-5', annual ? 'opacity-100' : 'opacity-0 pointer-events-none')}>{t.annualDiscount}</Badge>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5 items-stretch">
@@ -143,7 +93,7 @@ export default function PricingSection() {
                 {plan.popular && (
                   <div className="flex justify-center -mt-4 mb-2">
                     <Badge className="bg-primary text-primary-foreground text-xs px-3 py-1">
-                      ⭐ Mais popular
+                      {t.mostPopular}
                     </Badge>
                   </div>
                 )}
@@ -153,11 +103,12 @@ export default function PricingSection() {
 
                 <div className="mb-5">
                   <p className="text-[10px] uppercase tracking-widest text-white/55 font-medium mb-1">
-                    {annual ? 'equivalente a' : 'a partir de'}
+                    {annual ? t.priceEquivalent : t.priceFrom}
                   </p>
                   <PriceAmount
                     value={displayPrice}
-                    suffix="/mês"
+                    prefix={t.currencyPrefix}
+                    suffix={t.perMonth}
                     className={cn(
                       'tracking-tight',
                       plan.popular
@@ -167,9 +118,9 @@ export default function PricingSection() {
                   />
                   {annual && (
                     <div className="mt-1 space-y-0.5">
-                      <p className="text-xs text-white/55 line-through">R$ {plan.monthly}/mês</p>
+                      <p className="text-xs text-white/55 line-through">{t.annualStrike(plan.monthly)}</p>
                       <p className="text-xs font-medium text-emerald-400">
-                        Total: R$ {yearlyTotal}/ano · Economize 20%
+                        {t.annualTotal(yearlyTotal)}
                       </p>
                     </div>
                   )}
@@ -177,7 +128,7 @@ export default function PricingSection() {
 
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-[10px] uppercase tracking-widest text-white/55 font-medium">Recursos</span>
+                  <span className="text-[10px] uppercase tracking-widest text-white/55 font-medium">{t.featuresLabel}</span>
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
 
@@ -213,7 +164,7 @@ export default function PricingSection() {
             {/* Identificação */}
             <div>
               <div className="inline-flex items-center gap-2 mb-2">
-                <Badge className="bg-white/10 text-white/80 text-[10px] uppercase tracking-widest">Enterprise</Badge>
+                <Badge className="bg-white/10 text-white/80 text-[10px] uppercase tracking-widest">{t.enterpriseBadge}</Badge>
               </div>
               <h3 className="text-2xl font-bold text-white">{customPlan.name}</h3>
               <p className="text-sm text-white/50 mt-1">{customPlan.desc}</p>

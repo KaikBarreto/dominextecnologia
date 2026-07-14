@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { useLocale } from '@/lib/i18n';
 
 export default function CtaFinalSection() {
   const ref = useScrollReveal();
+  const t = useLocale().messages.home.ctaFinal;
 
   return (
     <section className="relative py-32 overflow-hidden">
@@ -18,10 +20,10 @@ export default function CtaFinalSection() {
 
       <div ref={ref} className="relative mx-auto max-w-3xl px-4 text-center scroll-reveal">
         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
-          Comece hoje. Resultados em dias.
+          {t.heading}
         </h2>
         <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">
-          14 dias grátis, sem cartão, sem burocracia. Configure em minutos e veja sua equipe ganhar produtividade.
+          {t.subtitle}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
@@ -30,7 +32,7 @@ export default function CtaFinalSection() {
             asChild
           >
             <Link to="/cadastro?origem=Site">
-              Criar minha conta grátis <ArrowRight className="ml-2 h-4 w-4" />
+              {t.ctaPrimary} <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           <Button
@@ -39,7 +41,7 @@ export default function CtaFinalSection() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to="/cadastro?origem=Site">Ou agendar uma demo</Link>
+            <Link to="/cadastro?origem=Site">{t.ctaSecondary}</Link>
           </Button>
         </div>
       </div>

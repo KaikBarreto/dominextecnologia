@@ -29,21 +29,24 @@ function segmentColor(slug: string): string {
   return (value && getSegment(value)?.color) || '#06b6d4';
 }
 
-// Coluna institucional enxuta (Empresa + Suporte unidas). Todos os itens são
-// rotas reais — sem link quebrado. /blog é um stub "em breve" por enquanto
-// (não está no sitemap até ter conteúdo real — ver retorno ao Tech Lead).
-const INSTITUTIONAL_LINKS: { label: string; to: string }[] = [
-  { label: 'Quem somos', to: '/quem-somos' },
-  { label: 'Blog', to: '/blog' },
-  { label: 'Termos de uso', to: '/termos' },
-  { label: 'Política de Privacidade', to: '/privacidade' },
-];
-
 const footerLinkClass =
   'text-sm text-white/55 hover:text-white transition-colors';
 
 export default function LandingFooter() {
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const f = messages.footer;
+  // Rótulos por slug (i18n). Módulo/segmento nunca mudam de slug, só de label.
+  const moduleLabel = (slug: string) =>
+    (messages.moduleLabels as Record<string, string>)[slug] ?? slug;
+  const segmentLabel = (slug: string) =>
+    (messages.segmentLabels as Record<string, string>)[slug] ?? slug;
+  // Coluna institucional: rotas reais (sem link quebrado), label localizado.
+  const institutionalLinks: { label: string; to: string }[] = [
+    { label: f.linkAbout, to: '/quem-somos' },
+    { label: f.linkBlog, to: '/blog' },
+    { label: f.linkTerms, to: '/termos' },
+    { label: f.linkPrivacy, to: '/privacidade' },
+  ];
   return (
     <footer className="relative border-t border-white/5 pt-16 pb-8">
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -55,7 +58,7 @@ export default function LandingFooter() {
               <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
             </div>
             <p className="text-sm text-white/55 mb-4">
-              Domine a execução do seu negócio.
+              {f.tagline}
             </p>
           </div>
 
@@ -66,7 +69,7 @@ export default function LandingFooter() {
               de propósito: o site público não pode puxar --primary, senão o
               white-label de um tenant logado vazaria a cor dele aqui. */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4">Soluções</h3>
+            <h3 className="text-sm font-semibold text-white mb-4">{f.solutions}</h3>
             <ul className="space-y-2">
               {MODULE_NAV_LINKS.map((mod) => {
                 const Icon = mod.icon;
@@ -85,7 +88,7 @@ export default function LandingFooter() {
                       />
                       {/* Texto: desliza pra direita pra dar espaço ao ícone. */}
                       <span className="transition-transform duration-300 group-hover:translate-x-6 group-focus-visible:translate-x-6">
-                        {mod.label}
+                        {moduleLabel(mod.slug)}
                       </span>
                     </Link>
                   </li>
@@ -99,7 +102,7 @@ export default function LandingFooter() {
               segmento SATURADO na cor daquele nicho (group-hover/focus-within, com
               transição suave — não quebra foco por teclado). */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4">Segmentos</h3>
+            <h3 className="text-sm font-semibold text-white mb-4">{f.segments}</h3>
             <ul className="space-y-2">
               {SEGMENT_NAV_LINKS.map((seg) => {
                 const Icon = seg.icon;
@@ -119,7 +122,7 @@ export default function LandingFooter() {
                       />
                       {/* Texto: desliza pra direita pra dar espaço ao ícone. */}
                       <span className="transition-transform duration-300 group-hover:translate-x-6 group-focus-visible:translate-x-6">
-                        {seg.label}
+                        {segmentLabel(seg.slug)}
                       </span>
                     </Link>
                   </li>
@@ -130,9 +133,9 @@ export default function LandingFooter() {
 
           {/* Institucional — coluna única enxuta (Empresa + Suporte unidas) */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4">Institucional</h3>
+            <h3 className="text-sm font-semibold text-white mb-4">{f.institutional}</h3>
             <ul className="space-y-2">
-              {INSTITUTIONAL_LINKS.map((item) => (
+              {institutionalLinks.map((item) => (
                 <li key={item.to}>
                   <Link to={localizeInternal(item.to, locale)} className={footerLinkClass}>
                     {item.label}
@@ -145,10 +148,10 @@ export default function LandingFooter() {
 
         <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-white/50">
-            © {new Date().getFullYear()} Dominex. Todos os direitos reservados. Feito para quem domina o campo.
+            © {new Date().getFullYear()} Dominex. {f.copyright}
           </p>
           <p className="text-xs text-white/50">
-            Criado por{' '}
+            {f.madeBy}{' '}
             <a
               href="https://auctustech.com.br"
               target="_blank"

@@ -177,7 +177,7 @@ const en: SegmentContentMap = {
       },
       {
         q: 'Does the system generate a preventive maintenance plan?',
-        a: 'Yes. Dominex builds the maintenance schedule automatically from the units on the contract, with a checklist per visit, the responsible technician on record and a compliance report ready for an inspection. For markets where a formal maintenance plan is required by law, you produce the documentation without a side spreadsheet.',
+        a: 'Yes. Dominex builds the maintenance schedule automatically from the units on the contract, with a checklist per visit, the responsible technician on record and a compliance report ready for an inspection. When you need a formal preventive maintenance plan for a client or an audit, you produce the documentation without a side spreadsheet.',
       },
       {
         q: 'Does the tech work from a phone? Is there an app to install?',

@@ -5,66 +5,18 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-
-const faqs = [
-  {
-    q: 'O Dominex serve para qual tipo de empresa?',
-    a: 'Para empresas que prestam serviços técnicos em campo: refrigeração e climatização, PMOC, manutenção predial, elétrica, dedetização, telecom, segurança eletrônica, instalações, assistência técnica e qualquer operação que envolva equipes externas e ordens de serviço.',
-  },
-  {
-    q: 'Funciona em celular? Tem app para o técnico?',
-    a: 'Sim. A plataforma é 100% web e responsiva (funciona em qualquer navegador) e o técnico acessa por um app PWA instalável no Android e iOS, com check-in/out, fotos, assinatura digital e checklists.',
-  },
-  {
-    q: 'Como funciona o teste grátis?',
-    a: 'São 14 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
-  },
-  {
-    q: 'Os dados das ordens de serviço ficam guardados para sempre?',
-    a: 'Sim. Mantemos o histórico completo de OS, equipamentos, clientes e relatórios sem limite de retenção enquanto sua assinatura estiver ativa, garantindo rastreabilidade para garantias, auditorias e PMOC.',
-  },
-  {
-    q: 'Consigo controlar PMOC e contratos recorrentes?',
-    a: 'Sim. O Dominex gera automaticamente as ordens de serviço dos contratos de manutenção (mensal, bimestral, trimestral etc.) e mantém o calendário PMOC organizado por equipamento e cliente.',
-  },
-  {
-    q: 'Posso personalizar formulários, checklists e relatórios?',
-    a: 'Sim. Você cria templates de checklists por tipo de serviço, define campos obrigatórios, fotos e assinatura. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
-  },
-  {
-    q: 'Tem CRM e funil de vendas integrado?',
-    a: 'Sim. O plano Business inclui um CRM completo com funil Kanban, etapas customizáveis, webhooks para captação de leads e conversão direta em orçamentos e ordens de serviço.',
-  },
-  {
-    q: 'Consigo controlar o financeiro, contas a pagar e DRE?',
-    a: 'Sim. A partir do plano Pro você tem contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria e DRE para análise de resultado.',
-  },
-  {
-    q: 'Como funciona o controle de ponto e folha dos funcionários?',
-    a: 'O módulo de RH permite registro de ponto pelo próprio funcionário, controle de horas, faltas, vales, bônus e geração de extratos individuais com cálculo proporcional à jornada.',
-  },
-  {
-    q: 'Posso ter mais usuários do que o plano permite?',
-    a: 'Sim. Você pode adicionar usuários extras a qualquer plano por uma taxa mensal adicional, ou migrar para um plano superior quando precisar de mais recursos.',
-  },
-  {
-    q: 'Como é o suporte? Falo com gente de verdade?',
-    a: 'Sim. Atendimento humano via WhatsApp e e-mail em horário comercial. Os planos Business e Enterprise contam com suporte prioritário e gestor de conta dedicado.',
-  },
-  {
-    q: 'Meus dados estão seguros? E a LGPD?',
-    a: 'Utilizamos infraestrutura em nuvem (Supabase) com criptografia em trânsito e em repouso, backups automáticos e isolamento entre empresas (multi-tenant). Estamos em processo de adequação contínua à LGPD — você pode acessar nossa Política de Privacidade para detalhes sobre coleta, uso e seus direitos como titular.',
-  },
-];
+import { useLocale } from '@/lib/i18n';
 
 export default function FaqSection() {
   const ref = useScrollReveal();
+  const t = useLocale().messages.home.faq;
+  const faqs = t.items;
 
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-12">
-          Perguntas frequentes
+          {t.heading}
         </h2>
 
         <Accordion type="single" collapsible className="grid md:grid-cols-2 gap-3">

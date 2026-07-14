@@ -1,35 +1,25 @@
 import { UserPlus, Send, TrendingUp } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { useLocale } from '@/lib/i18n';
 
-const steps = [
-  {
-    num: '01',
-    icon: UserPlus,
-    title: 'Cadastre seus clientes e técnicos',
-    desc: 'Importe ou cadastre em minutos. Configure grupos, regiões e permissões para cada perfil.',
-  },
-  {
-    num: '02',
-    icon: Send,
-    title: 'Crie e distribua ordens de serviço',
-    desc: 'Abra uma OS em segundos, atribua ao técnico certo e acompanhe em tempo real no painel.',
-  },
-  {
-    num: '03',
-    icon: TrendingUp,
-    title: 'Analise e cresça',
-    desc: 'Relatórios automáticos, avaliações de clientes e métricas de desempenho para decisões mais rápidas.',
-  },
-];
+const STEP_ICONS = [UserPlus, Send, TrendingUp];
+const STEP_NUMS = ['01', '02', '03'];
 
 export default function HowItWorks() {
   const ref = useScrollReveal();
+  const t = useLocale().messages.home.howItWorks;
+  const steps = t.steps.map((s, i) => ({
+    num: STEP_NUMS[i],
+    icon: STEP_ICONS[i],
+    title: s.title,
+    desc: s.desc,
+  }));
 
   return (
     <section id="como-funciona" className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
-          Simples de começar, poderoso para escalar
+          {t.heading}
         </h2>
 
         <div className="grid md:grid-cols-3 gap-8 relative">

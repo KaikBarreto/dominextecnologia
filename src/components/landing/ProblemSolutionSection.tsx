@@ -1,24 +1,12 @@
 import { XCircle, CheckCircle2 } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-
-const problems = [
-  'OS em papel ou Excel perdido',
-  'Técnico sem informação no campo',
-  'Cliente ligando "cadê meu técnico?"',
-  'Relatórios feitos na mão, horas depois',
-  'Sem visibilidade do que está acontecendo agora',
-];
-
-const solutions = [
-  'OS digital criada em segundos',
-  'App para o técnico com tudo que precisa',
-  'Rastreamento em tempo real no mapa',
-  'Relatórios automáticos ao finalizar',
-  'Dashboard com KPIs ao vivo',
-];
+import { useLocale } from '@/lib/i18n';
 
 export default function ProblemSolutionSection() {
   const ref = useScrollReveal();
+  const t = useLocale().messages.home.problemSolution;
+  const problems = t.problems;
+  const solutions = t.solutions;
 
   return (
     <section className="py-24">
@@ -27,7 +15,7 @@ export default function ProblemSolutionSection() {
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/10">
             <div className="p-8 lg:p-12">
               <h2 className="text-xl font-bold text-white mb-6">
-                Sua operação travada no improviso?
+                {t.problemsTitle}
               </h2>
               <ul className="space-y-4">
                 {problems.map((p) => (
@@ -40,7 +28,7 @@ export default function ProblemSolutionSection() {
             </div>
             <div className="p-8 lg:p-12">
               <h2 className="text-xl font-bold text-white mb-6">
-                Com o Dominex, você tem controle total
+                {t.solutionsTitle}
               </h2>
               <ul className="space-y-4">
                 {solutions.map((s) => (

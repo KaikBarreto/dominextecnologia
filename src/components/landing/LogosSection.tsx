@@ -1,4 +1,5 @@
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { useLocale } from '@/lib/i18n';
 
 const logos = [
   'TechFrio', 'SolarPrime', 'ElétricaMax', 'ConectTelecom', 'SafeGuard CFTV',
@@ -7,12 +8,13 @@ const logos = [
 
 export default function LogosSection() {
   const ref = useScrollReveal();
+  const { messages } = useLocale();
 
   return (
     <section className="relative py-16 border-y border-white/5">
       <div ref={ref} className="scroll-reveal">
         <p className="text-center text-sm text-white/60 uppercase tracking-widest mb-8">
-          Empresas que já dominam suas operações com o Dominex
+          {messages.home.logos.eyebrow}
         </p>
         <div className="overflow-hidden">
           <div className="flex animate-[marquee_30s_linear_infinite] gap-12 w-max">

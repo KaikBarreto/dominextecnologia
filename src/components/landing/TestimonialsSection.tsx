@@ -1,25 +1,22 @@
 import { Star } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { useLocale } from '@/lib/i18n';
 
-const testimonials = [
+// Nome/empresa/avatar são fixos (nomes próprios/marca fictícia); quote e role
+// vêm do i18n por índice (pt-br idêntico ao texto anterior).
+const TESTIMONIAL_META = [
   {
-    quote: 'Antes perdíamos 3 horas por dia com relatórios manuais. Hoje fechamos tudo em 15 minutos. Resultado real.',
     name: 'Carlos M.',
-    role: 'Gestor de Operações',
     company: 'TechFrio Refrigeração',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
   },
   {
-    quote: 'A equipe de campo ganhou autonomia e nosso cliente passou a confiar mais no nosso serviço.',
     name: 'Ana P.',
-    role: 'Diretora',
     company: 'SolarPrime Instalações',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face',
   },
   {
-    quote: 'Em 2 semanas já tínhamos visibilidade total das OS. Nunca mais um chamado perdido.',
     name: 'Roberto L.',
-    role: 'Fundador',
     company: 'ElétricaMax',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face',
   },
@@ -27,12 +24,18 @@ const testimonials = [
 
 export default function TestimonialsSection() {
   const ref = useScrollReveal();
+  const t = useLocale().messages.home.testimonials;
+  const testimonials = TESTIMONIAL_META.map((meta, i) => ({
+    ...meta,
+    quote: t.items[i].quote,
+    role: t.items[i].role,
+  }));
 
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
-          Quem usa o Dominex, não volta para o improviso
+          {t.heading}
         </h2>
 
         <div className="grid gap-6 md:grid-cols-3">

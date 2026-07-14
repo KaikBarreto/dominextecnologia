@@ -34,15 +34,20 @@ const marqueeItems = [...segments, ...segments];
 
 export default function SegmentsSection() {
   const ref = useScrollReveal();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const t = messages.home.segments;
+  // Label pt-br (s.label) é a CHAVE de lookup de slug/cor (bate com navLabel de
+  // SEGMENTS). O texto EXIBIDO sai do i18n por slug (pt-br idêntico ao anterior).
+  const displayLabel = (ptLabel: string, slug?: string) =>
+    (slug && (messages.segmentLabels as Record<string, string>)[slug]) || ptLabel;
 
   return (
     <section id="segmentos" className="py-24 overflow-hidden">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-          Para qualquer empresa com equipe em campo
+          {t.heading}
         </h2>
-        <p className="text-white/55 mb-12">Atendemos diversos segmentos de serviços externos</p>
+        <p className="text-white/55 mb-12">{t.subheading}</p>
       </div>
 
       {/* Carrossel infinito (marquee). Full-bleed: ignora o max-w pra rolar de borda a borda. */}
@@ -58,6 +63,7 @@ export default function SegmentsSection() {
           {marqueeItems.map((s, i) => {
             const meta = SEGMENT_BY_LABEL[s.label];
             const isClone = i >= segments.length;
+            const label = displayLabel(s.label, meta?.slug);
             return (
               <li
                 key={`${s.label}-${i}`}
@@ -70,14 +76,14 @@ export default function SegmentsSection() {
                   // exigência da regra label-content-name-mismatch do WCAG. O
                   // overlay decorativo "Clique para ver mais" é aria-hidden, logo
                   // não entra no nome — sem mismatch.
-                  aria-label={`${s.label}: ver Dominex para esse segmento`}
+                  aria-label={`${label}: ${t.ariaSuffix}`}
                   tabIndex={isClone ? -1 : undefined}
                   className="group/card relative block aspect-[4/3] w-72 cursor-pointer overflow-hidden rounded-2xl border border-white/10 transition-colors hover:border-primary/40 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-80 lg:w-[26rem]"
                 >
                   {/* Imagem de fundo */}
                   <img
                     src={s.image}
-                    alt={`Dominex para ${s.label}`}
+                    alt={`${t.imageAltPrefix} ${label}`}
                     loading="lazy"
                     width={416}
                     height={312}
@@ -96,7 +102,7 @@ export default function SegmentsSection() {
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute bottom-3 right-3 z-10 hidden translate-y-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white opacity-0 shadow-sm shadow-black/40 backdrop-blur-sm transition-all duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-visible/card:translate-y-0 group-focus-visible/card:opacity-100 sm:block">
-                    Clique para ver mais
+                    {t.hoverHint}
                   </div>
 
                   {/* Ícone (na cor do segmento) + título sobre o degradê */}
@@ -106,7 +112,7 @@ export default function SegmentsSection() {
                       style={{ color: meta?.color }}
                     />
                     <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">
-                      {s.label}
+                      {label}
                     </h3>
                   </div>
                 </Link>

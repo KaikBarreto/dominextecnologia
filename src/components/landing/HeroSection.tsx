@@ -13,14 +13,14 @@ const HERO_VIDEO_URL =
 const HERO_POSTER_URL =
   'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/hero-poster.webp';
 
-const FULL_TEXT_PRE = 'Domine a execução do ';
-const FULL_TEXT_HIGHLIGHT = 'seu negócio.';
-const TOTAL_LENGTH = FULL_TEXT_PRE.length + FULL_TEXT_HIGHLIGHT.length;
-
 export default function HeroSection() {
   const ref = useScrollReveal();
   const [typedCount, setTypedCount] = useState(0);
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const t = messages.home.hero;
+  const FULL_TEXT_PRE = t.typedPre;
+  const FULL_TEXT_HIGHLIGHT = t.typedHighlight;
+  const TOTAL_LENGTH = FULL_TEXT_PRE.length + FULL_TEXT_HIGHLIGHT.length;
 
   useEffect(() => {
     if (typedCount >= TOTAL_LENGTH) return;
@@ -65,10 +65,7 @@ export default function HeroSection() {
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[2.5em]">
               {/* Texto estável keyword-rico para SEO/leitores de tela —
                   invisível visualmente, mas é conteúdo real do H1 lido por SR. */}
-              <span className="sr-only">
-                Sistema de ordem de serviço, PMOC e gestão para refrigeração e
-                equipes de campo. Domine a execução do seu negócio.
-              </span>
+              <span className="sr-only">{t.srHeadline}</span>
               {/* Frase visível COMPLETA, sempre presente no DOM (crawler/prerender
                   capturam a frase inteira no load). O "typing" é só reveal por
                   opacidade. aria-hidden p/ não duplicar leitura no SR. */}
@@ -87,8 +84,7 @@ export default function HeroSection() {
             </h1>
 
             <p className="text-lg text-white/50 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Chega de planilha, WhatsApp e retrabalho. O Dominex centraliza suas OS,
-              rastreia sua equipe e entrega dados reais para você crescer.
+              {t.subtitle}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -97,7 +93,7 @@ export default function HeroSection() {
                 className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
                 asChild
               >
-                <Link to="/cadastro?origem=Site">Começar grátis por 14 dias</Link>
+                <Link to="/cadastro?origem=Site">{t.ctaPrimary}</Link>
               </Button>
               <Button
                 size="lg"
@@ -105,7 +101,7 @@ export default function HeroSection() {
                 className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
                 asChild
               >
-                <a href={`#${localizeHash('precos', locale)}`}>Ver planos</a>
+                <a href={`#${localizeHash('precos', locale)}`}>{t.ctaSecondary}</a>
               </Button>
             </div>
           </div>
@@ -130,9 +126,9 @@ export default function HeroSection() {
                 playsInline
                 className="absolute object-cover bg-black"
                 style={{ top: '2.29%', left: '4.32%', width: '91.36%', height: '95.41%', clipPath: 'url(#iphone-screen-clip)' }}
-                aria-label="Demonstração do Dominex"
+                aria-label={t.videoLabel}
               >
-                Seu navegador não suporta vídeo HTML5.
+                {t.videoUnsupported}
               </video>
               {/* Moldura do iPhone por cima — pointer-events-none p/ liberar os controles do vídeo */}
               <img

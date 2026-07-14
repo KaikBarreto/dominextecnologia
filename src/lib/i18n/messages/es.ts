@@ -1,7 +1,8 @@
-// Fase 1: UI strings ainda não traduzidas. Fallback EXPLÍCITO pro pt-br (fonte),
-// nunca strings vazias. Na Fase 6 este arquivo ganha as traduções reais em espanhol.
-import { ptBr, type Messages } from './pt-br';
+// Fase 6: espanhol ainda não traduzido. Override VAZIO → todas as chaves caem no
+// pt-br (fonte) via deepMerge no index. A estrutura está pronta: basta preencher
+// as chaves aqui (mesmo shape do pt-br, parcial) quando o espanhol entrar.
+import type { MessagesOverride } from './index';
 
-const es: Messages = ptBr;
+export const esOverrides: MessagesOverride = {};
 
-export default es;
+export default esOverrides;
