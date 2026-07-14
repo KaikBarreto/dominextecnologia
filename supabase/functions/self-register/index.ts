@@ -5,6 +5,87 @@ import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+// ── i18n das mensagens de erro voltadas ao usuário ────────────────────────────
+// Idiomas suportados; o frontend manda `locale` no body do POST. Default 'pt-br'
+// (backward-compat: cadastro antigo sem `locale` continua respondendo em pt-br).
+// As traduções são GENERALIZADAS (sem menção a lei/Brasil). Não confundir com os
+// dados semeados (categorias, contas "Caixa"/"Conta Principal"), que permanecem
+// em pt-br de propósito. Só as STRINGS de erro passam por aqui.
+type Locale = 'pt-br' | 'en' | 'es' | 'fr';
+const SUPPORTED_LOCALES: Locale[] = ['pt-br', 'en', 'es', 'fr'];
+const DEFAULT_LOCALE: Locale = 'pt-br';
+
+// Mensagens que dependem de um detalhe dinâmico (mensagem do erro do Supabase)
+// recebem o texto por parâmetro; as demais são estáticas.
+const MESSAGES: Record<Locale, {
+  methodNotAllowed: string;
+  invalidJson: string;
+  requiredFields: string;
+  invalidEmail: string;
+  invalidPassword: string;
+  emailAlreadyRegistered: string;
+  companyCreateError: (detail: string) => string;
+  userCreateError: (detail: string) => string;
+  internalError: string;
+}> = {
+  'pt-br': {
+    methodNotAllowed: 'Método não permitido',
+    invalidJson: 'JSON inválido',
+    requiredFields: 'Campos obrigatórios: nome da empresa, contato, e-mail e senha',
+    invalidEmail: 'E-mail inválido',
+    invalidPassword: 'Senha deve ter entre 8 e 128 caracteres',
+    emailAlreadyRegistered: 'Este email já está cadastrado. Faça login ou use outro email.',
+    companyCreateError: (d) => `Erro ao criar empresa: ${d}`,
+    userCreateError: (d) => `Erro ao criar usuário: ${d}`,
+    internalError: 'Erro interno',
+  },
+  en: {
+    methodNotAllowed: 'Method not allowed',
+    invalidJson: 'Invalid JSON',
+    requiredFields: 'Required fields: company name, contact, email and password',
+    invalidEmail: 'Invalid email',
+    invalidPassword: 'Password must be between 8 and 128 characters',
+    emailAlreadyRegistered: 'This email is already registered. Log in or use another email.',
+    companyCreateError: (d) => `Error creating company: ${d}`,
+    userCreateError: (d) => `Error creating user: ${d}`,
+    internalError: 'Internal error',
+  },
+  es: {
+    methodNotAllowed: 'Método no permitido',
+    invalidJson: 'JSON inválido',
+    requiredFields: 'Campos obligatorios: nombre de la empresa, contacto, correo electrónico y contraseña',
+    invalidEmail: 'Correo electrónico inválido',
+    invalidPassword: 'La contraseña debe tener entre 8 y 128 caracteres',
+    emailAlreadyRegistered: 'Este correo electrónico ya está registrado. Inicia sesión o usa otro correo.',
+    companyCreateError: (d) => `Error al crear la empresa: ${d}`,
+    userCreateError: (d) => `Error al crear el usuario: ${d}`,
+    internalError: 'Error interno',
+  },
+  fr: {
+    methodNotAllowed: 'Méthode non autorisée',
+    invalidJson: 'JSON invalide',
+    requiredFields: 'Champs obligatoires : nom de l\'entreprise, contact, e-mail et mot de passe',
+    invalidEmail: 'E-mail invalide',
+    invalidPassword: 'Le mot de passe doit contenir entre 8 et 128 caractères',
+    emailAlreadyRegistered: 'Cet e-mail est déjà enregistré. Connectez-vous ou utilisez un autre e-mail.',
+    companyCreateError: (d) => `Erreur lors de la création de l'entreprise : ${d}`,
+    userCreateError: (d) => `Erreur lors de la création de l'utilisateur : ${d}`,
+    internalError: 'Erreur interne',
+  },
+};
+
+// Normaliza qualquer entrada pra um Locale suportado; cai no default se ausente,
+// não-string ou desconhecido. Aceita variações comuns (case-insensitive, 'pt'/'pt_BR').
+const resolveLocale = (v: unknown): Locale => {
+  if (typeof v !== 'string') return DEFAULT_LOCALE;
+  const norm = v.trim().toLowerCase().replace('_', '-');
+  if (SUPPORTED_LOCALES.includes(norm as Locale)) return norm as Locale;
+  if (norm === 'pt' || norm.startsWith('pt-')) return 'pt-br';
+  const base = norm.split('-')[0];
+  if (SUPPORTED_LOCALES.includes(base as Locale)) return base as Locale;
+  return DEFAULT_LOCALE;
+};
+
 // ÚLTIMO fallback de specs de plano — a fonte da verdade é subscription_plans
 // (lida via service role logo abaixo). Só usado se a query ao catálogo falhar.
 // Canônico (decisão CEO 2026-06-12): Start 5 / Avançado 10 / Master 15 usuários.
@@ -30,10 +111,19 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Método não permitido' }), {
+    // Sem POST não há body confiável; tenta o locale da query string (?locale=),
+    // senão cai no default pt-br.
+    let queryLocale: Locale = DEFAULT_LOCALE;
+    try { queryLocale = resolveLocale(new URL(req.url).searchParams.get('locale')); } catch { /* url inválida → default */ }
+    return new Response(JSON.stringify({ error: MESSAGES[queryLocale].methodNotAllowed }), {
       status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
+  // Dicionário ativo desta requisição. Nasce em pt-br (default/backward-compat)
+  // e é reatribuído pro locale do body assim que o JSON é lido. Fica no escopo do
+  // handler pra que o catch final (500) também responda no idioma do usuário.
+  let t = MESSAGES[DEFAULT_LOCALE];
 
   try {
     const supabaseAdmin = createClient(
@@ -44,10 +134,18 @@ Deno.serve(async (req) => {
 
     let raw: any;
     try { raw = await req.json(); } catch {
-      return new Response(JSON.stringify({ error: 'JSON inválido' }), {
+      // Body ilegível → não dá pra ler locale do body; tenta a query string.
+      let queryLocale: Locale = DEFAULT_LOCALE;
+      try { queryLocale = resolveLocale(new URL(req.url).searchParams.get('locale')); } catch { /* url inválida → default */ }
+      return new Response(JSON.stringify({ error: MESSAGES[queryLocale].invalidJson }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Locale do body (fonte de verdade a partir daqui); default pt-br garante
+    // backward-compat com o frontend antigo que não manda `locale`.
+    const locale = resolveLocale(raw.locale);
+    t = MESSAGES[locale];
 
     const company_name = trim(raw.company_name, 200);
     const company_cnpj = trim(raw.company_cnpj, 20);
@@ -91,19 +189,19 @@ Deno.serve(async (req) => {
 
     if (!company_name || !contact_name || !company_email || !password) {
       return new Response(
-        JSON.stringify({ error: 'Campos obrigatórios: nome da empresa, contato, e-mail e senha' }),
+        JSON.stringify({ error: t.requiredFields }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     // segment é opcional na edge (ver nota acima): se vier vazio/ausente,
     // grava null (linha do insert: `segment: segment || null`) e segue normal.
     if (!EMAIL_RE.test(company_email)) {
-      return new Response(JSON.stringify({ error: 'E-mail inválido' }), {
+      return new Response(JSON.stringify({ error: t.invalidEmail }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     if (password.length < 8 || password.length > 128) {
-      return new Response(JSON.stringify({ error: 'Senha deve ter entre 8 e 128 caracteres' }), {
+      return new Response(JSON.stringify({ error: t.invalidPassword }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -116,7 +214,7 @@ Deno.serve(async (req) => {
 
     if (existingUser) {
       return new Response(
-        JSON.stringify({ error: 'Este email já está cadastrado. Faça login ou use outro email.' }),
+        JSON.stringify({ error: t.emailAlreadyRegistered }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -264,7 +362,7 @@ Deno.serve(async (req) => {
 
     if (companyError) {
       return new Response(
-        JSON.stringify({ error: `Erro ao criar empresa: ${companyError.message}` }),
+        JSON.stringify({ error: t.companyCreateError(companyError.message) }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -316,7 +414,7 @@ Deno.serve(async (req) => {
       // Rollback company
       await supabaseAdmin.from('companies').delete().eq('id', company.id);
       return new Response(
-        JSON.stringify({ error: `Erro ao criar usuário: ${createUserError.message}` }),
+        JSON.stringify({ error: t.userCreateError(createUserError.message) }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -394,9 +492,12 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro interno';
+    // Detalhe técnico só no log; ao usuário vai a mensagem genérica no locale dele
+    // (não vaza stack/erro cru e respeita o idioma). `t` já é o dicionário do body
+    // quando a exceção ocorre depois do parse; senão permanece o default pt-br.
+    console.error('[self-register] Erro interno:', error instanceof Error ? error.message : error);
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: t.internalError }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
