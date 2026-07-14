@@ -564,25 +564,29 @@ export default function Schedule() {
           type="button"
           onClick={() => setIsSearchModalOpen(true)}
           aria-label="Buscar tarefa ou OS"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors active:bg-muted/80 hover:text-foreground"
+          className="inline-flex h-9 items-center gap-2 rounded-full pr-2 text-muted-foreground transition-colors active:bg-muted/80 hover:text-foreground"
         >
           <SearchIcon className="h-5 w-5" />
+          <span className="text-sm font-medium">Pesquisar</span>
         </button>
         <button
           type="button"
           onClick={() => setIsPausedDialogOpen(true)}
           aria-label="Ver OS pausadas"
           className={cn(
-            'relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors active:bg-muted/80',
+            'inline-flex h-9 items-center gap-2 rounded-full pr-2 text-muted-foreground transition-colors active:bg-muted/80',
             pausedOrders.length > 0 && 'text-amber-600 hover:text-amber-700',
           )}
         >
-          <PauseCircle className="h-5 w-5" />
-          {pausedOrders.length > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">
-              {pausedOrders.length}
-            </span>
-          )}
+          <span className="relative inline-flex">
+            <PauseCircle className="h-5 w-5" />
+            {pausedOrders.length > 0 && (
+              <span className="absolute -top-1 -right-1.5 inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-background">
+                {pausedOrders.length}
+              </span>
+            )}
+          </span>
+          <span className="text-sm font-medium">OS pausadas</span>
         </button>
       </div>
     );
