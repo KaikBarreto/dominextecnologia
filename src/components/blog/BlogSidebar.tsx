@@ -20,12 +20,13 @@ const CTA_LINK = '/cadastro?origem=Blog';
 export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: CategoryColor[] }) => {
   const { locale } = useLocale();
   const { data: topPosts } = useQuery({
-    queryKey: ['blog-most-read'],
+    queryKey: ['blog-most-read', locale],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_posts')
         .select('id, title, slug, category, view_count')
         .eq('status', 'published')
+        .eq('locale', locale)
         .order('view_count', { ascending: false })
         .limit(5);
       if (error) throw error;

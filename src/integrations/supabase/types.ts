@@ -434,18 +434,21 @@ export type Database = {
           color: string | null
           created_at: string
           id: string
+          locale: string
           name: string
         }
         Insert: {
           color?: string | null
           created_at?: string
           id?: string
+          locale?: string
           name: string
         }
         Update: {
           color?: string | null
           created_at?: string
           id?: string
+          locale?: string
           name?: string
         }
         Relationships: []
@@ -526,6 +529,7 @@ export type Database = {
           excerpt: string | null
           id: string
           likes_count: number | null
+          locale: string
           meta_description: string | null
           meta_title: string | null
           published_at: string | null
@@ -533,6 +537,7 @@ export type Database = {
           status: string
           tags: string[] | null
           title: string
+          translation_group: string
           updated_at: string
           view_count: number | null
         }
@@ -547,6 +552,7 @@ export type Database = {
           excerpt?: string | null
           id?: string
           likes_count?: number | null
+          locale?: string
           meta_description?: string | null
           meta_title?: string | null
           published_at?: string | null
@@ -554,6 +560,7 @@ export type Database = {
           status?: string
           tags?: string[] | null
           title: string
+          translation_group?: string
           updated_at?: string
           view_count?: number | null
         }
@@ -568,6 +575,7 @@ export type Database = {
           excerpt?: string | null
           id?: string
           likes_count?: number | null
+          locale?: string
           meta_description?: string | null
           meta_title?: string | null
           published_at?: string | null
@@ -575,6 +583,7 @@ export type Database = {
           status?: string
           tags?: string[] | null
           title?: string
+          translation_group?: string
           updated_at?: string
           view_count?: number | null
         }

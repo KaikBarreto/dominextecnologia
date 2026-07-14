@@ -8,7 +8,10 @@
     }
   ],
   "rewrites": [
-    { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug" },
+    { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=pt-br" },
+    { "source": "/en/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=en" },
+    { "source": "/es/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=es" },
+    { "source": "/fr/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=fr" },
     { "source": "/blog-sitemap.xml", "destination": "/api/blog-sitemap" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

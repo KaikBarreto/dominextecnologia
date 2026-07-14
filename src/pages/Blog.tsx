@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Star, Newspaper, ArrowRight } from 'lucide-react';
 import { captureUtmParams } from '@/lib/whatsapp';
+import { useLocale } from '@/lib/i18n/useLocale';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
@@ -54,6 +55,9 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [search, setSearch] = useState('');
   const { theme, toggleTheme } = useBlogTheme();
+  // Idioma da URL: sob /es/blog só posts es, sob /blog só pt-br. O SSG injeta os
+  // posts JÁ filtrados pelo locale renderizado (item 3), então initialData bate.
+  const { locale } = useLocale();
 
   useEffect(() => {
     document.title = META_TITLE;
@@ -72,7 +76,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
   }, []);
 
   const { data: posts = initialPosts ?? [], isLoading } = useQuery({
-    queryKey: ['blog-posts-public'],
+    queryKey: ['blog-posts-public', locale],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_posts')
@@ -80,6 +84,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
           'id, title, slug, excerpt, category, cover_image_url, published_at, view_count, likes_count, comments_count, author_name, content'
         )
         .eq('status', 'published')
+        .eq('locale', locale)
         .order('published_at', { ascending: false });
       if (error) throw error;
       return (data || []) as BlogPostRow[];
@@ -88,11 +93,12 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
   });
 
   const { data: categoryColors = [] } = useQuery({
-    queryKey: ['blog-categories-with-colors'],
+    queryKey: ['blog-categories-with-colors', locale],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_categories')
         .select('name, color')
+        .eq('locale', locale)
         .order('name');
       if (error) return [];
       return (data || []).map((c) => ({

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { typography } from "@/lib/typography";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BlogRichEditor } from "@/components/admin/blog/BlogRichEditor";
-import { ArrowLeft, Save, Globe, FileText, ImagePlus, Plus, Pencil, Trash2, X, Check } from "lucide-react";
+import { ArrowLeft, Save, Globe, FileText, ImagePlus, Plus, Pencil, Trash2, X, Check, Languages } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { LOCALES, type LocaleCode } from "@/lib/i18n/locales";
 
 function slugify(text: string) {
   return text
@@ -31,13 +33,33 @@ function slugify(text: string) {
 
 const UNASSIGNED = "__none__";
 
+// Cores saturadas por locale — badge de idioma seguindo padrão de status badge
+const LOCALE_BADGE_COLORS: Record<string, string> = {
+  "pt-br": "#16803c",   // verde
+  "en":    "#1d4ed8",   // azul
+  "es":    "#b45309",   // âmbar
+  "fr":    "#6d28d9",   // violeta
+};
+
+const LOCALE_LABELS: Record<string, string> = {
+  "pt-br": "PT",
+  "en":    "EN",
+  "es":    "ES",
+  "fr":    "FR",
+};
+
 export default function AdminBlogEditor() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isNew = id === "novo";
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Locale e translation_group vindos por querystring ao criar tradução
+  const inheritedGroup = searchParams.get("translation_group") || null;
+  const inheritedLocale = (searchParams.get("locale") as LocaleCode | null) || null;
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -52,8 +74,14 @@ export default function AdminBlogEditor() {
   const [hasSaved, setHasSaved] = useState(false);
   const [authorId, setAuthorId] = useState<string>("");
 
+  // Multilíngue
+  const [locale, setLocale] = useState<LocaleCode>(inheritedLocale ?? "pt-br");
+  // translation_group: null = deixa o banco gerar via DEFAULT; string = herdado do original
+  const [translationGroup, setTranslationGroup] = useState<string | null>(inheritedGroup);
+
   // Gestão de categorias inline
   const [newCatName, setNewCatName] = useState("");
+  const [newCatLocale, setNewCatLocale] = useState<LocaleCode>("pt-br");
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
 
@@ -71,16 +99,16 @@ export default function AdminBlogEditor() {
       try {
         sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
           title, slug, content, excerpt, coverImageUrl, category,
-          metaTitle, metaDescription, slugManual,
+          metaTitle, metaDescription, slugManual, locale, translationGroup,
         }));
       } catch { /* ignora */ }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [title, slug, content, excerpt, coverImageUrl, category, metaTitle, metaDescription, isDirty, hasSaved, DRAFT_KEY, slugManual]);
+  }, [title, slug, content, excerpt, coverImageUrl, category, metaTitle, metaDescription, isDirty, hasSaved, DRAFT_KEY, slugManual, locale, translationGroup]);
 
-  // Restaura rascunho em posts novos
+  // Restaura rascunho em posts novos (só quando não há querystring de tradução)
   useEffect(() => {
-    if (!isNew) return;
+    if (!isNew || inheritedGroup) return;
     try {
       const saved = sessionStorage.getItem(DRAFT_KEY);
       if (saved) {
@@ -91,6 +119,8 @@ export default function AdminBlogEditor() {
           setCoverImageUrl(d.coverImageUrl || ""); setCategory(d.category || "");
           setMetaTitle(d.metaTitle || ""); setMetaDescription(d.metaDescription || "");
           setSlugManual(d.slugManual || false);
+          if (d.locale) setLocale(d.locale);
+          if (d.translationGroup) setTranslationGroup(d.translationGroup);
           toast.info("Rascunho restaurado automaticamente");
         }
       }
@@ -106,7 +136,7 @@ export default function AdminBlogEditor() {
         try {
           sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
             title, slug, content, excerpt, coverImageUrl, category,
-            metaTitle, metaDescription, slugManual,
+            metaTitle, metaDescription, slugManual, locale, translationGroup,
           }));
         } catch { /* ignora */ }
       }
@@ -119,7 +149,7 @@ export default function AdminBlogEditor() {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("beforeunload", onUnload);
     };
-  }, [isDirty, hasSaved, title, slug, content, excerpt, coverImageUrl, category, metaTitle, metaDescription, DRAFT_KEY, slugManual]);
+  }, [isDirty, hasSaved, title, slug, content, excerpt, coverImageUrl, category, metaTitle, metaDescription, DRAFT_KEY, slugManual, locale, translationGroup]);
 
   const clearDraft = useCallback(() => {
     try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignora */ }
@@ -180,6 +210,8 @@ export default function AdminBlogEditor() {
       setMetaDescription(post.meta_description || "");
       setSlugManual(true);
       setAuthorId(post.author_id || "");
+      setLocale((post.locale as LocaleCode) || "pt-br");
+      setTranslationGroup(post.translation_group || null);
     }
   }, [post]);
 
@@ -192,7 +224,7 @@ export default function AdminBlogEditor() {
   const saveMutation = useMutation({
     mutationFn: async (status: string) => {
       const selectedAuthor = adminUsers.find((u) => u.id === authorId);
-      const payload = {
+      const basePayload = {
         title,
         slug,
         content,
@@ -205,14 +237,21 @@ export default function AdminBlogEditor() {
         author_name: selectedAuthor?.name || user?.email?.split("@")[0] || "Admin",
         author_id: authorId || null,
         published_at: status === "published" ? new Date().toISOString() : null,
+        locale,
       };
 
       if (isNew) {
-        const { data, error } = await supabase.from("blog_posts").insert(payload).select().single();
+        // Inclui translation_group no INSERT somente quando ha um grupo a herdar.
+        // Quando nao ha, o banco gera via DEFAULT gen_random_uuid().
+        const insertPayload = translationGroup
+          ? { ...basePayload, translation_group: translationGroup }
+          : basePayload;
+        const { data, error } = await supabase.from("blog_posts").insert(insertPayload).select().single();
         if (error) throw error;
         return data;
       } else {
-        const { data, error } = await supabase.from("blog_posts").update(payload).eq("id", id!).select().single();
+        // UPDATE nao altera translation_group — mantem o grupo original do post.
+        const { data, error } = await supabase.from("blog_posts").update(basePayload).eq("id", id!).select().single();
         if (error) throw error;
         return data;
       }
@@ -223,9 +262,9 @@ export default function AdminBlogEditor() {
       clearDraft();
       if (isNew) navigate(`/admin/blog/${data.id}`, { replace: true });
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       if (err?.message?.toLowerCase().includes("duplicate") || err?.code === "23505") {
-        toast.error("Já existe um artigo com esse endereço (slug). Altere o título ou o slug.");
+        toast.error(`Ja existe um artigo em "${LOCALE_LABELS[locale] || locale}" com esse endereco (slug). Altere o titulo ou o slug.`);
       } else {
         toast.error("Erro ao salvar artigo");
       }
@@ -250,9 +289,9 @@ export default function AdminBlogEditor() {
   const addCategory = async () => {
     const name = newCatName.trim();
     if (!name) return;
-    const { error } = await supabase.from("blog_categories").insert({ name });
+    const { error } = await supabase.from("blog_categories").insert({ name, locale: newCatLocale });
     if (error) {
-      toast.error(error.message.toLowerCase().includes("duplicate") ? "Categoria já existe" : "Erro ao criar categoria");
+      toast.error(error.message.toLowerCase().includes("duplicate") ? "Categoria ja existe" : "Erro ao criar categoria");
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["blog-categories"] });
@@ -282,7 +321,7 @@ export default function AdminBlogEditor() {
     }
     if (category === catName) setCategory("");
     queryClient.invalidateQueries({ queryKey: ["blog-categories"] });
-    toast.success("Categoria excluída!");
+    toast.success("Categoria excluida!");
   };
 
   if (!isNew && isLoading) {
@@ -292,6 +331,11 @@ export default function AdminBlogEditor() {
       </div>
     );
   }
+
+  // Categorias filtradas pelo idioma do post (exibe as do idioma atual + sem locale definido)
+  const filteredCategories = categories.filter(
+    (cat) => !cat.locale || cat.locale === locale
+  );
 
   return (
     <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6">
@@ -304,31 +348,49 @@ export default function AdminBlogEditor() {
           <FileText className="h-7 w-7" />
           {isNew ? "Novo Artigo" : "Editar Artigo"}
         </h1>
+        {/* Badge de idioma ao editar */}
+        {!isNew && (
+          <Badge
+            className="text-white border-0 text-xs shrink-0"
+            style={{ backgroundColor: LOCALE_BADGE_COLORS[locale] ?? "#6B7280" }}
+          >
+            {LOCALE_LABELS[locale] ?? locale.toUpperCase()}
+          </Badge>
+        )}
+        {/* Indicador de tradução vinculada */}
+        {translationGroup && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Languages className="h-3.5 w-3.5" />
+            Tradução vinculada
+          </span>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Conteúdo principal — coluna esquerda */}
+        {/* Conteudo principal — coluna esquerda */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardContent className="p-4 space-y-4">
               <div className="grid gap-2">
-                <Label>Título</Label>
+                <Label>Titulo</Label>
                 <Input
                   value={title}
                   onChange={(e) => { setTitle(e.target.value); if (!slugManual) setSlug(slugify(e.target.value)); }}
-                  placeholder="Título do artigo"
+                  placeholder="Titulo do artigo"
                   className="text-lg"
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label>Endereço (slug)</Label>
+                <Label>Endereco (slug)</Label>
                 <Input
                   value={slug}
                   onChange={(e) => { setSlug(e.target.value); setSlugManual(true); }}
                   placeholder="url-do-artigo"
                 />
-                <p className="text-xs text-muted-foreground">/blog/{slug}</p>
+                <p className="text-xs text-muted-foreground">
+                  {locale !== "pt-br" ? `/${locale}/blog/${slug}` : `/blog/${slug}`}
+                </p>
               </div>
 
               <div className="grid gap-2">
@@ -340,7 +402,7 @@ export default function AdminBlogEditor() {
 
           <Card>
             <CardContent className="p-4 space-y-2">
-              <Label>Conteúdo</Label>
+              <Label>Conteudo</Label>
               <BlogRichEditor content={content} onChange={setContent} />
             </CardContent>
           </Card>
@@ -348,10 +410,10 @@ export default function AdminBlogEditor() {
 
         {/* Barra lateral — coluna direita */}
         <div className="space-y-4">
-          {/* Publicação */}
+          {/* Publicacao */}
           <Card>
             <CardContent className="p-4 space-y-3">
-              <h3 className={typography.sectionTitle}>Publicação</h3>
+              <h3 className={typography.sectionTitle}>Publicacao</h3>
               <div className="flex flex-col gap-2">
                 <Button variant="outline" onClick={() => saveMutation.mutate("draft")} disabled={saveMutation.isPending || !title} className="w-full">
                   <Save className="h-4 w-4 mr-2" />
@@ -362,6 +424,42 @@ export default function AdminBlogEditor() {
                   Publicar
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Idioma */}
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className={typography.sectionTitle}>Idioma</h3>
+              <Select
+                value={locale}
+                onValueChange={(v) => setLocale(v as LocaleCode)}
+                disabled={!isNew}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o idioma..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOCALES.map((l) => (
+                    <SelectItem key={l.code} value={l.code}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-bold text-white shrink-0"
+                          style={{ backgroundColor: LOCALE_BADGE_COLORS[l.code] ?? "#6B7280" }}
+                        >
+                          {LOCALE_LABELS[l.code]}
+                        </span>
+                        {l.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!isNew && (
+                <p className="text-xs text-muted-foreground">
+                  O idioma nao pode ser alterado apos salvar. Para criar uma versao em outro idioma, use "Adicionar traducao" na listagem.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -389,7 +487,7 @@ export default function AdminBlogEditor() {
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={UNASSIGNED}>Sem categoria</SelectItem>
-                  {categories.map((cat) => (
+                  {filteredCategories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.name} className="cursor-pointer">
                       <span className="flex items-center gap-2">
                         <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: cat.color || "#6B7280" }} />
@@ -402,7 +500,7 @@ export default function AdminBlogEditor() {
 
               {/* Lista de categorias com editar/excluir */}
               <div className="space-y-1 max-h-40 overflow-y-auto">
-                {categories.map((cat) => (
+                {filteredCategories.map((cat) => (
                   <div key={cat.id} className="flex items-center gap-1 group text-sm">
                     {editingCatId === cat.id ? (
                       <>
@@ -424,6 +522,14 @@ export default function AdminBlogEditor() {
                       <>
                         <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: cat.color || "#6B7280" }} />
                         <span className="flex-1 truncate text-muted-foreground">{cat.name}</span>
+                        {cat.locale && (
+                          <span
+                            className="text-[9px] font-bold text-white rounded px-1"
+                            style={{ backgroundColor: LOCALE_BADGE_COLORS[cat.locale] ?? "#6B7280" }}
+                          >
+                            {LOCALE_LABELS[cat.locale] ?? cat.locale.toUpperCase()}
+                          </span>
+                        )}
                         <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-warning" onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }}>
                           <Pencil className="h-3 w-3" />
                         </Button>
@@ -438,6 +544,18 @@ export default function AdminBlogEditor() {
 
               {/* Nova categoria */}
               <div className="flex gap-1">
+                <Select value={newCatLocale} onValueChange={(v) => setNewCatLocale(v as LocaleCode)}>
+                  <SelectTrigger className="h-8 w-[70px] text-xs px-2 shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOCALES.map((l) => (
+                      <SelectItem key={l.code} value={l.code} className="text-xs">
+                        {LOCALE_LABELS[l.code]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
@@ -483,11 +601,11 @@ export default function AdminBlogEditor() {
               <h3 className={typography.sectionTitle}>SEO</h3>
               <div className="grid gap-2">
                 <Label>Meta Title</Label>
-                <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={title || "Título para mecanismos de busca"} />
+                <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={title || "Titulo para mecanismos de busca"} />
               </div>
               <div className="grid gap-2">
                 <Label>Meta Description</Label>
-                <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder="Descrição para mecanismos de busca (até 160 caracteres)" rows={2} />
+                <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder="Descricao para mecanismos de busca (ate 160 caracteres)" rows={2} />
                 <p className="text-xs text-muted-foreground">{metaDescription.length}/160</p>
               </div>
             </CardContent>

@@ -17,9 +17,13 @@
 //   5. Se o post NÃO existe (ou deu erro): devolve o shell puro — a SPA mostra
 //      o 404 amigável de /blog/:slug. Nunca quebra.
 //
-// PRECEDÊNCIA na Vercel: arquivo estático ganha de rewrite. Por isso o prerender
-// NÃO gera mais dist/blog/<slug>/index.html (senão sombrearia esta função). A
-// lista /blog continua sendo estática (prerenderizada) e não cai aqui.
+// PRECEDÊNCIA na Vercel: arquivo estático ganha de rewrite. A partir da Fase 4
+// (i18n), o SSG PRERENDERIZA cada post publicado no build (dist/blog/<slug>/ e
+// dist/<lang>/blog/<slug>/), com hreflang por translation_group. Esses posts são
+// servidos ESTÁTICOS (frescos no build). Esta função cobre o gap: posts
+// PUBLICADOS/EDITADOS APÓS o último build, que ainda não têm arquivo estático,
+// caem aqui e são renderizados sob demanda (com o mesmo SEO/hreflang por locale).
+// A lista /blog também é estática (prerenderizada por idioma) e não cai aqui.
 //
 // SEGURANÇA: usa só a anon/publishable key (process.env.VITE_SUPABASE_*), em
 // leitura, filtrando status=eq.published. Nenhum dado sensível.
@@ -27,6 +31,17 @@
 
 const SITE_URL = 'https://www.dominex.app';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
+
+// Locales suportados + hreflang code. pt-br é o default (URL sem prefixo).
+const HREFLANG = { 'pt-br': 'pt-BR', en: 'en', es: 'es', fr: 'fr' };
+const VALID_LOCALES = Object.keys(HREFLANG);
+
+/** URL absoluta localizada de um post (pt-br sem prefixo, outros com /xx/). */
+function postUrl(locale, slug) {
+  return locale === 'pt-br'
+    ? `${SITE_URL}/blog/${slug}`
+    : `${SITE_URL}/${locale}/blog/${slug}`;
+}
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY =
@@ -68,12 +83,17 @@ function restHeaders() {
   };
 }
 
-/** Busca o post publicado no Supabase (REST). Devolve o objeto ou null. */
-async function fetchPost(slug) {
+/**
+ * Busca o post publicado no Supabase (REST) por (slug + locale). Um post só
+ * resolve no idioma da URL; se não existir nesse locale, devolve null (a SPA
+ * mostra o 404 — NUNCA cai no pt-br). Devolve o objeto ou null.
+ */
+async function fetchPost(slug, locale) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   const url =
     `${SUPABASE_URL}/rest/v1/blog_posts` +
     `?slug=eq.${encodeURIComponent(slug)}` +
+    `&locale=eq.${encodeURIComponent(locale)}` +
     `&status=eq.published` +
     `&select=*&limit=1`;
   try {
@@ -87,15 +107,39 @@ async function fetchPost(slug) {
 }
 
 /**
+ * Busca as versões PUBLICADAS do mesmo artigo (mesmo translation_group) pra montar
+ * o hreflang recíproco. Cada versão tem seu locale + slug próprios. Em falha,
+ * devolve só a versão atual.
+ */
+async function fetchAlternates(translationGroup, current) {
+  const fallback = [{ locale: current.locale, slug: current.slug }];
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !translationGroup) return fallback;
+  const url =
+    `${SUPABASE_URL}/rest/v1/blog_posts` +
+    `?translation_group=eq.${encodeURIComponent(translationGroup)}` +
+    `&status=eq.published` +
+    `&select=locale,slug`;
+  try {
+    const res = await fetch(url, { headers: restHeaders() });
+    if (!res.ok) return fallback;
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.length > 0 ? rows : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Busca posts RELACIONADOS pro "Leia também": mesma categoria primeiro, completa
  * com recentes, exclui o próprio slug, limita a 3. Espelha a regra do
  * RelatedPosts.tsx. Em falha, devolve [] (a seção simplesmente não aparece).
  */
-async function fetchRelated(slug, category) {
+async function fetchRelated(slug, category, locale) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
   const select = 'id,title,slug,excerpt,category,cover_image_url,published_at,author_name';
   const seen = new Set([slug]);
   const out = [];
+  const localeFilter = `&locale=eq.${encodeURIComponent(locale)}`;
 
   const pushRows = (rows) => {
     for (const r of Array.isArray(rows) ? rows : []) {
@@ -111,6 +155,7 @@ async function fetchRelated(slug, category) {
       const catUrl =
         `${SUPABASE_URL}/rest/v1/blog_posts` +
         `?status=eq.published` +
+        localeFilter +
         `&category=eq.${encodeURIComponent(category)}` +
         `&slug=neq.${encodeURIComponent(slug)}` +
         `&select=${select}&order=published_at.desc&limit=3`;
@@ -121,6 +166,7 @@ async function fetchRelated(slug, category) {
       const recentUrl =
         `${SUPABASE_URL}/rest/v1/blog_posts` +
         `?status=eq.published` +
+        localeFilter +
         `&slug=neq.${encodeURIComponent(slug)}` +
         `&select=${select}&order=published_at.desc&limit=6`;
       const recentRes = await fetch(recentUrl, { headers: restHeaders() });
@@ -149,14 +195,21 @@ async function fetchShell(host) {
  * sobrescrever (title, description, canonical, og:*, twitter:*) pra não duplicar,
  * depois insere os novos antes de </head>.
  */
-function injectHeadSeo(shell, post) {
+function injectHeadSeo(shell, post, locale, alternates) {
   const title = post.meta_title || post.title || 'Blog Dominex';
   const description = post.meta_description || post.excerpt || '';
-  const url = `${SITE_URL}/blog/${post.slug}`;
+  const url = postUrl(locale, post.slug);
   const image = post.cover_image_url || DEFAULT_OG_IMAGE;
   const fullTitle = `${title} — Blog Dominex`;
+  const langCode = HREFLANG[locale] || 'pt-BR';
 
   let head = shell;
+
+  // <html lang="..."> do idioma da página (o shell é pt-BR).
+  head = head.replace(/<html([^>]*)\slang=["'][^"']*["']/i, `<html$1 lang="${langCode}"`);
+  if (!/<html[^>]*\slang=/i.test(head)) {
+    head = head.replace(/<html/i, `<html lang="${langCode}"`);
+  }
 
   // Remove o <title> existente.
   head = head.replace(/<title>[\s\S]*?<\/title>/i, '');
@@ -164,6 +217,8 @@ function injectHeadSeo(shell, post) {
   head = head.replace(/<meta\s+name=["']description["'][^>]*>/gi, '');
   // Remove <link rel="canonical"> existente.
   head = head.replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '');
+  // Remove hreflang do shell (a home vazaria) pra reinjetar os do post.
+  head = head.replace(/<link\s+rel=["']alternate["']\s+hreflang=["'][^"']*["'][^>]*>/gi, '');
   // Remove og:* e twitter:* existentes (title/description/url/image/type).
   head = head.replace(
     /<meta\s+property=["']og:(title|description|url|image|type)["'][^>]*>/gi,
@@ -174,12 +229,35 @@ function injectHeadSeo(shell, post) {
     ''
   );
 
+  // hreflang recíproco por translation_group: um <link> por versão PUBLICADA
+  // existente (cada uma com seu slug/locale) + x-default = versão pt-br (se existir;
+  // senão a própria canônica). NUNCA emite alternate pra idioma sem tradução.
+  const versions =
+    Array.isArray(alternates) && alternates.length > 0
+      ? alternates
+      : [{ locale, slug: post.slug }];
+  const hreflangLinks = versions
+    .filter((v) => VALID_LOCALES.includes(v.locale))
+    .map(
+      (v) =>
+        `    <link rel="alternate" hreflang="${HREFLANG[v.locale]}" href="${escapeAttr(
+          postUrl(v.locale, v.slug)
+        )}" />`
+    );
+  const ptBr = versions.find((v) => v.locale === 'pt-br');
+  hreflangLinks.push(
+    `    <link rel="alternate" hreflang="x-default" href="${escapeAttr(
+      ptBr ? postUrl('pt-br', ptBr.slug) : url
+    )}" />`
+  );
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: title,
     description,
     image,
+    inLanguage: langCode,
     datePublished: post.published_at || post.created_at,
     dateModified: post.updated_at || post.published_at || post.created_at,
     author: {
@@ -201,6 +279,7 @@ function injectHeadSeo(shell, post) {
     <title>${escapeText(fullTitle)}</title>
     <meta name="description" content="${escapeAttr(description)}" />
     <link rel="canonical" href="${escapeAttr(url)}" />
+${hreflangLinks.join('\n')}
     <meta property="og:type" content="article" />
     <meta property="og:title" content="${escapeAttr(fullTitle)}" />
     <meta property="og:description" content="${escapeAttr(description)}" />
@@ -222,8 +301,9 @@ function injectHeadSeo(shell, post) {
  * SSR. Cada card é um <a href="/blog/<slug>"> = link interno crawlável sem JS.
  * Devolve '' quando não há relacionados.
  */
-function renderRelatedHtml(related) {
+function renderRelatedHtml(related, locale) {
   if (!Array.isArray(related) || related.length === 0) return '';
+  const prefix = locale === 'pt-br' ? '/blog' : `/${locale}/blog`;
   const cards = related
     .map((p) => {
       const cover = p.cover_image_url
@@ -232,7 +312,7 @@ function renderRelatedHtml(related) {
       const cat = p.category ? `<span>${escapeText(p.category)}</span>` : '';
       const excerpt = p.excerpt ? `<p>${escapeText(p.excerpt)}</p>` : '';
       const author = p.author_name ? `<small>${escapeText(p.author_name)}</small>` : '';
-      return `<a href="/blog/${escapeAttr(p.slug)}">
+      return `<a href="${prefix}/${escapeAttr(p.slug)}">
           ${cover}
           ${cat}
           <h3>${escapeText(p.title || '')}</h3>
@@ -253,7 +333,7 @@ function renderRelatedHtml(related) {
  * SPA intactos — o React re-renderiza por cima pra humanos. Inclui o "Leia
  * também" (relacionados) como links internos crawláveis.
  */
-function injectBody(shell, post, related) {
+function injectBody(shell, post, related, locale) {
   const coverImg = post.cover_image_url
     ? `<img src="${escapeAttr(post.cover_image_url)}" alt="${escapeAttr(
         post.title
@@ -264,7 +344,7 @@ function injectBody(shell, post, related) {
   if (post.author_name) meta.push(escapeText(post.author_name));
   if (post.published_at) meta.push(escapeText(String(post.published_at).slice(0, 10)));
 
-  const relatedHtml = renderRelatedHtml(related);
+  const relatedHtml = renderRelatedHtml(related, locale);
 
   // <article> com o conteúdo + "Leia também". O React substitui o innerHTML do
   // #root no mount; os crawlers sem JS leem este markup (incluindo os links
@@ -294,6 +374,9 @@ function injectBody(shell, post, related) {
 
 export default async function handler(req, res) {
   const slug = (req.query && req.query.slug) || '';
+  // Locale vem do rewrite (&locale=xx). Default pt-br; valor inválido → pt-br.
+  const rawLocale = (req.query && req.query.locale) || 'pt-br';
+  const locale = VALID_LOCALES.includes(rawLocale) ? rawLocale : 'pt-br';
   const host = req.headers.host;
 
   // CACHE: priorizamos FRESCOR ("na hora") com proteção da CDN.
@@ -316,19 +399,21 @@ export default async function handler(req, res) {
   }
 
   let post = null;
-  if (slug) post = await fetchPost(slug);
+  if (slug) post = await fetchPost(slug, locale);
 
   if (!post) {
-    // Post inexistente/erro → shell puro; a SPA mostra o 404 amigável de /blog/:slug.
-    // Status 200 pra não travar a hidratação do SPA (o 404 é "soft", em JS).
+    // Post inexistente NESSE idioma/erro → shell puro; a SPA mostra o 404 amigável
+    // de /blog/:slug (NUNCA cai no pt-br). 200 pra não travar a hidratação do SPA.
     res.status(200).send(shell);
     return;
   }
 
-  // Relacionados pro "Leia também" (links internos crawláveis sem JS).
-  const related = await fetchRelated(post.slug, post.category);
+  // Versões traduzidas (translation_group) pro hreflang recíproco.
+  const alternates = await fetchAlternates(post.translation_group, post);
+  // Relacionados pro "Leia também" (links internos crawláveis sem JS), do locale.
+  const related = await fetchRelated(post.slug, post.category, locale);
 
-  let html = injectHeadSeo(shell, post);
-  html = injectBody(html, post, related);
+  let html = injectHeadSeo(shell, post, locale, alternates);
+  html = injectBody(html, post, related, locale);
   res.status(200).send(html);
 }

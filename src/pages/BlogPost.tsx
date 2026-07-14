@@ -2,6 +2,9 @@ import { useParams, Link } from 'react-router-dom';
 import { useRef, useEffect, useState, type CSSProperties } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { localizePath } from '@/lib/i18n/paths';
+import { DEFAULT_LOCALE, getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,8 +42,26 @@ const DOMINEX_BRAND_VARS = {
   '--gradient-brand': 'linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%)',
 } as CSSProperties;
 
-const SITE_URL = 'https://dominex.app';
+// Domínio canônico do site público (com www — é o que o projeto usa).
+const SITE_URL = 'https://www.dominex.app';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+
+/** Uma versão traduzida do mesmo artigo (mesmo translation_group). */
+export interface BlogPostAlternate {
+  locale: LocaleCode;
+  slug: string;
+}
+
+/**
+ * Props OPCIONAIS injetadas pelo SSG (entry-ssg) pra prerender do post SEM fetch
+ * no client: o próprio post + as versões traduzidas (alternates por
+ * translation_group). Quando presentes, o conteúdo e o hreflang já saem no HTML
+ * estático. No client, o React Query revalida em background.
+ */
+export interface BlogPostProps {
+  initialPost?: Record<string, unknown> | null;
+  initialAlternates?: BlogPostAlternate[];
+}
 
 function getSessionId() {
   let id = localStorage.getItem('blog_session_id');
@@ -68,31 +89,56 @@ function setMeta(attr: 'name' | 'property', key: string, value: string) {
   };
 }
 
-export default function BlogPost() {
+export default function BlogPost({ initialPost, initialAlternates }: BlogPostProps = {}) {
   const { slug } = useParams();
   const contentRef = useRef<HTMLDivElement>(null);
   const viewTracked = useRef(false);
   const queryClient = useQueryClient();
   const sessionId = getSessionId();
   const { theme, toggleTheme } = useBlogTheme();
+  // Idioma da URL: resolve o post por (slug + locale). Sob /es/blog/... só a
+  // versão es; se não existir nesse idioma, cai no 404 (NUNCA no pt-br).
+  // `toLocale` prefixa links internos pro idioma atual (Voltar ao blog, CTA).
+  const { locale, localizePath: toLocale } = useLocale();
 
   const [commentName, setCommentName] = useState('');
   const [commentContent, setCommentContent] = useState('');
   const [commentSent, setCommentSent] = useState(false);
 
   const { data: post, isLoading } = useQuery({
-    queryKey: ['blog-post-public', slug],
+    queryKey: ['blog-post-public', slug, locale],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_posts')
         .select('*')
         .eq('slug', slug!)
+        .eq('locale', locale)
         .eq('status', 'published')
         .maybeSingle();
       if (error) throw error;
       return data;
     },
     enabled: !!slug,
+    initialData: initialPost as never,
+  });
+
+  // Versões traduzidas do MESMO artigo (mesmo translation_group), só publicadas.
+  // Alimenta o hreflang recíproco (só idiomas que realmente têm tradução).
+  const translationGroup = (post as { translation_group?: string } | null)?.translation_group;
+  const { data: alternates = initialAlternates ?? [] } = useQuery({
+    queryKey: ['blog-post-alternates', translationGroup],
+    queryFn: async () => {
+      if (!translationGroup) return [];
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('locale, slug')
+        .eq('translation_group', translationGroup)
+        .eq('status', 'published');
+      if (error) return [];
+      return (data || []) as BlogPostAlternate[];
+    },
+    enabled: !!translationGroup,
+    initialData: initialAlternates,
   });
 
   const { data: userLike } = useQuery({
@@ -188,18 +234,25 @@ export default function BlogPost() {
     supabase.rpc('increment_blog_post_views', { post_slug: slug }).then(() => {});
   }, [slug]);
 
-  // SEO por post: título, description, canonical, Open Graph e JSON-LD Article.
-  // Tudo injetado no effect e removido no cleanup (padrão do projeto, sem helmet).
+  // SEO por post: título, description, canonical, <html lang>, Open Graph,
+  // JSON-LD Article e hreflang recíproco por translation_group. Tudo injetado no
+  // effect e removido no cleanup (padrão do projeto, sem helmet).
   useEffect(() => {
     if (!post) return;
 
     const prevTitle = document.title;
     const title = post.meta_title || post.title;
     const description = post.meta_description || post.excerpt || '';
-    const url = `${SITE_URL}/blog/${post.slug}`;
+    // Canônica = a própria URL do idioma (pt-br sem prefixo, outros com /xx/).
+    const url = `${SITE_URL}${localizePath(`/blog/${post.slug}`, locale)}`;
     const image = post.cover_image_url || DEFAULT_OG_IMAGE;
 
     document.title = `${title} — Blog Dominex`;
+
+    // <html lang> do idioma da página (restaurado no cleanup).
+    const htmlEl = document.documentElement;
+    const prevHtmlLang = htmlEl.getAttribute('lang');
+    htmlEl.setAttribute('lang', getLocaleDef(locale).htmlLang);
 
     const restorers: Array<() => void> = [];
     restorers.push(setMeta('name', 'description', description));
@@ -224,6 +277,36 @@ export default function BlogPost() {
     }
     canonical.setAttribute('href', url);
 
+    // hreflang recíproco por translation_group: um <link rel="alternate"> por
+    // versão PUBLICADA existente (cada uma com seu PRÓPRIO slug), mais x-default =
+    // versão pt-br (se existir). NÃO emite alternate pra idioma sem tradução.
+    const hreflangEls: HTMLLinkElement[] = [];
+    const addAlternate = (hreflang: string, href: string) => {
+      const link = document.createElement('link');
+      link.setAttribute('rel', 'alternate');
+      link.setAttribute('hreflang', hreflang);
+      link.setAttribute('href', href);
+      link.setAttribute('data-blog-hreflang', 'true');
+      document.head.appendChild(link);
+      hreflangEls.push(link);
+    };
+    // Fallback: se ainda não temos os alternates (client sem SSG), o próprio post
+    // é a única versão conhecida.
+    const versions: BlogPostAlternate[] =
+      alternates.length > 0 ? alternates : [{ locale, slug: post.slug }];
+    for (const v of versions) {
+      addAlternate(
+        getLocaleDef(v.locale).htmlLang,
+        `${SITE_URL}${localizePath(`/blog/${v.slug}`, v.locale)}`,
+      );
+    }
+    const ptBr = versions.find((v) => v.locale === DEFAULT_LOCALE);
+    // x-default aponta pra versão pt-br; sem pt-br, pra própria canônica.
+    addAlternate(
+      'x-default',
+      ptBr ? `${SITE_URL}${localizePath(`/blog/${ptBr.slug}`, DEFAULT_LOCALE)}` : url,
+    );
+
     // JSON-LD Article
     const ld = document.createElement('script');
     ld.type = 'application/ld+json';
@@ -234,6 +317,7 @@ export default function BlogPost() {
       headline: title,
       description,
       image,
+      inLanguage: getLocaleDef(locale).htmlLang,
       datePublished: post.published_at || post.created_at,
       dateModified: post.updated_at || post.published_at || post.created_at,
       author: { '@type': 'Organization', name: post.author_name || 'Dominex' },
@@ -251,9 +335,11 @@ export default function BlogPost() {
       restorers.forEach((r) => r());
       if (canonicalCreated) canonical?.remove();
       else if (prevCanonical !== null) canonical!.setAttribute('href', prevCanonical);
+      if (prevHtmlLang !== null) htmlEl.setAttribute('lang', prevHtmlLang);
+      hreflangEls.forEach((el) => el.remove());
       ld.remove();
     };
-  }, [post]);
+  }, [post, locale, alternates]);
 
   const handleShare = async () => {
     try {
@@ -283,7 +369,7 @@ export default function BlogPost() {
           <p className="max-w-sm text-neutral-600 dark:text-white/50">
             Esse artigo pode ter sido removido ou o endereço está errado.
           </p>
-          <Link to="/blog">
+          <Link to={toLocale('/blog')}>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               Voltar ao blog
             </Button>
@@ -320,7 +406,7 @@ export default function BlogPost() {
 
             <article className="min-w-0">
               <Link
-                to="/blog"
+                to={toLocale('/blog')}
                 className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-primary dark:text-white/50"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />

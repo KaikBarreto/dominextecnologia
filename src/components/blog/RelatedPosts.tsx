@@ -10,15 +10,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Newspaper } from 'lucide-react';
+import { useLocale } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import { BlogPostCard, type BlogPostCardData, type CategoryColor } from './blogShared';
 
 type RelatedRow = BlogPostCardData & { published_at: string | null };
 
 /**
  * Busca relacionados: prioriza a mesma categoria, completa com recentes, exclui
- * o próprio slug e limita a 3. Dedup por id.
+ * o próprio slug e limita a 3. Dedup por id. Filtra pelo LOCALE do artigo, pra
+ * não misturar traduções (sob /es só relacionados es).
  */
-async function fetchRelated(slug: string, category: string | null): Promise<RelatedRow[]> {
+async function fetchRelated(
+  slug: string,
+  category: string | null,
+  locale: LocaleCode,
+): Promise<RelatedRow[]> {
   const select =
     'id, title, slug, excerpt, category, cover_image_url, published_at, author_name';
 
@@ -28,6 +35,7 @@ async function fetchRelated(slug: string, category: string | null): Promise<Rela
       .from('blog_posts')
       .select(select)
       .eq('status', 'published')
+      .eq('locale', locale)
       .eq('category', category)
       .neq('slug', slug)
       .order('published_at', { ascending: false })
@@ -42,6 +50,7 @@ async function fetchRelated(slug: string, category: string | null): Promise<Rela
     .from('blog_posts')
     .select(select)
     .eq('status', 'published')
+    .eq('locale', locale)
     .neq('slug', slug)
     .order('published_at', { ascending: false })
     .limit(6);
@@ -66,9 +75,10 @@ export function RelatedPosts({
   category: string | null;
   categoryColors: CategoryColor[];
 }) {
+  const { locale } = useLocale();
   const { data: related = [] } = useQuery({
-    queryKey: ['blog-related', slug, category],
-    queryFn: () => fetchRelated(slug, category),
+    queryKey: ['blog-related', slug, category, locale],
+    queryFn: () => fetchRelated(slug, category, locale),
     enabled: !!slug,
   });
 

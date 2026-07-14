@@ -36,6 +36,8 @@ import Landing from '@/pages/Landing';
 import QuemSomos from '@/pages/QuemSomos';
 import Blog from '@/pages/Blog';
 import type { BlogProps } from '@/pages/Blog';
+import BlogPost from '@/pages/BlogPost';
+import type { BlogPostAlternate } from '@/pages/BlogPost';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfUse from '@/pages/TermsOfUse';
 
@@ -522,6 +524,157 @@ export function renderRoute(
     stripGlobalJsonLd,
     htmlLang: getLocaleDef(locale).htmlLang,
     hreflang: hreflangBlock(route),
+  };
+
+  return { html, head };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRERENDER DE POST DO BLOG (por idioma) — Fase 4.
+//
+// Cada post publicado sai como HTML estático na URL do seu locale (pt-br em
+// /blog/<slug>, outros em /<lang>/blog/<slug>). O conteúdo é injetado sem fetch
+// no client (initialPost/initialAlternates), e o <head> traz canônica do idioma,
+// <html lang>, OG/Twitter, JSON-LD Article e hreflang recíproco por
+// translation_group (só as versões PUBLICADAS existentes + x-default pt-br).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Post cru vindo da REST (campos que o BlogPost e o head precisam). */
+export interface SsgBlogPost {
+  id: string;
+  slug: string;
+  locale: LocaleCode;
+  translation_group: string;
+  title: string;
+  excerpt?: string | null;
+  content?: string | null;
+  cover_image_url?: string | null;
+  published_at?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+  category?: string | null;
+  author_name?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  [key: string]: unknown;
+}
+
+/** Opções do render de post: locale + alternates (versões do translation_group). */
+export interface RenderBlogPostOptions {
+  locale: LocaleCode;
+  alternates?: BlogPostAlternate[];
+}
+
+/** Imagem OG padrão do site (espelha o default do BlogPost). */
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+
+/**
+ * Monta o bloco hreflang de um post a partir das versões PUBLICADAS do mesmo
+ * translation_group. Um <link> por idioma existente (com o SLUG daquela versão) +
+ * x-default = versão pt-br (se existir; senão a própria canônica). NUNCA emite
+ * alternate pra idioma sem tradução publicada.
+ */
+function blogPostHreflang(
+  alternates: BlogPostAlternate[],
+  fallback: { locale: LocaleCode; slug: string },
+): string {
+  const versions = alternates.length > 0 ? alternates : [fallback];
+  const links = versions.map((v) => {
+    const href = `${SITE_URL}${localizePath(`/blog/${v.slug}`, v.locale)}`;
+    return `<link rel="alternate" hreflang="${getLocaleDef(v.locale).htmlLang}" href="${href}" />`;
+  });
+  const ptBr = versions.find((v) => v.locale === DEFAULT_LOCALE);
+  const xDefaultSlug = ptBr ? ptBr.slug : fallback.slug;
+  const xDefaultLocale = ptBr ? DEFAULT_LOCALE : fallback.locale;
+  links.push(
+    `<link rel="alternate" hreflang="x-default" href="${SITE_URL}${localizePath(
+      `/blog/${xDefaultSlug}`,
+      xDefaultLocale,
+    )}" />`,
+  );
+  return links.join('\n    ');
+}
+
+/**
+ * Renderiza UM post do blog para HTML estático, no seu locale, com o conteúdo já
+ * no #root (initialPost) e o <head> completo de SEO por idioma. Sem fetch no
+ * client no prerender: os dados vêm por prop.
+ */
+export function renderBlogPost(
+  post: SsgBlogPost,
+  opts: RenderBlogPostOptions,
+): SsgRenderResult {
+  const locale = opts.locale;
+  const alternates = opts.alternates ?? [];
+
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  });
+
+  const localizedPath = localizePath(`/blog/${post.slug}`, locale);
+
+  const html = renderToString(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <StaticRouter location={localizedPath}>
+            <BlogPost initialPost={post} initialAlternates={alternates} />
+          </StaticRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+
+  const pageUrl = `${SITE_URL}${localizedPath}`;
+  const homeUrl = absUrl('/', locale);
+  const title = post.meta_title || post.title;
+  const description = post.meta_description || post.excerpt || '';
+  const fullTitle = `${title} — Blog Dominex`;
+  const image = post.cover_image_url || DEFAULT_OG_IMAGE;
+
+  // JSON-LD: Breadcrumb (Início > Blog > post) + Article. Removemos os globais da
+  // home (stripGlobalJsonLd) pra não herdar FAQ/oferta da home no post.
+  const articleLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description,
+    image,
+    inLanguage: getLocaleDef(locale).htmlLang,
+    datePublished: post.published_at || post.created_at,
+    dateModified: post.updated_at || post.published_at || post.created_at,
+    author: { '@type': 'Organization', name: post.author_name || 'Dominex' },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Dominex',
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
+  };
+  const blogUrl = `${SITE_URL}${localizePath('/blog', locale)}`;
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Início', item: homeUrl },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: blogUrl },
+      { '@type': 'ListItem', position: 3, name: title, item: pageUrl },
+    ],
+  };
+  const jsonLd = [jsonLdScript(breadcrumb), jsonLdScript(articleLd)].join('\n    ');
+
+  const head: SsgHead = {
+    title: fullTitle,
+    description,
+    canonical: pageUrl,
+    viewport: MARKETING_VIEWPORT,
+    ogTitle: fullTitle,
+    ogDescription: description,
+    ogUrl: pageUrl,
+    jsonLd,
+    stripGlobalJsonLd: true,
+    htmlLang: getLocaleDef(locale).htmlLang,
+    hreflang: blogPostHreflang(alternates, { locale, slug: post.slug }),
   };
 
   return { html, head };

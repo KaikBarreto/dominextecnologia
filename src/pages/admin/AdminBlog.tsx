@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Plus, Pencil, Trash2, Search, Eye, FileText, Heart, MessageCircle,
-  Check, Clock,
+  Check, Clock, Languages,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -21,12 +21,28 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { LOCALES, type LocaleCode } from "@/lib/i18n/locales";
 
 // ============================================================================
-// AdminBlog — gestão do blog de marketing Dominex (super_admin).
-// Aba "Artigos": lista + filtros + CRUD. Aba "Comentários": moderação.
-// Escrita roda na sessão do super_admin; o RLS bloqueia o resto silenciosamente.
+// AdminBlog — gestao do blog de marketing Dominex (super_admin).
+// Aba "Artigos": lista + filtros + CRUD. Aba "Comentarios": moderacao.
+// Escrita roda na sessao do super_admin; o RLS bloqueia o resto silenciosamente.
 // ============================================================================
+
+// Cores saturadas por locale — badge de idioma seguindo padrao de status badge
+const LOCALE_BADGE_COLORS: Record<string, string> = {
+  "pt-br": "#16803c",
+  "en":    "#1d4ed8",
+  "es":    "#b45309",
+  "fr":    "#6d28d9",
+};
+
+const LOCALE_LABELS: Record<string, string> = {
+  "pt-br": "PT",
+  "en":    "EN",
+  "es":    "ES",
+  "fr":    "FR",
+};
 
 export default function AdminBlog() {
   const { data: pendingCount = 0 } = useQuery({
@@ -43,7 +59,7 @@ export default function AdminBlog() {
 
   const commentsLabel = (
     <span className="inline-flex items-center gap-1.5">
-      Comentários
+      Comentarios
       {pendingCount > 0 && (
         <Badge className="h-4 min-w-4 px-1 text-[10px] bg-primary text-primary-foreground border-0">
           {pendingCount}
@@ -59,7 +75,7 @@ export default function AdminBlog() {
           <FileText className="h-7 w-7" />
           Blog
         </h1>
-        <p className="text-sm text-muted-foreground">Gerencie os artigos e comentários do blog Dominex</p>
+        <p className="text-sm text-muted-foreground">Gerencie os artigos e comentarios do blog Dominex</p>
       </div>
 
       <Tabs defaultValue="artigos">
@@ -89,6 +105,7 @@ function PostsTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [localeFilter, setLocaleFilter] = useState<string>("all");
 
   const { data: dbCategories = [] } = useQuery({
     queryKey: ["blog-categories"],
@@ -117,7 +134,7 @@ function PostsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["blog-posts-admin"] });
-      toast.success("Artigo excluído com sucesso");
+      toast.success("Artigo excluido com sucesso");
     },
     onError: () => toast.error("Erro ao excluir artigo"),
   });
@@ -126,33 +143,72 @@ function PostsTab() {
     const matchSearch = post.title.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || post.status === statusFilter;
     const matchCategory = categoryFilter === "all" || post.category === categoryFilter;
-    return matchSearch && matchStatus && matchCategory;
+    const matchLocale = localeFilter === "all" || post.locale === localeFilter;
+    return matchSearch && matchStatus && matchCategory && matchLocale;
   });
 
   const getCatColor = (name: string) => dbCategories.find((c) => c.name === name)?.color;
 
+  // Para cada post, calcula os idiomas do mesmo translation_group
+  const groupLocaleMap = new Map<string, string[]>();
+  if (posts) {
+    for (const post of posts) {
+      if (!post.translation_group) continue;
+      const existing = groupLocaleMap.get(post.translation_group) ?? [];
+      if (!existing.includes(post.locale)) {
+        groupLocaleMap.set(post.translation_group, [...existing, post.locale]);
+      }
+    }
+  }
+
+  // Idiomas faltantes em um grupo (para oferecer "Adicionar traducao")
+  const allLocaleCodes = LOCALES.map((l) => l.code);
+  function getMissingLocales(translationGroup: string): LocaleCode[] {
+    const existing = groupLocaleMap.get(translationGroup) ?? [];
+    return allLocaleCodes.filter((c) => !existing.includes(c));
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-3 w-full flex-wrap">
+          <div className="relative flex-1 min-w-[160px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar artigos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="draft">Rascunho</SelectItem>
               <SelectItem value="published">Publicado</SelectItem>
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               {dbCategories.map((cat) => (
                 <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={localeFilter} onValueChange={setLocaleFilter}>
+            <SelectTrigger className="w-full sm:w-[120px]"><SelectValue placeholder="Idioma" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os idiomas</SelectItem>
+              {LOCALES.map((l) => (
+                <SelectItem key={l.code} value={l.code}>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white shrink-0"
+                      style={{ backgroundColor: LOCALE_BADGE_COLORS[l.code] ?? "#6B7280" }}
+                    >
+                      {LOCALE_LABELS[l.code]}
+                    </span>
+                    {l.label}
+                  </span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -178,6 +234,9 @@ function PostsTab() {
         <div className="space-y-3">
           {filteredPosts?.map((post) => {
             const catColor = post.category ? getCatColor(post.category) : undefined;
+            const missingLocales = post.translation_group ? getMissingLocales(post.translation_group) : allLocaleCodes.filter((c) => c !== post.locale);
+            const groupLocales = post.translation_group ? (groupLocaleMap.get(post.translation_group) ?? []) : [post.locale];
+
             return (
               <div
                 key={post.id}
@@ -189,9 +248,35 @@ function PostsTab() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold truncate">{post.title}</h3>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {/* Badge de status */}
                     <Badge variant={post.status === "published" ? "default" : "secondary"}>
                       {post.status === "published" ? "Publicado" : "Rascunho"}
                     </Badge>
+
+                    {/* Badge de idioma — saturado + texto branco */}
+                    <Badge
+                      className="text-white border-0 text-[10px] font-bold"
+                      style={{ backgroundColor: LOCALE_BADGE_COLORS[post.locale] ?? "#6B7280" }}
+                    >
+                      {LOCALE_LABELS[post.locale] ?? post.locale.toUpperCase()}
+                    </Badge>
+
+                    {/* Indicador de grupo de traducao (quais idiomas ja existem) */}
+                    {post.translation_group && groupLocales.length > 1 && (
+                      <span className="flex items-center gap-0.5 text-muted-foreground" title="Versoes disponiveis neste grupo">
+                        <Languages className="h-3 w-3" />
+                        {groupLocales.map((lc) => (
+                          <span
+                            key={lc}
+                            className="text-[9px] font-bold text-white rounded px-1"
+                            style={{ backgroundColor: LOCALE_BADGE_COLORS[lc] ?? "#6B7280" }}
+                          >
+                            {LOCALE_LABELS[lc] ?? lc.toUpperCase()}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+
                     {post.category && (
                       <Badge className="text-white border-0" style={{ backgroundColor: catColor || "#6B7280" }}>
                         {post.category}
@@ -211,9 +296,56 @@ function PostsTab() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                  {/* Adicionar traducao — so exibe se ainda ha idiomas faltando */}
+                  {missingLocales.length > 0 && (
+                    <Select
+                      onValueChange={(targetLocale) => {
+                        const params = new URLSearchParams({
+                          translation_group: post.translation_group || post.id,
+                          locale: targetLocale,
+                        });
+                        navigate(`/admin/blog/novo?${params.toString()}`);
+                      }}
+                    >
+                      <SelectTrigger
+                        className="h-8 w-auto gap-1 border-dashed text-xs text-muted-foreground hover:text-foreground"
+                        title="Adicionar traducao deste artigo"
+                      >
+                        <Languages className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Traduzir</span>
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        {missingLocales.map((lc) => {
+                          const def = LOCALES.find((l) => l.code === lc);
+                          return (
+                            <SelectItem key={lc} value={lc}>
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white shrink-0"
+                                  style={{ backgroundColor: LOCALE_BADGE_COLORS[lc] ?? "#6B7280" }}
+                                >
+                                  {LOCALE_LABELS[lc]}
+                                </span>
+                                {def?.label ?? lc}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  )}
+
                   {post.status === "published" && (
-                    <Button variant="ghost" size="sm" onClick={() => window.open(`/blog/${post.slug}`, "_blank")} title="Ver no site">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const prefix = post.locale !== "pt-br" ? `/${post.locale}` : "";
+                        window.open(`${prefix}/blog/${post.slug}`, "_blank");
+                      }}
+                      title="Ver no site"
+                    >
                       <Eye className="h-4 w-4" />
                     </Button>
                   )}
@@ -229,7 +361,7 @@ function PostsTab() {
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Excluir artigo?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                        <AlertDialogDescription>Esta acao nao pode ser desfeita.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -248,9 +380,9 @@ function PostsTab() {
 }
 
 // ============================================================================
-// Aba Comentários — moderação (pendentes + aprovados).
-// Comentário nasce is_approved=false. Aprovar = UPDATE true; Excluir = DELETE.
-// O contador comments_count é recalculado por trigger só com aprovados.
+// Aba Comentarios — moderacao (pendentes + aprovados).
+// Comentario nasce is_approved=false. Aprovar = UPDATE true; Excluir = DELETE.
+// O contador comments_count e recalculado por trigger so com aprovados.
 // ============================================================================
 function CommentsTab() {
   const queryClient = useQueryClient();
@@ -288,8 +420,8 @@ function CommentsTab() {
       const { error } = await supabase.from("blog_post_comments").update({ is_approved: true }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { invalidate(); toast.success("Comentário aprovado"); },
-    onError: () => toast.error("Erro ao aprovar comentário"),
+    onSuccess: () => { invalidate(); toast.success("Comentario aprovado"); },
+    onError: () => toast.error("Erro ao aprovar comentario"),
   });
 
   const deleteMutation = useMutation({
@@ -297,8 +429,8 @@ function CommentsTab() {
       const { error } = await supabase.from("blog_post_comments").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { invalidate(); toast.success("Comentário excluído"); },
-    onError: () => toast.error("Erro ao excluir comentário"),
+    onSuccess: () => { invalidate(); toast.success("Comentario excluido"); },
+    onError: () => toast.error("Erro ao excluir comentario"),
   });
 
   return (
@@ -327,7 +459,7 @@ function CommentsTab() {
       ) : comments.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <MessageCircle className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p>{filter === "pending" ? "Nenhum comentário pendente" : "Nenhum comentário aprovado"}</p>
+          <p>{filter === "pending" ? "Nenhum comentario pendente" : "Nenhum comentario aprovado"}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -343,7 +475,7 @@ function CommentsTab() {
                       <Badge className="bg-amber-500 text-white border-0 text-[10px]">Pendente</Badge>
                     )}
                     <span className="text-xs text-muted-foreground">
-                      {format(new Date(c.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(c.created_at), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
                     </span>
                   </div>
                   {c.blog_posts?.title && (
@@ -372,8 +504,8 @@ function CommentsTab() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir comentário?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                        <AlertDialogTitle>Excluir comentario?</AlertDialogTitle>
+                        <AlertDialogDescription>Esta acao nao pode ser desfeita.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>

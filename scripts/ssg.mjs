@@ -93,12 +93,14 @@ async function fetchBlogData() {
   }
   const headers = { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' };
   try {
+    // Traz `locale`, `translation_group` e os campos que a listagem E o post
+    // precisam (o post é prerenderizado sem fetch no client — item 3 do plano).
     const postsUrl =
       `${url}/rest/v1/blog_posts` +
       `?status=eq.published` +
-      `&select=id,title,slug,excerpt,category,cover_image_url,published_at,view_count,likes_count,comments_count,author_name,content` +
+      `&select=id,title,slug,excerpt,category,cover_image_url,published_at,updated_at,created_at,view_count,likes_count,comments_count,author_name,content,meta_title,meta_description,locale,translation_group` +
       `&order=published_at.desc`;
-    const catsUrl = `${url}/rest/v1/blog_categories?select=name,color&order=name`;
+    const catsUrl = `${url}/rest/v1/blog_categories?select=name,color,locale&order=name`;
     const [postsRes, catsRes] = await Promise.all([
       fetch(postsUrl, { headers }),
       fetch(catsUrl, { headers }),
@@ -108,6 +110,7 @@ async function fetchBlogData() {
     const categories = (Array.isArray(catsRaw) ? catsRaw : []).map((c) => ({
       name: c.name,
       color: c.color || 'hsl(160 100% 39%)',
+      locale: c.locale || 'pt-br',
     }));
     console.log(
       `[ssg] Blog: ${Array.isArray(posts) ? posts.length : 0} posts, ${categories.length} categorias.`
@@ -261,7 +264,8 @@ async function main() {
   });
 
   const entryUrl = pathToFileURL(join(SSG_OUT, 'entry-ssg.js')).href;
-  const { renderRoute, SSG_ROUTES, SSG_TASKS, SITE_URL } = await import(entryUrl);
+  const { renderRoute, renderBlogPost, SSG_ROUTES, SSG_TASKS, SITE_URL } =
+    await import(entryUrl);
 
   // Lê o shell base UMA vez (template do build do cliente, com scripts hasheados).
   // Importante: o copy-shell já preservou o index.html LIMPO como shell.html antes
@@ -274,13 +278,33 @@ async function main() {
     ? await fetchBlogData()
     : { posts: [], categories: [] };
 
+  // Índice de posts publicados por translation_group (pra montar o hreflang
+  // recíproco de cada post). Cada versão tem seu PRÓPRIO slug e locale.
+  const postsByTg = new Map();
+  for (const p of blogData.posts) {
+    if (!postsByTg.has(p.translation_group)) postsByTg.set(p.translation_group, []);
+    postsByTg.get(p.translation_group).push(p);
+  }
+  /** Alternates (locale+slug) das versões PUBLICADAS do mesmo artigo. */
+  const alternatesFor = (post) =>
+    (postsByTg.get(post.translation_group) || []).map((p) => ({
+      locale: p.locale,
+      slug: p.slug,
+    }));
+
+  /** Filtra a listagem `/blog` pelo locale da task (não vaza pt-br no /es). */
+  const blogDataForLocale = (locale) => ({
+    posts: blogData.posts.filter((p) => (p.locale || 'pt-br') === locale),
+    categories: blogData.categories.filter((c) => (c.locale || 'pt-br') === locale),
+  });
+
   // Itera cada TAREFA (rota base × idioma): ~25 rotas × 4 idiomas = ~100 páginas.
   const results = [];
   for (const task of SSG_TASKS) {
     try {
       const { html, head } = renderRoute(task.basePath, {
         locale: task.locale,
-        blogData: task.basePath === '/blog' ? blogData : undefined,
+        blogData: task.basePath === '/blog' ? blogDataForLocale(task.locale) : undefined,
       });
       const finalHtml = buildHtml(baseHtml, html, head);
       const outPath = outPathForTask(task);
@@ -293,6 +317,34 @@ async function main() {
     } catch (err) {
       results.push({ task, ok: false, error: err });
       console.error(`[ssg] ✗ ${task.localizedPath} (${task.locale}) falhou:`, err);
+    }
+  }
+
+  // ── Prerender de CADA post publicado na URL do seu locale ───────────────────
+  // pt-br → dist/blog/<slug>/index.html; outros → dist/<lang>/blog/<slug>/index.html.
+  // Resolve o gap atual (posts não prerenderizados). O hreflang vem do
+  // translation_group; quando houver traduções, entram automático.
+  for (const post of blogData.posts) {
+    const locale = post.locale || 'pt-br';
+    const localizedPath =
+      locale === 'pt-br' ? `/blog/${post.slug}` : `/${locale}/blog/${post.slug}`;
+    const outDir = localizedPath.replace(/^\/+|\/+$/g, '');
+    try {
+      const { html, head } = renderBlogPost(post, {
+        locale,
+        alternates: alternatesFor(post),
+      });
+      const finalHtml = buildHtml(baseHtml, html, head);
+      const outPath = join(DIST, outDir, 'index.html');
+      mkdirSync(dirname(outPath), { recursive: true });
+      writeFileSync(outPath, finalHtml, 'utf8');
+      results.push({ task: { localizedPath, locale }, bytes: finalHtml.length, out: outPath, ok: true });
+      console.log(
+        `[ssg] ✓ ${localizedPath} (${locale}) → ${outPath.replace(ROOT + '/', '')} (${finalHtml.length} bytes)`
+      );
+    } catch (err) {
+      results.push({ task: { localizedPath, locale }, ok: false, error: err });
+      console.error(`[ssg] ✗ ${localizedPath} (${locale}) falhou:`, err);
     }
   }
 
