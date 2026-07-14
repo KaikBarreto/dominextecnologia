@@ -10,6 +10,7 @@ import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n';
 import { localizeHash } from '@/lib/i18n/localizeHash';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 // Configuração NÃO-TEXTUAL dos planos (preços, ctaLink, code, destaque). Nome,
 // descrição, features e CTA vêm do i18n (messages.home.pricing.plans[code]).
@@ -19,17 +20,19 @@ const PLAN_CONFIG = [
   { code: 'master', monthly: 697, annual: 558, popular: false, ctaLink: '/cadastro?plano=master&origem=Site' },
 ] as const;
 
-// Fragmento específico do CTA Enterprise (plano Personalizado): preserva a
-// intenção mesmo dentro da frase nova ("Olá! Vim ${fragment} da Dominex...").
-const ENTERPRISE_WHATSAPP_FRAGMENT =
-  'pela página de planos e tenho interesse no plano *Personalizado (Enterprise)*';
-
-// URL montada no CLIQUE (não no load do módulo): garante que a UTM capturada
-// depois do load entre na mensagem e que o rodízio sorteie por clique.
-function openEnterpriseWhatsApp() {
-  const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), ENTERPRISE_WHATSAPP_FRAGMENT);
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
+// Fragmento específico do CTA Enterprise (plano Personalizado), por locale.
+// Preserva a intenção mesmo dentro da frase montada pelo buildWhatsAppMessage.
+// en generalizado; fr traduzido; es faz fallback ao pt-br até ser traduzido.
+const ENTERPRISE_WHATSAPP_FRAGMENTS: Record<LocaleCode, string> = {
+  'pt-br':
+    'pela página de planos e tenho interesse no plano *Personalizado (Enterprise)*',
+  en:
+    'from the pricing page and I am interested in the *Enterprise Plan*',
+  es:
+    'pela página de planos e tenho interesse no plano *Personalizado (Enterprise)*',
+  fr:
+    'depuis la page des tarifs et je suis intéressé par le *Plan Enterprise*',
+};
 
 export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
@@ -46,6 +49,15 @@ export default function PricingSection() {
     desc: t.plans.enterprise.desc,
     cta: t.plans.enterprise.cta,
   };
+
+  // URL montada no CLIQUE (não no load do módulo): garante que a UTM capturada
+  // depois do load entre na mensagem e que o rodízio sorteie por clique.
+  // O fragmento e o locale são passados para manter a mensagem no idioma certo.
+  function openEnterpriseWhatsApp() {
+    const fragment = ENTERPRISE_WHATSAPP_FRAGMENTS[locale] ?? ENTERPRISE_WHATSAPP_FRAGMENTS['pt-br'];
+    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), fragment, locale);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
 
   return (
     <section id={localizeHash('precos', locale)} className="py-24">

@@ -300,12 +300,20 @@ async function main() {
 
   // Itera cada TAREFA (rota base × idioma): ~25 rotas × 4 idiomas = ~100 páginas.
   const results = [];
+  // Mapa basePath → (locale → description) para o llms.txt per-locale.
+  // Alimentado durante o loop; passado pro generateArtifacts.
+  const descriptionsByBaseLocale = new Map();
   for (const task of SSG_TASKS) {
     try {
       const { html, head } = renderRoute(task.basePath, {
         locale: task.locale,
         blogData: task.basePath === '/blog' ? blogDataForLocale(task.locale) : undefined,
       });
+      // Acumula a description por (basePath, locale) para o llms.txt.
+      if (!descriptionsByBaseLocale.has(task.basePath)) {
+        descriptionsByBaseLocale.set(task.basePath, new Map());
+      }
+      descriptionsByBaseLocale.get(task.basePath).set(task.locale, head.description);
       const finalHtml = buildHtml(baseHtml, html, head);
       const outPath = outPathForTask(task);
       mkdirSync(dirname(outPath), { recursive: true });
@@ -360,8 +368,17 @@ async function main() {
   // ── Artefatos de indexação (gerados, não mais manuais) ──────────────────────
   // sitemap.xml com todas as URLs × idioma + alternates hreflang, e llms.txt por
   // idioma. Fonte única = SSG_TASKS, então nunca desalinha das páginas geradas.
+  // descriptionsByBaseLocale: basePath → (locale → description) — usado pelo
+  // llms.txt para emitir a descrição do módulo/segmento no idioma certo em vez de
+  // pt-br fixo.
   await import('./gen-i18n-artifacts.mjs').then((m) =>
-    m.generateArtifacts({ tasks: SSG_TASKS, siteUrl: SITE_URL, distDir: DIST, blogData })
+    m.generateArtifacts({
+      tasks: SSG_TASKS,
+      siteUrl: SITE_URL,
+      distDir: DIST,
+      blogData,
+      descriptionsByBaseLocale,
+    })
   );
 
   console.log(

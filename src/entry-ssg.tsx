@@ -161,21 +161,77 @@ const HOME_TITLE =
 const HOME_DESCRIPTION =
   'Sistema de ordem de serviço digital, PMOC e gestão para refrigeração, climatização e equipes de campo. App do técnico em campo. Teste grátis 14 dias, sem cartão.';
 
-const QUEM_SOMOS_TITLE = 'Quem somos — Dominex | Gestão para equipes de campo';
-const QUEM_SOMOS_DESCRIPTION =
-  'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.';
+// ── Head das páginas institucionais/legais por locale ────────────────────────
+// pt-br é inalterado (referência anterior). en é generalizado: sem citar LGPD,
+// lei brasileira, ISS ou NFS-e. es/fr fazem fallback ao pt-br até serem traduzidos.
 
-const BLOG_TITLE = 'Blog — Dominex | Gestão para equipes de campo';
-const BLOG_DESCRIPTION =
-  'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.';
+const QUEM_SOMOS_TITLES: Record<LocaleCode, string> = {
+  'pt-br': 'Quem somos — Dominex | Gestão para equipes de campo',
+  en: 'About Us — Dominex | Management for Field Service Teams',
+  es: 'Quem somos — Dominex | Gestão para equipes de campo',
+  fr: 'Quem somos — Dominex | Gestão para equipes de campo',
+};
+const QUEM_SOMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
+  'pt-br':
+    'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.',
+  en:
+    'Meet Dominex: work order, maintenance and management software for field service companies, covering HVAC, electrical, solar energy, pest control and more. Built for teams that master the field.',
+  es:
+    'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.',
+  fr:
+    'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.',
+};
 
-const PRIVACIDADE_TITLE = 'Política de Privacidade — Dominex';
-const PRIVACIDADE_DESCRIPTION =
-  'Política de Privacidade da Dominex: como tratamos os dados pessoais na plataforma, conforme a Lei nº 13.709/2018 (LGPD).';
+const BLOG_TITLES: Record<LocaleCode, string> = {
+  'pt-br': 'Blog — Dominex | Gestão para equipes de campo',
+  en: 'Blog — Dominex | Field Service Management',
+  es: 'Blog — Dominex | Gestão para equipes de campo',
+  fr: 'Blog — Dominex | Gestão para equipes de campo',
+};
+const BLOG_DESCRIPTIONS: Record<LocaleCode, string> = {
+  'pt-br':
+    'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
+  en:
+    'Practical articles on work orders, maintenance plans, team management and how to bring your field operation under control. Content by Dominex.',
+  es:
+    'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
+  fr:
+    'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
+};
 
-const TERMOS_TITLE = 'Termos de Uso — Dominex';
-const TERMOS_DESCRIPTION =
-  'Termos de Uso da plataforma Dominex: condições de cadastro, uso do serviço e responsabilidades para empresas de serviço e equipes de campo.';
+const PRIVACIDADE_TITLES: Record<LocaleCode, string> = {
+  'pt-br': 'Política de Privacidade — Dominex',
+  en: 'Privacy Policy — Dominex',
+  es: 'Política de Privacidade — Dominex',
+  fr: 'Politique de Confidentialité — Dominex',
+};
+const PRIVACIDADE_DESCRIPTIONS: Record<LocaleCode, string> = {
+  'pt-br':
+    'Política de Privacidade da Dominex: como tratamos os dados pessoais na plataforma, conforme a Lei nº 13.709/2018 (LGPD).',
+  en:
+    'Dominex Privacy Policy: how we process personal data on the platform, following applicable data protection law.',
+  es:
+    'Política de Privacidade da Dominex: como tratamos os dados pessoais na plataforma, conforme a Lei nº 13.709/2018 (LGPD).',
+  fr:
+    'Politique de confidentialité de Dominex: comment nous traitons les données personnelles sur la plateforme, conformément aux lois applicables en matière de protection des données.',
+};
+
+const TERMOS_TITLES: Record<LocaleCode, string> = {
+  'pt-br': 'Termos de Uso — Dominex',
+  en: 'Terms of Use — Dominex',
+  es: 'Termos de Uso — Dominex',
+  fr: "Conditions d'utilisation — Dominex",
+};
+const TERMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
+  'pt-br':
+    'Termos de Uso da plataforma Dominex: condições de cadastro, uso do serviço e responsabilidades para empresas de serviço e equipes de campo.',
+  en:
+    'Dominex Terms of Use: registration conditions, service usage and responsibilities for service companies and field teams.',
+  es:
+    'Termos de Uso da plataforma Dominex: condições de cadastro, uso do serviço e responsabilidades para empresas de serviço e equipes de campo.',
+  fr:
+    "Conditions d'utilisation de la plateforme Dominex: conditions d'inscription, utilisation du service et responsabilités pour les entreprises de service.",
+};
 
 /** Tipo de rota, pra montar o JSON-LD certo (Breadcrumb + App/Product + FAQ). */
 type RouteKind = 'home' | 'segment' | 'module' | 'institutional';
@@ -348,34 +404,44 @@ function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | und
     case '/quem-somos':
       return {
         element: <QuemSomos />,
-        title: QUEM_SOMOS_TITLE,
-        description: QUEM_SOMOS_DESCRIPTION,
+        title: QUEM_SOMOS_TITLES[locale] ?? QUEM_SOMOS_TITLES['pt-br'],
+        description: QUEM_SOMOS_DESCRIPTIONS[locale] ?? QUEM_SOMOS_DESCRIPTIONS['pt-br'],
         kind: 'institutional',
-        breadcrumbName: 'Quem somos',
+        breadcrumbName: locale === 'en' ? 'About Us' : 'Quem somos',
       };
     case '/blog':
       return {
         element: <Blog />,
-        title: BLOG_TITLE,
-        description: BLOG_DESCRIPTION,
+        title: BLOG_TITLES[locale] ?? BLOG_TITLES['pt-br'],
+        description: BLOG_DESCRIPTIONS[locale] ?? BLOG_DESCRIPTIONS['pt-br'],
         kind: 'institutional',
         breadcrumbName: 'Blog',
       };
     case '/privacidade':
       return {
         element: <PrivacyPolicy />,
-        title: PRIVACIDADE_TITLE,
-        description: PRIVACIDADE_DESCRIPTION,
+        title: PRIVACIDADE_TITLES[locale] ?? PRIVACIDADE_TITLES['pt-br'],
+        description: PRIVACIDADE_DESCRIPTIONS[locale] ?? PRIVACIDADE_DESCRIPTIONS['pt-br'],
         kind: 'institutional',
-        breadcrumbName: 'Política de Privacidade',
+        breadcrumbName:
+          locale === 'en'
+            ? 'Privacy Policy'
+            : locale === 'fr'
+              ? 'Politique de Confidentialité'
+              : 'Política de Privacidade',
       };
     case '/termos':
       return {
         element: <TermsOfUse />,
-        title: TERMOS_TITLE,
-        description: TERMOS_DESCRIPTION,
+        title: TERMOS_TITLES[locale] ?? TERMOS_TITLES['pt-br'],
+        description: TERMOS_DESCRIPTIONS[locale] ?? TERMOS_DESCRIPTIONS['pt-br'],
         kind: 'institutional',
-        breadcrumbName: 'Termos de Uso',
+        breadcrumbName:
+          locale === 'en'
+            ? 'Terms of Use'
+            : locale === 'fr'
+              ? "Conditions d'utilisation"
+              : 'Termos de Uso',
       };
     default:
       return undefined;

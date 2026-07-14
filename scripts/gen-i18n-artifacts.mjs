@@ -117,14 +117,24 @@ function absUrlFor(siteUrl, basePath, locale, urlByBaseLocale) {
   return `${siteUrl}/${locale}${base}`;
 }
 
-/** Gera o conteúdo de um llms.txt para um locale (URLs prefixadas do idioma). */
-function buildLlmsTxt(siteUrl, locale, urlByBaseLocale) {
+/**
+ * Gera o conteúdo de um llms.txt para um locale (URLs prefixadas do idioma).
+ * Quando `descriptionsByBaseLocale` for fornecido, usa a metaDescription do
+ * locale gerada pelo SSG (conteúdo real do módulo/segmento traduzido) em vez
+ * do texto pt-br fixo do LLMS_SECTIONS. Fallback: texto pt-br do LLMS_SECTIONS.
+ */
+function buildLlmsTxt(siteUrl, locale, urlByBaseLocale, descriptionsByBaseLocale) {
   const lines = [LLMS_HEADER, ''];
   for (const section of LLMS_SECTIONS) {
     lines.push(`## ${section.title}`, '');
     for (const [basePath, title, desc] of section.entries) {
       const url = absUrlFor(siteUrl, basePath, locale, urlByBaseLocale);
-      lines.push(`- [${title}](${url}): ${desc}`);
+      // Prefere a metaDescription do locale gerada pelo SSG; fallback ao pt-br fixo.
+      const localeDesc =
+        descriptionsByBaseLocale?.get(basePath)?.get(locale) ??
+        descriptionsByBaseLocale?.get(basePath)?.get('pt-br') ??
+        desc;
+      lines.push(`- [${title}](${url}): ${localeDesc}`);
     }
     lines.push('');
   }
@@ -144,8 +154,11 @@ function postUrl(siteUrl, locale, slug) {
  * llms.txt por idioma. `tasks` = SSG_TASKS; `siteUrl` = SITE_URL do entry-ssg.
  * `blogData` = { posts, categories } do build: cada post publicado entra no
  * sitemap na URL do seu locale, com alternates hreflang por translation_group.
+ * `descriptionsByBaseLocale` = Map basePath → (locale → description) gerado
+ * pelo ssg.mjs durante a renderização das páginas; permite que o llms.txt emita
+ * a descrição do módulo/segmento no idioma certo em vez de pt-br fixo.
  */
-export function generateArtifacts({ tasks, siteUrl, distDir, blogData }) {
+export function generateArtifacts({ tasks, siteUrl, distDir, blogData, descriptionsByBaseLocale }) {
   const lastmod = today();
 
   // Agrupa as tasks por path base pra montar os <alternate> recíprocos.
@@ -256,7 +269,7 @@ export function generateArtifacts({ tasks, siteUrl, distDir, blogData }) {
   // ── llms.txt por idioma ─────────────────────────────────────────────────────
   const locales = ['pt-br', 'en', 'es', 'fr'];
   for (const locale of locales) {
-    const content = buildLlmsTxt(siteUrl, locale, urlByBaseLocale);
+    const content = buildLlmsTxt(siteUrl, locale, urlByBaseLocale, descriptionsByBaseLocale);
     const outPath = locale === 'pt-br' ? join(distDir, 'llms.txt') : join(distDir, locale, 'llms.txt');
     mkdirSync(dirname(outPath), { recursive: true });
     writeFileSync(outPath, content, 'utf8');

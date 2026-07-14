@@ -124,8 +124,8 @@ export function getLeadOriginLabel(): string | null {
 //     no template "sobre *X*" / "about *X*" do idioma. Assim /en/refrigeration-hvac-
 //     software vira "about *Refrigeration & HVAC*", sem duplicar rótulos.
 //
-// Cada locale sem template próprio cai no pt-br (fonte). es/fr por ora reusam a
-// estrutura pt-br via fallback (deixe pronto pra traduzir depois).
+// Cada locale sem template próprio cai no pt-br (fonte). pt-br, en, es e fr têm
+// templates nativos. Locale desconhecido futuro cai no pt-br via fallback.
 
 interface FragmentPack {
   /** Fragmentos de páginas genéricas (chave estável, independente de idioma). */
@@ -162,12 +162,29 @@ const FRAGMENTS: Record<LocaleCode, FragmentPack> = {
     fallback: "from the website",
     aboutTopic: (t) => `from the *${t}* page`,
   },
-  // es/fr: por ora reusam o pacote pt-br (fallback). Estrutura pronta pra traduzir.
-  es: null as unknown as FragmentPack,
-  fr: null as unknown as FragmentPack,
+  es: {
+    generic: {
+      home: "desde el sitio web",
+      pricing: "desde la página de planes",
+      changelog: "desde la página de novedades",
+      blog: "desde el blog",
+    },
+    fallback: "desde el sitio web",
+    aboutTopic: (t) => `desde la página sobre *${t}*`,
+  },
+  fr: {
+    generic: {
+      home: "depuis le site web",
+      pricing: "depuis la page des tarifs",
+      changelog: "depuis la page des nouveautés",
+      blog: "depuis le blog",
+    },
+    fallback: "depuis le site web",
+    aboutTopic: (t) => `depuis la page sur *${t}*`,
+  },
 };
 
-/** Pacote de fragmentos do locale (com fallback pt-br pros ainda não traduzidos). */
+/** Pacote de fragmentos do locale (com fallback pt-br caso o locale não exista). */
 function fragmentPack(locale: LocaleCode): FragmentPack {
   return FRAGMENTS[locale] ?? FRAGMENTS[DEFAULT_LOCALE];
 }
@@ -192,12 +209,21 @@ const MESSAGE_TEMPLATES: Record<LocaleCode, MessagePack> = {
     withOrigin: (f, o) =>
       `Hi! I came ${f}, which I found on *${o}*, and I'd like to learn more about Dominex.`,
   },
-  // es/fr: fallback pt-br por ora (estrutura pronta pra traduzir).
-  es: null as unknown as MessagePack,
-  fr: null as unknown as MessagePack,
+  es: {
+    noOrigin: (f) =>
+      `Hola, llegué ${f} de Dominex y me gustaría saber más sobre el sistema.`,
+    withOrigin: (f, o) =>
+      `Hola, llegué ${f} de Dominex, que encontré en *${o}*, y me gustaría saber más sobre el sistema.`,
+  },
+  fr: {
+    noOrigin: (f) =>
+      `Bonjour, je viens ${f} de Dominex et j'aimerais en savoir plus sur le système.`,
+    withOrigin: (f, o) =>
+      `Bonjour, je viens ${f} de Dominex, que j'ai trouvé sur *${o}*, et j'aimerais en savoir plus sur le système.`,
+  },
 };
 
-/** Pacote de mensagem do locale (com fallback pt-br pros ainda não traduzidos). */
+/** Pacote de mensagem do locale (com fallback pt-br caso o locale não exista). */
 function messagePack(locale: LocaleCode): MessagePack {
   return MESSAGE_TEMPLATES[locale] ?? MESSAGE_TEMPLATES[DEFAULT_LOCALE];
 }
