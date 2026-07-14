@@ -29,7 +29,7 @@ export function PageHeader({ title, subtitle, icon: Icon, actions, className }: 
         <div className="min-w-0">
           <h1 className={typography.pageTitle}>{title}</h1>
           {subtitle && (
-            <p className={cn(typography.pageSubtitle, 'mt-1')}>{subtitle}</p>
+            <p className={cn(typography.pageSubtitle, 'mt-1 hidden lg:block')}>{subtitle}</p>
           )}
         </div>
       </div>

@@ -12,6 +12,8 @@ interface MobilePullToRefreshProps {
   /** Se desabilitado, comporta como passthrough (útil pra desktop). */
   disabled?: boolean;
   className?: string;
+  /** Callback de scroll do container — usado pelo header para o cross-fade logo ↔ título. */
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
 /**
@@ -30,6 +32,7 @@ export function MobilePullToRefresh({
   maxPull = 100,
   disabled = false,
   className,
+  onScroll,
 }: MobilePullToRefreshProps) {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -109,6 +112,7 @@ export function MobilePullToRefresh({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
+      onScroll={onScroll}
       className={cn('relative overflow-y-auto', className)}
       style={{ touchAction: pullDistance > 0 ? 'none' : 'pan-y' }}
     >

@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.15.33',
+    date: '14 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Barra do topo com cara de aplicativo no celular',
+        description: 'No celular, a barra do topo agora acompanha a rolagem: parado no início da tela você vê o logo, e ao rolar para baixo o logo dá lugar ao nome da tela em que você está (como "Ordens de Serviço" ou "Clientes"), com uma transição suave. Ao voltar para o topo, o logo reaparece. Fica sempre claro onde você está, sem ocupar espaço à toa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Títulos das telas maiores e mais limpos no celular',
+        description: 'Os títulos no topo de cada tela ficaram maiores e mais fáceis de ler no celular, e a frase de descrição menor deixou de aparecer no celular para dar mais espaço ao conteúdo. Uma leitura mais limpa e direta, no estilo dos aplicativos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.15.32',
     date: '07 de julho de 2026',
     type: 'patch',

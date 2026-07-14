@@ -45,25 +45,38 @@ const ROUTE_TITLES: Record<string, string> = {
 const SUFFIX = " | Dominex";
 const DEFAULT_TITLE = "Dominex — Gestão de Equipes de Campo e Ordens de Serviço";
 
-export const usePageTitle = () => {
+/**
+ * Resolve o nome limpo da tela atual (sem sufixo " | Dominex") a partir do pathname.
+ * Cálculo puro no render — sem efeito colateral. Retorna "" quando a rota não
+ * tem título mapeado (ex.: detalhe dinâmico como /clientes/123 sem match exato).
+ *
+ * Usado pelo header mobile para o cross-fade logo ↔ título ao rolar.
+ */
+export const useResolvedRouteTitle = (): string => {
   const { pathname } = useLocation();
 
+  let title = ROUTE_TITLES[pathname];
+
+  if (!title) {
+    if (pathname.startsWith("/clientes/")) title = "Cliente";
+    else if (pathname.startsWith("/equipamentos/")) title = "Equipamento";
+    else if (pathname.startsWith("/contratos/")) title = "Contrato";
+    else if (pathname.startsWith("/checklists/")) title = "Checklist";
+    else if (pathname.startsWith("/questionarios/")) title = "Checklist"; // back-compat
+    else if (pathname.startsWith("/admin/empresas/")) title = "Admin | Empresa";
+    else if (pathname.startsWith("/os-tecnico/")) title = "OS Técnico";
+    else if (pathname.startsWith("/orcamento/")) title = "Orçamento";
+    else if (pathname.startsWith("/proposta/")) title = "Proposta";
+    else if (pathname.startsWith("/portal/")) title = "Portal do Cliente";
+  }
+
+  return title ?? "";
+};
+
+export const usePageTitle = () => {
+  const title = useResolvedRouteTitle();
+
   useEffect(() => {
-    let title = ROUTE_TITLES[pathname];
-
-    if (!title) {
-      if (pathname.startsWith("/clientes/")) title = "Cliente";
-      else if (pathname.startsWith("/equipamentos/")) title = "Equipamento";
-      else if (pathname.startsWith("/contratos/")) title = "Contrato";
-      else if (pathname.startsWith("/checklists/")) title = "Checklist";
-      else if (pathname.startsWith("/questionarios/")) title = "Checklist"; // back-compat
-      else if (pathname.startsWith("/admin/empresas/")) title = "Admin | Empresa";
-      else if (pathname.startsWith("/os-tecnico/")) title = "OS Técnico";
-      else if (pathname.startsWith("/orcamento/")) title = "Orçamento";
-      else if (pathname.startsWith("/proposta/")) title = "Proposta";
-      else if (pathname.startsWith("/portal/")) title = "Portal do Cliente";
-    }
-
     document.title = title ? title + SUFFIX : DEFAULT_TITLE;
-  }, [pathname]);
+  }, [title]);
 };

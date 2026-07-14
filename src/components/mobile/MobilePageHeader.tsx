@@ -21,7 +21,7 @@ export function MobilePageHeader({
   icon: Icon,
   actions,
   className,
-  compactOnMobile = true,
+  compactOnMobile = false,
 }: MobilePageHeaderProps) {
   const isMobile = useIsMobile();
 

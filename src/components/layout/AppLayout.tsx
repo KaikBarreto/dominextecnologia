@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { useResolvedRouteTitle } from '@/hooks/usePageTitle';
 import { Menu, UserCircle, LogOut, ArrowLeft } from 'lucide-react';
 // UserCircle continua importado porque o MobileTabletHeader (tablet >=lg) ainda
 // usa o atalho pro perfil. No DesktopSidebarHeader o avatar/perfil vive dentro
@@ -226,6 +228,15 @@ function TopbarShell() {
 // SHELL: mobile/tablet (header simples + MobileBottomNav + pull-to-refresh)
 // ============================================================
 function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
+  const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+
+  // Reseta ao trocar de rota para a barra não ficar com o título "preso"
+  // da tela anterior enquanto o novo conteúdo ancora no topo.
+  useEffect(() => {
+    setScrolled(false);
+  }, [location.pathname]);
+
   const handleRefresh = async () => {
     // Defense-in-depth: o gate principal é o MobilePullToRefresh, que nem inicia
     // o gesto com modal/drawer aberto. Ainda assim, se por algum caminho um
@@ -239,9 +250,16 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
 
   return (
     <div className="flex h-[100dvh] w-full max-w-full flex-col bg-background">
-      <MobileTabletHeader isAdminUser={isAdminUser} />
+      <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} />
       <MobilePullToRefresh
         onRefresh={handleRefresh}
+        onScroll={(e) => {
+          const st = e.currentTarget.scrollTop;
+          setScrolled((prev) => {
+            const next = st > 48;
+            return prev === next ? prev : next;
+          });
+        }}
         className="flex-1 overflow-x-hidden min-w-0 max-w-full bg-background"
       >
         <main className="p-4 pb-[calc(8rem+env(safe-area-inset-bottom))] bg-background">
@@ -258,12 +276,13 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
   );
 }
 
-function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
+function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; scrolled: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { logoUrl, isLoading: logoLoading } = useWhiteLabel();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const routeTitle = useResolvedRouteTitle();
 
   // Fecha o sheet ao mudar de rota.
   useEffect(() => {
@@ -277,6 +296,10 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
     !homePaths.includes(location.pathname) &&
     !location.pathname.startsWith('/os-tecnico/') &&
     window.history.length > 1;
+
+  // Cross-fade logo ↔ título: só troca quando há título mapeado E já rolou.
+  // Rotas sem título (ex.: /clientes/123) mantêm o logo sempre visível.
+  const showTitleSwap = scrolled && routeTitle !== '';
 
   // O tablet (≥lg) tem botão Menu visível. Mobile usa só o bottom nav.
   // (lg breakpoint do tailwind = 1024px, mesmo do MOBILE_BREAKPOINT.)
@@ -310,28 +333,55 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
         </Sheet>
       </div>
 
+      {/* Miolo central: cross-fade LOGO ↔ TÍTULO ao rolar (iOS large-title colapsável).
+          LOGO e TÍTULO ficam no mesmo ponto — o título é absolute sobre o container do logo.
+          Quando a rota não tem título mapeado (routeTitle === ''), o logo permanece sempre
+          visível e o span do título fica vazio/oculto para não engolir a logo num void. */}
       <div className="flex-1 flex justify-center">
-        {logoLoading ? (
-          <div className="h-10 w-32 rounded bg-muted animate-pulse" />
-        ) : (
-          <>
-            {/* Tema via CSS (dark:hidden / hidden dark:block): sempre correto e sem
-                depender de re-render. Em tema claro o logo-dark (texto escuro) fica
-                visível; em escuro, o verde (texto branco). logoUrl (white-label) cobre ambos. */}
-            <img
-              src={logoUrl || logoDark}
-              alt="Dominex"
-              className="h-10 w-auto max-h-[44px] cursor-pointer object-contain dark:hidden"
-              onClick={() => navigate(adminTarget)}
-            />
-            <img
-              src={logoUrl || logoGreen}
-              alt="Dominex"
-              className="h-10 w-auto max-h-[44px] cursor-pointer object-contain hidden dark:block"
-              onClick={() => navigate(adminTarget)}
-            />
-          </>
-        )}
+        <div className="relative flex items-center justify-center">
+          {/* LOGO — fluxo normal, visível parado no topo */}
+          <div
+            className={cn(
+              'flex items-center justify-center transition-opacity duration-200',
+              showTitleSwap ? 'opacity-0' : 'opacity-100',
+            )}
+          >
+            {logoLoading ? (
+              <div className="h-10 w-32 rounded bg-muted animate-pulse" />
+            ) : (
+              <>
+                {/* Tema via CSS (dark:hidden / hidden dark:block): sempre correto e sem
+                    depender de re-render. Em tema claro o logo-dark (texto escuro) fica
+                    visível; em escuro, o verde (texto branco). logoUrl (white-label) cobre ambos. */}
+                <img
+                  src={logoUrl || logoDark}
+                  alt="Dominex"
+                  className="h-10 w-auto max-h-[44px] cursor-pointer object-contain dark:hidden"
+                  onClick={() => navigate(adminTarget)}
+                />
+                <img
+                  src={logoUrl || logoGreen}
+                  alt="Dominex"
+                  className="h-10 w-auto max-h-[44px] cursor-pointer object-contain hidden dark:block"
+                  onClick={() => navigate(adminTarget)}
+                />
+              </>
+            )}
+          </div>
+
+          {/* TÍTULO — overlay absoluto centralizado, visível ao rolar.
+              pointer-events-none para não bloquear cliques na logo abaixo. */}
+          <span
+            className={cn(
+              'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold text-lg tracking-tight text-foreground transition-all duration-200 pointer-events-none',
+              showTitleSwap
+                ? 'opacity-100'
+                : 'opacity-0 translate-y-[calc(-50%+0.25rem)]',
+            )}
+          >
+            {routeTitle}
+          </span>
+        </div>
       </div>
 
       {/* Lado direito: sino sempre visível (mobile/tablet/desktop); atalhos extras só em tablet+ */}
