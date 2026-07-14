@@ -53,6 +53,7 @@ import {
   type LocaleCode,
 } from '@/lib/i18n/locales';
 import { localizePath } from '@/lib/i18n/paths';
+import { isLocalizableSlugKey, slugFor } from '@/lib/i18n/slugRegistry';
 
 import '@/index.css';
 /* eslint-enable import/first */
@@ -110,12 +111,27 @@ export interface SsgRenderResult {
 export const SITE_URL = 'https://www.dominex.app';
 
 /**
- * URL absoluta de uma rota BASE (path pt-br sem prefixo) num dado locale.
- * absUrl('/os-digital', 'en') → 'https://www.dominex.app/en/os-digital';
- * absUrl('/', 'pt-br')        → 'https://www.dominex.app/'.
+ * Path pt-br → path COM o slug do idioma, quando o path for de segmento/módulo.
+ * O 1º segmento vira `slugFor(key, locale)` (fallback pt-br embutido no registro);
+ * paths não-slug (home, institucionais, blog) passam intactos.
+ * localizedSlugPath('/sistema-para-refrigeracao', 'en')
+ *   → '/refrigeration-service-software' (quando o slug en existir; hoje = pt-br).
+ */
+function localizedSlugPath(basePath: string, locale: LocaleCode): string {
+  const slug = basePath.replace(/^\/+/, '');
+  if (slug && !slug.includes('/') && isLocalizableSlugKey(slug)) {
+    return `/${slugFor(slug, locale)}`;
+  }
+  return basePath;
+}
+
+/**
+ * URL absoluta de uma rota BASE (path pt-br sem prefixo) num dado locale, JÁ com o
+ * slug traduzido do idioma (para segmento/módulo). absUrl('/os-digital', 'en') →
+ * 'https://www.dominex.app/en/<slug-en>'; absUrl('/', 'pt-br') → '.../'.
  */
 function absUrl(basePath: string, locale: LocaleCode): string {
-  const localized = localizePath(basePath, locale);
+  const localized = localizePath(localizedSlugPath(basePath, locale), locale);
   return localized === '/' ? `${SITE_URL}/` : `${SITE_URL}${localized}`;
 }
 
@@ -413,7 +429,8 @@ function outDirForPath(localizedPath: string): string {
 
 export const SSG_TASKS: SsgTask[] = SSG_BASE_ROUTES.flatMap((basePath) =>
   LOCALES.map((loc) => {
-    const localizedPath = localizePath(basePath, loc.code);
+    // localizedPath já leva o slug do idioma (fallback pt-br embutido).
+    const localizedPath = localizePath(localizedSlugPath(basePath, loc.code), loc.code);
     return {
       basePath,
       locale: loc.code,
@@ -482,9 +499,10 @@ export function renderRoute(
       ? <Blog initialPosts={blogData?.posts} initialCategories={blogData?.categories} />
       : entry.element;
 
-  // O StaticRouter renderiza no PATH LOCALIZADO — assim os links internos que o
-  // componente monta via useLocale/localizePath saem já com o prefixo do idioma.
-  const localizedPath = localizePath(route, locale);
+  // O StaticRouter renderiza no PATH LOCALIZADO (com o slug do idioma) — assim os
+  // links internos que o componente monta via useLocale/localizePath saem já com o
+  // prefixo E o slug corretos do idioma.
+  const localizedPath = localizePath(localizedSlugPath(route, locale), locale);
 
   const html = renderToString(
     <StrictMode>

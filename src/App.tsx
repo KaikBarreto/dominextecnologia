@@ -17,6 +17,7 @@ import { getErrorMessage } from "@/utils/errorMessages";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMarketingViewport } from "@/hooks/useMarketingViewport";
+import { localizedSegmentModuleRoutes } from "@/utils/localizedMarketingRoutes";
 import { useToast } from "@/hooks/use-toast";
 
 class ErrorBoundary extends React.Component<
@@ -445,13 +446,32 @@ const UsageTracker = () => {
 // Renderizamos o mesmo array de <Route> nos dois contextos. As rotas do APP
 // AUTENTICADO NÃO entram aqui e continuam SÓ sem prefixo (ficam intocadas).
 // ─────────────────────────────────────────────────────────────────────────────
-const publicMarketingRoutes = () => (
+{/* Rotas de MARKETING que NÃO são segmento/módulo (home + institucional +
+    blog). Compartilhadas pelos dois blocos (pt-br sem prefixo e /:lang). Os
+    slugs de segmento/módulo entram por FORA: fixos pt-br no bloco pt-br,
+    localizados (via slugRegistry) no bloco /:lang. */}
+const sharedMarketingRoutes = () => (
   <>
     {/* Landing page — public, no redirect */}
     <Route index element={<Landing />} />
 
-    {/* Landings de segmento (SEO) — públicas, sem redirect. Uma rota por slug
-        de segmentsData; o prerender captura os slugs automaticamente. */}
+    {/* Páginas institucionais / legais públicas — linkadas no rodapé. */}
+    <Route path="quem-somos" element={<QuemSomos />} />
+    <Route path="blog" element={<Blog />} />
+    <Route path="blog/:slug" element={<BlogPost />} />
+    <Route path="privacidade" element={<PrivacyPolicy />} />
+    <Route path="termos" element={<TermsOfUse />} />
+  </>
+);
+
+// Bloco pt-br (SEM prefixo): slugs pt-br FIXOS e canônicos (URLs atuais,
+// INTOCADAS — preservam ranking). NÃO derivar do registro aqui: o bloco pt-br é a
+// fonte da verdade das URLs canônicas do português.
+const publicMarketingRoutes = () => (
+  <>
+    {sharedMarketingRoutes()}
+
+    {/* Landings de segmento (SEO) — uma rota por slug pt-br de segmentsData. */}
     <Route path="sistema-para-refrigeracao" element={<SistemaParaRefrigeracao />} />
     <Route path="sistema-para-eletricistas" element={<SistemaParaEletricistas />} />
     <Route path="sistema-para-energia-solar" element={<SistemaParaEnergiaSolar />} />
@@ -462,11 +482,9 @@ const publicMarketingRoutes = () => (
     <Route path="sistema-para-limpeza-conservacao" element={<SistemaParaLimpezaConservacao />} />
     <Route path="sistema-para-dedetizacao" element={<SistemaParaDedetizacao />} />
 
-    {/* Landings de módulo (aba "Soluções", SEO) — públicas, sem redirect. Uma
-        rota por slug de modulesData; o prerender captura os slugs.
+    {/* Landings de módulo (aba "Soluções", SEO) — uma rota por slug pt-br.
         NOTA: o slug do módulo CRM é /sistema-crm porque /crm já é a tela
-        AUTENTICADA do CRM (bloco protegido abaixo). Colisão de path devolvida
-        ao Tech Lead — ver retorno do dev. */}
+        AUTENTICADA do CRM (bloco protegido abaixo). */}
     <Route path="os-digital" element={<OsDigital />} />
     <Route path="sistema-pmoc" element={<SistemaPmoc />} />
     <Route path="sistema-crm" element={<CrmModulo />} />
@@ -478,13 +496,17 @@ const publicMarketingRoutes = () => (
     <Route path="orcamentos-e-contratos" element={<OrcamentosEContratos />} />
     <Route path="rastreamento-de-equipes" element={<RastreamentoDeEquipes />} />
     <Route path="area-do-tecnico" element={<AreaDoTecnico />} />
+  </>
+);
 
-    {/* Páginas institucionais / legais públicas — linkadas no rodapé. */}
-    <Route path="quem-somos" element={<QuemSomos />} />
-    <Route path="blog" element={<Blog />} />
-    <Route path="blog/:slug" element={<BlogPost />} />
-    <Route path="privacidade" element={<PrivacyPolicy />} />
-    <Route path="termos" element={<TermsOfUse />} />
+// Bloco /:lang (COM prefixo): home/institucional/blog compartilhados + segmentos/
+// módulos com o slug DAQUELE idioma, gerados do slugRegistry
+// (localizedSegmentModuleRoutes). Hoje os slugs traduzidos não existem → caem no
+// slug pt-br (fallback) e o resultado é idêntico ao bloco pt-br, só prefixado.
+const localizedMarketingRoutes = () => (
+  <>
+    {sharedMarketingRoutes()}
+    {localizedSegmentModuleRoutes()}
   </>
 );
 
@@ -523,7 +545,7 @@ const AppRoutes = () => (
         Rotas FILHAS via <Outlet /> — o `index` casa em /en (não usa <Routes>
         aninhado, que não resolvia o root do idioma). */}
     <Route path="/:lang" element={<LocalizedMarketingLayout />}>
-      {publicMarketingRoutes()}
+      {localizedMarketingRoutes()}
       <Route path="*" element={<NotFound />} />
     </Route>
 

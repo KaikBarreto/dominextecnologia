@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { LOCALES, type LocaleCode } from '@/lib/i18n';
 import { useLocale } from '@/lib/i18n';
 import { writeLangCookie } from '@/lib/i18n';
+import { switchLocalePath } from '@/lib/i18n';
 import FlagIcon from './FlagIcon';
 
 /** Verde FIXO da marca Dominex — o seletor nunca usa cor de tenant. */
@@ -60,14 +61,16 @@ interface LanguageSelectorProps {
 // ── Lógica compartilhada de troca de idioma ───────────────────────────────────
 function useLanguageSwitch() {
   const navigate = useNavigate();
-  const { locale, localizePath, stripLocale } = useLocale();
+  const { locale } = useLocale();
 
   const handleSelect = (code: LocaleCode, onDone?: () => void) => {
     writeLangCookie(code);
-    const target = localizePath(
-      stripLocale(
-        window.location.pathname + window.location.search + window.location.hash,
-      ),
+    // Leva pra MESMA página no idioma escolhido. switchLocalePath mapeia o slug
+    // de segmento/módulo pro slug do idioma de destino (slug→key→slug); pra
+    // demais páginas só troca o prefixo. Preserva query e hash.
+    const target = switchLocalePath(
+      window.location.pathname + window.location.search + window.location.hash,
+      locale,
       code,
     );
     navigate(target);

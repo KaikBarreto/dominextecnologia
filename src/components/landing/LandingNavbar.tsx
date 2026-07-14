@@ -37,6 +37,7 @@ import { SEGMENT_NAV_LINKS, SEGMENTS } from '@/pages/segmentos/segmentsData';
 import { getSegment } from '@/utils/companySegments';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
 import { useLocale } from '@/lib/i18n';
+import { resolveSlug } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash, type AnchorKey } from '@/lib/i18n/localizeHash';
 
@@ -213,8 +214,18 @@ export default function LandingNavbar() {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const location = useLocation();
   const { locale, stripLocale } = useLocale();
-  // stripLocale remove o prefixo de idioma para comparações de rota (path canônico pt-br).
-  const canonicalPath = stripLocale(location.pathname);
+  // Path canônico pt-br para comparações de estado ativo: remove o prefixo de
+  // idioma E, se o 1º segmento for slug de segmento/módulo traduzido, resolve pra
+  // key pt-br (senão o highlight quebraria quando o slug do idioma diferir).
+  const canonicalPath = (() => {
+    const stripped = stripLocale(location.pathname);
+    const slug = stripped.replace(/^\/+/, '');
+    if (slug && !slug.includes('/')) {
+      const key = resolveSlug(slug, locale);
+      if (key) return `/${key}`;
+    }
+    return stripped;
+  })();
   const onHome = canonicalPath === '/';
 
   // navLinks localizados: id e href usam o hash traduzido pro locale atual.

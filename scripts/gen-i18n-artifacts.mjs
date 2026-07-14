@@ -104,20 +104,26 @@ const LLMS_HEADER = `# Dominex
 
 O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza e dedetização. Teste grátis por 14 dias, sem cartão de crédito.`;
 
-/** Monta a URL absoluta localizada de um path base num locale. */
-function absUrlFor(siteUrl, basePath, locale) {
+/**
+ * URL absoluta localizada de um path base num locale. Prefere a URL EXATA das
+ * SSG_TASKS (que já leva o slug traduzido do idioma via slugRegistry); só cai no
+ * cálculo pt-br (prefixo simples) se o path base não estiver nas tasks.
+ */
+function absUrlFor(siteUrl, basePath, locale, urlByBaseLocale) {
+  const fromTasks = urlByBaseLocale?.get(basePath)?.get(locale);
+  if (fromTasks) return fromTasks;
   const base = basePath === '/' ? '' : basePath;
   if (locale === 'pt-br') return `${siteUrl}${base || '/'}`;
   return `${siteUrl}/${locale}${base}`;
 }
 
 /** Gera o conteúdo de um llms.txt para um locale (URLs prefixadas do idioma). */
-function buildLlmsTxt(siteUrl, locale) {
+function buildLlmsTxt(siteUrl, locale, urlByBaseLocale) {
   const lines = [LLMS_HEADER, ''];
   for (const section of LLMS_SECTIONS) {
     lines.push(`## ${section.title}`, '');
     for (const [basePath, title, desc] of section.entries) {
-      const url = absUrlFor(siteUrl, basePath, locale);
+      const url = absUrlFor(siteUrl, basePath, locale, urlByBaseLocale);
       lines.push(`- [${title}](${url}): ${desc}`);
     }
     lines.push('');
@@ -147,6 +153,14 @@ export function generateArtifacts({ tasks, siteUrl, distDir, blogData }) {
   for (const t of tasks) {
     if (!byBase.has(t.basePath)) byBase.set(t.basePath, []);
     byBase.get(t.basePath).push(t);
+  }
+
+  // Índice basePath → (locale → url) das tasks — fonte da URL localizada COM slug
+  // traduzido, reusada pelo llms.txt (mesma verdade das páginas geradas).
+  const urlByBaseLocale = new Map();
+  for (const t of tasks) {
+    if (!urlByBaseLocale.has(t.basePath)) urlByBaseLocale.set(t.basePath, new Map());
+    urlByBaseLocale.get(t.basePath).set(t.locale, t.url);
   }
 
   // ── sitemap.xml ─────────────────────────────────────────────────────────────
@@ -242,7 +256,7 @@ export function generateArtifacts({ tasks, siteUrl, distDir, blogData }) {
   // ── llms.txt por idioma ─────────────────────────────────────────────────────
   const locales = ['pt-br', 'en', 'es', 'fr'];
   for (const locale of locales) {
-    const content = buildLlmsTxt(siteUrl, locale);
+    const content = buildLlmsTxt(siteUrl, locale, urlByBaseLocale);
     const outPath = locale === 'pt-br' ? join(distDir, 'llms.txt') : join(distDir, locale, 'llms.txt');
     mkdirSync(dirname(outPath), { recursive: true });
     writeFileSync(outPath, content, 'utf8');

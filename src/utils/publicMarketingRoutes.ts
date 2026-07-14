@@ -9,6 +9,9 @@
 // Ao adicionar uma landing nova, atualize os dois lados.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { localeFromPath, stripLocale } from '@/lib/i18n/paths';
+import { resolveSlug } from '@/lib/i18n/slugRegistry';
+
 /** Viewport ZOOMÁVEL — usado só nas páginas de marketing (passa no Lighthouse a11y). */
 export const MARKETING_VIEWPORT =
   'width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content';
@@ -51,11 +54,24 @@ const EXACT_MARKETING_PATHS = new Set<string>([
 /**
  * Diz se um pathname é página de MARKETING (zoom liberado). Cobre os caminhos
  * exatos acima e os posts de blog (`/blog/:slug`), normalizando barra final.
+ *
+ * i18n: aceita paths localizados (`/en/...`, `/es/...`). Remove o prefixo de
+ * idioma e, se o slug for de segmento/módulo traduzido, resolve pro slug pt-br
+ * canônico antes de checar o set. Enquanto os slugs traduzidos não existem, o
+ * strip do prefixo já basta (o slug sob /en é o pt-br).
  */
 export function isMarketingRoute(pathname: string): boolean {
-  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-  if (EXACT_MARKETING_PATHS.has(path)) return true;
-  // Posts de blog também são marketing.
-  if (path.startsWith('/blog/')) return true;
+  const raw = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  const stripped = stripLocale(raw);
+  const locale = localeFromPath(raw);
+  if (EXACT_MARKETING_PATHS.has(stripped)) return true;
+  // Slug de segmento/módulo traduzido → resolve pra key pt-br e checa o set.
+  const slug = stripped.replace(/^\/+/, '');
+  if (slug && !slug.includes('/')) {
+    const key = resolveSlug(slug, locale);
+    if (key && EXACT_MARKETING_PATHS.has(`/${key}`)) return true;
+  }
+  // Posts de blog também são marketing (pt-br e localizados).
+  if (stripped.startsWith('/blog/')) return true;
   return false;
 }

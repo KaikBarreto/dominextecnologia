@@ -60,6 +60,16 @@ export interface SegmentContentFaq {
  * Todos os campos de texto visível ao usuário vivem aqui.
  */
 export interface SegmentContent {
+  /**
+   * Slug de ROTA/URL deste segmento NESTE idioma (sem barra inicial). OPCIONAL.
+   *
+   * Fonte da verdade do slug traduzido: quando a fase de tradução preencher, por
+   * ex., `slug: 'refrigeration-service-software'` no content/en.ts, a rota
+   * /en/<esse-slug> passa a valer sozinha (registro em @/lib/i18n/slugRegistry).
+   * Enquanto AUSENTE, o slugRegistry cai no slug pt-br canônico (a chave do mapa)
+   * e NADA muda visível. NÃO é conteúdo renderizado na página; é só o endereço.
+   */
+  slug?: string;
   metaTitle: string;
   metaDescription: string;
   hero: {

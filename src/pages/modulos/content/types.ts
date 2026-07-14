@@ -53,6 +53,16 @@ export interface ModuleContentFaq {
  * Espelha ModuleData exceto os campos de identidade.
  */
 export interface ModuleContent {
+  /**
+   * Slug de ROTA/URL deste módulo NESTE idioma (sem barra inicial). OPCIONAL.
+   *
+   * Fonte da verdade do slug traduzido: quando a fase de tradução preencher, por
+   * ex., `slug: 'digital-work-order'` no content/en.ts, a rota /en/<esse-slug>
+   * passa a valer sozinha (registro em @/lib/i18n/slugRegistry). Enquanto
+   * AUSENTE, o slugRegistry cai no slug pt-br canônico (a chave do mapa) e NADA
+   * muda visível. NÃO é conteúdo renderizado; é só o endereço.
+   */
+  slug?: string;
   metaTitle: string;
   metaDescription: string;
   hero: {

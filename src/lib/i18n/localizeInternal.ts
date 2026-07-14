@@ -14,8 +14,9 @@
 // se alguém adicionar um link novo.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { localizePath } from './paths';
+import { localizePath, stripLocale } from './paths';
 import type { LocaleCode } from './locales';
+import { isLocalizableSlugKey, resolveSlug, slugFor } from './slugRegistry';
 
 /**
  * Prefixos de rota que NÃO devem ser localizados (auth/app autenticado).
@@ -74,6 +75,27 @@ export function localizeInternal(path: string, locale: LocaleCode): string {
     }
   }
 
-  // Rota pública → aplica prefixo de locale
-  return localizePath(path, locale);
+  // Rota pública → aplica prefixo de locale. Se o path for um slug de
+  // segmento/módulo, traduz o slug pro idioma alvo ANTES de prefixar (slug→key→
+  // slug do locale). Hoje o slug traduzido não existe → cai no slug pt-br
+  // (fallback do registro), então o output é idêntico ao de antes.
+  const translated = translateSlugPath(path, locale);
+  return localizePath(translated, locale);
+}
+
+/**
+ * Se `path` (base pt-br, com ou sem barra inicial) for exatamente um slug de
+ * segmento/módulo conhecido, devolve o path com o slug DAQUELE idioma. Caso
+ * contrário, devolve o path inalterado. Só troca o PRIMEIRO segmento; não mexe
+ * em sub-paths (segmento/módulo são páginas de 1 nível).
+ */
+function translateSlugPath(path: string, locale: LocaleCode): string {
+  const base = stripLocale(path.startsWith('/') ? path : `/${path}`);
+  const slug = base.replace(/^\/+/, '');
+  // Só um slug simples (sem '/') pode ser de segmento/módulo.
+  if (!slug || slug.includes('/')) return base;
+  // Aceita tanto a key pt-br quanto (defensivo) um slug já traduzido.
+  const key = isLocalizableSlugKey(slug) ? slug : resolveSlug(slug, locale);
+  if (!key) return base;
+  return `/${slugFor(key, locale)}`;
 }

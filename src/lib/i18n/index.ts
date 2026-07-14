@@ -12,3 +12,11 @@ export type { Messages } from './messages';
 export { localizeInternal } from './localizeInternal';
 export { localizeHash } from './localizeHash';
 export type { AnchorKey } from './localizeHash';
+export {
+  slugFor,
+  resolveSlug,
+  isLocalizableSlugKey,
+  allSegmentKeys,
+  allModuleKeys,
+  switchLocalePath,
+} from './slugRegistry';
