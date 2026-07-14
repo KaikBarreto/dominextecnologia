@@ -52,6 +52,7 @@ import {
   getLocaleDef,
   type LocaleCode,
 } from '@/lib/i18n/locales';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { localizePath } from '@/lib/i18n/paths';
 import { isLocalizableSlugKey, slugFor } from '@/lib/i18n/slugRegistry';
 
@@ -105,6 +106,14 @@ export interface SsgHead {
    * Injetado no <head> pelo ssg.mjs.
    */
   hreflang: string;
+  /**
+   * Conteúdo da meta `keywords` desta rota, JÁ localizado. Quando presente
+   * (home en/es/fr), o ssg.mjs reescreve a `<meta name="keywords">` do shell
+   * (pt-br) por este valor. Quando ausente (`undefined`, ex.: home pt-br), o
+   * shell mantém o keywords em pt-br. Keywords tem baixo peso de SEO, mas fecha
+   * a lacuna de idioma na home.
+   */
+  keywords?: string;
 }
 
 export interface SsgRenderResult {
@@ -183,6 +192,17 @@ const HOME_DESCRIPTIONS: Record<LocaleCode, string> = {
     'Software de órdenes de servicio digital y gestión para empresas de servicio y equipos de campo. Agenda, app del técnico, clientes e informes en un solo lugar. Prueba gratis de 14 días, sin tarjeta.',
   fr:
     'Logiciel de bons de travail numériques et gestion pour les entreprises de service et les équipes terrain. Planning, application du technicien, clients et rapports au même endroit. Essai gratuit de 14 jours, sans carte.',
+};
+
+// ── Meta keywords da HOME por locale ─────────────────────────────────────────
+// pt-br NÃO entra aqui: a home pt-br mantém EXATAMENTE a keywords do shell
+// (index.html). en/es/fr são GENERALIZADOS (sem PMOC, NFS-e, ISS, R$ nem termos
+// locais do Brasil). Keywords tem baixo peso de SEO; entra só pra fechar a
+// lacuna de idioma na home. Sem travessão (—). Marca "Dominex" preservada.
+const HOME_KEYWORDS: Partial<Record<LocaleCode, string>> = {
+  en: 'work order software, digital work orders, field service management, field service software, technician app, service scheduling software, maintenance management, work order app, field team management',
+  es: 'software de órdenes de servicio, órdenes de servicio digitales, gestión de equipos de campo, software de servicio de campo, app del técnico, software de agenda de servicios, gestión de mantenimiento, app de órdenes de servicio',
+  fr: 'logiciel de bons de travail, bons de travail numériques, gestion des équipes terrain, logiciel de service terrain, application du technicien, logiciel de planning de service, gestion de la maintenance, application de bons de travail',
 };
 
 // ── Head das páginas institucionais/legais por locale ────────────────────────
@@ -354,6 +374,32 @@ function faqPageLd(faq: RawFaq[] | undefined) {
       acceptedAnswer: { '@type': 'Answer', text: f.a },
     })),
   };
+}
+
+/**
+ * JSON-LD LOCALIZADO da HOME (só en/es/fr). Substitui os blocos globais do shell
+ * (SoftwareApplication + FAQPage, que são pt-br) por versões no idioma da página:
+ *   - SoftwareApplication: name "Dominex", description = metaDescription localizada
+ *     da home; URL/offer/rating iguais aos das demais rotas (softwareAppLd).
+ *   - FAQPage: montado a partir de MESSAGES[locale].home.faq.items ({ q, a }) já
+ *     traduzido e generalizado (sem PMOC-lei/NFS-e/ISS).
+ * Organization e WebSite do shell NÃO são tocados aqui (ficam, são site-wide). A
+ * home pt-br NÃO chama esta função: mantém byte-a-byte o JSON-LD do shell.
+ */
+function buildHomeJsonLd(locale: LocaleCode, homeUrl: string): string {
+  const description = HOME_DESCRIPTIONS[locale] ?? HOME_DESCRIPTIONS[DEFAULT_LOCALE];
+  // `home.faq.items` vem `readonly` (as const no pt-br); normaliza pra RawFaq[]
+  // mutável, pegando só { q, a } (mesma forma do FAQPage de segmento/módulo).
+  const faqItems: RawFaq[] = (MESSAGES[locale]?.home?.faq?.items ?? []).map((f) => ({
+    q: f.q,
+    a: f.a,
+  }));
+  const blocks: string[] = [
+    jsonLdScript(softwareAppLd(homeUrl, 'Dominex', description)),
+  ];
+  const faqLd = faqPageLd(faqItems);
+  if (faqLd) blocks.push(jsonLdScript(faqLd));
+  return blocks.join('\n    ');
 }
 
 /**
@@ -619,13 +665,22 @@ export function renderRoute(
   const pageUrl = absUrl(route, locale);
   const homeUrl = absUrl('/', locale);
 
-  // JSON-LD por-rota. Home mantém os blocos globais do shell (não injeta nem
-  // remove). Segmento/módulo: Breadcrumb + SoftwareApplication + FAQPage própria.
-  // Institucional: só Breadcrumb (sem FAQ/App), mas ainda removendo a FAQ global.
-  // URLs do JSON-LD são as absolutas DO IDIOMA da página.
+  // JSON-LD por-rota. URLs do JSON-LD são as absolutas DO IDIOMA da página.
+  //  - Home pt-br: mantém os blocos globais do shell BYTE-A-BYTE (não injeta nem
+  //    remove nada) — é a referência de ranking.
+  //  - Home en/es/fr: remove os blocos globais da HOME que são pt-br (FAQPage +
+  //    SoftwareApplication) e injeta versões LOCALIZADAS; Organization/WebSite do
+  //    shell ficam (site-wide). Assim não há duplicação nem texto pt-br na home.
+  //  - Segmento/módulo: Breadcrumb + SoftwareApplication + FAQPage própria.
+  //  - Institucional: só Breadcrumb (sem FAQ/App), ainda removendo a FAQ global.
+  const isNonDefaultHome = entry.kind === 'home' && locale !== DEFAULT_LOCALE;
   let jsonLd = '';
-  const stripGlobalJsonLd = entry.kind !== 'home';
-  if (entry.kind === 'segment' || entry.kind === 'module') {
+  // Strip do JSON-LD global do shell em TUDO que não é a home pt-br (a home
+  // não-default agora também precisa strippar pra não duplicar os globais).
+  const stripGlobalJsonLd = entry.kind !== 'home' || isNonDefaultHome;
+  if (isNonDefaultHome) {
+    jsonLd = buildHomeJsonLd(locale, homeUrl);
+  } else if (entry.kind === 'segment' || entry.kind === 'module') {
     jsonLd = buildRouteJsonLd(homeUrl, pageUrl, entry);
   } else if (entry.kind === 'institutional') {
     jsonLd = jsonLdScript(breadcrumbLd(homeUrl, pageUrl, entry.breadcrumbName ?? entry.title));
@@ -645,6 +700,9 @@ export function renderRoute(
     stripGlobalJsonLd,
     htmlLang: getLocaleDef(locale).htmlLang,
     hreflang: hreflangBlock(route),
+    // Keywords localizada só na home en/es/fr (fecha a lacuna de idioma). Demais
+    // rotas/idiomas não mexem no keywords do shell (undefined).
+    keywords: isNonDefaultHome ? HOME_KEYWORDS[locale] : undefined,
   };
 
   return { html, head };

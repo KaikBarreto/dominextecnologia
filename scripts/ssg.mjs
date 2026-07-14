@@ -171,6 +171,15 @@ function buildHtml(baseHtml, html, head) {
     `<meta name="description" content="${attr(head.description)}">`
   );
 
+  // meta keywords — só reescreve quando a rota forneceu `head.keywords` (home
+  // en/es/fr). Sem valor (pt-br e demais rotas), o keywords do shell é mantido.
+  if (head.keywords) {
+    out = out.replace(
+      /<meta name="keywords" content="[\s\S]*?" \/>/,
+      `<meta name="keywords" content="${attr(head.keywords)}" />`
+    );
+  }
+
   // canonical — a canônica PRÓPRIA da rota (www).
   out = out.replace(
     /<link rel="canonical" href="[\s\S]*?" \/>/,
