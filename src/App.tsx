@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
@@ -57,6 +57,10 @@ class ErrorBoundary extends React.Component<
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import { SwipeBackProvider } from "@/components/SwipeBack";
 import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
+// i18n do SITE PÚBLICO (Fase 1: só liga a máquina de roteamento por idioma).
+import { isLocaleCode } from "@/lib/i18n";
+import { LocaleAutoRedirect } from "@/lib/i18n/LocaleAutoRedirect";
+import { HtmlLangManager } from "@/lib/i18n/HtmlLangManager";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -433,47 +437,95 @@ const UsageTracker = () => {
   return null;
 };
 
-const AppRoutes = () => (
-  <React.Suspense fallback={<LoadingSpinner />}>
-  <Routes>
+// ─────────────────────────────────────────────────────────────────────────────
+// ROTAS PÚBLICAS DE MARKETING (i18n) — fonte ÚNICA, montada 2x:
+//   1) sem prefixo   → pt-br (URLs canônicas atuais, INTOCADAS);
+//   2) sob /en, /es, /fr → mesmas rotas, idioma prefixado (Fase 1 = mesmo
+//      conteúdo pt-br, só prova o roteamento).
+// Renderizamos o mesmo array de <Route> nos dois contextos. As rotas do APP
+// AUTENTICADO NÃO entram aqui e continuam SÓ sem prefixo (ficam intocadas).
+// ─────────────────────────────────────────────────────────────────────────────
+const publicMarketingRoutes = () => (
+  <>
     {/* Landing page — public, no redirect */}
-    <Route path="/" element={<Landing />} />
+    <Route index element={<Landing />} />
 
     {/* Landings de segmento (SEO) — públicas, sem redirect. Uma rota por slug
         de segmentsData; o prerender captura os slugs automaticamente. */}
-    <Route path="/sistema-para-refrigeracao" element={<SistemaParaRefrigeracao />} />
-    <Route path="/sistema-para-eletricistas" element={<SistemaParaEletricistas />} />
-    <Route path="/sistema-para-energia-solar" element={<SistemaParaEnergiaSolar />} />
-    <Route path="/sistema-para-provedores" element={<SistemaParaProvedores />} />
-    <Route path="/sistema-para-cftv" element={<SistemaParaCftv />} />
-    <Route path="/sistema-para-construcao-civil" element={<SistemaParaConstrucaoCivil />} />
-    <Route path="/sistema-para-elevadores" element={<SistemaParaElevadores />} />
-    <Route path="/sistema-para-limpeza-conservacao" element={<SistemaParaLimpezaConservacao />} />
-    <Route path="/sistema-para-dedetizacao" element={<SistemaParaDedetizacao />} />
+    <Route path="sistema-para-refrigeracao" element={<SistemaParaRefrigeracao />} />
+    <Route path="sistema-para-eletricistas" element={<SistemaParaEletricistas />} />
+    <Route path="sistema-para-energia-solar" element={<SistemaParaEnergiaSolar />} />
+    <Route path="sistema-para-provedores" element={<SistemaParaProvedores />} />
+    <Route path="sistema-para-cftv" element={<SistemaParaCftv />} />
+    <Route path="sistema-para-construcao-civil" element={<SistemaParaConstrucaoCivil />} />
+    <Route path="sistema-para-elevadores" element={<SistemaParaElevadores />} />
+    <Route path="sistema-para-limpeza-conservacao" element={<SistemaParaLimpezaConservacao />} />
+    <Route path="sistema-para-dedetizacao" element={<SistemaParaDedetizacao />} />
 
     {/* Landings de módulo (aba "Soluções", SEO) — públicas, sem redirect. Uma
         rota por slug de modulesData; o prerender captura os slugs.
         NOTA: o slug do módulo CRM é /sistema-crm porque /crm já é a tela
         AUTENTICADA do CRM (bloco protegido abaixo). Colisão de path devolvida
         ao Tech Lead — ver retorno do dev. */}
-    <Route path="/os-digital" element={<OsDigital />} />
-    <Route path="/sistema-pmoc" element={<SistemaPmoc />} />
-    <Route path="/sistema-crm" element={<CrmModulo />} />
-    <Route path="/controle-financeiro" element={<ControleFinanceiro />} />
-    <Route path="/ponto-e-folha" element={<PontoEFolha />} />
-    <Route path="/emissao-de-nfse" element={<EmissaoDeNfse />} />
-    <Route path="/portal-do-cliente" element={<PortalDoCliente />} />
-    <Route path="/controle-de-estoque" element={<ControleDeEstoque />} />
-    <Route path="/orcamentos-e-contratos" element={<OrcamentosEContratos />} />
-    <Route path="/rastreamento-de-equipes" element={<RastreamentoDeEquipes />} />
-    <Route path="/area-do-tecnico" element={<AreaDoTecnico />} />
+    <Route path="os-digital" element={<OsDigital />} />
+    <Route path="sistema-pmoc" element={<SistemaPmoc />} />
+    <Route path="sistema-crm" element={<CrmModulo />} />
+    <Route path="controle-financeiro" element={<ControleFinanceiro />} />
+    <Route path="ponto-e-folha" element={<PontoEFolha />} />
+    <Route path="emissao-de-nfse" element={<EmissaoDeNfse />} />
+    <Route path="portal-do-cliente" element={<PortalDoCliente />} />
+    <Route path="controle-de-estoque" element={<ControleDeEstoque />} />
+    <Route path="orcamentos-e-contratos" element={<OrcamentosEContratos />} />
+    <Route path="rastreamento-de-equipes" element={<RastreamentoDeEquipes />} />
+    <Route path="area-do-tecnico" element={<AreaDoTecnico />} />
 
     {/* Páginas institucionais / legais públicas — linkadas no rodapé. */}
-    <Route path="/quem-somos" element={<QuemSomos />} />
-    <Route path="/blog" element={<Blog />} />
-    <Route path="/blog/:slug" element={<BlogPost />} />
-    <Route path="/privacidade" element={<PrivacyPolicy />} />
-    <Route path="/termos" element={<TermsOfUse />} />
+    <Route path="quem-somos" element={<QuemSomos />} />
+    <Route path="blog" element={<Blog />} />
+    <Route path="blog/:slug" element={<BlogPost />} />
+    <Route path="privacidade" element={<PrivacyPolicy />} />
+    <Route path="termos" element={<TermsOfUse />} />
+  </>
+);
+
+// Layout (pathless) das rotas públicas SEM prefixo. Monta a auto-detecção de
+// idioma (client-side, só humano) e renderiza a rota filha via <Outlet />.
+function PublicMarketingLayout() {
+  return (
+    <>
+      <LocaleAutoRedirect />
+      <Outlet />
+    </>
+  );
+}
+
+// Sob /en, /es, /fr: valida o prefixo e renderiza as MESMAS rotas de marketing
+// como ROTAS FILHAS via <Outlet /> (mesmo padrão do bloco pt-br). Rota aninhada
+// (não <Routes> interno) faz o `index` casar no root do idioma (/en). Prefixo
+// inválido → NotFound. Fase 1: conteúdo é o pt-br (ainda não traduzido).
+function LocalizedMarketingLayout() {
+  const { lang } = useParams();
+  if (!isLocaleCode(lang) || lang === 'pt-br') {
+    return <NotFound />;
+  }
+  return <Outlet />;
+}
+
+const AppRoutes = () => (
+  <React.Suspense fallback={<LoadingSpinner />}>
+  <Routes>
+    {/* Rotas públicas de marketing SEM prefixo = pt-br (canônicas). O layout
+        monta a auto-detecção client-side (só para humano) que, sem cookie e com
+        navigator.language en/es/fr, redireciona pro idioma detectado. */}
+    <Route element={<PublicMarketingLayout />}>{publicMarketingRoutes()}</Route>
+
+    {/* Mesmas rotas sob /en, /es, /fr (idiomas novos, Fase 1 = conteúdo pt-br).
+        Rotas FILHAS via <Outlet /> — o `index` casa em /en (não usa <Routes>
+        aninhado, que não resolvia o root do idioma). */}
+    <Route path="/:lang" element={<LocalizedMarketingLayout />}>
+      {publicMarketingRoutes()}
+      <Route path="*" element={<NotFound />} />
+    </Route>
 
     {/* Auth routes */}
     <Route
@@ -654,6 +706,7 @@ const App = () => (
         <BrowserRouter>
           <OfflineIndicator />
           <PageTitleUpdater />
+          <HtmlLangManager />
           <ViewportManager />
           <AuthProvider>
             <UsageTracker />

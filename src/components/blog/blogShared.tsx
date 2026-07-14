@@ -9,6 +9,8 @@ import { Link } from 'react-router-dom';
 import { Calendar, User, Newspaper } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
 
 /** Verde da marca, fonte única quando uma categoria não tem cor própria. */
 export const BRAND_GREEN = 'hsl(160 100% 39%)';
@@ -156,9 +158,10 @@ export function BlogPostCard({
   variant?: 'hero' | 'default' | 'related';
 }) {
   const isHero = variant === 'hero';
+  const { locale } = useLocale();
   return (
     <Link
-      to={`/blog/${post.slug}`}
+      to={localizeInternal(`/blog/${post.slug}`, locale)}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-colors hover:border-primary/40 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-primary/30"
     >
       <CardCover post={post} className="aspect-[1200/630]" />
@@ -206,8 +209,9 @@ export function MostReadItem({
   post: BlogPostCardData;
   categoryColors: CategoryColor[];
 }) {
+  const { locale } = useLocale();
   return (
-    <Link to={`/blog/${post.slug}`} className="group flex gap-3">
+    <Link to={localizeInternal(`/blog/${post.slug}`, locale)} className="group flex gap-3">
       <div className="aspect-[1200/630] w-24 flex-shrink-0 overflow-hidden rounded-lg">
         <CardCover post={post} className="h-full" />
       </div>

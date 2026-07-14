@@ -1,7 +1,11 @@
 import ModuleLandingPage from './ModuleLandingPage';
-import { MODULES } from './modulesData';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { getModuleData } from './content/loader';
 
 /** Landing do módulo Ordem de Serviço Digital. Rota: /os-digital. */
 export default function OsDigital() {
-  return <ModuleLandingPage data={MODULES['os-digital']} />;
+  const { locale } = useLocale();
+  const data = getModuleData('os-digital', locale);
+  if (!data) return null;
+  return <ModuleLandingPage data={data} />;
 }

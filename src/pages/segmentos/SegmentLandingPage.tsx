@@ -1,6 +1,9 @@
 import { useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight } from 'lucide-react';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import { localizeHash } from '@/lib/i18n/localizeHash';
 import { Button } from '@/components/ui/button';
 import {
   Accordion,
@@ -127,6 +130,7 @@ export default function SegmentLandingPage({ data }: { data: SegmentData }) {
 
 function SegmentHero({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   const { hero, icon: Icon } = data;
 
   // Quebra o H1 ao redor do highlight pra colorir só a keyword, mantendo o H1
@@ -201,7 +205,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to="/#precos">Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
           </Button>
         </div>
       </div>
@@ -450,6 +454,7 @@ function SegmentTestimonials({ data }: { data: SegmentData }) {
 
 function SegmentPricingCta({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   return (
     <section className="py-20">
       <div ref={ref} className="mx-auto max-w-4xl px-4 scroll-reveal">
@@ -485,7 +490,7 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
               className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
               asChild
             >
-              <Link to="/#precos">
+              <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
                 Ver todos os planos <ChevronRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
@@ -531,6 +536,7 @@ function SegmentFaq({ data }: { data: SegmentData }) {
 
 function SegmentFinalCta({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   return (
     <section className="relative py-32 overflow-hidden">
       <div
@@ -565,7 +571,7 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to="/#precos">Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
           </Button>
         </div>
       </div>

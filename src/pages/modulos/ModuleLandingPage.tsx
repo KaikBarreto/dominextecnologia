@@ -1,6 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight, Check, ChevronDown } from 'lucide-react';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import { localizeHash } from '@/lib/i18n/localizeHash';
 import { Button } from '@/components/ui/button';
 import {
   Accordion,
@@ -106,6 +109,7 @@ export default function ModuleLandingPage({ data }: { data: ModuleData }) {
 
 function ModuleHero({ data }: { data: ModuleData }) {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   const { hero, icon: Icon } = data;
 
   const idx = hero.h1.indexOf(hero.h1Highlight);
@@ -162,7 +166,7 @@ function ModuleHero({ data }: { data: ModuleData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to="/#precos">Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
           </Button>
         </div>
       </div>
@@ -509,6 +513,7 @@ function ModuleTestimonials({ data }: { data: ModuleData }) {
 
 function ModulePricingCta() {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   return (
     <section className="py-20">
       <div ref={ref} className="mx-auto max-w-4xl px-4 scroll-reveal">
@@ -533,7 +538,7 @@ function ModulePricingCta() {
               className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
               asChild
             >
-              <Link to="/#precos">
+              <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
                 Ver todos os planos <ChevronRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
@@ -579,6 +584,7 @@ function ModuleFaq({ data }: { data: ModuleData }) {
 
 function ModuleFinalCta({ data }: { data: ModuleData }) {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   return (
     <section className="relative py-32 overflow-hidden">
       <div
@@ -609,7 +615,7 @@ function ModuleFinalCta({ data }: { data: ModuleData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to="/#precos">Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
           </Button>
         </div>
       </div>

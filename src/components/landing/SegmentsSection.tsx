@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { Thermometer, Zap, Sun, Radio, Shield, HardHat, Building, Sparkles, Droplets } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { SEGMENTS } from '@/pages/segmentos/segmentsData';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
 
 // Para trocar por foto real depois: basta apontar `image` para o asset definitivo
 // (ex: '/images/segments/refrigeracao.jpg'). O onError cai no placeholder.svg.
@@ -32,6 +34,7 @@ const marqueeItems = [...segments, ...segments];
 
 export default function SegmentsSection() {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
 
   return (
     <section id="segmentos" className="py-24 overflow-hidden">
@@ -62,7 +65,7 @@ export default function SegmentsSection() {
                 className="shrink-0"
               >
                 <Link
-                  to={meta ? `/${meta.slug}` : '#'}
+                  to={meta ? localizeInternal(`/${meta.slug}`, locale) : '#'}
                   // O nome acessível CONTÉM o texto visível (o título s.label),
                   // exigência da regra label-content-name-mismatch do WCAG. O
                   // overlay decorativo "Clique para ver mais" é aria-hidden, logo

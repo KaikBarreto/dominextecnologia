@@ -13,6 +13,9 @@ import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { captureUtmParams } from '@/lib/whatsapp';
 import LandingNavbar from '@/components/landing/LandingNavbar';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import { localizeHash } from '@/lib/i18n/localizeHash';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
@@ -107,6 +110,7 @@ export default function QuemSomos() {
 
 function Hero() {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   return (
     <section className="relative min-h-[70vh] flex items-center pt-16 overflow-hidden">
       <div className="absolute inset-0">
@@ -152,7 +156,7 @@ function Hero() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
             asChild
           >
-            <Link to="/#precos">Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
           </Button>
         </div>
       </div>
@@ -238,6 +242,7 @@ function Values() {
 
 function FinalCta() {
   const ref = useScrollReveal();
+  const { locale } = useLocale();
   return (
     <section className="relative py-32 overflow-hidden">
       <div
@@ -271,7 +276,7 @@ function FinalCta() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to="/#precos">Ver planos</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>Ver planos</Link>
           </Button>
         </div>
       </div>

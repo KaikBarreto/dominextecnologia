@@ -35,10 +35,15 @@ const AREA_TECNICO_FAB_IMG =
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import { SEGMENT_NAV_LINKS, SEGMENTS } from '@/pages/segmentos/segmentsData';
 import { getSegment } from '@/utils/companySegments';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import { localizeHash, type AnchorKey } from '@/lib/i18n/localizeHash';
 
-const navLinks = [
-  { label: 'Plataforma', href: '#recursos', id: 'recursos' },
-  { label: 'Preços', href: '#precos', id: 'precos' },
+/** Chaves canônicas das âncoras do nav (pt-br). Hash localizado calculado no render. */
+const NAV_ANCHOR_KEYS: { label: string; key: AnchorKey }[] = [
+  { label: 'Plataforma', key: 'recursos' },
+  { label: 'Preços',     key: 'precos' },
 ];
 
 type MenuIcon = ComponentType<LucideProps>;
@@ -207,13 +212,25 @@ export default function LandingNavbar() {
   const solutionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const location = useLocation();
-  const onHome = location.pathname === '/';
+  const { locale, stripLocale } = useLocale();
+  // stripLocale remove o prefixo de idioma para comparações de rota (path canônico pt-br).
+  const canonicalPath = stripLocale(location.pathname);
+  const onHome = canonicalPath === '/';
+
+  // navLinks localizados: id e href usam o hash traduzido pro locale atual.
+  const navLinks = NAV_ANCHOR_KEYS.map((item) => {
+    const hash = localizeHash(item.key, locale);
+    return { label: item.label, key: item.key, id: hash, href: `#${hash}` };
+  });
+  // Hash localizados das âncoras principais — usados nos comparadores de activeId.
+  const hashRecursos = localizeHash('recursos', locale);
+  const hashPrecos   = localizeHash('precos', locale);
 
   // CTA "Criar Conta": cor do segmento na respectiva landing, verde da marca no
-  // resto. Resolvemos o accentColor pelo slug da rota (mesma fonte que a página
-  // usa pra setar --seg-accent) e calculamos o texto legível por cima — branco
-  // na maioria, escuro só nos acentos claros (solar #eab308, elétrica #f59e0b).
-  const ctaSegment = SEGMENTS[location.pathname.replace(/^\//, '')];
+  // resto. Usamos canonicalPath (sem prefixo de locale) para bater com as chaves
+  // de SEGMENTS (ex: 'sistema-para-refrigeracao'). Calculamos o texto legível
+  // por cima — branco na maioria, escuro só nos acentos claros.
+  const ctaSegment = SEGMENTS[canonicalPath.replace(/^\//, '')];
   const ctaBg = ctaSegment?.accentColor ?? BRAND_GREEN;
   const ctaFg = idealForeground(ctaBg);
 
@@ -325,8 +342,12 @@ export default function LandingNavbar() {
     solutionsCloseTimer.current = setTimeout(() => setSolutionsOpen(false), 120);
   };
 
-  // Âncoras (#recursos…) só rolam na home. Em outra rota, manda pra /#id.
-  const anchorTo = (href: string) => (onHome ? href : `/${href}`);
+  // Âncoras (ex: #recursos…) só rolam na home. Em outra rota, manda pra /<locale>/#id.
+  // anchorTo recebe a chave canônica da âncora e devolve o href localizado.
+  const anchorTo = (key: AnchorKey) => {
+    const hash = `#${localizeHash(key, locale)}`;
+    return onHome ? hash : localizeInternal('/', locale) + hash;
+  };
 
   return (
     <nav
@@ -338,7 +359,7 @@ export default function LandingNavbar() {
         <div className="relative flex h-16 items-center justify-between">
           {/* Logo — esquerda no desktop, centralizado no mobile (absolute + flex). */}
           <Link
-            to="/"
+            to={localizeInternal('/', locale)}
             className="flex items-center gap-2 max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2"
           >
             <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
@@ -347,17 +368,17 @@ export default function LandingNavbar() {
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-8">
             <a
-              href={anchorTo('#recursos')}
+              href={anchorTo('recursos')}
               className={cn(
                 'relative text-sm transition-colors py-1',
-                activeId === 'recursos' ? 'text-white font-medium' : 'text-white/60 hover:text-white'
+                activeId === hashRecursos ? 'text-white font-medium' : 'text-white/60 hover:text-white'
               )}
             >
               Plataforma
               <span
                 className={cn(
                   'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
-                  activeId === 'recursos' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+                  activeId === hashRecursos ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
                 )}
               />
             </a>
@@ -407,11 +428,11 @@ export default function LandingNavbar() {
                   <div className="grid grid-cols-3 gap-1">
                     {SOLUTION_LINKS.map((sol) => {
                       const Icon = sol.icon;
-                      const isCurrent = location.pathname === sol.slug;
+                      const isCurrent = canonicalPath === sol.slug;
                       return (
                         <Link
                           key={sol.slug}
-                          to={sol.slug}
+                          to={localizeInternal(sol.slug, locale)}
                           role="menuitem"
                           onClick={() => setSolutionsOpen(false)}
                           className={cn(
@@ -503,13 +524,13 @@ export default function LandingNavbar() {
                     {SEGMENT_NAV_LINKS.map((seg) => {
                       const Icon = seg.icon;
                       const path = `/${seg.slug}`;
-                      const isCurrent = location.pathname === path;
+                      const isCurrent = canonicalPath === path;
                       const tagline = SEGMENT_TAGLINES[seg.slug];
                       const accent = segmentAccent(seg.slug);
                       return (
                         <Link
                           key={seg.slug}
-                          to={path}
+                          to={localizeInternal(path, locale)}
                           role="menuitem"
                           onClick={() => setSegmentsOpen(false)}
                           style={{
@@ -556,27 +577,27 @@ export default function LandingNavbar() {
             </div>
 
             <a
-              href={anchorTo('#precos')}
+              href={anchorTo('precos')}
               className={cn(
                 'relative text-sm transition-colors py-1',
-                activeId === 'precos' ? 'text-white font-medium' : 'text-white/60 hover:text-white'
+                activeId === hashPrecos ? 'text-white font-medium' : 'text-white/60 hover:text-white'
               )}
             >
               Preços
               <span
                 className={cn(
                   'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
-                  activeId === 'precos' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+                  activeId === hashPrecos ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
                 )}
               />
             </a>
 
             {/* Blog — rota própria (/blog), não é âncora: usa Link (SPA, sem reload). */}
             <Link
-              to="/blog"
+              to={localizeInternal('/blog', locale)}
               className={cn(
                 'relative text-sm transition-colors py-1',
-                location.pathname.startsWith('/blog')
+                canonicalPath.startsWith('/blog')
                   ? 'text-white font-medium'
                   : 'text-white/60 hover:text-white'
               )}
@@ -585,14 +606,16 @@ export default function LandingNavbar() {
               <span
                 className={cn(
                   'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
-                  location.pathname.startsWith('/blog') ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+                  canonicalPath.startsWith('/blog') ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
                 )}
               />
             </Link>
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* mr-24 no md+ reserva o canto superior direito p/ o seletor de idioma
+              (variant="corner", fixed no canto) não sobrepor o CTA "Criar Conta". */}
+          <div className="hidden md:flex items-center gap-3 md:mr-24">
             <Button variant="ghost" className="text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
               <Link to="/login">
                 <LogIn className="h-4 w-4" />
@@ -681,7 +704,7 @@ export default function LandingNavbar() {
               logo defasado e o asset 404, o navegador não mostra o ícone de
               imagem quebrada. */}
           <div className="mb-6 flex justify-center">
-            <Link to="/" onClick={() => setMobileOpen(false)}>
+            <Link to={localizeInternal('/', locale)} onClick={() => setMobileOpen(false)}>
               <img
                 src={logoWhite}
                 alt="Dominex"
@@ -697,7 +720,7 @@ export default function LandingNavbar() {
           {navLinks.slice(0, 1).map((l) => (
             <a
               key={l.href}
-              href={anchorTo(l.href)}
+              href={anchorTo(l.key)}
               onClick={() => setMobileOpen(false)}
               className={cn(
                 'block py-3 text-sm border-b border-white/5 transition-colors',
@@ -727,7 +750,7 @@ export default function LandingNavbar() {
                 return (
                   <Link
                     key={sol.slug}
-                    to={sol.slug}
+                    to={localizeInternal(sol.slug, locale)}
                     onClick={() => {
                       setMobileOpen(false);
                       setMobileSolutionsOpen(false);
@@ -775,7 +798,7 @@ export default function LandingNavbar() {
                 return (
                   <Link
                     key={seg.slug}
-                    to={path}
+                    to={localizeInternal(path, locale)}
                     onClick={() => {
                       setMobileOpen(false);
                       setMobileSegmentsOpen(false);
@@ -796,11 +819,11 @@ export default function LandingNavbar() {
           )}
 
           <a
-            href={anchorTo('#precos')}
+            href={anchorTo('precos')}
             onClick={() => setMobileOpen(false)}
             className={cn(
               'block py-3 text-sm border-b border-white/5 transition-colors',
-              activeId === 'precos' ? 'text-white font-medium border-l-2 border-l-primary pl-3' : 'text-white/70 hover:text-white'
+              activeId === hashPrecos ? 'text-white font-medium border-l-2 border-l-primary pl-3' : 'text-white/70 hover:text-white'
             )}
           >
             Preços
@@ -808,11 +831,11 @@ export default function LandingNavbar() {
 
           {/* Blog — rota própria (/blog), Link SPA (não recarrega). */}
           <Link
-            to="/blog"
+            to={localizeInternal('/blog', locale)}
             onClick={() => setMobileOpen(false)}
             className={cn(
               'block py-3 text-sm border-b border-white/5 transition-colors',
-              location.pathname.startsWith('/blog')
+              canonicalPath.startsWith('/blog')
                 ? 'text-white font-medium border-l-2 border-l-primary pl-3'
                 : 'text-white/70 hover:text-white'
             )}
@@ -821,6 +844,8 @@ export default function LandingNavbar() {
           </Link>
 
           <div className="mt-4 flex flex-col gap-3">
+            {/* Seletor de idioma dentro do menu (mobile) — verde fixo da marca (site público). */}
+            <LanguageSelector surface="dark" fullWidth />
             <Button variant="ghost" className="w-full text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
               <Link to="/login">
                 <LogIn className="h-4 w-4" />
@@ -840,6 +865,10 @@ export default function LandingNavbar() {
         </div>,
           document.body
         )}
+      {/* Seletor de idioma fixo no canto superior direito extremo — via portal
+          (fora do backdrop-blur do nav, que criaria containing block e quebraria
+          position:fixed de filhos). Só visível no desktop (hidden no mobile). */}
+      <LanguageSelector variant="corner" />
     </nav>
   );
 }

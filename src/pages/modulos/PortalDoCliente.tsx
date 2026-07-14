@@ -1,7 +1,11 @@
 import ModuleLandingPage from './ModuleLandingPage';
-import { MODULES } from './modulesData';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { getModuleData } from './content/loader';
 
 /** Landing do módulo Portal do Cliente. Rota: /portal-do-cliente. */
 export default function PortalDoCliente() {
-  return <ModuleLandingPage data={MODULES['portal-do-cliente']} />;
+  const { locale } = useLocale();
+  const data = getModuleData('portal-do-cliente', locale);
+  if (!data) return null;
+  return <ModuleLandingPage data={data} />;
 }

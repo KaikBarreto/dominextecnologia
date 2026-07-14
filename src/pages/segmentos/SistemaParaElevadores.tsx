@@ -1,10 +1,14 @@
 import SegmentLandingPage from './SegmentLandingPage';
-import { SEGMENTS } from './segmentsData';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { getSegmentData } from './content/loader';
 
 /**
  * Landing de SEO do segmento Elevadores.
  * Rota: /sistema-para-elevadores. Conteúdo vem de segmentsData (data-driven).
  */
 export default function SistemaParaElevadores() {
-  return <SegmentLandingPage data={SEGMENTS['sistema-para-elevadores']} />;
+  const { locale } = useLocale();
+  const data = getSegmentData('sistema-para-elevadores', locale);
+  if (!data) return null;
+  return <SegmentLandingPage data={data} />;
 }

@@ -3,6 +3,8 @@ import logoWhite from '@/assets/logo-horizontal-verde.png';
 import { SEGMENT_NAV_LINKS } from '@/pages/segmentos/segmentsData';
 import { MODULE_NAV_LINKS } from '@/pages/modulos/modulesData';
 import { getSegment } from '@/utils/companySegments';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
 
 /**
  * Mapa slug-da-landing → valor de segmento em `companySegments` (fonte única das
@@ -41,6 +43,7 @@ const footerLinkClass =
   'text-sm text-white/55 hover:text-white transition-colors';
 
 export default function LandingFooter() {
+  const { locale } = useLocale();
   return (
     <footer className="relative border-t border-white/5 pt-16 pb-8">
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -70,7 +73,7 @@ export default function LandingFooter() {
                 return (
                   <li key={mod.slug}>
                     <Link
-                      to={`/${mod.slug}`}
+                      to={localizeInternal(`/${mod.slug}`, locale)}
                       className="group relative flex items-center text-sm text-white/55 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none"
                     >
                       {/* Ícone do módulo no verde da marca — invisível e um pouco
@@ -104,7 +107,7 @@ export default function LandingFooter() {
                 return (
                   <li key={seg.slug}>
                     <Link
-                      to={`/${seg.slug}`}
+                      to={localizeInternal(`/${seg.slug}`, locale)}
                       className="group relative flex items-center text-sm text-white/55 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none"
                     >
                       {/* Ícone do segmento na cor pura — parte invisível e um pouco
@@ -131,7 +134,7 @@ export default function LandingFooter() {
             <ul className="space-y-2">
               {INSTITUTIONAL_LINKS.map((item) => (
                 <li key={item.to}>
-                  <Link to={item.to} className={footerLinkClass}>
+                  <Link to={localizeInternal(item.to, locale)} className={footerLinkClass}>
                     {item.label}
                   </Link>
                 </li>

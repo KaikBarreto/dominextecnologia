@@ -14,8 +14,11 @@
 //     DarkVeilBackground (lazy + `enabled` começa false), então no SSR sai só o
 //     gradiente CSS de placeholder. Zero mismatch de hidratação.
 //
-// FASE 1: todas as 22 rotas de PRERENDER_ROUTES + /privacidade + /termos. Cada
-// slug resolve para o componente certo via ROUTE_TABLE, com SEU head próprio.
+// FASE 3 (i18n): cada rota BASE (pt-br sem prefixo) é gerada em 4 idiomas
+// (pt-br + en/es/fr). buildRouteEntry(basePath, locale) resolve o componente e o
+// head; segmentos/módulos vêm do loader com locale EXPLÍCITO (fallback pt-br). O
+// head carrega <html lang>, canônica do idioma e bloco hreflang recíproco. A lista
+// completa de tarefas (rota × idioma) sai em SSG_TASKS pro scripts/ssg.mjs iterar.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // NOTA SSR: alguns módulos do app referenciam `localStorage`/`window` no momento
@@ -37,10 +40,17 @@ import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfUse from '@/pages/TermsOfUse';
 
 import SegmentLandingPage from '@/pages/segmentos/SegmentLandingPage';
-import { SEGMENTS } from '@/pages/segmentos/segmentsData';
+import { getAllSegmentSlugs, getSegmentData } from '@/pages/segmentos/content/loader';
 import ModuleLandingPage from '@/pages/modulos/ModuleLandingPage';
-import { MODULES } from '@/pages/modulos/modulesData';
+import { getAllModuleKeys, getAllModuleSlugs, getModuleData } from '@/pages/modulos/content/loader';
 import { MARKETING_VIEWPORT } from '@/utils/publicMarketingRoutes';
+import {
+  DEFAULT_LOCALE,
+  LOCALES,
+  getLocaleDef,
+  type LocaleCode,
+} from '@/lib/i18n/locales';
+import { localizePath } from '@/lib/i18n/paths';
 
 import '@/index.css';
 /* eslint-enable import/first */
@@ -74,6 +84,18 @@ export interface SsgHead {
    * A home mantém os globais (`false`).
    */
   stripGlobalJsonLd: boolean;
+  /**
+   * Valor do atributo <html lang="..."> desta página (pt-BR, en, es, fr). O ssg.mjs
+   * reescreve o `lang` do shell (que é sempre pt-BR) pelo idioma desta rota.
+   */
+  htmlLang: string;
+  /**
+   * Bloco COMPLETO de <link rel="alternate" hreflang="..."> JÁ SERIALIZADO (as 4
+   * versões de idioma da MESMA página + x-default apontando pra versão pt-br).
+   * É IDÊNTICO nas 4 versões de idioma da página (recíproco), como o Google exige.
+   * Injetado no <head> pelo ssg.mjs.
+   */
+  hreflang: string;
 }
 
 export interface SsgRenderResult {
@@ -83,7 +105,34 @@ export interface SsgRenderResult {
 }
 
 /** Domínio canônico do site público (www) — espelha o alvo do plano. */
-const SITE_URL = 'https://www.dominex.app';
+export const SITE_URL = 'https://www.dominex.app';
+
+/**
+ * URL absoluta de uma rota BASE (path pt-br sem prefixo) num dado locale.
+ * absUrl('/os-digital', 'en') → 'https://www.dominex.app/en/os-digital';
+ * absUrl('/', 'pt-br')        → 'https://www.dominex.app/'.
+ */
+function absUrl(basePath: string, locale: LocaleCode): string {
+  const localized = localizePath(basePath, locale);
+  return localized === '/' ? `${SITE_URL}/` : `${SITE_URL}${localized}`;
+}
+
+/**
+ * Monta o bloco recíproco de <link rel="alternate" hreflang="..."> pras 4 versões
+ * de idioma da MESMA página BASE + x-default (versão pt-br). É IDÊNTICO nas 4
+ * versões (Google exige reciprocidade). `basePath` é o path pt-br sem prefixo.
+ */
+function hreflangBlock(basePath: string): string {
+  const links = LOCALES.map((loc) => {
+    const href = absUrl(basePath, loc.code);
+    return `<link rel="alternate" hreflang="${loc.htmlLang}" href="${href}" />`;
+  });
+  // x-default → versão pt-br (default sem prefixo).
+  links.push(
+    `<link rel="alternate" hreflang="x-default" href="${absUrl(basePath, DEFAULT_LOCALE)}" />`,
+  );
+  return links.join('\n    ');
+}
 
 // ── Head da home e das páginas institucionais/legais ──────────────────────────
 // As landings de segmento/módulo têm metaTitle/metaDescription no próprio data;
@@ -142,8 +191,8 @@ function jsonLdScript(obj: unknown): string {
   return `<script type="application/ld+json">${json}</script>`;
 }
 
-/** BreadcrumbList: Início > Página. */
-function breadcrumbLd(route: string, name: string) {
+/** BreadcrumbList: Início > Página. `homeUrl`/`pageUrl` são absolutos do idioma. */
+function breadcrumbLd(homeUrl: string, pageUrl: string, name: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -152,20 +201,20 @@ function breadcrumbLd(route: string, name: string) {
         '@type': 'ListItem',
         position: 1,
         name: 'Início',
-        item: `${SITE_URL}/`,
+        item: homeUrl,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name,
-        item: `${SITE_URL}${route}`,
+        item: pageUrl,
       },
     ],
   };
 }
 
-/** SoftwareApplication da página (nome/descrição da própria rota). */
-function softwareAppLd(route: string, name: string, description: string) {
+/** SoftwareApplication da página (nome/descrição da própria rota). `pageUrl` absoluto. */
+function softwareAppLd(pageUrl: string, name: string, description: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -173,7 +222,7 @@ function softwareAppLd(route: string, name: string, description: string) {
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     description,
-    url: `${SITE_URL}${route}`,
+    url: pageUrl,
     offers: {
       '@type': 'AggregateOffer',
       priceCurrency: 'BRL',
@@ -213,12 +262,12 @@ function faqPageLd(faq: RawFaq[] | undefined) {
  * BreadcrumbList + SoftwareApplication + FAQPage (quando há FAQ). A home não passa
  * por aqui (mantém os blocos globais do index.html).
  */
-function buildRouteJsonLd(route: string, entry: RouteEntry): string {
+function buildRouteJsonLd(homeUrl: string, pageUrl: string, entry: RouteEntry): string {
   const blocks: string[] = [];
   const name = entry.breadcrumbName ?? entry.title;
 
-  blocks.push(jsonLdScript(breadcrumbLd(route, name)));
-  blocks.push(jsonLdScript(softwareAppLd(route, entry.title, entry.description)));
+  blocks.push(jsonLdScript(breadcrumbLd(homeUrl, pageUrl, name)));
+  blocks.push(jsonLdScript(softwareAppLd(pageUrl, entry.title, entry.description)));
 
   const faqLd = faqPageLd(entry.faq);
   if (faqLd) blocks.push(jsonLdScript(faqLd));
@@ -227,32 +276,29 @@ function buildRouteJsonLd(route: string, entry: RouteEntry): string {
 }
 
 /**
- * Resolve o segmento/módulo pelo SLUG da rota (sem barra). O slug do módulo CRM é
- * `/sistema-crm`, mas a chave em MODULES é `crm` (o path /crm é a tela logada).
+ * Monta o RouteEntry (elemento + head) de uma rota BASE (path pt-br sem prefixo)
+ * PARA UM LOCALE. Segmentos/módulos resolvem conteúdo pelo loader com o locale
+ * EXPLÍCITO (fallback pt-br já embutido no loader). Institucionais/home usam texto
+ * pt-br fixo nesta fase (só URL/lang/hreflang/canônica mudam por idioma).
  */
-function moduleBySlug(slug: string) {
-  const direct = MODULES[slug];
-  if (direct) return direct;
-  // Procura por data.slug (cobre o caso /sistema-crm → chave 'crm').
-  return Object.values(MODULES).find((m) => m.slug === slug);
-}
+function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | undefined {
+  // Home.
+  if (basePath === '/') {
+    return {
+      element: <Landing />,
+      title: HOME_TITLE,
+      description: HOME_DESCRIPTION,
+      kind: 'home',
+    };
+  }
 
-/** Monta a tabela de rotas de marketing → componente + head. */
-function buildRouteTable(): Record<string, RouteEntry> {
-  const table: Record<string, RouteEntry> = {};
+  const slug = basePath.replace(/^\/+/, '');
 
-  // Home — mantém os blocos JSON-LD globais do index.html (Organization/WebSite/
-  // SoftwareApplication/FAQ da home), então NÃO injeta JSON-LD por-rota.
-  table['/'] = {
-    element: <Landing />,
-    title: HOME_TITLE,
-    description: HOME_DESCRIPTION,
-    kind: 'home',
-  };
-
-  // Landings de segmento (9). Head vem do próprio data (metaTitle/metaDescription).
-  for (const seg of Object.values(SEGMENTS)) {
-    table[`/${seg.slug}`] = {
+  // Segmento? (slug bate com um segmento registrado)
+  if (getAllSegmentSlugs().includes(slug)) {
+    const seg = getSegmentData(slug, locale);
+    if (!seg) return undefined;
+    return {
       element: <SegmentLandingPage data={seg} />,
       title: seg.metaTitle,
       description: seg.metaDescription,
@@ -262,9 +308,14 @@ function buildRouteTable(): Record<string, RouteEntry> {
     };
   }
 
-  // Landings de módulo (11). A rota usa data.slug (ex.: /sistema-crm).
-  for (const mod of Object.values(MODULES)) {
-    table[`/${mod.slug}`] = {
+  // Módulo? (a rota usa data.slug; a chave do MODULES pode diferir)
+  const moduleKey = getAllModuleKeys().find(
+    (key) => getModuleData(key, DEFAULT_LOCALE)?.slug === slug,
+  );
+  if (moduleKey) {
+    const mod = getModuleData(moduleKey, locale);
+    if (!mod) return undefined;
+    return {
       element: <ModuleLandingPage data={mod} />,
       title: mod.metaTitle,
       description: mod.metaDescription,
@@ -274,46 +325,108 @@ function buildRouteTable(): Record<string, RouteEntry> {
     };
   }
 
-  // Institucional / blog / legais — sem FAQ/App por-rota; só removem a FAQ global
-  // da home pra não herdar perguntas que não são da página.
-  table['/quem-somos'] = {
-    element: <QuemSomos />,
-    title: QUEM_SOMOS_TITLE,
-    description: QUEM_SOMOS_DESCRIPTION,
-    kind: 'institutional',
-    breadcrumbName: 'Quem somos',
-  };
-  table['/blog'] = {
-    element: <Blog />,
-    title: BLOG_TITLE,
-    description: BLOG_DESCRIPTION,
-    kind: 'institutional',
-    breadcrumbName: 'Blog',
-  };
-  table['/privacidade'] = {
-    element: <PrivacyPolicy />,
-    title: PRIVACIDADE_TITLE,
-    description: PRIVACIDADE_DESCRIPTION,
-    kind: 'institutional',
-    breadcrumbName: 'Política de Privacidade',
-  };
-  table['/termos'] = {
-    element: <TermsOfUse />,
-    title: TERMOS_TITLE,
-    description: TERMOS_DESCRIPTION,
-    kind: 'institutional',
-    breadcrumbName: 'Termos de Uso',
-  };
-
-  return table;
+  // Institucional / blog / legais.
+  switch (basePath) {
+    case '/quem-somos':
+      return {
+        element: <QuemSomos />,
+        title: QUEM_SOMOS_TITLE,
+        description: QUEM_SOMOS_DESCRIPTION,
+        kind: 'institutional',
+        breadcrumbName: 'Quem somos',
+      };
+    case '/blog':
+      return {
+        element: <Blog />,
+        title: BLOG_TITLE,
+        description: BLOG_DESCRIPTION,
+        kind: 'institutional',
+        breadcrumbName: 'Blog',
+      };
+    case '/privacidade':
+      return {
+        element: <PrivacyPolicy />,
+        title: PRIVACIDADE_TITLE,
+        description: PRIVACIDADE_DESCRIPTION,
+        kind: 'institutional',
+        breadcrumbName: 'Política de Privacidade',
+      };
+    case '/termos':
+      return {
+        element: <TermsOfUse />,
+        title: TERMOS_TITLE,
+        description: TERMOS_DESCRIPTION,
+        kind: 'institutional',
+        breadcrumbName: 'Termos de Uso',
+      };
+    default:
+      return undefined;
+  }
 }
 
-const ROUTE_TABLE = buildRouteTable();
+/**
+ * Lista das rotas BASE (path pt-br sem prefixo) que o SSG conhece, na ordem de
+ * geração/sitemap: home → 9 segmentos → 11 módulos → institucionais/legais.
+ * Deriva a lista dos loaders (fonte única) + as fixas institucionais.
+ */
+function buildBaseRoutes(): string[] {
+  const segRoutes = getAllSegmentSlugs().map((slug) => `/${slug}`);
+  const modRoutes = getAllModuleSlugs().map((slug) => `/${slug}`);
+  return [
+    '/',
+    ...segRoutes,
+    ...modRoutes,
+    '/quem-somos',
+    '/blog',
+    '/privacidade',
+    '/termos',
+  ];
+}
 
-/** Lista de rotas que o SSG sabe renderizar (consumida pelo scripts/ssg.mjs). */
-export const SSG_ROUTES = Object.keys(ROUTE_TABLE);
+/** Rotas BASE (path pt-br, sem prefixo de idioma). */
+export const SSG_BASE_ROUTES: string[] = buildBaseRoutes();
 
-void moduleBySlug; // mantido para resolução por slug ad-hoc, se necessário.
+/**
+ * Lista COMPLETA de tarefas de geração: cada rota base × cada locale. O ssg.mjs
+ * itera isto pra escrever `dist/<...>/index.html` (pt-br) e `dist/<loc>/<...>/index.html`.
+ * `outPath` é relativo a dist/ ('' = index.html na raiz). `url` é a canônica absoluta.
+ */
+export interface SsgTask {
+  /** Path base (pt-br, sem prefixo) — chave pra resolver o conteúdo. */
+  basePath: string;
+  /** Locale desta tarefa. */
+  locale: LocaleCode;
+  /** Path localizado ('/', '/en/blog', ...). */
+  localizedPath: string;
+  /** Diretório de saída relativo a dist/ ('' = raiz). */
+  outDir: string;
+  /** URL canônica absoluta desta página. */
+  url: string;
+}
+
+/** Diretório de saída (relativo a dist/) de um path localizado. */
+function outDirForPath(localizedPath: string): string {
+  return localizedPath === '/' ? '' : localizedPath.replace(/^\/+|\/+$/g, '');
+}
+
+export const SSG_TASKS: SsgTask[] = SSG_BASE_ROUTES.flatMap((basePath) =>
+  LOCALES.map((loc) => {
+    const localizedPath = localizePath(basePath, loc.code);
+    return {
+      basePath,
+      locale: loc.code,
+      localizedPath,
+      outDir: outDirForPath(localizedPath),
+      url: absUrl(basePath, loc.code),
+    };
+  }),
+);
+
+/**
+ * Compat: lista de rotas BASE que o SSG sabe renderizar. Mantida pro ssg.mjs que
+ * checa `SSG_ROUTES.includes('/blog')` pra decidir buscar dados do blog.
+ */
+export const SSG_ROUTES = SSG_BASE_ROUTES;
 
 /**
  * Dados do blog injetados pelo scripts/ssg.mjs (buscados via REST no build) pra
@@ -325,17 +438,36 @@ export interface SsgBlogData {
   categories?: BlogProps['initialCategories'];
 }
 
+/** Opções de render: locale (default pt-br) + dados do blog (só pra /blog). */
+export interface RenderRouteOptions {
+  locale?: LocaleCode;
+  blogData?: SsgBlogData;
+}
+
 /**
- * Renderiza UMA rota de marketing para string, com shell de providers mínimo e
- * SSR-safe. Cada render usa um QueryClient novo (sem cache compartilhado entre
- * rotas). Pra `/blog`, o `blogData` (quando passado) vira `initialData` do React
- * Query via props do componente, então o useQuery resolve SÍNCRONO no SSR e os
- * cards saem no HTML. As demais rotas são puras de dados (data-driven).
+ * Renderiza UMA rota de marketing para string, num dado LOCALE, com shell de
+ * providers mínimo e SSR-safe. Cada render usa um QueryClient novo. `route` é o
+ * path BASE (pt-br, sem prefixo); o locale só afeta conteúdo (segmento/módulo),
+ * URL canônica, <html lang> e o bloco hreflang. Pra `/blog`, `blogData` vira
+ * initialData do React Query (cards no HTML). Assinatura antiga
+ * `renderRoute(route, blogData)` continua funcionando (2º arg como blogData).
  */
-export function renderRoute(route: string, blogData?: SsgBlogData): SsgRenderResult {
-  const entry = ROUTE_TABLE[route];
+export function renderRoute(
+  route: string,
+  optionsOrBlogData?: RenderRouteOptions | SsgBlogData,
+): SsgRenderResult {
+  // Compat: se o 2º arg tiver forma de blogData (posts/categories) e não de opts.
+  const opts: RenderRouteOptions =
+    optionsOrBlogData && ('locale' in optionsOrBlogData || 'blogData' in optionsOrBlogData)
+      ? (optionsOrBlogData as RenderRouteOptions)
+      : { blogData: optionsOrBlogData as SsgBlogData | undefined };
+
+  const locale: LocaleCode = opts.locale ?? DEFAULT_LOCALE;
+  const blogData = opts.blogData;
+
+  const entry = buildRouteEntry(route, locale);
   if (!entry) {
-    throw new Error(`[entry-ssg] Rota não mapeada no SSG: "${route}".`);
+    throw new Error(`[entry-ssg] Rota não mapeada no SSG: "${route}" (locale ${locale}).`);
   }
 
   const queryClient = new QueryClient({
@@ -348,38 +480,48 @@ export function renderRoute(route: string, blogData?: SsgBlogData): SsgRenderRes
       ? <Blog initialPosts={blogData?.posts} initialCategories={blogData?.categories} />
       : entry.element;
 
+  // O StaticRouter renderiza no PATH LOCALIZADO — assim os links internos que o
+  // componente monta via useLocale/localizePath saem já com o prefixo do idioma.
+  const localizedPath = localizePath(route, locale);
+
   const html = renderToString(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <StaticRouter location={route}>{element}</StaticRouter>
+          <StaticRouter location={localizedPath}>{element}</StaticRouter>
         </TooltipProvider>
       </QueryClientProvider>
     </StrictMode>
   );
 
+  const pageUrl = absUrl(route, locale);
+  const homeUrl = absUrl('/', locale);
+
   // JSON-LD por-rota. Home mantém os blocos globais do shell (não injeta nem
   // remove). Segmento/módulo: Breadcrumb + SoftwareApplication + FAQPage própria.
   // Institucional: só Breadcrumb (sem FAQ/App), mas ainda removendo a FAQ global.
+  // URLs do JSON-LD são as absolutas DO IDIOMA da página.
   let jsonLd = '';
   const stripGlobalJsonLd = entry.kind !== 'home';
   if (entry.kind === 'segment' || entry.kind === 'module') {
-    jsonLd = buildRouteJsonLd(route, entry);
+    jsonLd = buildRouteJsonLd(homeUrl, pageUrl, entry);
   } else if (entry.kind === 'institutional') {
-    jsonLd = jsonLdScript(breadcrumbLd(route, entry.breadcrumbName ?? entry.title));
+    jsonLd = jsonLdScript(breadcrumbLd(homeUrl, pageUrl, entry.breadcrumbName ?? entry.title));
   }
 
   const head: SsgHead = {
     title: entry.title,
     description: entry.description,
-    canonical: `${SITE_URL}${route}`,
+    canonical: pageUrl,
     // Toda rota do SSG é marketing → viewport zoomável (acessibilidade).
     viewport: MARKETING_VIEWPORT,
     ogTitle: entry.title,
     ogDescription: entry.description,
-    ogUrl: `${SITE_URL}${route}`,
+    ogUrl: pageUrl,
     jsonLd,
     stripGlobalJsonLd,
+    htmlLang: getLocaleDef(locale).htmlLang,
+    hreflang: hreflangBlock(route),
   };
 
   return { html, head };

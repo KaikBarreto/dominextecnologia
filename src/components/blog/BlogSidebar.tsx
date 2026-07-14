@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Eye, ArrowRight, TrendingUp } from 'lucide-react';
+import { useLocale } from '@/lib/i18n';
+import { localizeInternal } from '@/lib/i18n/localizeInternal';
 
 type CategoryColor = { name: string; color: string };
 
@@ -16,6 +18,7 @@ type TopPost = {
 const CTA_LINK = '/cadastro?origem=Blog';
 
 export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: CategoryColor[] }) => {
+  const { locale } = useLocale();
   const { data: topPosts } = useQuery({
     queryKey: ['blog-most-read'],
     queryFn: async () => {
@@ -71,7 +74,7 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
                 </span>
                 <div className="min-w-0">
                   <Link
-                    to={`/blog/${post.slug}`}
+                    to={localizeInternal(`/blog/${post.slug}`, locale)}
                     className="line-clamp-2 text-sm font-medium leading-snug text-neutral-800 transition-colors group-hover:text-primary dark:text-white/85"
                   >
                     {post.title}

@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { PriceAmount } from '@/components/ui/PriceAmount';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
+import { useLocale } from '@/lib/i18n';
+import { localizeHash } from '@/lib/i18n/localizeHash';
 
 const plans = [
   {
@@ -93,9 +95,10 @@ function openEnterpriseWhatsApp() {
 export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
   const ref = useScrollReveal();
+  const { locale } = useLocale();
 
   return (
-    <section id="precos" className="py-24">
+    <section id={localizeHash('precos', locale)} className="py-24">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
           Planos que crescem com a sua operação

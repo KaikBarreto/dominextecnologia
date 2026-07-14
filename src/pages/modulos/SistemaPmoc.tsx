@@ -1,7 +1,11 @@
 import ModuleLandingPage from './ModuleLandingPage';
-import { MODULES } from './modulesData';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { getModuleData } from './content/loader';
 
 /** Landing do módulo PMOC. Rota: /sistema-pmoc. */
 export default function SistemaPmoc() {
-  return <ModuleLandingPage data={MODULES['sistema-pmoc']} />;
+  const { locale } = useLocale();
+  const data = getModuleData('sistema-pmoc', locale);
+  if (!data) return null;
+  return <ModuleLandingPage data={data} />;
 }

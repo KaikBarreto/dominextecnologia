@@ -19,6 +19,8 @@ import { Button } from '@/components/ui/button';
 import ScrollSyncFeatures, {
   type ScrollSyncFeature,
 } from '@/components/landing/ScrollSyncFeatures';
+import { useLocale } from '@/lib/i18n';
+import { localizeHash } from '@/lib/i18n/localizeHash';
 
 /**
  * Lista de funcionalidades da HOME — mais completa e atualizada que a de
@@ -112,9 +114,10 @@ const HOME_FEATURES: ScrollSyncFeature[] = [
 ];
 
 export default function HomeFeatures() {
+  const { locale } = useLocale();
   return (
     <ScrollSyncFeatures
-      sectionId="recursos"
+      sectionId={localizeHash('recursos', locale)}
       features={HOME_FEATURES}
       heading="Tudo que sua operação precisa, em um só lugar"
       subheading="Do chamado ao faturamento, o Dominex cobre cada etapa do serviço"

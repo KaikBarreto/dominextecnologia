@@ -1,7 +1,11 @@
 import ModuleLandingPage from './ModuleLandingPage';
-import { MODULES } from './modulesData';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { getModuleData } from './content/loader';
 
 /** Landing do módulo CRM & Vendas. Rota: /crm. */
 export default function CrmModulo() {
-  return <ModuleLandingPage data={MODULES['crm']} />;
+  const { locale } = useLocale();
+  const data = getModuleData('crm', locale);
+  if (!data) return null;
+  return <ModuleLandingPage data={data} />;
 }

@@ -136,6 +136,21 @@ function attr(text) {
 function buildHtml(baseHtml, html, head) {
   let out = baseHtml;
 
+  // <html lang="..."> — o shell é sempre pt-BR; reescreve pro idioma da rota.
+  out = out.replace(/<html lang="[^"]*"/i, `<html lang="${attr(head.htmlLang)}"`);
+
+  // Bloco hreflang (as 4 versões da MESMA página + x-default). Recíproco: idêntico
+  // nas 4 versões de idioma. O shell (index.html) já traz o bloco DA HOME; removemos
+  // qualquer <link rel="alternate" hreflang> pré-existente e injetamos o desta rota
+  // logo após a <link rel="canonical"> — senão a home vazaria nas outras páginas.
+  out = out.replace(/[ \t]*<link rel="alternate" hreflang="[^"]*" href="[^"]*" \/>\n?/gi, '');
+  if (head.hreflang) {
+    out = out.replace(
+      /(<link rel="canonical" href="[\s\S]*?" \/>)/,
+      `$1\n    ${head.hreflang}`
+    );
+  }
+
   // meta viewport — troca o viewport FIXO do shell (app logado, user-scalable=no)
   // pelo viewport ZOOMÁVEL da rota de marketing (libera o zoom de pinça → passa no
   // Lighthouse a11y). O conteúdo já vem pronto do entry-ssg (MARKETING_VIEWPORT).
@@ -215,11 +230,13 @@ function stripGlobalJsonLdBlocks(htmlStr) {
   );
 }
 
-/** Caminho de saída de uma rota: `/` → dist/index.html; senão dist/<rota>/index.html. */
-function outPathFor(route) {
-  if (route === '/') return join(DIST, 'index.html');
-  const clean = route.replace(/^\/+|\/+$/g, '');
-  return join(DIST, clean, 'index.html');
+/**
+ * Caminho de saída de uma TAREFA (rota × idioma): outDir '' → dist/index.html;
+ * senão dist/<outDir>/index.html. Ex.: outDir 'en/os-digital' → dist/en/os-digital/index.html.
+ */
+function outPathForTask(task) {
+  if (!task.outDir) return join(DIST, 'index.html');
+  return join(DIST, task.outDir, 'index.html');
 }
 
 async function main() {
@@ -244,7 +261,7 @@ async function main() {
   });
 
   const entryUrl = pathToFileURL(join(SSG_OUT, 'entry-ssg.js')).href;
-  const { renderRoute, SSG_ROUTES } = await import(entryUrl);
+  const { renderRoute, SSG_ROUTES, SSG_TASKS, SITE_URL } = await import(entryUrl);
 
   // Lê o shell base UMA vez (template do build do cliente, com scripts hasheados).
   // Importante: o copy-shell já preservou o index.html LIMPO como shell.html antes
@@ -257,21 +274,25 @@ async function main() {
     ? await fetchBlogData()
     : { posts: [], categories: [] };
 
+  // Itera cada TAREFA (rota base × idioma): ~25 rotas × 4 idiomas = ~100 páginas.
   const results = [];
-  for (const route of SSG_ROUTES) {
+  for (const task of SSG_TASKS) {
     try {
-      const { html, head } = renderRoute(route, route === '/blog' ? blogData : undefined);
+      const { html, head } = renderRoute(task.basePath, {
+        locale: task.locale,
+        blogData: task.basePath === '/blog' ? blogData : undefined,
+      });
       const finalHtml = buildHtml(baseHtml, html, head);
-      const outPath = outPathFor(route);
+      const outPath = outPathForTask(task);
       mkdirSync(dirname(outPath), { recursive: true });
       writeFileSync(outPath, finalHtml, 'utf8');
-      results.push({ route, bytes: finalHtml.length, out: outPath, ok: true });
+      results.push({ task, bytes: finalHtml.length, out: outPath, ok: true });
       console.log(
-        `[ssg] ✓ ${route} → ${outPath.replace(ROOT + '/', '')} (${finalHtml.length} bytes)`
+        `[ssg] ✓ ${task.localizedPath} (${task.locale}) → ${outPath.replace(ROOT + '/', '')} (${finalHtml.length} bytes)`
       );
     } catch (err) {
-      results.push({ route, ok: false, error: err });
-      console.error(`[ssg] ✗ ${route} falhou:`, err);
+      results.push({ task, ok: false, error: err });
+      console.error(`[ssg] ✗ ${task.localizedPath} (${task.locale}) falhou:`, err);
     }
   }
 
@@ -280,11 +301,20 @@ async function main() {
 
   const failed = results.filter((r) => !r.ok);
   if (failed.length > 0) {
-    console.error(`[ssg] ${failed.length} rota(s) falharam.`);
+    console.error(`[ssg] ${failed.length} página(s) falharam.`);
     process.exit(1);
   }
 
-  console.log(`[ssg] Concluído sem Chrome/puppeteer. ${results.length} rotas geradas.`);
+  // ── Artefatos de indexação (gerados, não mais manuais) ──────────────────────
+  // sitemap.xml com todas as URLs × idioma + alternates hreflang, e llms.txt por
+  // idioma. Fonte única = SSG_TASKS, então nunca desalinha das páginas geradas.
+  await import('./gen-i18n-artifacts.mjs').then((m) =>
+    m.generateArtifacts({ tasks: SSG_TASKS, siteUrl: SITE_URL, distDir: DIST, blogData })
+  );
+
+  console.log(
+    `[ssg] Concluído sem Chrome/puppeteer. ${results.length} páginas geradas (${SSG_ROUTES.length} rotas × idiomas).`
+  );
 }
 
 main().catch((err) => {

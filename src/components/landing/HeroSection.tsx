@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import iphoneFrame from '@/assets/iphone-17-pro-deep-blue.svg';
+import { useLocale } from '@/lib/i18n';
+import { localizeHash } from '@/lib/i18n/localizeHash';
 
 const HERO_VIDEO_URL =
   'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/Dominex%20-%20Completo.MP4';
@@ -18,6 +20,7 @@ const TOTAL_LENGTH = FULL_TEXT_PRE.length + FULL_TEXT_HIGHLIGHT.length;
 export default function HeroSection() {
   const ref = useScrollReveal();
   const [typedCount, setTypedCount] = useState(0);
+  const { locale } = useLocale();
 
   useEffect(() => {
     if (typedCount >= TOTAL_LENGTH) return;
@@ -102,7 +105,7 @@ export default function HeroSection() {
                 className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto"
                 asChild
               >
-                <a href="#precos">Ver planos</a>
+                <a href={`#${localizeHash('precos', locale)}`}>Ver planos</a>
               </Button>
             </div>
           </div>
