@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { ChevronRight, List, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { useLocale } from '@/lib/i18n';
 
 const COLLAPSE_KEY = 'blog-toc-collapsed';
 
@@ -48,6 +49,7 @@ export function BlogTableOfContents({
   contentRef: RefObject<HTMLElement | null>;
   contentKey?: string | number;
 }) {
+  const { messages } = useLocale();
   const [items, setItems] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   // Grupos expandidos manualmente (chave = id do H2 cabeçalho).
@@ -250,7 +252,7 @@ export function BlogTableOfContents({
       <div className="mb-3 flex items-center justify-between gap-1.5">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/40">
           <List className="h-3.5 w-3.5" />
-          Neste artigo
+          {messages.blog.tocLabel}
         </p>
         <button
           type="button"

@@ -910,6 +910,40 @@ export const ptBr = {
     defaultAuthor: 'Equipe Dominex',
     // Sufixo do tempo de leitura no card: "5 min"
     minSuffix: 'min',
+
+    // ── Chrome da página de post individual (BlogPost.tsx) ─────────────────
+    // Contagem inline no rodapé do artigo: "N comentário(s)"
+    commentCount: (n: number) => `${n} comentário${n === 1 ? '' : 's'}`,
+
+    // Seção de comentários
+    commentsTitle: (n: number) => `Comentários (${n})`,
+    commentSentBanner:
+      'Comentário enviado! Ele aparece aqui assim que for aprovado pela nossa equipe.',
+    commentNamePlaceholder: 'Seu nome',
+    commentContentPlaceholder: 'Deixe seu comentário...',
+    commentDisclaimer: 'Seu comentário passa por aprovação antes de aparecer.',
+    commentSubmit: 'Comentar',
+    commentEmpty: 'Nenhum comentário ainda. Seja o primeiro!',
+
+    // Toasts do formulário de comentário
+    toastCommentSent: 'Comentário enviado! Aguardando aprovação.',
+    toastCommentError: 'Não foi possível enviar o comentário. Tente novamente.',
+
+    // CTA final do artigo
+    postCtaTitle: 'Pronto pra tirar a operação do papel?',
+    postCtaBody:
+      'Teste a Dominex de graça por 14 dias e veja a ordem de serviço no celular do técnico.',
+    postCtaButton: 'Teste grátis 14 dias, sem cartão',
+
+    // Índice de navegação do artigo (BlogTableOfContents)
+    tocLabel: 'Neste artigo',
+
+    // Relacionados (RelatedPosts)
+    relatedTitle: 'Leia também',
+
+    // Leituras (sidebar "Mais lidos"): singular/plural por idioma
+    readsSingular: 'leitura',
+    readsPlural: 'leituras',
   },
 
   // ── Rodapé do sistema (SystemFooter) ────────────────────────────────────────

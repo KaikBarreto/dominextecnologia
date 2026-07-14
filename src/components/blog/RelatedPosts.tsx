@@ -75,7 +75,7 @@ export function RelatedPosts({
   category: string | null;
   categoryColors: CategoryColor[];
 }) {
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
   const { data: related = [] } = useQuery({
     queryKey: ['blog-related', slug, category, locale],
     queryFn: () => fetchRelated(slug, category, locale),
@@ -88,7 +88,7 @@ export function RelatedPosts({
     <section className="mt-14">
       <div className="mb-5 flex items-center gap-2">
         <Newspaper className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Leia também</h2>
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">{messages.blog.relatedTitle}</h2>
       </div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {related.map((post) => (

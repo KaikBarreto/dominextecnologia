@@ -20,6 +20,7 @@ const CTA_LINK = '/cadastro?origem=Blog';
 export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: CategoryColor[] }) => {
   const { locale, messages } = useLocale();
   const t = messages.blog.sidebar;
+  const tBlog = messages.blog;
   const { data: topPosts } = useQuery({
     queryKey: ['blog-most-read', locale],
     queryFn: async () => {
@@ -82,7 +83,8 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
                   </Link>
                   <p className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-white/35">
                     <Eye className="h-3 w-3" />
-                    {(post.view_count ?? 0).toLocaleString(locale)} {t.reads}
+                    {(post.view_count ?? 0).toLocaleString(locale)}{' '}
+                    {(post.view_count ?? 0) === 1 ? tBlog.readsSingular : tBlog.readsPlural}
                   </p>
                 </div>
               </li>

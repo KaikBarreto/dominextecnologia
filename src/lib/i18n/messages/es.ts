@@ -836,6 +836,33 @@ export const esOverrides: MessagesOverride = {
 
     defaultAuthor: 'Equipo Dominex',
     minSuffix: 'min',
+
+    // ── Chrome de la página de post ─────────────────────────────────────────
+    commentCount: (n: number) => `${n} comentario${n === 1 ? '' : 's'}`,
+
+    commentsTitle: (n: number) => `Comentarios (${n})`,
+    commentSentBanner:
+      '¡Comentario enviado! Aparecerá aquí una vez aprobado por nuestro equipo.',
+    commentNamePlaceholder: 'Tu nombre',
+    commentContentPlaceholder: 'Deja un comentario...',
+    commentDisclaimer: 'Tu comentario pasa por aprobación antes de aparecer.',
+    commentSubmit: 'Comentar',
+    commentEmpty: 'Aún no hay comentarios. ¡Sé el primero!',
+
+    toastCommentSent: '¡Comentario enviado! En espera de aprobación.',
+    toastCommentError: 'No se pudo enviar el comentario. Inténtalo de nuevo.',
+
+    postCtaTitle: '¿Listo para sacar tu operación del papel?',
+    postCtaBody:
+      'Prueba Dominex gratis por 14 días y ve las órdenes de trabajo en el bolsillo de tu técnico.',
+    postCtaButton: 'Empieza gratis por 14 días, sin tarjeta',
+
+    tocLabel: 'En este artículo',
+
+    relatedTitle: 'Lee también',
+
+    readsSingular: 'lectura',
+    readsPlural: 'lecturas',
   },
 
   // ── Pie del sistema ─────────────────────────────────────────────────────────

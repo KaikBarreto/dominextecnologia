@@ -836,6 +836,33 @@ export const enOverrides: MessagesOverride = {
 
     defaultAuthor: 'Dominex Team',
     minSuffix: 'min',
+
+    // ── Post page chrome ────────────────────────────────────────────────────
+    commentCount: (n: number) => `${n} comment${n === 1 ? '' : 's'}`,
+
+    commentsTitle: (n: number) => `Comments (${n})`,
+    commentSentBanner:
+      'Comment submitted! It will appear here once approved by our team.',
+    commentNamePlaceholder: 'Your name',
+    commentContentPlaceholder: 'Leave a comment...',
+    commentDisclaimer: 'Your comment goes through approval before it appears.',
+    commentSubmit: 'Comment',
+    commentEmpty: 'No comments yet. Be the first!',
+
+    toastCommentSent: 'Comment submitted! Awaiting approval.',
+    toastCommentError: 'Could not send your comment. Please try again.',
+
+    postCtaTitle: 'Ready to take your operation off paper?',
+    postCtaBody:
+      'Try Dominex free for 14 days and see work orders in your technician\'s pocket.',
+    postCtaButton: 'Start free for 14 days, no card',
+
+    tocLabel: 'In this article',
+
+    relatedTitle: 'Read also',
+
+    readsSingular: 'read',
+    readsPlural: 'reads',
   },
 
   // ── System footer ───────────────────────────────────────────────────────────

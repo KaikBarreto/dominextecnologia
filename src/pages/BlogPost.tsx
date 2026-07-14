@@ -99,7 +99,8 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   // Idioma da URL: resolve o post por (slug + locale). Sob /es/blog/... só a
   // versão es; se não existir nesse idioma, cai no 404 (NUNCA no pt-br).
   // `toLocale` prefixa links internos pro idioma atual (Voltar ao blog, CTA).
-  const { locale, localizePath: toLocale } = useLocale();
+  const { locale, localizePath: toLocale, messages } = useLocale();
+  const t = messages.blog;
 
   const [commentName, setCommentName] = useState('');
   const [commentContent, setCommentContent] = useState('');
@@ -214,9 +215,9 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
       setCommentContent('');
       setCommentName('');
       setCommentSent(true);
-      toast.success('Comentário enviado! Aguardando aprovação.');
+      toast.success(t.toastCommentSent);
     },
-    onError: () => toast.error('Não foi possível enviar o comentário. Tente novamente.'),
+    onError: () => toast.error(t.toastCommentError),
   });
 
   useEffect(() => {
@@ -477,7 +478,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 </button>
                 <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/40">
                   <MessageCircle className="h-4 w-4" />
-                  {comments.length} comentário{comments.length === 1 ? '' : 's'}
+                  {t.commentCount(comments.length)}
                 </span>
               </div>
 
@@ -485,23 +486,23 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
               <div className="mt-8">
                 <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
                   <MessageCircle className="h-5 w-5" />
-                  Comentários ({comments.length})
+                  {t.commentsTitle(comments.length)}
                 </h2>
 
                 {commentSent ? (
                   <div className="mb-6 rounded-xl border border-primary/30 bg-primary/[0.06] p-4 text-sm text-neutral-700 dark:text-white/70">
-                    Comentário enviado! Ele aparece aqui assim que for aprovado pela nossa equipe.
+                    {t.commentSentBanner}
                   </div>
                 ) : (
                   <div className="mb-6 space-y-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]">
                     <Input
-                      placeholder="Seu nome"
+                      placeholder={t.commentNamePlaceholder}
                       value={commentName}
                       onChange={(e) => setCommentName(e.target.value)}
                       className="border-neutral-300 bg-white text-neutral-900 placeholder:text-neutral-400 dark:border-white/15 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/40"
                     />
                     <Textarea
-                      placeholder="Deixe seu comentário..."
+                      placeholder={t.commentContentPlaceholder}
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
                       rows={3}
@@ -509,7 +510,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                     />
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-[11px] text-neutral-500 dark:text-white/35">
-                        Seu comentário passa por aprovação antes de aparecer.
+                        {t.commentDisclaimer}
                       </p>
                       <Button
                         size="sm"
@@ -522,7 +523,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                         className="shrink-0 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                       >
                         <Send className="h-3.5 w-3.5" />
-                        Comentar
+                        {t.commentSubmit}
                       </Button>
                     </div>
                   </div>
@@ -556,7 +557,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                   ))}
                   {comments.length === 0 && !commentSent && (
                     <p className="py-6 text-center text-sm text-neutral-400 dark:text-white/35">
-                      Nenhum comentário ainda. Seja o primeiro!
+                      {t.commentEmpty}
                     </p>
                   )}
                 </div>
@@ -565,17 +566,16 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
               {/* CTA final */}
               <div className="mt-12 rounded-2xl border border-neutral-200 bg-white p-8 text-center dark:border-primary/25 dark:bg-[hsl(0,0%,8%)] dark:bg-gradient-to-br dark:from-primary/[0.12] dark:to-primary/[0.03]">
                 <h2 className="mb-2 text-2xl font-bold text-neutral-900 dark:text-white">
-                  Pronto pra tirar a operação do papel?
+                  {t.postCtaTitle}
                 </h2>
                 <p className="mx-auto mb-6 max-w-md text-neutral-600 dark:text-white/55">
-                  Teste a Dominex de graça por 14 dias e veja a ordem de serviço no celular do
-                  técnico.
+                  {t.postCtaBody}
                 </p>
                 <Link
                   to="/cadastro?origem=Blog"
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
-                  Teste grátis 14 dias, sem cartão <ArrowRight className="h-4 w-4" />
+                  {t.postCtaButton} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
 
