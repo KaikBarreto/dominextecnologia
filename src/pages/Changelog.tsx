@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.16.0',
+    date: '15 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Resposta em vídeo no checklist da ordem de serviço',
+        description: 'Agora uma pergunta do checklist pode pedir um vídeo como resposta. O técnico grava um clipe curto de até 15 segundos direto pelo aparelho, em campo, e ele aparece na ordem de serviço e no link que o cliente abre. Ideal para mostrar o equipamento funcionando, um vazamento ou o antes e depois do serviço. Disponível nos planos Pro e Business.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.15.34',
     date: '14 de julho de 2026',
     type: 'patch',

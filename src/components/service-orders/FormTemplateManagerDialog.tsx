@@ -38,6 +38,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useToast } from '@/hooks/use-toast';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
@@ -62,11 +64,32 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
     setTemplateServices,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
-  
+  const { hasModule, maxVideoQuestions } = useCompanyModules();
+  const { toast } = useToast();
+
+  const canUseVideo = hasModule('video_questions');
+
   const [open, setOpen] = useState(false);
   const isDialogOpen = controlledOpen ?? open;
   const setDialogOpen = controlledOnOpenChange ?? setOpen;
   const [selectedTemplate, setSelectedTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
+
+  // Quantas perguntas de vídeo o MODELO em edição já tem. O limite do plano é
+  // por MODELO (não por OS): o técnico em campo nunca é bloqueado por isto.
+  const videoQuestionCount = (selectedTemplate?.questions || []).filter(
+    (q) => q.question_type === 'video',
+  ).length;
+
+  // Opções de tipo exibidas no seletor. Sem o módulo, "Vídeo" some. Mantém o tipo
+  // atual sempre visível (ex.: pergunta de vídeo antiga após downgrade de plano),
+  // pra não sumir a opção já escolhida.
+  const typeOptionsFor = (currentType?: string) =>
+    QUESTION_TYPES.filter((t) => t.value !== 'video' || canUseVideo || t.value === currentType);
+
+  // Pluraliza a mensagem de limite de vídeo do plano.
+  const videoLimitMessage = () =>
+    `Seu plano permite até ${maxVideoQuestions} ${maxVideoQuestions === 1 ? 'pergunta' : 'perguntas'} de vídeo por checklist.`;
+
   const [newTemplateName, setNewTemplateName] = useState('');
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -128,12 +151,23 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
 
   const handleAddQuestion = () => {
     if (!newQuestion.question?.trim() || !selectedTemplate) return;
-    
+
+    // Gate de vídeo por MODELO: o plano define quantas perguntas de vídeo o
+    // checklist pode ter. Estoura o limite → bloqueia com mensagem PT-BR.
+    if (newQuestion.question_type === 'video' && videoQuestionCount >= maxVideoQuestions) {
+      toast({
+        variant: 'destructive',
+        title: 'Limite de perguntas de vídeo',
+        description: videoLimitMessage(),
+      });
+      return;
+    }
+
     const position = selectedTemplate.questions?.length || 0;
     createQuestion.mutate({
       template_id: selectedTemplate.id,
       question: newQuestion.question,
-      question_type: newQuestion.question_type as 'boolean' | 'text' | 'number' | 'photo' | 'select',
+      question_type: newQuestion.question_type as FormQuestionInsert['question_type'],
       is_required: newQuestion.is_required ?? true,
       position,
       description: newQuestion.description,
@@ -212,9 +246,24 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
     const isEditing = editingQuestionId === question.id;
 
     const handleSave = () => {
-      updateQuestion.mutate({ 
-        id: question.id, 
-        question: text, 
+      // Mudar uma pergunta PARA vídeo respeita o limite do plano por modelo.
+      // Conta as outras perguntas de vídeo (exclui a própria, caso já fosse vídeo).
+      if (type === 'video' && question.question_type !== 'video') {
+        const othersVideo = (selectedTemplate?.questions || []).filter(
+          (q) => q.id !== question.id && q.question_type === 'video',
+        ).length;
+        if (othersVideo >= maxVideoQuestions) {
+          toast({
+            variant: 'destructive',
+            title: 'Limite de perguntas de vídeo',
+            description: videoLimitMessage(),
+          });
+          return;
+        }
+      }
+      updateQuestion.mutate({
+        id: question.id,
+        question: text,
         question_type: type,
         is_required: required,
       });
@@ -236,7 +285,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {QUESTION_TYPES.map((t) => {
+                {typeOptionsFor(type).map((t) => {
                   const TIcon = t.icon;
                   return (
                     <SelectItem key={t.value} value={t.value}>
@@ -480,13 +529,13 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                 />
                 <Select 
                   value={newQuestion.question_type || 'boolean'} 
-                  onValueChange={(v) => setNewQuestion({ ...newQuestion, question_type: v as FormQuestion['question_type'] })}
+                  onValueChange={(v) => setNewQuestion({ ...newQuestion, question_type: v as FormQuestionInsert['question_type'] })}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {QUESTION_TYPES.map((t) => {
+                    {typeOptionsFor(newQuestion.question_type).map((t) => {
                       const TIcon = t.icon;
                       return (
                         <SelectItem key={t.value} value={t.value}>

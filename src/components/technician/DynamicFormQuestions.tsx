@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
+import { OsVideoField } from '@/components/technician/OsVideoField';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
 import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
@@ -21,6 +22,7 @@ interface FormResponse {
   question_id: string;
   response_value: string | null;
   response_photo_url: string | null;
+  response_video_url: string | null;
 }
 
 export interface FormValidationResult {
@@ -199,7 +201,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     if (!visibility) return questions;
     const answeredQuestionIds = new Set(
       Object.values(responses)
-        .filter((r) => r.response_value?.trim() || r.response_photo_url)
+        .filter((r) => r.response_value?.trim() || r.response_photo_url || r.response_video_url)
         .map((r) => r.question_id),
     );
     const visibleIds = computeVisibleQuestionIds({
@@ -253,7 +255,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
     requiredQuestions.forEach(q => {
       const response = responses[q.id];
-      const hasValue = response?.response_value?.trim() || response?.response_photo_url;
+      const hasValue = response?.response_value?.trim() || response?.response_photo_url || response?.response_video_url;
       if (!hasValue) {
         missingQuestions.push(q.question);
         // Pendência auto-preenchível: pergunta de tipo único conformidade/boolean
@@ -267,7 +269,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     // Independente do gate de finalizar (que segue só nas obrigatórias).
     const answeredCount = visibleQuestions.reduce((n, q) => {
       const response = responses[q.id];
-      const hasValue = response?.response_value?.trim() || response?.response_photo_url;
+      const hasValue = response?.response_value?.trim() || response?.response_photo_url || response?.response_video_url;
       return hasValue ? n + 1 : n;
     }, 0);
 
@@ -343,6 +345,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           question_id: r.question_id,
           response_value: r.response_value,
           response_photo_url: r.response_photo_url,
+          response_video_url: (r as any).response_video_url ?? null,
         };
       });
       setResponses(responsesMap);
@@ -351,7 +354,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     }
   };
 
-  const saveResponse = async (questionId: string, value: string | null, photoUrl?: string | null) => {
+  const saveResponse = async (
+    questionId: string,
+    value: string | null,
+    photoUrl?: string | null,
+    videoUrl?: string | null,
+  ) => {
     setSaving(questionId);
     try {
       // Carimbo de auditoria (item 8): toda escrita do técnico grava QUANDO e
@@ -382,6 +390,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           .update({
             response_value: value,
             response_photo_url: photoUrl !== undefined ? photoUrl : responses[questionId]?.response_photo_url,
+            response_video_url: videoUrl !== undefined ? videoUrl : responses[questionId]?.response_video_url,
             responded_at: respondedAt,
             responded_by: respondedBy,
           } as any)
@@ -395,6 +404,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             question_id: questionId,
             response_value: value,
             response_photo_url: photoUrl || null,
+            response_video_url: videoUrl || null,
             equipment_id: equipmentId || null,
             responded_at: respondedAt,
             responded_by: respondedBy,
@@ -408,6 +418,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           question_id: questionId,
           response_value: value,
           response_photo_url: photoUrl !== undefined ? photoUrl : prev[questionId]?.response_photo_url || null,
+          response_video_url: videoUrl !== undefined ? videoUrl : prev[questionId]?.response_video_url || null,
         },
       }));
     } catch (error: any) {
@@ -435,7 +446,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       const { questions: qs, responses: resp, saveFn } = autoFillDataRef.current;
       for (const q of qs) {
         if (!q.is_required) continue;
-        const already = resp[q.id]?.response_value?.trim() || resp[q.id]?.response_photo_url;
+        const already = resp[q.id]?.response_value?.trim() || resp[q.id]?.response_photo_url || resp[q.id]?.response_video_url;
         if (already) continue;
         const fill = autoFillValueFor(q);
         if (fill === null) continue; // texto/número/seleção/composto: não toca.
@@ -593,7 +604,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             value={value}
             onChange={(e) => setResponses((prev) => ({
               ...prev,
-              [question.id]: { ...prev[question.id], question_id: question.id, response_value: e.target.value, response_photo_url: prev[question.id]?.response_photo_url || null },
+              [question.id]: { ...prev[question.id], question_id: question.id, response_value: e.target.value, response_photo_url: prev[question.id]?.response_photo_url || null, response_video_url: prev[question.id]?.response_video_url || null },
             }))}
             onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
             rows={2}
@@ -610,7 +621,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             value={value}
             onValueChange={(v) => setResponses((prev) => ({
               ...prev,
-              [question.id]: { ...prev[question.id], question_id: question.id, response_value: v, response_photo_url: prev[question.id]?.response_photo_url || null },
+              [question.id]: { ...prev[question.id], question_id: question.id, response_value: v, response_photo_url: prev[question.id]?.response_photo_url || null, response_video_url: prev[question.id]?.response_video_url || null },
             }))}
             onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
             disabled={readOnly}
@@ -648,6 +659,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                       question_id: question.id,
                       response_value: e.target.value,
                       response_photo_url: prev[question.id]?.response_photo_url || null,
+                      response_video_url: prev[question.id]?.response_video_url || null,
                     },
                   }))
                 }
@@ -693,7 +705,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           const newValue = next.join('|||');
           setResponses((prev) => ({
             ...prev,
-            [question.id]: { ...prev[question.id], question_id: question.id, response_value: newValue, response_photo_url: prev[question.id]?.response_photo_url || null },
+            [question.id]: { ...prev[question.id], question_id: question.id, response_value: newValue, response_photo_url: prev[question.id]?.response_photo_url || null, response_video_url: prev[question.id]?.response_video_url || null },
           }));
           saveResponse(question.id, newValue);
         };
@@ -734,6 +746,23 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             readOnly={readOnly}
             cameraOnly={cameraOnly}
             allowMultiple={allowMultiple}
+          />
+        );
+      }
+
+      case 'video': {
+        // Um único clipe curto (até 15s, ~720p leve). Toda a máquina de vídeo
+        // (gravar/parar/regravar, upload, remover) vive em OsVideoField. Aqui só
+        // ligamos a URL única ao response_video_url desta pergunta/equipamento.
+        return (
+          <OsVideoField
+            serviceOrderId={serviceOrderId}
+            pathPrefix={`form-${question.id}`}
+            value={response?.response_video_url}
+            onChange={(url) =>
+              saveResponse(question.id, responses[question.id]?.response_value || null, undefined, url)
+            }
+            readOnly={readOnly}
           />
         );
       }
@@ -847,7 +876,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     <div className="space-y-4">
       {visibleQuestions.map((question, index) => {
         const response = responses[question.id];
-        const hasAnswer = !!(response?.response_value?.trim() || response?.response_photo_url);
+        const hasAnswer = !!(response?.response_value?.trim() || response?.response_photo_url || response?.response_video_url);
         const isEditing = editingQuestion === question.id;
         const showReadOnly = hasAnswer && !isEditing && question.question_type !== 'photo';
         

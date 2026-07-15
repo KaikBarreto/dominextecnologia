@@ -839,7 +839,7 @@ export default function TechnicianOS() {
     if (!resolvedOsId) return;
     const { data } = await db
       .from('form_responses')
-      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(id, question, question_type, options, description, position, template_id)')
+      .select('id, question_id, response_value, response_photo_url, response_video_url, equipment_id, question:form_questions(id, question, question_type, options, description, position, template_id)')
       .eq('service_order_id', resolvedOsId);
     if (data) {
       // Normalize: unwrap question join (may be array in some PostgREST versions)
@@ -1812,7 +1812,7 @@ export default function TechnicianOS() {
         acts.some((a) => !!a.conformity_status) ||
         resps.some((r: any) => {
           const val = typeof r.response_value === 'string' ? r.response_value.trim() : '';
-          return (val !== '' && val !== '-') || !!r.response_photo_url;
+          return (val !== '' && val !== '-') || !!r.response_photo_url || !!r.response_video_url;
         });
       if (!hasAnyAnswer) continue;
 
@@ -1836,7 +1836,8 @@ export default function TechnicianOS() {
         const val = typeof r.response_value === 'string' ? r.response_value.trim() : '';
         const hasValue = val !== '' && val !== '-';
         const hasPhoto = !!r.response_photo_url;
-        return hasValue || hasPhoto;
+        const hasVideo = !!r.response_video_url;
+        return hasValue || hasPhoto || hasVideo;
       });
 
       if (activitiesComplete && requiredFormComplete) keys.add(key);
@@ -1945,7 +1946,7 @@ export default function TechnicianOS() {
       const resps = publicFormResponses.filter((r) => r.equipment_id === it.equipment_id);
       const naoConforme = acts.some((a) => a.conformity_status === 'nao_conforme');
       const actPending = acts.some((a) => !a.conformity_status);
-      const respPending = resps.some((r) => !r.response_value && !r.response_photo_url);
+      const respPending = resps.some((r) => !r.response_value && !r.response_photo_url && !r.response_video_url);
       const hasAny = acts.length > 0 || resps.length > 0;
       const status: OsSidebarStatus = naoConforme
         ? 'nao_conforme'
@@ -2685,7 +2686,7 @@ export default function TechnicianOS() {
                     </div>
                     <Accordion type="multiple" className="w-full space-y-3">
                       {groups.map(([groupKey, group]) => {
-                        const answered = group.responses.filter(r => r.response_value || r.response_photo_url).length;
+                        const answered = group.responses.filter(r => r.response_value || r.response_photo_url || r.response_video_url).length;
                         const total = group.totalQuestions;
                         const isComplete = answered === total && total > 0;
                         const pending = total - answered;
@@ -2752,6 +2753,16 @@ export default function TechnicianOS() {
                                             </div>
                                           );
                                         })()}
+                                        {r.response_video_url && (
+                                          <div className="mt-1">
+                                            <video
+                                              src={r.response_video_url}
+                                              controls
+                                              playsInline
+                                              className="rounded h-32 w-auto max-w-full bg-black object-contain"
+                                            />
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -2774,7 +2785,7 @@ export default function TechnicianOS() {
                     <ClipboardCheck className="h-4 w-4 text-primary" />
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Checklist</span>
                     {(() => {
-                      const answered = publicFormResponses.filter(r => r.response_value || r.response_photo_url).length;
+                      const answered = publicFormResponses.filter(r => r.response_value || r.response_photo_url || r.response_video_url).length;
                       const total = publicFormResponses.length;
                       return (
                         <Badge variant={answered === total ? 'success' : 'secondary'} className="text-xs ml-auto">
@@ -2812,6 +2823,16 @@ export default function TechnicianOS() {
                                 </div>
                               );
                             })()}
+                            {r.response_video_url && (
+                              <div className="mt-1">
+                                <video
+                                  src={r.response_video_url}
+                                  controls
+                                  playsInline
+                                  className="rounded h-32 w-auto max-w-full bg-black object-contain"
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}

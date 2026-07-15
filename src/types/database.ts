@@ -169,7 +169,7 @@ export interface FormQuestion {
   id: string;
   template_id: string;
   question: string;
-  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature' | 'pmoc_measurement' | 'conformidade';
+  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'video' | 'select' | 'signature' | 'pmoc_measurement' | 'conformidade';
   options?: string[];
   is_required: boolean;
   position: number;
@@ -205,6 +205,7 @@ export interface FormResponse {
   question_id: string;
   response_value?: string;
   response_photo_url?: string;
+  response_video_url?: string;
   responded_at: string;
   responded_by?: string;
 }

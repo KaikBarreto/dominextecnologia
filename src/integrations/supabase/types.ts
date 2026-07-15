@@ -3762,6 +3762,7 @@ export type Database = {
           responded_by: string | null
           response_photo_url: string | null
           response_value: string | null
+          response_video_url: string | null
           service_order_id: string
         }
         Insert: {
@@ -3772,6 +3773,7 @@ export type Database = {
           responded_by?: string | null
           response_photo_url?: string | null
           response_value?: string | null
+          response_video_url?: string | null
           service_order_id: string
         }
         Update: {
@@ -3782,6 +3784,7 @@ export type Database = {
           responded_by?: string | null
           response_photo_url?: string | null
           response_value?: string | null
+          response_video_url?: string | null
           service_order_id?: string
         }
         Relationships: [
@@ -6926,6 +6929,7 @@ export type Database = {
           included_modules: Json | null
           is_active: boolean | null
           max_users: number | null
+          max_video_questions: number
           name: string
           price: number
         }
@@ -6938,6 +6942,7 @@ export type Database = {
           included_modules?: Json | null
           is_active?: boolean | null
           max_users?: number | null
+          max_video_questions?: number
           name: string
           price?: number
         }
@@ -6950,6 +6955,7 @@ export type Database = {
           included_modules?: Json | null
           is_active?: boolean | null
           max_users?: number | null
+          max_video_questions?: number
           name?: string
           price?: number
         }
