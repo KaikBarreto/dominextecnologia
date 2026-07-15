@@ -2,8 +2,8 @@
 // Todas as CTAs de aquisição (landing) e os links de suporte do app leem
 // daqui — atualizar aqui reflete automaticamente em todos os lugares.
 export const WHATSAPP_NUMBERS = [
-  "5521974802808", // novo (21) 97480-2808
-  "5521966885044", // atual (21) 96688-5044
+  "5521966885044", // (21) 96688-5044
+  "5521978758227", // (21) 97875-8227
 ];
 
 // Sorteio aleatório — distribui os contatos de forma uniforme entre os
