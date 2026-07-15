@@ -242,7 +242,7 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
         <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">
-              Comissão total ({billingCycle === 'annual' ? '20%' : '50%'})
+              Comissão total ({billingCycle === 'annual' ? '20%' : '100%'})
             </span>
             <span className="font-bold">{fmt(breakdown.total)}</span>
           </div>
@@ -251,7 +251,7 @@ export function RegistrarVendaDialog({ open, onOpenChange, prefill, onSuccess }:
             <span className="font-semibold text-emerald-600">{fmt(breakdown.closerCommission)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="truncate">SDR · {hasSdr ? sdrName : '—'}</span>
+            <span className="truncate">SDR · {hasSdr ? sdrName : 'sem SDR'}</span>
             <span className={hasSdr ? 'font-semibold text-emerald-600' : 'text-muted-foreground'}>
               {fmt(breakdown.sdrCommission)}
             </span>

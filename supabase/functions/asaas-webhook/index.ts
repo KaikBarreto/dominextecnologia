@@ -509,21 +509,22 @@ async function processConfirmedPayment(
       .maybeSingle();
 
     if (!existingSale) {
-      // REGRA DE COMISSÃO SDR/CLOSER — espelha calculateCommission de
-      // src/hooks/useSalespersonData.ts (fonte da verdade no painel master).
-      //   - mensal: total = base * 0.50
-      //   - anual:  total = base * 0.20
-      //   - COM SDR → 50/50 (closer metade, sdr metade)
+      // REGRA DE COMISSÃO SDR/CLOSER — régua NOVA (CEO 2026-07-16), espelha
+      // calculateCommission de src/hooks/useSalespersonData.ts (fonte da verdade
+      // no painel master) e a RPC register_manual_company_payment.
+      //   - mensal: total = base * 1.00 (100% do que o cliente pagou; ANTES 0.5)
+      //   - anual:  total = base * 0.20 (inalterado)
+      //   - COM SDR → closer 80% / sdr 20% (ANTES 50/50)
       //   - SEM SDR → 100% closer
       // Base de comissão = subscription_value mensal (mesmo "valor da venda" que o
       // closer informa no diálogo Registrar Venda). NÃO multiplicamos por 12 no anual
       // — o diálogo usa o valor informado direto, então mantemos paridade.
       //
       // SDR: companies.sdr_id é capturado na ORIGEM (link de teste/venda ou form do
-      // painel master). Se a empresa tem sdr_id → comissão dividida 50/50; senão,
+      // painel master). Se a empresa tem sdr_id → comissão dividida 80/20; senão,
       // 100% closer. O closer é SEMPRE company.salesperson_id.
       const isYearly = company.billing_cycle === "yearly";
-      const totalRate = isYearly ? 0.20 : 0.50;
+      const totalRate = isYearly ? 0.20 : 1.00;
       const commissionBase = Number(company.subscription_value || paymentAmount);
       const total = Math.round(commissionBase * totalRate * 100) / 100;
 
@@ -531,9 +532,9 @@ async function processConfirmedPayment(
       let closerCommission: number;
       let sdrCommission: number;
       if (sdrId) {
-        // 50/50 centavo-safe: closer leva metade arredondada, SDR leva o resto
-        // (total - metade) pra não perder/ganhar 1 centavo na divisão ímpar.
-        closerCommission = Math.round((total / 2) * 100) / 100;
+        // 80/20 centavo-safe: closer leva 80% arredondado, SDR leva o resto
+        // (total - closer) pra não perder/ganhar 1 centavo no arredondamento.
+        closerCommission = Math.round((total * 0.8) * 100) / 100;
         sdrCommission = Math.round((total - closerCommission) * 100) / 100;
       } else {
         closerCommission = total;
@@ -556,7 +557,7 @@ async function processConfirmedPayment(
       console.log(
         `[salesperson] venda registrada p/ ${company.name}: comissão total R$ ${total} ` +
           (sdrId
-            ? `(50/50 → closer R$ ${closerCommission} / sdr R$ ${sdrCommission})`
+            ? `(80/20 → closer R$ ${closerCommission} / sdr R$ ${sdrCommission})`
             : `(100% closer R$ ${closerCommission})`),
       );
     }

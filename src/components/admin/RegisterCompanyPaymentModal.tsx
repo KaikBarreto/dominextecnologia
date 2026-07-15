@@ -307,7 +307,7 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Comissão é creditada apenas na 1ª venda da empresa: 50% para o closer, ou 25%/25% quando há SDR.
+                  Comissão creditada apenas na 1ª venda da empresa: 100% do valor pago para o closer (mensal), ou 80% closer e 20% SDR quando há SDR. Plano anual: 20% do valor, com o mesmo split.
                 </p>
               </div>
             )}

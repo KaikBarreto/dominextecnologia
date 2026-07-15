@@ -94,11 +94,11 @@ export interface CommissionBreakdown {
 /**
  * Quebra de comissão (regra travada pelo CEO).
  *
- * - mensal: total = amount * 0.5
- *     - COM SDR  → closer 0.25 / sdr 0.25
- *     - SEM SDR  → closer 0.50 / sdr 0
+ * - mensal: total = amount * 1.0
+ *     - COM SDR  → closer 0.8 / sdr 0.2
+ *     - SEM SDR  → closer 1.0 / sdr 0
  * - anual:  total = amount * 0.2
- *     - COM SDR  → closer 0.10 / sdr 0.10
+ *     - COM SDR  → closer 0.16 / sdr 0.04
  *     - SEM SDR  → closer 0.20 / sdr 0
  *
  * @param amount       valor da venda (o "primeiro mensal" / valor informado).
@@ -114,12 +114,13 @@ export function calculateCommission(
   if (value <= 0) return { total: 0, closerCommission: 0, sdrCommission: 0 };
 
   const withSdr = typeof hasSdr === 'string' ? !!hasSdr.trim() : !!hasSdr;
-  const totalRate = billingCycle === 'annual' ? 0.2 : 0.5;
+  const totalRate = billingCycle === 'annual' ? 0.2 : 1.0;
   const total = value * totalRate;
 
   if (withSdr) {
-    const half = total / 2;
-    return { total, closerCommission: half, sdrCommission: half };
+    const closer = Math.round(total * 0.8 * 100) / 100;
+    const sdr = Math.round((total - closer) * 100) / 100;
+    return { total, closerCommission: closer, sdrCommission: sdr };
   }
   return { total, closerCommission: total, sdrCommission: 0 };
 }
