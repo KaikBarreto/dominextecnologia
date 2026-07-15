@@ -368,7 +368,7 @@ export const frOverrides: MessagesOverride = {
         {
           title: 'Ordres de travail numériques',
           description:
-            'Créez, assignez et suivez les ordres de travail avec photos, checklists, signature numérique et historique complet. Fini le papier et les reprises.',
+            'Créez, assignez et suivez les ordres de travail avec photos, checklists, réponses vidéo, signature numérique et historique complet. Fini le papier et les reprises.',
         },
         {
           title: 'Application technicien sur le terrain',
@@ -401,7 +401,7 @@ export const frOverrides: MessagesOverride = {
             'Pointage de l’équipe, acomptes, primes et paie. Bulletins prêts, sans feuille de calcul annexe.',
         },
         {
-          title: 'Facturation de services',
+          title: 'Émission de NFS-e (Facture de Service)',
           description:
             'Émettez vos factures de service directement depuis la plateforme, par client, selon vos règles fiscales locales.',
         },
@@ -537,6 +537,7 @@ export const frOverrides: MessagesOverride = {
             'Compte de résultat et rapports financiers',
             'Gestion des contrats et plans de maintenance',
           ],
+          videoChecklist: 'jusqu\'à 1 vidéo par checklist',
         },
         master: {
           name: 'Business',
@@ -545,13 +546,12 @@ export const frOverrides: MessagesOverride = {
             'Tout ce qui est inclus dans Pro +',
             '15 utilisateurs inclus',
             'CRM / Pipeline de ventes',
-            'Facturation de services intégrée',
+            'Émission de NFS-e (Facture de Service)',
             'Tarification avancée (marge)',
-            'Gestion des contrats et plans de maintenance',
-            'Portail client / Portail des contrats',
             'Marque blanche (votre marque)',
             'Support prioritaire',
           ],
+          videoChecklist: 'jusqu\'à 3 vidéos par checklist',
         },
         enterprise: {
           name: 'Offre Entreprise',
@@ -585,7 +585,7 @@ export const frOverrides: MessagesOverride = {
         },
         {
           q: 'Puis-je personnaliser les formulaires, checklists et rapports ?',
-          a: 'Oui. Vous créez des modèles de checklist par type de service, définissez les champs obligatoires, les photos et la signature. Les rapports d’ordre de travail sont générés en PDF avec votre marque, vos couleurs et votre logo.',
+          a: 'Oui. Vous créez des modèles de checklist par type de service, définissez les champs obligatoires, les photos, la signature et les réponses vidéo. Avec les offres Pro et Business, le technicien peut enregistrer un court clip (jusqu\’à 15 secondes) comme réponse de checklist, directement depuis son téléphone sur le terrain, et le client voit la vidéo dans le lien de l\’ordre de travail. Les rapports d\’ordre de travail sont générés en PDF avec votre marque, vos couleurs et votre logo.',
         },
         {
           q: 'Y a-t-il un CRM et un pipeline de ventes intégrés ?',

@@ -368,7 +368,7 @@ export const esOverrides: MessagesOverride = {
         {
           title: 'Órdenes de trabajo digitales',
           description:
-            'Crea, asigna y sigue órdenes de trabajo con fotos, checklists, firma digital e historial completo. Sin más papel ni retrabajo.',
+            'Crea, asigna y sigue órdenes de trabajo con fotos, checklists, respuestas en video, firma digital e historial completo. Sin más papel ni retrabajo.',
         },
         {
           title: 'App del técnico en el campo',
@@ -401,7 +401,7 @@ export const esOverrides: MessagesOverride = {
             'Control de asistencia del equipo, anticipos, bonos y nómina. Recibos listos, sin planilla aparte.',
         },
         {
-          title: 'Facturación de servicios',
+          title: 'Emisión de NFS-e (Factura de Servicio)',
           description:
             'Emite facturas de servicio directamente desde la plataforma, por cliente, siguiendo tus reglas fiscales locales.',
         },
@@ -537,6 +537,7 @@ export const esOverrides: MessagesOverride = {
             'Estado de resultados e informes financieros',
             'Gestión de contratos y planes de mantenimiento',
           ],
+          videoChecklist: 'hasta 1 video por checklist',
         },
         master: {
           name: 'Business',
@@ -545,13 +546,12 @@ export const esOverrides: MessagesOverride = {
             'Todo lo de Pro +',
             '15 usuarios incluidos',
             'CRM / Embudo de ventas',
-            'Facturación de servicios integrada',
+            'Emisión de NFS-e (Factura de Servicio)',
             'Precios avanzados (markup)',
-            'Gestión de contratos y planes de mantenimiento',
-            'Portal del Cliente / Portal de Contratos',
             'Marca blanca (tu marca)',
             'Soporte prioritario',
           ],
+          videoChecklist: 'hasta 3 videos por checklist',
         },
         enterprise: {
           name: 'Plan Enterprise',
@@ -585,7 +585,7 @@ export const esOverrides: MessagesOverride = {
         },
         {
           q: '¿Puedo personalizar formularios, checklists e informes?',
-          a: 'Sí. Creas plantillas de checklist por tipo de servicio, defines campos obligatorios, fotos y firma. Los informes de las órdenes de trabajo se generan como PDF con tu marca, colores y logo.',
+          a: 'Sí. Creas plantillas de checklist por tipo de servicio, defines campos obligatorios, fotos, firma y respuestas en video. En los planes Pro y Business el técnico puede grabar un clip corto (hasta 15 segundos) como respuesta de checklist, directo desde su teléfono en el campo, y el cliente ve el video en el enlace de la orden de trabajo. Los informes de las órdenes de trabajo se generan como PDF con tu marca, colores y logo.',
         },
         {
           q: '¿Hay un CRM y embudo de ventas integrado?',

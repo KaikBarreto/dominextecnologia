@@ -368,7 +368,7 @@ export const enOverrides: MessagesOverride = {
         {
           title: 'Digital work orders',
           description:
-            'Create, assign and track work orders with photos, checklists, digital signature and full history. No more paper and rework.',
+            'Create, assign and track work orders with photos, checklists, video responses, digital signature and full history. No more paper and rework.',
         },
         {
           title: 'Technician app in the field',
@@ -401,7 +401,7 @@ export const enOverrides: MessagesOverride = {
             'Team time tracking, advances, bonuses and payroll. Pay slips ready, with no side spreadsheet.',
         },
         {
-          title: 'Service invoicing',
+          title: 'NFS-e issuance (Service Invoice)',
           description:
             'Issue service invoices straight from the platform, per client, following your local tax rules.',
         },
@@ -537,6 +537,7 @@ export const enOverrides: MessagesOverride = {
             'Income statement and financial reports',
             'Contract and maintenance-plan management',
           ],
+          videoChecklist: 'up to 1 video per checklist',
         },
         master: {
           name: 'Business',
@@ -545,13 +546,12 @@ export const enOverrides: MessagesOverride = {
             'Everything in Pro +',
             '15 users included',
             'CRM / Sales pipeline',
-            'Integrated service invoicing',
+            'NFS-e issuance (Service Invoice)',
             'Advanced pricing (markup)',
-            'Contract and maintenance-plan management',
-            'Client Portal / Contract Portal',
             'White label (your brand)',
             'Priority support',
           ],
+          videoChecklist: 'up to 3 videos per checklist',
         },
         enterprise: {
           name: 'Enterprise Plan',
@@ -585,7 +585,7 @@ export const enOverrides: MessagesOverride = {
         },
         {
           q: 'Can I customize forms, checklists and reports?',
-          a: 'Yes. You create checklist templates per service type, define required fields, photos and signature. Work order reports are generated as PDFs with your brand, colors and logo.',
+          a: 'Yes. You create checklist templates per service type, define required fields, photos, signature and video responses. On the Pro and Business plans, the technician can record a short clip (up to 15 seconds) as a checklist answer, straight from their phone in the field, and the customer sees the video in the work order link. Work order reports are generated as PDFs with your brand, colors and logo.',
         },
         {
           q: 'Is there an integrated CRM and sales pipeline?',

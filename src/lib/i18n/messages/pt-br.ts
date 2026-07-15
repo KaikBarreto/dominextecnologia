@@ -183,7 +183,7 @@ export const ptBr = {
         {
           title: 'Ordens de serviço digitais',
           description:
-            'Crie, atribua e acompanhe OS com foto, checklist, assinatura digital e histórico completo. Acabou o papel e o retrabalho.',
+            'Crie, atribua e acompanhe OS com foto, checklist, resposta em vídeo, assinatura digital e histórico completo. Acabou o papel e o retrabalho.',
         },
         {
           title: 'App do técnico em campo',
@@ -216,7 +216,7 @@ export const ptBr = {
             'Controle de ponto da equipe, vales, bônus e folha de pagamento. Recibos prontos, sem planilha paralela.',
         },
         {
-          title: 'NFS-e',
+          title: 'Emissão de NFS-e (Nota Fiscal de Serviço)',
           description:
             'Emita a nota fiscal de serviço direto pela plataforma, por cliente, com o código fiscal do seu município.',
         },
@@ -353,6 +353,7 @@ export const ptBr = {
             'DRE e relatórios financeiros',
             'Gestão de Contratos e PMOC',
           ],
+          videoChecklist: 'até 1 vídeo por checklist',
         },
         master: {
           name: 'Business',
@@ -361,13 +362,12 @@ export const ptBr = {
             'Tudo do Pro +',
             '15 usuários inclusos',
             'CRM / Funil de vendas',
-            'NFS-e integrada',
+            'Emissão de NFS-e (Nota Fiscal de Serviço)',
             'Precificação avançada (BDI)',
-            'Gestão de Contratos e PMOC',
-            'Portal do Cliente/Portal do Contrato',
             'White Label (sua marca)',
             'Suporte prioritário',
           ],
+          videoChecklist: 'até 3 vídeos por checklist',
         },
         enterprise: {
           name: 'Plano Enterprise',
@@ -401,7 +401,7 @@ export const ptBr = {
         },
         {
           q: 'Posso personalizar formulários, checklists e relatórios?',
-          a: 'Sim. Você cria templates de checklists por tipo de serviço, define campos obrigatórios, fotos e assinatura. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
+          a: 'Sim. Você cria templates de checklists por tipo de serviço, define campos obrigatórios, fotos, assinatura e resposta em vídeo. Nos planos Pro e Business o técnico pode gravar um clipe curto (até 15 segundos) como resposta de checklist, direto do celular em campo, e o cliente vê o vídeo no link da OS. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
         },
         {
           q: 'Tem CRM e funil de vendas integrado?',

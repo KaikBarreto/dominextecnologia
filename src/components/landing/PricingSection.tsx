@@ -42,7 +42,8 @@ export default function PricingSection() {
   // Junta config (preço/link) + texto i18n (nome/desc/features) por code.
   const plans = PLAN_CONFIG.map((cfg) => {
     const copy = t.plans[cfg.code];
-    return { ...cfg, name: copy.name, desc: copy.desc, features: copy.features, cta: t.ctaTrial };
+    const videoChecklist = 'videoChecklist' in copy ? (copy as { videoChecklist?: string }).videoChecklist : undefined;
+    return { ...cfg, name: copy.name, desc: copy.desc, features: copy.features, videoChecklist, cta: t.ctaTrial };
   });
   const customPlan = {
     name: t.plans.enterprise.name,
@@ -94,8 +95,8 @@ export default function PricingSection() {
                 className={cn(
                   'relative rounded-md border p-7 flex flex-col transition-all',
                   plan.popular
-                    ? 'border-primary bg-white/5 shadow-brand-glow scale-[1.02]'
-                    : 'border-white/10 bg-white/[0.03]'
+                    ? 'border-primary bg-neutral-900/90 shadow-brand-glow scale-[1.02]'
+                    : 'border-white/10 bg-neutral-900/80'
                 )}
               >
                 {plan.popular && (
@@ -144,7 +145,7 @@ export default function PricingSection() {
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
 
-                <ul className="space-y-2.5 mb-6 flex-1">
+                <ul className="space-y-2.5 mb-4 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm text-white/60">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -152,6 +153,12 @@ export default function PricingSection() {
                     </li>
                   ))}
                 </ul>
+
+                {plan.videoChecklist && (
+                  <p className="text-sm font-semibold mb-6 break-words hyphens-auto text-new-feature-gradient">
+                    {plan.videoChecklist}
+                  </p>
+                )}
 
                 <Button
                   className={cn(

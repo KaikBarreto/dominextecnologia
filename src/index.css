@@ -266,6 +266,28 @@ Design Premium com Verde da Marca #00C597
     animation: dominex-loader-spin 1s infinite linear;
   }
   @keyframes dominex-loader-spin { to { transform: rotate(1turn); } }
+
+  /* Degradê animado para texto de novidade nos cards de plano (Pricing). */
+  .text-new-feature-gradient {
+    background: linear-gradient(
+      90deg,
+      #00C597 0%,
+      #00C684 40%,
+      #6effd8 60%,
+      #00C684 80%,
+      #00C597 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: shimmer-brand 3s linear infinite;
+  }
+  @keyframes shimmer-brand {
+    0%   { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
 }
 
 /* Destructive buttons (excluir, cancelar, sair) - vermelho com texto branco */

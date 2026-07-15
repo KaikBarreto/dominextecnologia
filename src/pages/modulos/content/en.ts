@@ -135,6 +135,7 @@ const en: ModuleContentMap = {
       { icon: Calendar, title: 'Scheduling and dispatch', desc: 'See the day\'s queue and assign each job to the nearest technician, with no scheduling clashes.' },
       { icon: FileSignature, title: 'Automatic report', desc: 'A branded PDF ready the moment the job is done, with photos, checklist, and signature.' },
       { icon: BarChart3, title: 'Status dashboard', desc: 'Open, in progress, and completed work orders on a live view of your operation.' },
+      { icon: Smartphone, title: 'Video response in the checklist', desc: 'On Pro and Business plans, the technician records a short clip (up to 15 s) as a checklist answer, right in the field. The customer sees the video in the work order link.' },
     ],
     testimonialsHeading: 'Nobody who went digital goes back to paper',
     testimonials: [
@@ -149,6 +150,7 @@ const en: ModuleContentMap = {
       { q: 'Does the system generate work order reports automatically?', a: 'Yes. When the work order is finished, the PDF report with your logo and colors is ready, with the completed checklist, photos, and signature. You send it to the customer right away.' },
       { q: 'Can I use different checklists per service type?', a: 'Yes. You create checklist templates by service type (installation, preventive, corrective) and the technician follows the right steps on every visit.' },
       { q: 'How do I hand out work orders to my team?', a: 'On the dashboard you see the day\'s queue and assign each work order to the technician in charge, tracking the status (open, in progress, completed) in real time.' },
+      { q: 'Can the technician answer a checklist item with a video?', a: 'Yes, on Pro and Business plans. The technician records a short clip of up to 15 seconds straight from their phone in the field, as the answer to a checklist question. The video is saved to the work order and the customer can watch it in the work order link.' },
       { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You set up your company in minutes and start opening work orders in the app.' },
     ],
     finalCta: {

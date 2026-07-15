@@ -131,6 +131,7 @@ const ptBr: ModuleContentMap = {
       { icon: Calendar, title: 'Agenda e distribuição', desc: 'Veja a fila do dia e atribua o chamado ao técnico mais próximo, sem conflito de horário.' },
       { icon: FileSignature, title: 'Relatório automático', desc: 'PDF com sua marca pronto ao finalizar, com fotos, checklist e assinatura.' },
       { icon: BarChart3, title: 'Painel por status', desc: 'OS abertas, em andamento e concluídas em um painel ao vivo da operação.' },
+      { icon: Smartphone, title: 'Resposta em vídeo no checklist', desc: 'Nos planos Pro e Business, o técnico grava um clipe curto (até 15 s) como resposta de checklist, em campo. O cliente vê o vídeo no link da OS.' },
     ],
     testimonialsHeading: 'Quem digitalizou a OS não volta ao papel',
     testimonials: [
@@ -145,6 +146,7 @@ const ptBr: ModuleContentMap = {
       { q: 'O sistema gera relatório de ordem de serviço automaticamente?', a: 'Sim. Ao finalizar a OS, o relatório em PDF com a sua logo e cores sai pronto, com checklist preenchido, fotos e assinatura. Você envia ao cliente na hora.' },
       { q: 'Dá para usar checklists diferentes por tipo de serviço?', a: 'Sim. Você cria modelos de checklist por tipo de atendimento (instalação, preventiva, corretiva) e o técnico segue o passo a passo certo em cada visita.' },
       { q: 'Como distribuo as ordens de serviço para a equipe?', a: 'No painel você vê a fila do dia e atribui cada OS ao técnico responsável, acompanhando o status (aberta, em andamento, concluída) em tempo real.' },
+      { q: 'O técnico pode responder o checklist com vídeo?', a: 'Sim, nos planos Pro e Business. O técnico grava um clipe curto de até 15 segundos direto pelo celular em campo, como resposta de uma pergunta do checklist. O vídeo fica registrado na OS e o cliente pode visualizá-lo no link da ordem de serviço.' },
       { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura a empresa em minutos e já começa a abrir ordens de serviço no app.' },
     ],
     finalCta: {

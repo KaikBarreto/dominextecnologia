@@ -136,6 +136,7 @@ const fr: ModuleContentMap = {
       { icon: Calendar, title: 'Planification et répartition', desc: 'Voyez la file du jour et affectez chaque intervention au technicien le plus proche, sans conflit d\'horaire.' },
       { icon: FileSignature, title: 'Rapport automatique', desc: 'Un PDF à votre image prêt dès la fin de l\'intervention, avec photos, checklist et signature.' },
       { icon: BarChart3, title: 'Tableau de bord des statuts', desc: 'Ordres de travail ouverts, en cours et terminés en vue en direct de votre opération.' },
+      { icon: Smartphone, title: 'Réponse vidéo dans la checklist', desc: 'Avec les offres Pro et Business, le technicien enregistre un court clip (jusqu\'à 15 s) comme réponse de checklist, sur le terrain. Le client voit la vidéo dans le lien de l\'ordre de travail.' },
     ],
     testimonialsHeading: 'Personne ne revient au papier après être passé au numérique',
     testimonials: [
@@ -150,6 +151,7 @@ const fr: ModuleContentMap = {
       { q: 'Le système génère-t-il les rapports d\'ordre de travail automatiquement ?', a: 'Oui. Une fois l\'ordre de travail terminé, le rapport PDF à votre logo et à vos couleurs est prêt, avec la checklist complétée, les photos et la signature. Vous l\'envoyez au client aussitôt.' },
       { q: 'Puis-je utiliser des checklists différentes par type de service ?', a: 'Oui. Vous créez des modèles de checklist par type de service (installation, préventif, correctif) et le technicien suit les bonnes étapes à chaque visite.' },
       { q: 'Comment répartir les ordres de travail à mon équipe ?', a: 'Sur le tableau de bord, vous voyez la file du jour et affectez chaque ordre de travail au technicien responsable, en suivant le statut (ouvert, en cours, terminé) en temps réel.' },
+      { q: 'Le technicien peut-il répondre à une question de checklist par vidéo ?', a: 'Oui, avec les offres Pro et Business. Le technicien enregistre un court clip de 15 secondes maximum directement depuis son téléphone sur le terrain, en guise de réponse à une question de checklist. La vidéo est sauvegardée dans l\'ordre de travail et le client peut la visionner via le lien de l\'ordre de travail.' },
       { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes et commencez à ouvrir des ordres de travail dans l\'application.' },
     ],
     finalCta: {

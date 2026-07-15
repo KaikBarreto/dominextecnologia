@@ -135,6 +135,7 @@ const es: ModuleContentMap = {
       { icon: Calendar, title: 'Agenda y despacho', desc: 'Ve la cola del día y asigna cada trabajo al técnico más cercano, sin choques de horario.' },
       { icon: FileSignature, title: 'Informe automático', desc: 'Un PDF con tu marca listo en cuanto el trabajo termina, con fotos, lista de verificación y firma.' },
       { icon: BarChart3, title: 'Panel de estados', desc: 'Órdenes abiertas, en ejecución y finalizadas en una vista en vivo de tu operación.' },
+      { icon: Smartphone, title: 'Respuesta en video en la lista de verificación', desc: 'En los planes Pro y Business, el técnico graba un clip corto (hasta 15 s) como respuesta de lista de verificación, en campo. El cliente ve el video en el enlace de la orden.' },
     ],
     testimonialsHeading: 'Quien pasó a digital no vuelve al papel',
     testimonials: [
@@ -149,6 +150,7 @@ const es: ModuleContentMap = {
       { q: '¿El sistema genera informes de órdenes automáticamente?', a: 'Sí. Cuando la orden termina, el informe PDF con tu logo y colores queda listo, con la lista de verificación completa, las fotos y la firma. Se lo envías al cliente de inmediato.' },
       { q: '¿Puedo usar listas de verificación distintas por tipo de servicio?', a: 'Sí. Creas plantillas de lista por tipo de servicio (instalación, preventivo, correctivo) y el técnico sigue los pasos correctos en cada visita.' },
       { q: '¿Cómo reparto las órdenes a mi equipo?', a: 'En el panel ves la cola del día y asignas cada orden al técnico responsable, siguiendo el estado (abierta, en ejecución, finalizada) en tiempo real.' },
+      { q: '¿El técnico puede responder la lista de verificación con video?', a: 'Sí, en los planes Pro y Business. El técnico graba un clip corto de hasta 15 segundos directo desde su móvil en campo, como respuesta a una pregunta de la lista de verificación. El video queda guardado en la orden y el cliente puede verlo en el enlace de la orden de trabajo.' },
       { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Configuras tu empresa en minutos y empiezas a abrir órdenes en la app.' },
     ],
     finalCta: {
