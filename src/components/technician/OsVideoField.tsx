@@ -5,6 +5,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { OsVideoPlayer } from '@/components/technician/OsVideoPlayer';
 import { useToast } from '@/hooks/use-toast';
 
 /** Duração máxima do clipe (segundos). */
@@ -232,11 +233,9 @@ export function OsVideoField({
       {/* Preview do clipe já anexado. */}
       {hasClip && !recording && (
         <div className="relative rounded-lg overflow-hidden border bg-black">
-          <video
-            src={value || undefined}
-            controls
-            playsInline
-            className="w-full max-h-72 object-contain bg-black"
+          <OsVideoPlayer
+            src={value}
+            className="w-full max-h-72"
           />
           {!readOnly && (
             <button

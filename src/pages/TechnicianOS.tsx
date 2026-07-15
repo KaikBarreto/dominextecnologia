@@ -37,6 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SignedImg } from '@/components/ui/SignedImg';
+import { OsVideoPlayer } from '@/components/technician/OsVideoPlayer';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -2755,11 +2756,9 @@ export default function TechnicianOS() {
                                         })()}
                                         {r.response_video_url && (
                                           <div className="mt-1">
-                                            <video
+                                            <OsVideoPlayer
                                               src={r.response_video_url}
-                                              controls
-                                              playsInline
-                                              className="rounded h-32 w-auto max-w-full bg-black object-contain"
+                                              className="rounded h-32 w-auto max-w-full"
                                             />
                                           </div>
                                         )}
@@ -2825,11 +2824,9 @@ export default function TechnicianOS() {
                             })()}
                             {r.response_video_url && (
                               <div className="mt-1">
-                                <video
+                                <OsVideoPlayer
                                   src={r.response_video_url}
-                                  controls
-                                  playsInline
-                                  className="rounded h-32 w-auto max-w-full bg-black object-contain"
+                                  className="rounded h-32 w-auto max-w-full"
                                 />
                               </div>
                             )}
