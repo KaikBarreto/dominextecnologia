@@ -3,6 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { useCountUp } from './useCountUp';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { formatNumber } from '@/lib/format';
 
 /**
  * KPI Card no estilo "saturado" do EcoSistema:
@@ -38,6 +40,7 @@ export function KPICard({
   bgClass: string;
 }) {
   const animatedValue = useCountUp(value);
+  const { locale } = useAppLocaleContext();
 
   return (
     <motion.div
@@ -63,7 +66,7 @@ export function KPICard({
             <div className="space-y-2 min-w-0 flex-1">
               <p className="text-[11px] font-semibold text-white/80 uppercase tracking-wider truncate">{title}</p>
               <p className="text-3xl lg:text-4xl font-bold text-white tracking-tight whitespace-nowrap">
-                {formattedValue ?? animatedValue.toLocaleString('pt-BR')}
+                {formattedValue ?? formatNumber(animatedValue, locale)}
               </p>
               {subtitle && <p className="text-xs text-white/80">{subtitle}</p>}
             </div>

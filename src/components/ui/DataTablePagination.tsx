@@ -7,6 +7,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { PageSizeOption } from '@/hooks/useDataPagination';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatNumber } from '@/lib/format';
 
 interface DataTablePaginationProps {
   page: number;
@@ -29,15 +32,22 @@ export function DataTablePagination({
   onPageChange,
   onPageSizeChange,
 }: DataTablePaginationProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.common;
+  const showingText = t.pagination.showing
+    .replace('{from}', formatNumber(from, locale))
+    .replace('{to}', formatNumber(to, locale))
+    .replace('{total}', formatNumber(totalItems, locale));
+
   return (
     <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-xs text-muted-foreground text-center sm:text-left">
-        Mostrando {from}-{to} de {totalItems}
+        {showingText}
       </div>
 
       <div className="flex flex-col gap-2 items-center sm:flex-row sm:items-center">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">Por página</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{t.pagination.perPage}</span>
           <Select
             value={String(pageSize)}
             onValueChange={(value) => onPageSizeChange(value === 'all' ? 'all' : Number(value) as 10 | 25 | 50 | 100)}
@@ -50,7 +60,7 @@ export function DataTablePagination({
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
-              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="all">{t.pagination.all}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -62,10 +72,10 @@ export function DataTablePagination({
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
           >
-            Anterior
+            {t.pagination.previous}
           </Button>
           <span className="min-w-[64px] text-center text-xs text-muted-foreground">
-            {page} / {totalPages}
+            {formatNumber(page, locale)} / {formatNumber(totalPages, locale)}
           </span>
           <Button
             size="sm"
@@ -73,7 +83,7 @@ export function DataTablePagination({
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
           >
-            Próxima
+            {t.pagination.next}
           </Button>
         </div>
       </div>

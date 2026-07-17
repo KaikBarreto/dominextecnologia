@@ -53,10 +53,17 @@ export function AppLocaleProvider({ children }: { children: React.ReactNode }) {
   return <AppLocaleContext.Provider value={value}>{children}</AppLocaleContext.Provider>;
 }
 
+/** Default seguro pra fora do <AppLocaleProvider> (rota pública/anon, error
+ *  boundary). NUNCA lança: um componente compartilhado usado fora do app logado
+ *  não pode quebrar a página — cai em pt-br/BRL/São Paulo. */
+const APP_LOCALE_FALLBACK: AppLocaleContextValue = {
+  locale: 'pt-br',
+  currency: 'BRL',
+  timezone: 'America/Sao_Paulo',
+  isLoading: false,
+  setUserLanguage: async () => {},
+};
+
 export function useAppLocaleContext(): AppLocaleContextValue {
-  const ctx = useContext(AppLocaleContext);
-  if (!ctx) {
-    throw new Error('useAppLocaleContext deve ser usado dentro de <AppLocaleProvider>.');
-  }
-  return ctx;
+  return useContext(AppLocaleContext) ?? APP_LOCALE_FALLBACK;
 }

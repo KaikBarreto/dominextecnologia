@@ -1,11 +1,16 @@
 import { useState, useMemo } from 'react';
 import { Calendar as CalendarIcon, Check, ArrowRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, startOfYear, endOfYear, subMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, startOfYear, endOfYear, subMonths } from 'date-fns';
+import { ptBR, enUS, es, fr } from 'date-fns/locale';
+import type { Locale } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatDate } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 export type DatePreset =
   | 'all'
@@ -17,16 +22,12 @@ export type DatePreset =
   | 'this_year'
   | 'custom';
 
-const presets: { key: DatePreset; label: string }[] = [
-  { key: 'all', label: 'Todos os tempos' },
-  { key: 'today', label: 'Hoje' },
-  { key: 'last7', label: 'Últimos 7 dias' },
-  { key: 'this_month', label: 'Este mês' },
-  { key: 'last_month', label: 'Mês passado' },
-  { key: 'last30', label: 'Últimos 30 dias' },
-  { key: 'this_year', label: 'Este ano' },
-  { key: 'custom', label: 'Personalizado' },
-];
+const DATE_FNS_LOCALE: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es,
+  fr,
+};
 
 export interface DateRange {
   from: Date | undefined;
@@ -94,12 +95,31 @@ export function useDateRangeFilter(defaultPreset: DatePreset = 'this_month') {
 }
 
 export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }: DateRangeFilterProps) {
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.common;
   const [presetOpen, setPresetOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [tempFrom, setTempFrom] = useState<Date | undefined>(value.from);
   const [tempTo, setTempTo] = useState<Date | undefined>(value.to);
 
-  const presetLabel = useMemo(() => presets.find((p) => p.key === preset)?.label ?? 'Este mês', [preset]);
+  const presets = useMemo<{ key: DatePreset; label: string }[]>(
+    () => [
+      { key: 'all', label: t.dateRange.allTime },
+      { key: 'today', label: t.dateRange.today },
+      { key: 'last7', label: t.dateRange.last7 },
+      { key: 'this_month', label: t.dateRange.thisMonth },
+      { key: 'last_month', label: t.dateRange.lastMonth },
+      { key: 'last30', label: t.dateRange.last30 },
+      { key: 'this_year', label: t.dateRange.thisYear },
+      { key: 'custom', label: t.dateRange.custom },
+    ],
+    [t],
+  );
+
+  const presetLabel = useMemo(
+    () => presets.find((p) => p.key === preset)?.label ?? t.dateRange.thisMonth,
+    [presets, preset, t],
+  );
 
   const handlePresetSelect = (key: DatePreset) => {
     onPresetChange(key);
@@ -157,30 +177,30 @@ export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }
             <Button variant="outline" size="sm" className="gap-2 h-9">
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               {value.from && value.to
-                ? `${format(value.from, 'dd/MM/yyyy')} - ${format(value.to, 'dd/MM/yyyy')}`
-                : 'Selecionar datas'}
+                ? `${formatDate(value.from, locale, timezone)} - ${formatDate(value.to, locale, timezone)}`
+                : t.dateRange.selectDates}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-4" align="start">
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                Selecione o período
+                {t.dateRange.selectPeriod}
               </div>
 
               {/* Start / End labels */}
               <div className="flex items-center gap-3 rounded-lg border p-3">
                 <div className="flex-1 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Início</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t.dateRange.start}</p>
                   <p className="text-sm font-medium">
-                    {tempFrom ? format(tempFrom, 'dd/MM/yyyy') : '—'}
+                    {tempFrom ? formatDate(tempFrom, locale, timezone) : '—'}
                   </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <div className="flex-1 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Fim</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t.dateRange.end}</p>
                   <p className="text-sm font-medium">
-                    {tempTo ? format(tempTo, 'dd/MM/yyyy') : '—'}
+                    {tempTo ? formatDate(tempTo, locale, timezone) : '—'}
                   </p>
                 </div>
               </div>
@@ -193,14 +213,14 @@ export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }
                   setTempFrom(range?.from);
                   setTempTo(range?.to);
                 }}
-                locale={ptBR}
+                locale={DATE_FNS_LOCALE[locale]}
                 numberOfMonths={2}
                 className="p-0 pointer-events-auto"
               />
 
               <div className="flex items-center justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={handleClearCustom}>
-                  Limpar
+                  {t.clear}
                 </Button>
                 <Button
                   size="sm"
@@ -209,7 +229,7 @@ export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }
                   disabled={!tempFrom || !tempTo}
                 >
                   <Check className="h-3.5 w-3.5" />
-                  Aplicar
+                  {t.apply}
                 </Button>
               </div>
             </div>

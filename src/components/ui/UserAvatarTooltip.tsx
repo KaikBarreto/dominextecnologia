@@ -1,5 +1,7 @@
 import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Tooltip,
@@ -48,7 +50,8 @@ export function UserAvatarTooltip({
   side = 'top',
   className,
 }: UserAvatarTooltipProps) {
-  const displayName = name?.trim() || 'Usuário';
+  const { locale } = useAppLocaleContext();
+  const displayName = name?.trim() || MESSAGES[locale].app.common.user;
   const initials = name?.trim() ? getInitials(name) : '';
 
   return (

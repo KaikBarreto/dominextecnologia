@@ -9,6 +9,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export type RowActionVariant = 'default' | 'edit' | 'delete';
 
@@ -52,9 +54,11 @@ export function RowActionsMenu({
   actions,
   align = 'end',
   triggerClassName,
-  ariaLabel = 'Ações',
+  ariaLabel,
   label,
 }: RowActionsMenuProps) {
+  const { locale } = useAppLocaleContext();
+  const resolvedAriaLabel = ariaLabel ?? MESSAGES[locale].app.common.actions;
   const visible = actions.filter((a) => !a.hidden);
   const [open, setOpen] = useState(false);
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,7 +98,7 @@ export function RowActionsMenu({
             label ? 'h-8 gap-1.5 px-2' : 'h-8 w-8',
             triggerClassName,
           )}
-          aria-label={ariaLabel}
+          aria-label={resolvedAriaLabel}
           onClick={(e) => e.stopPropagation()}
           onPointerEnter={(e) => { if (e.pointerType === 'mouse') scheduleOpen(); }}
           onPointerLeave={(e) => { if (e.pointerType === 'mouse') scheduleClose(); }}

@@ -11,6 +11,9 @@ import {
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatNumber } from '@/lib/format';
 
 /**
  * `FilterButton` — botão de filtros reusável (pattern sistema-wide).
@@ -42,7 +45,7 @@ interface FilterButtonProps {
   onClear: () => void;
   /** Selects / inputs / pickers de filtro renderizados dentro do sheet. */
   children: ReactNode;
-  /** Label opcional do botão (default: "Filtros"). */
+  /** Label opcional do botão (default: "Filtros", traduzido pelo locale do app). */
   label?: string;
   /** className extra do botão trigger. */
   className?: string;
@@ -52,10 +55,13 @@ export function FilterButton({
   activeCount,
   onClear,
   children,
-  label = 'Filtros',
+  label,
   className,
 }: FilterButtonProps) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.common;
+  const resolvedLabel = label ?? t.filters.title;
   const [open, setOpen] = useState(false);
   const hasActive = activeCount > 0;
 
@@ -72,13 +78,13 @@ export function FilterButton({
           )}
         >
           <Filter className="h-4 w-4" />
-          <span>{label}</span>
+          <span>{resolvedLabel}</span>
           {hasActive && (
             <Badge
               variant="default"
               className="h-5 min-w-5 px-1.5 ml-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold"
             >
-              {activeCount}
+              {formatNumber(activeCount, locale)}
             </Badge>
           )}
         </Button>
@@ -97,7 +103,7 @@ export function FilterButton({
           <div className="flex items-center justify-between gap-3">
             <SheetTitle className="text-base font-semibold flex items-center gap-2">
               <Filter className="h-4 w-4 text-primary" />
-              {label}
+              {resolvedLabel}
             </SheetTitle>
             {hasActive && (
               <Button
@@ -107,7 +113,7 @@ export function FilterButton({
                 className="h-8 text-xs gap-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
                 <X className="h-3.5 w-3.5" />
-                Limpar tudo
+                {t.filters.clearAll}
               </Button>
             )}
           </div>
@@ -122,7 +128,9 @@ export function FilterButton({
             className="w-full"
             onClick={() => setOpen(false)}
           >
-            {hasActive ? `Aplicar (${activeCount})` : 'Fechar'}
+            {hasActive
+              ? t.filters.applyCount.replace('{count}', formatNumber(activeCount, locale))
+              : t.close}
           </Button>
         </div>
       </SheetContent>
