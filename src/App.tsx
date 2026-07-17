@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AppLocaleProvider } from "@/contexts/AppLocaleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
@@ -749,12 +750,14 @@ const App = () => (
           <HtmlLangManager />
           <ViewportManager />
           <AuthProvider>
-            <UsageTracker />
-            <SwipeBackProvider>
-              <TermsOfServiceWrapper>
-                <AppRoutes />
-              </TermsOfServiceWrapper>
-            </SwipeBackProvider>
+            <AppLocaleProvider>
+              <UsageTracker />
+              <SwipeBackProvider>
+                <TermsOfServiceWrapper>
+                  <AppRoutes />
+                </TermsOfServiceWrapper>
+              </SwipeBackProvider>
+            </AppLocaleProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

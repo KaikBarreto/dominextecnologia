@@ -25,6 +25,7 @@ import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotific
 import { SubscriptionGate } from '@/components/SubscriptionGate';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
 import { HeaderClock } from '@/components/layout/HeaderClock';
+import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import {
   Tooltip,
   TooltipContent,
@@ -180,6 +181,7 @@ function DesktopSidebarHeader() {
 
         <div className="flex items-center gap-1 shrink-0">
           <HeaderClock uf={settings?.state} />
+          <AppLanguageSwitcher />
           <NotificationsBell />
 
           {/* Botão de perfil removido — já existe no avatar do sidebar (dropdown).
@@ -388,6 +390,7 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
       <div className="flex items-center gap-1 justify-end">
         {user && (
           <>
+            <AppLanguageSwitcher />
             <NotificationsBell />
             {/* Atalhos compactos só em tablet: no mobile (<lg) o bottom nav é o caminho. */}
             <Button

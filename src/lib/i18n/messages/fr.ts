@@ -873,6 +873,15 @@ export const frOverrides: MessagesOverride = {
     refreshTitle: 'Actualiser l’application',
     refreshing: 'Actualisation de l’application...',
   },
+
+  // ── Application connectée (i18n Phase 0) ────────────────────────────────────
+  app: {
+    common: {
+      save: 'Enregistrer',
+      cancel: 'Annuler',
+      loading: 'Chargement...',
+    },
+  },
 };
 
 export default frOverrides;

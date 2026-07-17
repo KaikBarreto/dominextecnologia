@@ -1001,10 +1001,12 @@ export type Database = {
           company_id: string | null
           complement: string | null
           created_at: string
+          currency: string
           document: string | null
           dre_start_date: string | null
           email: string | null
           id: string
+          language: string
           logo_url: string | null
           name: string
           neighborhood: string | null
@@ -1024,6 +1026,7 @@ export type Database = {
           show_name_in_documents: boolean
           show_phone_in_documents: boolean
           state: string | null
+          timezone: string
           updated_at: string
           white_label_enabled: boolean
           white_label_icon_url: string | null
@@ -1038,10 +1041,12 @@ export type Database = {
           company_id?: string | null
           complement?: string | null
           created_at?: string
+          currency?: string
           document?: string | null
           dre_start_date?: string | null
           email?: string | null
           id?: string
+          language?: string
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
@@ -1061,6 +1066,7 @@ export type Database = {
           show_name_in_documents?: boolean
           show_phone_in_documents?: boolean
           state?: string | null
+          timezone?: string
           updated_at?: string
           white_label_enabled?: boolean
           white_label_icon_url?: string | null
@@ -1075,10 +1081,12 @@ export type Database = {
           company_id?: string | null
           complement?: string | null
           created_at?: string
+          currency?: string
           document?: string | null
           dre_start_date?: string | null
           email?: string | null
           id?: string
+          language?: string
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
@@ -1098,6 +1106,7 @@ export type Database = {
           show_name_in_documents?: boolean
           show_phone_in_documents?: boolean
           state?: string | null
+          timezone?: string
           updated_at?: string
           white_label_enabled?: boolean
           white_label_icon_url?: string | null
@@ -7558,18 +7567,21 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          language: string
           schedule_view_mode_desktop: string
           schedule_view_mode_mobile: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          language?: string
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          language?: string
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string
           updated_at?: string

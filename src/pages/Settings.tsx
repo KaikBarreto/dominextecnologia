@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { SettingsAppearanceContent } from '@/components/settings/SettingsAppearanceContent';
 import { SettingsShortcutsContent } from '@/components/settings/SettingsShortcutsContent';
+import { SettingsRegionalContent } from '@/components/settings/SettingsRegionalContent';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
@@ -43,10 +44,11 @@ import type { AppRole } from '@/types/database';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
-const ALL_TABS = ['empresa', 'usuarios', 'usabilidade', 'atalhos', 'aparencia'];
+const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia'];
 
 const settingsTabs: SettingsTab[] = [
   { value: 'empresa', label: 'Empresa', icon: Building },
+  { value: 'regional', label: 'Regional', icon: Globe },
   { value: 'usuarios', label: 'Usuários e Permissões', icon: UserCircle },
   { value: 'usabilidade', label: 'Usabilidade', icon: SlidersHorizontal },
   { value: 'atalhos', label: 'Atalhos', icon: Keyboard },
@@ -108,6 +110,8 @@ export default function Settings() {
 
   const visibleTabs = settingsTabs.filter(t => {
     if (t.value === 'usuarios') return hasScreenAccess('screen:users');
+    // Regional (idioma/moeda/fuso da empresa) é configuração de admin.
+    if (t.value === 'regional') return canResetSystem;
     return true;
   });
   const setActiveTab = (tab: string) => {
@@ -1050,6 +1054,9 @@ export default function Settings() {
           )}
           </div>
         );
+
+      case 'regional':
+        return <SettingsRegionalContent />;
 
       case 'usabilidade':
         return (

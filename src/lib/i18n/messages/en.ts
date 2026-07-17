@@ -872,6 +872,15 @@ export const enOverrides: MessagesOverride = {
     refreshTitle: 'Refresh app',
     refreshing: 'Refreshing app...',
   },
+
+  // ── Logged-in app (i18n Phase 0) ────────────────────────────────────────────
+  app: {
+    common: {
+      save: 'Save',
+      cancel: 'Cancel',
+      loading: 'Loading...',
+    },
+  },
 };
 
 export default enOverrides;

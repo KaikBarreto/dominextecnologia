@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 export interface CompanySettings {
   id: string;
@@ -43,6 +44,13 @@ export interface CompanySettings {
   // Segmento da empresa (ex.: 'refrigeracao'). Gateia áreas exclusivas como
   // as Área do Técnico™ no app de campo.
   segment?: string | null;
+  // ── Configuração Regional (i18n do app logado) ────────────────────────────
+  // Idioma padrão da empresa (fallback do idioma pessoal do usuário), moeda de
+  // operação (ISO 4217) e fuso horário (nome IANA). Defaults no banco:
+  // pt-br / BRL / America/Sao_Paulo. Lidos via useAppLocaleContext/useCompanyRegional.
+  language?: LocaleCode | null;
+  currency?: string | null;
+  timezone?: string | null;
   created_at: string;
   updated_at: string;
 }

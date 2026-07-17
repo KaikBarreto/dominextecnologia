@@ -957,6 +957,19 @@ export const ptBr = {
     refreshTitle: 'Atualizar sistema',
     refreshing: 'Atualizando sistema...',
   },
+
+  // ── APP LOGADO (i18n Fase 0) ────────────────────────────────────────────────
+  // Namespace do sistema APÓS o login. Hoje só o `common` (padrão estabelecido);
+  // as chaves por DOMÍNIO (os/financeiro/pmoc/...) entram nas fases seguintes,
+  // organizadas por área. en/es/fr sobrescrevem via deepMerge; chave ausente cai
+  // no pt-br (o app nunca quebra por falta de tradução).
+  app: {
+    common: {
+      save: 'Salvar',
+      cancel: 'Cancelar',
+      loading: 'Carregando...',
+    },
+  },
 } as const;
 
 /** Shape canônico das mensagens de UI. en/es/fr fazem fallback pra ele. */

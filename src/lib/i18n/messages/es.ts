@@ -872,6 +872,15 @@ export const esOverrides: MessagesOverride = {
     refreshTitle: 'Actualizar la aplicación',
     refreshing: 'Actualizando la aplicación...',
   },
+
+  // ── App con sesión iniciada (i18n Fase 0) ───────────────────────────────────
+  app: {
+    common: {
+      save: 'Guardar',
+      cancel: 'Cancelar',
+      loading: 'Cargando...',
+    },
+  },
 };
 
 export default esOverrides;
