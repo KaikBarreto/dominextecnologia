@@ -43,7 +43,7 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import { OsStatusManagerDialog } from '@/components/service-orders/OsStatusManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
-import { osStatusLabels, osTypeLabels, getOsTypeLabel } from '@/types/database';
+import { osStatusLabels, getOsTypeLabel } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -53,9 +53,11 @@ import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFi
 import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
 import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
-import { format, addDays, isBefore, parseISO, startOfDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { addDays, isBefore, parseISO, startOfDay } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatDate } from '@/lib/format';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
@@ -72,6 +74,8 @@ export default function ServiceOrders() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { hasPermission, isAdminOrGestor } = useAuth();
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os;
   const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
@@ -201,16 +205,18 @@ export default function ServiceOrders() {
   const { sortedItems, sortConfig, handleSort } = useTableSort(sortableOrders);
   const pagination = useDataPagination(sortedItems);
 
+  // Fallback do enum legado, localizado (só entra quando o tenant não tem
+  // status configurados em os_statuses — os labels do catálogo NÃO são traduzidos).
   const statusOptions = statuses.length
     ? statuses.map((s) => ({ key: s.key as OsStatus, label: s.label, color: s.color }))
-    : (Object.keys(osStatusLabels) as OsStatus[]).map((key) => ({ key, label: osStatusLabels[key], color: '#3b82f6' }));
+    : (Object.keys(osStatusLabels) as OsStatus[]).map((key) => ({ key, label: t.statusFallback[key], color: '#3b82f6' }));
 
-  const getStatusLabel = (key: string) => statusOptions.find((s) => s.key === key)?.label || osStatusLabels[key as OsStatus] || key;
+  const getStatusLabel = (key: string) => statusOptions.find((s) => s.key === key)?.label || t.statusFallback[key as OsStatus] || key;
   const getStatusColor = (key: string) => statusOptions.find((s) => s.key === key)?.color || '#3b82f6';
   // Rótulo exibido considerando a marca de finalização parcial: OS pausada com
   // partial_finish vira "Parcialmente Concluída" (cor segue a do status pausada).
   const getOsDisplayStatusLabel = (os: { status: OsStatus; partial_finish?: boolean | null }) =>
-    os.status === 'pausada' && os.partial_finish ? 'Parcialmente Concluída' : getStatusLabel(os.status);
+    os.status === 'pausada' && os.partial_finish ? t.partialCompleted : getStatusLabel(os.status);
 
   const handleSubmit = async (data: any) => {
     if (editingOS) {
@@ -285,9 +291,9 @@ export default function ServiceOrders() {
   };
 
   const sidebarTabs: SettingsTab[] = [
-    { value: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
-    { value: 'report', label: 'Relatório', icon: BarChart3 },
-    { value: 'nps', label: 'NPS e Satisfação', icon: Star },
+    { value: 'orders', label: t.tabs.orders, icon: ClipboardList },
+    { value: 'report', label: t.tabs.report, icon: BarChart3 },
+    { value: 'nps', label: t.tabs.nps, icon: Star },
   ];
 
   // 4 KPIs no estilo Dashboard (substituem os 7 cards de status).
@@ -320,10 +326,10 @@ export default function ServiceOrders() {
   }, [filteredOrders, today, next7]);
 
   const kpiCards = [
-    { title: 'OS Abertas', value: kpiData.osAbertas, icon: ClipboardList, bgClass: 'bg-warning', delay: 0 },
-    { title: 'Concluídas', value: kpiData.osConcluidas, icon: CheckCircle2, bgClass: 'bg-success', delay: 1 },
-    { title: 'Atrasadas', value: kpiData.osAtrasadas, icon: AlertTriangle, bgClass: 'bg-destructive', delay: 2 },
-    { title: 'Próximos 7 dias', value: kpiData.osProx7, icon: CalendarDays, bgClass: 'bg-info', delay: 3 },
+    { title: t.kpi.open, value: kpiData.osAbertas, icon: ClipboardList, bgClass: 'bg-warning', delay: 0 },
+    { title: t.kpi.completed, value: kpiData.osConcluidas, icon: CheckCircle2, bgClass: 'bg-success', delay: 1 },
+    { title: t.kpi.overdue, value: kpiData.osAtrasadas, icon: AlertTriangle, bgClass: 'bg-destructive', delay: 2 },
+    { title: t.kpi.next7, value: kpiData.osProx7, icon: CalendarDays, bgClass: 'bg-info', delay: 3 },
   ];
 
   // Contagem de filtros ativos (busca, status, preset diferente do default).
@@ -355,7 +361,7 @@ export default function ServiceOrders() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por cliente ou número..."
+            placeholder={t.search.placeholderFull}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -364,7 +370,7 @@ export default function ServiceOrders() {
       )}
       {isMobile && (
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Período</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filters.period}</label>
           <DateRangeFilter
             value={range}
             preset={preset}
@@ -375,7 +381,7 @@ export default function ServiceOrders() {
       )}
       <div className={isMobile ? '' : 'w-full sm:w-[260px]'}>
         <FilterCheckboxGroup
-          label="Status"
+          label={t.filters.status}
           options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
           selected={statusFilter}
           onChange={setStatusFilter}
@@ -383,28 +389,28 @@ export default function ServiceOrders() {
       </div>
       {isMobile && (
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Visualização</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filters.view}</label>
           <div className="flex rounded-lg border overflow-hidden w-fit">
             <button
               className={cn('flex items-center gap-2 px-3 py-2 text-sm transition-colors', viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
               onClick={() => setViewMode('list')}
               type="button"
             >
-              <LayoutList className="h-4 w-4" /> Lista
+              <LayoutList className="h-4 w-4" /> {t.view.list}
             </button>
             <button
               className={cn('flex items-center gap-2 px-3 py-2 text-sm transition-colors', viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
               onClick={() => setViewMode('kanban')}
               type="button"
             >
-              <LayoutGrid className="h-4 w-4" /> Kanban
+              <LayoutGrid className="h-4 w-4" /> {t.view.kanban}
             </button>
           </div>
         </div>
       )}
       {isMobile && (
         <div className="pt-2 border-t">
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Configurações de visualização</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filters.viewSettings}</label>
           <Button
             variant="outline"
             className="w-full justify-start gap-2"
@@ -412,7 +418,7 @@ export default function ServiceOrders() {
             type="button"
           >
             <Settings className="h-4 w-4" />
-            Gerenciar status de OS
+            {t.filters.manageStatus}
           </Button>
         </div>
       )}
@@ -422,8 +428,8 @@ export default function ServiceOrders() {
   return (
     <div className={cn('space-y-6', isMobile && 'min-h-[100dvh] pb-24')}>
       <MobilePageHeader
-        title="Ordens de Serviço"
-        subtitle="Gerencie suas ordens de serviço"
+        title={t.header.title}
+        subtitle={t.header.subtitle}
         icon={ClipboardList}
       />
 
@@ -441,14 +447,14 @@ export default function ServiceOrders() {
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       ref={mobileSearchInputRef}
-                      placeholder="Buscar OS..."
+                      placeholder={t.search.placeholderShort}
                       className="pl-10 h-11 rounded-lg"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
                   <FilterSheet
-                    triggerLabel="Filtros"
+                    triggerLabel={t.filters.button}
                     activeCount={activeFilterCount}
                     onClear={clearFilters}
                   >
@@ -458,7 +464,7 @@ export default function ServiceOrders() {
 
                 {hasSearch && (
                   <p className="text-xs text-muted-foreground -mt-1 px-0.5">
-                    Mostrando resultados de todas as OS (filtros pausados)
+                    {t.search.pausedFilters}
                   </p>
                 )}
 
@@ -493,7 +499,7 @@ export default function ServiceOrders() {
                     <div className="relative flex-1 sm:max-w-sm">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
-                        placeholder="Buscar por cliente ou número..."
+                        placeholder={t.search.placeholderFull}
                         className="pl-10"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -504,7 +510,7 @@ export default function ServiceOrders() {
                       onClear={clearStructuredFilters}
                     >
                       <FilterCheckboxGroup
-                        label="Status"
+                        label={t.filters.status}
                         options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
                         selected={statusFilter}
                         onChange={setStatusFilter}
@@ -517,12 +523,12 @@ export default function ServiceOrders() {
                       onClick={() => setStatusConfigOpen(true)}
                     >
                       <Settings className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Configurações</span>
+                      <span className="hidden sm:inline">{t.filters.settings}</span>
                     </Button>
                     {canCreateOS && (
                       <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Nova OS
+                        {t.actions.newOs}
                       </Button>
                     )}
                   </div>
@@ -530,7 +536,7 @@ export default function ServiceOrders() {
 
                 {hasSearch && (
                   <p className="text-xs text-muted-foreground -mt-2">
-                    Mostrando resultados de todas as OS (filtros pausados)
+                    {t.search.pausedFilters}
                   </p>
                 )}
 
@@ -552,7 +558,7 @@ export default function ServiceOrders() {
                 {!isMobile && (
                   <div className="flex items-center justify-between">
                     <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
-                      Lista de OS
+                      {t.sections.listTitle}
                     </h2>
                     <div className="flex rounded-lg border overflow-hidden">
                       <button
@@ -578,8 +584,8 @@ export default function ServiceOrders() {
                   ) : filteredOrders.length === 0 ? (
                     <EmptyState
                       icon={<ClipboardList className="h-12 w-12" />}
-                      title={searchTerm || statusFilter.length > 0 ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
-                      description={searchTerm || statusFilter.length > 0 ? 'Tente filtros diferentes' : 'Toque em "Nova OS" para começar'}
+                      title={searchTerm || statusFilter.length > 0 ? t.empty.noneFoundTitle : t.empty.noneTitle}
+                      description={searchTerm || statusFilter.length > 0 ? t.empty.noneFoundDescription : t.empty.noneDescriptionMobile}
                     />
                   ) : (
                     <>
@@ -588,26 +594,26 @@ export default function ServiceOrders() {
                           const itemActions: ItemAction[] = [
                             {
                               key: 'view',
-                              label: 'Visualizar',
+                              label: t.rowActions.view,
                               icon: <Eye className="h-4 w-4" />,
                               onClick: () => { setViewingOsId(os.id); setViewDialogOpen(true); },
                             },
                             {
                               key: 'open-tech',
-                              label: 'Abrir como técnico',
+                              label: t.rowActions.openAsTech,
                               icon: <ExternalLink className="h-4 w-4" />,
                               onClick: () => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank'),
                             },
                             ...(canEditOS ? [{
                               key: 'edit',
-                              label: 'Editar',
+                              label: t.rowActions.edit,
                               icon: <Pencil className="h-4 w-4" />,
                               variant: 'edit' as const,
                               onClick: () => handleEdit(os),
                             }] : []),
                             ...(canDeleteOS ? [{
                               key: 'delete',
-                              label: 'Excluir',
+                              label: t.rowActions.delete,
                               icon: <Trash2 className="h-4 w-4" />,
                               variant: 'destructive' as const,
                               onClick: () => handleDeleteClick(os),
@@ -629,7 +635,7 @@ export default function ServiceOrders() {
                               title={
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-[11px] text-muted-foreground">{getOsCode(os)}</span>
-                                  <span className="truncate">{os.customer?.name || 'N/A'}</span>
+                                  <span className="truncate">{os.customer?.name || t.na}</span>
                                 </div>
                               }
                               subtitle={
@@ -643,12 +649,12 @@ export default function ServiceOrders() {
                                       {os.service_type.name}
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1">{getOsTypeLabel(os as any)}</span>
+                                    <span className="inline-flex items-center gap-1">{getOsTypeLabel(os as any, t.typeFallback)}</span>
                                   )}
                                   {os.scheduled_date && (
                                     <span className="inline-flex items-center gap-1">
                                       <Calendar className="h-3 w-3" />
-                                      {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                      {formatDate(os.scheduled_date, locale, timezone)}
                                     </span>
                                   )}
                                 </div>
@@ -688,8 +694,8 @@ export default function ServiceOrders() {
                       ) : filteredOrders.length === 0 ? (
                         <EmptyState
                           icon={<ClipboardList className="h-12 w-12" />}
-                          title={searchTerm || statusFilter.length > 0 ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
-                          description={searchTerm || statusFilter.length > 0 ? 'Tente filtros diferentes' : 'Clique em "Nova OS" para começar'}
+                          title={searchTerm || statusFilter.length > 0 ? t.empty.noneFoundTitle : t.empty.noneTitle}
+                          description={searchTerm || statusFilter.length > 0 ? t.empty.noneFoundDescription : t.empty.noneDescriptionDesktop}
                         />
                       ) : (
                         <>
@@ -697,13 +703,13 @@ export default function ServiceOrders() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <SortableTableHead sortKey="order_number" sortConfig={sortConfig} onSort={handleSort}>OS</SortableTableHead>
-                                  <TableHead className="text-xs uppercase tracking-wider w-[40px]">Criador</TableHead>
-                                  <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
-                                  <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
-                                  <SortableTableHead sortKey="_scheduled_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                                  <SortableTableHead sortKey="_status_rank" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                                  <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
+                                  <SortableTableHead sortKey="order_number" sortConfig={sortConfig} onSort={handleSort}>{t.table.os}</SortableTableHead>
+                                  <TableHead className="text-xs uppercase tracking-wider w-[40px]">{t.table.creator}</TableHead>
+                                  <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>{t.table.customer}</SortableTableHead>
+                                  <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{t.table.type}</SortableTableHead>
+                                  <SortableTableHead sortKey="_scheduled_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">{t.table.date}</SortableTableHead>
+                                  <SortableTableHead sortKey="_status_rank" sortConfig={sortConfig} onSort={handleSort}>{t.table.status}</SortableTableHead>
+                                  <TableHead className="w-[100px] text-xs uppercase tracking-wider">{t.table.actions}</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -725,12 +731,12 @@ export default function ServiceOrders() {
                                           name={(os as any).created_by_profile?.full_name}
                                           email={(os as any).created_by_profile?.email}
                                           avatarUrl={(os as any).created_by_profile?.avatar_url}
-                                          roleLabel="Criador da OS"
+                                          roleLabel={t.creatorRole}
                                         />
                                       </TableCell>
                                       <TableCell>
                                         <div>
-                                          <p className="font-medium">{os.customer?.name || (os as any).snapshot_data?.customer?.name || 'N/A'}</p>
+                                          <p className="font-medium">{os.customer?.name || (os as any).snapshot_data?.customer?.name || t.na}</p>
                                           {(os.equipment || (os as any).snapshot_data?.equipment) && (
                                             <p className="text-xs text-muted-foreground">{os.equipment?.name || (os as any).snapshot_data?.equipment?.name}</p>
                                           )}
@@ -743,14 +749,14 @@ export default function ServiceOrders() {
                                             <span className="text-sm">{os.service_type.name}</span>
                                           </div>
                                         ) : (
-                                          <span className="text-sm">{getOsTypeLabel(os as any)}</span>
+                                          <span className="text-sm">{getOsTypeLabel(os as any, t.typeFallback)}</span>
                                         )}
                                       </TableCell>
                                       <TableCell className="hidden sm:table-cell">
                                         {os.scheduled_date ? (
                                           <div className="flex items-center gap-1 text-sm">
                                             <Calendar className="h-3 w-3" />
-                                            {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                            {formatDate(os.scheduled_date, locale, timezone)}
                                           </div>
                                         ) : '-'}
                                       </TableCell>
@@ -777,24 +783,24 @@ export default function ServiceOrders() {
                                         <RowActionsMenu
                                           actions={[
                                             {
-                                              label: 'Visualizar OS',
+                                              label: t.rowActions.viewOs,
                                               icon: Eye,
                                               onClick: () => { setViewingOsId(os.id); setViewDialogOpen(true); },
                                             },
                                             {
-                                              label: 'Abrir checklist',
+                                              label: t.rowActions.openChecklist,
                                               icon: ExternalLink,
                                               onClick: () => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank'),
                                             },
                                             {
-                                              label: 'Editar',
+                                              label: t.rowActions.edit,
                                               icon: Pencil,
                                               variant: 'edit',
                                               onClick: () => handleEdit(os),
                                               hidden: !canEditOS,
                                             },
                                             {
-                                              label: 'Excluir',
+                                              label: t.rowActions.delete,
                                               icon: Trash2,
                                               variant: 'delete',
                                               onClick: () => handleDeleteClick(os),
@@ -833,7 +839,7 @@ export default function ServiceOrders() {
                 {!isMobile && (
                   <div className="flex items-center justify-between">
                     <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
-                      OS por Status
+                      {t.sections.byStatus}
                     </h2>
                     <div className="flex rounded-lg border overflow-hidden">
                       <button
@@ -935,8 +941,8 @@ export default function ServiceOrders() {
                                     isMobile ? 'h-11 w-11' : 'h-7 w-7'
                                   )}
                                   onClick={() => handleNewOsWithStatus(col.key)}
-                                  title={`Criar OS em "${col.label}"`}
-                                  aria-label={`Criar OS em ${col.label}`}
+                                  title={t.kanban.createInColumn.replace('{status}', col.label)}
+                                  aria-label={t.kanban.createInColumn.replace('{status}', col.label)}
                                 >
                                   <Plus className="h-4 w-4" />
                                 </Button>
@@ -964,7 +970,7 @@ export default function ServiceOrders() {
                                     size="icon"
                                     className="h-6 w-6 hover:bg-warning hover:text-white"
                                     onClick={(e) => { e.stopPropagation(); handleEdit(os); }}
-                                    title="Editar"
+                                    title={t.rowActions.edit}
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </Button>
@@ -975,7 +981,7 @@ export default function ServiceOrders() {
                                     size="icon"
                                     className="h-6 w-6 hover:bg-destructive hover:text-white"
                                     onClick={(e) => { e.stopPropagation(); handleDeleteClick(os); }}
-                                    title="Excluir"
+                                    title={t.rowActions.delete}
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
@@ -983,7 +989,7 @@ export default function ServiceOrders() {
                               </div>
                               <CardContent className="p-3 pr-10 space-y-1">
                                 <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
-                                <p className="text-sm font-medium">{os.customer?.name || 'N/A'}</p>
+                                <p className="text-sm font-medium">{os.customer?.name || t.na}</p>
                                 {os.service_type && (
                                   <div className="flex items-center gap-1">
                                     <div className="h-2 w-2 rounded-full" style={{ backgroundColor: getIsPmocFromOrder(os as any) ? 'hsl(var(--info))' : os.service_type.color }} />
@@ -993,7 +999,7 @@ export default function ServiceOrders() {
                                 {os.scheduled_date && (
                                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
-                                    {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                    {formatDate(os.scheduled_date, locale, timezone)}
                                   </p>
                                 )}
                               </CardContent>
@@ -1004,7 +1010,7 @@ export default function ServiceOrders() {
                                 name={creator?.full_name}
                                 email={creator?.email}
                                 avatarUrl={creator?.avatar_url}
-                                roleLabel="Criador da OS"
+                                roleLabel={t.creatorRole}
                                 size={24}
                                 side="left"
                                 className="absolute bottom-2 right-2 ring-2 ring-background shadow-md"
@@ -1016,7 +1022,7 @@ export default function ServiceOrders() {
                             <EmptyState
                               size="compact"
                               icon={<ClipboardList className="h-10 w-10" />}
-                              title="Nenhuma OS"
+                              title={t.empty.columnEmpty}
                             />
                           )}
                         </div>
@@ -1032,7 +1038,7 @@ export default function ServiceOrders() {
             {isMobile && canCreateOS && (
               <FABButton
                 icon={<Plus className="h-5 w-5" />}
-                label="OS"
+                label={t.actions.fabLabel}
                 onClick={() => { setEditingOS(null); setFormOpen(true); }}
               />
             )}
@@ -1049,29 +1055,29 @@ export default function ServiceOrders() {
             <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteMode(null); }}>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir OS #{osToDelete?.order_number}</AlertDialogTitle>
+                  <AlertDialogTitle>{t.delete.title.replace('{number}', String(osToDelete?.order_number ?? ''))}</AlertDialogTitle>
                   <AlertDialogDescription>
                     {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode
-                      ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
-                      : 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'}
+                      ? t.delete.recurrenceQuestion
+                      : t.delete.confirm}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className={((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
                   {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? (
                     <>
                       <Button variant="destructive" onClick={() => setDeleteMode('single')} className="w-full">
-                        Excluir apenas esta
+                        {t.delete.onlyThis}
                       </Button>
                       <Button variant="destructive" onClick={() => setDeleteMode('group')} className="w-full">
-                        Excluir todas da recorrência
+                        {t.delete.allRecurrence}
                       </Button>
-                      <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                      <AlertDialogCancel className="w-full">{t.delete.cancel}</AlertDialogCancel>
                     </>
                   ) : (
                     <>
-                      <AlertDialogCancel onClick={() => setDeleteMode(null)}>Cancelar</AlertDialogCancel>
+                      <AlertDialogCancel onClick={() => setDeleteMode(null)}>{t.delete.cancel}</AlertDialogCancel>
                       <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Excluir
+                        {t.delete.delete}
                       </AlertDialogAction>
                     </>
                   )}
