@@ -31,6 +31,8 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Gera iniciais (máx 2 caracteres) para avatar fallback.
 function getInitials(name?: string) {
@@ -60,9 +62,10 @@ interface CustomerGridCardProps {
   onOpen: () => void;
   onEdit: (e?: React.MouseEvent) => void;
   onDelete: (e?: React.MouseEvent) => void;
+  t: typeof MESSAGES['pt-br']['app']['customers'];
 }
 
-function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEdit, onDelete }: CustomerGridCardProps) {
+function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEdit, onDelete, t }: CustomerGridCardProps) {
   const subtitleParts = [customer.phone, customer.city].filter(Boolean);
   const subtitle = subtitleParts.length > 0
     ? subtitleParts.join(' • ')
@@ -92,17 +95,17 @@ function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEd
           variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
           className="text-[10px] px-2 py-0.5"
         >
-          {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
+          {customer.customer_type === 'pj' ? t.typePj : t.typePf}
         </Badge>
         {!isMobile && (canEdit || canDelete) && (
           <div className="flex items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
             {canEdit && (
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title="Editar">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title={t.edit}>
                 <Pencil className="h-4 w-4" />
               </Button>
             )}
             {canDelete && (
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title="Excluir">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title={t.delete}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
@@ -116,6 +119,8 @@ function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEd
 export default function Customers() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.customers;
   const { isAdminOrGestor, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -176,19 +181,19 @@ export default function Customers() {
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Clientes"
-        subtitle="Gerencie seus clientes"
+        title={t.title}
+        subtitle={t.subtitle}
         icon={Users}
         actions={
           isMobile ? undefined : (
             <>
-              <Button variant="outline" size="icon" onClick={() => setOriginConfigOpen(true)} title="Configurar origens">
+              <Button variant="outline" size="icon" onClick={() => setOriginConfigOpen(true)} title={t.configureOrigins}>
                 <Settings2 className="h-4 w-4" />
               </Button>
               {canCreateCustomer && (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewCustomer}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo Cliente
+                  {t.newCustomer}
                 </Button>
               )}
             </>
@@ -200,7 +205,7 @@ export default function Customers() {
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isMobile ? 'Buscar clientes...' : 'Buscar por nome, empresa, email ou documento...'}
+            placeholder={isMobile ? t.searchPlaceholderMobile : t.searchPlaceholder}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -215,7 +220,7 @@ export default function Customers() {
               className="gap-2 h-10"
             >
               <Settings2 className="h-4 w-4" />
-              Origens
+              {t.origins}
             </Button>
           )}
           <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels={!isMobile} />
@@ -237,15 +242,15 @@ export default function Customers() {
           ) : isError ? (
             <EmptyState
               icon={<Users className="h-12 w-12 text-destructive" />}
-              title="Erro ao carregar clientes"
-              description="Não foi possível conectar ao servidor. Tente novamente."
-              action={{ label: 'Tentar novamente', onClick: () => refetch() }}
+              title={t.loadError}
+              description={t.loadErrorDesc}
+              action={{ label: t.retry, onClick: () => refetch() }}
             />
           ) : filteredCustomers.length === 0 ? (
             <EmptyState
               icon={<Users className="h-12 w-12" />}
-              title={searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
-              description={searchTerm ? 'Tente uma busca diferente' : 'Adicione um cliente para começar'}
+              title={searchTerm ? t.emptySearch : t.emptyNone}
+              description={searchTerm ? t.emptySearchDesc : t.emptyNoneDescAdd}
             />
           ) : (
             <>
@@ -260,6 +265,7 @@ export default function Customers() {
                     onOpen={() => navigate(`/clientes/${customer.id}`)}
                     onEdit={(e) => handleEdit(customer, e)}
                     onDelete={(e) => handleDeleteClick(customer, e)}
+                    t={t}
                   />
                 ))}
               </div>
@@ -290,15 +296,15 @@ export default function Customers() {
           ) : isError ? (
             <EmptyState
               icon={<Users className="h-12 w-12 text-destructive" />}
-              title="Erro ao carregar clientes"
-              description="Não foi possível conectar ao servidor. Tente novamente."
-              action={{ label: 'Tentar novamente', onClick: () => refetch() }}
+              title={t.loadError}
+              description={t.loadErrorDesc}
+              action={{ label: t.retry, onClick: () => refetch() }}
             />
           ) : filteredCustomers.length === 0 ? (
             <EmptyState
               icon={<Users className="h-12 w-12" />}
-              title={searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
-              description={searchTerm ? 'Tente uma busca diferente' : 'Toque em "Novo Cliente" para começar'}
+              title={searchTerm ? t.emptySearch : t.emptyNone}
+              description={searchTerm ? t.emptySearchDesc : t.emptyNoneDescTapMobile}
             />
           ) : (
             <>
@@ -307,14 +313,14 @@ export default function Customers() {
                   const itemActions: ItemAction[] = [
                     {
                       key: 'view',
-                      label: 'Visualizar',
+                      label: t.view,
                       icon: <Eye className="h-4 w-4" />,
                       onClick: () => navigate(`/clientes/${customer.id}`),
                     },
                     ...(canEditCustomer
                       ? [{
                           key: 'edit',
-                          label: 'Editar',
+                          label: t.edit,
                           icon: <Pencil className="h-4 w-4" />,
                           variant: 'edit' as const,
                           onClick: () => handleEdit(customer),
@@ -323,7 +329,7 @@ export default function Customers() {
                     ...(canDeleteCustomer
                       ? [{
                           key: 'delete',
-                          label: 'Excluir',
+                          label: t.delete,
                           icon: <Trash2 className="h-4 w-4" />,
                           variant: 'destructive' as const,
                           onClick: () => handleDeleteClick(customer),
@@ -362,7 +368,7 @@ export default function Customers() {
                           variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
                           className="text-[10px] px-2 py-0.5"
                         >
-                          {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
+                          {customer.customer_type === 'pj' ? t.typePj : t.typePf}
                         </Badge>
                       }
                     />
@@ -388,7 +394,7 @@ export default function Customers() {
         // -----------------------------------------------------------------
         <div>
           <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
-            Lista de Clientes
+            {t.listHeading}
           </h2>
           <Card className="w-full max-w-full overflow-hidden">
             <CardContent className="p-0">
@@ -402,20 +408,20 @@ export default function Customers() {
                 ) : isError ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Users className="mb-4 h-12 w-12 text-destructive" />
-                    <h3 className="text-lg font-medium">Erro ao carregar clientes</h3>
+                    <h3 className="text-lg font-medium">{t.loadError}</h3>
                     <p className="text-muted-foreground mb-4">
-                      Não foi possível conectar ao servidor. Tente novamente.
+                      {t.loadErrorDesc}
                     </p>
-                    <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
+                    <Button variant="outline" onClick={() => refetch()}>{t.retry}</Button>
                   </div>
                 ) : filteredCustomers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Users className="mb-4 h-12 w-12 text-muted-foreground" />
                     <h3 className="text-lg font-medium">
-                      {searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+                      {searchTerm ? t.emptySearch : t.emptyNone}
                     </h3>
                     <p className="text-muted-foreground">
-                      {searchTerm ? 'Tente uma busca diferente' : 'Clique em "Novo Cliente" para começar'}
+                      {searchTerm ? t.emptySearchDesc : t.emptyNoneDescClick}
                     </p>
                   </div>
                 ) : (
@@ -424,13 +430,13 @@ export default function Customers() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-[50px] text-xs uppercase tracking-wider">Foto</TableHead>
-                            <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                            <SortableTableHead sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Empresa</SortableTableHead>
-                            <SortableTableHead sortKey="customer_type" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
-                            <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
-                            <SortableTableHead sortKey="city" sortConfig={sortConfig} onSort={handleSort} className="hidden xl:table-cell">Endereço</SortableTableHead>
-                            <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
+                            <TableHead className="w-[50px] text-xs uppercase tracking-wider">{t.colPhoto}</TableHead>
+                            <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.colName}</SortableTableHead>
+                            <SortableTableHead sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{t.colCompany}</SortableTableHead>
+                            <SortableTableHead sortKey="customer_type" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{t.colType}</SortableTableHead>
+                            <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">{t.colContact}</TableHead>
+                            <SortableTableHead sortKey="city" sortConfig={sortConfig} onSort={handleSort} className="hidden xl:table-cell">{t.colAddress}</SortableTableHead>
+                            <TableHead className="w-[100px] text-xs uppercase tracking-wider">{t.colActions}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -458,7 +464,7 @@ export default function Customers() {
                               </TableCell>
                               <TableCell className="hidden md:table-cell">
                                 <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
-                                  {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
+                                  {customer.customer_type === 'pj' ? t.typePj : t.typePf}
                                 </Badge>
                               </TableCell>
                               <TableCell className="hidden sm:table-cell">
@@ -490,19 +496,19 @@ export default function Customers() {
                                   <RowActionsMenu
                                     actions={[
                                       {
-                                        label: 'Visualizar',
+                                        label: t.view,
                                         icon: Eye,
                                         onClick: () => navigate(`/clientes/${customer.id}`),
                                       },
                                       {
-                                        label: 'Editar',
+                                        label: t.edit,
                                         icon: Pencil,
                                         variant: 'edit',
                                         onClick: () => handleEdit(customer),
                                         hidden: !canEditCustomer,
                                       },
                                       {
-                                        label: 'Excluir',
+                                        label: t.delete,
                                         icon: Trash2,
                                         variant: 'delete',
                                         onClick: () => handleDeleteClick(customer),
@@ -539,7 +545,7 @@ export default function Customers() {
       {isMobile && canCreateCustomer && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Cliente"
+          label={t.newCustomerShort}
           onClick={openNewCustomer}
         />
       )}
@@ -555,18 +561,18 @@ export default function Customers() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o cliente "{customerToDelete?.name}"? Esta ação não pode ser desfeita.
+              {t.deleteConfirm.replace('{name}', customerToDelete?.name ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {t.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

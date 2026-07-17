@@ -27,6 +27,8 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import type { Customer, CustomerType } from '@/types/database';
 
 
@@ -80,13 +82,23 @@ export function CustomerFormDialog({
   // Se ficar null no save, tentamos geocodificar o endereço digitado (best-effort).
   const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.customers.form;
   const { activeOrigins } = useCustomerOrigins();
 
   const isEditing = !!customer;
   const draft = useFormDraft<CustomerFormData>({ key: 'customer-form', isOpen: open, isEditing });
 
   const form = useForm<CustomerFormData>({
-    resolver: zodResolver(customerSchema),
+    // errorMap traduz as mensagens de validação do schema (definido em pt-br como
+    // "chave" estável) para o locale ativo, sem duplicar o schema.
+    resolver: zodResolver(customerSchema, {
+      errorMap: (issue, ctx) => {
+        if (ctx.defaultError === 'Nome deve ter no mínimo 2 caracteres') return { message: t.nameMin };
+        if (ctx.defaultError === 'Email inválido') return { message: t.emailInvalid };
+        return { message: ctx.defaultError };
+      },
+    }),
     defaultValues: EMPTY_FORM,
   });
 
@@ -183,7 +195,7 @@ export function CustomerFormDialog({
       setActiveTab('contato');
       onOpenChange(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: t.errorTitle, description: getErrorMessage(error) });
     } finally {
       setUploadingPhoto(false);
     }
@@ -196,17 +208,17 @@ export function CustomerFormDialog({
   const footer = (
     <div className="flex justify-end gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-        Cancelar
+        {t.cancel}
       </Button>
       <Button type="submit" form="customer-form" disabled={isLoading || uploadingPhoto}>
         {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {customer ? 'Salvar' : 'Criar'}
+        {customer ? t.save : t.create}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? 'Editar Cliente' : 'Novo Cliente'} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? t.titleEdit : t.titleNew} footer={footer}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -225,11 +237,11 @@ export function CustomerFormDialog({
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="contato" className="flex items-center gap-2 text-xs sm:text-sm">
                 <User className="h-4 w-4" />
-                Contato
+                {t.tabContact}
               </TabsTrigger>
               <TabsTrigger value="fiscal" className="flex items-center gap-2 text-xs sm:text-sm">
                 <FileText className="h-4 w-4" />
-                Fiscal
+                {t.tabFiscal}
               </TabsTrigger>
             </TabsList>
 
@@ -260,25 +272,25 @@ export function CustomerFormDialog({
                       }}
                     />
                     <Button type="button" variant="outline" size="sm" asChild>
-                      <span><Upload className="h-3 w-3 mr-1" /> Foto</span>
+                      <span><Upload className="h-3 w-3 mr-1" /> {t.photo}</span>
                     </Button>
                   </label>
                 </div>
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>Nome *</FormLabel>
-                    <FormControl><Input placeholder="Nome do cliente" {...field} /></FormControl>
+                    <FormLabel>{t.name}</FormLabel>
+                    <FormControl><Input placeholder={t.namePlaceholder} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="customer_type" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo</FormLabel>
+                    <FormLabel>{t.type}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="pj">Pessoa Jurídica</SelectItem>
-                        <SelectItem value="pf">Pessoa Física</SelectItem>
+                        <SelectItem value="pj">{t.typePj}</SelectItem>
+                        <SelectItem value="pf">{t.typePf}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -286,14 +298,14 @@ export function CustomerFormDialog({
                 )} />
                 <FormField control={form.control} name="company_name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Empresa</FormLabel>
-                    <FormControl><Input placeholder="Nome da empresa" {...field} /></FormControl>
+                    <FormLabel>{t.company}</FormLabel>
+                    <FormControl><Input placeholder={t.companyPlaceholder} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone</FormLabel>
+                    <FormLabel>{t.phone}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="(00) 00000-0000"
@@ -306,25 +318,25 @@ export function CustomerFormDialog({
                 )} />
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} /></FormControl>
+                    <FormLabel>{t.email}</FormLabel>
+                    <FormControl><Input type="email" placeholder={t.emailPlaceholder} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="birth_date" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data de Nascimento</FormLabel>
+                    <FormLabel>{t.birthDate}</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="origin" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Origem</FormLabel>
+                    <FormLabel>{t.origin}</FormLabel>
                     <Select onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)} value={field.value || '__none__'}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder={t.originPlaceholder} /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="__none__">Nenhuma</SelectItem>
+                        <SelectItem value="__none__">{t.originNone}</SelectItem>
                         {activeOrigins.map((o) => {
                           const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
                           return (
@@ -343,8 +355,8 @@ export function CustomerFormDialog({
                 )} />
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl><Textarea placeholder="Observações sobre o cliente" {...field} /></FormControl>
+                    <FormLabel>{t.notes}</FormLabel>
+                    <FormControl><Textarea placeholder={t.notesPlaceholder} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -354,12 +366,12 @@ export function CustomerFormDialog({
             {/* ===== Aba Fiscal — dados do tomador para NFS-e ===== */}
             <TabsContent value="fiscal" className="mt-4">
               <p className="text-xs text-muted-foreground mb-4">
-                Dados do tomador usados na emissão de NFS-e. Todos opcionais — preencha quando for emitir nota.
+                {t.fiscalHint}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField control={form.control} name="document" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CPF/CNPJ</FormLabel>
+                    <FormLabel>{t.document}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="000.000.000-00"
@@ -372,25 +384,25 @@ export function CustomerFormDialog({
                 )} />
                 <FormField control={form.control} name="inscricao_municipal" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Inscrição Municipal</FormLabel>
-                    <FormControl><Input placeholder="Somente números" {...field} value={field.value || ''} /></FormControl>
+                    <FormLabel>{t.inscricaoMunicipal}</FormLabel>
+                    <FormControl><Input placeholder={t.inscricaoMunicipalPlaceholder} {...field} value={field.value || ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>E-mail fiscal</FormLabel>
-                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} value={field.value || ''} /></FormControl>
+                    <FormLabel>{t.fiscalEmail}</FormLabel>
+                    <FormControl><Input type="email" placeholder={t.emailPlaceholder} {...field} value={field.value || ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
 
                 <div className="sm:col-span-2 pt-2 text-sm font-medium text-muted-foreground">
-                  Endereço fiscal
+                  {t.fiscalAddress}
                 </div>
                 <FormField control={form.control} name="zip_code" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CEP</FormLabel>
+                    <FormLabel>{t.zipCode}</FormLabel>
                     <FormControl>
                       <CepLookup
                         value={field.value || ''}
@@ -408,7 +420,7 @@ export function CustomerFormDialog({
                 )} />
                 <FormField control={form.control} name="address" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Logradouro</FormLabel>
+                    <FormLabel>{t.street}</FormLabel>
                     <FormControl>
                       <AddressAutocomplete
                         value={field.value || ''}
@@ -432,7 +444,7 @@ export function CustomerFormDialog({
                             form.setValue('zip_code', c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
                           }
                         }}
-                        placeholder="Rua, Avenida..."
+                        placeholder={t.streetPlaceholder}
                       />
                     </FormControl>
                     <FormMessage />
@@ -440,27 +452,27 @@ export function CustomerFormDialog({
                 )} />
                 <FormField control={form.control} name="address_number" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Número</FormLabel>
-                    <FormControl><Input placeholder="Nº" {...field} /></FormControl>
+                    <FormLabel>{t.number}</FormLabel>
+                    <FormControl><Input placeholder={t.numberPlaceholder} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="complement" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Complemento</FormLabel>
-                    <FormControl><Input placeholder="Apto, sala, bloco..." {...field} /></FormControl>
+                    <FormLabel>{t.complement}</FormLabel>
+                    <FormControl><Input placeholder={t.complementPlaceholder} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="neighborhood" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bairro</FormLabel>
-                    <FormControl><Input placeholder="Bairro" {...field} /></FormControl>
+                    <FormLabel>{t.neighborhood}</FormLabel>
+                    <FormControl><Input placeholder={t.neighborhoodPlaceholder} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <div>
-                  <FormLabel>UF / Cidade</FormLabel>
+                  <FormLabel>{t.stateCity}</FormLabel>
                   <StateCitySelector
                     selectedState={form.watch('state') || ''}
                     selectedCity={form.watch('city') || ''}
@@ -477,8 +489,8 @@ export function CustomerFormDialog({
                 </div>
                 <FormField control={form.control} name="ibge_municipality_code" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Código IBGE do município</FormLabel>
-                    <FormControl><Input placeholder="Preenchido ao escolher a cidade" {...field} value={field.value || ''} /></FormControl>
+                    <FormLabel>{t.ibgeCode}</FormLabel>
+                    <FormControl><Input placeholder={t.ibgeCodePlaceholder} {...field} value={field.value || ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
