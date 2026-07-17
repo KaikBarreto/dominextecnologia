@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Globe, Coins, Clock, MonitorSmartphone, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Globe, Coins, Clock, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -22,7 +22,6 @@ import {
   DEFAULT_CURRENCY,
   DEFAULT_TIMEZONE,
   LOCALE_REGIONAL_DEFAULTS,
-  detectRegionalFromMachine,
 } from '@/lib/i18n/regionalDefaults';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,15 +147,6 @@ export function SettingsRegionalContent() {
     toast({ title: `Padrões de ${getLocaleDef(loc).label} aplicados` });
   };
 
-  const handleDetect = () => {
-    const d = detectRegionalFromMachine();
-    setLanguage(d.language);
-    setCurrency(d.currency);
-    setTimezone(d.timezone);
-    setSuggestLocale(null);
-    toast({ title: 'Preenchido com os dados da sua máquina', description: 'Confira e ajuste antes de sair.' });
-  };
-
   const currencyChanged = hadData && !!settings?.currency && currency !== settings.currency;
 
   const saveStatus = (() => {
@@ -200,27 +190,6 @@ export function SettingsRegionalContent() {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Detectar da máquina */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-dashed border-muted-foreground/30 p-3">
-          <div className="flex items-start gap-2 min-w-0">
-            <MonitorSmartphone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              Preencher idioma, moeda e fuso a partir do seu dispositivo. Você confirma antes de salvar.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 self-start sm:self-auto"
-            onClick={handleDetect}
-            disabled={!canSave || isLoading}
-          >
-            Detectar da máquina
-          </Button>
-        </div>
-
-        <Separator />
-
         {/* Idioma padrão */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2">

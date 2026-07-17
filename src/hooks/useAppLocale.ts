@@ -4,15 +4,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { DEFAULT_LOCALE, isLocaleCode, type LocaleCode } from '@/lib/i18n/locales';
+import { detectMachineLocale } from '@/lib/i18n/detectLocale';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // i18n do APP LOGADO — resolução do IDIOMA em cascata (Fase 0, só o motor).
 //
 // O app roda em rota SEM prefixo (diferente do site, que resolve pela URL), então
-// o idioma vem do BANCO, na ordem:
-//   1) user_preferences.language  (escolha do usuário logado, own-row)
-//   2) company_settings.language  (padrão da empresa)
-//   3) 'pt-br'                     (fallback global)
+// o idioma vem das fontes abaixo, na ordem de prioridade:
+//   1) user_preferences.language  (escolha EXPLÍCITA do usuário, own-row no banco)
+//   2) detectMachineLocale()       (navigator.language → en|es|fr; pt e unmapped → null)
+//   3) company_settings.language  (padrão da empresa, semeado no cadastro)
+//   4) 'pt-br'                    (fallback global)
+//
+// Ou seja: se o usuário nunca escolheu um idioma, o app usa o da máquina
+// automaticamente (en/es/fr). Se a máquina não mapeia (de, ja, pt…), usa o da
+// empresa. Só a escolha explícita via seletor (setUserLanguage) grava no banco
+// e sobrepõe tudo. A detecção de máquina é em runtime, sem persistência.
 //
 // Enquanto qualquer fonte carrega, o resultado é 'pt-br' — nunca bloqueia render.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,9 +59,13 @@ export function useAppLocale(): UseAppLocaleResult {
   });
 
   const userLanguage = userLangQuery.data ?? null;
+  // Detecção de máquina: avaliada em runtime, sem persistência.
+  // Retorna null se o navigator.language não mapear claramente (de, pt, ja…).
+  const machineLanguage = useMemo(() => detectMachineLocale(), []);
   const companyLanguage = toLocale(settings?.language);
 
-  const locale: LocaleCode = userLanguage ?? companyLanguage ?? DEFAULT_LOCALE;
+  // Cascata: explícito → máquina → empresa → fallback global
+  const locale: LocaleCode = userLanguage ?? machineLanguage ?? companyLanguage ?? DEFAULT_LOCALE;
 
   // isLoading só enquanto NÃO temos ainda nenhuma fonte resolvida. Como o default
   // é pt-br, o render nunca espera — mas expomos o flag pra quem quiser evitar

@@ -68,3 +68,31 @@ export function detectLocale(): LocaleCode {
 export function hasLangCookie(): boolean {
   return readLangCookie() !== null;
 }
+
+/**
+ * Retorna o locale do navegador SE mapear claramente para 'en' | 'es' | 'fr'.
+ * pt-br NÃO é retornado aqui (é o fallback global, tratado em outro nível).
+ * Alemão, japonês e qualquer outro não mapeado → null.
+ * SSR-safe: envolto em try/catch, nunca lança.
+ */
+export function detectMachineLocale(): Exclude<LocaleCode, 'pt-br'> | null {
+  try {
+    if (typeof navigator === 'undefined') return null;
+    const raw = navigator.language;
+    if (!raw) return null;
+    const primary = raw.toLowerCase().split('-')[0];
+    switch (primary) {
+      case 'en':
+        return 'en';
+      case 'es':
+        return 'es';
+      case 'fr':
+        return 'fr';
+      // 'pt' e todos os demais → null (não conclui nada, cai pro próximo nível)
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
