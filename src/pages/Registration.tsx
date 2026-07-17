@@ -309,8 +309,14 @@ export default function Registration() {
       if (loginError) {
         navigate('/login');
       } else {
-        // Sales link → go straight to checkout to finalize payment
-        const target = isSale ? '/checkout' : '/dashboard';
+        // Sales link → go straight to checkout to finalize payment.
+        // Quando o link trava o plano (bloqueado=1), propagamos a trava pro
+        // checkout via ?bloqueado=1: o cliente não pode trocar de plano lá
+        // (nem pagar o preço de um plano mais barato). A cobrança ainda é
+        // reconciliada server-side contra o plano/valor gravado na empresa.
+        const target = isSale
+          ? (isLocked ? '/checkout?bloqueado=1' : '/checkout')
+          : '/dashboard';
         setTimeout(() => navigate(target), 500);
       }
     },

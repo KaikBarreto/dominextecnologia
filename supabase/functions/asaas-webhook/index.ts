@@ -321,8 +321,20 @@ async function processConfirmedPayment(
     : `Renovação - ${company.name} (Asaas ${opts.asaasPaymentId}) [${opts.matchedBy}]`;
 
   // Vencimento via RPC compute_next_expiration (BRT-aware no banco).
+  //
+  // ÂNCORA:
+  //  - PRIMEIRA VENDA: ancora na DATA DO PAGAMENTO (agora). Antes ancorávamos em
+  //    subscription_expires_at, que no cadastro de venda podia estar contaminado
+  //    (janela de +3 dias) e virava HOJE+3+1mês (incidente 17/07 → 20/08). Agora a
+  //    origem (self-register) grava a âncora = HOJE e aqui, na 1ª venda, re-ancoramos
+  //    em agora → sempre +1 mês (mensal) / +1 ano (anual) exatos a partir do pagamento.
+  //    Espelha o activate-subscription (que ancora em new Date()).
+  //  - RENOVAÇÃO: ancora no subscription_expires_at vigente (assim pagar adiantado
+  //    NÃO perde dias — o próximo ciclo continua do vencimento atual).
   const billingCycle = company.billing_cycle === "yearly" ? "yearly" : "monthly";
-  const baseExpiration = company.subscription_expires_at ?? new Date().toISOString();
+  const baseExpiration = isFirstSale
+    ? new Date().toISOString()
+    : (company.subscription_expires_at ?? new Date().toISOString());
   const { data: nextExpiration, error: expError } = await supabase.rpc("compute_next_expiration", {
     p_current: baseExpiration,
     p_cycle: billingCycle,

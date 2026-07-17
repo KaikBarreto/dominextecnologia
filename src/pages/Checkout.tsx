@@ -91,6 +91,10 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isRenewal = searchParams.get("mode") === "renewal";
+  // Plano TRAVADO pelo link de venda (?bloqueado=1 vindo do cadastro): o cliente
+  // não escolhe nem troca de plano — cobra exatamente o plano/valor que o link
+  // já gravou na empresa. Fecha a brecha de pagar o preço de um plano mais barato.
+  const isPlanLocked = searchParams.get("bloqueado") === "1";
   const isDark = useIsDark();
   const { profile } = useAuth();
   // Mesma regra do painel de pagamento: white-label da empresa do checkout
@@ -214,6 +218,22 @@ export default function Checkout() {
     }
   }, [isRenewal, isCustomPlanCompany, companyData, plans, showCheckout]);
 
+  // Plano TRAVADO pelo link (?bloqueado=1): auto-seleciona o plano da PRÓPRIA
+  // empresa (que o self-register já gravou a partir do link) e pula a etapa de
+  // seleção, indo direto ao pagamento. Não há como o cliente trocar por um plano
+  // mais barato. Vale pra qualquer plano (start/avancado/master/personalizado).
+  useEffect(() => {
+    if (isPlanLocked && !isRenewal && companyData && plans.length > 0 && !showCheckout) {
+      const currentPlanCode = companyData.subscription_plan;
+      const matched = plans.find((p) => p.code === currentPlanCode);
+      if (matched) {
+        setSelectedPlan(currentPlanCode);
+        setBillingCycle((companyData.billing_cycle as BillingCycle) || "monthly");
+        setShowCheckout(true);
+      }
+    }
+  }, [isPlanLocked, isRenewal, companyData, plans, showCheckout]);
+
   useEffect(() => () => stopPolling(), [stopPolling]);
 
   const trialDaysLeft = companyData?.subscription_expires_at
@@ -221,7 +241,7 @@ export default function Checkout() {
     : null;
   const trialExpired = trialDaysLeft !== null && trialDaysLeft <= 0;
 
-  if (companyLoading || ((isRenewal || isCustomPlanCompany) && (!showCheckout || !selectedPlan))) {
+  if (companyLoading || ((isRenewal || isCustomPlanCompany || isPlanLocked) && (!showCheckout || !selectedPlan))) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl space-y-8">
@@ -241,10 +261,14 @@ export default function Checkout() {
   const effectiveCompanyValue = companyData ? getEffectiveSubscriptionValue(companyData) : 0;
   const planPrice = currentPlan?.price || 0;
 
-  // Renovação E plano personalizado cobram o valor EFETIVO da empresa
-  // (custom_price se houver promoção ativa, senão subscription_value) —
-  // NUNCA o preço de catálogo (personalizado tem price R$ 0 no catálogo).
-  const renewalPrice = (isRenewal || isCustomPlanCompany) ? (effectiveCompanyValue || planPrice) : null;
+  // Renovação, plano personalizado E plano TRAVADO cobram o valor EFETIVO da
+  // empresa (custom_price se houver promoção ativa, senão subscription_value) —
+  // NUNCA o preço de catálogo (personalizado tem price R$ 0 no catálogo). No
+  // plano travado, o valor foi definido pelo link e gravado na empresa, então é
+  // ele que vale (impede pagar o preço de outro plano mais barato).
+  const renewalPrice = (isRenewal || isCustomPlanCompany || isPlanLocked)
+    ? (effectiveCompanyValue || planPrice)
+    : null;
   const basePrice = renewalPrice ?? planPrice;
 
   const yearlyPrice = calculateYearlyPrice(basePrice);

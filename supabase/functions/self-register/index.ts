@@ -88,14 +88,19 @@ const resolveLocale = (v: unknown): Locale => {
 
 // ÚLTIMO fallback de specs de plano — a fonte da verdade é subscription_plans
 // (lida via service role logo abaixo). Só usado se a query ao catálogo falhar.
-// Canônico (decisão CEO 2026-06-12): Start 5 / Avançado 10 / Master 15 usuários.
+// PREÇOS SINCRONIZADOS com o catálogo real (migration 20260613180000, decisão CEO
+// 2026-06-13): Essencial(start) R$197 / Pro(avancado) R$447 / Business(master) R$697.
+// Usuários: Start 5 / Avançado 10 / Master 15 (decisão CEO 2026-06-12).
+// IMPORTANTE: fallback defasado subcobrava (incidente: avancado cobrado como R$197).
+// Mantê-lo em dia é obrigatório; num link de VENDA a query ao catálogo é EXIGIDA
+// (fail-closed abaixo) pra nunca subcobrar silenciosamente com um default velho.
 const PLAN_DEFAULTS: Record<string, { price: number; max_users: number; name: string }> = {
-  start: { price: 200, max_users: 5, name: 'Start' },
-  starter: { price: 200, max_users: 5, name: 'Start' },
-  avancado: { price: 350, max_users: 10, name: 'Avançado' },
-  pro: { price: 350, max_users: 10, name: 'Avançado' },
-  master: { price: 650, max_users: 15, name: 'Master' },
-  enterprise: { price: 650, max_users: 15, name: 'Master' },
+  start: { price: 197, max_users: 5, name: 'Essencial' },
+  starter: { price: 197, max_users: 5, name: 'Essencial' },
+  avancado: { price: 447, max_users: 10, name: 'Pro' },
+  pro: { price: 447, max_users: 10, name: 'Pro' },
+  master: { price: 697, max_users: 15, name: 'Business' },
+  enterprise: { price: 697, max_users: 15, name: 'Business' },
 };
 
 // Aliases legados aceitos em links antigos → código real em subscription_plans.
@@ -222,9 +227,13 @@ Deno.serve(async (req) => {
     // Resolve plan/price/status from link params
     const planCode = lockedPlan || 'start';
 
+    const isSale = linkType === 'venda';
+
     // Specs do plano (price/max_users/name): fonte da verdade é subscription_plans.
     // PLAN_DEFAULTS hardcoded só entra se a query ao catálogo falhar/retornar vazio.
+    // planFromCatalog=true quando o preço veio de fato do catálogo (não do fallback).
     let planDefaults = PLAN_DEFAULTS[planCode] || PLAN_DEFAULTS.start;
+    let planFromCatalog = false;
     if (!isPersonalizado) {
       try {
         const canonicalCode = PLAN_CODE_ALIASES[planCode] || planCode;
@@ -242,6 +251,7 @@ Deno.serve(async (req) => {
             max_users: Number(planRow.max_users),
             name: planRow.name || planDefaults.name,
           };
+          planFromCatalog = true;
         } else {
           console.error(`[self-register] Plano '${canonicalCode}' não encontrado/inválido em subscription_plans (usando fallback hardcoded)`);
         }
@@ -249,7 +259,21 @@ Deno.serve(async (req) => {
         console.error('[self-register] Exceção ao ler subscription_plans (usando fallback hardcoded):', planLookupErr);
       }
     }
-    const isSale = linkType === 'venda';
+
+    // FAIL-CLOSED (venda paga): num link de VENDA sem preço explícito no link
+    // (lockedPrice), o valor gravado vira o que a Asaas vai cobrar. Se NÃO
+    // conseguimos ler o preço do catálogo, NÃO caímos num default hardcoded
+    // possivelmente defasado (isso subcobrava). Rejeitamos e pedimos retry — melhor
+    // falhar o cadastro do que criar uma assinatura com valor errado. Teste (trial)
+    // e personalizado não entram aqui (não há cobrança/valor de catálogo em jogo).
+    const lockedPriceEarly = typeof raw.locked_price === 'number' && raw.locked_price > 0 ? raw.locked_price : null;
+    if (isSale && !isPersonalizado && !planFromCatalog && lockedPriceEarly === null) {
+      console.error(`[self-register] VENDA sem preço confiável (catálogo indisponível, sem lockedPrice) p/ plano '${planCode}'. Rejeitando (fail-closed).`);
+      return new Response(
+        JSON.stringify({ error: t.internalError }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const subscription_status = isSale ? 'pending_payment' : 'testing';
 
     // Plano personalizado: preço = soma dos módulos do catálogo (sempre inclui
@@ -272,12 +296,21 @@ Deno.serve(async (req) => {
     const finalPrice = lockedPrice ?? planPrice;
     const finalMaxUsers = isPersonalizado ? (maxUsersOverride || 5) : planDefaults.max_users;
 
-    // Trial expiration
+    // Vencimento inicial (subscription_expires_at).
+    //
+    // VENDA: a ÂNCORA de renovação é HOJE (data do cadastro/fechamento). NÃO somamos
+    // dias aqui. Na confirmação do pagamento o webhook faz
+    // compute_next_expiration(subscription_expires_at, ciclo), então HOJE + 1 mês
+    // (mensal) ou HOJE + 1 ano (anual) — exato. ANTES somávamos +3 dias como "janela
+    // de pagamento", mas esses 3 dias contaminavam a âncora e o webhook virava
+    // HOJE+3+1mês (incidente: 17/07 → 20/08 em vez de 17/08). A janela de pagamento
+    // do PIX NÃO precisa morar aqui: o create-asaas-payment já empurra o dueDate pra
+    // amanhã quando subscription_expires_at está no passado/hoje (janela de 1 dia),
+    // sem tocar na âncora de renovação.
+    //
+    // TESTE: expira em HOJE + trialDays (janela real do teste grátis).
     const expirationDate = new Date();
-    if (isSale) {
-      // Pending payment: short window (3 dias) until payment confirmation
-      expirationDate.setDate(expirationDate.getDate() + 3);
-    } else {
+    if (!isSale) {
       const trialDays = trialDaysOverride || 14;
       expirationDate.setDate(expirationDate.getDate() + trialDays);
     }

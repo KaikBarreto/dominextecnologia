@@ -171,52 +171,28 @@ Deno.serve(async (req) => {
     if (companyError || !company) throw new ValidationError("Empresa não encontrada.");
 
     // ===================================================================
-    // VALIDAÇÃO SERVER-SIDE DO VALOR (FURO 3)
+    // VALIDAÇÃO SERVER-SIDE DO VALOR — FAIL-CLOSED (reconcilia com a EMPRESA)
     // -------------------------------------------------------------------
-    // Não confiar cegamente no `amount` do front. Recalculamos o valor ESPERADO a
-    // partir do(s) candidato(s) de base mensal no banco e rejeitamos divergências
-    // grosseiras. O `amount` é aceito se bater com QUALQUER base legítima:
+    // Incidente: cliente pagou R$197 (preço do 'start') num plano 'avancado'
+    // (R$447). A causa foi um guarda LENIENTE que aceitava o `amount` se ele
+    // batesse com QUALQUER base candidata — inclusive o preço do plan_code enviado
+    // pelo front, que podia ser um plano MAIS BARATO. Então R$197 (start) passava
+    // mesmo com a empresa gravada como avancado/447.
     //
-    //  - PLANO SELECIONADO (primeira venda): quando o front envia `plan_code` — o
-    //    cliente escolheu o plano no checkout, então o preço esperado vem de
-    //    subscription_plans.price[plan_code]. NÃO usamos o plano antigo guardado na
-    //    empresa (companies.subscription_plan), que numa primeira venda ainda não
-    //    reflete a escolha e causava rejeição falsa.
-    //  - PLANO GUARDADO da empresa: subscription_plans.price[company.subscription_plan]
-    //    (fallback / coerência).
-    //  - VALOR EFETIVO da empresa (renovação): custom_price se houver promoção ativa
-    //    (custom_price_payments_made < custom_price_months), senão subscription_value.
-    //    NUNCA pending_subscription_value (é o PRÓXIMO valor).
+    // Nova regra (fonte ÚNICA da verdade = a EMPRESA):
+    //   O valor esperado vem do VALOR EFETIVO da empresa (custom_price ativo, senão
+    //   subscription_value), que por sua vez reflete companies.subscription_plan.
+    //   O `plan_code` do front NÃO é aceito como base de preço a menos que seja o
+    //   MESMO plano já gravado na empresa. Se o cliente quer TROCAR de plano
+    //   (fluxo legítimo sem trava), a empresa precisa ter sido ATUALIZADA para o
+    //   novo plano ANTES de cobrar — então subscription_plan/subscription_value já
+    //   refletem a escolha e a reconciliação bate naturalmente.
     //
-    // Esperado por método (regra B9), aplicado a CADA base candidata:
-    //  - Cartão: SEMPRE mensal (base).
-    //  - PIX/boleto anual à vista: round(base × 12 × 0,8) (−20%).
-    //  - PIX/boleto mensal: base.
-    //
-    // Tolerância: aceitamos divergência de até max(2% do esperado, R$ 0,02) pra absorver
-    // arredondamento. Basta UMA base bater. Se NENHUMA base for computável, aplicamos
-    // só um PISO: rejeita amount < 50% do maior price de plano disponível; sem nenhuma
-    // referência, deixamos passar pra não quebrar fluxo legítimo desconhecido.
+    // Fail-closed: sem base efetiva computável, REJEITA (não deixa passar).
+    // Tolerância: só centavos de arredondamento (max(2% do esperado, R$ 0,02)),
+    // nunca a diferença entre planos.
     {
-      // price do plano por code (subscription_plans.price)
-      const planPriceByCode = async (code?: string | null): Promise<number> => {
-        if (!code) return 0;
-        const { data: planRow } = await supabase
-          .from("subscription_plans")
-          .select("price")
-          .eq("code", code)
-          .maybeSingle();
-        return Number(planRow?.price) || 0;
-      };
-
-      // Base candidata 1: plano SELECIONADO no checkout (primeira venda).
-      const selectedPlanPrice = await planPriceByCode(plan_code);
-      // Base candidata 2: plano guardado da empresa.
-      const storedPlanPrice = company.subscription_plan && company.subscription_plan !== plan_code
-        ? await planPriceByCode(company.subscription_plan)
-        : 0;
-
-      // Base candidata 3: valor efetivo da empresa (renovação).
+      // Valor efetivo mensal da empresa = fonte da verdade.
       const cp = Number(company.custom_price) || 0;
       const cpMonths = Number(company.custom_price_months) || 0;
       const cpMade = Number(company.custom_price_payments_made) || 0;
@@ -225,43 +201,106 @@ Deno.serve(async (req) => {
         ? cp
         : Number(company.subscription_value) || 0;
 
-      // Esperado por método/ciclo a partir de uma base mensal (regra B9).
-      const expectedFor = (monthlyBase: number): number => {
-        if (billing_type === "CREDIT_CARD") return monthlyBase; // cartão sempre mensal
-        if (billing_cycle === "yearly") return Math.round(monthlyBase * 12 * 0.8); // anual −20%
-        return monthlyBase;
-      };
+      // Base mensal de reconciliação = valor efetivo da empresa. Pode ser
+      // rebaseada abaixo quando o cliente troca de plano na primeira venda.
+      let monthlyBase = effectiveCompanyValue;
 
-      // Bases candidatas legítimas (> 0).
-      const candidateBases = [selectedPlanPrice, storedPlanPrice, effectiveCompanyValue]
-        .filter((b) => b > 0);
-
-      if (candidateBases.length > 0) {
-        const matches = candidateBases.some((base) => {
-          const expected = expectedFor(base);
-          const tolerance = Math.max(expected * 0.02, 0.02);
-          return Math.abs(amount - expected) <= tolerance;
-        });
-
-        if (!matches) {
+      // Coerência do plano quando o front envia `plan_code`:
+      //
+      //  a) plan_code == plano da empresa → segue (base = valor efetivo da empresa).
+      //  b) plan_code != plano da empresa:
+      //     - PRIMEIRA VENDA (testing/pending_payment) SEM preço promocional travado
+      //       (custom_price ativo) → pode ser uma TROCA DE PLANO no checkout aberto.
+      //       SÓ permitimos UPGRADE (preço do novo plano >= valor efetivo atual):
+      //       migramos a empresa pro plano escolhido AGORA (server-side), usando o
+      //       preço de CATÁLOGO como base — empresa e cobrança ficam iguais. NÃO
+      //       confiamos no `amount`: a base vem do catálogo.
+      //     - DOWNGRADE (plano mais barato que o valor atual) → REJEITA. Foi
+      //       exatamente o vetor do incidente: link travado em 'avancado' (R$447) e o
+      //       cliente pagava R$197 ('start'). Enquanto não há flag de "plano travado"
+      //       server-side, a defesa é NUNCA baixar o valor automaticamente aqui. Um
+      //       downgrade legítimo na 1ª venda passa por link/painel novo, não por aqui.
+      //     - Qualquer outro caso (renovação, custom_price ativo, personalizado) →
+      //       REJEITA. Trocar plano com promoção travada ou em renovação passa pelo
+      //       painel/downgrade agendado, não por aqui.
+      const isFirstSaleStatus = company.subscription_status === "testing" ||
+        company.subscription_status === "Testando" ||
+        company.subscription_status === "trial" ||
+        company.subscription_status === "pending_payment";
+      if (plan_code && company.subscription_plan && plan_code !== company.subscription_plan) {
+        const swapContextOk = isFirstSaleStatus && !hasActiveCustomPrice && plan_code !== "personalizado";
+        // Preço de catálogo do plano escolhido (necessário pra decidir upgrade x downgrade).
+        const { data: newPlanRow } = swapContextOk
+          ? await supabase
+              .from("subscription_plans")
+              .select("price, max_users")
+              .eq("code", plan_code)
+              .eq("is_active", true)
+              .maybeSingle()
+          : { data: null };
+        const newPlanPrice = Number(newPlanRow?.price) || 0;
+        // Só é troca válida se for UPGRADE (>= valor atual da empresa). Downgrade
+        // automático é o vetor do incidente → bloqueado.
+        const isUpgrade = newPlanPrice > 0 && newPlanPrice >= effectiveCompanyValue;
+        if (!swapContextOk || !isUpgrade) {
           console.error(
-            `[valor] divergência: amount=${amount} ` +
-              `bases=[${candidateBases.join(",")}] esperados=[${candidateBases.map(expectedFor).join(",")}] ` +
-              `(método=${billing_type}, ciclo=${billing_cycle}, plan_code=${plan_code ?? "-"}, ` +
-              `customPrice=${hasActiveCustomPrice})`,
+            `[valor] troca de plano não permitida: plan_code=${plan_code} (R$${newPlanPrice}) vs ` +
+              `company.subscription_plan=${company.subscription_plan} (R$${effectiveCompanyValue}) ` +
+              `(company=${company_id}, status=${company.subscription_status}, customPrice=${hasActiveCustomPrice}, ` +
+              `contextOk=${swapContextOk}, isUpgrade=${isUpgrade}).`,
           );
-          throw new ValidationError("Valor de cobrança inválido.");
-        }
-      } else {
-        // Nenhuma base efetiva. Tenta um piso de segurança contra qualquer plano.
-        const anyPlanPrice = Math.max(selectedPlanPrice, storedPlanPrice);
-        if (anyPlanPrice > 0 && amount < anyPlanPrice * 0.5) {
-          console.error(
-            `[valor] abaixo do piso: amount=${amount} planPrice=${anyPlanPrice} (piso 50%)`,
+          throw new ValidationError(
+            "O plano cobrado não corresponde ao plano da sua conta. Recarregue a página e tente novamente.",
           );
-          throw new ValidationError("Valor de cobrança inválido.");
         }
-        // Sem plano e sem subscription_value → sem referência confiável; não bloqueamos.
+        const planUpdate: Record<string, unknown> = {
+          subscription_plan: plan_code,
+          subscription_value: newPlanPrice,
+        };
+        if (Number(newPlanRow?.max_users) > 0) planUpdate.max_users = Number(newPlanRow!.max_users);
+        const { error: swapErr } = await supabase
+          .from("companies")
+          .update(planUpdate)
+          .eq("id", company_id);
+        if (swapErr) {
+          console.error(`[valor] falha ao migrar empresa pro plano ${plan_code} (company=${company_id}):`, swapErr.message);
+          throw new ValidationError("Não foi possível confirmar o plano. Tente novamente.");
+        }
+        // Reflete localmente + rebaseia a reconciliação no preço do NOVO plano.
+        company.subscription_plan = plan_code;
+        company.subscription_value = newPlanPrice;
+        monthlyBase = newPlanPrice;
+        console.log(`[valor] empresa ${company_id} migrada pro plano '${plan_code}' (R$ ${newPlanPrice}) na primeira venda.`);
+      }
+
+      // Fail-closed se não há base efetiva pra reconciliar.
+      if (!(monthlyBase > 0)) {
+        console.error(
+          `[valor] sem base efetiva pra reconciliar (company=${company_id}, ` +
+            `subscription_value=${company.subscription_value}, custom_price=${company.custom_price}). Rejeitando (fail-closed).`,
+        );
+        throw new ValidationError(
+          "Não foi possível confirmar o valor da assinatura. Fale com o suporte.",
+        );
+      }
+
+      // Esperado por método/ciclo (regra B9):
+      //  - Cartão: SEMPRE mensal (base).
+      //  - PIX/boleto anual à vista: round(base × 12 × 0,8) (−20%).
+      //  - PIX/boleto mensal: base.
+      const expected = billing_type === "CREDIT_CARD"
+        ? monthlyBase
+        : (billing_cycle === "yearly" ? Math.round(monthlyBase * 12 * 0.8) : monthlyBase);
+
+      // Tolerância só pra centavos de arredondamento — nunca "outro plano".
+      const tolerance = Math.max(expected * 0.02, 0.02);
+      if (Math.abs(amount - expected) > tolerance) {
+        console.error(
+          `[valor] divergência: amount=${amount} esperado=${expected} base=${monthlyBase} ` +
+            `(método=${billing_type}, ciclo=${billing_cycle}, plan_code=${plan_code ?? "-"}, ` +
+            `plano=${company.subscription_plan}, customPrice=${hasActiveCustomPrice})`,
+        );
+        throw new ValidationError("Valor de cobrança inválido.");
       }
     }
 
