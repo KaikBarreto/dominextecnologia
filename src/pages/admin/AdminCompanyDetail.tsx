@@ -1,10 +1,11 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,8 @@ import { CompanyPaymentsTab } from '@/components/admin/CompanyPaymentsTab';
 import { cn } from '@/lib/utils';
 import { cpfCnpjMask } from '@/utils/masks';
 import { AdminNfseTierControl } from '@/components/admin/AdminNfseTierControl';
+import { getSegment } from '@/utils/companySegments';
+import { useSubscriptionModules } from '@/components/admin/ModuleGrid';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -97,6 +100,62 @@ export default function AdminCompanyDetail() {
 
   const closerName = company?.salesperson_id ? (salesTeam?.[company.salesperson_id] || null) : null;
   const sdrName = company?.sdr_id ? (salesTeam?.[company.sdr_id] || null) : null;
+  const segmentData = getSegment(company?.segment);
+
+  // ===== Módulos do Plano (empresa arbitrária vista no admin) =====
+  // Catálogo de módulos ativos (name/description/price/sort_order).
+  const { data: catalogModules, isLoading: modulesCatalogLoading } = useSubscriptionModules();
+
+  // Planos ativos — pra resolver o nome amigável e os included_modules do plano da empresa.
+  const { data: plans, isLoading: plansLoading } = useQuery({
+    queryKey: ['admin-subscription-plans'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('code, name, included_modules, max_users')
+        .eq('is_active', true);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Addons avulsos da empresa (company_modules — sem coluna removed_at neste schema).
+  const { data: companyAddons, isLoading: addonsLoading } = useQuery({
+    queryKey: ['admin-company-modules', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_modules')
+        .select('module_code')
+        .eq('company_id', id!);
+      if (error) throw error;
+      return (data || []).map((r) => r.module_code);
+    },
+    enabled: !!id,
+  });
+
+  const modulesLoading = modulesCatalogLoading || plansLoading || addonsLoading;
+
+  // Plano da empresa + rótulo amigável.
+  const companyPlan = plans?.find((p) => p.code === company?.subscription_plan) || null;
+  const planLabel = companyPlan?.name
+    || (company?.subscription_plan === 'personalizado' ? 'Personalizado' : company?.subscription_plan || 'Não definido');
+
+  // Codes inclusos no plano — só contam se assinatura ativa/testando (igual ao gating real).
+  const planIncluded = (() => {
+    const raw = companyPlan?.included_modules;
+    if (!Array.isArray(raw)) return [] as string[];
+    return raw.filter((c): c is string => typeof c === 'string');
+  })();
+  const planCountsAsActive = company?.subscription_status === 'active' || company?.subscription_status === 'testing';
+  const planCodes = planCountsAsActive ? planIncluded : [];
+  const addonCodes = companyAddons || [];
+  const allCodes = new Set([...planCodes, ...addonCodes]);
+
+  // Cruza com o catálogo pra ter name/description/price; ordena por sort_order.
+  const contractedModules = (catalogModules || [])
+    .filter((m) => allCodes.has(m.code))
+    .map((m) => ({ ...m, fromPlan: planCodes.includes(m.code) }))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -249,6 +308,19 @@ export default function AdminCompanyDetail() {
                     <p className="font-medium">{company.origin || 'N/A'}</p>
                   )}
                 </div>
+                <div className="min-w-0">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Segmento</span>
+                  {segmentData ? (
+                    <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                      <Badge className="text-xs text-white border-0 gap-1 max-w-full" style={{ backgroundColor: segmentData.color }}>
+                        <segmentData.icon className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{segmentData.label}</span>
+                      </Badge>
+                    </div>
+                  ) : (
+                    <p className="font-medium">N/A</p>
+                  )}
+                </div>
               </div>
             </div>
             <div className="border-t pt-3 mt-3">
@@ -356,6 +428,72 @@ export default function AdminCompanyDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Módulos do Plano */}
+      <Card className="mt-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-primary" />
+            Módulos do Plano
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Resumo: Plano + Usuários */}
+          <div className="flex flex-wrap gap-3 items-center p-3 rounded-lg bg-muted/30 border">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Plano:</span>
+              <Badge className="bg-primary text-primary-foreground capitalize">{planLabel}</Badge>
+            </div>
+            <div className="h-4 w-px bg-border hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Usuários:</span>
+              <span className="font-semibold">{company.max_users || 5}</span>
+            </div>
+          </div>
+
+          {/* Lista de módulos */}
+          {modulesLoading ? (
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <div className="space-y-1 flex-1">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : contractedModules.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Nenhum módulo incluído.</p>
+          ) : (
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+              {contractedModules.map((mod) => (
+                <div key={mod.code} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground">{mod.name}</p>
+                    {mod.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{mod.description}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <Badge className="text-xs bg-emerald-500 text-white hover:bg-emerald-500 border-0">
+                        {`R$ ${Number(mod.price || 0).toFixed(2).replace('.', ',')}/mês`}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {mod.fromPlan ? 'Incluso no plano' : 'Adicional'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Histórico de pagamentos (manuais + Asaas) inline */}
       <Card className="mt-6">
