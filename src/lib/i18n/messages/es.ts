@@ -873,14 +873,10 @@ export const esOverrides: MessagesOverride = {
     refreshing: 'Actualizando la aplicación...',
   },
 
-  // ── App con sesión iniciada (i18n Fase 0) ───────────────────────────────────
-  app: {
-    common: {
-      save: 'Guardar',
-      cancel: 'Cancelar',
-      loading: 'Cargando...',
-    },
-  },
+  // ── App con sesión iniciada (i18n) ──────────────────────────────────────────
+  // El namespace `app` NO se sobrescribe aquí: se organiza por dominio en
+  // messages/app/* (4 locales por archivo) y se inyecta por locale en
+  // messages/index.ts (appByLocale). Ver messages/app/index.ts.
 };
 
 export default esOverrides;

@@ -874,14 +874,10 @@ export const frOverrides: MessagesOverride = {
     refreshing: 'Actualisation de l’application...',
   },
 
-  // ── Application connectée (i18n Phase 0) ────────────────────────────────────
-  app: {
-    common: {
-      save: 'Enregistrer',
-      cancel: 'Annuler',
-      loading: 'Chargement...',
-    },
-  },
+  // ── Application connectée (i18n) ────────────────────────────────────────────
+  // Le namespace `app` N'EST PAS surchargé ici : il est organisé par domaine dans
+  // messages/app/* (4 locales par fichier) et injecté par locale dans
+  // messages/index.ts (appByLocale). Voir messages/app/index.ts.
 };
 
 export default frOverrides;

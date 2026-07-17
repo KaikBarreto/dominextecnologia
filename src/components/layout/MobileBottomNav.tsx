@@ -12,11 +12,20 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
+import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { MoreMenuDrawer } from './MoreMenuDrawer';
+
+/** Keys de `app.shell.bottomNav` — rótulos CURTOS do bottom nav do tenant. */
+type BottomNavKey = 'home' | 'serviceOrders' | 'schedule' | 'customers' | 'menu';
 
 interface NavItem {
   icon: React.ElementType;
+  /** Rótulo pt-br (fallback). Traduzido via `bottomNavKey` (tenant) ou o menu (admin). */
   label: string;
+  /** Key do rótulo curto (bottom nav do tenant). Admin traduz `label` pelo menu. */
+  bottomNavKey?: BottomNavKey;
   path?: string;
   action?: 'openMore';
   special?: boolean;
@@ -40,11 +49,11 @@ interface NavItem {
  * admin/tenant internamente.
  */
 const tenantNavItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Início', path: '/dashboard' },
-  { icon: ClipboardList, label: 'OS', path: '/ordens-servico' },
-  { icon: CalendarDays, label: 'Agenda', path: '/agenda', special: true },
-  { icon: Users, label: 'Clientes', path: '/clientes' },
-  { icon: Menu, label: 'Menu', action: 'openMore' },
+  { icon: LayoutDashboard, label: 'Início', bottomNavKey: 'home', path: '/dashboard' },
+  { icon: ClipboardList, label: 'OS', bottomNavKey: 'serviceOrders', path: '/ordens-servico' },
+  { icon: CalendarDays, label: 'Agenda', bottomNavKey: 'schedule', path: '/agenda', special: true },
+  { icon: Users, label: 'Clientes', bottomNavKey: 'customers', path: '/clientes' },
+  { icon: Menu, label: 'Menu', bottomNavKey: 'menu', action: 'openMore' },
 ];
 
 // Labels/paths/screenKeys/ícones espelham ADMIN_MENU_ITEMS de AdminSidebarNav.
@@ -54,7 +63,7 @@ const adminNavItems: NavItem[] = [
   { icon: Target, label: 'CRM/Tarefas', path: '/admin/crm', screenKey: 'admin_crm' },
   { icon: Building2, label: 'Empresas', path: '/admin/empresas', special: true, screenKey: 'admin_empresas' },
   { icon: Briefcase, label: 'Vendedores', path: '/admin/vendedores', screenKey: 'admin_vendedores' },
-  { icon: Menu, label: 'Menu', action: 'openMore' },
+  { icon: Menu, label: 'Menu', bottomNavKey: 'menu', action: 'openMore' },
 ];
 
 const triggerHaptic = () => {
@@ -65,7 +74,13 @@ export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAdminUser, hasAdminScreenAccess } = useAuth();
+  const { locale } = useAppLocaleContext();
+  const shellT = MESSAGES[locale].app.shell;
   const [moreOpen, setMoreOpen] = useState(false);
+
+  // Rótulo curto do tenant vem de `bottomNav`; o resto (admin) traduz pelo menu.
+  const labelFor = (item: NavItem) =>
+    item.bottomNavKey ? shellT.bottomNav[item.bottomNavKey] : translateMenuLabel(item.label, shellT);
 
   // Fecha o drawer ao trocar de rota.
   useEffect(() => {
@@ -115,7 +130,7 @@ export function MobileBottomNav() {
                     navigate(item.path!);
                   }}
                   className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 active:scale-90 transition-transform -translate-y-4"
-                  aria-label={`Ir para ${item.label}`}
+                  aria-label={labelFor(item)}
                 >
                   <item.icon className="h-7 w-7 text-primary-foreground" />
                 </button>
@@ -154,7 +169,7 @@ export function MobileBottomNav() {
                       moreActive ? 'text-primary' : 'text-foreground'
                     )}
                   >
-                    {item.label}
+                    {labelFor(item)}
                   </span>
                 </button>
               );
@@ -188,7 +203,7 @@ export function MobileBottomNav() {
                     active ? 'text-primary' : 'text-foreground'
                   )}
                 >
-                  {item.label}
+                  {labelFor(item)}
                 </span>
                 <div
                   className={cn(

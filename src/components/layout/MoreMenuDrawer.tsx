@@ -43,6 +43,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
+import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { segmentHasTechTools } from '@/config/technicianArea';
@@ -139,14 +142,16 @@ interface MoreMenuDrawerProps {
  * que o Dominex já fazia no AppSidebar antigo.
  */
 export function MoreMenuDrawer({ open, onOpenChange }: MoreMenuDrawerProps) {
+  const { locale } = useAppLocaleContext();
+  const accountT = MESSAGES[locale].app.shell.account;
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="h-[90vh] max-h-[90vh] bg-background border-0 rounded-t-2xl p-0">
         <VisuallyHidden asChild>
-          <DrawerTitle>Menu</DrawerTitle>
+          <DrawerTitle>{accountT.menuTitle}</DrawerTitle>
         </VisuallyHidden>
         <VisuallyHidden asChild>
-          <DrawerDescription>Menu completo de navegação e configurações</DrawerDescription>
+          <DrawerDescription>{accountT.menuDescription}</DrawerDescription>
         </VisuallyHidden>
 
         <div className="flex flex-col h-full min-h-0">
@@ -165,8 +170,10 @@ export function MoreMenuDrawer({ open, onOpenChange }: MoreMenuDrawerProps) {
 function MoreMenuHeader() {
   const { user, profile, roles, isAdminUser } = useAuth();
   const { settings } = useCompanySettings();
+  const { locale } = useAppLocaleContext();
+  const shellT = MESSAGES[locale].app.shell;
 
-  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Usuário';
+  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || shellT.defaultUserName;
   const initials = profileName
     .split(' ')
     .map((n) => n[0])
@@ -176,10 +183,10 @@ function MoreMenuHeader() {
 
   const isSuperAdmin = roles.includes('super_admin');
   const roleLabel = isAdminUser
-    ? (isSuperAdmin ? 'Administrador Auctus' : 'Administrador')
+    ? (isSuperAdmin ? shellT.roles.auctusAdmin : shellT.roles.admin)
     : roles.length > 0
       ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS]
-      : 'Usuário';
+      : shellT.roles.user;
 
   const isCompanyAdmin = roles.includes('admin');
 
@@ -191,7 +198,7 @@ function MoreMenuHeader() {
       <AccountSwitcherDropdown>
         <div
           className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors cursor-pointer"
-          aria-label="Trocar de conta"
+          aria-label={shellT.account.switchAccountAria}
         >
           <Avatar className="h-11 w-11 shrink-0">
             <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
@@ -246,6 +253,10 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
   const { user, hasScreenAccess, hasAdminScreenAccess, isAdminUser, roles } = useAuth();
   const { hasModule } = useCompanyModules();
   const { settings } = useCompanySettings();
+  const { locale } = useAppLocaleContext();
+  const shellT = MESSAGES[locale].app.shell;
+  const accountT = shellT.account;
+  const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -298,22 +309,22 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
   }> = isAdminUser
     ? []
     : [
-        { icon: UserCircle, label: 'Perfil', onClick: () => handleNavigate('/perfil') },
-        { icon: CreditCard, label: 'Assinatura', onClick: () => handleNavigate('/assinatura') },
+        { icon: UserCircle, label: accountT.profile, onClick: () => handleNavigate('/perfil') },
+        { icon: CreditCard, label: accountT.subscription, onClick: () => handleNavigate('/assinatura') },
         {
           icon: Video,
-          label: 'Tutoriais | Domiflix',
+          label: accountT.tutorials,
           onClick: () => handleNavigate('/domiflix'),
           hoverVariant: 'domiflix',
         },
         {
           icon: HelpCircle,
-          label: 'Central de Ajuda',
+          label: accountT.helpCenter,
           onClick: () => setHelpOpen(true),
         },
         {
           icon: WhatsAppIcon,
-          label: 'Falar com o Suporte',
+          label: accountT.support,
           onClick: () => {
             onClose();
             window.open(getWhatsAppSupportUrl(), '_blank');
@@ -363,7 +374,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
                   >
                     <div className="flex items-center gap-3">
                       <Icon className="h-5 w-5 shrink-0" />
-                      <span>{item.title}</span>
+                      <span>{tMenu(item.title)}</span>
                     </div>
                     <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
                   </CollapsibleTrigger>
@@ -385,7 +396,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
                           }
                         >
                           <SubIcon className="h-4 w-4 shrink-0" />
-                          <span>{sub.title}</span>
+                          <span>{tMenu(sub.title)}</span>
                         </NavLink>
                       );
                     })}
@@ -411,7 +422,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
                 }
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                <span>{item.title}</span>
+                <span>{tMenu(item.title)}</span>
               </NavLink>
             );
           })}
@@ -423,7 +434,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
             <div className="my-4 border-t border-border" />
             <div className="px-1 pb-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">
-                Conta
+                {accountT.section}
               </p>
               <nav className="space-y-1">
                 {accountShortcuts.map((shortcut) => {
@@ -460,6 +471,8 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
 function MoreMenuFooter({ onClose }: { onClose: () => void }) {
   const { signOut, isAdminUser } = useAuth();
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const accountT = MESSAGES[locale].app.shell.account;
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
@@ -484,8 +497,8 @@ function MoreMenuFooter({ onClose }: { onClose: () => void }) {
   };
 
   const themeOptions: Array<{ value: 'light' | 'dark'; icon: React.ElementType; label: string }> = [
-    { value: 'light', icon: Sun, label: 'Claro' },
-    { value: 'dark', icon: Moon, label: 'Escuro' },
+    { value: 'light', icon: Sun, label: accountT.themeLight },
+    { value: 'dark', icon: Moon, label: accountT.themeDark },
   ];
 
   return (
@@ -495,7 +508,7 @@ function MoreMenuFooter({ onClose }: { onClose: () => void }) {
         {!isAdminUser && (
           <div className="w-28 shrink-0 flex flex-col gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 px-0.5">
-              Tema
+              {accountT.theme}
             </span>
             <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
               {themeOptions.map((opt) => {
@@ -506,7 +519,7 @@ function MoreMenuFooter({ onClose }: { onClose: () => void }) {
                     key={opt.value}
                     type="button"
                     onClick={() => applyTheme(opt.value)}
-                    aria-label={`Tema ${opt.label}`}
+                    aria-label={`${accountT.theme} ${opt.label}`}
                     title={opt.label}
                     className={cn(
                       'flex-1 flex items-center justify-center rounded-lg py-2 transition-colors',
@@ -529,10 +542,10 @@ function MoreMenuFooter({ onClose }: { onClose: () => void }) {
           onClick={handleSettings}
           variant="outline"
           className="flex-1 h-11 px-3 gap-2 shrink mb-[14px]"
-          aria-label="Configurações"
+          aria-label={accountT.settings}
         >
           <SettingsIcon className="h-4 w-4 shrink-0" />
-          <span className="text-sm font-semibold">Configurações</span>
+          <span className="text-sm font-semibold">{accountT.settings}</span>
         </Button>
 
         <Button
@@ -542,7 +555,7 @@ function MoreMenuFooter({ onClose }: { onClose: () => void }) {
           className="h-11 px-4 gap-2 shrink-0 mb-[14px]"
         >
           <LogOut className="h-4 w-4" />
-          <span className="text-sm font-semibold">Sair</span>
+          <span className="text-sm font-semibold">{accountT.logout}</span>
         </Button>
       </div>
 

@@ -10,6 +10,8 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -169,6 +171,8 @@ function DesktopSidebarHeader() {
   const navigate = useNavigate();
   const { user, isAdminUser, signOut } = useAuth();
   const { settings } = useCompanySettings();
+  const { locale } = useAppLocaleContext();
+  const accountT = MESSAGES[locale].app.shell.account;
 
   if (!user) return null;
 
@@ -194,12 +198,12 @@ function DesktopSidebarHeader() {
                 size="icon"
                 className="h-9 w-9 text-destructive hover:bg-destructive hover:text-white"
                 onClick={signOut}
-                aria-label="Sair"
+                aria-label={accountT.logout}
               >
                 <LogOut className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Sair</TooltipContent>
+            <TooltipContent>{accountT.logout}</TooltipContent>
           </Tooltip>
         </div>
       </header>
@@ -283,6 +287,8 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { logoUrl, isLoading: logoLoading } = useWhiteLabel();
+  const { locale } = useAppLocaleContext();
+  const accountT = MESSAGES[locale].app.shell.account;
   const [sheetOpen, setSheetOpen] = useState(false);
   const routeTitle = useResolvedRouteTitle();
 
@@ -318,7 +324,7 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
             size="icon"
             className="h-9 w-9 lg:hidden"
             onClick={() => navigate(-1)}
-            aria-label="Voltar"
+            aria-label={accountT.backAria}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -398,7 +404,7 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
               size="icon"
               className="h-8 w-8 hidden lg:flex"
               onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/perfil')}
-              title={isAdminUser ? 'Configurações do Admin' : 'Meu Perfil'}
+              title={isAdminUser ? accountT.adminSettings : accountT.myProfile}
             >
               <UserCircle className="h-4 w-4" />
             </Button>
@@ -407,7 +413,7 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
               size="icon"
               className="h-8 w-8 hidden lg:flex text-destructive hover:bg-destructive hover:text-white"
               onClick={signOut}
-              title="Sair"
+              title={accountT.logout}
             >
               <LogOut className="h-4 w-4" />
             </Button>

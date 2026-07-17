@@ -54,6 +54,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
+import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { segmentHasTechTools } from '@/config/technicianArea';
@@ -169,6 +172,10 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  */
 export function SidebarMenuContent() {
   const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
+  const { locale } = useAppLocaleContext();
+  const shellT = MESSAGES[locale].app.shell;
+  const accountT = shellT.account;
+  const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const { hasModule } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
@@ -270,7 +277,7 @@ export function SidebarMenuContent() {
     setOpenMenus((prev) => (prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]));
   };
 
-  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Usuário';
+  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || shellT.defaultUserName;
   const initials = profileName
     .split(' ')
     .map((n) => n[0])
@@ -322,7 +329,7 @@ export function SidebarMenuContent() {
 
         {isAdminUser && !collapsed && (
           <div className="flex items-center justify-center border-b border-border py-2 shrink-0">
-            <span className="text-xs font-semibold text-destructive">Painel Administrativo</span>
+            <span className="text-xs font-semibold text-destructive">{shellT.adminPanelLabel}</span>
           </div>
         )}
 
@@ -340,7 +347,7 @@ export function SidebarMenuContent() {
                     <Tooltip key={item.title}>
                       <TooltipTrigger asChild>
                         <button
-                          title={item.title}
+                          title={tMenu(item.title)}
                           onClick={() => toggleMenu(item.title)}
                           className={cn(
                             COLLAPSED_ITEM,
@@ -352,7 +359,7 @@ export function SidebarMenuContent() {
                           <item.icon className={ICON_SIZE} />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="right">{item.title}</TooltipContent>
+                      <TooltipContent side="right">{tMenu(item.title)}</TooltipContent>
                     </Tooltip>
                   );
                 }
@@ -374,7 +381,7 @@ export function SidebarMenuContent() {
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <item.icon className={ICON_SIZE} />
-                        <span className="whitespace-nowrap overflow-hidden">{item.title}</span>
+                        <span className="whitespace-nowrap overflow-hidden">{tMenu(item.title)}</span>
                       </div>
                       <ChevronDown
                         className={cn(
@@ -398,7 +405,7 @@ export function SidebarMenuContent() {
                           }
                         >
                           <child.icon className="h-4 w-4 shrink-0" />
-                          <span className="min-w-0 truncate whitespace-nowrap">{child.title}</span>
+                          <span className="min-w-0 truncate whitespace-nowrap">{tMenu(child.title)}</span>
                         </NavLink>
                       ))}
                     </CollapsibleContent>
@@ -412,7 +419,7 @@ export function SidebarMenuContent() {
                     <TooltipTrigger asChild>
                       <NavLink
                         to={item.path!}
-                        title={item.title}
+                        title={tMenu(item.title)}
                         className={({ isActive }) =>
                           cn(
                             COLLAPSED_ITEM,
@@ -425,7 +432,7 @@ export function SidebarMenuContent() {
                         <item.icon className={ICON_SIZE} />
                       </NavLink>
                     </TooltipTrigger>
-                    <TooltipContent side="right">{item.title}</TooltipContent>
+                    <TooltipContent side="right">{tMenu(item.title)}</TooltipContent>
                   </Tooltip>
                 );
               }
@@ -444,7 +451,7 @@ export function SidebarMenuContent() {
                   }
                 >
                   <item.icon className={ICON_SIZE} />
-                  <span className="min-w-0 truncate whitespace-nowrap">{item.title}</span>
+                  <span className="min-w-0 truncate whitespace-nowrap">{tMenu(item.title)}</span>
                 </NavLink>
               );
             })}
@@ -467,7 +474,7 @@ export function SidebarMenuContent() {
                     'min-w-0 flex items-center rounded-xl border border-border/60 hover:bg-muted/60 transition-colors text-left',
                     collapsed ? 'justify-center p-1.5' : 'w-full gap-3 px-2.5 py-2'
                   )}
-                  aria-label="Menu da conta"
+                  aria-label={accountT.accountMenuAria}
                 >
                   <Avatar className={cn('shrink-0', collapsed ? 'h-8 w-8' : 'h-9 w-9')}>
                     <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
@@ -523,7 +530,7 @@ export function SidebarMenuContent() {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <User className="h-5 w-5 mr-3 shrink-0" />
-                      Perfil
+                      {accountT.profile}
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
@@ -531,13 +538,13 @@ export function SidebarMenuContent() {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <CreditCard className="h-5 w-5 mr-3 shrink-0" />
-                      Assinatura
+                      {accountT.subscription}
                     </DropdownMenuItem>
 
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground">
                         {theme === 'dark' ? <Moon className="h-5 w-5 mr-3 shrink-0" /> : <Sun className="h-5 w-5 mr-3 shrink-0" />}
-                        Tema
+                        {accountT.theme}
                       </DropdownMenuSubTrigger>
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent className="w-40 p-1.5">
@@ -546,14 +553,14 @@ export function SidebarMenuContent() {
                             className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                           >
                             <Sun className="h-5 w-5 mr-3 shrink-0" />
-                            Claro
+                            {accountT.themeLight}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => applyTheme('dark')}
                             className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                           >
                             <Moon className="h-5 w-5 mr-3 shrink-0" />
-                            Escuro
+                            {accountT.themeDark}
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuPortal>
@@ -568,7 +575,7 @@ export function SidebarMenuContent() {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#E50914] focus:text-white hover:!bg-[#E50914] hover:!text-white"
                     >
                       <Video className="h-5 w-5 mr-3 shrink-0" />
-                      Tutoriais | Domiflix
+                      {accountT.tutorials}
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
@@ -576,7 +583,7 @@ export function SidebarMenuContent() {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <HelpCircle className="h-5 w-5 mr-3 shrink-0" />
-                      Central de Ajuda
+                      {accountT.helpCenter}
                     </DropdownMenuItem>
 
                     {/* Falar com o Suporte — hover verde WhatsApp HARDCODED.
@@ -586,7 +593,7 @@ export function SidebarMenuContent() {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#25D366] focus:text-white hover:!bg-[#25D366] hover:!text-white"
                     >
                       <WhatsAppIcon className="h-5 w-5 mr-3 shrink-0 fill-current" />
-                      Falar com o Suporte
+                      {accountT.support}
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
@@ -599,7 +606,7 @@ export function SidebarMenuContent() {
                 <AccountSwitcherDropdown>
                   <div
                     className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 rounded-md transition-colors text-left cursor-pointer"
-                    aria-label="Trocar de conta"
+                    aria-label={accountT.switchAccountAria}
                   >
                     <Avatar className="h-9 w-9 shrink-0">
                       <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
@@ -641,20 +648,20 @@ export function SidebarMenuContent() {
                 <button
                   type="button"
                   onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/configuracoes')}
-                  aria-label="Configurações"
+                  aria-label={accountT.settings}
                   className="flex-[3] h-9 flex items-center justify-center gap-2 rounded-md text-[13px] font-semibold text-sidebar-foreground hover:bg-gradient-to-r hover:from-gray-800 hover:to-gray-900 hover:text-white transition-colors duration-300"
                 >
                   <SettingsIcon className="h-4 w-4 shrink-0" />
-                  <span>Configurações</span>
+                  <span>{accountT.settings}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => signOut()}
-                  aria-label="Sair"
+                  aria-label={accountT.logout}
                   className="flex-[2] h-9 flex items-center justify-center gap-2 rounded-md text-[13px] font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-colors"
                 >
                   <LogOut className="h-4 w-4 shrink-0" />
-                  <span>Sair</span>
+                  <span>{accountT.logout}</span>
                 </button>
               </div>
             )}
@@ -663,13 +670,13 @@ export function SidebarMenuContent() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => signOut()}
-                    aria-label="Sair"
+                    aria-label={accountT.logout}
                     className="h-8 w-8 flex items-center justify-center rounded-lg text-red-600 hover:bg-red-600 hover:text-white transition-colors"
                   >
                     <LogOut className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Sair</TooltipContent>
+                <TooltipContent side="right">{accountT.logout}</TooltipContent>
               </Tooltip>
             )}
           </div>

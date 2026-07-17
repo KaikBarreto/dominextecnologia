@@ -15,7 +15,14 @@
 //
 // Conteúdo longo de segmento/módulo/blog NÃO vem por aqui — é dados por idioma
 // em content/<locale>.ts (outra frente).
+//
+// APP LOGADO: o namespace `app` NÃO vive mais inline aqui — ele é organizado por
+// DOMÍNIO em `messages/app/*.ts` (cada arquivo com os 4 locales juntos) e agregado
+// por `appByLocale` (messages/app/index.ts). pt-br usa `appByLocale['pt-br']`;
+// en/es/fr recebem sua fatia em messages/index.ts (não sobrescrevem `app` inline).
 // ─────────────────────────────────────────────────────────────────────────────
+
+import { appByLocale } from './app';
 
 export const ptBr = {
   languageSelector: {
@@ -958,18 +965,12 @@ export const ptBr = {
     refreshing: 'Atualizando sistema...',
   },
 
-  // ── APP LOGADO (i18n Fase 0) ────────────────────────────────────────────────
-  // Namespace do sistema APÓS o login. Hoje só o `common` (padrão estabelecido);
-  // as chaves por DOMÍNIO (os/financeiro/pmoc/...) entram nas fases seguintes,
-  // organizadas por área. en/es/fr sobrescrevem via deepMerge; chave ausente cai
-  // no pt-br (o app nunca quebra por falta de tradução).
-  app: {
-    common: {
-      save: 'Salvar',
-      cancel: 'Cancelar',
-      loading: 'Carregando...',
-    },
-  },
+  // ── APP LOGADO (i18n) ───────────────────────────────────────────────────────
+  // Namespace do sistema APÓS o login, organizado por DOMÍNIO em messages/app/*.
+  // pt-br é a fatia-base (`appByLocale['pt-br']`); en/es/fr recebem SUA fatia em
+  // messages/index.ts (o `app` NÃO é sobrescrito inline nos overrides de locale).
+  // Como adicionar um domínio: ver messages/app/index.ts.
+  app: appByLocale['pt-br'],
 } as const;
 
 /** Shape canônico das mensagens de UI. en/es/fr fazem fallback pra ele. */

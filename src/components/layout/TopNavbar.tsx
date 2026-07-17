@@ -52,6 +52,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
+import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -128,6 +131,10 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 export const TopNavbar = memo(() => {
   const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
+  const { locale } = useAppLocaleContext();
+  const shellT = MESSAGES[locale].app.shell;
+  const accountT = shellT.account;
+  const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const { logoUrl, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
   const location = useLocation();
   const navigate = useNavigate();
@@ -166,7 +173,7 @@ export const TopNavbar = memo(() => {
         .map((item) => (item.children ? { ...item, children: filterByAccess(item.children) } : item))
         .filter((item) => !item.children || item.children.length > 0);
 
-  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Usuário';
+  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || shellT.defaultUserName;
   const initials = profileName
     .split(' ')
     .map((n) => n[0])
@@ -236,7 +243,7 @@ export const TopNavbar = memo(() => {
                           )}
                         >
                           <item.icon className="h-4 w-4" />
-                          {item.title}
+                          {tMenu(item.title)}
                           <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -252,7 +259,7 @@ export const TopNavbar = memo(() => {
                             )}
                           >
                             <child.icon className="h-4 w-4 shrink-0" />
-                            <span>{child.title}</span>
+                            <span>{tMenu(child.title)}</span>
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>
@@ -273,7 +280,7 @@ export const TopNavbar = memo(() => {
                     }
                   >
                     <item.icon className="h-4 w-4" />
-                    {item.title}
+                    {tMenu(item.title)}
                   </NavLink>
                 );
               })}
@@ -292,7 +299,7 @@ export const TopNavbar = memo(() => {
                 <button
                   type="button"
                   className="flex items-center gap-2 rounded-xl border border-border/60 hover:bg-muted/60 transition-colors text-left px-2 py-1.5 2xl:max-w-[240px]"
-                  aria-label="Menu da conta"
+                  aria-label={accountT.accountMenuAria}
                 >
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
@@ -321,7 +328,7 @@ export const TopNavbar = memo(() => {
                 <AccountSwitcherDropdown>
                   <div
                     className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 rounded-md transition-colors text-left cursor-pointer"
-                    aria-label="Trocar de conta"
+                    aria-label={accountT.switchAccountAria}
                   >
                     <Avatar className="h-9 w-9 shrink-0">
                       <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
@@ -365,7 +372,7 @@ export const TopNavbar = memo(() => {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <User className="h-5 w-5 mr-3 shrink-0" />
-                      Perfil
+                      {accountT.profile}
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
@@ -373,13 +380,13 @@ export const TopNavbar = memo(() => {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <CreditCard className="h-5 w-5 mr-3 shrink-0" />
-                      Assinatura
+                      {accountT.subscription}
                     </DropdownMenuItem>
 
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground">
                         {theme === 'dark' ? <Moon className="h-5 w-5 mr-3 shrink-0" /> : <Sun className="h-5 w-5 mr-3 shrink-0" />}
-                        Tema
+                        {accountT.theme}
                       </DropdownMenuSubTrigger>
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent className="w-40 p-1.5">
@@ -388,14 +395,14 @@ export const TopNavbar = memo(() => {
                             className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                           >
                             <Sun className="h-5 w-5 mr-3 shrink-0" />
-                            Claro
+                            {accountT.themeLight}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => applyTheme('dark')}
                             className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                           >
                             <Moon className="h-5 w-5 mr-3 shrink-0" />
-                            Escuro
+                            {accountT.themeDark}
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuPortal>
@@ -408,7 +415,7 @@ export const TopNavbar = memo(() => {
                   className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                 >
                   <SettingsIcon className="h-5 w-5 mr-3 shrink-0" />
-                  Configurações
+                  {accountT.settings}
                 </DropdownMenuItem>
 
                 {!isAdminUser && (
@@ -421,7 +428,7 @@ export const TopNavbar = memo(() => {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#E50914] focus:text-white hover:!bg-[#E50914] hover:!text-white"
                     >
                       <Video className="h-5 w-5 mr-3 shrink-0" />
-                      Tutoriais | Domiflix
+                      {accountT.tutorials}
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
@@ -429,7 +436,7 @@ export const TopNavbar = memo(() => {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <HelpCircle className="h-5 w-5 mr-3 shrink-0" />
-                      Central de Ajuda
+                      {accountT.helpCenter}
                     </DropdownMenuItem>
 
                     {/* Falar com o Suporte — hover verde WhatsApp HARDCODED. */}
@@ -438,7 +445,7 @@ export const TopNavbar = memo(() => {
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#25D366] focus:text-white hover:!bg-[#25D366] hover:!text-white"
                     >
                       <WhatsAppIcon className="h-5 w-5 mr-3 shrink-0 fill-current" />
-                      Falar com o Suporte
+                      {accountT.support}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -449,13 +456,13 @@ export const TopNavbar = memo(() => {
               <TooltipTrigger asChild>
                 <button
                   onClick={signOut}
-                  aria-label="Sair"
+                  aria-label={accountT.logout}
                   className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg text-red-600 hover:bg-red-600 hover:text-white transition-colors"
                 >
                   <LogOut className="h-5 w-5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Sair</TooltipContent>
+              <TooltipContent>{accountT.logout}</TooltipContent>
             </Tooltip>
           </div>
         </header>

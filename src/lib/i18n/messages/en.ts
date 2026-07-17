@@ -873,14 +873,10 @@ export const enOverrides: MessagesOverride = {
     refreshing: 'Refreshing app...',
   },
 
-  // ── Logged-in app (i18n Phase 0) ────────────────────────────────────────────
-  app: {
-    common: {
-      save: 'Save',
-      cancel: 'Cancel',
-      loading: 'Loading...',
-    },
-  },
+  // ── Logged-in app (i18n) ─────────────────────────────────────────────────────
+  // O namespace `app` NÃO é sobrescrito aqui: ele é organizado por domínio em
+  // messages/app/* (4 locales por arquivo) e injetado por locale em
+  // messages/index.ts (appByLocale). Ver messages/app/index.ts.
 };
 
 export default enOverrides;
