@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface TechnicianPerf {
   name: string;
@@ -27,6 +29,8 @@ function formatTime(minutes: number) {
 export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }: { technicians: TechnicianPerf[]; isLoading: boolean; emCampoAgora?: number }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard.topTechnicians;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
@@ -35,7 +39,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
               <Trophy className="h-5 w-5 text-muted-foreground" />
-              Desempenho da Equipe
+              {t.title}
             </CardTitle>
           </div>
         </CardHeader>
@@ -63,7 +67,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
                       title={tech.name}
                       subtitle={
                         <div className="flex items-center gap-2 flex-wrap text-xs">
-                          <span>{tech.completed} OS</span>
+                          <span>{t.osCount.replace('{n}', String(tech.completed))}</span>
                           {tech.avgRating > 0 && (
                             <span className="flex items-center gap-0.5">
                               <Star className="h-3 w-3 text-warning fill-warning" />{tech.avgRating.toFixed(1)}
@@ -93,7 +97,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{tech.name}</p>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{tech.completed} concluídas</span>
+                          <span>{t.completedCount.replace('{n}', String(tech.completed))}</span>
                           {tech.avgRating > 0 && (
                             <span className="flex items-center gap-0.5">
                               <Star className="h-3 w-3 text-warning fill-warning" />{tech.avgRating.toFixed(1)}
@@ -101,7 +105,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
                           )}
                           {tech.avgTimeMinutes > 0 && (
                             <span className="flex items-center gap-0.5">
-                              <Clock className="h-3 w-3" />{formatTime(tech.avgTimeMinutes)} médio
+                              <Clock className="h-3 w-3" />{t.avgSuffix.replace('{time}', formatTime(tech.avgTimeMinutes))}
                             </span>
                           )}
                         </div>
@@ -117,20 +121,20 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
                       <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
                     </span>
-                    <span><strong className="text-foreground">{emCampoAgora}</strong> técnico{emCampoAgora !== 1 ? 's' : ''} em campo</span>
+                    <span><strong className="text-foreground">{emCampoAgora}</strong> {emCampoAgora === 1 ? t.inFieldOne : t.inFieldOther}</span>
                   </div>
                 )}
                 <button
                   onClick={() => navigate('/ordens-servico')}
                   className="text-xs text-primary font-medium hover:underline active:scale-95 transition-transform flex items-center gap-1 ml-auto min-h-9 px-2 -mr-2"
                 >
-                  Ver relatório <ArrowRight className="h-3 w-3" />
+                  {t.viewReport} <ArrowRight className="h-3 w-3" />
                 </button>
               </div>
             </>
           ) : (
             <div className="flex h-[120px] items-center justify-center text-muted-foreground text-sm">
-              Nenhum técnico com OS concluída no período
+              {t.empty}
             </div>
           )}
         </CardContent>

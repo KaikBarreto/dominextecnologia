@@ -3,6 +3,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3 } from 'lucide-react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney, formatNumber, toBcp47 } from '@/lib/format';
 
 interface CashFlowData {
   data: Array<{ label: string; entradas: number; saidas: number }>;
@@ -10,16 +13,15 @@ interface CashFlowData {
   totalSaidas: number;
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+/** Símbolo da moeda no locale (ex.: 'R$', '$', '€') — pro eixo Y compacto. */
+function currencySymbol(currency: string, locale: string): string {
+  try {
+    const parts = new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0);
+    return parts.find((p) => p.type === 'currency')?.value ?? currency;
+  } catch {
+    return currency;
+  }
 }
-
-const formatYAxis = (value: number) => {
-  if (value === 0) return 'R$ 0';
-  if (Math.abs(value) >= 1000000) return `R$ ${(value / 1000000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1000) return `R$ ${(value / 1000).toFixed(0)}k`;
-  return `R$ ${value}`;
-};
 
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--card))',
@@ -31,7 +33,18 @@ const tooltipStyle = {
 };
 
 export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isLoading: boolean }) {
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard.cashFlow;
+  const bcp47 = toBcp47(locale);
+  const symbol = currencySymbol(currency, bcp47);
   const saldo = data.totalEntradas - data.totalSaidas;
+
+  const formatYAxis = (value: number) => {
+    if (value === 0) return `${symbol} 0`;
+    if (Math.abs(value) >= 1000000) return `${symbol} ${formatNumber(value / 1000000, locale, { maximumFractionDigits: 1 })}M`;
+    if (Math.abs(value) >= 1000) return `${symbol} ${formatNumber(value / 1000, locale, { maximumFractionDigits: 0 })}k`;
+    return `${symbol} ${formatNumber(value, locale)}`;
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
@@ -39,7 +52,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start leading-tight">
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
-            Fluxo de Caixa
+            {t.title}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -79,7 +92,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
                     tickLine={false}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number) => formatMoney(value, currency, locale)}
                     contentStyle={tooltipStyle}
                     cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
                   />
@@ -109,7 +122,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
                   <Line
                     type="monotone"
                     dataKey="entradas"
-                    name="Entradas"
+                    name={t.inflows}
                     stroke="hsl(var(--success))"
                     strokeWidth={2.5}
                     strokeLinecap="round"
@@ -120,7 +133,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
                   <Line
                     type="monotone"
                     dataKey="saidas"
-                    name="Saídas"
+                    name={t.outflows}
                     stroke="hsl(var(--destructive))"
                     strokeWidth={2.5}
                     strokeLinecap="round"
@@ -133,23 +146,23 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
               <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm justify-center">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--success))' }} />
-                  <span className="text-muted-foreground">Entradas:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(data.totalEntradas)}</span>
+                  <span className="text-muted-foreground">{t.inflowsLabel}</span>
+                  <span className="font-semibold text-foreground">{formatMoney(data.totalEntradas, currency, locale)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
-                  <span className="text-muted-foreground">Saídas:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(data.totalSaidas)}</span>
+                  <span className="text-muted-foreground">{t.outflowsLabel}</span>
+                  <span className="font-semibold text-foreground">{formatMoney(data.totalSaidas, currency, locale)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`h-2.5 w-2.5 rounded-full ${saldo >= 0 ? 'bg-success' : 'bg-destructive'}`} />
-                  <span className="text-muted-foreground">Saldo:</span>
-                  <span className={`font-semibold ${saldo >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(saldo)}</span>
+                  <span className="text-muted-foreground">{t.balanceLabel}</span>
+                  <span className={`font-semibold ${saldo >= 0 ? 'text-success' : 'text-destructive'}`}>{formatMoney(saldo, currency, locale)}</span>
                 </div>
               </div>
             </>
           ) : (
-            <div className="flex h-[250px] items-center justify-center text-muted-foreground text-sm">Sem dados para exibir</div>
+            <div className="flex h-[250px] items-center justify-center text-muted-foreground text-sm">{t.empty}</div>
           )}
         </CardContent>
       </Card>

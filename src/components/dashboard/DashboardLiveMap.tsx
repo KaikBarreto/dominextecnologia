@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { buildCustomerAddress, geocodeAddress } from '@/utils/geolocation';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import 'leaflet/dist/leaflet.css';
 
 interface TechInField {
@@ -39,6 +41,8 @@ const getTileUrl = () =>
 
 export function DashboardLiveMap({ technicians, isLoading }: { technicians: TechInField[]; isLoading: boolean }) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard.liveMap;
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
@@ -189,11 +193,11 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
               <MapPin className="h-5 w-5 text-muted-foreground" />
-              Equipe em Campo
+              {t.title}
             </CardTitle>
             <Badge className="bg-primary text-primary-foreground border-primary hover:bg-primary/90 gap-1 text-xs">
               <span className="h-2 w-2 rounded-full bg-primary-foreground animate-pulse" />
-              Ao vivo
+              {t.live}
             </Badge>
           </div>
         </CardHeader>
@@ -213,14 +217,14 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
                     <div className="absolute inset-0 bg-background/30 backdrop-blur-[1px] pointer-events-none" />
                     <div className="absolute inset-0 flex items-center justify-center px-4 pointer-events-none">
                       <div className="bg-background/95 border border-border rounded-xl shadow-lg px-4 py-3 flex flex-col items-center gap-2 pointer-events-auto max-w-[260px] text-center">
-                        <p className="text-sm font-medium text-foreground">Nenhum técnico em campo agora</p>
+                        <p className="text-sm font-medium text-foreground">{t.empty}</p>
                         <Button
                           variant="link"
                           size="sm"
                           className="h-auto p-0 text-xs gap-1 min-h-9 active:scale-95 transition-transform"
                           onClick={() => navigate('/mapa-ao-vivo')}
                         >
-                          Abrir Mapa ao Vivo <ArrowRight className="h-3 w-3" />
+                          {t.openLiveMap} <ArrowRight className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>

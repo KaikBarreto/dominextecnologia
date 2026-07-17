@@ -59,10 +59,13 @@ function deepMerge<T>(base: T, override: DeepPartial<T> | undefined): T {
 
 /**
  * Resolve as mensagens de um locale: parte do pt-br (base completa), aplica os
- * overrides do SITE (deepMerge) e injeta o namespace `app` já fatiado no locale
- * (appByLocale). O `app` é montado por domínio em messages/app/* — cada arquivo
- * já traz os 4 locales, então a fatia do locale substitui inteira o `app`
- * (chave ausente num domínio cai no pt-br dentro do próprio arquivo de domínio).
+ * overrides do SITE (deepMerge) e injeta o namespace `app`.
+ *
+ * REDE DE SEGURANÇA (crítico): o `app` do locale é feito por `deepMerge` SOBRE o
+ * `app` do pt-br (a fatia pt-br é a base completa). Assim, QUALQUER chave que uma
+ * tradução esqueça/não tenha (domínio ainda não traduzido, chave nova, stub vazio)
+ * cai automaticamente no português — nunca vira `undefined`/tela em branco/crash.
+ * Traduzir uma tela nova NÃO pode quebrar o que já funcionava.
  */
 function resolveLocale(
   base: Messages,
@@ -70,7 +73,11 @@ function resolveLocale(
   locale: LocaleCode,
 ): Messages {
   const merged = deepMerge(base, siteOverrides);
-  return { ...merged, app: appByLocale[locale] } as Messages;
+  const app = deepMerge(
+    appByLocale['pt-br'] as Messages['app'],
+    appByLocale[locale] as DeepPartial<Messages['app']>,
+  );
+  return { ...merged, app } as Messages;
 }
 
 export const MESSAGES: Record<LocaleCode, Messages> = {

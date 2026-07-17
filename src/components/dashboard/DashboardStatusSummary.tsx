@@ -3,18 +3,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ListChecks } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
-const statusConfig: Record<string, { label: string; colorClass: string; barColor: string }> = {
-  pendente: { label: 'Pendente', colorClass: 'text-warning', barColor: 'bg-warning' },
-  agendada: { label: 'Agendada', colorClass: 'text-info', barColor: 'bg-info' },
-  a_caminho: { label: 'A Caminho', colorClass: 'text-info', barColor: 'bg-info' },
-  em_andamento: { label: 'Em Andamento', colorClass: 'text-primary', barColor: 'bg-primary' },
-  concluida: { label: 'Concluída', colorClass: 'text-success', barColor: 'bg-success' },
-  cancelada: { label: 'Cancelada', colorClass: 'text-destructive', barColor: 'bg-destructive' },
+type StatusKey = 'pendente' | 'agendada' | 'a_caminho' | 'em_andamento' | 'concluida' | 'cancelada';
+
+const statusStyle: Record<StatusKey, { colorClass: string; barColor: string }> = {
+  pendente: { colorClass: 'text-warning', barColor: 'bg-warning' },
+  agendada: { colorClass: 'text-info', barColor: 'bg-info' },
+  a_caminho: { colorClass: 'text-info', barColor: 'bg-info' },
+  em_andamento: { colorClass: 'text-primary', barColor: 'bg-primary' },
+  concluida: { colorClass: 'text-success', barColor: 'bg-success' },
+  cancelada: { colorClass: 'text-destructive', barColor: 'bg-destructive' },
 };
+
+const STATUS_ORDER: StatusKey[] = ['pendente', 'agendada', 'a_caminho', 'em_andamento', 'concluida', 'cancelada'];
 
 export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<string, number>; isLoading: boolean }) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard.statusSummary;
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
@@ -23,7 +31,7 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start leading-tight">
             <ListChecks className="h-5 w-5 text-muted-foreground" />
-            OS por Status
+            {t.title}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -31,7 +39,8 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
             <div className="space-y-4">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
           ) : (
             <div className="space-y-3">
-              {Object.entries(statusConfig).map(([key, config]) => {
+              {STATUS_ORDER.map((key) => {
+                const style = statusStyle[key];
                 const count = counts[key] || 0;
                 if (count === 0 && key === 'cancelada') return null;
                 const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -43,7 +52,7 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
                     className="w-full text-left group min-h-11 py-1 rounded-lg active:scale-[0.98] transition-transform"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`text-sm font-medium ${config.colorClass} group-hover:underline`}>{config.label}</span>
+                      <span className={`text-sm font-medium ${style.colorClass} group-hover:underline`}>{t.status[key]}</span>
                       <div className="flex items-center gap-2 text-sm">
                         <span className="font-bold text-foreground">{count}</span>
                         <span className="text-xs text-muted-foreground w-10 text-right">({percentage}%)</span>
@@ -51,7 +60,7 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
                     </div>
                     <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${config.barColor}`}
+                        className={`h-full rounded-full transition-all duration-700 ${style.barColor}`}
                         style={{ width: `${percentage}%` }}
                       />
                     </div>

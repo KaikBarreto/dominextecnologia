@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface CriticalOS {
   id: string;
@@ -20,6 +22,10 @@ export interface CriticalOS {
 export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[]; isLoading: boolean }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard.critical;
+  const overdueDaysLabel = (n: number) =>
+    (n === 1 ? t.overdueOne : t.overdueOther).replace('{n}', String(n));
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
@@ -28,7 +34,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
               <AlertTriangle className="h-5 w-5 text-muted-foreground" />
-              Requer Atenção
+              {t.title}
             </CardTitle>
             {items.length > 0 && (
               <Badge variant="destructive" className="text-xs">{items.length}</Badge>
@@ -59,7 +65,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                     subtitle={
                       <div className="flex items-center gap-2 text-destructive">
                         <Clock className="h-3 w-3 shrink-0" />
-                        <span>Atrasada {os.daysOverdue}d {!os.hasTechnician && '· sem técnico'}</span>
+                        <span>{t.overdueShort.replace('{n}', String(os.daysOverdue))} {!os.hasTechnician && `· ${t.noTechnicianShort}`}</span>
                       </div>
                     }
                   />
@@ -69,7 +75,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                     onClick={() => navigate('/ordens-servico')}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2.5 border-t hover:bg-muted/40 active:bg-muted/60 flex items-center justify-center gap-1"
                   >
-                    Ver todas as OS críticas <ArrowRight className="h-3 w-3" />
+                    {t.viewAllCritical} <ArrowRight className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -95,7 +101,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                         </span>
                       )}
                       <span className="flex items-center gap-1 text-destructive">
-                        <Clock className="h-3 w-3" />Atrasada {os.daysOverdue} {os.daysOverdue === 1 ? 'dia' : 'dias'}
+                        <Clock className="h-3 w-3" />{overdueDaysLabel(os.daysOverdue)}
                       </span>
                     </div>
                     {!os.hasTechnician && (
@@ -103,7 +109,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                         className="text-xs text-primary font-medium flex items-center gap-1 mt-1 hover:underline"
                         onClick={(e) => { e.stopPropagation(); navigate('/ordens-servico'); }}
                       >
-                        Atribuir técnico <ArrowRight className="h-3 w-3" />
+                        {t.assignTechnician} <ArrowRight className="h-3 w-3" />
                       </button>
                     )}
                   </div>
@@ -113,7 +119,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                     onClick={() => navigate('/ordens-servico')}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2 hover:underline flex items-center justify-center gap-1"
                   >
-                    Ver todas as OS <ArrowRight className="h-3 w-3" />
+                    {t.viewAll} <ArrowRight className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -123,8 +129,8 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
               <div className="p-3 rounded-full bg-success/10 mb-3">
                 <CheckCircle2 className="h-6 w-6 text-success" />
               </div>
-              <p className="text-sm font-medium text-foreground">Tudo em dia!</p>
-              <p className="text-xs text-muted-foreground mt-1">Nenhuma OS requer atenção imediata</p>
+              <p className="text-sm font-medium text-foreground">{t.allClearTitle}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.allClearSubtitle}</p>
             </div>
           )}
         </CardContent>

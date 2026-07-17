@@ -5,6 +5,9 @@ import { useCountUp } from './useCountUp';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { KPICard } from './KPICard';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface KPIData {
   osAbertas: number;
@@ -18,13 +21,11 @@ interface KPIData {
   trendFaturamento?: number;
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
 export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: boolean }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard;
   const animatedFaturamento = useCountUp(data.faturamento, 1500, 2);
 
   if (isLoading) {
@@ -47,9 +48,9 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
 
   const kpiCards = [
     {
-      title: 'OS Abertas',
+      title: t.kpis.openOs,
       value: data.osAbertas,
-      subtitle: `${data.osPendentes} pendentes`,
+      subtitle: t.kpis.openOsSubtitle.replace('{n}', String(data.osPendentes)),
       icon: ClipboardList,
       bgClass: 'bg-warning',
       trend: data.trendOS,
@@ -57,20 +58,20 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
       onClick: () => navigate('/ordens-servico'),
     },
     {
-      title: 'Taxa de Conclusão',
+      title: t.kpis.completionRate,
       value: data.taxaConclusao,
       formattedValue: `${data.taxaConclusao}%`,
-      subtitle: `${data.osConcluidas} concluídas este mês`,
+      subtitle: t.kpis.completionSubtitle.replace('{n}', String(data.osConcluidas)),
       icon: TrendingUp,
       bgClass: 'bg-info',
       delay: 1,
       onClick: () => navigate('/ordens-servico'),
     },
     {
-      title: 'Faturamento',
+      title: t.kpis.revenue,
       value: data.faturamento,
-      formattedValue: formatCurrency(animatedFaturamento),
-      subtitle: 'no período selecionado',
+      formattedValue: formatMoney(animatedFaturamento, currency, locale),
+      subtitle: t.kpis.revenueSubtitle,
       icon: DollarSign,
       bgClass: 'bg-success',
       trend: data.trendFaturamento,

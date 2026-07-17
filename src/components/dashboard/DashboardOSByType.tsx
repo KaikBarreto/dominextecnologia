@@ -3,6 +3,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Layers } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { motion } from 'framer-motion';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const CHART_COLORS = [
   'hsl(var(--primary))',
@@ -32,6 +34,8 @@ const tooltipStyle = {
 };
 
 export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoading: boolean }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard.osByType;
   const total = data.reduce((s, d) => s + d.value, 0);
 
   return (
@@ -40,7 +44,7 @@ export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoa
         <CardHeader className="pb-2">
           <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start leading-tight">
             <Layers className="h-5 w-5 text-muted-foreground" />
-            OS por Tipo de Serviço
+            {t.title}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -79,7 +83,7 @@ export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoa
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-2xl font-bold text-foreground">{total}</span>
-                  <span className="text-[10px] text-muted-foreground">total</span>
+                  <span className="text-[10px] text-muted-foreground">{t.total}</span>
                 </div>
               </div>
               <div className="flex-1 w-full space-y-2">
@@ -101,7 +105,7 @@ export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoa
               </div>
             </div>
           ) : (
-            <div className="flex h-[180px] items-center justify-center text-muted-foreground text-sm">Sem OS no período</div>
+            <div className="flex h-[180px] items-center justify-center text-muted-foreground text-sm">{t.empty}</div>
           )}
         </CardContent>
       </Card>

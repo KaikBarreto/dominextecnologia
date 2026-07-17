@@ -44,12 +44,18 @@
 import type { LocaleCode } from '../../locales';
 import { common } from './common';
 import { shell } from './shell';
+import { dashboard } from './dashboard';
+import { os } from './os';
+import { customers } from './customers';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
   return {
     common: common[locale],
     shell: shell[locale],
+    dashboard: dashboard[locale],
+    os: os[locale],
+    customers: customers[locale],
     // <dominio>: <dominio>[locale],
   };
 }

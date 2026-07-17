@@ -4,6 +4,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { motion } from 'framer-motion';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
 
@@ -20,10 +22,11 @@ const tooltipStyle = {
   color: 'hsl(var(--foreground))',
 };
 
-const viewLabels: Record<ViewMode, string> = { daily: 'Diário', weekly: 'Semanal', monthly: 'Mensal' };
-
 export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData; isLoading: boolean }) {
   const [view, setView] = useState<ViewMode>('monthly');
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard.evolution;
+  const viewLabels: Record<ViewMode, string> = { daily: t.daily, weekly: t.weekly, monthly: t.monthly };
   const chartData = data[view];
 
   return (
@@ -33,7 +36,7 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
           <div className="flex flex-col items-center gap-2 lg:flex-row lg:justify-between">
             <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left leading-tight">
               <Activity className="h-5 w-5 text-muted-foreground" />
-              Evolução de OS
+              {t.title}
             </CardTitle>
             <div className="inline-flex rounded-lg border border-border bg-muted/50 p-1">
               {(['daily', 'weekly', 'monthly'] as ViewMode[]).map((v) => (
@@ -83,7 +86,7 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
                   strokeWidth={2}
                   fill="url(#gradEvTotal)"
                   dot={{ r: 3, fill: 'hsl(var(--primary))' }}
-                  name="Total"
+                  name={t.total}
                 />
                 <Area
                   type="monotone"
@@ -92,12 +95,12 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
                   strokeWidth={2}
                   fill="url(#gradEvConcluidas)"
                   dot={{ r: 3, fill: 'hsl(var(--info))' }}
-                  name="Concluídas"
+                  name={t.completed}
                 />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[250px] items-center justify-center text-muted-foreground text-sm">Sem dados no período</div>
+            <div className="flex h-[250px] items-center justify-center text-muted-foreground text-sm">{t.empty}</div>
           )}
         </CardContent>
       </Card>

@@ -1,6 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { osTypeLabels } from '@/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -24,11 +26,11 @@ import { DashboardLiveMap } from '@/components/dashboard/DashboardLiveMap';
 import { useLiveTechnicianLocations } from '@/hooks/useLiveTechnicianLocations';
 import { DateRangeFilter, useDateRangeFilter, type DateRange } from '@/components/ui/DateRangeFilter';
 
-function getGreeting() {
+function getGreeting(t: (typeof MESSAGES)['pt-br']['app']['dashboard']['greeting']) {
   const h = new Date().getHours();
-  if (h >= 5 && h < 12) return 'Bom dia. Aqui está o resumo da sua operação.';
-  if (h >= 12 && h < 18) return 'Boa tarde. Veja como está o dia.';
-  return 'Boa noite. Resumo do dia de hoje.';
+  if (h >= 5 && h < 12) return t.morning;
+  if (h >= 12 && h < 18) return t.afternoon;
+  return t.evening;
 }
 
 function filterByRange<T extends Record<string, any>>(items: T[], field: string, start: Date, end: Date) {
@@ -38,12 +40,10 @@ function filterByRange<T extends Record<string, any>>(items: T[], field: string,
   });
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
 export default function Dashboard() {
   const { profile } = useAuth();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.dashboard;
   const { data: stats, isLoading } = useDashboardStats();
   // Posições GPS AO VIVO dos técnicos (carga inicial + canal realtime, compartilhado
   // com o Mapa ao Vivo). Substitui o antigo posicionamento no endereço do cliente.
@@ -204,7 +204,7 @@ export default function Dashboard() {
       .map(os => ({
         id: os.id,
         orderNumber: os.order_number,
-        customerName: os.customer?.name || 'Cliente não informado',
+        customerName: os.customer?.name || t.critical.customerFallback,
         location: [os.customer?.city, os.customer?.state].filter(Boolean).join(', '),
         daysOverdue: differenceInDays(today, new Date(os.scheduled_date)),
         hasTechnician: !!os.technician_id,
@@ -213,7 +213,7 @@ export default function Dashboard() {
           || os.os_type,
       }))
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
-  }, [stats?.allOS, stats?.serviceTypes]);
+  }, [stats?.allOS, stats?.serviceTypes, t.critical.customerFallback]);
 
   // Top technicians
   const topTechnicians = useMemo((): TechnicianPerf[] => {
@@ -245,7 +245,7 @@ export default function Dashboard() {
       .map(([userId, data]) => {
         const profile = profileMap.get(userId);
         return {
-          name: (profile as any)?.full_name || 'Técnico',
+          name: (profile as any)?.full_name || t.topTechnicians.technicianFallback,
           avatarUrl: (profile as any)?.avatar_url,
           completed: data.completed,
           avgRating: data.ratings.length > 0 ? data.ratings.reduce((a, b) => a + b, 0) / data.ratings.length : 0,
@@ -253,7 +253,7 @@ export default function Dashboard() {
         };
       })
       .sort((a, b) => b.completed - a.completed);
-  }, [filteredOS, stats?.profiles, stats?.ratings]);
+  }, [filteredOS, stats?.profiles, stats?.ratings, t.topTechnicians.technicianFallback]);
 
   // OS by type
   const osByType = useMemo(() => {
@@ -301,23 +301,23 @@ export default function Dashboard() {
         if (!live) return null; // sem GPS ao vivo ainda → não plota
         const profile = profileMap.get(os.technician_id);
         return {
-          name: (profile as any)?.full_name || live.full_name || 'Técnico',
+          name: (profile as any)?.full_name || live.full_name || t.liveMap.technicianFallback,
           avatarUrl: (profile as any)?.avatar_url,
           lat: live.lat,
           lng: live.lng,
           customerName: os.customer?.name || '',
         };
       })
-      .filter((t): t is NonNullable<typeof t> => t !== null);
-  }, [stats?.allOS, stats?.profiles, liveLocations]);
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+  }, [stats?.allOS, stats?.profiles, liveLocations, t.liveMap.technicianFallback]);
 
-  const firstName = profile?.full_name?.split(' ')[0] || 'Usuário';
+  const firstName = profile?.full_name?.split(' ')[0] || t.greeting.fallbackName;
 
   return (
     <div className="min-h-[100dvh] space-y-5 lg:space-y-6">
       <MobilePageHeader
-        title={`Olá, ${firstName}! 👋`}
-        subtitle={getGreeting()}
+        title={t.greeting.hello.replace('{name}', firstName)}
+        subtitle={getGreeting(t.greeting)}
         icon={LayoutDashboard}
         actions={
           !isMobile && (
