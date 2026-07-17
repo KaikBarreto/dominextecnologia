@@ -29,6 +29,7 @@ import { SelectableCardGrid } from '@/components/registration/SelectableCardGrid
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
+import { detectRegionalFromMachine, DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from '@/lib/i18n/regionalDefaults';
 
 interface RegistrationFormData {
   company_name: string;
@@ -247,6 +248,17 @@ export default function Registration() {
       const formattedAddress = addressData.logradouro
         ? `${addressData.logradouro}${addressData.numero ? `, ${addressData.numero}` : ''}${addressData.complemento ? ` - ${addressData.complemento}` : ''}${addressData.bairro ? ` - ${addressData.bairro}` : ''}${addressData.cidade ? ` - ${addressData.cidade}` : ''}${addressData.uf ? `/${addressData.uf}` : ''}${addressData.cep ? ` - CEP: ${addressData.cep}` : ''}`
         : '';
+      // Seed regional (idioma/moeda/fuso) a partir da detecção da máquina.
+      // Defensivo: se a detecção falhar, cai nos defaults pt-br/BRL/São Paulo.
+      // O IDIOMA da empresa e do 1º usuário = o idioma ESCOLHIDO no cadastro
+      // (a página é i18n); moeda/fuso vêm da máquina. Não toca em nada de billing.
+      let regional: { currency: string; timezone: string };
+      try {
+        const detected = detectRegionalFromMachine();
+        regional = { currency: detected.currency, timezone: detected.timezone };
+      } catch {
+        regional = { currency: DEFAULT_CURRENCY, timezone: DEFAULT_TIMEZONE };
+      }
       const { data: result, error } = await supabase.functions.invoke('self-register', {
         body: {
           company_name: data.company_name,
@@ -260,6 +272,10 @@ export default function Registration() {
           segment: companySegment || null,
           // Idioma atual → a edge devolve a mensagem de erro no mesmo idioma.
           locale,
+          // Seed regional do tenant: idioma escolhido no cadastro + moeda/fuso da máquina.
+          language: locale,
+          currency: regional.currency,
+          timezone: regional.timezone,
           // Link/affiliate params
           link_type: linkType || null,
           locked_plan: lockedPlan,

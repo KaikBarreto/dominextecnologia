@@ -170,6 +170,25 @@ Deno.serve(async (req) => {
     // Backward-compat: ausente/vazio grava null, não barra ninguém.
     const company_address = trim(raw.company_address, 500);
 
+    // ── Seed REGIONAL do tenant (idioma/moeda/fuso) ─────────────────────────────
+    // OPCIONAL e NÃO-FATAL. Vive em company_settings (as colunas regionais NÃO
+    // existem em companies) + user_preferences.language do 1º usuário. Nada aqui
+    // toca em plano/cobrança/comissão/vencimento. Backward-compat: cadastro antigo
+    // sem estes campos cai nos defaults pt-br/BRL/America/Sao_Paulo.
+    //   • language → validado contra os 4 locales suportados (reusa resolveLocale).
+    //   • currency → string curta (validação leve); default BRL.
+    //   • timezone → string curta (validação leve); default America/Sao_Paulo.
+    const regionalLanguage: Locale = resolveLocale(raw.language);
+    const regionalCurrency = (() => {
+      const c = trim(raw.currency, 10).toUpperCase();
+      return c && /^[A-Z]{3}$/.test(c) ? c : 'BRL';
+    })();
+    const regionalTimezone = (() => {
+      const tz = trim(raw.timezone, 64);
+      // Validação leve: nome IANA plausível (Região/Cidade). Senão, default.
+      return tz && /^[A-Za-z_]+\/[A-Za-z0-9_+\-/]+$/.test(tz) ? tz : 'America/Sao_Paulo';
+    })();
+
     // Affiliate/sales link params
     const linkType = trim(raw.link_type, 20); // 'teste' | 'venda'
     const lockedPlanRaw = trim(raw.locked_plan, 30).toLowerCase();
@@ -468,6 +487,42 @@ Deno.serve(async (req) => {
     await supabaseAdmin
       .from('user_roles')
       .insert({ user_id: newUser.user.id, role: 'admin' });
+
+    // ── Seed REGIONAL (idioma/moeda/fuso) — NÃO-FATAL ───────────────────────────
+    // A company_settings já foi criada pelo TRIGGER (identidade em 2 tabelas) no
+    // insert de companies. Aqui só damos UPDATE das colunas regionais + gravamos
+    // o idioma do 1º usuário em user_preferences (own-row upsert). NADA de billing.
+    // Falha aqui é logada e ignorada: o cadastro NÃO quebra (o tenant pode ajustar
+    // depois nas Configurações; os defaults do schema já valem pt-br/BRL/SP).
+    try {
+      const { error: settingsRegionalError } = await supabaseAdmin
+        .from('company_settings')
+        .update({
+          language: regionalLanguage,
+          currency: regionalCurrency,
+          timezone: regionalTimezone,
+        })
+        .eq('company_id', company.id);
+      if (settingsRegionalError) {
+        console.error('[self-register] Aviso: falha ao semear regional em company_settings (não-fatal):', settingsRegionalError);
+      }
+    } catch (regionalErr) {
+      console.error('[self-register] Aviso: exceção ao semear regional em company_settings (não-fatal):', regionalErr);
+    }
+
+    try {
+      const { error: prefLangError } = await supabaseAdmin
+        .from('user_preferences')
+        .upsert(
+          { user_id: newUser.user.id, language: regionalLanguage },
+          { onConflict: 'user_id' }
+        );
+      if (prefLangError) {
+        console.error('[self-register] Aviso: falha ao gravar idioma em user_preferences (não-fatal):', prefLangError);
+      }
+    } catch (prefErr) {
+      console.error('[self-register] Aviso: exceção ao gravar idioma em user_preferences (não-fatal):', prefErr);
+    }
 
     // Seed default financial categories
     const defaultCategories = [
