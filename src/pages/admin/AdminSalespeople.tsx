@@ -4,6 +4,7 @@ import {
   Plus, Search, Users, TrendingUp, DollarSign, Target,
   Pencil, Trash2, Eye,
 } from 'lucide-react';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +56,11 @@ export default function AdminSalespeople() {
   const { data: advances = [], isLoading: loadingA } = useAllSalespersonAdvances();
   const deleteMutation = useDeleteSalesperson();
 
+  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
+
+  const filteredSales = useMemo(() => filterByDate(sales, 'created_at'), [sales, filterByDate]);
+  const filteredAdvances = useMemo(() => filterByDate(advances, 'created_at'), [advances, filterByDate]);
+
   const isLoading = loadingS || loadingSa || loadingA || permsLoading;
 
   const filtered = useMemo(
@@ -71,8 +77,8 @@ export default function AdminSalespeople() {
   // ---------------------------------------------------------------------------
   const activeCount = salespeople.filter((s) => s.is_active !== false).length;
   const totalCount = salespeople.length;
-  const totalSales = sales.length;
-  const totalCommission = sales.reduce((sum, s) => sum + (s.commission_amount || 0), 0);
+  const totalSales = filteredSales.length;
+  const totalCommission = filteredSales.reduce((sum, s) => sum + (s.commission_amount || 0), 0);
   const avgPerSeller = activeCount > 0 ? totalSales / activeCount : 0;
 
   // Stats para o carrossel mobile (numéricos puros, compatíveis com o primitivo).
@@ -110,8 +116,8 @@ export default function AdminSalespeople() {
   // Helper para stats por vendedor (igual à tabela desktop).
   const perSellerStats = (id: string, salary: number) => {
     // Inclui vendas onde o vendedor é closer OU SDR; comissão = parcela dele.
-    const s = salesForPerson(sales, id);
-    const a = advances.filter((x) => x.salesperson_id === id);
+    const s = salesForPerson(filteredSales, id);
+    const a = filteredAdvances.filter((x) => x.salesperson_id === id);
     const totalCommissionSeller = s.reduce((sum, x) => sum + commissionForPerson(x, id), 0);
     const totalAdvances = a.reduce((sum, x) => sum + (x.amount || 0), 0);
     return {
@@ -170,6 +176,13 @@ export default function AdminSalespeople() {
           ) : (
             <StatCarousel items={mobileStats} />
           )}
+
+          <DateRangeFilter
+            value={range}
+            preset={preset}
+            onPresetChange={setPreset}
+            onRangeChange={setRange}
+          />
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -287,25 +300,33 @@ export default function AdminSalespeople() {
             <>
               <SalespersonDashboardStats
                 salespeople={salespeople}
-                sales={sales}
-                advances={advances}
+                sales={filteredSales}
+                advances={filteredAdvances}
               />
 
               <div className="space-y-4">
-                <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome ou email..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="relative max-w-md flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome ou email..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <DateRangeFilter
+                    value={range}
+                    preset={preset}
+                    onPresetChange={setPreset}
+                    onRangeChange={setRange}
                   />
                 </div>
                 {filtered.length > 0 ? (
                   <SalespersonPerformanceTable
                     salespeople={filtered}
-                    sales={sales}
-                    advances={advances}
+                    sales={filteredSales}
+                    advances={filteredAdvances}
                     onEdit={handleEdit}
                     onDelete={setDeleteId}
                   />
