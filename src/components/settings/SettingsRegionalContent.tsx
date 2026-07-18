@@ -18,7 +18,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useToast } from '@/hooks/use-toast';
 import { LOCALES, getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
 import { CURRENCIES, currencyLabel } from '@/lib/i18n/currencies';
-import { getAllTimezones, timezoneLabel } from '@/lib/i18n/timezones';
+import { getTimezoneOptions } from '@/lib/i18n/timezones';
 import {
   DEFAULT_CURRENCY,
   DEFAULT_TIMEZONE,
@@ -75,13 +75,13 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Lista completa de fusos (common no topo + resto alfabético). Memo simples: a
-  // lista não muda em runtime, mas evitamos recomputar a cada render.
-  const tzOptionsRef = useRef<{ value: string; label: string }[] | null>(null);
-  if (tzOptionsRef.current === null) {
-    tzOptionsRef.current = getAllTimezones().map((tz) => ({ value: tz, label: timezoneLabel(tz) }));
+  // Opções de fuso em 2 seções: "Mais usados" (5) + "Todos os fusos".
+  // Memo via ref: a lista não muda em runtime — evita recomputar a cada render.
+  const tzGroupsRef = useRef<ReturnType<typeof getTimezoneOptions> | null>(null);
+  if (tzGroupsRef.current === null) {
+    tzGroupsRef.current = getTimezoneOptions();
   }
-  const tzOptions = tzOptionsRef.current;
+  const tzGroups = tzGroupsRef.current;
 
   // Hidrata do banco. Guard anti-eco: não re-hidrata o payload que acabamos de
   // salvar (evita engolir uma edição em voo).
@@ -359,7 +359,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
             Usado para datas e horários exibidos no sistema.
           </p>
           <SearchableSelect
-            options={tzOptions}
+            groups={tzGroups}
             value={timezone}
             onValueChange={setTimezone}
             placeholder="Selecione o fuso"

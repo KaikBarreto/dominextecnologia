@@ -23,8 +23,20 @@ export interface SearchableSelectOption {
   icon?: React.ReactNode;
 }
 
-interface SearchableSelectProps {
+export interface SearchableSelectGroup {
+  heading?: string;
   options: SearchableSelectOption[];
+}
+
+interface SearchableSelectProps {
+  options?: SearchableSelectOption[];
+  /**
+   * Prop OPCIONAL para renderizar o conteúdo em grupos nomeados.
+   * Quando presente, `options` é ignorado e cada grupo vira um `CommandGroup` separado.
+   * A busca do cmdk filtra naturalmente dentro de todos os grupos.
+   * Usos existentes que só passam `options` continuam funcionando sem nenhuma alteração.
+   */
+  groups?: SearchableSelectGroup[];
   value?: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
@@ -35,7 +47,8 @@ interface SearchableSelectProps {
 }
 
 export function SearchableSelect({
-  options,
+  options = [],
+  groups,
   value,
   onValueChange,
   placeholder = 'Selecione...',
@@ -45,7 +58,40 @@ export function SearchableSelect({
   disabled,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const selected = options.find((o) => o.value === value);
+
+  // Encontra o item selecionado tanto no modo flat quanto no modo grupos.
+  const selected = React.useMemo(() => {
+    if (groups) {
+      for (const group of groups) {
+        const found = group.options.find((o) => o.value === value);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    return options.find((o) => o.value === value);
+  }, [groups, options, value]);
+
+  const renderOption = (option: SearchableSelectOption) => (
+    <CommandItem
+      key={option.value}
+      value={option.label}
+      onSelect={() => {
+        onValueChange(option.value);
+        setOpen(false);
+      }}
+    >
+      <Check className={cn('mr-2 h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')} />
+      <div className="flex items-center gap-2 min-w-0">
+        {option.icon}
+        <div className="min-w-0">
+          <span className="truncate">{option.label}</span>
+          {option.sublabel && (
+            <span className="block text-xs text-muted-foreground truncate">{option.sublabel}</span>
+          )}
+        </div>
+      </div>
+    </CommandItem>
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={true}>
@@ -72,29 +118,17 @@ export function SearchableSelect({
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain touch-pan-y">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    onValueChange(option.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Check className={cn('mr-2 h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')} />
-                  <div className="flex items-center gap-2 min-w-0">
-                    {option.icon}
-                    <div className="min-w-0">
-                      <span className="truncate">{option.label}</span>
-                      {option.sublabel && (
-                        <span className="block text-xs text-muted-foreground truncate">{option.sublabel}</span>
-                      )}
-                    </div>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {groups ? (
+              groups.map((group, idx) => (
+                <CommandGroup key={group.heading ?? idx} heading={group.heading}>
+                  {group.options.map(renderOption)}
+                </CommandGroup>
+              ))
+            ) : (
+              <CommandGroup>
+                {options.map(renderOption)}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
