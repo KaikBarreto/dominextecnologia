@@ -11,6 +11,8 @@ import { ptBR } from 'date-fns/locale';
 import { ProposalRenderer } from './ProposalRenderer';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface QuoteViewDialogProps {
   open: boolean;
@@ -22,6 +24,8 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
   const isMobile = useIsMobile();
   const { settings: company } = useCompanySettings();
   const printRef = useRef<HTMLDivElement>(null);
+  const { locale } = useAppLocaleContext();
+  const tq = MESSAGES[locale].app.crm.quotes;
 
   if (!quote) return null;
 
@@ -46,10 +50,13 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
 
   const viewCount = quote.view_count ?? 0;
   const viewsLine = viewCount === 0
-    ? 'Não visualizada pelo cliente ainda'
+    ? tq.viewNotViewed
     : quote.last_viewed_at
-      ? `Visualizada ${viewCount}× · última vez ${format(new Date(quote.last_viewed_at), "dd/MM 'às' HH:mm", { locale: ptBR })} (${formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: ptBR })})`
-      : `Visualizada ${viewCount}×`;
+      ? tq.viewViewedAt
+          .replace('{count}', String(viewCount))
+          .replace('{date}', format(new Date(quote.last_viewed_at), "dd/MM 'às' HH:mm", { locale: ptBR }))
+          .replace('{rel}', formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: ptBR }))
+      : tq.viewViewedCount.replace('{count}', String(viewCount));
 
   const content = (
     <div className="space-y-4">
@@ -61,10 +68,10 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="outline" size="sm" onClick={handleWhatsApp}>
-          <Share2 className="h-4 w-4 mr-1.5" /> WhatsApp
+          <Share2 className="h-4 w-4 mr-1.5" /> {tq.viewShareWhatsApp}
         </Button>
         <Button variant="outline" size="sm" onClick={handlePDF}>
-          <Download className="h-4 w-4 mr-1.5" /> PDF
+          <Download className="h-4 w-4 mr-1.5" /> {tq.viewDownloadPDF}
         </Button>
       </div>
 
@@ -80,7 +87,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
     </div>
   );
 
-  const title = `Proposta #${quote.quote_number}`;
+  const title = tq.viewDialogTitle.replace('{number}', String(quote.quote_number));
 
   if (isMobile) {
     return (

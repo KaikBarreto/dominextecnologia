@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
   ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp,
@@ -47,11 +50,12 @@ import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mob
 import { buildProposalShareLink } from '@/utils/shareLinks';
 import { useToast } from '@/hooks/use-toast';
 
-const ALL_SIDEBAR_TABS = [
-  { value: 'quotes', label: 'Orçamentos', icon: FileText },
-  { value: 'service-costs', label: 'Custos dos Serviços', icon: DollarSign },
-  { value: 'global-costs', label: 'Custos Globais', icon: Boxes, module: 'pricing_advanced' as const },
-  { value: 'pricing', label: 'Precificação', icon: Settings2, module: 'pricing_advanced' as const },
+// Tabs are built dynamically using i18n inside the Quotes component.
+const ALL_SIDEBAR_TAB_KEYS = [
+  { value: 'quotes', labelKey: 'tabQuotes' as const, icon: FileText },
+  { value: 'service-costs', labelKey: 'tabServiceCosts' as const, icon: DollarSign },
+  { value: 'global-costs', labelKey: 'tabGlobalCosts' as const, icon: Boxes, module: 'pricing_advanced' as const },
+  { value: 'pricing', labelKey: 'tabPricing' as const, icon: Settings2, module: 'pricing_advanced' as const },
 ];
 
 // Hex por status — usado no leading do MobileListItem.
@@ -108,6 +112,8 @@ function QuoteViewsIndicator({ quote, className }: { quote: Quote; className?: s
 
 function QuotesList() {
   const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
+  const tq = MESSAGES[locale].app.crm.quotes;
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
   const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
@@ -124,12 +130,12 @@ function QuotesList() {
     });
     try {
       await navigator.clipboard.writeText(link);
-      toast({ title: 'Link gerado e copiado!', description: 'Já pode colar e enviar pro cliente.' });
+      toast({ title: tq.linkCopiedTitle, description: tq.linkCopiedDesc });
     } catch {
       // Fallback quando o navegador bloqueia clipboard (ex.: contexto não seguro):
       // mostra o link pra cópia manual.
       toast({
-        title: 'Link da proposta gerado',
+        title: tq.linkGeneratedTitle,
         description: link,
         variant: 'default',
       });
@@ -162,10 +168,9 @@ function QuotesList() {
   const pagination = useDataPagination(sortedItems);
 
   // KPIs no padrão KPICard (mesmo visual da tela de Ordens de Serviço).
-  // Valores monetários usam `formattedValue` com R$ já formatado — antes o
-  // StatCarousel renderizava o número cru sem moeda.
+  // Valores monetários usam `formattedValue` formatado com moeda/locale da empresa.
   const fmtBRL = (v: number) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+    formatMoney(Math.round(v), currency, locale);
 
   const kpiCards = useMemo(() => {
     const base: Array<{
@@ -178,7 +183,7 @@ function QuotesList() {
       onClick?: () => void;
     }> = [
       {
-        title: 'Em Aberto',
+        title: tq.kpiOpen,
         value: kpis.totalOpen,
         formattedValue: fmtBRL(kpis.totalOpen),
         icon: Wallet,
@@ -187,7 +192,7 @@ function QuotesList() {
         onClick: () => setStatusFilter(['enviado']),
       },
       {
-        title: 'Conversão',
+        title: tq.kpiConversion,
         value: kpis.conversionRate,
         formattedValue: `${kpis.conversionRate}%`,
         icon: TrendingUp,
@@ -196,7 +201,7 @@ function QuotesList() {
         onClick: () => setStatusFilter(['aprovado']),
       },
       {
-        title: 'Ticket Médio',
+        title: tq.kpiAvgTicket,
         value: kpis.avgTicket,
         formattedValue: fmtBRL(kpis.avgTicket),
         icon: BarChart3,
@@ -231,15 +236,15 @@ function QuotesList() {
   const filterContent = (
     <div className="space-y-4">
       <FilterCheckboxGroup
-        label="Status"
+        label={tq.filterStatus}
         options={statusOptions}
         selected={statusFilter}
         onChange={setStatusFilter}
-        emptyLabel="Todos"
+        emptyLabel={tq.filterAll}
       />
       <div className="pt-2 border-t">
         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-          Configurações
+          {tq.filterConfig}
         </label>
         <Button
           variant="outline"
@@ -248,7 +253,7 @@ function QuotesList() {
           type="button"
         >
           <Settings2 className="h-4 w-4" />
-          Configurar Proposta
+          {tq.configureProposal}
         </Button>
       </div>
     </div>
@@ -260,7 +265,7 @@ function QuotesList() {
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por cliente ou número..."
+          placeholder={tq.searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -271,11 +276,11 @@ function QuotesList() {
         onClear={() => setStatusFilter([])}
       >
         <FilterCheckboxGroup
-          label="Status"
+          label={tq.filterStatus}
           options={statusOptions}
           selected={statusFilter}
           onChange={setStatusFilter}
-          emptyLabel="Todos"
+          emptyLabel={tq.filterAll}
         />
       </FilterButton>
     </div>
@@ -286,20 +291,20 @@ function QuotesList() {
     const actions: ItemAction[] = [
       {
         key: 'view',
-        label: 'Visualizar',
+        label: tq.actionViewMobile,
         icon: <Eye className="h-4 w-4" />,
         onClick: () => setViewQuote(q),
       },
       {
         key: 'open-public',
-        label: 'Abrir proposta',
+        label: tq.actionOpenProposalMobile,
         icon: <ExternalLink className="h-4 w-4" />,
         // ?preview=1 => visualização do próprio dono não infla o contador de views.
         onClick: () => window.open(`${window.location.origin}/proposta/${q.token}?preview=1`, '_blank'),
       },
       {
         key: 'copy-link',
-        label: 'Gerar link da proposta',
+        label: tq.actionCopyLinkMobile,
         icon: <Link2 className="h-4 w-4" />,
         onClick: () => copyProposalLink(q),
       },
@@ -308,7 +313,7 @@ function QuotesList() {
     if (q.status === 'enviado' || q.status === 'rascunho') {
       actions.push({
         key: 'approve',
-        label: 'Aprovar (registrar recebimento)',
+        label: tq.actionApprove,
         icon: <CheckCircle2 className="h-4 w-4" />,
         onClick: () => setApprovingQuote(q),
       });
@@ -317,7 +322,7 @@ function QuotesList() {
     if (q.status === 'enviado') {
       actions.push({
         key: 'reject',
-        label: 'Rejeitar',
+        label: tq.actionReject,
         icon: <XCircle className="h-4 w-4" />,
         onClick: () => updateStatus.mutate({ id: q.id, status: 'rejeitado' }),
       });
@@ -326,7 +331,7 @@ function QuotesList() {
     if (q.status === 'aprovado' && !q.converted_to_os_id) {
       actions.push({
         key: 'convert',
-        label: 'Converter em OS',
+        label: tq.actionConvertOS,
         icon: <ArrowRight className="h-4 w-4" />,
         onClick: () => convertToServiceOrder.mutate(q),
       });
@@ -335,14 +340,14 @@ function QuotesList() {
     actions.push(
       {
         key: 'edit',
-        label: 'Editar',
+        label: tq.actionEdit,
         icon: <Pencil className="h-4 w-4" />,
         variant: 'edit',
         onClick: () => { setEditQuote(q); setFormOpen(true); },
       },
       {
         key: 'delete',
-        label: 'Excluir',
+        label: tq.actionDelete,
         icon: <Trash2 className="h-4 w-4" />,
         variant: 'destructive',
         onClick: () => setDeleteId(q.id),
@@ -361,7 +366,7 @@ function QuotesList() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar orçamento..."
+                placeholder={tq.searchPlaceholderMobile}
                 className="pl-10 h-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -398,11 +403,11 @@ function QuotesList() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
             <div className="flex gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-                Configurar Proposta
+                {tq.configureProposal}
               </Button>
               <Button size="sm" onClick={() => { setEditQuote(null); setFormOpen(true); }}>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Orçamento
+                {tq.newQuote}
               </Button>
             </div>
           </div>
@@ -432,24 +437,24 @@ function QuotesList() {
         isMobile ? (
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
-            title={search || statusFilter.length > 0 ? 'Nenhum orçamento encontrado' : 'Nenhum orçamento cadastrado'}
-            description={search || statusFilter.length > 0 ? 'Tente filtros diferentes' : 'Toque em "Novo Orçamento" para começar'}
+            title={search || statusFilter.length > 0 ? tq.emptyTitleFiltered : tq.emptyTitle}
+            description={search || statusFilter.length > 0 ? tq.emptyDescFilteredMobile : tq.emptyMobileDesc}
           />
         ) : (
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={<FileText className="h-12 w-12" />}
-                title={search || statusFilter.length > 0 ? 'Nenhum orçamento encontrado' : 'Nenhum orçamento cadastrado'}
+                title={search || statusFilter.length > 0 ? tq.emptyTitleFiltered : tq.emptyTitle}
                 description={
                   search || statusFilter.length > 0
-                    ? 'Tente outro termo ou ajuste os filtros'
-                    : 'Crie seu primeiro orçamento para começar'
+                    ? tq.emptyDescFiltered
+                    : tq.emptyDesc
                 }
                 action={
                   search || statusFilter.length > 0
                     ? undefined
-                    : { label: 'Novo Orçamento', onClick: () => { setEditQuote(null); setFormOpen(true); } }
+                    : { label: tq.emptyActionLabel, onClick: () => { setEditQuote(null); setFormOpen(true); } }
                 }
               />
             </CardContent>
@@ -485,7 +490,7 @@ function QuotesList() {
                   subtitle={
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-foreground">
-                        {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {formatMoney(price, currency, locale)}
                       </span>
                       <span>•</span>
                       <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}</span>
@@ -522,14 +527,14 @@ function QuotesList() {
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableTableHead sortKey="quote_number" sortConfig={sortConfig} onSort={handleSort}>Nº</SortableTableHead>
-                <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
-                <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Data</SortableTableHead>
-                {hasPricing && <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Custo</SortableTableHead>}
-                <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
-                {hasPricing && <TableHead className="hidden lg:table-cell">Margem</TableHead>}
-                <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <SortableTableHead sortKey="quote_number" sortConfig={sortConfig} onSort={handleSort}>{tq.colNumber}</SortableTableHead>
+                <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>{tq.colCustomer}</SortableTableHead>
+                <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{tq.colDate}</SortableTableHead>
+                {hasPricing && <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{tq.colCost}</SortableTableHead>}
+                <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>{tq.colValue}</SortableTableHead>
+                {hasPricing && <TableHead className="hidden lg:table-cell">{tq.colMargin}</TableHead>}
+                <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>{tq.colStatus}</SortableTableHead>
+                <TableHead className="text-right">{tq.colActions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -545,7 +550,7 @@ function QuotesList() {
                       <span>
                         {q.customers?.name ?? q.prospect_name ?? '—'}
                         {!q.customer_id && q.prospect_name && (
-                          <span className="ml-1.5 text-[10px] text-muted-foreground">(prospecto)</span>
+                          <span className="ml-1.5 text-[10px] text-muted-foreground">{tq.prospectSuffix}</span>
                         )}
                       </span>
                       <QuoteViewsIndicator quote={q} />
@@ -556,11 +561,11 @@ function QuotesList() {
                   </TableCell>
                   {hasPricing && (
                     <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
-                      {cost > 0 ? cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+                      {cost > 0 ? formatMoney(cost, currency, locale) : '—'}
                     </TableCell>
                   )}
                   <TableCell className="font-semibold">
-                    {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {formatMoney(price, currency, locale)}
                   </TableCell>
                   {hasPricing && (
                     <TableCell className="hidden lg:table-cell">
@@ -585,41 +590,41 @@ function QuotesList() {
                     <div className="flex items-center justify-end gap-2">
                       {q.financial_transaction_id && (
                         <Badge variant="outline" className="h-7 gap-1 text-success border-success/40" title="Lançamento financeiro gerado">
-                          <DollarSign className="h-3 w-3" /> Recebido
+                          <DollarSign className="h-3 w-3" /> {tq.received}
                         </Badge>
                       )}
                       <RowActionsMenu
                         actions={[
-                          { label: 'Visualizar', icon: Eye, onClick: () => setViewQuote(q) },
-                          { label: 'Abrir proposta em nova guia', icon: ExternalLink, onClick: () => window.open(`${window.location.origin}/proposta/${q.token}?preview=1`, '_blank') },
-                          { label: 'Gerar link da proposta', icon: Link2, onClick: () => copyProposalLink(q) },
+                          { label: tq.actionView, icon: Eye, onClick: () => setViewQuote(q) },
+                          { label: tq.actionOpenProposal, icon: ExternalLink, onClick: () => window.open(`${window.location.origin}/proposta/${q.token}?preview=1`, '_blank') },
+                          { label: tq.actionCopyLink, icon: Link2, onClick: () => copyProposalLink(q) },
                           {
-                            label: 'Aprovar (registrar recebimento)',
+                            label: tq.actionApprove,
                             icon: CheckCircle2,
                             onClick: () => setApprovingQuote(q),
                             hidden: q.status !== 'enviado' && q.status !== 'rascunho',
                           },
                           {
-                            label: 'Rejeitar',
+                            label: tq.actionReject,
                             icon: XCircle,
                             onClick: () => updateStatus.mutate({ id: q.id, status: 'rejeitado' }),
                             hidden: q.status !== 'enviado',
                           },
                           {
-                            label: 'Converter em OS',
+                            label: tq.actionConvertOS,
                             icon: ArrowRight,
                             onClick: () => convertToServiceOrder.mutate(q),
                             disabled: isConverting,
                             hidden: !(q.status === 'aprovado' && !q.converted_to_os_id),
                           },
                           {
-                            label: 'Editar',
+                            label: tq.actionEdit,
                             icon: Pencil,
                             variant: 'edit',
                             onClick: () => { setEditQuote(q); setFormOpen(true); },
                           },
                           {
-                            label: 'Excluir',
+                            label: tq.actionDelete,
                             icon: Trash2,
                             variant: 'delete',
                             onClick: () => setDeleteId(q.id),
@@ -650,7 +655,7 @@ function QuotesList() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Orçamento"
+          label={tq.newQuoteShort}
           onClick={() => { setEditQuote(null); setFormOpen(true); }}
         />
       )}
@@ -674,8 +679,8 @@ function QuotesList() {
         open={!!approvingQuote}
         onOpenChange={(v) => { if (!v) setApprovingQuote(null); }}
         amount={Number(approvingQuote?.final_price ?? approvingQuote?.total_value ?? 0)}
-        title={`Aprovar Orçamento #${approvingQuote?.quote_number}`}
-        description="Como o cliente pagou? Vamos lançar a receita e os custos no financeiro."
+        title={tq.approveTitle.replace('{number}', String(approvingQuote?.quote_number ?? ''))}
+        description={tq.approveDesc}
         isSubmitting={isApproving}
         onConfirm={async (payment) => {
           if (!approvingQuote) return;
@@ -687,16 +692,16 @@ function QuotesList() {
       <AlertDialog open={!!deleteId} onOpenChange={(v) => { if (!v) setDeleteId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle>{tq.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tq.deleteDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tq.deleteCancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => { if (deleteId) deleteQuote.mutate(deleteId); setDeleteId(null); }}
             >
-              Excluir
+              {tq.deleteConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -709,14 +714,18 @@ export default function Quotes() {
   const [activeTab, setActiveTab] = useState('quotes');
   const { hasModule } = useCompanyModules();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const tq = MESSAGES[locale].app.crm.quotes;
 
-  const sidebarTabs = ALL_SIDEBAR_TABS.filter(t => !t.module || hasModule(t.module));
+  const sidebarTabs = ALL_SIDEBAR_TAB_KEYS
+    .filter(t => !t.module || hasModule(t.module))
+    .map(t => ({ value: t.value, label: tq[t.labelKey], icon: t.icon }));
 
   return (
     <div className={cn('space-y-6', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Orçamentos"
-        subtitle="Gerencie orçamentos, custos e precificação"
+        title={tq.pageTitle}
+        subtitle={tq.pageSubtitle}
         icon={FileText}
       />
 

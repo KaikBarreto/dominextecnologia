@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
 import { Progress } from '@/components/ui/progress';
@@ -24,14 +26,7 @@ interface ProposalConfigDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Etapas do wizard de configuração de proposta (espelha o padrão do
-// QuoteFormDialog/ContractFormDialog). A chave dirige o conteúdo via key
-// (nunca por índice cru) e a animação de troca.
-const STEPS = [
-  { key: 'model', label: 'Modelo' },
-  { key: 'customize', label: 'Personalização' },
-  { key: 'review', label: 'Revisão' },
-];
+// Step keys are defined inside the component via tp (locale-aware labels).
 
 // Amostra rica o bastante pra a Revisão demonstrar TODOS os recursos:
 // muitos itens (escopo pagina em várias folhas), deslocamento e brindes ligados,
@@ -112,6 +107,13 @@ const TEMPLATE_OPTIONS = [
 export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialogProps) {
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const tp = MESSAGES[locale].app.crm.proposals;
+  const STEPS = [
+    { key: 'model', label: tp.stepModel },
+    { key: 'customize', label: tp.stepCustomize },
+    { key: 'review', label: tp.stepReview },
+  ];
   const { settings: company, updateSettings } = useCompanySettings();
   const [selectedSlug, setSelectedSlug] = useState<string>('vanguarda');
   const [saving, setSaving] = useState(false);
@@ -182,7 +184,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     setSaving(true);
     await updateSettings.mutateAsync({ proposal_customization: colors } as any);
     setSaving(false);
-    toast({ title: 'Configuração da proposta salva' });
+    toast({ title: tp.savedToast });
   };
 
   // Upload do logo da proposta. Espelha o fluxo do logo da empresa (Settings):
@@ -193,11 +195,11 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     if (!file) return;
     file = await processImageFile(file);
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      toast({ variant: 'destructive', title: tp.logoTooBig });
       return;
     }
     if (!file.type.startsWith('image/')) {
-      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      toast({ variant: 'destructive', title: tp.logoNotImage });
       return;
     }
     setUploadingLogo(true);
@@ -217,9 +219,9 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
       const next = { ...colors, logo_url: publicUrl };
       setColors(next);
       await updateSettings.mutateAsync({ proposal_customization: next } as any);
-      toast({ title: 'Logo da proposta atualizado' });
+      toast({ title: tp.logoUploadedToast });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: tp.logoErrorToast, description: getErrorMessage(err) });
     } finally {
       setUploadingLogo(false);
       e.target.value = '';
@@ -237,7 +239,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     const next = { ...colors, logo_url: undefined };
     setColors(next);
     await updateSettings.mutateAsync({ proposal_customization: next } as any);
-    toast({ title: 'Logo da proposta removido' });
+    toast({ title: tp.logoRemovedToast });
   };
 
   const effectiveLogo = colors.logo_url || company?.logo_url || null;
@@ -316,10 +318,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <LayoutTemplate className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold uppercase tracking-wide text-foreground">Modelo da proposta</span>
+                <span className="text-sm font-semibold uppercase tracking-wide text-foreground">{tp.modelHeader}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Escolha o estilo visual da proposta enviada ao cliente.
+                {tp.modelSubtitle}
               </p>
 
               {/* Desktop: 2 colunas (lista de modelos | capa A4). Mobile: empilha
@@ -369,21 +371,21 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
             <div className="space-y-5">
               <div className="flex items-center gap-2">
                 <Palette className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold uppercase tracking-wide text-foreground">Personalização</span>
+                <span className="text-sm font-semibold uppercase tracking-wide text-foreground">{tp.customizeHeader}</span>
               </div>
 
               {/* Logo da proposta (opcional, separado do logo da empresa) */}
               <div className="rounded-xl border border-border p-4 space-y-3">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Logo da proposta</p>
+                  <p className="text-sm font-semibold text-foreground">{tp.logoSectionTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Opcional. Se vazio, a proposta usa o logo da empresa.
+                    {tp.logoSectionSubtitle}
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-28 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
                     {effectiveLogo ? (
-                      <img src={effectiveLogo} alt="Logo da proposta" className="max-h-full max-w-full object-contain" />
+                      <img src={effectiveLogo} alt={tp.logoSectionTitle} className="max-h-full max-w-full object-contain" />
                     ) : (
                       <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
                     )}
@@ -400,14 +402,14 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                       <Button asChild size="sm" variant="outline" disabled={uploadingLogo}>
                         <span className="cursor-pointer">
                           {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                          {colors.logo_url ? 'Trocar logo' : 'Enviar logo'}
+                          {colors.logo_url ? tp.logoChange : tp.logoUpload}
                         </span>
                       </Button>
                     </label>
                     {colors.logo_url && (
                       <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleRemoveProposalLogo}>
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Remover (usar logo da empresa)
+                        {tp.logoRemove}
                       </Button>
                     )}
                   </div>
@@ -416,24 +418,24 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
 
               {/* Color customization */}
               <div className="rounded-xl border border-border p-4 space-y-4">
-                <p className="text-sm font-semibold text-foreground">Personalizar Cores</p>
+                <p className="text-sm font-semibold text-foreground">{tp.colorsSectionTitle}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Cor Primária</Label>
+                    <Label className="text-xs text-muted-foreground">{tp.colorPrimary}</Label>
                     <ColorPicker
                       value={colors.primary_color || '#2563eb'}
                       onChange={(c) => setColors(prev => ({ ...prev, primary_color: c }))}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Cor de Destaque</Label>
+                    <Label className="text-xs text-muted-foreground">{tp.colorAccent}</Label>
                     <ColorPicker
                       value={colors.accent_color || '#f97316'}
                       onChange={(c) => setColors(prev => ({ ...prev, accent_color: c }))}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Fundo do Cabeçalho</Label>
+                    <Label className="text-xs text-muted-foreground">{tp.colorHeaderBg}</Label>
                     <ColorPicker
                       value={colors.header_bg || '#1e3a5f'}
                       onChange={(c) => setColors(prev => ({ ...prev, header_bg: c }))}
@@ -445,51 +447,51 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
               {/* Paginação — "Página XX/YY" no rodapé de cada folha da proposta */}
               <div className="rounded-xl border border-border p-4 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Mostrar paginação?</p>
+                  <p className="text-sm font-semibold text-foreground">{tp.paginationTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Exibe "Página XX/YY" no canto inferior de cada página da proposta.
+                    {tp.paginationSubtitle}
                   </p>
                 </div>
                 <LabeledSwitch
                   value={colors.show_pagination ? 'sim' : 'nao'}
                   onChange={(v) => setColors(prev => ({ ...prev, show_pagination: v === 'sim' }))}
-                  off={{ value: 'nao', label: 'Não' }}
-                  on={{ value: 'sim', label: 'Sim' }}
-                  aria-label="Mostrar paginação na proposta"
+                  off={{ value: 'nao', label: tp.switchNo }}
+                  on={{ value: 'sim', label: tp.switchYes }}
+                  aria-label={tp.paginationTitle}
                 />
               </div>
 
               {/* Deslocamento — linha de deslocamento no bloco de Investimento */}
               <div className="rounded-xl border border-border p-4 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Mostrar deslocamento</p>
+                  <p className="text-sm font-semibold text-foreground">{tp.displacementTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Exibe o valor de deslocamento no resumo de investimento da proposta.
+                    {tp.displacementSubtitle}
                   </p>
                 </div>
                 <LabeledSwitch
                   value={(colors.show_displacement ?? true) ? 'sim' : 'nao'}
                   onChange={(v) => setColors(prev => ({ ...prev, show_displacement: v === 'sim' }))}
-                  off={{ value: 'nao', label: 'Não' }}
-                  on={{ value: 'sim', label: 'Sim' }}
-                  aria-label="Mostrar deslocamento na proposta"
+                  off={{ value: 'nao', label: tp.switchNo }}
+                  on={{ value: 'sim', label: tp.switchYes }}
+                  aria-label={tp.displacementTitle}
                 />
               </div>
 
               {/* Brindes — seção de cortesias quando a proposta inclui brindes */}
               <div className="rounded-xl border border-border p-4 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Mostrar brindes</p>
+                  <p className="text-sm font-semibold text-foreground">{tp.giftsTitle}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Exibe a seção de brindes (cortesias) quando a proposta os inclui.
+                    {tp.giftsSubtitle}
                   </p>
                 </div>
                 <LabeledSwitch
                   value={(colors.show_gifts ?? true) ? 'sim' : 'nao'}
                   onChange={(v) => setColors(prev => ({ ...prev, show_gifts: v === 'sim' }))}
-                  off={{ value: 'nao', label: 'Não' }}
-                  on={{ value: 'sim', label: 'Sim' }}
-                  aria-label="Mostrar brindes na proposta"
+                  off={{ value: 'nao', label: tp.switchNo }}
+                  on={{ value: 'sim', label: tp.switchYes }}
+                  aria-label={tp.giftsTitle}
                 />
               </div>
             </div>
@@ -500,10 +502,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <Eye className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold uppercase tracking-wide text-foreground">Revisão</span>
+                <span className="text-sm font-semibold uppercase tracking-wide text-foreground">{tp.reviewHeader}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Veja como a proposta vai chegar ao cliente. Confirme em "Salvar".
+                {tp.reviewSubtitle}
               </p>
               {/* Preview — folhas A4 LADO A LADO (proporção 210:297), com UMA rolagem
                   horizontal só. As setas de navegação vivem no FOOTER do modal; aqui
@@ -537,7 +539,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)}
         disabled={saving}
       >
-        {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Voltar</>}
+        {step === 0 ? tp.cancel : <><ChevronLeft className="h-4 w-4 mr-1" /> {tp.back}</>}
       </Button>
 
       {/* Centro: navegação de página do preview (só na Revisão e com >1 folha) */}
@@ -550,12 +552,12 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
             className="h-8 w-8"
             onClick={() => previewGoToRef.current(previewPage - 1)}
             disabled={previewPage <= 1}
-            aria-label="Página anterior"
+            aria-label={tp.back}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-xs font-medium text-muted-foreground tabular-nums min-w-[78px] text-center">
-            Página {previewPage}/{previewTotal}
+            {tp.pageLabel.replace('{current}', String(previewPage)).replace('{total}', String(previewTotal))}
           </span>
           <Button
             type="button"
@@ -564,7 +566,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
             className="h-8 w-8"
             onClick={() => previewGoToRef.current(previewPage + 1)}
             disabled={previewPage >= previewTotal}
-            aria-label="Próxima página"
+            aria-label={tp.next}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -573,11 +575,11 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
 
       {step < STEPS.length - 1 ? (
         <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
-          Próximo <ChevronRight className="h-4 w-4 ml-1" />
+          {tp.next} <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       ) : (
         <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
-          {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando…</> : <><Save className="h-4 w-4 mr-2" /> Salvar</>}
+          {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {tp.saving}</> : <><Save className="h-4 w-4 mr-2" /> {tp.save}</>}
         </Button>
       )}
     </div>
@@ -587,7 +589,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Configurar Proposta"
+      title={tp.configTitle}
       className="sm:max-w-4xl"
       footer={wizardFooter}
       lockBackdrop

@@ -8,6 +8,8 @@ import { ProposalRenderer } from '@/components/quotes/ProposalRenderer';
 import { extractQuoteToken } from '@/utils/prettyLinks';
 import type { Quote } from '@/hooks/useQuotes';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
+import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Fingerprint estável por navegador, guardado em localStorage. Serve só pro
 // dedupe de refresh (a RPC ignora visitas do mesmo fingerprint em 30min). Não é
@@ -74,16 +76,19 @@ function useOgMeta(company: CompanySettings | null) {
   }, [company]);
 }
 
-export default function ProposalPublic() {
-  const { token: tokenParam } = useParams<{ token: string }>();
-  // O param pode vir como token puro (link antigo, 64 hex) OU como
-  // `slug-do-destinatario-<token>` (link amigável novo). Extrai sempre o token real.
-  const token = extractQuoteToken(tokenParam) ?? tokenParam ?? null;
-  const [searchParams] = useSearchParams();
-  // `?preview=1` = o próprio vendedor pré-visualizando. Não conta como visualização.
-  const isPreview = searchParams.get('preview') === '1';
-  // Garante 1 registro de view por carga (evita re-disparo em re-render).
-  const viewRecordedRef = useRef(false);
+// Inner component — consumes PublicAppLocaleProvider already set up by the outer.
+function ProposalPublicContent({
+  token,
+  isPreview,
+  viewRecordedRef,
+}: {
+  token: string | null;
+  isPreview: boolean;
+  viewRecordedRef: React.MutableRefObject<boolean>;
+}) {
+  const { locale } = useAppLocaleContext();
+  const tp = MESSAGES[locale].app.crm.proposals;
+
   const [quote, setQuote] = useState<Quote | null>(null);
   const [company, setCompany] = useState<CompanySettings | null>(null);
   const [templateSlug, setTemplateSlug] = useState('classico');
@@ -169,7 +174,7 @@ export default function ProposalPublic() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-4">
         <FileText className="h-16 w-16 text-gray-300" />
-        <p className="text-gray-500 text-lg">Proposta não encontrada.</p>
+        <p className="text-gray-500 text-lg">{tp.notFound}</p>
       </div>
     );
   }
@@ -190,13 +195,13 @@ export default function ProposalPublic() {
               className="fixed right-4 z-50 gap-2 rounded-full shadow-2xl bg-slate-900 text-white hover:bg-slate-800 hover:text-white print:hidden"
               style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
               onClick={() => window.print()}
-              title="Na janela de impressão, escolha 'Salvar como PDF' e mantenha 'Gráficos de fundo' ligado."
+              title={tp.downloadPDFHint}
             >
-              <Download className="h-5 w-5" /> Baixar PDF
+              <Download className="h-5 w-5" /> {tp.downloadPDF}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left" className="max-w-xs text-center">
-            Na janela de impressão, escolha "Salvar como PDF" e mantenha "Gráficos de fundo" ligado.
+            {tp.downloadPDFHint}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -213,14 +218,14 @@ export default function ProposalPublic() {
               onClick={() => respond('aprovado')}
               disabled={responding}
             >
-              <CheckCircle2 className="h-5 w-5 mr-2" /> Aprovar
+              <CheckCircle2 className="h-5 w-5 mr-2" /> {tp.approveBtn}
             </Button>
             <Button
               className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-base"
               onClick={() => respond('rejeitado')}
               disabled={responding}
             >
-              <XCircle className="h-5 w-5 mr-2" /> Rejeitar
+              <XCircle className="h-5 w-5 mr-2" /> {tp.rejectBtn}
             </Button>
           </div>
         )}
@@ -228,7 +233,7 @@ export default function ProposalPublic() {
         {done && (
           <div className="text-center py-6">
             <p className="text-lg font-medium text-gray-600">
-              {quote.status === 'aprovado' ? '✅ Proposta aprovada! Obrigado.' : '❌ Proposta rejeitada.'}
+              {quote.status === 'aprovado' ? `✅ ${tp.approvedFeedback}` : `❌ ${tp.rejectedFeedback}`}
             </p>
           </div>
         )}
@@ -236,11 +241,46 @@ export default function ProposalPublic() {
         {alreadyResponded && !done && (
           <div className="text-center py-6">
             <p className="text-sm text-gray-400">
-              Esta proposta foi {quote.status === 'aprovado' ? 'aprovada' : 'rejeitada'}.
+              {quote.status === 'aprovado' ? tp.alreadyApproved : tp.alreadyRejected}
             </p>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// ── NOTE FOR FOLLOW-UP (dev-database) ──────────────────────────────────────
+// The RPC `get_quote_public_payload` currently does NOT return
+// `company_settings.language`, `company_settings.currency` or
+// `company_settings.timezone`. Until those 3 fields are added to the RPC
+// response (as `company.language`, `company.currency`, `company.timezone`),
+// the PublicAppLocaleProvider below falls back to pt-br / BRL / America/Sao_Paulo.
+// When the RPC is updated, pass: language={companyLocale} currency={companyCurrency}
+// timezone={companyTimezone} — all coming from the payload's company object.
+// ────────────────────────────────────────────────────────────────────────────
+
+export default function ProposalPublic() {
+  const { token: tokenParam } = useParams<{ token: string }>();
+  // O param pode vir como token puro (link antigo, 64 hex) OU como
+  // `slug-do-destinatario-<token>` (link amigável novo). Extrai sempre o token real.
+  const token = extractQuoteToken(tokenParam) ?? tokenParam ?? null;
+  const [searchParams] = useSearchParams();
+  // `?preview=1` = o próprio vendedor pré-visualizando. Não conta como visualização.
+  const isPreview = searchParams.get('preview') === '1';
+  // Garante 1 registro de view por carga (evita re-disparo em re-render).
+  const viewRecordedRef = useRef(false);
+
+  // TODO: once get_quote_public_payload returns company.language/currency/timezone,
+  // load them here (before rendering) and pass to PublicAppLocaleProvider.
+  // For now, falls back to defaults (pt-br/BRL/America/Sao_Paulo) inside the provider.
+  return (
+    <PublicAppLocaleProvider language={null} currency={null} timezone={null}>
+      <ProposalPublicContent
+        token={token}
+        isPreview={isPreview}
+        viewRecordedRef={viewRecordedRef}
+      />
+    </PublicAppLocaleProvider>
   );
 }
