@@ -67,3 +67,45 @@ const APP_LOCALE_FALLBACK: AppLocaleContextValue = {
 export function useAppLocaleContext(): AppLocaleContextValue {
   return useContext(AppLocaleContext) ?? APP_LOCALE_FALLBACK;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LINKS PÚBLICOS (OS pública, portal do cliente, portal do contrato/PMOC, ponto,
+// orçamento, proposta): o idioma/moeda/fuso seguem a EMPRESA QUE GEROU O LINK,
+// não a máquina de quem abre (é o cliente do tenant vendo a página).
+//
+// Cada página pública carrega os dados pelo token/slug (RPC), que DEVE trazer o
+// idioma/moeda/fuso da empresa (company_settings.language/currency/timezone).
+// A página então envolve seu conteúdo em <PublicAppLocaleProvider> com esses
+// valores — aí os componentes (inclusive os compartilhados) renderizam no idioma
+// da empresa. Enquanto o payload não trouxer, cai em pt-br/BRL/SP (defensivo).
+// ─────────────────────────────────────────────────────────────────────────────
+export function PublicAppLocaleProvider({
+  language,
+  currency,
+  timezone,
+  children,
+}: {
+  language?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
+  children: React.ReactNode;
+}) {
+  const isLocale = (v: unknown): v is LocaleCode =>
+    v === 'pt-br' || v === 'en' || v === 'es' || v === 'fr';
+  const value = useMemo<AppLocaleContextValue>(
+    () => ({
+      locale: isLocale(language) ? language : 'pt-br',
+      currency: currency || 'BRL',
+      timezone: timezone || 'America/Sao_Paulo',
+      isLoading: false,
+      setUserLanguage: async () => {},
+    }),
+    [language, currency, timezone],
+  );
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = getLocaleDef(value.locale).htmlLang;
+    }
+  }, [value.locale]);
+  return <AppLocaleContext.Provider value={value}>{children}</AppLocaleContext.Provider>;
+}
