@@ -56,12 +56,14 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { ContractsFilterButton } from '@/components/contracts/ContractsFilterButton';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'outline' | 'destructive' | 'secondary' }> = {
-  active: { label: 'Ativo', variant: 'success' },
-  paused: { label: 'Pausado', variant: 'outline' },
-  cancelled: { label: 'Cancelado', variant: 'destructive' },
-  expired: { label: 'Expirado', variant: 'secondary' },
+const STATUS_VARIANTS: Record<string, 'success' | 'outline' | 'destructive' | 'secondary'> = {
+  active: 'success',
+  paused: 'outline',
+  cancelled: 'destructive',
+  expired: 'secondary',
 };
 
 // Hex equivalentes aos tokens semânticos — mesmo padrão de ServiceOrders.
@@ -75,26 +77,20 @@ const STATUS_HEX: Record<string, string> = {
 // Saúde do contrato (Onda A v1.9.0 — semáforo calculado pela view contract_health_status).
 // Cores semânticas FIXAS: success=verde, warning=laranja/amarelo, destructive=vermelho.
 // Tokens vivem no Badge; não usar Tailwind direto (regra `feedback_cores_acoes_padronizadas`).
-const HEALTH_CONFIG: Record<
+const HEALTH_VARIANTS: Record<
   ContractHealthStatus,
-  { label: string; shortLabel: string; variant: 'success' | 'warning' | 'destructive' }
+  { variant: 'success' | 'warning' | 'destructive' }
 > = {
-  em_dia: { label: 'Em dia', shortLabel: 'Em dia', variant: 'success' },
-  manutencao_pendente: {
-    label: 'Manutenção Pendente',
-    shortLabel: 'Manutenção Pendente',
-    variant: 'warning',
-  },
-  necessita_atencao: {
-    label: 'ATENÇÃO',
-    shortLabel: 'ATENÇÃO',
-    variant: 'destructive',
-  },
+  em_dia: { variant: 'success' },
+  manutencao_pendente: { variant: 'warning' },
+  necessita_atencao: { variant: 'destructive' },
 };
 
 export default function Contracts() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.contracts;
   const { contracts, isLoading, stats, updateContractStatus, deleteContract } = useContracts();
   const { healthByContractId } = useContractsHealth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -107,6 +103,20 @@ export default function Contracts() {
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+
+  // Configs derivados das traduções (recalculados quando locale muda).
+  const STATUS_CONFIG = useMemo(() => ({
+    active: { label: t.status.active, variant: STATUS_VARIANTS.active },
+    paused: { label: t.status.paused, variant: STATUS_VARIANTS.paused },
+    cancelled: { label: t.status.cancelled, variant: STATUS_VARIANTS.cancelled },
+    expired: { label: t.status.expired, variant: STATUS_VARIANTS.expired },
+  }), [t]);
+
+  const HEALTH_CONFIG = useMemo(() => ({
+    em_dia: { label: t.health.em_dia, shortLabel: t.health.em_dia, variant: HEALTH_VARIANTS.em_dia.variant },
+    manutencao_pendente: { label: t.health.manutencao_pendente, shortLabel: t.health.manutencao_pendente, variant: HEALTH_VARIANTS.manutencao_pendente.variant },
+    necessita_atencao: { label: t.health.necessita_atencao, shortLabel: t.health.necessita_atencao, variant: HEALTH_VARIANTS.necessita_atencao.variant },
+  }), [t]);
 
   // Suporte a `?tipo=pmoc` na URL (rota antiga /pmoc redireciona pra cá).
   // Pre-seleciona o filtro Tipo na primeira leitura e mantém sincronizado quando o
@@ -211,10 +221,10 @@ export default function Contracts() {
   // ----------------------------------------------------------------
   // Stats para o StatCarousel mobile (chips coloridos).
   // ----------------------------------------------------------------
-  const statItems = [
+  const statItems = useMemo(() => [
     {
       key: 'active',
-      label: 'Contratos Ativos',
+      label: t.kpi.active,
       count: stats.active,
       icon: <CheckCircle className="h-4 w-4" />,
       accentColor: '#22c55e',
@@ -226,26 +236,27 @@ export default function Contracts() {
     },
     {
       key: 'os_month',
-      label: 'OSs Geradas (mês)',
+      label: t.kpi.osMonth,
       count: stats.osGeneratedThisMonth,
       icon: <Calendar className="h-4 w-4" />,
       accentColor: '#0ea5e9',
     },
     {
       key: 'upcoming',
-      label: 'Próximas 7 dias',
+      label: t.kpi.upcoming,
       count: stats.upcomingOccurrences,
       icon: <Clock className="h-4 w-4" />,
       accentColor: '#f59e0b',
     },
     {
       key: 'expiring',
-      label: 'Vencendo em 30d',
+      label: t.kpi.expiring,
       count: stats.expiringContracts,
       icon: <AlertTriangle className="h-4 w-4" />,
       accentColor: '#ef4444',
     },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t, stats, statusFilter]);
 
   // Filtros estruturados = Status + Saúde + Tipo. Usado pelo badge do botão
   // "Filtros" do desktop (busca tem campo próprio fora do sheet).
@@ -271,47 +282,47 @@ export default function Contracts() {
   };
 
   // Opções pro FilterCheckboxGroup de status, com acento por hex.
-  const statusOptions: FilterCheckboxOption[] = [
-    { value: 'active', label: 'Ativo', color: STATUS_HEX.active },
-    { value: 'paused', label: 'Pausado', color: STATUS_HEX.paused },
-    { value: 'cancelled', label: 'Cancelado', color: STATUS_HEX.cancelled },
-    { value: 'expired', label: 'Expirado', color: STATUS_HEX.expired },
-  ];
+  const statusOptions: FilterCheckboxOption[] = useMemo(() => [
+    { value: 'active', label: t.status.active, color: STATUS_HEX.active },
+    { value: 'paused', label: t.status.paused, color: STATUS_HEX.paused },
+    { value: 'cancelled', label: t.status.cancelled, color: STATUS_HEX.cancelled },
+    { value: 'expired', label: t.status.expired, color: STATUS_HEX.expired },
+  ], [t]);
 
   // Opções de Saúde e Tipo (multi-select, "vazio = mostra tudo").
-  const healthOptions: FilterCheckboxOption[] = [
-    { value: 'em_dia', label: 'Em dia' },
-    { value: 'manutencao_pendente', label: 'Manutenção Pendente' },
-    { value: 'necessita_atencao', label: 'ATENÇÃO' },
-  ];
-  const typeOptions: FilterCheckboxOption[] = [
-    { value: 'pmoc', label: 'PMOC' },
-    { value: 'common', label: 'Comum (não-PMOC)' },
-  ];
+  const healthOptions: FilterCheckboxOption[] = useMemo(() => [
+    { value: 'em_dia', label: t.health.em_dia },
+    { value: 'manutencao_pendente', label: t.health.manutencao_pendente },
+    { value: 'necessita_atencao', label: t.health.necessita_atencao },
+  ], [t]);
+  const typeOptions: FilterCheckboxOption[] = useMemo(() => [
+    { value: 'pmoc', label: t.type.pmoc },
+    { value: 'common', label: t.type.common },
+  ], [t]);
 
   // Conteúdo do FilterSheet (status + saúde + tipo — busca fica fixa fora).
   const filterContent = (
     <div className="space-y-4">
       <FilterCheckboxGroup
-        label="Status"
+        label={t.filterLabels.status}
         options={statusOptions}
         selected={statusFilter}
         onChange={setStatusFilter}
-        emptyLabel="Todos"
+        emptyLabel={t.filterLabels.allStatus}
       />
       <FilterCheckboxGroup
-        label="Saúde"
+        label={t.filterLabels.health}
         options={healthOptions}
         selected={healthFilter}
         onChange={setHealthFilter}
-        emptyLabel="Todas"
+        emptyLabel={t.filterLabels.allHealth}
       />
       <FilterCheckboxGroup
-        label="Tipo"
+        label={t.filterLabels.type}
         options={typeOptions}
         selected={typeFilter}
         onChange={setTypeFilter}
-        emptyLabel="Todos"
+        emptyLabel={t.filterLabels.allType}
       />
     </div>
   );
@@ -332,14 +343,14 @@ export default function Contracts() {
       {/* Header: mobile compacto / desktop completo com botão Novo Contrato. */}
       {isMobile ? (
         <MobilePageHeader
-          title="Contratos"
-          subtitle="Gerencie contratos e manutenções"
+          title={t.title}
+          subtitle={t.subtitle}
           icon={ScrollText}
           actions={
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Configurações de Contrato"
+              aria-label={t.contractSettings}
               onClick={() => navigate('/configuracoes-contrato')}
             >
               <Settings className="h-5 w-5" />
@@ -348,8 +359,8 @@ export default function Contracts() {
         />
       ) : (
         <PageHeader
-          title="Contratos"
-          subtitle="Gerencie contratos recorrentes e manutenções programadas"
+          title={t.title}
+          subtitle={t.subtitleDesktop}
           icon={ScrollText}
           actions={
             <div className="flex items-center gap-2">
@@ -358,10 +369,10 @@ export default function Contracts() {
                 onClick={() => navigate('/configuracoes-contrato')}
                 className="gap-2"
               >
-                <Settings className="h-4 w-4" /> Configurações de Contrato
+                <Settings className="h-4 w-4" /> {t.contractSettings}
               </Button>
               <Button onClick={() => setDialogOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" /> Novo Contrato
+                <Plus className="h-4 w-4" /> {t.newContract}
               </Button>
             </div>
           }
@@ -375,14 +386,14 @@ export default function Contracts() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Buscar contrato ou cliente..."
+                placeholder={t.searchPlaceholderMobile}
                 className="pl-10 h-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <FilterSheet
-              triggerLabel="Filtros"
+              triggerLabel={t.filters}
               activeCount={activeFilterCount}
               onClear={clearFilters}
             >
@@ -400,7 +411,7 @@ export default function Contracts() {
             <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Buscar por nome ou cliente..."
+                placeholder={t.searchPlaceholder}
                 className="pl-10 h-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -432,11 +443,11 @@ export default function Contracts() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<ScrollText className="h-12 w-12" />}
-            title={search || statusFilter.length > 0 ? 'Nenhum contrato encontrado' : 'Nenhum contrato cadastrado'}
+            title={search || statusFilter.length > 0 ? t.emptySearchTitle : t.emptyNoneTitle}
             description={
               search || statusFilter.length > 0
-                ? 'Tente outro termo ou filtro'
-                : 'Toque em "Novo Contrato" para gerar OSs automaticamente.'
+                ? t.emptySearchDesc
+                : t.emptyNoneDesc
             }
           />
         ) : (
@@ -452,13 +463,13 @@ export default function Contracts() {
                 const itemActions: ItemAction[] = [
                   {
                     key: 'view',
-                    label: 'Visualizar',
+                    label: t.actions.view,
                     icon: <Eye className="h-4 w-4" />,
                     onClick: () => navigate(`/contratos/${contract.id}`),
                   },
                   {
                     key: 'toggle',
-                    label: isActive ? 'Pausar' : 'Retomar',
+                    label: isActive ? t.actions.pause : t.actions.resume,
                     icon: isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />,
                     onClick: () =>
                       updateContractStatus.mutate({
@@ -468,14 +479,14 @@ export default function Contracts() {
                   },
                   {
                     key: 'edit',
-                    label: 'Editar',
+                    label: t.actions.edit,
                     icon: <Pencil className="h-4 w-4" />,
                     variant: 'edit' as const,
                     onClick: () => navigate(`/contratos/${contract.id}`),
                   },
                   {
                     key: 'delete',
-                    label: 'Excluir',
+                    label: t.actions.delete,
                     icon: <Trash2 className="h-4 w-4" />,
                     variant: 'destructive' as const,
                     onClick: () => {
@@ -487,11 +498,11 @@ export default function Contracts() {
 
                 const subtitleParts: string[] = [
                   getFrequencyLabel(contract.frequency_type, contract.frequency_value),
-                  `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`,
+                  `${itemCount} ${itemCount === 1 ? t.itemSingular : t.itemPlural}`,
                 ];
                 if (nextOcc?.scheduled_date) {
                   subtitleParts.push(
-                    `Próx: ${format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}`
+                    `${t.nextPrefix}: ${format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}`
                   );
                 }
 
@@ -520,7 +531,7 @@ export default function Contracts() {
                 const overdueCount = healthRow?.overdue_count ?? 0;
                 const healthTooltip =
                   overdueCount === 0
-                    ? 'Nenhuma OS em atraso'
+                    ? t.noOsOverdue
                     : `${overdueCount} OS${overdueCount === 1 ? '' : 's'} em atraso`;
 
                 return (
@@ -579,7 +590,7 @@ export default function Contracts() {
                               className="self-start text-[10px] px-2 py-0.5 whitespace-nowrap"
                               title="Última visita em ≤30 dias — renovar?"
                             >
-                              Acabando
+                              {t.ending}
                             </Badge>
                           )}
                         </div>
@@ -615,18 +626,18 @@ export default function Contracts() {
                 icon={<ScrollText className="h-12 w-12" />}
                 title={
                   search || structuredFilterCount > 0
-                    ? 'Nenhum contrato encontrado'
-                    : 'Nenhum contrato cadastrado'
+                    ? t.emptySearchTitle
+                    : t.emptyNoneTitle
                 }
                 description={
                   search || structuredFilterCount > 0
-                    ? 'Tente outro termo ou ajuste os filtros'
-                    : 'Crie seu primeiro contrato para gerar OSs automaticamente.'
+                    ? t.emptyNoneDescFilter
+                    : t.emptyNoneDescDesktop
                 }
                 action={
                   search || structuredFilterCount > 0
                     ? undefined
-                    : { label: 'Novo Contrato', onClick: () => setDialogOpen(true) }
+                    : { label: t.emptyNoneAction, onClick: () => setDialogOpen(true) }
                 }
               />
             ) : (
@@ -637,27 +648,27 @@ export default function Contracts() {
                     <TableHeader>
                       <TableRow>
                         <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>
-                          Status
+                          {t.col.status}
                         </SortableTableHead>
                         <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>
-                          Contrato
+                          {t.col.contract}
                         </SortableTableHead>
                         <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>
-                          Cliente
+                          {t.col.customer}
                         </SortableTableHead>
                         <SortableTableHead sortKey="frequency_type" sortConfig={sortConfig} onSort={handleSort}>
-                          Frequência
+                          {t.col.frequency}
                         </SortableTableHead>
                         <SortableTableHead sortKey="_health_rank" sortConfig={sortConfig} onSort={handleSort}>
-                          Saúde
+                          {t.col.health}
                         </SortableTableHead>
                         <SortableTableHead sortKey="_next_occurrence_date" sortConfig={sortConfig} onSort={handleSort}>
-                          Próxima OS
+                          {t.col.nextOs}
                         </SortableTableHead>
                         <SortableTableHead sortKey="_items_count" sortConfig={sortConfig} onSort={handleSort} className="text-center">
-                          Itens
+                          {t.col.items}
                         </SortableTableHead>
-                        <TableHead className="w-[140px]">Ações</TableHead>
+                        <TableHead className="w-[140px]">{t.col.actions}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -672,7 +683,7 @@ export default function Contracts() {
                         const overdueCount = healthRow?.overdue_count ?? 0;
                         const healthTooltip =
                           overdueCount === 0
-                            ? 'Nenhuma OS em atraso'
+                            ? t.noOsOverdue
                             : `${overdueCount} OS${overdueCount === 1 ? '' : 's'} em atraso`;
 
                         return (
@@ -728,19 +739,19 @@ export default function Contracts() {
                               )}
                             </TableCell>
                             <TableCell className="text-center">
-                              {itemCount} {itemCount === 1 ? 'item' : 'itens'}
+                              {itemCount} {itemCount === 1 ? t.itemSingular : t.itemPlural}
                             </TableCell>
                             <TableCell>
                               <div onClick={(e) => e.stopPropagation()}>
                                 <RowActionsMenu
                                   actions={[
                                     {
-                                      label: 'Visualizar',
+                                      label: t.actions.view,
                                       icon: Eye,
                                       onClick: () => navigate(`/contratos/${contract.id}`),
                                     },
                                     {
-                                      label: contract.status === 'active' ? 'Pausar' : 'Retomar',
+                                      label: contract.status === 'active' ? t.actions.pause : t.actions.resume,
                                       icon: contract.status === 'active' ? Pause : Play,
                                       onClick: () =>
                                         updateContractStatus.mutate({
@@ -749,13 +760,13 @@ export default function Contracts() {
                                         }),
                                     },
                                     {
-                                      label: 'Editar',
+                                      label: t.actions.edit,
                                       icon: Pencil,
                                       variant: 'edit',
                                       onClick: () => navigate(`/contratos/${contract.id}`),
                                     },
                                     {
-                                      label: 'Excluir',
+                                      label: t.actions.delete,
                                       icon: Trash2,
                                       variant: 'delete',
                                       onClick: () => {
@@ -794,7 +805,7 @@ export default function Contracts() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Contrato"
+          label={t.newContractShort}
           onClick={() => setDialogOpen(true)}
         />
       )}
@@ -816,21 +827,21 @@ export default function Contracts() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>Tem certeza? Todas as OSs, ocorrências e transações vinculadas serão excluídas.</p>
+                <p>{t.deleteDesc}</p>
                 {(() => {
                   const target = contracts.find(c => c.id === deleteTarget);
                   const osCount = (target?.service_orders || []).length;
                   if (osCount === 0) return null;
                   return (
                     <p className="text-sm font-medium text-warning">
-                      ⚠️ {osCount} OS{osCount > 1 ? 's vinculadas serão apagadas' : ' vinculada será apagada'} junto.
+                      ⚠️ {osCount} {osCount > 1 ? t.deleteOsWarning_other : t.deleteOsWarning_one}
                     </p>
                   );
                 })()}
-                <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
+                <p className="text-sm font-medium text-destructive">{t.deleteIrreversible}</p>
                 <div className="flex items-center gap-2 pt-2">
                   <Checkbox
                     id="delete-list-confirm"
@@ -838,14 +849,14 @@ export default function Contracts() {
                     onCheckedChange={(v) => setDeleteConfirmed(!!v)}
                   />
                   <Label htmlFor="delete-list-confirm" className="text-sm cursor-pointer">
-                    Tenho certeza que desejo excluir
+                    {t.deleteCheckLabel}
                   </Label>
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.deleteCancelBtn}</AlertDialogCancel>
             <AlertDialogAction
               disabled={!deleteConfirmed}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -855,7 +866,7 @@ export default function Contracts() {
                 setDeleteConfirmed(false);
               }}
             >
-              Excluir
+              {t.deleteConfirmBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

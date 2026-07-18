@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Phone, Calendar, Edit, Trash2, FileText, Banknote, Gift, CreditCard, Link2, Minus, Award, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney, formatDate } from '@/lib/format';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
@@ -10,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Employee } from '@/hooks/useEmployees';
 import { BalanceSummary } from '@/utils/employeeCalculations';
-import { format } from 'date-fns';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 interface EmployeeCardProps {
@@ -28,7 +30,9 @@ interface EmployeeCardProps {
 export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWithUser, onMovement, onPayment, onExtract }: EmployeeCardProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const previewUrl = useSignedUrl(employee.photo_url);
@@ -87,25 +91,25 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir funcionário?</AlertDialogTitle>
+                  <AlertDialogTitle>{t.deleteConfirm.title}</AlertDialogTitle>
                   <AlertDialogDescription>
                     {employee.user_id
-                      ? 'Este funcionário está vinculado a um usuário do sistema. Deseja excluir o usuário também? Isso liberará o email para reutilização.'
-                      : 'Todos os dados e movimentações serão perdidos.'}
+                      ? t.deleteConfirm.descriptionWithUser
+                      : t.deleteConfirm.descriptionSimple}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogCancel>{t.deleteConfirm.cancelLabel}</AlertDialogCancel>
                   {employee.user_id && onDeleteWithUser && (
                     <AlertDialogAction
                       onClick={onDeleteWithUser}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Excluir ambos
+                      {t.deleteConfirm.deleteWithUser}
                     </AlertDialogAction>
                   )}
                   <AlertDialogAction onClick={onDelete}>
-                    {employee.user_id ? 'Só o funcionário' : 'Excluir'}
+                    {employee.user_id ? t.deleteConfirm.deleteEmployee : t.deleteConfirm.deleteLabel}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -118,25 +122,25 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
           <div className="grid grid-cols-3 gap-1.5 text-[11px]">
             <div className="flex flex-col">
               <span className="flex items-center gap-1 text-muted-foreground">
-                <Minus className="h-3 w-3 text-red-600 dark:text-red-400" /> Vales
+                <Minus className="h-3 w-3 text-red-600 dark:text-red-400" /> {t.card.advances}
               </span>
               <span className="font-semibold text-red-600 dark:text-red-400">{fmt(balance.totalVales)}</span>
             </div>
             <div className="flex flex-col">
               <span className="flex items-center gap-1 text-muted-foreground">
-                <Award className="h-3 w-3 text-amber-500 dark:text-amber-400" /> Bônus
+                <Award className="h-3 w-3 text-amber-500 dark:text-amber-400" /> {t.card.bonus}
               </span>
               <span className="font-semibold text-amber-600 dark:text-amber-400">{fmt(balance.totalBonus)}</span>
             </div>
             <div className="flex flex-col">
               <span className="flex items-center gap-1 text-muted-foreground">
-                <XCircle className="h-3 w-3 text-orange-600 dark:text-orange-400" /> Faltas
+                <XCircle className="h-3 w-3 text-orange-600 dark:text-orange-400" /> {t.card.absences}
               </span>
               <span className="font-semibold text-orange-600 dark:text-orange-400">{fmt(balance.totalFaltas)}</span>
             </div>
           </div>
           <div className="border-t mt-2 pt-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo atual</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t.card.currentBalance}</div>
             <div className={`text-base font-bold tracking-tight ${balance.currentBalance < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
               {fmt(balance.currentBalance)}
             </div>
@@ -158,13 +162,13 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
               title="Copiar link do ponto do funcionário"
             >
               <Link2 className="h-3 w-3 shrink-0" />
-              <span>Link do ponto</span>
-              <span className="opacity-70">· Copiar</span>
+              <span>{t.card.copyTimeclockLink}</span>
+              <span className="opacity-70">{t.card.copyTimeclockLinkSuffix}</span>
             </button>
           )}
           {employee.hire_date && (
             <span className="flex items-center gap-1">
-              <Calendar className="h-3 w-3 shrink-0" />Admissão: {format(new Date(employee.hire_date + 'T12:00:00'), 'dd/MM/yyyy')}
+              <Calendar className="h-3 w-3 shrink-0" />{t.card.hireDate}: {formatDate(employee.hire_date, locale, timezone)}
             </span>
           )}
         </div>
@@ -172,16 +176,16 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
         {/* Ações: grid 2-col */}
         <div className="grid grid-cols-2 gap-1.5 pt-0.5 border-t mt-0.5">
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 hover:bg-red-600 hover:text-white hover:border-red-600" onClick={() => onMovement('vale')}>
-            <Banknote className="h-3.5 w-3.5" /> Vale
+            <Banknote className="h-3.5 w-3.5" /> {t.actions.advance}
           </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 hover:bg-amber-500 hover:text-white hover:border-amber-500" onClick={() => onMovement('bonus')}>
-            <Gift className="h-3.5 w-3.5" /> Bônus
+            <Gift className="h-3.5 w-3.5" /> {t.actions.bonus}
           </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 hover:bg-orange-500 hover:text-white hover:border-orange-500" onClick={() => onMovement('falta')}>
-            <XCircle className="h-3.5 w-3.5" /> Falta
+            <XCircle className="h-3.5 w-3.5" /> {t.actions.absence}
           </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 hover:bg-green-600 hover:text-white hover:border-green-600" onClick={onPayment}>
-            <CreditCard className="h-3.5 w-3.5" /> Pagamento
+            <CreditCard className="h-3.5 w-3.5" /> {t.actions.payment}
           </Button>
         </div>
 
@@ -194,7 +198,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
           }`}
           onClick={onExtract}
         >
-          <FileText className="h-3.5 w-3.5" /> Ver Extrato
+          <FileText className="h-3.5 w-3.5" /> {t.card.viewExtract}
         </Button>
       </div>
 

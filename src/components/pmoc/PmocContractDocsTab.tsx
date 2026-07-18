@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   Download,
   FileText,
@@ -159,13 +161,20 @@ export interface PmocContractDocsTabProps {
   portalDocumentsReleased?: boolean;
 }
 
+type DocsT = ReturnType<typeof useDocsT>;
+
+function useDocsT() {
+  const { locale } = useAppLocaleContext();
+  return MESSAGES[locale].app.pmoc.docs;
+}
+
 /** Badge visual do status da assinatura embarcada num PDF PMOC (Onda E). */
-function SignatureStatusBadge({ status }: { status: PmocDocumentSignatureStatus }) {
+function SignatureStatusBadge({ status, t }: { status: PmocDocumentSignatureStatus; t: DocsT }) {
   if (status === 'signed') {
     return (
       <Badge variant="success" className="gap-1">
         <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-        Assinado
+        {t.signedBadge}
       </Badge>
     );
   }
@@ -173,13 +182,13 @@ function SignatureStatusBadge({ status }: { status: PmocDocumentSignatureStatus 
     return (
       <Badge variant="warning" className="gap-1">
         <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-        Sem assinatura
+        {t.pendingSignatureBadge}
       </Badge>
     );
   }
   return (
     <Badge variant="outline" className="text-muted-foreground">
-      Não gerado
+      {t.notGeneratedBadge}
     </Badge>
   );
 }
@@ -253,6 +262,7 @@ function SubDocCard({
   extraActions,
   topRightSlot,
   validityNote,
+  t,
 }: {
   title: string;
   preview: string;
@@ -265,6 +275,7 @@ function SubDocCard({
   topRightSlot?: ReactNode;
   /** Linha opcional de validade ("Válido até DD/MM/AAAA" + selo de status). */
   validityNote?: ReactNode;
+  t: DocsT;
 }) {
   return (
     <div className="flex h-full flex-col gap-2 rounded-xl border bg-muted/20 p-3 transition-transform">
@@ -285,7 +296,7 @@ function SubDocCard({
         {topRightSlot}
       </div>
       <p className="min-h-[40px] flex-1 break-words text-xs text-muted-foreground">
-        {preview || 'Texto padrão do sistema. Toque em "Editar" pra personalizar.'}
+        {preview || t.defaultTextPlaceholder}
       </p>
       {validityNote && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -295,10 +306,10 @@ function SubDocCard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         {edited ? (
           <Badge variant="outline" className="self-start text-[10px]">
-            Personalizado
+            {t.customized}
           </Badge>
         ) : (
-          <span className="text-[10px] text-muted-foreground">Texto padrão</span>
+          <span className="text-[10px] text-muted-foreground">{t.defaultText}</span>
         )}
         <div className="flex flex-wrap items-center gap-2">
           {extraActions}
@@ -309,7 +320,7 @@ function SubDocCard({
             onClick={onEdit}
           >
             <Pencil className="mr-1 h-3.5 w-3.5" />
-            Editar texto
+            {t.editTextBtn}
           </Button>
         </div>
       </div>
@@ -323,6 +334,7 @@ export function PmocContractDocsTab({
   responsibleTechnicianId,
   portalDocumentsReleased = false,
 }: PmocContractDocsTabProps) {
+  const t = useDocsT();
   const {
     customDocs,
     saveTermoRT,
@@ -386,34 +398,34 @@ export function PmocContractDocsTab({
   // com placeholder literal tipo "[CNPJ]" no PDF).
   const missingFields = useMemo(() => {
     const list: Array<{ label: string; href?: string }> = [];
-    if (!templateContext?.empresa_razao_social) list.push({ label: 'Razão social da empresa', href: '/configuracoes?tab=empresa' });
-    if (!templateContext?.empresa_cnpj) list.push({ label: 'CNPJ da empresa', href: '/configuracoes?tab=empresa' });
-    if (!templateContext?.rt_nome) list.push({ label: 'Nome do Responsável Técnico', href: '/responsaveis-tecnicos' });
-    if (!templateContext?.rt_modalidade) list.push({ label: 'Modalidade do RT', href: '/responsaveis-tecnicos' });
-    if (!templateContext?.rt_cft_crea) list.push({ label: 'CFT/CREA do RT', href: '/responsaveis-tecnicos' });
+    if (!templateContext?.empresa_razao_social) list.push({ label: t.missingCompanyName, href: '/configuracoes?tab=empresa' });
+    if (!templateContext?.empresa_cnpj) list.push({ label: t.missingCompanyCnpj, href: '/configuracoes?tab=empresa' });
+    if (!templateContext?.rt_nome) list.push({ label: t.missingRtName, href: '/responsaveis-tecnicos' });
+    if (!templateContext?.rt_modalidade) list.push({ label: t.missingRtModality, href: '/responsaveis-tecnicos' });
+    if (!templateContext?.rt_cft_crea) list.push({ label: t.missingRtCft, href: '/responsaveis-tecnicos' });
     // Cliente vinculado ao contrato — a Planilha PMOC (Seção 2 "Proprietário")
     // exige um cliente; sem ele a geração falha. Quando ausente, o nome do
     // cliente chega vazio no contexto (ContractDetail manda `''`).
     if (!templateContext?.customer_name?.trim()) {
       list.push({
-        label: 'Cliente vinculado ao contrato — vincule um cliente na edição do contrato (botão Editar)',
+        label: t.missingCustomer,
       });
     } else {
       // Cliente existe mas sem CNPJ/CPF ou endereço → Seção 2 "Proprietário"
       // sai incompleta na Planilha PMOC. Avisa sem disparar query nova.
       if (!templateContext?.customer_document?.trim()) {
         list.push({
-          label: 'CNPJ/CPF do cliente — complete no cadastro do cliente',
+          label: t.missingCustomerDoc,
         });
       }
       if (!templateContext?.customer_address?.trim()) {
         list.push({
-          label: 'Endereço do cliente — complete no cadastro do cliente',
+          label: t.missingCustomerAddress,
         });
       }
     }
     return list;
-  }, [templateContext]);
+  }, [templateContext, t]);
 
   // Status visual do TRT: signed | pending | null (não gerado).
   const trtStatus: PmocDocumentSignatureStatus = latestTrt
@@ -465,15 +477,13 @@ export function PmocContractDocsTab({
       {hasExpiredDoc && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Há documentos vencidos neste contrato.</AlertTitle>
+          <AlertTitle>{t.expiredAlert}</AlertTitle>
           <AlertDescription className="text-sm">
-            Gere uma nova versão do{' '}
             {trtValidityStatus === 'vencido' && certValidityStatus === 'vencido'
-              ? 'Termo de Responsabilidade Técnica e do Certificado de Conformidade'
+              ? t.expiredAlertDescBoth
               : trtValidityStatus === 'vencido'
-                ? 'Termo de Responsabilidade Técnica'
-                : 'Certificado de Conformidade'}{' '}
-            para renovar a validade.
+                ? t.expiredAlertDescTrt
+                : t.expiredAlertDescCert}
           </AlertDescription>
         </Alert>
       )}
@@ -483,10 +493,10 @@ export function PmocContractDocsTab({
       {missingFields.length > 0 && (
         <Alert className="border-warning/40 bg-warning/5">
           <AlertTriangle className="h-4 w-4 text-warning" />
-          <AlertTitle>Dados faltando pra gerar documentos PMOC</AlertTitle>
+          <AlertTitle>{t.missingFieldsAlert}</AlertTitle>
           <AlertDescription className="space-y-2">
             <p className="text-sm">
-              Cadastre os campos abaixo antes de gerar TRT/Dossiê pra que o PDF saia com os dados reais — e não com placeholder genérico.
+              {t.missingFieldsDesc}
             </p>
             <ul className="ml-4 list-disc space-y-0.5 text-sm">
               {missingFields.map((f) => (
@@ -521,21 +531,21 @@ export function PmocContractDocsTab({
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold">Documentos no portal do cliente</p>
+                <p className="text-sm font-semibold">{t.portalGateTitle}</p>
                 <Badge variant={portalDocumentsReleased ? 'success' : 'outline'} className="gap-1 text-[10px]">
                   {portalDocumentsReleased ? (
                     <>
-                      <Eye className="h-3 w-3" aria-hidden="true" /> Liberado
+                      <Eye className="h-3 w-3" aria-hidden="true" /> {t.portalGateLiberado}
                     </>
                   ) : (
                     <>
-                      <EyeOff className="h-3 w-3" aria-hidden="true" /> Oculto
+                      <EyeOff className="h-3 w-3" aria-hidden="true" /> {t.portalGateOculto}
                     </>
                   )}
                 </Badge>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Quando liberado, o cliente vê os documentos (Dossiê, Termo, Certificado, Cronograma) no portal público da unidade.
+                {t.portalGateDesc}
               </p>
             </div>
           </div>
@@ -558,7 +568,7 @@ export function PmocContractDocsTab({
             ) : (
               <Eye className="mr-1.5 h-4 w-4" />
             )}
-            {portalDocumentsReleased ? 'Ocultar documentos do portal' : 'Liberar documentos no portal do cliente'}
+            {portalDocumentsReleased ? t.portalGateHideBtn : t.portalGateReleaseBtn}
           </Button>
         </CardContent>
       </Card>
@@ -574,32 +584,30 @@ export function PmocContractDocsTab({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
               <FileText className="h-5 w-5 shrink-0" />
-              <span className="min-w-0 break-words">Dossiê PMOC</span>
+              <span className="min-w-0 break-words">{t.dossieTitle}</span>
               {latestDossie && (
                 <Badge variant="secondary" className="ml-2">
                   v{latestDossie.version}
                 </Badge>
               )}
             </CardTitle>
-            <SignatureStatusBadge status={dossieStatus} />
+            <SignatureStatusBadge status={dossieStatus} t={t} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Documento completo: capa + Termo de Responsabilidade Técnica + Certificado de Conformidade + Cronograma Anual.
+            {t.dossieDesc}
           </p>
           <p className="text-xs text-muted-foreground">
-            Última geração: {formatGeneratedAt(latestDossie?.generated_at)}
+            {t.dossieLastGenerated}: {formatGeneratedAt(latestDossie?.generated_at)}
           </p>
         </CardHeader>
         <CardContent className="space-y-4 min-w-0">
           {trtStatus === 'pending' && (
             <Alert className="border-warning/40 bg-warning/5">
               <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle>Assinatura do RT pendente</AlertTitle>
+              <AlertTitle>{t.rtSignaturePendingTitle}</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p>
-                  O RT não tem assinatura cadastrada. Os PDFs (TRT e Dossiê) foram gerados
-                  com linha em branco pra assinar à mão. Cadastre a assinatura agora pra
-                  o PDF ser regerado automaticamente.
+                  {t.rtSignaturePendingDesc}
                 </p>
                 <Button
                   size="sm"
@@ -609,11 +617,11 @@ export function PmocContractDocsTab({
                   disabled={!responsibleTechnicianId}
                 >
                   <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                  Adicionar assinatura agora
+                  {t.rtSignatureAddBtn}
                 </Button>
                 {!responsibleTechnicianId && (
                   <p className="text-[11px] text-muted-foreground">
-                    Vincule um Responsável Técnico ao contrato pra habilitar o cadastro de assinatura.
+                    {t.rtSignatureNoRtHint}
                   </p>
                 )}
               </AlertDescription>
@@ -624,15 +632,16 @@ export function PmocContractDocsTab({
               porque os sub-cards carregam ação própria e ficam mais legíveis. */}
           <div className="flex flex-col gap-3">
             <SubDocCard
-              title="Termo de Responsabilidade Técnica"
+              t={t}
+              title={t.trtTitle}
               preview={termoRtPreview}
               edited={!!termoRtHtml}
-              helperTooltip="Esse texto vai pra página 2 do Dossiê PMOC e também é o conteúdo do TRT individual (baixe abaixo). Editar aqui afeta os 2 PDFs."
+              helperTooltip={t.trtTooltip}
               onEdit={() => setEditorOpen('termo_rt')}
               validityNote={
                 latestTrt && trtValidUntil ? (
                   <>
-                    <span>Válido até {formatValidUntil(trtValidUntil)}</span>
+                    <span>{t.trtValidUntil} {formatValidUntil(trtValidUntil)}</span>
                     <ValidityBadge status={trtValidityStatus} />
                   </>
                 ) : null
@@ -644,13 +653,13 @@ export function PmocContractDocsTab({
                       v{latestTrt.version}
                     </Badge>
                   )}
-                  <SignatureStatusBadge status={trtStatus} />
+                  <SignatureStatusBadge status={trtStatus} t={t} />
                 </div>
               }
               extraActions={
                 <>
                   {latestTrt?.pdf_storage_path && (
-                    <DownloadLatestButton doc={latestTrt} label="Baixar TRT" />
+                    <DownloadLatestButton doc={latestTrt} label={t.trtDownloadBtn} />
                   )}
                   <Button
                     size="sm"
@@ -664,21 +673,22 @@ export function PmocContractDocsTab({
                     ) : (
                       <RefreshCw className="mr-1 h-4 w-4" />
                     )}
-                    {latestTrt ? 'Gerar TRT individual' : 'Gerar TRT'}
+                    {latestTrt ? t.trtRegenerateBtn : t.trtGenerateBtn}
                   </Button>
                 </>
               }
             />
             <SubDocCard
-              title="Certificado de Conformidade"
+              t={t}
+              title={t.certTitle}
               preview={certificadoPreview}
               edited={!!certificadoHtml}
-              helperTooltip="Esse texto vai pra página 3 do Dossiê PMOC, com o selo da Lei Federal 13.589/2018. Editar aqui afeta o Dossiê e o Certificado individual (baixe abaixo)."
+              helperTooltip={t.certTooltip}
               onEdit={() => setEditorOpen('certificado')}
               validityNote={
                 latestCertificado && certValidUntil ? (
                   <>
-                    <span>Válido até {formatValidUntil(certValidUntil)}</span>
+                    <span>{t.certValidUntil} {formatValidUntil(certValidUntil)}</span>
                     <ValidityBadge status={certValidityStatus} />
                   </>
                 ) : null
@@ -690,13 +700,13 @@ export function PmocContractDocsTab({
                       v{latestCertificado.version}
                     </Badge>
                   )}
-                  <SignatureStatusBadge status={certStatus} />
+                  <SignatureStatusBadge status={certStatus} t={t} />
                 </div>
               }
               extraActions={
                 <>
                   {latestCertificado?.pdf_storage_path && (
-                    <DownloadLatestButton doc={latestCertificado} label="Baixar Certificado" />
+                    <DownloadLatestButton doc={latestCertificado} label={t.certDownloadBtn} />
                   )}
                   <Button
                     size="sm"
@@ -710,7 +720,7 @@ export function PmocContractDocsTab({
                     ) : (
                       <RefreshCw className="mr-1 h-4 w-4" />
                     )}
-                    {latestCertificado ? 'Gerar Certificado individual' : 'Gerar Certificado'}
+                    {latestCertificado ? t.certRegenerateBtn : t.certGenerateBtn}
                   </Button>
                 </>
               }
@@ -719,11 +729,11 @@ export function PmocContractDocsTab({
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              A capa do Dossiê tem visual padrão Dominex (não editável).
+              {t.dossieCoverNote}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {latestDossie?.pdf_storage_path && (
-                <DownloadLatestButton doc={latestDossie} label="Baixar última versão" />
+                <DownloadLatestButton doc={latestDossie} label={t.dossieDownloadBtn} />
               )}
               <Button
                 size="sm"
@@ -736,7 +746,7 @@ export function PmocContractDocsTab({
                 ) : (
                   <RefreshCw className="mr-1 h-4 w-4" />
                 )}
-                {latestDossie ? 'Gerar nova versão' : 'Gerar Dossiê completo'}
+                {latestDossie ? t.dossieRegenerateBtn : t.dossieGenerateBtn}
               </Button>
             </div>
           </div>
@@ -753,7 +763,7 @@ export function PmocContractDocsTab({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
               <Table2 className="h-5 w-5 shrink-0" />
-              <span className="min-w-0 break-words">Planilha PMOC</span>
+              <span className="min-w-0 break-words">{t.planilhaTitle}</span>
               {latestPlanilha && (
                 <Badge variant="secondary" className="ml-2">
                   v{latestPlanilha.version}
@@ -762,20 +772,20 @@ export function PmocContractDocsTab({
             </CardTitle>
           </div>
           <p className="text-xs text-muted-foreground">
-            Identificação do ambiente, Responsável Técnico, relação dos equipamentos climatizados e o plano de manutenção com periodicidade (mensal, trimestral, semestral, anual) e mapa dos 12 meses.
+            {t.planilhaDesc}
           </p>
           <p className="text-xs text-muted-foreground">
-            Última geração: {formatGeneratedAt(latestPlanilha?.generated_at)}
+            {t.planilhaLastGenerated}: {formatGeneratedAt(latestPlanilha?.generated_at)}
           </p>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              Se o contrato ainda não tem plano de atividades, a planilha é gerada com as seções preenchidas e o plano em branco.
+              {t.planilhaEmptyNote}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {latestPlanilha?.pdf_storage_path && (
-                <DownloadLatestButton doc={latestPlanilha} label="Baixar Planilha PMOC" />
+                <DownloadLatestButton doc={latestPlanilha} label={t.planilhaDownloadBtn} />
               )}
               <Button
                 size="sm"
@@ -788,7 +798,7 @@ export function PmocContractDocsTab({
                 ) : (
                   <RefreshCw className="mr-1 h-4 w-4" />
                 )}
-                {latestPlanilha ? 'Gerar nova versão' : 'Gerar Planilha PMOC'}
+                {latestPlanilha ? t.planilhaRegenerateBtn : t.planilhaGenerateBtn}
               </Button>
             </div>
           </div>
@@ -796,13 +806,13 @@ export function PmocContractDocsTab({
       </Card>
 
       {/* Histórico de versões */}
-      <VersionHistory documents={documents} isLoading={isLoadingDocs} />
+      <VersionHistory documents={documents} isLoading={isLoadingDocs} t={t} />
 
       {/* Editores */}
       <PmocDocEditorDialog
         open={editorOpen === 'termo_rt'}
         onOpenChange={(o) => !o && setEditorOpen(null)}
-        title="Editar Termo de Responsabilidade Técnica"
+        title={t.editorTrtTitle}
         initialHtml={termoRtHtml}
         defaultHtml={defaultTermoRt}
         onSave={saveTermoRT}
@@ -810,13 +820,13 @@ export function PmocContractDocsTab({
         onPullCompanyTemplate={() => companyTemplates?.termo_rt_content ?? defaultTermoRt}
         pullCompanyTemplateDisabled={!companyTemplates?.termo_rt_content}
         isSaving={isSaving}
-        helperText="Esse texto será embutido na página 2 do PDF do Dossiê PMOC. Variáveis aparecem como badges; o PDF final substitui pelo valor cadastrado."
+        helperText={t.editorTrtHelper}
         templateContext={variableContext}
       />
       <PmocDocEditorDialog
         open={editorOpen === 'certificado'}
         onOpenChange={(o) => !o && setEditorOpen(null)}
-        title="Editar Certificado de Conformidade"
+        title={t.editorCertTitle}
         initialHtml={certificadoHtml}
         defaultHtml={defaultCertificado}
         onSave={saveCertificado}
@@ -824,7 +834,7 @@ export function PmocContractDocsTab({
         onPullCompanyTemplate={() => companyTemplates?.certificado_content ?? defaultCertificado}
         pullCompanyTemplateDisabled={!companyTemplates?.certificado_content}
         isSaving={isSaving}
-        helperText="Esse texto será embutido na página 3 do PDF do Dossiê PMOC. Variáveis aparecem como badges; o PDF final substitui pelo valor cadastrado."
+        helperText={t.editorCertHelper}
         templateContext={variableContext}
       />
 
@@ -902,9 +912,11 @@ function DownloadLatestButton({
 function VersionHistory({
   documents,
   isLoading,
+  t,
 }: {
   documents: PmocDocument[];
   isLoading: boolean;
+  t: DocsT;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -912,7 +924,7 @@ function VersionHistory({
     return (
       <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardContent className="py-4 text-center text-xs text-muted-foreground">
-          Carregando histórico…
+          {t.versionHistoryLoading}
         </CardContent>
       </Card>
     );
@@ -922,7 +934,7 @@ function VersionHistory({
     return (
       <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardContent className="py-4 text-center text-xs text-muted-foreground">
-          Nenhuma versão gerada ainda.
+          {t.versionHistoryEmpty}
         </CardContent>
       </Card>
     );
@@ -948,7 +960,7 @@ function VersionHistory({
               'text-sm font-semibold active:scale-[0.995] transition-transform',
             )}
           >
-            <span>Histórico de versões ({documents.length})</span>
+            <span>{t.versionHistoryTitle.replace('{n}', String(documents.length))}</span>
             <ChevronDown
               className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
               aria-hidden="true"
@@ -957,11 +969,11 @@ function VersionHistory({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4 border-t pt-4">
-            <TypeBlock title="Termo de Responsabilidade Técnica" docs={byType.termo_rt} />
-            <TypeBlock title="Certificado de Conformidade" docs={byType.certificado} />
-            <TypeBlock title="Dossiê PMOC" docs={byType.dossie_pmoc} />
-            <TypeBlock title="Planilha PMOC" docs={byType.planilha} />
-            <TypeBlock title="Cronograma Anual" docs={byType.cronograma_anual} />
+            <TypeBlock title={t.trtTitle} docs={byType.termo_rt} downloadLabel={t.downloadBtn} />
+            <TypeBlock title={t.certTitle} docs={byType.certificado} downloadLabel={t.downloadBtn} />
+            <TypeBlock title={t.dossieTitle} docs={byType.dossie_pmoc} downloadLabel={t.downloadBtn} />
+            <TypeBlock title={t.planilhaTitle} docs={byType.planilha} downloadLabel={t.downloadBtn} />
+            <TypeBlock title={t.cronogramaAnualTitle} docs={byType.cronograma_anual} downloadLabel={t.downloadBtn} />
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
@@ -969,7 +981,7 @@ function VersionHistory({
   );
 }
 
-function TypeBlock({ title, docs }: { title: string; docs: PmocDocument[] }) {
+function TypeBlock({ title, docs, downloadLabel }: { title: string; docs: PmocDocument[]; downloadLabel: string }) {
   if (docs.length === 0) return null;
   return (
     <div className="space-y-1.5">
@@ -990,7 +1002,7 @@ function TypeBlock({ title, docs }: { title: string; docs: PmocDocument[] }) {
                 </span>
               </p>
             </div>
-            <DownloadLatestButton doc={d} label="Baixar" />
+            <DownloadLatestButton doc={d} label={downloadLabel} />
           </li>
         ))}
       </ul>

@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Employee } from '@/hooks/useEmployees';
 import { BalanceSummary } from '@/utils/employeeCalculations';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface EmployeesDashboardProps {
   employees: Employee[];
@@ -12,7 +15,9 @@ interface EmployeesDashboardProps {
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 export function EmployeesDashboard({ employees, balances }: EmployeesDashboardProps) {
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const active = employees.filter(e => e.is_active);
   const totalPayroll = active.reduce((s, e) => s + (e.salary || 0), 0);
   const avgSalary = active.length ? totalPayroll / active.length : 0;
@@ -21,16 +26,16 @@ export function EmployeesDashboard({ employees, balances }: EmployeesDashboardPr
   // Position distribution
   const positionMap = new Map<string, number>();
   active.forEach(e => {
-    const pos = e.position || 'Sem cargo';
+    const pos = e.position || t.dashboard.chart.noPosition;
     positionMap.set(pos, (positionMap.get(pos) || 0) + 1);
   });
   const positionData = Array.from(positionMap.entries()).map(([name, value]) => ({ name, value }));
 
   const stats = [
-    { label: 'Total Funcionários', value: active.length, icon: Users },
-    { label: 'Folha Salarial', value: fmt(totalPayroll), icon: DollarSign },
-    { label: 'Salário Médio', value: fmt(avgSalary), icon: TrendingUp },
-    { label: 'Saldo Total', value: fmt(totalBalance), icon: Wallet, color: totalBalance >= 0 ? 'text-green-600' : 'text-destructive' },
+    { label: t.dashboard.kpi.totalEmployees, value: active.length, icon: Users },
+    { label: t.dashboard.kpi.payroll, value: fmt(totalPayroll), icon: DollarSign },
+    { label: t.dashboard.kpi.avgSalary, value: fmt(avgSalary), icon: TrendingUp },
+    { label: t.dashboard.kpi.totalBalance, value: fmt(totalBalance), icon: Wallet, color: totalBalance >= 0 ? 'text-green-600' : 'text-destructive' },
   ];
 
   return (
@@ -53,7 +58,7 @@ export function EmployeesDashboard({ employees, balances }: EmployeesDashboardPr
 
       {positionData.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Distribuição por Cargo</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t.dashboard.chart.byPosition}</CardTitle></CardHeader>
           <CardContent>
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">

@@ -1,5 +1,8 @@
 import { Phone, FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
@@ -18,8 +21,6 @@ interface EmployeesListViewProps {
   onPayment: (employee: Employee) => void;
   onExtract: (employee: Employee) => void;
 }
-
-const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const getInitials = (name: string) =>
   name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
@@ -45,6 +46,9 @@ export function EmployeesListView({
   onExtract,
 }: EmployeesListViewProps) {
   const { toast } = useToast();
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
 
   const copyPontoLink = async (slug: string) => {
     const link = `${window.location.origin}/ponto/${slug}`;
@@ -62,12 +66,12 @@ export function EmployeesListView({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs uppercase tracking-wider">Funcionário</TableHead>
-              <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Cargo</TableHead>
-              <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
-              <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider text-right">Salário</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-right">Saldo</TableHead>
-              <TableHead className="w-[60px] text-xs uppercase tracking-wider text-right">Ações</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">{t.table.columnEmployee}</TableHead>
+              <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">{t.table.columnPosition}</TableHead>
+              <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">{t.table.columnContact}</TableHead>
+              <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider text-right">{t.table.columnSalary}</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-right">{t.table.columnBalance}</TableHead>
+              <TableHead className="w-[60px] text-xs uppercase tracking-wider text-right">{t.table.columnActions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -144,45 +148,45 @@ export function EmployeesListView({
                       <RowActionsMenu
                         actions={[
                           {
-                            label: 'Extrato',
+                            label: t.actions.extract,
                             icon: FileText,
                             onClick: () => onExtract(emp),
                           },
                           {
-                            label: 'Vale',
+                            label: t.actions.advance,
                             icon: Banknote,
                             onClick: () => onMovement(emp, 'vale'),
                           },
                           {
-                            label: 'Bônus',
+                            label: t.actions.bonus,
                             icon: Gift,
                             onClick: () => onMovement(emp, 'bonus'),
                           },
                           {
-                            label: 'Falta',
+                            label: t.actions.absence,
                             icon: AlertCircle,
                             onClick: () => onMovement(emp, 'falta'),
                           },
                           {
-                            label: 'Pagamento',
+                            label: t.actions.payment,
                             icon: CreditCard,
                             onClick: () => onPayment(emp),
                           },
                           ...(hasPontoLink
                             ? [{
-                                label: 'Link do ponto',
+                                label: t.actions.timeclockLink,
                                 icon: Clock,
                                 onClick: () => copyPontoLink(emp.ponto_slug!),
                               }]
                             : []),
                           {
-                            label: 'Editar',
+                            label: t.actions.edit,
                             icon: Pencil,
                             variant: 'edit' as const,
                             onClick: () => onEdit(emp),
                           },
                           {
-                            label: 'Excluir',
+                            label: t.actions.delete,
                             icon: Trash2,
                             variant: 'delete' as const,
                             onClick: () => onDelete(emp),

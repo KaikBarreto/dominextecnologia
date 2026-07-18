@@ -5,6 +5,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Selo visual "Conforme Lei Federal 13.589/2018".
@@ -32,10 +34,7 @@ export interface PmocComplianceBadgeProps {
   withTooltip?: boolean;
 }
 
-const TOOLTIP_TEXT =
-  'Contrato PMOC — Plano de Manutenção, Operação e Controle. Conforme Lei Federal 13.589/2018.';
-
-function ChipBody({ className }: { className?: string }) {
+function ChipBody({ className, t }: { className?: string; t: ReturnType<typeof usePmocBadgeT> }) {
   return (
     <span
       className={cn(
@@ -44,15 +43,15 @@ function ChipBody({ className }: { className?: string }) {
         'border border-blue-700 whitespace-nowrap',
         className,
       )}
-      aria-label="Conforme Lei Federal 13.589/2018"
+      aria-label={t.chipAriaLabel}
     >
       <ShieldCheck className="h-3 w-3 shrink-0" aria-hidden="true" />
-      <span>Lei 13.589</span>
+      <span>{t.label}</span>
     </span>
   );
 }
 
-function RibbonBody({ className }: { className?: string }) {
+function RibbonBody({ className, t }: { className?: string; t: ReturnType<typeof usePmocBadgeT> }) {
   return (
     <div
       className={cn(
@@ -61,24 +60,24 @@ function RibbonBody({ className }: { className?: string }) {
         className,
       )}
       role="note"
-      aria-label="Conforme Lei Federal 13.589/2018"
+      aria-label={t.chipAriaLabel}
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
         <ShieldCheck className="h-4 w-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-white/80">
-          Contrato PMOC
+          {t.ribbonLabel}
         </p>
         <p className="text-sm font-semibold leading-tight">
-          Conforme Lei Federal 13.589/2018
+          {t.ribbonSubtitle}
         </p>
       </div>
     </div>
   );
 }
 
-function FooterBody({ className }: { className?: string }) {
+function FooterBody({ className, t }: { className?: string; t: ReturnType<typeof usePmocBadgeT> }) {
   return (
     <p
       className={cn(
@@ -87,11 +86,14 @@ function FooterBody({ className }: { className?: string }) {
       )}
     >
       <ShieldCheck className="h-3 w-3 shrink-0" aria-hidden="true" />
-      <span>
-        Este documento está em conformidade com a Lei Federal 13.589/2018.
-      </span>
+      <span>{t.footerText}</span>
     </p>
   );
+}
+
+function usePmocBadgeT() {
+  const { locale } = useAppLocaleContext();
+  return MESSAGES[locale].app.pmoc.complianceBadge;
 }
 
 export function PmocComplianceBadge({
@@ -99,13 +101,15 @@ export function PmocComplianceBadge({
   className,
   withTooltip = false,
 }: PmocComplianceBadgeProps) {
+  const t = usePmocBadgeT();
+
   const body =
     variant === 'chip' ? (
-      <ChipBody className={className} />
+      <ChipBody className={className} t={t} />
     ) : variant === 'ribbon' ? (
-      <RibbonBody className={className} />
+      <RibbonBody className={className} t={t} />
     ) : (
-      <FooterBody className={className} />
+      <FooterBody className={className} t={t} />
     );
 
   if (!withTooltip) return body;
@@ -117,7 +121,7 @@ export function PmocComplianceBadge({
         <span className="inline-flex">{body}</span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-xs text-xs">
-        {TOOLTIP_TEXT}
+        {t.tooltipText}
       </TooltipContent>
     </Tooltip>
   );

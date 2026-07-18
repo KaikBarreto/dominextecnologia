@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { sectionLabel } from '@/utils/sectionLabel';
 import { formatBrtDateTime } from '@/lib/date-br';
 import type { ContractActivityExecutionRow } from '@/hooks/useContractPmocExecution';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * View PURA do "Histórico PMOC" — prova de cumprimento da Planilha PMOC
@@ -20,46 +22,44 @@ import type { ContractActivityExecutionRow } from '@/hooks/useContractPmocExecut
  * edge). Mobile-first, PT-BR, tema do contexto que a renderiza.
  */
 
+type ExecutionHistoryT = ReturnType<typeof useExecutionHistoryT>;
+
+function useExecutionHistoryT() {
+  const { locale } = useAppLocaleContext();
+  return MESSAGES[locale].app.pmoc.executionHistory;
+}
+
 /** Data BR (DD/MM/AAAA) a partir de um date-only "yyyy-MM-dd", sem off-by-one. */
-function formatDateOnlyBR(dateOnly: string | null | undefined): string {
-  if (!dateOnly) return 'Sem data';
+function formatDateOnlyBR(dateOnly: string | null | undefined, noDateLabel: string): string {
+  if (!dateOnly) return noDateLabel;
   const [y, m, d] = dateOnly.split('-').map(Number);
-  if (!y || !m || !d) return 'Sem data';
+  if (!y || !m || !d) return noDateLabel;
   return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
 }
 
-/** Frequência M/T/S/A/E → rótulo PT-BR completo. */
-const FREQ_LABELS: Record<string, string> = {
-  M: 'Mensal',
-  T: 'Trimestral',
-  S: 'Semestral',
-  A: 'Anual',
-  E: 'Eventual',
-};
-
 /** Status de conformidade da tarefa → selo SATURADO (régua do time). */
-function conformityBadge(status: ContractActivityExecutionRow['conformity_status']) {
+function conformityBadge(status: ContractActivityExecutionRow['conformity_status'], t: ExecutionHistoryT) {
   switch (status) {
     case 'conforme':
-      return { label: 'Conforme', className: 'bg-emerald-600 text-white hover:bg-emerald-600' };
+      return { label: t.conformity.conforme, className: 'bg-emerald-600 text-white hover:bg-emerald-600' };
     case 'nao_conforme':
-      return { label: 'Não conforme', className: 'bg-red-600 text-white hover:bg-red-600' };
+      return { label: t.conformity.nao_conforme, className: 'bg-red-600 text-white hover:bg-red-600' };
     case 'na':
-      return { label: 'N/A', className: 'bg-slate-500 text-white hover:bg-slate-500' };
+      return { label: t.conformity.na, className: 'bg-slate-500 text-white hover:bg-slate-500' };
     default:
-      return { label: 'Sem resposta', className: 'bg-muted text-muted-foreground' };
+      return { label: t.conformity.sem_resposta, className: 'bg-muted text-muted-foreground' };
   }
 }
 
 /** Status da VISITA (visit_conformity) → selo no cabeçalho do grupo de visita. */
-function visitBadge(status: string | null) {
+function visitBadge(status: string | null, t: ExecutionHistoryT) {
   switch (status) {
     case 'conforme':
-      return { label: 'Visita conforme', className: 'bg-emerald-600 text-white hover:bg-emerald-600' };
+      return { label: t.visitConformity.conforme, className: 'bg-emerald-600 text-white hover:bg-emerald-600' };
     case 'nao_conforme':
-      return { label: 'Visita não conforme', className: 'bg-red-600 text-white hover:bg-red-600' };
+      return { label: t.visitConformity.nao_conforme, className: 'bg-red-600 text-white hover:bg-red-600' };
     case 'na':
-      return { label: 'Visita N/A', className: 'bg-slate-500 text-white hover:bg-slate-500' };
+      return { label: t.visitConformity.na, className: 'bg-slate-500 text-white hover:bg-slate-500' };
     default:
       return null;
   }
@@ -96,6 +96,17 @@ export function PmocExecutionHistoryView({
   rows,
   showHeader = true,
 }: PmocExecutionHistoryViewProps) {
+  const t = useExecutionHistoryT();
+
+  // Frequência M/T/S/A/E → rótulo no locale atual.
+  const FREQ_LABELS: Record<string, string> = {
+    M: t.freq.M,
+    T: t.freq.T,
+    S: t.freq.S,
+    A: t.freq.A,
+    E: t.freq.E,
+  };
+
   // Filtro opcional por equipamento (multi-seleção; vazio = todos).
   const [selectedEquipments, setSelectedEquipments] = useState<string[]>([]);
   const [showFilter, setShowFilter] = useState(false);
@@ -104,13 +115,13 @@ export function PmocExecutionHistoryView({
   const equipmentOptions = useMemo(() => {
     const seen = new Map<string, string>();
     for (const r of rows) {
-      const key = r.equipment_id ?? `__noeq__${r.equipment_name ?? 'sem-equipamento'}`;
-      if (!seen.has(key)) seen.set(key, r.equipment_name ?? 'Sem equipamento');
+      const key = r.equipment_id ?? `__noeq__${r.equipment_name ?? t.noEquipment}`;
+      if (!seen.has(key)) seen.set(key, r.equipment_name ?? t.noEquipment);
     }
     return Array.from(seen.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [rows]);
+  }, [rows, t.noEquipment]);
 
   // Agrupamento visita → equipamento → tarefa. As linhas já vêm ordenadas por
   // scheduled_date desc (mais recente primeiro); preservamos essa ordem.
@@ -135,14 +146,14 @@ export function PmocExecutionHistoryView({
         };
         byVisit.set(r.service_order_id, visit);
       }
-      const eqKey = r.equipment_id ?? `__noeq__${r.equipment_name ?? 'sem-equipamento'}`;
+      const eqKey = r.equipment_id ?? `__noeq__${r.equipment_name ?? t.noEquipment}`;
       let eq = visit.equipments.find((e) =>
         (e.equipmentId ?? `__noeq__${e.equipmentName}`) === eqKey,
       );
       if (!eq) {
         eq = {
           equipmentId: r.equipment_id,
-          equipmentName: r.equipment_name ?? 'Sem equipamento',
+          equipmentName: r.equipment_name ?? t.noEquipment,
           tasks: [],
         };
         visit.equipments.push(eq);
@@ -163,8 +174,8 @@ export function PmocExecutionHistoryView({
     return (
       <EmptyState
         icon={<ClipboardCheck className="h-full w-full" />}
-        title="Sem execução registrada ainda"
-        description="Quando os técnicos preencherem o checklist PMOC das visitas, cada tarefa cumprida aparece aqui como prova da Planilha."
+        title={t.emptyTitle}
+        description={t.emptyDesc}
       />
     );
   }
@@ -178,9 +189,9 @@ export function PmocExecutionHistoryView({
         <div className="flex items-center justify-between gap-2">
           {showHeader ? (
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-semibold">Histórico PMOC</h2>
+              <h2 className="text-base sm:text-lg font-semibold">{t.headerTitle}</h2>
               <p className="text-xs text-muted-foreground break-words">
-                Prova de cumprimento da Planilha, tarefa por tarefa, em cada visita.
+                {t.headerDesc}
               </p>
             </div>
           ) : (
@@ -194,7 +205,7 @@ export function PmocExecutionHistoryView({
               onClick={() => setShowFilter(true)}
             >
               <Wrench className="h-4 w-4 mr-1" />
-              {filterActive ? `${selectedEquipments.length} filtro(s)` : 'Equipamento'}
+              {filterActive ? t.filterBtnActive.replace('{n}', String(selectedEquipments.length)) : t.filterBtn}
             </Button>
           )}
         </div>
@@ -206,7 +217,7 @@ export function PmocExecutionHistoryView({
           onClick={() => setSelectedEquipments([])}
           className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
         >
-          <FilterX className="h-3.5 w-3.5" /> Limpar filtro de equipamento
+          <FilterX className="h-3.5 w-3.5" /> {t.clearFilter}
         </button>
       )}
 
@@ -214,13 +225,13 @@ export function PmocExecutionHistoryView({
         <EmptyState
           size="compact"
           icon={<Wrench className="h-full w-full" />}
-          title="Nenhuma tarefa para este filtro"
-          description="Ajuste o filtro de equipamento para ver o histórico."
+          title={t.noTasksTitle}
+          description={t.noTasksDesc}
         />
       ) : (
         <div className="space-y-4 min-w-0">
           {visitGroups.map((visit) => {
-            const vb = visitBadge(visit.visitConformity);
+            const vb = visitBadge(visit.visitConformity, t);
             return (
               <Card
                 key={visit.serviceOrderId}
@@ -229,7 +240,7 @@ export function PmocExecutionHistoryView({
                 <CardHeader className="pb-3">
                   <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                     <span className="font-semibold">
-                      {formatDateOnlyBR(visit.scheduledDate)}
+                      {formatDateOnlyBR(visit.scheduledDate, t.noDate)}
                     </span>
                     {visit.orderNumber != null && (
                       <Badge variant="secondary" className="shrink-0">OS #{visit.orderNumber}</Badge>
@@ -246,12 +257,12 @@ export function PmocExecutionHistoryView({
                         <Wrench className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <span className="break-words">{eq.equipmentName}</span>
                         <span className="text-xs text-muted-foreground">
-                          ({eq.tasks.length} {eq.tasks.length === 1 ? 'tarefa' : 'tarefas'})
+                          ({eq.tasks.length} {eq.tasks.length === 1 ? t.tasks_one : t.tasks_other})
                         </span>
                       </div>
                       <div className="space-y-2 min-w-0">
                         {eq.tasks.map((task) => {
-                          const cb = conformityBadge(task.conformity_status);
+                          const cb = conformityBadge(task.conformity_status, t);
                           const secLabel = sectionLabel(task.section);
                           const freqLabel = task.freq_code ? FREQ_LABELS[task.freq_code] ?? task.freq_code : null;
                           const respondedAt = formatBrtDateTime(task.responded_at);
@@ -277,7 +288,7 @@ export function PmocExecutionHistoryView({
                               {/* Medição (quando houver valor medido). */}
                               {task.is_measurement && task.measured_value != null && (
                                 <p className="text-xs text-muted-foreground">
-                                  Medido: <span className="font-medium text-foreground">{task.measured_value}{task.unit ? ` ${task.unit}` : ''}</span>
+                                  {t.measured}: <span className="font-medium text-foreground">{task.measured_value}{task.unit ? ` ${task.unit}` : ''}</span>
                                 </p>
                               )}
 
@@ -289,7 +300,7 @@ export function PmocExecutionHistoryView({
                                 )}
                                 {respondedAt && <span>{respondedAt}</span>}
                                 {task.responded_by_name && (
-                                  <span className="break-words">por {task.responded_by_name}</span>
+                                  <span className="break-words">{t.respondedBy} {task.responded_by_name}</span>
                                 )}
                               </div>
                             </div>
@@ -306,14 +317,14 @@ export function PmocExecutionHistoryView({
       )}
 
       {/* Filtro de equipamento (multi-seleção, padrão do time). */}
-      <ResponsiveModal open={showFilter} onOpenChange={setShowFilter} title="Filtrar por equipamento">
+      <ResponsiveModal open={showFilter} onOpenChange={setShowFilter} title={t.filterModalTitle}>
         <div className="p-1">
           <FilterCheckboxGroup
-            label="Equipamento"
+            label={t.filterLabel}
             options={equipmentOptions}
             selected={selectedEquipments}
             onChange={setSelectedEquipments}
-            emptyLabel="Todos os equipamentos"
+            emptyLabel={t.filterEmptyLabel}
           />
         </div>
       </ResponsiveModal>

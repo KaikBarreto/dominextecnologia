@@ -4,6 +4,8 @@ import { AlertTriangle, Loader2, Printer, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 import {
   PmocCronogramaCalendar,
@@ -49,6 +51,8 @@ export function PmocContractCronogramaTab({
 }: PmocContractCronogramaTabProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.cronograma;
   const { serviceOrders, isLoading } = useServiceOrders();
   const generateCronograma = useGenerateCronogramaPdf();
   const generateRetroactive = useGenerateRetroactiveContractOSs();
@@ -124,9 +128,9 @@ export function PmocContractCronogramaTab({
     <Card className="w-full min-w-0 max-w-full overflow-hidden">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <CardTitle className="break-words">Cronograma do contrato</CardTitle>
+          <CardTitle className="break-words">{t.cardTitle}</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Visualize todas as manutenções desta unidade em formato calendário.
+            {t.cardDesc}
           </p>
         </div>
         <Button
@@ -141,24 +145,20 @@ export function PmocContractCronogramaTab({
           ) : (
             <Printer className="mr-1 h-3.5 w-3.5" />
           )}
-          {generateCronograma.isPending ? 'Gerando…' : 'Imprimir PDF Anual'}
+          {generateCronograma.isPending ? t.generatingBtn : t.printBtn}
         </Button>
       </CardHeader>
       <CardContent className="min-w-0">
         {isLoading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Carregando ordens…</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t.loadingOrders}</p>
         ) : (
           <>
             {hasNoOrders && (
               <Alert className="mb-4">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Nenhuma OS encontrada para este contrato</AlertTitle>
+                <AlertTitle>{t.noOsTitle}</AlertTitle>
                 <AlertDescription className="space-y-3">
-                  <p>
-                    Este contrato não tem ordens de serviço geradas. Você pode
-                    gerar agora todo o cronograma de uma vez — datas, técnico
-                    responsável e equipamentos do contrato serão respeitados.
-                  </p>
+                  <p>{t.noOsDesc}</p>
                   <Button
                     onClick={handleGenerateRetroactive}
                     disabled={generateRetroactive.isPending}
@@ -171,8 +171,8 @@ export function PmocContractCronogramaTab({
                       <RefreshCw className="mr-2 h-4 w-4" />
                     )}
                     {generateRetroactive.isPending
-                      ? 'Gerando OSs…'
-                      : 'Gerar OSs deste contrato agora'}
+                      ? t.generatingOsBtn
+                      : t.generateBtn}
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -214,7 +214,7 @@ export function PmocContractCronogramaTab({
                       className="mt-2 h-auto p-0 text-xs text-muted-foreground"
                       onClick={handleOpenFullOs}
                     >
-                      Abrir OS em tela cheia
+                      {t.openFullOs}
                     </Button>
                   )}
                 </div>

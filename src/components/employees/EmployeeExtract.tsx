@@ -4,6 +4,9 @@ import {
   Award, HandCoins, TrendingDown, AlertTriangle, Wallet, TrendingUp,
   Printer, ReceiptText,
 } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney, formatDateTime } from '@/lib/format';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +32,6 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useAuth } from '@/contexts/AuthContext';
-import { format } from 'date-fns';
 
 interface EmployeeExtractProps {
   open: boolean;
@@ -59,7 +61,9 @@ function openHTMLInNewTab(html: string) {
 type ReceiptTarget = { movement: EmployeeMovement; kind: 'pagamento' | 'vale' };
 
 export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSalary, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const sorted = [...movements].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const pagination = useDataPagination(sorted, 10);
   const { settings: companySettings } = useCompanySettings();
@@ -136,7 +140,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
     }
 
     // kind === 'vale'
-    const dateStr = format(new Date(movement.created_at), 'dd/MM/yyyy HH:mm');
+    const dateStr = formatDateTime(movement.created_at, locale, timezone);
     const method = accountName(movement.payment_method) || (movement.payment_method ? 'Conta bancária' : 'Não informado');
     if (outputFormat === 'a4') {
       const vale: ValeBreakdown = { amount: Math.abs(movement.amount), paymentMethod: method, date: dateStr, description: movement.description || undefined };
@@ -170,7 +174,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
             <div className="flex flex-col gap-0.5 min-w-0">
               <Badge className={`w-fit text-[10px] ${badgeClassFor(m.type)}`}>{formatMovementType(m.type)}</Badge>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}
+                {formatDateTime(m.created_at, locale, timezone)}
               </span>
             </div>
           </div>
@@ -179,7 +183,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
               <div className={`text-sm font-semibold ${colorClassFor(m.type)}`}>
                 {sign}{fmt(Math.abs(m.amount))}
               </div>
-              <div className="text-[10px] text-muted-foreground">Saldo após: {fmt(m.balance_after)}</div>
+              <div className="text-[10px] text-muted-foreground">{t.extract.movement.balanceAfter}: {fmt(m.balance_after)}</div>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -189,12 +193,12 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
-                  <AlertDialogDescription>Esta ação não pode ser desfeita. Os saldos serão recalculados.</AlertDialogDescription>
+                  <AlertDialogTitle>{t.extract.deleteMovement.title}</AlertDialogTitle>
+                  <AlertDialogDescription>{t.extract.deleteMovement.description}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDeleteMovement(m.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+                  <AlertDialogCancel>{t.extract.deleteMovement.cancel}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDeleteMovement(m.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t.extract.deleteMovement.confirm}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -206,56 +210,56 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
 
         {/* Forma de pagamento (não-pagamento) */}
         {!isPayment && m.payment_method && (
-          <p className="text-xs text-muted-foreground pl-1">via {accountName(m.payment_method)}</p>
+          <p className="text-xs text-muted-foreground pl-1">{t.extract.movement.viaAccount} {accountName(m.payment_method)}</p>
         )}
 
         {/* Breakdown do pagamento */}
         {isPayment && b && (
           <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-xs">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Salário base</span>
+              <span className="text-muted-foreground">{t.extract.movement.breakdown.baseSalary}</span>
               <span className="font-medium">{fmt(b.salary)}</span>
             </div>
             {b.totalBonus > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">+ Bônus</span>
+                <span className="text-muted-foreground">{t.extract.movement.breakdown.bonus}</span>
                 <span className="font-medium text-green-600">+{fmt(b.totalBonus)}</span>
               </div>
             )}
             {b.totalFaltas > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">- Faltas</span>
+                <span className="text-muted-foreground">{t.extract.movement.breakdown.absences}</span>
                 <span className="font-medium text-orange-600">-{fmt(b.totalFaltas)}</span>
               </div>
             )}
             <div className="flex justify-between border-t pt-1.5">
-              <span className="text-muted-foreground">Subtotal</span>
+              <span className="text-muted-foreground">{t.extract.movement.breakdown.subtotal}</span>
               <span className="font-medium">{fmt(b.salary + b.totalBonus - b.totalFaltas)}</span>
             </div>
             {b.totalVales > 0 && (
               <>
                 <div className="flex justify-between border-t pt-1.5">
-                  <span className="text-muted-foreground">Total de vales acumulados</span>
+                  <span className="text-muted-foreground">{t.extract.movement.breakdown.totalAdvances}</span>
                   <span className="font-medium text-destructive">{fmt(b.totalVales)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Vales descontados</span>
+                  <span className="text-muted-foreground">{t.extract.movement.breakdown.discountedAdvances}</span>
                   <span className="font-medium text-destructive">-{fmt(b.valesDescontados)}</span>
                 </div>
                 {b.valesRestantes > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Vales restantes</span>
+                    <span className="text-muted-foreground">{t.extract.movement.breakdown.remainingAdvances}</span>
                     <span className="font-medium text-orange-600">{fmt(b.valesRestantes)}</span>
                   </div>
                 )}
               </>
             )}
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Forma de pagamento</span>
-              <span className="font-medium">{accountName(m.payment_method) || 'Conta bancária'}</span>
+              <span className="text-muted-foreground">{t.extract.movement.breakdown.paymentMethod}</span>
+              <span className="font-medium">{accountName(m.payment_method) || t.extract.movement.breakdown.paymentMethod}</span>
             </div>
             <div className="flex justify-between border-t pt-1.5 items-center">
-              <span className="font-semibold">Valor líquido pago</span>
+              <span className="font-semibold">{t.extract.movement.breakdown.netAmount}</span>
               <span className="font-bold text-base text-green-600">{fmt(b.valorPago)}</span>
             </div>
           </div>
@@ -269,7 +273,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
             onClick={() => setReceiptTarget({ movement: m, kind: isVale ? 'vale' : 'pagamento' })}
           >
             <FileText className="h-3.5 w-3.5" />
-            Gerar Recibo
+            {t.extract.movement.receiptButton}
           </Button>
         )}
       </div>
@@ -278,12 +282,12 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
 
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`} className="sm:max-w-[900px]">
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`${t.extract.modalTitlePrefix} ${employeeName}`} className="sm:max-w-[900px]">
         <div className="space-y-4">
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
               <Download className="h-4 w-4" />
-              Exportar
+              {t.extract.exportButton}
             </Button>
           </div>
 
@@ -292,28 +296,28 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
             <div className="rounded-lg bg-green-600 p-3">
               <div className="mb-1 flex items-center gap-1.5">
                 <Award className="h-3.5 w-3.5 text-white" />
-                <span className="text-xs text-white/80">Bônus</span>
+                <span className="text-xs text-white/80">{t.extract.summary.bonus}</span>
               </div>
               <p className="text-base font-semibold text-white">{fmt(balance.totalBonus)}</p>
             </div>
             <div className="rounded-lg bg-red-600 p-3">
               <div className="mb-1 flex items-center gap-1.5">
                 <TrendingDown className="h-3.5 w-3.5 text-white" />
-                <span className="text-xs text-white/80">Vales</span>
+                <span className="text-xs text-white/80">{t.extract.summary.advances}</span>
               </div>
               <p className="text-base font-semibold text-white">{fmt(balance.totalVales)}</p>
             </div>
             <div className="rounded-lg bg-orange-500 p-3">
               <div className="mb-1 flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 text-white" />
-                <span className="text-xs text-white/80">Faltas</span>
+                <span className="text-xs text-white/80">{t.extract.summary.absences}</span>
               </div>
               <p className="text-base font-semibold text-white">{fmt(balance.totalFaltas)}</p>
             </div>
             <div className={`rounded-lg p-3 ${balance.currentBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
               <div className="mb-1 flex items-center gap-1.5">
                 <Wallet className="h-3.5 w-3.5 text-white" />
-                <span className="text-xs text-white/80">Saldo</span>
+                <span className="text-xs text-white/80">{t.extract.summary.balance}</span>
               </div>
               <p className="text-base font-bold text-white">{fmt(balance.currentBalance)}</p>
             </div>
@@ -322,7 +326,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
           {/* Lista de movimentos em cards */}
           <div className="space-y-2">
             {pagination.paginatedItems.length === 0 ? (
-              <div className="rounded-lg border py-8 text-center text-muted-foreground">Nenhuma movimentação</div>
+              <div className="rounded-lg border py-8 text-center text-muted-foreground">{t.empty.noMovements}</div>
             ) : (
               pagination.paginatedItems.map(renderCard)
             )}
@@ -347,11 +351,11 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
       <ResponsiveModal
         open={!!receiptTarget}
         onOpenChange={(o) => !o && setReceiptTarget(null)}
-        title={receiptTarget?.kind === 'vale' ? 'Gerar recibo de vale' : 'Gerar recibo de pagamento'}
+        title={receiptTarget?.kind === 'vale' ? t.extract.receiptFormat.titleAdvance : t.extract.receiptFormat.titlePayment}
         className="sm:max-w-[420px]"
       >
         <div className="space-y-3 py-2">
-          <p className="text-sm text-muted-foreground">Escolha o formato do recibo:</p>
+          <p className="text-sm text-muted-foreground">{t.extract.receiptFormat.prompt}</p>
           <Button
             variant="outline"
             className="w-full h-auto justify-start gap-3 py-3"
@@ -359,8 +363,8 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
           >
             <Printer className="h-5 w-5 shrink-0" />
             <span className="flex flex-col items-start">
-              <span className="font-medium">A4 (imprimível)</span>
-              <span className="text-xs text-muted-foreground">Folha inteira, ideal para arquivar e imprimir.</span>
+              <span className="font-medium">{t.extract.receiptFormat.a4Label}</span>
+              <span className="text-xs text-muted-foreground">{t.extract.receiptFormat.a4Description}</span>
             </span>
           </Button>
           <Button
@@ -370,8 +374,8 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
           >
             <ReceiptText className="h-5 w-5 shrink-0" />
             <span className="flex flex-col items-start">
-              <span className="font-medium">Térmico 80mm</span>
-              <span className="text-xs text-muted-foreground">Comprovante para impressora de cupom.</span>
+              <span className="font-medium">{t.extract.receiptFormat.thermalLabel}</span>
+              <span className="text-xs text-muted-foreground">{t.extract.receiptFormat.thermalDescription}</span>
             </span>
           </Button>
         </div>

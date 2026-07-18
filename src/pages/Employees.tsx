@@ -1,6 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import {
   Users, BarChart3, Plus, Search, Clock, UsersRound,
   FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2,
@@ -56,6 +59,9 @@ export default function Employees() {
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees;
+
   const isMobile = useIsMobile();
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { accounts: allAccounts } = useFinancialAccounts();
@@ -75,15 +81,15 @@ export default function Employees() {
 
   const tabs: SettingsTab[] = useMemo(() => {
     const base: SettingsTab[] = [
-      { value: 'list', label: 'Funcionários', icon: Users },
-      { value: 'teams', label: 'Equipes', icon: UsersRound },
-      { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+      { value: 'list', label: t.tabs.list, icon: Users },
+      { value: 'teams', label: t.tabs.teams, icon: UsersRound },
+      { value: 'dashboard', label: t.tabs.dashboard, icon: BarChart3 },
     ];
     if (canManageTime) {
-      base.push({ value: 'timeclock', label: 'Controle de Ponto', icon: Clock });
+      base.push({ value: 'timeclock', label: t.tabs.timeclock, icon: Clock });
     }
     return base;
-  }, [canManageTime]);
+  }, [canManageTime, t]);
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
@@ -537,8 +543,7 @@ export default function Employees() {
     deleteEmployee.mutate(employee.id);
   }, [deleteEmployee, toast]);
 
-  const fmtCurrency = (v: number) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmtCurrency = (v: number) => formatMoney(v, currency, locale);
 
   const getInitials = (name: string) =>
     name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
@@ -548,8 +553,8 @@ export default function Employees() {
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Funcionários"
-        subtitle="Gerencie funcionários, vales, pagamentos e extratos"
+        title={t.page.title}
+        subtitle={t.page.subtitle}
         icon={Users}
         actions={
           isMobile ? (
@@ -569,7 +574,7 @@ export default function Employees() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={isMobile ? 'Buscar funcionário...' : 'Buscar por nome ou cargo...'}
+                  placeholder={isMobile ? t.toolbar.searchPlaceholderMobile : t.toolbar.searchPlaceholder}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="pl-9"
@@ -578,15 +583,15 @@ export default function Employees() {
               <Select value={sort} onValueChange={setSort}>
                 <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="az">A-Z</SelectItem>
-                  <SelectItem value="newest">Mais recente</SelectItem>
-                  <SelectItem value="oldest">Mais antigo</SelectItem>
+                  <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
+                  <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
+                  <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
                 </SelectContent>
               </Select>
               <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels={!isMobile} />
               {!isMobile && (
                 <Button onClick={openNewEmployee} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> Novo Funcionário
+                  <Plus className="h-4 w-4" /> {t.toolbar.newEmployee}
                 </Button>
               )}
             </div>
@@ -607,8 +612,8 @@ export default function Employees() {
             ) : filtered.length === 0 ? (
               <EmptyState
                 icon={<Users className="h-12 w-12" />}
-                title={search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
-                description={search ? 'Tente uma busca diferente' : isMobile ? 'Toque em "Novo Funcionário" para começar' : 'Clique em "Novo Funcionário" para começar'}
+                title={search ? t.empty.noResults : t.empty.noEmployees}
+                description={search ? t.empty.noResultsDescription : isMobile ? t.empty.noEmployeesDescriptionMobile : t.empty.noEmployeesDescriptionDesktop}
               />
             ) : viewMode === 'grid' ? (
               // ---------------------------------------------------------------
@@ -643,44 +648,44 @@ export default function Employees() {
                     const itemActions: ItemAction[] = [
                       {
                         key: 'extract',
-                        label: 'Visualizar',
+                        label: t.actions.view,
                         icon: <FileText className="h-4 w-4" />,
                         onClick: () => setExtractEmployee(emp),
                       },
                       {
                         key: 'vale',
-                        label: 'Vale',
+                        label: t.actions.advance,
                         icon: <Banknote className="h-4 w-4" />,
                         onClick: () => { setMovementType('vale'); setMovementEmployee(emp); },
                       },
                       {
                         key: 'bonus',
-                        label: 'Bônus',
+                        label: t.actions.bonus,
                         icon: <Gift className="h-4 w-4" />,
                         onClick: () => { setMovementType('bonus'); setMovementEmployee(emp); },
                       },
                       {
                         key: 'falta',
-                        label: 'Falta',
+                        label: t.actions.absence,
                         icon: <AlertCircle className="h-4 w-4" />,
                         onClick: () => { setMovementType('falta'); setMovementEmployee(emp); },
                       },
                       {
                         key: 'payment',
-                        label: 'Pagamento',
+                        label: t.actions.payment,
                         icon: <CreditCard className="h-4 w-4" />,
                         onClick: () => setPaymentEmployee(emp),
                       },
                       {
                         key: 'edit',
-                        label: 'Editar',
+                        label: t.actions.edit,
                         icon: <Pencil className="h-4 w-4" />,
                         variant: 'edit' as const,
                         onClick: () => { setEditingEmployee(emp); setFormOpen(true); },
                       },
                       {
                         key: 'delete',
-                        label: 'Excluir',
+                        label: t.actions.delete,
                         icon: <Trash2 className="h-4 w-4" />,
                         variant: 'destructive' as const,
                         onClick: () => setEmployeeToDelete(emp),
@@ -690,7 +695,7 @@ export default function Employees() {
                     if (emp.ponto_enabled && emp.ponto_slug) {
                       itemActions.splice(itemActions.length - 2, 0, {
                         key: 'ponto-link',
-                        label: 'Link do ponto',
+                        label: t.actions.timeclockLink,
                         icon: <Clock className="h-4 w-4" />,
                         onClick: async () => {
                           const link = `${window.location.origin}/ponto/${emp.ponto_slug}`;
@@ -766,7 +771,7 @@ export default function Employees() {
       {isMobile && activeTab === 'list' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Funcionário"
+          label={t.toolbar.fabLabel}
           onClick={openNewEmployee}
         />
       )}
@@ -823,15 +828,15 @@ export default function Employees() {
       <AlertDialog open={!!employeeToDelete} onOpenChange={o => { if (!o) setEmployeeToDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir funcionário?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteConfirm.title}</AlertDialogTitle>
             <AlertDialogDescription>
               {employeeToDelete?.user_id
-                ? 'Este funcionário está vinculado a um usuário do sistema. Deseja excluir o usuário também? Isso liberará o email para reutilização.'
-                : 'Todos os dados e movimentações serão perdidos.'}
+                ? t.deleteConfirm.descriptionWithUser
+                : t.deleteConfirm.descriptionSimple}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.deleteConfirm.cancelLabel}</AlertDialogCancel>
             {employeeToDelete?.user_id && (
               <AlertDialogAction
                 onClick={() => {
@@ -842,7 +847,7 @@ export default function Employees() {
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Excluir ambos
+                {t.deleteConfirm.deleteWithUser}
               </AlertDialogAction>
             )}
             <AlertDialogAction
@@ -853,7 +858,7 @@ export default function Employees() {
                 }
               }}
             >
-              {employeeToDelete?.user_id ? 'Só o funcionário' : 'Excluir'}
+              {employeeToDelete?.user_id ? t.deleteConfirm.deleteEmployee : t.deleteConfirm.deleteLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -862,13 +867,13 @@ export default function Employees() {
       <AlertDialog open={!!receiptConfirmData} onOpenChange={o => { if (!o) setReceiptConfirmData(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deseja gerar Recibo?</AlertDialogTitle>
+            <AlertDialogTitle>{t.receiptConfirm.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              O recibo do pagamento será aberto em uma nova página para impressão ou download em PDF.
+              {t.receiptConfirm.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Não</AlertDialogCancel>
+            <AlertDialogCancel>{t.receiptConfirm.cancelLabel}</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (receiptConfirmData) {
                 const html = generateReceiptHTML({
@@ -885,7 +890,7 @@ export default function Employees() {
                 if (win) win.onload = () => URL.revokeObjectURL(url);
               }
               setReceiptConfirmData(null);
-            }}>Sim, gerar recibo</AlertDialogAction>
+            }}>{t.receiptConfirm.confirmLabel}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
