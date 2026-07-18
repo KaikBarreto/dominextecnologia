@@ -8,13 +8,10 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { CompanyPmocTemplatesTab } from '@/components/pmoc/CompanyPmocTemplatesTab';
 import { ResponsibleTechniciansContent } from '@/pages/ResponsibleTechnicians';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type ContractSettingsTab = 'documentos' | 'rt';
-
-const SETTINGS_TABS: SettingsTab[] = [
-  { value: 'documentos', label: 'Documentos', icon: FileText },
-  { value: 'rt', label: 'Responsáveis Técnicos', icon: ShieldCheck },
-];
 
 function normalizeTab(raw: string | null): ContractSettingsTab {
   return raw === 'rt' ? 'rt' : 'documentos';
@@ -35,6 +32,13 @@ export default function ContractSettings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { locale } = useAppLocaleContext();
+  const ts = MESSAGES[locale].app.pmoc.settingsPage;
+
+  const SETTINGS_TABS: SettingsTab[] = [
+    { value: 'documentos', label: ts.tabDocumentos, icon: FileText },
+    { value: 'rt', label: ts.tabRt, icon: ShieldCheck },
+  ];
 
   const [activeTab, setActiveTab] = useState<ContractSettingsTab>(() =>
     normalizeTab(searchParams.get('tab')),
@@ -64,13 +68,13 @@ export default function ContractSettings() {
           onClick={() => navigate('/contratos')}
         >
           <ArrowLeft className="h-4 w-4" />
-          Voltar
+          {ts.back}
         </Button>
       </div>
 
       <MobilePageHeader
-        title="Configurações de Contrato"
-        subtitle="Documentos e responsáveis técnicos"
+        title={ts.title}
+        subtitle={ts.subtitle}
         icon={Settings}
       />
 

@@ -53,17 +53,19 @@ import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
 }
 
-const STATUS_LABELS: Record<string, { label: string; variant: 'success' | 'outline' | 'destructive' | 'secondary' }> = {
-  active: { label: 'Ativo', variant: 'success' },
-  paused: { label: 'Pausado', variant: 'outline' },
-  cancelled: { label: 'Cancelado', variant: 'destructive' },
-  expired: { label: 'Expirado', variant: 'secondary' },
+const STATUS_VARIANTS: Record<string, 'success' | 'outline' | 'destructive' | 'secondary'> = {
+  active: 'success',
+  paused: 'outline',
+  cancelled: 'destructive',
+  expired: 'secondary',
 };
 
 // Variante de Badge por status REAL da OS. Labels vêm de `osStatusLabels`
@@ -93,6 +95,16 @@ const FREQUENCY_OPTIONS = [
 export default function ContractDetail() {
   const isMobile = useIsMobile();
   const { resolvedTheme } = useTheme();
+  const { locale } = useAppLocaleContext();
+  const tContracts = MESSAGES[locale].app.pmoc.contracts;
+  const td = MESSAGES[locale].app.pmoc.contractDetail;
+
+  const STATUS_LABELS = {
+    active: { label: tContracts.status.active, variant: STATUS_VARIANTS.active },
+    paused: { label: tContracts.status.paused, variant: STATUS_VARIANTS.paused },
+    cancelled: { label: tContracts.status.cancelled, variant: STATUS_VARIANTS.cancelled },
+    expired: { label: tContracts.status.expired, variant: STATUS_VARIANTS.expired },
+  } as const;
   // O param da rota pode ser UUID antigo OU `slug-do-nome-<codigo>` (link
   // amigável). `useResolveContractId` devolve sempre o id real do contrato.
   const { id: routeParam } = useParams<{ id: string }>();
@@ -209,23 +221,23 @@ export default function ContractDetail() {
     setUpdatingPortalVisibility(false);
     if (error) {
       setPortalIsPublic(prev); // rollback
-      toast({ variant: 'destructive', title: 'Erro ao atualizar portal', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(error) });
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['contract-detail', id] });
-    toast({ title: next ? 'Portal público ativado' : 'Portal agora exige login' });
+    toast({ title: next ? td.overview.portalActivated : td.overview.portalRequiresLogin });
   };
 
   const handleCopyPortalLink = async () => {
     if (!portalUrl) return;
     try {
       await navigator.clipboard.writeText(portalUrl);
-      toast({ title: 'Link copiado', description: 'Cole onde quiser compartilhar.' });
+      toast({ title: td.overview.portalCopied, description: td.overview.portalCopiedDesc });
     } catch {
       toast({
         variant: 'destructive',
-        title: 'Não foi possível copiar',
-        description: 'Copie manualmente da barra acima.',
+        title: td.overview.portalCopyFailed,
+        description: td.overview.portalCopyFailedDesc,
       });
     }
   };
@@ -236,10 +248,10 @@ export default function ContractDetail() {
     try {
       const { data: session } = await supabase.auth.getSession();
       const accessToken = session.session?.access_token;
-      if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.');
+      if (!accessToken) throw new Error(td.toasts.sessionExpired);
 
       const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
-      if (!supabaseUrl) throw new Error('Ambiente não configurado.');
+      if (!supabaseUrl) throw new Error(td.toasts.envNotConfigured);
 
       const res = await fetch(
         `${supabaseUrl}/functions/v1/generate-pmoc-qr-pdf?contract_id=${encodeURIComponent(id)}`,
@@ -252,9 +264,9 @@ export default function ContractDetail() {
         // Edge function pode ainda não existir (Onda B em fase de Database).
         // Mensagem amigável ao gestor enquanto isso.
         if (res.status === 404) {
-          throw new Error('Geração de QR Code em breve. Aguarde a próxima atualização.');
+          throw new Error(td.toasts.qrPending);
         }
-        throw new Error('Não foi possível gerar o PDF.');
+        throw new Error(td.toasts.qrFailed);
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -268,7 +280,7 @@ export default function ContractDetail() {
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao gerar QR Code',
+        title: td.toasts.qrError,
         description: getErrorMessage(err),
       });
     } finally {
@@ -354,9 +366,9 @@ export default function ContractDetail() {
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       setShowEditRecModal(false);
       setShowBulkEditPrompt(false);
-      toast({ title: applyToAll ? 'Todas as contas atualizadas!' : 'Conta atualizada!' });
+      toast({ title: applyToAll ? td.toasts.allAccountsUpdated : td.toasts.accountUpdated });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     } finally { setEditRecSaving(false); }
   };
 
@@ -367,7 +379,7 @@ export default function ContractDetail() {
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       setDeletingRecId(null);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     }
   };
 
@@ -459,9 +471,9 @@ export default function ContractDetail() {
       await supabase.from('contracts').update({ show_billing_in_schedule: newValue } as any).eq('id', id);
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       queryClient.invalidateQueries({ queryKey: ['contracts-billing-hidden'] });
-      toast({ title: newValue ? 'Cobranças visíveis na agenda' : 'Cobranças ocultas da agenda' });
+      toast({ title: newValue ? td.toasts.billingVisible : td.toasts.billingHidden });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(err) });
     }
   };
 
@@ -521,13 +533,13 @@ export default function ContractDetail() {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-4">
           <ScrollText className="h-8 w-8" aria-hidden="true" />
         </div>
-        <p className="text-muted-foreground mb-4">Contrato não encontrado</p>
+        <p className="text-muted-foreground mb-4">{td.notFound}</p>
         <Button
           variant="outline"
           className="min-h-11 active:scale-95 transition-transform rounded-xl"
           onClick={() => navigate('/contratos')}
         >
-          <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+          <ChevronLeft className="h-4 w-4 mr-1" /> {td.back}
         </Button>
       </div>
     );
@@ -687,7 +699,7 @@ export default function ContractDetail() {
               onClick={() => setShowEditForm(true)}
             >
               <Pencil className="h-4 w-4 mr-1" />
-              Editar contrato
+              {td.editContract}
             </Button>
             <Button
               variant="destructive-ghost"
@@ -696,15 +708,15 @@ export default function ContractDetail() {
               onClick={() => { setDeleteConfirmed(false); setShowDeleteDialog(true); }}
             >
               <Trash2 className="h-4 w-4 mr-1" />
-              Excluir contrato
+              {td.deleteContract}
             </Button>
           </div>
           {/* Mobile: kebab de 3 pontinhos */}
           <div className="lg:hidden">
             <RowActionsMenu
               actions={[
-                { label: 'Editar contrato', icon: Pencil, variant: 'edit', onClick: () => setShowEditForm(true) },
-                { label: 'Excluir contrato', icon: Trash2, variant: 'delete', onClick: () => { setDeleteConfirmed(false); setShowDeleteDialog(true); } },
+                { label: td.editContract, icon: Pencil, variant: 'edit', onClick: () => setShowEditForm(true) },
+                { label: td.deleteContract, icon: Trash2, variant: 'delete', onClick: () => { setDeleteConfirmed(false); setShowDeleteDialog(true); } },
               ]}
             />
           </div>
@@ -726,21 +738,21 @@ export default function ContractDetail() {
       {(() => {
         // Abas PMOC (5): Visão Geral, Ocorrências, Financeiro, Documentos, Cronograma.
         const pmocSidebarTabs: SettingsTab[] = [
-          { value: 'overview', label: 'Visão Geral', icon: Info },
-          { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
-          { value: 'equipamentos', label: 'Ambientes e Equipamentos', icon: Wrench },
-          { value: 'historico', label: 'Histórico PMOC', icon: ClipboardCheck },
-          { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
-          { value: 'documentos', label: 'Documentos', icon: FileText },
-          { value: 'cronograma', label: 'Cronograma', icon: Calendar },
+          { value: 'overview', label: td.tabs.overview, icon: Info },
+          { value: 'ocorrencias', label: td.tabs.ocorrencias, icon: Repeat },
+          { value: 'equipamentos', label: td.tabs.equipamentos, icon: Wrench },
+          { value: 'historico', label: td.tabs.historico, icon: ClipboardCheck },
+          { value: 'financeiro', label: td.tabs.financeiro, icon: DollarSign },
+          { value: 'documentos', label: td.tabs.documentos, icon: FileText },
+          { value: 'cronograma', label: td.tabs.cronograma, icon: Calendar },
         ];
 
         // Abas de contrato comum (4): Visão Geral + Ocorrências + Equipamentos + Financeiro.
         const commonSidebarTabs: SettingsTab[] = [
-          { value: 'overview', label: 'Visão Geral', icon: Info },
-          { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
-          { value: 'equipamentos', label: 'Ambientes e Equipamentos', icon: Wrench },
-          { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
+          { value: 'overview', label: td.tabs.overview, icon: Info },
+          { value: 'ocorrencias', label: td.tabs.ocorrencias, icon: Repeat },
+          { value: 'equipamentos', label: td.tabs.equipamentos, icon: Wrench },
+          { value: 'financeiro', label: td.tabs.financeiro, icon: DollarSign },
         ];
 
         const overviewContent = (
@@ -757,8 +769,8 @@ export default function ContractDetail() {
                 <Clock className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-warning">Contrato acabando</p>
-                <p className="text-xs text-muted-foreground break-words">A última visita está chegando. Toque para renovar e gerar o próximo ciclo.</p>
+                <p className="text-sm font-semibold text-warning">{td.overview.endingSoonTitle}</p>
+                <p className="text-xs text-muted-foreground break-words">{td.overview.endingSoonDesc}</p>
               </div>
               <RefreshCw className="h-4 w-4 shrink-0 text-warning" />
             </button>
@@ -771,30 +783,30 @@ export default function ContractDetail() {
             <CardHeader>
               <CardTitle className="flex min-w-0 items-center gap-2 break-words">
                 <ScrollText className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 break-words">Informações</span>
+                <span className="min-w-0 break-words">{td.overview.cardInfoTitle}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="min-w-0 space-y-5">
               <div className="grid min-w-0 grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{td.overview.fieldCustomer}</p>
                   <p className="mt-0.5 break-words font-medium">{(contract.customers as any)?.name || '-'}</p>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Frequência</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{td.overview.fieldFrequency}</p>
                   <p className="mt-0.5 break-words font-medium">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</p>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Início</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{td.overview.fieldStart}</p>
                   <p className="mt-0.5 break-words font-medium">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</p>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Horizonte</p>
-                  <p className="mt-0.5 break-words font-medium">{contract.horizon_months} meses</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{td.overview.fieldHorizon}</p>
+                  <p className="mt-0.5 break-words font-medium">{contract.horizon_months} {td.overview.fieldHorizonSuffix}</p>
                 </div>
                 {contract.notes && (
                   <div className="min-w-0 sm:col-span-2">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">{td.overview.fieldNotes}</p>
                     <p className="mt-0.5 break-words">{contract.notes}</p>
                   </div>
                 )}
@@ -807,28 +819,28 @@ export default function ContractDetail() {
                   <div className="min-w-0">
                     <h3 className="flex items-center gap-2 text-base font-semibold break-words">
                       <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                      Portal do Contrato
+                      {td.overview.portalTitle}
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground break-words">
-                      Página pública deste contrato para o cliente final. Aparece no QR Code colado no quadro físico.
+                      {td.overview.portalDesc}
                     </p>
                   </div>
 
                   {/* Toggle público/privado (espelha o Portal do Cliente). */}
                   <div className="flex items-start justify-between gap-3 rounded-xl border bg-muted/30 p-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">Portal Público</p>
+                      <p className="text-sm font-medium">{td.overview.portalPublicTitle}</p>
                       <p className="text-xs text-muted-foreground break-words">
                         {portalIsPublic
-                          ? 'Qualquer pessoa com o link vê o portal (somente leitura).'
-                          : 'O link exige login da sua empresa para abrir.'}
+                          ? td.overview.portalPublicOnDesc
+                          : td.overview.portalPublicOffDesc}
                       </p>
                     </div>
                     <Switch
                       checked={portalIsPublic}
                       disabled={updatingPortalVisibility}
                       onCheckedChange={handleTogglePortalPublic}
-                      aria-label="Portal Público"
+                      aria-label={td.overview.portalPublicTitle}
                       className="shrink-0"
                     />
                   </div>
@@ -845,7 +857,7 @@ export default function ContractDetail() {
                     </a>
                   ) : (
                     <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-                      Link público em geração. Aguarde alguns instantes.
+                      {td.overview.portalLinkPending}
                     </div>
                   )}
 
@@ -876,7 +888,7 @@ export default function ContractDetail() {
                           className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
                         >
                           <Copy className="h-3.5 w-3.5 mr-1" />
-                          Copiar link
+                          {td.overview.portalCopyLink}
                         </Button>
                         {/* Imprimir QR Code: PDF com layout PMOC (capa legal). Só PMOC. */}
                         {isPmoc && (
@@ -892,7 +904,7 @@ export default function ContractDetail() {
                             ) : (
                               <Printer className="h-3.5 w-3.5 mr-1" />
                             )}
-                            Imprimir QR Code
+                            {td.overview.portalPrintQr}
                           </Button>
                         )}
                         {canRegenerateToken && (
@@ -904,7 +916,7 @@ export default function ContractDetail() {
                             className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
                           >
                             <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                            Regenerar token
+                            {td.overview.portalRegenerateToken}
                           </Button>
                         )}
                       </div>
@@ -920,56 +932,59 @@ export default function ContractDetail() {
         {/* Right column */}
         <div className="space-y-6 min-w-0 w-full">
           <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-            <CardHeader><CardTitle className="text-base break-words">Resumo</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base break-words">{td.overview.cardSummaryTitle}</CardTitle></CardHeader>
             <CardContent className="space-y-4 text-sm min-w-0">
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <span className="text-muted-foreground">Frequência</span>
+                <span className="text-muted-foreground">{td.overview.summaryFrequency}</span>
                 <span className="min-w-0 break-words text-right font-medium">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</span>
               </div>
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <span className="text-muted-foreground">Início</span>
+                <span className="text-muted-foreground">{td.overview.summaryStart}</span>
                 <span className="min-w-0 break-words text-right font-medium">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</span>
               </div>
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <span className="text-muted-foreground">Horizonte</span>
-                <span className="min-w-0 break-words text-right font-medium">{contract.horizon_months} meses</span>
+                <span className="text-muted-foreground">{td.overview.summaryHorizon}</span>
+                <span className="min-w-0 break-words text-right font-medium">{contract.horizon_months} {td.overview.fieldHorizonSuffix}</span>
               </div>
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <span className="text-muted-foreground">Total de ocorrências</span>
+                <span className="text-muted-foreground">{td.overview.summaryTotalOcc}</span>
                 <span className="min-w-0 break-words text-right font-medium">{stats.totalOccurrences}</span>
               </div>
               {stats.nextOccurrence && (
                 <div className="flex min-w-0 items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Próxima OS</span>
+                  <span className="text-muted-foreground">{td.overview.summaryNextOs}</span>
                   <span className="min-w-0 break-words text-right font-medium">{format(parseLocalDate(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
                 </div>
               )}
               <Button variant="outline" className="mt-2 w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(true)}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Renovar / Estender
+                <RefreshCw className="mr-2 h-4 w-4" /> {td.overview.btnRenew}
               </Button>
               {/* Documento "Plano de Manutenção" (imprimir/PDF). Disponível no
                   contrato comum E no PMOC. No PMOC ganha a cara da norma (título +
                   campos de identificação por ambiente) — é documento ADICIONAL, não
                   substitui a Planilha-da-norma da aba Documentos. */}
               <Button variant="outline" className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowMaintenancePlan(true)}>
-                <Printer className="mr-2 h-4 w-4" /> Plano de Manutenção
+                <Printer className="mr-2 h-4 w-4" /> {td.overview.btnMaintenancePlan}
               </Button>
               {/* Documento "Relatório de Visitas" (retrospectivo — comprovante das
                   manutenções do período). Só contrato comum; PMOC usa o Dossiê. */}
               {!isPmoc && (
                 <Button variant="outline" className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowVisitsReport(true)}>
-                  <ClipboardCheck className="mr-2 h-4 w-4" /> Relatório de Visitas
+                  <ClipboardCheck className="mr-2 h-4 w-4" /> {td.overview.btnVisitsReport}
                 </Button>
               )}
             </CardContent>
           </Card>
 
           <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-            <CardHeader><CardTitle className="text-base break-words">Progresso</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base break-words">{td.overview.cardProgressTitle}</CardTitle></CardHeader>
             <CardContent className="space-y-3 min-w-0">
               <Progress value={stats.progressPercent} className="h-3" />
               <p className="text-center text-sm text-muted-foreground break-words">
-                {stats.completedOccurrences} de {stats.totalOccurrences} concluídas ({stats.progressPercent}%)
+                {td.overview.progressDesc
+                  .replace('{completed}', String(stats.completedOccurrences))
+                  .replace('{total}', String(stats.totalOccurrences))
+                  .replace('{pct}', String(stats.progressPercent))}
               </p>
             </CardContent>
           </Card>
@@ -984,7 +999,7 @@ export default function ContractDetail() {
         const occurrencesContent = (
           <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader>
-              <CardTitle className="min-w-0 text-base sm:text-lg break-words">Ocorrências ({occurrences.length})</CardTitle>
+              <CardTitle className="min-w-0 text-base sm:text-lg break-words">{td.occurrences.cardTitle.replace('{count}', String(occurrences.length))}</CardTitle>
             </CardHeader>
             <CardContent className={cn(isMobile ? 'p-3 min-w-0' : 'p-0 min-w-0')}>
               {isMobile ? (
@@ -1017,7 +1032,7 @@ export default function ContractDetail() {
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-mono text-xs text-muted-foreground">#{os.occurrence_number}</span>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            {isLate && <Badge variant="warning" className="shrink-0">Atrasada</Badge>}
+                            {isLate && <Badge variant="warning" className="shrink-0">{td.occurrences.late}</Badge>}
                             <Badge variant={statusVariant} className="shrink-0">{statusLabel}</Badge>
                           </div>
                         </div>
@@ -1025,7 +1040,7 @@ export default function ContractDetail() {
                           <span className={cn('font-medium break-words', isLate && 'text-warning')}>
                             {occDate ? (
                               <>{format(occDate, 'dd/MM/yyyy')} <span className="font-normal text-muted-foreground">({format(occDate, 'EEE', { locale: ptBR })})</span></>
-                            ) : 'Sem data'}
+                            ) : td.occurrences.noDate}
                           </span>
                           <Badge variant="secondary" className="shrink-0 self-start text-xs">OS #{os.order_number}</Badge>
                         </div>
@@ -1037,7 +1052,9 @@ export default function ContractDetail() {
                           return (
                             <div className="min-w-0 space-y-1.5 border-t pt-2">
                               <span className="text-[11px] font-medium text-muted-foreground">
-                                {acts.length} {acts.length === 1 ? 'serviço' : 'serviços'} nesta visita
+                                {acts.length === 1
+                                  ? td.occurrences.servicesInVisit_one.replace('{count}', String(acts.length))
+                                  : td.occurrences.servicesInVisit_other.replace('{count}', String(acts.length))}
                               </span>
                               <div className="flex flex-wrap gap-1">
                                 {shown.map((a) => {
@@ -1060,7 +1077,7 @@ export default function ContractDetail() {
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost" size="icon" className="min-h-11 min-w-11 text-muted-foreground hover:text-destructive active:scale-90 transition-transform rounded-xl"
-                              title="Pular (cancelar esta visita)"
+                              title={td.occurrences.skipTitle}
                               onClick={(e) => { e.stopPropagation(); setCancelingOsId(os.id); }}
                             >
                               <SkipForward className="h-4 w-4" />
@@ -1079,13 +1096,13 @@ export default function ContractDetail() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">#</SortableTableHead>
-                        <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>Data</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Dia</SortableTableHead>
-                        <SortableTableHead sortKey="order_number" sortConfig={occSortConfig} onSort={handleOccSort}>OS</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Serviços</SortableTableHead>
-                        <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>Status</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
+                        <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">{td.occurrences.colNum}</SortableTableHead>
+                        <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colDate}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>{td.occurrences.colDay}</SortableTableHead>
+                        <SortableTableHead sortKey="order_number" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colOs}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>{td.occurrences.colServices}</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colStatus}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">{td.occurrences.colActions}</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1117,7 +1134,7 @@ export default function ContractDetail() {
                               {occDate ? format(occDate, 'dd/MM/yyyy') : '-'}
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm">
-                              {occDate ? format(occDate, 'EEE', { locale: ptBR }) : '-'}
+                              {occDate ? format(occDate, 'EEE', { locale: ptBR }) : td.occurrences.noDate}
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary">OS #{os.order_number}</Badge>
@@ -1148,7 +1165,7 @@ export default function ContractDetail() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1.5">
-                                {isLate && <Badge variant="warning">Atrasada</Badge>}
+                                {isLate && <Badge variant="warning">{td.occurrences.late}</Badge>}
                                 <Badge variant={statusVariant}>{statusLabel}</Badge>
                               </div>
                             </TableCell>
@@ -1157,7 +1174,7 @@ export default function ContractDetail() {
                                 {isActive && (
                                   <Button
                                     variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                    title="Pular (cancelar esta visita)"
+                                    title={td.occurrences.skipTitle}
                                     onClick={(e) => { e.stopPropagation(); setCancelingOsId(os.id); }}
                                   >
                                     <SkipForward className="h-3.5 w-3.5" />
@@ -1188,19 +1205,19 @@ export default function ContractDetail() {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">Previsto</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">{td.financial.kpiPlanned}</p>
                   <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalReceivable)}</p>
                 </CardContent>
               </Card>
               <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">Recebido</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">{td.financial.kpiReceived}</p>
                   <p className="mt-1 text-base sm:text-lg font-bold text-success break-words tabular-nums">R$ {formatBRL(totalPaid)}</p>
                 </CardContent>
               </Card>
               <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
                 <CardContent className="p-3 sm:p-4 min-w-0">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">Pendente</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">{td.financial.kpiPending}</p>
                   <p className="mt-1 text-base sm:text-lg font-bold text-warning break-words tabular-nums">R$ {formatBRL(totalPending)}</p>
                 </CardContent>
               </Card>
@@ -1210,7 +1227,7 @@ export default function ContractDetail() {
               )}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">
-                    Atrasado{overdueCount > 0 ? ` (${overdueCount})` : ''}
+                    {td.financial.kpiOverdue}{overdueCount > 0 ? ` (${overdueCount})` : ''}
                   </p>
                   <p className={cn(
                     'mt-1 text-base sm:text-lg font-bold break-words tabular-nums',
@@ -1225,7 +1242,7 @@ export default function ContractDetail() {
               <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
                 <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
                   <DollarSign className="h-5 w-5 shrink-0" />
-                  <span className="min-w-0 break-words">Contas a Receber</span>
+                  <span className="min-w-0 break-words">{td.financial.cardReceivablesTitle}</span>
                 </CardTitle>
                 <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
                   <div className="flex items-center gap-2">
@@ -1236,7 +1253,7 @@ export default function ContractDetail() {
                     />
                     <Label htmlFor="billing-schedule-toggle" className="text-xs cursor-pointer whitespace-nowrap">
                       {showBillingInSchedule ? <Eye className="inline h-3.5 w-3.5 mr-1" /> : <EyeOff className="inline h-3.5 w-3.5 mr-1" />}
-                      Agenda
+                      {td.financial.scheduleToggleLabel}
                     </Label>
                   </div>
                   {(linkedTransactions || []).length > 0 && (
@@ -1245,20 +1262,20 @@ export default function ContractDetail() {
                       setApplyCategory('');
                       setShowApplyLinksModal(true);
                     }}>
-                      <RefreshCw className="mr-1 h-4 w-4" /> Aplicar a todas
+                      <RefreshCw className="mr-1 h-4 w-4" /> {td.financial.applyToAllBtn}
                     </Button>
                   )}
                   <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => {
                     setRecDescription(`Mensalidade - ${contract.name}`);
                     setShowReceivableModal(true);
                   }}>
-                    <Plus className="mr-1 h-4 w-4" /> Nova Receita
+                    <Plus className="mr-1 h-4 w-4" /> {td.financial.newRevenueBtn}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="min-w-0">
                 {(linkedTransactions || []).length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">Nenhuma conta vinculada a este contrato</p>
+                  <p className="py-4 text-center text-sm text-muted-foreground">{td.financial.noTransactions}</p>
                 ) : (
                   <div className="space-y-2 min-w-0">
                     {recPagination.paginatedItems.map(t => {
@@ -1273,11 +1290,11 @@ export default function ContractDetail() {
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{t.description}</p>
                             <p className={cn('break-words text-xs', isOverdue ? 'text-destructive' : 'text-muted-foreground')}>
-                              {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
+                              {t.due_date ? `${td.financial.duePrefix} ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
                             </p>
                           </div>
                           <Badge variant={t.is_paid ? 'success' : isOverdue ? 'destructive' : 'outline'} className="shrink-0">
-                            {t.is_paid ? 'Pago' : isOverdue ? 'Atrasado' : 'Pendente'}
+                            {t.is_paid ? td.financial.paidBadge : isOverdue ? td.financial.overdueBadge : td.financial.pendingBadge}
                           </Badge>
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1300,8 +1317,8 @@ export default function ContractDetail() {
                       );
                     })}
                     <div className="flex flex-col gap-1 border-t pt-2 text-sm sm:flex-row sm:justify-between">
-                      <span className="text-muted-foreground break-words">Total: R$ {formatBRL(totalReceivable)}</span>
-                      <span className="text-muted-foreground break-words">Recebido: R$ {formatBRL(totalPaid)}</span>
+                      <span className="text-muted-foreground break-words">{td.financial.totalLabel}: R$ {formatBRL(totalReceivable)}</span>
+                      <span className="text-muted-foreground break-words">{td.financial.receivedLabel}: R$ {formatBRL(totalPaid)}</span>
                     </div>
                     <div className="min-w-0 overflow-x-auto">
                       <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
@@ -1353,43 +1370,43 @@ export default function ContractDetail() {
       })()}
 
       {/* Receivable modal */}
-      <ResponsiveModal open={showReceivableModal} onOpenChange={setShowReceivableModal} title="Nova Conta a Receber">
+      <ResponsiveModal open={showReceivableModal} onOpenChange={setShowReceivableModal} title={td.financial.newRevenueTitle}>
         <div className="space-y-4 p-1">
           <div>
-            <Label>Descrição</Label>
+            <Label>{td.financial.descLabel}</Label>
             <Input value={recDescription} onChange={e => setRecDescription(e.target.value)} placeholder="Ex: Mensalidade Março" />
           </div>
           <div>
-            <Label>Valor (R$)</Label>
+            <Label>{td.financial.amountLabel}</Label>
             <Input type="number" step="0.01" value={recAmount} onChange={e => setRecAmount(e.target.value)} placeholder="0,00" />
           </div>
           <div>
-            <Label>Conta bancária / caixa</Label>
+            <Label>{td.financial.accountLabel}</Label>
             <SearchableSelect
               options={accountOptions}
               value={recAccountId}
               onValueChange={setRecAccountId}
-              placeholder="Selecione a conta de recebimento"
-              searchPlaceholder="Buscar conta..."
+              placeholder={td.financial.accountPlaceholder}
+              searchPlaceholder={td.financial.accountSearch}
             />
-            <p className="text-xs text-muted-foreground mt-1">Conta para onde o dinheiro vai. Aplicada a todas as parcelas.</p>
+            <p className="text-xs text-muted-foreground mt-1">{td.financial.accountHint}</p>
           </div>
           <div>
-            <Label>Categoria</Label>
+            <Label>{td.financial.categoryLabel}</Label>
             <SearchableSelect
               options={receivableCategoryOptions}
               value={recCategory}
               onValueChange={setRecCategory}
-              placeholder="Selecione a categoria"
-              searchPlaceholder="Buscar categoria..."
+              placeholder={td.financial.categoryPlaceholder}
+              searchPlaceholder={td.financial.categorySearch}
             />
           </div>
           <div>
-            <Label>Data de Vencimento (1ª parcela)</Label>
+            <Label>{td.financial.dueDateLabel}</Label>
             <Input type="date" value={recDueDate} onChange={e => setRecDueDate(e.target.value)} />
           </div>
           <div>
-            <Label>Recorrência</Label>
+            <Label>{td.financial.recurrenceLabel}</Label>
             <Select value={recFrequency} onValueChange={setRecFrequency}>
               <SelectTrigger>
                 <SelectValue />
@@ -1403,43 +1420,44 @@ export default function ContractDetail() {
           </div>
           {recFrequency !== 'unica' && (
             <div>
-              <Label>Quantidade de parcelas</Label>
+              <Label>{td.financial.installmentsLabel}</Label>
               <NumericInput value={recInstallments} onValueChange={setRecInstallments} placeholder="12" />
             </div>
           )}
           <Button className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
             {recSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-            {recFrequency !== 'unica' ? `Criar ${recInstallments || 1} Parcelas` : 'Criar Conta a Receber'}
+            {recFrequency !== 'unica'
+              ? td.financial.createInstallments.replace('{n}', String(recInstallments || 1))
+              : td.financial.createSingle}
           </Button>
         </div>
       </ResponsiveModal>
 
       {/* Aplicar conta/categoria a TODAS as parcelas deste contrato.
           Resolve contratos antigos cujas parcelas nasceram sem vínculo. */}
-      <ResponsiveModal open={showApplyLinksModal} onOpenChange={setShowApplyLinksModal} title="Aplicar a todas as parcelas">
+      <ResponsiveModal open={showApplyLinksModal} onOpenChange={setShowApplyLinksModal} title={td.financial.applyLinksTitle}>
         <div className="space-y-4 p-1">
-          <p className="text-sm text-muted-foreground">
-            Define a conta bancária e/ou categoria em <strong>todas as {(linkedTransactions || []).length} parcelas</strong> deste
-            contrato de uma vez. Deixe um campo em branco para não alterá-lo.
-          </p>
+          <p className="text-sm text-muted-foreground"
+            dangerouslySetInnerHTML={{ __html: td.financial.applyLinksDesc.replace('{n}', String((linkedTransactions || []).length)) }}
+          />
           <div>
-            <Label>Conta bancária / caixa</Label>
+            <Label>{td.financial.accountLabel}</Label>
             <SearchableSelect
               options={accountOptions}
               value={applyAccountId}
               onValueChange={setApplyAccountId}
-              placeholder="Selecione a conta"
-              searchPlaceholder="Buscar conta..."
+              placeholder={td.financial.applyAccountPlaceholder}
+              searchPlaceholder={td.financial.accountSearch}
             />
           </div>
           <div>
-            <Label>Categoria</Label>
+            <Label>{td.financial.categoryLabel}</Label>
             <SearchableSelect
               options={receivableCategoryOptions}
               value={applyCategory}
               onValueChange={setApplyCategory}
-              placeholder="Selecione a categoria"
-              searchPlaceholder="Buscar categoria..."
+              placeholder={td.financial.categoryPlaceholder}
+              searchPlaceholder={td.financial.categorySearch}
             />
           </div>
           <Button
@@ -1448,7 +1466,9 @@ export default function ContractDetail() {
             disabled={applySaving || (!applyAccountId && !applyCategory)}
           >
             {applySaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Aplicar a {(linkedTransactions || []).length} parcela{(linkedTransactions || []).length > 1 ? 's' : ''}
+            {(linkedTransactions || []).length === 1
+              ? td.financial.applyBtn.replace('{n}', String((linkedTransactions || []).length))
+              : td.financial.applyBtnPlural.replace('{n}', String((linkedTransactions || []).length))}
           </Button>
         </div>
       </ResponsiveModal>
@@ -1457,43 +1477,47 @@ export default function ContractDetail() {
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmed(false); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
+            <AlertDialogTitle>{td.deleteDialog.title}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>Tem certeza que deseja excluir o contrato <strong>{contract.name}</strong>?</p>
-                <p className="text-sm">Serão excluídos junto com o contrato:</p>
+                <p>{td.deleteDialog.confirmQuestion.replace('{name}', contract.name)}</p>
+                <p className="text-sm">{td.deleteDialog.willDelete}</p>
                 <ul className="text-sm list-disc pl-5 space-y-1">
-                  <li>{occurrences.length} ordens de serviço vinculadas</li>
-                  <li>{(linkedTransactions || []).filter(t => !t.is_paid).length} cobrança(s) em aberto (contas a receber)</li>
-                  <li>{items.length} itens do contrato</li>
-                  <li>Alertas de cobrança na agenda</li>
+                  <li>{td.deleteDialog.osCount.replace('{n}', String(occurrences.length))}</li>
+                  <li>{td.deleteDialog.openBilling.replace('{n}', String((linkedTransactions || []).filter(t => !t.is_paid).length))}</li>
+                  <li>{td.deleteDialog.itemsCount.replace('{n}', String(items.length))}</li>
+                  <li>{td.deleteDialog.billingAlerts}</li>
                 </ul>
                 {(linkedTransactions || []).filter(t => t.is_paid).length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {(linkedTransactions || []).filter(t => t.is_paid).length} recebimento(s) já realizado(s) serão <strong>preservados no caixa</strong> (mantidos no faturamento, sem vínculo com o contrato).
-                  </p>
+                  <p className="text-sm text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: (
+                      (linkedTransactions || []).filter(t => t.is_paid).length === 1
+                        ? td.deleteDialog.paidPreserved_one
+                        : td.deleteDialog.paidPreserved_other
+                    ).replace('{n}', String((linkedTransactions || []).filter(t => t.is_paid).length)) }}
+                  />
                 )}
-                <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
+                <p className="text-sm font-medium text-destructive">{td.deleteDialog.irreversible}</p>
                 <div className="flex items-center gap-2 pt-2">
                   <Checkbox
                     id="delete-confirm"
                     checked={deleteConfirmed}
                     onCheckedChange={(v) => setDeleteConfirmed(!!v)}
                   />
-                  <Label htmlFor="delete-confirm" className="text-sm cursor-pointer">Tenho certeza que desejo excluir</Label>
+                  <Label htmlFor="delete-confirm" className="text-sm cursor-pointer">{td.deleteDialog.checkLabel}</Label>
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{td.deleteDialog.cancelBtn}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteContract}
               disabled={isDeleting || !deleteConfirmed}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Excluir tudo
+              {td.deleteDialog.deleteBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1502,13 +1526,13 @@ export default function ContractDetail() {
       {/* Renew / Estender — estende ESTE contrato e gera o próximo ciclo de
           visitas (sem criar contrato novo). Mobile = drawer de baixo via
           ResponsiveModal. Escolha de +6 / +12 meses (default 12). */}
-      <ResponsiveModal open={showRenewDialog} onOpenChange={setShowRenewDialog} title="Renovar / Estender contrato">
+      <ResponsiveModal open={showRenewDialog} onOpenChange={setShowRenewDialog} title={td.renew.title}>
         <div className="space-y-4 p-1">
           <p className="text-sm text-muted-foreground break-words">
-            Estende este contrato e gera o próximo ciclo de visitas, continuando de onde a última visita parou. As visitas existentes não são alteradas.
+            {td.renew.desc}
           </p>
           <div className="space-y-2">
-            <Label>Estender por</Label>
+            <Label>{td.renew.extendBy}</Label>
             <div className="grid grid-cols-2 gap-2">
               {[6, 12].map((m) => (
                 <Button
@@ -1518,22 +1542,22 @@ export default function ContractDetail() {
                   className="min-h-11 active:scale-[0.98] transition-transform rounded-xl"
                   onClick={() => setRenewExtraMonths(m)}
                 >
-                  +{m} meses
+                  +{m} {td.renew.months}
                 </Button>
               ))}
             </div>
           </div>
           <div className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
-            <p>Horizonte atual: <strong>{contract.horizon_months} meses</strong> → novo: <strong>{contract.horizon_months + renewExtraMonths} meses</strong></p>
-            <p>Frequência: {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</p>
+            <p>{td.renew.currentHorizon}: <strong>{contract.horizon_months} {td.renew.months}</strong> → {td.renew.newHorizon}: <strong>{contract.horizon_months + renewExtraMonths} {td.renew.months}</strong></p>
+            <p>{td.renew.frequency}: {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</p>
           </div>
           <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end">
             <Button variant="outline" className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(false)} disabled={isRenewing}>
-              Cancelar
+              {td.renew.cancelBtn}
             </Button>
             <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleRenewContract} disabled={isRenewing}>
               {isRenewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-              Renovar +{renewExtraMonths} meses
+              {td.renew.renewBtn.replace('{n}', String(renewExtraMonths))}
             </Button>
           </div>
         </div>
@@ -1543,14 +1567,14 @@ export default function ContractDetail() {
       <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} editContract={contract} onCreated={(newId) => { if (newId !== id) navigate(`/contratos/${newId}`); else queryClient.invalidateQueries({ queryKey: ['contract-detail'] }); }} />
 
       {/* Edit receivable modal */}
-      <ResponsiveModal open={showEditRecModal} onOpenChange={setShowEditRecModal} title="Editar Conta a Receber">
+      <ResponsiveModal open={showEditRecModal} onOpenChange={setShowEditRecModal} title={td.financial.editReceivableTitle}>
         <div className="space-y-4 p-1">
-          <div><Label>Descrição</Label><Input value={editRecDescription} onChange={e => setEditRecDescription(e.target.value)} /></div>
-          <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={editRecAmount} onChange={e => setEditRecAmount(e.target.value)} /></div>
-          <div><Label>Vencimento</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
+          <div><Label>{td.financial.descLabel}</Label><Input value={editRecDescription} onChange={e => setEditRecDescription(e.target.value)} /></div>
+          <div><Label>{td.financial.amountLabel}</Label><Input type="number" step="0.01" value={editRecAmount} onChange={e => setEditRecAmount(e.target.value)} /></div>
+          <div><Label>{td.financial.dueDateLabel}</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
           <div className="flex flex-col gap-2 pt-2">
             <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
-              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Salvar
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} {td.financial.saveBtn}
             </Button>
           </div>
         </div>
@@ -1560,18 +1584,18 @@ export default function ContractDetail() {
       <AlertDialog open={showBulkEditPrompt} onOpenChange={setShowBulkEditPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Aplicar alterações</AlertDialogTitle>
+            <AlertDialogTitle>{td.financial.bulkEditTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Deseja alterar apenas esta conta ou todas as contas pendentes vinculadas a este contrato?
+              {td.financial.bulkEditDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel disabled={editRecSaving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={editRecSaving}>{td.deleteDialog.cancelBtn}</AlertDialogCancel>
             <Button variant="outline" disabled={editRecSaving} onClick={() => handleSaveEditRec(false)}>
-              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Somente esta
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} {td.financial.bulkEditSingle}
             </Button>
             <Button disabled={editRecSaving} onClick={() => handleSaveEditRec(true)}>
-              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Todas pendentes
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} {td.financial.bulkEditAll}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1581,22 +1605,17 @@ export default function ContractDetail() {
       <AlertDialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Regenerar token do Portal Público?</AlertDialogTitle>
+            <AlertDialogTitle>{td.regenerateToken.title}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
-                <p>
-                  Isso invalida QR Codes <strong>já impressos</strong> deste contrato.
-                  Clientes que escanearem o QR antigo verão página de erro.
-                </p>
-                <p className="text-sm">
-                  Você precisará imprimir e colar um QR Code novo no quadro físico da unidade.
-                </p>
-                <p className="text-sm font-medium text-destructive">Tem certeza?</p>
+                <p dangerouslySetInnerHTML={{ __html: td.regenerateToken.desc1 }} />
+                <p className="text-sm">{td.regenerateToken.desc2}</p>
+                <p className="text-sm font-medium text-destructive">{td.regenerateToken.desc3}</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={regenerateToken.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={regenerateToken.isPending}>{td.regenerateToken.cancelBtn}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRegenerateToken}
               disabled={regenerateToken.isPending}
@@ -1607,7 +1626,7 @@ export default function ContractDetail() {
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
-              Regenerar token
+              {td.regenerateToken.confirmBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1617,20 +1636,20 @@ export default function ContractDetail() {
       <AlertDialog open={!!cancelingOsId} onOpenChange={(open) => { if (!open) setCancelingOsId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar esta visita?</AlertDialogTitle>
+            <AlertDialogTitle>{td.skipVisit.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              A ordem de serviço desta visita será marcada como cancelada e não aparecerá mais como pendente. Você pode reativá-la depois pela tela da OS.
+              {td.skipVisit.desc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelOccurrenceOs.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogCancel disabled={cancelOccurrenceOs.isPending}>{td.skipVisit.backBtn}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => { if (cancelingOsId) cancelOccurrenceOs.mutate(cancelingOsId, { onSuccess: () => setCancelingOsId(null) }); }}
               disabled={cancelOccurrenceOs.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {cancelOccurrenceOs.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <SkipForward className="h-4 w-4 mr-2" />}
-              Cancelar visita
+              {td.skipVisit.confirmBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1640,12 +1659,12 @@ export default function ContractDetail() {
       <AlertDialog open={!!deletingRecId} onOpenChange={() => setDeletingRecId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir conta</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir esta conta a receber?</AlertDialogDescription>
+            <AlertDialogTitle>{td.financial.deleteAccountTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{td.financial.deleteAccountDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteRecTransaction} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogCancel>{td.deleteDialog.cancelBtn}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRecTransaction} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{tContracts.actions.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

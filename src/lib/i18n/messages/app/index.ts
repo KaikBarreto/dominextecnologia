@@ -54,6 +54,7 @@ import { pmoc } from './pmoc';
 import { crm } from './crm';
 import { employees } from './employees';
 import { equipment } from './equipment';
+import { contracts } from './contracts';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
@@ -70,6 +71,7 @@ function sliceForLocale(locale: LocaleCode) {
     crm: crm[locale],
     employees: employees[locale],
     equipment: equipment[locale],
+    contracts: contracts[locale],
     // <dominio>: <dominio>[locale],
   };
 }

@@ -283,6 +283,15 @@ export const pmoc = {
       },
     },
 
+    // ── Configurações de Contrato (ContractSettings.tsx) ──
+    settingsPage: {
+      title: 'Configurações de Contrato',
+      subtitle: 'Documentos e responsáveis técnicos',
+      back: 'Voltar',
+      tabDocumentos: 'Documentos',
+      tabRt: 'Responsáveis Técnicos',
+    },
+
     // ── Badge de Conformidade PMOC (PmocComplianceBadge.tsx) ──
     complianceBadge: {
       label: 'Lei 13.589',
@@ -686,6 +695,14 @@ export const pmoc = {
       },
     },
 
+    settingsPage: {
+      title: 'Contract Settings',
+      subtitle: 'Documents and responsible technicians',
+      back: 'Back',
+      tabDocumentos: 'Documents',
+      tabRt: 'Responsible Technicians',
+    },
+
     complianceBadge: {
       label: 'Law 13.589',
       chipAriaLabel: 'Compliant with Brazilian Federal Law 13.589/2018',
@@ -1070,6 +1087,14 @@ export const pmoc = {
       },
     },
 
+    settingsPage: {
+      title: 'Ajustes de Contrato',
+      subtitle: 'Documentos y técnicos responsables',
+      back: 'Volver',
+      tabDocumentos: 'Documentos',
+      tabRt: 'Técnicos Responsables',
+    },
+
     complianceBadge: {
       label: 'Ley 13.589',
       chipAriaLabel: 'Cumple con la Ley Federal Brasileña 13.589/2018',
@@ -1452,6 +1477,14 @@ export const pmoc = {
         sessionExpired: 'Session expirée. Reconnectez-vous.',
         envNotConfigured: 'Environnement non configuré.',
       },
+    },
+
+    settingsPage: {
+      title: 'Paramètres de Contrat',
+      subtitle: 'Documents et techniciens responsables',
+      back: 'Retour',
+      tabDocumentos: 'Documents',
+      tabRt: 'Techniciens Responsables',
     },
 
     complianceBadge: {
