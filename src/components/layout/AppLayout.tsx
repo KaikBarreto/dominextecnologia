@@ -26,6 +26,7 @@ import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 import { SubscriptionGate } from '@/components/SubscriptionGate';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
 import {
   Tooltip,
@@ -184,6 +185,9 @@ function DesktopSidebarHeader() {
 
         <div className="flex items-center gap-1 shrink-0">
           <HeaderClock uf={settings?.state} />
+          {/* Seletor de idioma pessoal — SÓ no header desktop (no mobile a troca
+              fica em Configurações → Regional). */}
+          <AppLanguageSwitcher />
           <NotificationsBell />
 
           {/* Botão de perfil removido — já existe no avatar do sidebar (dropdown).
