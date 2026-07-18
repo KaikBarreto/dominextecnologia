@@ -44,10 +44,9 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FABButton } from '@/components/mobile/FABButton';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 function parseLocalDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -107,6 +106,9 @@ export function TransactionListPanel({
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const { accounts: allAccounts } = useFinancialAccounts();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
@@ -287,8 +289,8 @@ export function TransactionListPanel({
             </span>
           </TooltipTrigger>
           <TooltipContent side="top">
-            <p className="text-xs">Compra em {original}</p>
-            <p className="text-[10px] text-muted-foreground">Data exibida: vencimento da fatura</p>
+            <p className="text-xs">{fin.transactionList.tooltip.purchaseOn} {original}</p>
+            <p className="text-[10px] text-muted-foreground">{fin.transactionList.tooltip.invoiceDueDate}</p>
           </TooltipContent>
         </Tooltip>
       );
@@ -309,7 +311,7 @@ export function TransactionListPanel({
     );
   };
 
-  const newLabel = type === 'entrada' ? 'Receita' : type === 'saida' ? 'Despesa' : 'Transação';
+  const newLabel = type === 'entrada' ? fin.transactionList.newLabel.revenue : type === 'saida' ? fin.transactionList.newLabel.expense : fin.transactionList.newLabel.transaction;
 
   return (
     <div className="space-y-4">
@@ -318,18 +320,18 @@ export function TransactionListPanel({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-bold">{title}</h2>
-            <p className="text-sm text-muted-foreground">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-muted-foreground">{filtered.length} {filtered.length !== 1 ? fin.transactionList.countPlural : fin.transactionList.countSingular}</p>
           </div>
           <div className="flex items-center gap-2">
             {someSelected && (
               <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="min-h-11 rounded-xl">
-                <Trash2 className="mr-2 h-4 w-4" /> Excluir {selectedIds.size}
+                <Trash2 className="mr-2 h-4 w-4" /> {fin.transactionList.deleteSelected} {selectedIds.size}
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1 min-h-11 rounded-xl">
-                  <FileDown className="h-4 w-4" /> Exportar <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                  <FileDown className="h-4 w-4" /> {fin.transactionList.export} <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
@@ -361,17 +363,17 @@ export function TransactionListPanel({
       {isMobile && (
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {filtered.length} registro{filtered.length !== 1 ? 's' : ''}
+            {filtered.length} {filtered.length !== 1 ? fin.transactionList.countPlural : fin.transactionList.countSingular}
           </p>
           {someSelected ? (
             <Button variant="destructive" size="sm" className="h-8" onClick={() => setBulkDeleteOpen(true)}>
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir {selectedIds.size}
+              <Trash2 className="mr-2 h-3.5 w-3.5" /> {fin.transactionList.deleteSelected} {selectedIds.size}
             </Button>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 gap-1">
-                  <FileDown className="h-3.5 w-3.5" /> Exportar <ChevronDown className="h-3 w-3 opacity-60" />
+                  <FileDown className="h-3.5 w-3.5" /> {fin.transactionList.export} <ChevronDown className="h-3 w-3 opacity-60" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
@@ -396,7 +398,7 @@ export function TransactionListPanel({
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder={fin.transactionList.search} className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         {/* FilterButton standard: tipo (quando type==='all') + categoria + conta.
             Sem filtro de Status: Movimentações = só realizado (is_paid), todo registro é "Pago".
@@ -404,31 +406,31 @@ export function TransactionListPanel({
         <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
           {type === 'all' && (
             <FilterCheckboxGroup
-              label="Tipo"
+              label={fin.transactionList.filters.type}
               selected={typeFilter}
               onChange={setTypeFilter}
-              emptyLabel="Todos"
+              emptyLabel={fin.transactionList.filters.typeAll}
               options={[
-                { value: 'entrada', label: 'Entrada' },
-                { value: 'saida', label: 'Saída' },
+                { value: 'entrada', label: fin.transactionList.filters.typeRevenue },
+                { value: 'saida', label: fin.transactionList.filters.typeExpense },
               ]}
             />
           )}
           <FilterCheckboxGroup
-            label="Categoria"
+            label={fin.transactionList.filters.category}
             selected={categoryFilter}
             onChange={setCategoryFilter}
-            emptyLabel="Todas"
+            emptyLabel={fin.transactionList.filters.categoryAll}
             options={categories.map((c) => ({ value: c, label: c }))}
           />
           <FilterCheckboxGroup
-            label="Caixa / Conta bancária"
+            label={fin.transactionList.filters.account}
             selected={accountFilter}
             onChange={setAccountFilter}
-            emptyLabel="Todos"
+            emptyLabel={fin.transactionList.filters.accountAll}
             options={Array.from(accountNames.entries()).map(([id, acc]) => ({
               value: id,
-              label: acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name,
+              label: acc.type === 'caixa' ? `${acc.name} ${fin.transactionList.filters.cash}` : acc.name,
               color: acc.color,
             }))}
           />
@@ -442,15 +444,15 @@ export function TransactionListPanel({
           <EmptyState
             size="compact"
             icon={<ArrowLeftRight className="h-10 w-10" />}
-            title="Nenhuma movimentação encontrada"
-            description="Tente ajustar a busca ou os filtros."
+            title={fin.transactionList.empty.notFoundTitle}
+            description={fin.transactionList.empty.notFoundDescription}
           />
         ) : (
           <EmptyState
             size="compact"
             icon={<ArrowLeftRight className="h-10 w-10" />}
-            title="Nenhuma movimentação"
-            description="As entradas e saídas aparecem aqui assim que você registrar a primeira."
+            title={fin.transactionList.empty.noneTitle}
+            description={fin.transactionList.empty.noneDescription}
             action={onNew ? { label: `Nova ${newLabel.toLowerCase()}`, onClick: onNew } : undefined}
           />
         )
@@ -459,7 +461,7 @@ export function TransactionListPanel({
           {type !== 'all' && (
             <div className="flex items-center gap-2 px-1">
               <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
-              <span className="text-xs text-muted-foreground">Selecionar todos</span>
+              <span className="text-xs text-muted-foreground">{fin.transactionList.selectAll}</span>
             </div>
           )}
           <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
@@ -468,14 +470,14 @@ export function TransactionListPanel({
               const itemActions: ItemAction[] = [
                 {
                   key: 'edit',
-                  label: 'Editar',
+                  label: fin.transactionList.rowActions.edit,
                   icon: <Pencil className="h-4 w-4" />,
                   variant: 'edit' as const,
                   onClick: () => onEdit(t),
                 },
                 {
                   key: 'delete',
-                  label: 'Excluir',
+                  label: fin.transactionList.rowActions.delete,
                   icon: <Trash2 className="h-4 w-4" />,
                   variant: 'destructive' as const,
                   onClick: () => requestDelete(t.id),
@@ -522,14 +524,14 @@ export function TransactionListPanel({
                   trailing={
                     <div className="flex flex-col items-end gap-1">
                       <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', isEntrada ? 'text-success' : 'text-destructive')}>
-                        {isEntrada ? '+' : '-'} {formatCurrency(t.amount)}
+                        {isEntrada ? '+' : '-'} {fmt(t.amount)}
                       </span>
                       {balanceAfterById?.has(t.id) && (
                         <span className={cn(
                           'text-[11px] whitespace-nowrap tabular-nums text-muted-foreground',
                           (balanceAfterById.get(t.id) ?? 0) < 0 && 'text-destructive',
                         )}>
-                          Saldo: {formatCurrency(balanceAfterById.get(t.id) ?? 0)}
+                          {fin.transactionList.balance}: {fmt(balanceAfterById.get(t.id) ?? 0)}
                         </span>
                       )}
                     </div>
@@ -556,19 +558,19 @@ export function TransactionListPanel({
                         <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
                       </SortableTableHead>
                     )}
-                    <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px] text-center">Usuário</SortableTableHead>
-                    {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
-                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
-                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Categoria</SortableTableHead>
+                    <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.date}</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px] text-center">{fin.transactionList.table.user}</SortableTableHead>
+                    {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.type}</SortableTableHead>}
+                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.description}</SortableTableHead>
+                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{fin.transactionList.table.category}</SortableTableHead>
                     {!hideAccountColumn && (
-                      <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Conta</SortableTableHead>
+                      <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{fin.transactionList.table.account}</SortableTableHead>
                     )}
-                    <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
+                    <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.amount}</SortableTableHead>
                     {balanceAfterById && (
-                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">Saldo Após</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">{fin.transactionList.table.balanceAfter}</SortableTableHead>
                     )}
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">Ações</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">{fin.transactionList.table.actions}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -582,7 +584,7 @@ export function TransactionListPanel({
                           <Badge className={t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}>
                             <span className="flex items-center gap-1">
                               {t.transaction_type === 'entrada' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                              {t.transaction_type === 'entrada' ? 'Receita' : 'Despesa'}
+                              {t.transaction_type === 'entrada' ? fin.transactionList.badges.revenue : fin.transactionList.badges.expense}
                             </span>
                           </Badge>
                         </TableCell>
@@ -614,7 +616,7 @@ export function TransactionListPanel({
                       )}
                       <TableCell>
                         <span className={`font-medium tabular-nums whitespace-nowrap ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
-                          {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
+                          {t.transaction_type === 'entrada' ? '+' : '-'} {fmt(t.amount)}
                         </span>
                       </TableCell>
                       {balanceAfterById && (
@@ -624,7 +626,7 @@ export function TransactionListPanel({
                               'font-medium tabular-nums whitespace-nowrap',
                               (balanceAfterById.get(t.id) ?? 0) < 0 && 'text-destructive',
                             )}>
-                              {formatCurrency(balanceAfterById.get(t.id) ?? 0)}
+                              {fmt(balanceAfterById.get(t.id) ?? 0)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -634,8 +636,8 @@ export function TransactionListPanel({
                       <TableCell>
                         <RowActionsMenu
                           actions={[
-                            { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => onEdit(t) },
-                            { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id) },
+                            { label: fin.transactionList.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(t) },
+                            { label: fin.transactionList.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id) },
                           ] satisfies RowAction[]}
                         />
                       </TableCell>
@@ -669,12 +671,12 @@ export function TransactionListPanel({
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {selectedIds.size} transações</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir {selectedIds.size} transações selecionadas?</AlertDialogDescription>
+            <AlertDialogTitle>{fin.transactionList.bulkDeleteDialog.titlePrefix} {selectedIds.size} {fin.transactionList.bulkDeleteDialog.titleSuffix}</AlertDialogTitle>
+            <AlertDialogDescription>{fin.transactionList.bulkDeleteDialog.descriptionPrefix} {selectedIds.size} {fin.transactionList.bulkDeleteDialog.descriptionSuffix}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir {selectedIds.size}</AlertDialogAction>
+            <AlertDialogCancel>{fin.transactionList.bulkDeleteDialog.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{fin.transactionList.bulkDeleteDialog.confirm} {selectedIds.size}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

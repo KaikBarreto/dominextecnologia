@@ -53,10 +53,9 @@ import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
@@ -97,7 +96,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   const [payDespMethod, setPayDespMethod] = useState('pix');
   const [payDespNotes, setPayDespNotes] = useState('');
   const isMobile = useIsMobile();
-  const { deleteTransaction, updateTransaction } = useFinancial();
+  const { locale, currency } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
+  const { deleteTransaction } = useFinancial();
   const { accounts: allAccounts } = useFinancialAccounts();
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
   // Faturas de cartão — usadas em subTab='pagar' pra agrupar despesas em
@@ -237,7 +239,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       || fuzzyIncludes(t.customer?.name, search)
       || fuzzyIncludes(t.employee?.name, search)
       || fuzzyIncludes(String(Number(t.amount)), search)
-      || fuzzyIncludes(formatCurrency(Number(t.amount)), search)
+      || fuzzyIncludes(fmt(Number(t.amount)), search)
     );
   };
 
@@ -413,10 +415,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
   };
 
   const filters: { key: FilterStatus; label: string }[] = [
-    { key: 'pendentes', label: 'Pendentes' },
-    { key: 'vencidas', label: 'Vencidas' },
-    { key: 'pagas', label: 'Pagas' },
-    { key: 'todas', label: 'Todas' },
+    { key: 'pendentes', label: fin.accounts.filters.pending },
+    { key: 'vencidas', label: fin.accounts.filters.overdue },
+    { key: 'pagas', label: fin.accounts.filters.paid },
+    { key: 'todas', label: fin.accounts.filters.all },
   ];
 
   const handleEdit = (t: FinancialTransaction) => {
@@ -441,11 +443,11 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       {!isMobile && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h2 className="text-xl font-bold">Contas</h2>
-            <p className="text-sm text-muted-foreground">Programação financeira — contas a pagar e a receber</p>
+            <h2 className="text-xl font-bold">{fin.accounts.header.title}</h2>
+            <p className="text-sm text-muted-foreground">{fin.accounts.header.subtitle}</p>
           </div>
           <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} className="gap-2 min-h-11 rounded-xl">
-            <Plus className="h-4 w-4" /> Nova Conta
+            <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
           </Button>
         </div>
       )}
@@ -454,8 +456,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       {isMobile ? (
         <MobilePillTabs
           tabs={[
-            { value: 'pagar', label: 'A Pagar', icon: <ArrowDownCircle className="h-3.5 w-3.5" /> },
-            { value: 'receber', label: 'A Receber', icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
+            { value: 'pagar', label: fin.accounts.subTabs.payable, icon: <ArrowDownCircle className="h-3.5 w-3.5" /> },
+            { value: 'receber', label: fin.accounts.subTabs.receivable, icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
           ]}
           activeTab={subTab}
           onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
@@ -467,14 +469,14 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
             onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
             className={cn('min-h-11 rounded-xl', subTab === 'pagar' && 'bg-destructive hover:bg-destructive/90 text-white')}
           >
-            A Pagar
+            {fin.accounts.subTabs.payable}
           </Button>
           <Button
             variant={subTab === 'receber' ? 'default' : 'outline'}
             onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
             className={cn('min-h-11 rounded-xl', subTab === 'receber' && 'bg-success hover:bg-success/90 text-white')}
           >
-            A Receber
+            {fin.accounts.subTabs.receivable}
           </Button>
         </div>
       )}
@@ -490,8 +492,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 <Clock className="h-4 w-4 text-warning-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">Pendente</p>
-                <p className="text-sm font-bold truncate leading-tight tabular-nums">{formatCurrency(summary.pendente)}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">{fin.accounts.summaryCards.pending}</p>
+                <p className="text-sm font-bold truncate leading-tight tabular-nums">{fmt(summary.pendente)}</p>
               </div>
             </div>
             <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
@@ -499,8 +501,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 <AlertTriangle className="h-4 w-4 text-destructive-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">Vencido</p>
-                <p className="text-sm font-bold text-destructive truncate leading-tight tabular-nums">{formatCurrency(summary.vencido)}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">{fin.accounts.summaryCards.overdue}</p>
+                <p className="text-sm font-bold text-destructive truncate leading-tight tabular-nums">{fmt(summary.vencido)}</p>
               </div>
             </div>
             <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
@@ -508,8 +510,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 <DollarSign className="h-4 w-4 text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">7 dias</p>
-                <p className="text-sm font-bold truncate leading-tight tabular-nums">{formatCurrency(summary.prox7)}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">{fin.accounts.summaryCards.next7}</p>
+                <p className="text-sm font-bold truncate leading-tight tabular-nums">{fmt(summary.prox7)}</p>
               </div>
             </div>
             <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
@@ -518,9 +520,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">
-                  {subTab === 'receber' ? 'Recebido' : 'Pago'}
+                  {subTab === 'receber' ? fin.accounts.summaryCards.received : fin.accounts.summaryCards.paid}
                 </p>
-                <p className="text-sm font-bold text-success truncate leading-tight tabular-nums">{formatCurrency(summary.pago)}</p>
+                <p className="text-sm font-bold text-success truncate leading-tight tabular-nums">{fmt(summary.pago)}</p>
               </div>
             </div>
           </div>
@@ -533,8 +535,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 <Clock className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Pendente</p>
-                <p className="text-lg font-bold truncate tabular-nums">{formatCurrency(summary.pendente)}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{fin.accounts.summaryCards.totalPending}</p>
+                <p className="text-lg font-bold truncate tabular-nums">{fmt(summary.pendente)}</p>
               </div>
             </CardContent>
           </Card>
@@ -544,8 +546,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 <AlertTriangle className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Vencido</p>
-                <p className="text-lg font-bold text-destructive truncate tabular-nums">{formatCurrency(summary.vencido)}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{fin.accounts.summaryCards.totalOverdue}</p>
+                <p className="text-lg font-bold text-destructive truncate tabular-nums">{fmt(summary.vencido)}</p>
               </div>
             </CardContent>
           </Card>
@@ -555,8 +557,8 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 <DollarSign className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Próximos 7 dias</p>
-                <p className="text-lg font-bold truncate tabular-nums">{formatCurrency(summary.prox7)}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{fin.accounts.summaryCards.next7Full}</p>
+                <p className="text-lg font-bold truncate tabular-nums">{fmt(summary.prox7)}</p>
               </div>
             </CardContent>
           </Card>
@@ -567,9 +569,9 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {subTab === 'receber' ? 'Total Recebido' : 'Total Pago'}
+                  {subTab === 'receber' ? fin.accounts.summaryCards.totalReceived : fin.accounts.summaryCards.totalPaid}
                 </p>
-                <p className="text-lg font-bold text-success truncate tabular-nums">{formatCurrency(summary.pago)}</p>
+                <p className="text-lg font-bold text-success truncate tabular-nums">{fmt(summary.pago)}</p>
               </div>
             </CardContent>
           </Card>
@@ -581,7 +583,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nome, descrição, categoria ou valor..."
+          placeholder={fin.accounts.search}
           className="pl-10"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -616,10 +618,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       {!searchActive && availableCategories.length > 0 && (
         <div className="flex flex-col gap-2">
           <FilterCheckboxDropdown
-            label="Categoria"
+            label={fin.accounts.categoryFilter.label}
             selected={categoryFilter}
             onChange={setCategoryFilter}
-            emptyLabel="Todas as categorias"
+            emptyLabel={fin.accounts.categoryFilter.emptyLabel}
             options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
           />
 
@@ -627,13 +629,13 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           {categorySummary && (
             <div className="flex items-center gap-3 rounded-lg bg-muted p-3 text-sm flex-wrap">
               <Badge variant="outline" className="shrink-0">
-                {categoryFilter.length === 1 ? categoryFilter[0] : `${categoryFilter.length} categorias`}
+                {categoryFilter.length === 1 ? categoryFilter[0] : `${categoryFilter.length} ${fin.accounts.categoryFilter.categoriesSuffix}`}
               </Badge>
               <span className="text-muted-foreground">
-                Total: <span className="font-semibold text-foreground tabular-nums">{formatCurrency(categorySummary.total)}</span>
+                {fin.accounts.categoryFilter.totalLabel}: <span className="font-semibold text-foreground tabular-nums">{fmt(categorySummary.total)}</span>
               </span>
               <span className="text-muted-foreground">
-                {categorySummary.count} {categorySummary.count === 1 ? 'lançamento' : 'lançamentos'}
+                {categorySummary.count} {categorySummary.count === 1 ? fin.accounts.categoryFilter.entry : fin.accounts.categoryFilter.entries}
               </span>
             </div>
           )}
@@ -649,10 +651,10 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
-              Faturas de Cartão
+              {fin.accounts.cardInvoices.sectionTitle}
             </h3>
             <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              {cardInvoices.length} {cardInvoices.length === 1 ? 'fatura' : 'faturas'}
+              {cardInvoices.length} {cardInvoices.length === 1 ? fin.accounts.cardInvoices.invoice : fin.accounts.cardInvoices.invoices}
             </Badge>
           </div>
           <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
@@ -683,24 +685,22 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
           <EmptyState
             size="compact"
             icon={<DollarSign className="h-10 w-10" />}
-            title="Nenhuma conta encontrada"
+            title={fin.accounts.empty.notFoundTitle}
             description={searchActive
-              ? `Nada encontrado para "${search.trim()}"`
+              ? `${fin.accounts.empty.nothingInSearch} "${search.trim()}"`
               : categoryFilter.length === 1
-                ? `Nenhum registro na categoria "${categoryFilter[0]}"`
+                ? `${fin.accounts.empty.nothingInCategory} "${categoryFilter[0]}"`
                 : categoryFilter.length > 1
-                  ? 'Nenhum registro nas categorias selecionadas'
-                  : 'Nenhum registro para o filtro selecionado.'}
+                  ? fin.accounts.empty.nothingInCategories
+                  : fin.accounts.empty.nothingInFilter}
           />
         ) : (
           <EmptyState
             size="compact"
             icon={subTab === 'receber' ? <ArrowUpCircle className="h-10 w-10" /> : <ArrowDownCircle className="h-10 w-10" />}
-            title={subTab === 'receber' ? 'Nenhuma conta a receber' : 'Nenhuma conta a pagar'}
-            description={subTab === 'receber'
-              ? 'Cadastre uma conta a receber para acompanhar os recebimentos.'
-              : 'Cadastre uma conta a pagar para acompanhar os vencimentos.'}
-            action={{ label: 'Nova conta', onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }}
+            title={subTab === 'receber' ? fin.accounts.empty.noReceivableTitle : fin.accounts.empty.noPayableTitle}
+            description={subTab === 'receber' ? fin.accounts.empty.noReceivableDescription : fin.accounts.empty.noPayableDescription}
+            action={{ label: fin.accounts.actions.newAccount, onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }}
           />
         )
       ) : filtered.length === 0 ? (
@@ -717,26 +717,26 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               const itemActions: ItemAction[] = [
                 ...(!t.is_paid ? [{
                   key: 'mark-paid',
-                  label: subTab === 'receber' ? 'Marcar recebido' : 'Marcar pago',
+                  label: subTab === 'receber' ? fin.accounts.actions.markReceived : fin.accounts.actions.markPaid,
                   icon: <Check className="h-4 w-4" />,
                   onClick: () => handleMarkAsPaidClick(t),
                 }] : []),
                 ...(partial ? [{
                   key: 'view-details',
-                  label: 'Ver histórico',
+                  label: fin.accounts.actions.viewHistory,
                   icon: <Receipt className="h-4 w-4" />,
                   onClick: () => setViewingTxn(t),
                 }] : []),
                 {
                   key: 'edit',
-                  label: 'Editar',
+                  label: fin.accounts.actions.edit,
                   icon: <Pencil className="h-4 w-4" />,
                   variant: 'edit' as const,
                   onClick: () => handleEdit(t),
                 },
                 {
                   key: 'delete',
-                  label: 'Excluir',
+                  label: fin.accounts.actions.delete,
                   icon: <Trash2 className="h-4 w-4" />,
                   variant: 'destructive' as const,
                   onClick: () => setDeletingId(t.id),
@@ -780,14 +780,14 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>
-                          {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
+                          {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : fin.accounts.table.noDueDate}
                         </span>
                         {t.employee && <span className="truncate">{t.employee.name}</span>}
                         {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
                       </div>
                       {partial && (
                         <span className="text-warning text-[11px]">
-                          Recebido: {formatCurrency(received)} de {formatCurrency(Number(t.amount))}
+                          {fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}
                         </span>
                       )}
                     </div>
@@ -795,16 +795,16 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                   trailing={
                     <div className="flex flex-col items-end gap-1">
                       <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
-                        {formatCurrency(t.amount)}
+                        {fmt(t.amount)}
                       </span>
                       {status === 'paga' ? (
-                        <Badge className="bg-success text-white text-[10px] px-1.5 py-0">Pago</Badge>
+                        <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
                       ) : status === 'vencida' ? (
-                        <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">Vencida</Badge>
+                        <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{fin.accounts.status.overdue}</Badge>
                       ) : status === 'parcial' ? (
-                        <Badge className="bg-warning text-white text-[10px] px-1.5 py-0">Parcial</Badge>
+                        <Badge className="bg-warning text-white text-[10px] px-1.5 py-0">{fin.accounts.status.partial}</Badge>
                       ) : (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Pendente</Badge>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{fin.accounts.status.pending}</Badge>
                       )}
                     </div>
                   }
@@ -821,12 +821,12 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
-                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Categoria</SortableTableHead>
-                    <SortableTableHead sortKey="_due_ts" sortConfig={sortConfig} onSort={handleSort}>Vencimento</SortableTableHead>
-                    <SortableTableHead sortKey="_amount_num" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
-                    <SortableTableHead sortKey="_status_order" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
+                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>{fin.accounts.table.description}</SortableTableHead>
+                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">{fin.accounts.table.category}</SortableTableHead>
+                    <SortableTableHead sortKey="_due_ts" sortConfig={sortConfig} onSort={handleSort}>{fin.accounts.table.dueDate}</SortableTableHead>
+                    <SortableTableHead sortKey="_amount_num" sortConfig={sortConfig} onSort={handleSort}>{fin.accounts.table.amount}</SortableTableHead>
+                    <SortableTableHead sortKey="_status_order" sortConfig={sortConfig} onSort={handleSort}>{fin.accounts.table.status}</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">{fin.accounts.table.actions}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -856,55 +856,55 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                             {status === 'vencida' && <AlertTriangle className="inline ml-1 h-3.5 w-3.5" />}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-xs">Sem vencimento</span>
+                          <span className="text-muted-foreground text-xs">{fin.accounts.table.noDueDate}</span>
                         )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className={`font-medium tabular-nums ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
-                            {formatCurrency(t.amount)}
+                            {fmt(t.amount)}
                           </span>
                           {partial && (
                             <span className="text-[11px] text-warning tabular-nums">
-                              Recebido: {formatCurrency(received)} de {formatCurrency(Number(t.amount))}
+                              {fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}
                             </span>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
                         {status === 'paga' ? (
-                          <Badge className="bg-success text-white">Pago</Badge>
+                          <Badge className="bg-success text-white">{fin.accounts.status.paid}</Badge>
                         ) : status === 'vencida' ? (
-                          <Badge className="bg-destructive text-white">Vencida</Badge>
+                          <Badge className="bg-destructive text-white">{fin.accounts.status.overdue}</Badge>
                         ) : status === 'parcial' ? (
-                          <Badge className="bg-warning text-white">Parcial</Badge>
+                          <Badge className="bg-warning text-white">{fin.accounts.status.partial}</Badge>
                         ) : (
-                          <Badge variant="secondary">Pendente</Badge>
+                          <Badge variant="secondary">{fin.accounts.status.pending}</Badge>
                         )}
                       </TableCell>
                       <TableCell>
                         <RowActionsMenu
                           actions={[
                             {
-                              label: subTab === 'receber' ? 'Marcar como recebido' : 'Marcar como pago',
+                              label: subTab === 'receber' ? fin.accounts.actions.markAsReceived : fin.accounts.actions.markAsPaid,
                               icon: Check,
                               onClick: () => handleMarkAsPaidClick(t),
                               hidden: t.is_paid,
                             },
                             {
-                              label: 'Ver histórico',
+                              label: fin.accounts.actions.viewHistory,
                               icon: Eye,
                               onClick: () => setViewingTxn(t),
                               hidden: !partial,
                             },
                             {
-                              label: 'Editar',
+                              label: fin.accounts.actions.edit,
                               icon: Pencil,
                               variant: 'edit',
                               onClick: () => handleEdit(t),
                             },
                             {
-                              label: 'Excluir',
+                              label: fin.accounts.actions.delete,
                               icon: Trash2,
                               variant: 'delete',
                               onClick: () => setDeletingId(t.id),
@@ -932,15 +932,15 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir conta</AlertDialogTitle>
+            <AlertDialogTitle>{fin.accounts.deleteDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.
+              {fin.accounts.deleteDialog.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{fin.accounts.deleteDialog.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Excluir
+              {fin.accounts.deleteDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -996,11 +996,11 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       <ResponsiveModal
         open={!!payingDespesaTxn}
         onOpenChange={(v) => { if (!v) setPayingDespesaTxn(null); }}
-        title="Confirmar pagamento"
-        description={payingDespesaTxn ? `${payingDespesaTxn.description} — ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(payingDespesaTxn.amount))}` : undefined}
+        title={fin.accounts.payExpenseModal.title}
+        description={payingDespesaTxn ? `${payingDespesaTxn.description} — ${fmt(Number(payingDespesaTxn.amount))}` : undefined}
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">Cancelar</Button>
+            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
             <Button
               disabled={!payDespAccountId || !payDespDate}
               className="min-h-11 rounded-xl"
@@ -1016,16 +1016,16 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
                 setPayingDespesaTxn(null);
               }}
             >
-              Confirmar
+              {fin.accounts.actions.confirm}
             </Button>
           </div>
         }
       >
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Pago com *</Label>
+            <Label>{fin.accounts.payExpenseModal.paidWith}</Label>
             <Select value={payDespAccountId} onValueChange={setPayDespAccountId}>
-              <SelectTrigger><SelectValue placeholder="Selecione caixa ou conta" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={fin.accounts.payExpenseModal.selectAccount} /></SelectTrigger>
               <SelectContent>
                 {cashBankAccounts.map(a => (
                   <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -1033,37 +1033,37 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
               </SelectContent>
             </Select>
             {cashBankAccounts.length === 0 && (
-              <p className="text-xs text-destructive">Cadastre um caixa ou conta primeiro.</p>
+              <p className="text-xs text-destructive">{fin.accounts.payExpenseModal.noAccountWarning}</p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Forma de pagamento</Label>
+              <Label>{fin.accounts.payExpenseModal.paymentMethod}</Label>
               <Select value={payDespMethod} onValueChange={setPayDespMethod}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="debito">Cartão de Débito</SelectItem>
-                  <SelectItem value="boleto">Boleto</SelectItem>
-                  <SelectItem value="transferencia">Transferência</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="dinheiro">{fin.accounts.payExpenseModal.paymentMethods.cash}</SelectItem>
+                  <SelectItem value="pix">{fin.accounts.payExpenseModal.paymentMethods.pix}</SelectItem>
+                  <SelectItem value="debito">{fin.accounts.payExpenseModal.paymentMethods.debit}</SelectItem>
+                  <SelectItem value="boleto">{fin.accounts.payExpenseModal.paymentMethods.boleto}</SelectItem>
+                  <SelectItem value="transferencia">{fin.accounts.payExpenseModal.paymentMethods.transfer}</SelectItem>
+                  <SelectItem value="cheque">{fin.accounts.payExpenseModal.paymentMethods.check}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Data do pagamento *</Label>
+              <Label>{fin.accounts.payExpenseModal.paymentDate}</Label>
               <Input type="date" value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Observações</Label>
+            <Label>{fin.accounts.payExpenseModal.notes}</Label>
             <Textarea
               value={payDespNotes}
               onChange={e => setPayDespNotes(e.target.value)}
-              placeholder="Opcional"
+              placeholder={fin.accounts.payExpenseModal.optional}
               rows={2}
               className="resize-none"
             />
@@ -1075,7 +1075,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Conta"
+          label={fin.accounts.header.title}
           onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }}
         />
       )}

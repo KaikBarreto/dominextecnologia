@@ -5,6 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Lead } from '@/hooks/useLeads';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface LeadCardProps {
   lead: Lead;
@@ -12,12 +15,10 @@ interface LeadCardProps {
 }
 
 export function LeadCard({ lead, onClick }: LeadCardProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm;
+
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
   const probabilityColor = (prob: number) => {
     if (prob >= 70) return 'text-success';
@@ -28,7 +29,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
   const assignee = lead.assigned_profile;
 
   return (
-    <Card 
+    <Card
       onClick={onClick}
       className="group cursor-pointer transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 border-border/50 bg-card"
     >
@@ -63,9 +64,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
         {lead.value && lead.value > 0 && (
           <div className="flex items-center gap-1.5 mb-3">
             <DollarSign className="h-4 w-4 text-primary" />
-            <p className="text-lg font-bold text-primary">
-              {formatCurrency(lead.value)}
-            </p>
+            <p className="text-lg font-bold text-primary">{formatCurrency(lead.value)}</p>
           </div>
         )}
 
@@ -75,17 +74,20 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-muted-foreground flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
-                Probabilidade
+                {t.card.probability}
               </span>
               <span className={`font-medium ${probabilityColor(lead.probability)}`}>
                 {lead.probability}%
               </span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-              <div 
+              <div
                 className={`h-full rounded-full transition-all ${
-                  lead.probability >= 70 ? 'bg-success' :
-                  lead.probability >= 40 ? 'bg-warning' : 'bg-destructive'
+                  lead.probability >= 70
+                    ? 'bg-success'
+                    : lead.probability >= 40
+                      ? 'bg-warning'
+                      : 'bg-destructive'
                 }`}
                 style={{ width: `${lead.probability}%` }}
               />
@@ -103,7 +105,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
           {lead.expected_close_date && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex items-center gap-1">
               <Calendar className="h-2.5 w-2.5" />
-              {format(new Date(lead.expected_close_date), "dd/MM", { locale: ptBR })}
+              {format(new Date(lead.expected_close_date), 'dd/MM', { locale: ptBR })}
             </Badge>
           )}
         </div>

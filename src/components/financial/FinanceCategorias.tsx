@@ -19,12 +19,16 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type CategoryGroup = 'receitas' | 'despesas';
 
 export function FinanceCategorias() {
   const { categories, isLoading, createCategory, updateCategory, deleteCategory, reorderCategories } = useFinancialCategories();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
   const { toast } = useToast();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialCategory | null>(null);
@@ -49,7 +53,7 @@ export function FinanceCategorias() {
 
   const handleEdit = (cat: FinancialCategory) => {
     if (cat.is_system) {
-      toast({ title: 'Categoria do sistema não pode ser editada' });
+      toast({ title: fin.categories.systemEditWarning });
       return;
     }
     setEditing(cat);
@@ -64,7 +68,7 @@ export function FinanceCategorias() {
 
   const handleAskDelete = (cat: FinancialCategory) => {
     if (cat.is_system) {
-      toast({ title: 'Categoria do sistema não pode ser excluída' });
+      toast({ title: fin.categories.systemDeleteWarning });
       return;
     }
     setDeleteId(cat.id);
@@ -158,7 +162,7 @@ export function FinanceCategorias() {
                     <TooltipTrigger>
                       <Lock className="h-3 w-3 text-muted-foreground" />
                     </TooltipTrigger>
-                    <TooltipContent>Categoria do sistema</TooltipContent>
+                    <TooltipContent>{fin.categories.systemTooltip}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -167,8 +171,8 @@ export function FinanceCategorias() {
               <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <RowActionsMenu
                   actions={[
-                    { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) },
-                    { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) },
+                    { label: fin.categories.actions.edit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) },
+                    { label: fin.categories.actions.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) },
                   ]}
                 />
               </div>
@@ -186,10 +190,10 @@ export function FinanceCategorias() {
         <EmptyState
           size="compact"
           icon={<Tag className="h-10 w-10" />}
-          title={mobileGroup === 'receitas' ? 'Nenhuma categoria de receita' : 'Nenhuma categoria de despesa'}
-          description="Crie categorias para organizar suas entradas e saídas."
+          title={mobileGroup === 'receitas' ? fin.categories.empty.noRevenueMobile : fin.categories.empty.noExpenseMobile}
+          description={fin.categories.empty.mobileDescription}
           action={{
-            label: 'Nova categoria',
+            label: fin.categories.empty.newAction,
             onClick: () => handleNew(mobileGroup === 'receitas' ? 'entrada' : 'saida'),
           }}
         />
@@ -207,7 +211,7 @@ export function FinanceCategorias() {
           if (!isSystem && !isFirst) {
             actions.push({
               key: 'move-up',
-              label: 'Mover para cima',
+              label: fin.categories.actions.moveUp,
               icon: <ChevronUp className="h-4 w-4" />,
               onClick: () => moveCategory(items, idx, -1),
             });
@@ -215,21 +219,21 @@ export function FinanceCategorias() {
           if (!isSystem && !isLast) {
             actions.push({
               key: 'move-down',
-              label: 'Mover para baixo',
+              label: fin.categories.actions.moveDown,
               icon: <ChevronDown className="h-4 w-4" />,
               onClick: () => moveCategory(items, idx, 1),
             });
           }
           actions.push({
             key: 'edit',
-            label: 'Editar',
+            label: fin.categories.actions.edit,
             icon: <Pencil className="h-4 w-4" />,
             variant: 'edit' as const,
             onClick: () => handleEdit(cat),
           });
           actions.push({
             key: 'delete',
-            label: 'Excluir',
+            label: fin.categories.actions.delete,
             icon: <Trash2 className="h-4 w-4" />,
             variant: 'destructive' as const,
             onClick: () => handleAskDelete(cat),
@@ -252,7 +256,7 @@ export function FinanceCategorias() {
                 isSystem ? (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
                     <Lock className="h-2.5 w-2.5" />
-                    Sistema
+                    {fin.categories.system}
                   </Badge>
                 ) : undefined
               }
@@ -275,17 +279,17 @@ export function FinanceCategorias() {
             <SettingsIcon className="h-4 w-4 text-white" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold leading-tight">Categorias</h2>
+            <h2 className="text-base font-semibold leading-tight">{fin.categories.header.title}</h2>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Receitas e despesas do financeiro
+              {fin.categories.header.subtitle}
             </p>
           </div>
         </div>
 
         <MobilePillTabs
           tabs={[
-            { value: 'receitas', label: `Receitas (${receitas.length})`, icon: <TrendingUp className="h-3.5 w-3.5" /> },
-            { value: 'despesas', label: `Despesas (${despesas.length})`, icon: <TrendingDown className="h-3.5 w-3.5" /> },
+            { value: 'receitas', label: `${fin.categories.tabs.revenue} (${receitas.length})`, icon: <TrendingUp className="h-3.5 w-3.5" /> },
+            { value: 'despesas', label: `${fin.categories.tabs.expense} (${despesas.length})`, icon: <TrendingDown className="h-3.5 w-3.5" /> },
           ]}
           activeTab={mobileGroup}
           onTabChange={(v) => setMobileGroup(v as CategoryGroup)}
@@ -301,7 +305,7 @@ export function FinanceCategorias() {
 
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Categoria"
+          label={fin.categories.fabLabel}
           onClick={() => handleNew(defaultTypeForNew)}
         />
 
@@ -316,13 +320,13 @@ export function FinanceCategorias() {
         <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
-              <AlertDialogDescription>Tem certeza? Transações com esta categoria não serão afetadas.</AlertDialogDescription>
+              <AlertDialogTitle>{fin.categories.deleteDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>{fin.categories.deleteDialog.description}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>{fin.categories.deleteDialog.cancel}</AlertDialogCancel>
               <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Excluir
+                {fin.categories.deleteDialog.confirm}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -350,22 +354,22 @@ export function FinanceCategorias() {
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold">Categorias de Receita</h3>
-                  <p className="text-xs text-muted-foreground">{receitas.length} categorias · arraste para reordenar</p>
+                  <h3 className="font-bold">{fin.categories.sections.revenueTitle}</h3>
+                  <p className="text-xs text-muted-foreground">{receitas.length} categorias · {fin.categories.sections.reorderHint}</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleNew('entrada')}>
                 <Plus className="mr-1 h-4 w-4" />
-                Nova
+                {fin.categories.sections.newButton}
               </Button>
             </div>
             {receitas.length === 0 ? (
               <EmptyState
                 size="compact"
                 icon={<Tag className="h-10 w-10" />}
-                title="Nenhuma categoria de receita"
-                description="Crie categorias para organizar suas entradas."
-                action={{ label: 'Nova categoria', onClick: () => handleNew('entrada') }}
+                title={fin.categories.empty.noRevenueTitle}
+                description={fin.categories.empty.noRevenueDescription}
+                action={{ label: fin.categories.actions.new, onClick: () => handleNew('entrada') }}
               />
             ) : renderCategoryList(receitas)}
           </div>
@@ -377,22 +381,22 @@ export function FinanceCategorias() {
                   <TrendingDown className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold">Categorias de Despesa</h3>
-                  <p className="text-xs text-muted-foreground">{despesas.length} categorias · arraste para reordenar</p>
+                  <h3 className="font-bold">{fin.categories.sections.expenseTitle}</h3>
+                  <p className="text-xs text-muted-foreground">{despesas.length} categorias · {fin.categories.sections.reorderHint}</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleNew('saida')}>
                 <Plus className="mr-1 h-4 w-4" />
-                Nova
+                {fin.categories.sections.newButton}
               </Button>
             </div>
             {despesas.length === 0 ? (
               <EmptyState
                 size="compact"
                 icon={<Tag className="h-10 w-10" />}
-                title="Nenhuma categoria de despesa"
-                description="Crie categorias para organizar suas saídas."
-                action={{ label: 'Nova categoria', onClick: () => handleNew('saida') }}
+                title={fin.categories.empty.noExpenseTitle}
+                description={fin.categories.empty.noExpenseDescription}
+                action={{ label: fin.categories.actions.new, onClick: () => handleNew('saida') }}
               />
             ) : renderCategoryList(despesas)}
           </div>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, getYear } from 'date-fns';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -57,6 +58,8 @@ export default function Schedule() {
   const { teamsWithMembers } = useTeams();
   const { user, hasRole, hasPermission, isAdminOrGestor, roles, permissions, hasPermissionRecord } = useAuth();
   const { settings: companySettings } = useCompanySettings();
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.schedule;
 
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
@@ -120,8 +123,8 @@ export default function Schedule() {
   const myTeamIds = useMemo(() => {
     if (!user?.id) return [];
     return teamsWithMembers
-      .filter(t => t.members.some(m => m.user_id === user.id))
-      .map(t => t.id);
+      .filter(team => team.members.some(m => m.user_id === user.id))
+      .map(team => team.id);
   }, [teamsWithMembers, user?.id]);
 
   // Check if current user has technician role (only filter for tecnico role)
@@ -535,8 +538,8 @@ export default function Schedule() {
     return (
       <div className="space-y-6 p-1">
         <MobilePageHeader
-          title="Agenda"
-          subtitle="Visualize e gerencie os agendamentos de ordens de serviço"
+          title={t.header.title}
+          subtitle={t.header.subtitle}
           icon={CalendarIcon}
         />
         <ScheduleSkeleton />
@@ -563,16 +566,16 @@ export default function Schedule() {
         <button
           type="button"
           onClick={() => setIsSearchModalOpen(true)}
-          aria-label="Buscar tarefa ou OS"
+          aria-label={t.actions.searchAriaLabel}
           className="inline-flex h-9 items-center gap-2 rounded-full pr-2 text-muted-foreground transition-colors active:bg-muted/80 hover:text-foreground"
         >
           <SearchIcon className="h-5 w-5" />
-          <span className="text-sm font-medium">Pesquisar</span>
+          <span className="text-sm font-medium">{t.actions.search}</span>
         </button>
         <button
           type="button"
           onClick={() => setIsPausedDialogOpen(true)}
-          aria-label="Ver OS pausadas"
+          aria-label={t.pausedOrders.buttonAriaLabel}
           className={cn(
             'inline-flex h-9 items-center gap-2 rounded-full pr-2 text-muted-foreground transition-colors active:bg-muted/80',
             pausedOrders.length > 0 && 'text-amber-600 hover:text-amber-700',
@@ -586,7 +589,7 @@ export default function Schedule() {
               </span>
             )}
           </span>
-          <span className="text-sm font-medium">OS pausadas</span>
+          <span className="text-sm font-medium">{t.pausedOrders.buttonMobile}</span>
         </button>
       </div>
     );
@@ -598,8 +601,8 @@ export default function Schedule() {
     return (
       <div className="flex flex-col gap-4 pb-24">
         <MobilePageHeader
-          title="Agenda"
-          subtitle="Gerencie suas tarefas e compromissos"
+          title={t.header.title}
+          subtitle={t.header.subtitleMobile}
           icon={CalendarIcon}
           actions={headerActions}
         />
@@ -609,14 +612,16 @@ export default function Schedule() {
           <button
             type="button"
             onClick={handlePrev}
-            aria-label="Anterior"
+            aria-label={t.nav.prevAriaLabel}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors active:bg-muted/80"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="flex flex-col items-center flex-1 min-w-0">
             <h2 className="text-base font-semibold capitalize truncate">
-              {format(currentDate, viewMode === 'day' ? "dd 'de' MMMM yyyy" : 'MMM yyyy', { locale: ptBR })}
+              {viewMode === 'day'
+                ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric', timeZone: timezone }).format(currentDate)
+                : new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: timezone }).format(currentDate)}
             </h2>
             {!isToday && (
               <button
@@ -624,14 +629,14 @@ export default function Schedule() {
                 onClick={handleToday}
                 className="text-[11px] text-primary font-medium leading-tight"
               >
-                Voltar para hoje
+                {t.nav.backToToday}
               </button>
             )}
           </div>
           <button
             type="button"
             onClick={handleNext}
-            aria-label="Próximo"
+            aria-label={t.nav.nextAriaLabel}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors active:bg-muted/80"
           >
             <ChevronRight className="h-5 w-5" />
@@ -643,40 +648,40 @@ export default function Schedule() {
           <div className="flex-1">
             <MobilePillTabs
               tabs={[
-                { value: 'day', label: 'Dia' },
-                { value: 'week', label: 'Semana' },
-                { value: 'month', label: 'Mês' },
+                { value: 'day', label: t.viewMode.day },
+                { value: 'week', label: t.viewMode.week },
+                { value: 'month', label: t.viewMode.month },
               ]}
               activeTab={viewMode}
               onTabChange={(v) => handleViewModeChange(v as ViewMode)}
             />
           </div>
           <FilterSheet
-            triggerLabel="Filtros"
+            triggerLabel={t.filters.filters}
             activeCount={activeFilterCount}
             onClear={clearFilters}
           >
             <div className="space-y-4">
               <FilterCheckboxGroup
-                label="Técnico"
-                options={allProfiles.map((t) => ({ value: t.user_id, label: t.full_name }))}
+                label={t.filters.technician}
+                options={allProfiles.map((p) => ({ value: p.user_id, label: p.full_name }))}
                 selected={technicianFilter}
                 onChange={setTechnicianFilter}
               />
               <FilterCheckboxGroup
-                label="Cliente"
+                label={t.filters.customer}
                 options={customers.map((c) => ({ value: c.id, label: c.name }))}
                 selected={customerFilter}
                 onChange={setCustomerFilter}
               />
               <FilterCheckboxGroup
-                label="Status"
+                label={t.filters.status}
                 options={[
-                  { value: 'pendente', label: 'Pendente' },
-                  { value: 'em_andamento', label: 'Em andamento' },
-                  { value: 'pausada', label: 'Pausada' },
-                  { value: 'concluida', label: 'Concluída' },
-                  { value: 'cancelada', label: 'Cancelada' },
+                  { value: 'pendente', label: t.statusLabels.pendente },
+                  { value: 'em_andamento', label: t.statusLabels.em_andamento },
+                  { value: 'pausada', label: t.statusLabels.pausada },
+                  { value: 'concluida', label: t.statusLabels.concluida },
+                  { value: 'cancelada', label: t.statusLabels.cancelada },
                 ]}
                 selected={statusFilter}
                 onChange={setStatusFilter}
@@ -688,8 +693,8 @@ export default function Schedule() {
         {/* Moving indicator */}
         {touchDrag.movingOrderId && (
           <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 border border-primary/30">
-            <span className="text-xs font-medium text-primary">Toque no horário para mover a OS</span>
-            <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={touchDrag.cancel}>Cancelar</Button>
+            <span className="text-xs font-medium text-primary">{t.movingOrder.hint}</span>
+            <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={touchDrag.cancel}>{t.movingOrder.cancel}</Button>
           </div>
         )}
 
@@ -745,24 +750,24 @@ export default function Schedule() {
         </div>
 
         {/* Legend — Sheet compacto no mobile, inline no desktop */}
-        {serviceTypes.filter(t => t.is_active).length > 0 && (
+        {serviceTypes.filter(st => st.is_active).length > 0 && (
           isMobile ? (
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2 h-8 self-start">
                   <Palette className="h-3.5 w-3.5" />
-                  <span className="text-xs">Legenda</span>
+                  <span className="text-xs">{t.legend.legendButton}</span>
                   <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
-                    {serviceTypes.filter(t => t.is_active).length}
+                    {serviceTypes.filter(st => st.is_active).length}
                   </Badge>
                 </Button>
               </SheetTrigger>
               <SheetContent side="bottom" className="max-h-[70vh] rounded-t-2xl p-0 flex flex-col">
                 <SheetHeader className="px-4 pt-4 pb-2 border-b">
-                  <SheetTitle>Legenda — Tipos de Serviço</SheetTitle>
+                  <SheetTitle>{t.legend.legendTitle}</SheetTitle>
                 </SheetHeader>
                 <div className="flex-1 overflow-y-auto px-4 py-4 grid grid-cols-2 gap-x-3 gap-y-2.5">
-                  {serviceTypes.filter(t => t.is_active).map((st) => (
+                  {serviceTypes.filter(st => st.is_active).map((st) => (
                     <div key={st.id} className="flex items-center gap-2 min-w-0">
                       <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
                       <span className="text-sm truncate">{st.name}</span>
@@ -773,8 +778,8 @@ export default function Schedule() {
             </Sheet>
           ) : (
             <div className="flex flex-wrap gap-3 items-center justify-center">
-              <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
-              {serviceTypes.filter(t => t.is_active).map((st) => (
+              <span className="text-xs text-muted-foreground font-medium">{t.legend.label}</span>
+              {serviceTypes.filter(st => st.is_active).map((st) => (
                 <div key={st.id} className="flex items-center gap-1.5">
                   <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
                   <span className="text-xs text-muted-foreground">{st.name}</span>
@@ -792,10 +797,10 @@ export default function Schedule() {
           <>
             <div>
               <h3 className="text-lg font-semibold">
-                Resumo do Dia: {format(currentDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                {t.daySummary.title} {new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric', timeZone: timezone }).format(currentDate)}
               </h3>
               <p className="text-xs text-muted-foreground capitalize">
-                {format(currentDate, 'EEEE', { locale: ptBR })}
+                {new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: timezone }).format(currentDate)}
               </p>
             </div>
 
@@ -832,7 +837,7 @@ export default function Schedule() {
         {canCreateOS && (
           <FABButton
             icon={<Plus className="h-5 w-5" />}
-            label="Tarefa/OS"
+            label={t.actions.fabLabel}
             onClick={handleNewOrder}
           />
         )}
@@ -880,8 +885,8 @@ export default function Schedule() {
   return (
     <div className="flex flex-col lg:h-[calc(100vh-8rem)]">
       <PageHeader
-        title="Agenda"
-        subtitle="Visualize e gerencie os agendamentos de ordens de serviço"
+        title={t.header.title}
+        subtitle={t.header.subtitle}
         icon={CalendarIcon}
         className="mb-4"
       />

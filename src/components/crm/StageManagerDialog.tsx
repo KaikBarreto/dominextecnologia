@@ -7,31 +7,49 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCrmStages, type CrmStage } from '@/hooks/useCrmStages';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface StageManagerDialogProps {
   children: React.ReactNode;
 }
 
 export function StageManagerDialog({ children }: StageManagerDialogProps) {
-  const { stages, createStage, updateStage, deleteStage, reorderStages, getStageColorClass } = useCrmStages();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm;
+  const { stages, createStage, updateStage, deleteStage, reorderStages, getStageColorClass } =
+    useCrmStages();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [newStage, setNewStage] = useState({ name: '', color: '#6B7280', is_won: false, is_lost: false });
+  const [newStage, setNewStage] = useState({
+    name: '',
+    color: '#6B7280',
+    is_won: false,
+    is_lost: false,
+  });
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragNodeRef = useRef<HTMLDivElement | null>(null);
 
   const handleCreateStage = () => {
     if (!newStage.name.trim()) return;
-    createStage.mutate(newStage, { onSuccess: () => setNewStage({ name: '', color: '#6B7280', is_won: false, is_lost: false }) });
+    createStage.mutate(newStage, {
+      onSuccess: () => setNewStage({ name: '', color: '#6B7280', is_won: false, is_lost: false }),
+    });
   };
 
   const handleUpdateStage = (stage: CrmStage, updates: Partial<CrmStage>) => {
@@ -39,26 +57,39 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   };
 
   const handleDeleteStage = () => {
-    if (deleteId) { deleteStage.mutate(deleteId, { onSuccess: () => setDeleteId(null) }); }
+    if (deleteId) {
+      deleteStage.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
+    }
   };
 
   const handleDragStart = (e: React.DragEvent, stageId: string) => {
-    setDraggedId(stageId); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', stageId);
+    setDraggedId(stageId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', stageId);
   };
-  const handleDragEnd = () => { setDraggedId(null); setDragOverId(null); };
-  const handleDragOver = (e: React.DragEvent, stageId: string) => { e.preventDefault(); if (draggedId && draggedId !== stageId) setDragOverId(stageId); };
-  const handleDragLeave = () => { setDragOverId(null); };
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+  const handleDragOver = (e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    if (draggedId && draggedId !== stageId) setDragOverId(stageId);
+  };
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     if (!draggedId || draggedId === targetId) return;
-    const draggedIndex = stages.findIndex(s => s.id === draggedId);
-    const targetIndex = stages.findIndex(s => s.id === targetId);
+    const draggedIndex = stages.findIndex((s) => s.id === draggedId);
+    const targetIndex = stages.findIndex((s) => s.id === targetId);
     if (draggedIndex === -1 || targetIndex === -1) return;
     const newOrder = [...stages];
     const [removed] = newOrder.splice(draggedIndex, 1);
     newOrder.splice(targetIndex, 0, removed);
-    reorderStages.mutate(newOrder.map(s => s.id));
-    setDraggedId(null); setDragOverId(null);
+    reorderStages.mutate(newOrder.map((s) => s.id));
+    setDraggedId(null);
+    setDragOverId(null);
   };
 
   const EditableRow = ({ stage }: { stage: CrmStage }) => {
@@ -74,23 +105,76 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
       return (
         <div className="flex flex-col gap-3 p-3 rounded-lg border bg-muted/30">
           <div className="flex items-center gap-2">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do estágio" className="flex-1" autoFocus />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t.stages.namePlaceholder}
+              className="flex-1"
+              autoFocus
+            />
             <ColorPicker value={color} onChange={setColor} />
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Switch id={`won-${stage.id}`} checked={isWon} onCheckedChange={(c) => { setIsWon(c); if (c) setIsLost(false); }} />
-                <Label htmlFor={`won-${stage.id}`} className="text-xs flex items-center gap-1"><Trophy className="h-3 w-3 text-success" />Ganho</Label>
+                <Switch
+                  id={`won-${stage.id}`}
+                  checked={isWon}
+                  onCheckedChange={(c) => {
+                    setIsWon(c);
+                    if (c) setIsLost(false);
+                  }}
+                />
+                <Label
+                  htmlFor={`won-${stage.id}`}
+                  className="text-xs flex items-center gap-1"
+                >
+                  <Trophy className="h-3 w-3 text-success" />
+                  {t.stages.wonLabel}
+                </Label>
               </div>
               <div className="flex items-center gap-2">
-                <Switch id={`lost-${stage.id}`} checked={isLost} onCheckedChange={(c) => { setIsLost(c); if (c) setIsWon(false); }} />
-                <Label htmlFor={`lost-${stage.id}`} className="text-xs flex items-center gap-1"><XCircle className="h-3 w-3 text-destructive" />Perdido</Label>
+                <Switch
+                  id={`lost-${stage.id}`}
+                  checked={isLost}
+                  onCheckedChange={(c) => {
+                    setIsLost(c);
+                    if (c) setIsWon(false);
+                  }}
+                />
+                <Label
+                  htmlFor={`lost-${stage.id}`}
+                  className="text-xs flex items-center gap-1"
+                >
+                  <XCircle className="h-3 w-3 text-destructive" />
+                  {t.stages.lostLabel}
+                </Label>
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => { setName(stage.name); setColor(stage.color); setIsWon(stage.is_won); setIsLost(stage.is_lost); setEditingId(null); }}><X className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" onClick={() => { handleUpdateStage(stage, { name, color, is_won: isWon, is_lost: isLost }); setEditingId(null); }}><Check className="h-4 w-4 text-success" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setName(stage.name);
+                  setColor(stage.color);
+                  setIsWon(stage.is_won);
+                  setIsLost(stage.is_lost);
+                  setEditingId(null);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  handleUpdateStage(stage, { name, color, is_won: isWon, is_lost: isLost });
+                  setEditingId(null);
+                }}
+              >
+                <Check className="h-4 w-4 text-success" />
+              </Button>
             </div>
           </div>
         </div>
@@ -107,10 +191,10 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, stage.id)}
         className={cn(
-          "flex items-center gap-2 p-2 rounded-lg border bg-card transition-all group",
-          isDragging && "opacity-50",
-          isDragOver && "border-primary border-2 bg-primary/5",
-          !isDragging && !isDragOver && "hover:bg-muted/30"
+          'flex items-center gap-2 p-2 rounded-lg border bg-card transition-all group',
+          isDragging && 'opacity-50',
+          isDragOver && 'border-primary border-2 bg-primary/5',
+          !isDragging && !isDragOver && 'hover:bg-muted/30',
         )}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
@@ -122,8 +206,18 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <RowActionsMenu
             actions={[
-              { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => setEditingId(stage.id) },
-              { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(stage.id) },
+              {
+                label: t.stages.editLabel,
+                icon: Pencil,
+                variant: 'edit',
+                onClick: () => setEditingId(stage.id),
+              },
+              {
+                label: t.stages.deleteLabel,
+                icon: Trash2,
+                variant: 'delete',
+                onClick: () => setDeleteId(stage.id),
+              },
             ]}
           />
         </div>
@@ -134,19 +228,35 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   return (
     <>
       <span onClick={() => setOpen(true)}>{children}</span>
-      <ResponsiveModal open={open} onOpenChange={setOpen} title="Gerenciar Estágios do Pipeline">
+      <ResponsiveModal open={open} onOpenChange={setOpen} title={t.stages.title}>
         <div className="space-y-4">
           <div className="space-y-3 p-3 rounded-lg border-2 border-dashed border-muted">
-            <Label className="text-sm font-medium">Novo Estágio</Label>
+            <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
             <div className="flex gap-2">
-              <Input value={newStage.name} onChange={(e) => setNewStage({ ...newStage, name: e.target.value })} placeholder="Nome do estágio" className="flex-1" />
-              <ColorPicker value={newStage.color} onChange={(color) => setNewStage({ ...newStage, color })} />
-              <Button onClick={handleCreateStage} disabled={!newStage.name.trim() || createStage.isPending} size="icon"><Plus className="h-4 w-4" /></Button>
+              <Input
+                value={newStage.name}
+                onChange={(e) => setNewStage({ ...newStage, name: e.target.value })}
+                placeholder={t.stages.namePlaceholder}
+                className="flex-1"
+              />
+              <ColorPicker
+                value={newStage.color}
+                onChange={(color) => setNewStage({ ...newStage, color })}
+              />
+              <Button
+                onClick={handleCreateStage}
+                disabled={!newStage.name.trim() || createStage.isPending}
+                size="icon"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
           </div>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            <p className="text-xs text-muted-foreground mb-2">Arraste para reordenar os estágios</p>
-            {stages.map((stage) => (<EditableRow key={stage.id} stage={stage} />))}
+            <p className="text-xs text-muted-foreground mb-2">{t.stages.dragHint}</p>
+            {stages.map((stage) => (
+              <EditableRow key={stage.id} stage={stage} />
+            ))}
           </div>
         </div>
       </ResponsiveModal>
@@ -154,12 +264,17 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover estágio?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita. Leads neste estágio ficarão sem estágio atribuído.</AlertDialogDescription>
+            <AlertDialogTitle>{t.stages.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.stages.deleteDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteStage} className="bg-destructive text-white hover:bg-destructive/90">Remover</AlertDialogAction>
+            <AlertDialogCancel>{t.stages.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStage}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {t.stages.deleteConfirm}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

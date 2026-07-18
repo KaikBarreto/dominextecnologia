@@ -47,6 +47,11 @@ import { shell } from './shell';
 import { dashboard } from './dashboard';
 import { os } from './os';
 import { customers } from './customers';
+import { finance } from './finance';
+import { inventory } from './inventory';
+import { schedule } from './schedule';
+import { pmoc } from './pmoc';
+import { crm } from './crm';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
@@ -56,6 +61,11 @@ function sliceForLocale(locale: LocaleCode) {
     dashboard: dashboard[locale],
     os: os[locale],
     customers: customers[locale],
+    finance: finance[locale],
+    inventory: inventory[locale],
+    schedule: schedule[locale],
+    pmoc: pmoc[locale],
+    crm: crm[locale],
     // <dominio>: <dominio>[locale],
   };
 }

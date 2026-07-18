@@ -1,16 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useLeads, type Lead, type LeadInsert } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -19,6 +33,9 @@ interface LeadFormDialogProps {
 }
 
 export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm;
+
   const { createLead, updateLead } = useLeads();
   const { customers } = useCustomers();
   const { users } = useUsers();
@@ -70,18 +87,18 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isEditing && lead) {
       await updateLead.mutateAsync({ id: lead.id, ...formData });
     } else {
       await createLead.mutateAsync(formData as LeadInsert);
     }
-    
+
     onOpenChange(false);
   };
 
   const handleChange = (field: keyof LeadInsert, value: string | number | null) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -89,49 +106,57 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            {isEditing ? 'Editar Oportunidade' : 'Nova Oportunidade'}
+            {isEditing ? t.form.titleEdit : t.form.titleNew}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="title">Título da Oportunidade *</Label>
+            <Label htmlFor="title">{t.form.opportunityTitle}</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => handleChange('title', e.target.value)}
-              placeholder="Ex: Instalação de 3 splits"
+              placeholder={t.form.opportunityTitlePlaceholder}
               required
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="customer_id">Cliente</Label>
+              <Label htmlFor="customer_id">{t.form.customer}</Label>
               <SearchableSelect
                 options={[
-                  { value: 'none', label: 'Nenhum cliente' },
-                  ...customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
+                  { value: 'none', label: t.form.customerNone },
+                  ...customers.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                    sublabel: c.document || c.email || undefined,
+                  })),
                 ]}
                 value={formData.customer_id || 'none'}
-                onValueChange={(value) => handleChange('customer_id', value === 'none' ? null : value)}
-                placeholder="Selecione um cliente (opcional)"
-                searchPlaceholder="Buscar cliente..."
+                onValueChange={(value) =>
+                  handleChange('customer_id', value === 'none' ? null : value)
+                }
+                placeholder={t.form.customerPlaceholder}
+                searchPlaceholder={t.form.customerSearch}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="assigned_to">Vendedor Responsável</Label>
+              <Label htmlFor="assigned_to">{t.form.salesperson}</Label>
               <Select
                 value={formData.assigned_to || 'none'}
-                onValueChange={(value) => handleChange('assigned_to', value === 'none' ? null : value)}
+                onValueChange={(value) =>
+                  handleChange('assigned_to', value === 'none' ? null : value)
+                }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Atribuir a vendedor" />
+                  <SelectValue placeholder={t.form.salespersonPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Não atribuído</SelectItem>
-                  {users.map(user => (
+                  <SelectItem value="none">{t.form.salespersonNone}</SelectItem>
+                  {users.map((user) => (
                     <SelectItem key={user.user_id} value={user.user_id}>
                       {user.full_name}
                     </SelectItem>
@@ -143,17 +168,17 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="source">Origem</Label>
+              <Label htmlFor="source">{t.form.origin}</Label>
               <Select
                 value={formData.source || 'none'}
                 onValueChange={(value) => handleChange('source', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="De onde veio?" />
+                  <SelectValue placeholder={t.form.originPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Não informado</SelectItem>
-                  {activeOrigins.map(origin => (
+                  <SelectItem value="none">{t.form.originNone}</SelectItem>
+                  {activeOrigins.map((origin) => (
                     <SelectItem key={origin.id} value={origin.name}>
                       <span className="flex items-center gap-2">
                         <span
@@ -164,27 +189,30 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                       </span>
                     </SelectItem>
                   ))}
-                  {formData.source &&
-                    !activeOrigins.some(o => o.name === formData.source) && (
-                      <SelectItem value={formData.source}>{formData.source}</SelectItem>
-                    )}
+                  {formData.source && !activeOrigins.some((o) => o.name === formData.source) && (
+                    <SelectItem value={formData.source}>{formData.source}</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="stage_id">Estágio</Label>
+              <Label htmlFor="stage_id">{t.form.stage}</Label>
               <Select
                 value={formData.stage_id || 'none'}
-                onValueChange={(value) => handleChange('stage_id', value === 'none' ? null : value)}
+                onValueChange={(value) =>
+                  handleChange('stage_id', value === 'none' ? null : value)
+                }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o estágio" />
+                  <SelectValue placeholder={t.form.stagePlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Não atribuído</SelectItem>
-                  {stages.map(stage => (
-                    <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                  <SelectItem value="none">{t.form.stageNone}</SelectItem>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -193,7 +221,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="value">Valor Estimado (R$)</Label>
+              <Label htmlFor="value">{t.form.estimatedValue}</Label>
               <Input
                 id="value"
                 type="number"
@@ -205,7 +233,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="probability">Probabilidade (%)</Label>
+              <Label htmlFor="probability">{t.form.probability}</Label>
               <Input
                 id="probability"
                 type="number"
@@ -217,7 +245,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="expected_close_date">Previsão Fechamento</Label>
+              <Label htmlFor="expected_close_date">{t.form.closeDate}</Label>
               <Input
                 id="expected_close_date"
                 type="date"
@@ -228,25 +256,22 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
+            <Label htmlFor="notes">{t.form.notes}</Label>
             <Textarea
               id="notes"
               value={formData.notes || ''}
               onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Detalhes da oportunidade..."
+              placeholder={t.form.notesPlaceholder}
               rows={3}
             />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {t.form.cancel}
             </Button>
-            <Button 
-              type="submit" 
-              disabled={createLead.isPending || updateLead.isPending}
-            >
-              {createLead.isPending || updateLead.isPending ? 'Salvando...' : 'Salvar'}
+            <Button type="submit" disabled={createLead.isPending || updateLead.isPending}>
+              {createLead.isPending || updateLead.isPending ? t.form.saving : t.form.save}
             </Button>
           </DialogFooter>
         </form>

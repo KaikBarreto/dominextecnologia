@@ -15,6 +15,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // "Financeiro" virou um GRUPO no menu com 3 telas próprias, cada uma com no
 // máximo 1 nível de navegação (acaba o duplo-carrossel no mobile):
@@ -36,6 +38,8 @@ export default function Finance() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
   const screen: FinanceScreen = ROUTE_SCREEN_MAP[location.pathname] || 'relatorio';
 
   // Aba interna do Relatório (Visão Geral / DRE) via `?tab=`.
@@ -253,17 +257,17 @@ export default function Finance() {
   // Subtítulo do header por tela (cada tela é própria agora).
   const screenSubtitle =
     screen === 'contas'
-      ? 'Contas a pagar e a receber'
+      ? fin.page.subtitles.accounts
       : screen === 'movimentacoes'
-      ? 'Movimentações por conta'
-      : 'Gerencie suas finanças';
+      ? fin.page.subtitles.movements
+      : fin.page.subtitles.report;
 
   return (
     // min-h-[100dvh] garante que empty states + transição de tela ocupem toda
     // a viewport real (respeitando barras dinâmicas do iOS Safari).
     <div className={cn('min-h-[100dvh] space-y-4 sm:space-y-6', isMobile && screenHasFab && 'pb-24')}>
       <MobilePageHeader
-        title="Financeiro"
+        title={fin.page.title}
         subtitle={screenSubtitle}
         icon={DollarSign}
       />

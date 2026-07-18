@@ -27,6 +27,9 @@ import { formatBRL } from '@/utils/currency';
 import { idealForeground } from '@/lib/colorContrast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { FinancialTransaction } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 const ALL_TAB = '__all__';
 
@@ -99,6 +102,9 @@ export function FinanceMovimentacoes({
   initialAccountId, onConsumeInitialAccount,
 }: FinanceMovimentacoesProps) {
   const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const {
     accounts, balances, cardBillTotals,
     deleteAccount, transfer,
@@ -224,7 +230,7 @@ export function FinanceMovimentacoes({
               onClick={() => setTransferOpen(true)}
             >
               <ArrowLeftRight className="h-4 w-4" />
-              Transferir
+              {fin.movements.accountMenu.transfer}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -232,7 +238,7 @@ export function FinanceMovimentacoes({
             onClick={() => openEditAccount(a)}
           >
             <Pencil className="h-4 w-4" />
-            Editar
+            {fin.movements.accountMenu.edit}
           </DropdownMenuItem>
           {!isCard && (
             <DropdownMenuItem
@@ -240,7 +246,7 @@ export function FinanceMovimentacoes({
               onClick={() => handleAdjustBalance(a)}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Ajustar saldo
+              {fin.movements.accountMenu.adjustBalance}
             </DropdownMenuItem>
           )}
           {isCard && (
@@ -249,7 +255,7 @@ export function FinanceMovimentacoes({
               onClick={() => setRecalcCard(a)}
             >
               <Calculator className="h-4 w-4" />
-              Recalcular faturas
+              {fin.movements.accountMenu.recalculateBills}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -257,7 +263,7 @@ export function FinanceMovimentacoes({
             onClick={() => setDeletingAccount(a)}
           >
             <Trash2 className="h-4 w-4" />
-            Excluir
+            {fin.movements.accountMenu.delete}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -268,7 +274,7 @@ export function FinanceMovimentacoes({
   const tabs: SettingsTab[] = useMemo(() => {
     const result: SettingsTab[] = [
       // Visão Geral: aba neutra (sem cor) — card consolidado + todas as movimentações.
-      { value: ALL_TAB, label: 'Visão Geral', icon: LayoutDashboard },
+      { value: ALL_TAB, label: fin.movements.sidebar.overviewTab, icon: LayoutDashboard },
     ];
     for (const a of cashBankAccounts) {
       const balance = balances[a.id] ?? a.initial_balance;
@@ -276,10 +282,10 @@ export function FinanceMovimentacoes({
         value: a.id,
         label: a.name,
         icon: getTypeIcon(a.type),
-        group: 'Contas Bancárias',
-        sublabel: formatBRL(balance),
+        group: fin.movements.sidebar.groupAccounts,
+        sublabel: fmt(balance),
         // No mobile a pill mostra só o saldo (cabe ao lado do nome).
-        mobileSublabel: formatBRL(balance),
+        mobileSublabel: fmt(balance),
         rightElement: renderRightMenu(a),
         // Ativo/hover usa a cor da conta com fundo SATURADO + texto branco (estilo EcoSistema).
         accentColor: a.color || undefined,
@@ -293,12 +299,12 @@ export function FinanceMovimentacoes({
         value: a.id,
         label: a.name,
         icon: CreditCard,
-        group: 'Cartões',
+        group: fin.movements.sidebar.groupCards,
         sublabel: availableLimit !== null
-          ? `Fatura ${formatBRL(billTotal)} · Disp. ${formatBRL(availableLimit)}`
-          : `Fatura ${formatBRL(billTotal)}`,
+          ? `${fin.movements.hero.openInvoice} ${fmt(billTotal)} · ${fin.movements.hero.available} ${fmt(availableLimit)}`
+          : `${fin.movements.hero.openInvoice} ${fmt(billTotal)}`,
         // Pill mobile: só a fatura (o "Disp." fica longo demais pra pill).
-        mobileSublabel: formatBRL(billTotal),
+        mobileSublabel: fmt(billTotal),
         rightElement: renderRightMenu(a),
         // Cartão também assume sua cor no ativo/hover (fundo saturado + branco).
         accentColor: a.color || undefined,
@@ -380,7 +386,7 @@ export function FinanceMovimentacoes({
           <div className="min-w-0">
             <p className="font-medium text-sm truncate opacity-90">{a.name}</p>
             <p className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
-              R$ {formatBRL(balance)}
+              {fmt(balance)}
             </p>
           </div>
         </div>
@@ -394,7 +400,7 @@ export function FinanceMovimentacoes({
             onClick={() => setMobileActionsAccount(a)}
           >
             <SlidersHorizontal className="h-4 w-4" />
-            Ações
+            {fin.movements.hero.actionsButton}
           </Button>
         )}
       </div>
@@ -408,17 +414,17 @@ export function FinanceMovimentacoes({
   const globalActions = isMobile ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" className="gap-1.5 shrink-0" aria-label="Adicionar">
+        <Button size="sm" className="gap-1.5 shrink-0" aria-label={fin.movements.header.addButton}>
           <Plus className="h-4 w-4" />
-          Adicionar
+          {fin.movements.header.addButton}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openNewAccount('banco')}>
-          <Landmark className="h-4 w-4" /> Nova Conta
+          <Landmark className="h-4 w-4" /> {fin.movements.sidebar.addMenuNewAccount}
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openNewAccount('cartao')}>
-          <CreditCard className="h-4 w-4" /> Novo Cartão
+          <CreditCard className="h-4 w-4" /> {fin.movements.sidebar.addMenuNewCard}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -438,8 +444,8 @@ export function FinanceMovimentacoes({
   // Footer POR GRUPO: "+ Nova Conta" ao fim das Contas Bancárias e "+ Novo Cartão"
   // ao fim dos Cartões (desktop). Só renderiza os grupos que existem nas abas.
   const groupFooters = !isMobile ? {
-    'Contas Bancárias': addButton('Nova Conta', () => openNewAccount('banco')),
-    'Cartões': addButton('Novo Cartão', () => openNewAccount('cartao')),
+    [fin.movements.sidebar.groupAccounts]: addButton(fin.movements.sidebar.newAccount, () => openNewAccount('banco')),
+    [fin.movements.sidebar.groupCards]: addButton(fin.movements.sidebar.newCard, () => openNewAccount('cartao')),
   } : undefined;
 
   return (
@@ -448,14 +454,14 @@ export function FinanceMovimentacoes({
         /* Mobile: faixa compacta — título + "+" Adicionar (o consolidado de saldo
            agora vive no card da aba Visão Geral, não mais aqui no topo). */
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-bold">Movimentações</h2>
+          <h2 className="text-base font-bold">{fin.movements.header.titleMobile}</h2>
           {globalActions}
         </div>
       ) : (
         /* Barra de ações globais (o card "Saldo Total" saiu do topo — virou o
            card consolidado da aba Visão Geral). */
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold">Movimentações Financeiras</h2>
+          <h2 className="text-lg font-bold">{fin.movements.header.titleDesktop}</h2>
           {globalActions}
         </div>
       )}
@@ -467,7 +473,7 @@ export function FinanceMovimentacoes({
         groupFooters={groupFooters}
         // Garante que os grupos (e seus footers "+ Nova Conta"/"+ Novo Cartão")
         // sempre apareçam no sidebar, inclusive pra tenant sem nenhuma conta/cartão.
-        placeholderGroups={!isMobile ? ['Contas Bancárias', 'Cartões'] : undefined}
+        placeholderGroups={!isMobile ? [fin.movements.sidebar.groupAccounts, fin.movements.sidebar.groupCards] : undefined}
       >
         {activeTab === ALL_TAB ? (
           <div className="space-y-4">
@@ -500,11 +506,11 @@ export function FinanceMovimentacoes({
                       <Wallet className="h-4 w-4" />
                     </div>
                     <span className="text-xs font-medium uppercase tracking-wider opacity-90">
-                      Saldo total em contas
+                      {fin.movements.hero.totalBalance}
                     </span>
                   </div>
                   <span className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
-                    R$ {formatBRL(totalBalance)}
+                    {fmt(totalBalance)}
                   </span>
                 </div>
               );
@@ -516,11 +522,11 @@ export function FinanceMovimentacoes({
                       <CreditCard className="h-4 w-4 text-primary" />
                     </div>
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Faturas de cartão
+                      {fin.movements.hero.cardInvoices}
                     </span>
                   </div>
                   <span className={cn('text-lg font-bold tabular-nums shrink-0', totalCardBills > 0 ? 'text-destructive' : 'text-muted-foreground')}>
-                    R$ {formatBRL(totalCardBills)}
+                    {fmt(totalCardBills)}
                   </span>
                 </div>
               );
@@ -532,7 +538,7 @@ export function FinanceMovimentacoes({
                 return (
                   <div className="rounded-xl border bg-card p-4 space-y-3">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Distribuição entre contas
+                      {fin.movements.hero.accountDist}
                     </span>
                     <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                       <div className="h-[150px] w-full lg:w-[200px] shrink-0">
@@ -565,7 +571,7 @@ export function FinanceMovimentacoes({
                             style={{ backgroundColor: entry.color, color: idealForeground(entry.color) }}
                           >
                             <span className="truncate max-w-[8rem]">{entry.name}</span>
-                            <span className="tabular-nums">R$ {formatBRL(entry.value)}</span>
+                            <span className="tabular-nums">{fmt(entry.value)}</span>
                           </span>
                         ))}
                       </div>
@@ -597,7 +603,7 @@ export function FinanceMovimentacoes({
               );
             })()}
             <TransactionListPanel
-              title="Movimentações"
+              title={fin.movements.header.titleMobile}
               type="all"
               transactions={transactions}
               isLoading={isLoading}
@@ -687,7 +693,7 @@ export function FinanceMovimentacoes({
                 onClick={() => { setMobileActionsAccount(null); setTransferOpen(true); }}
               >
                 <ArrowLeftRight className="h-4 w-4" />
-                Transferir
+                {fin.movements.accountMenu.transfer}
               </Button>
             )}
             <Button
@@ -696,7 +702,7 @@ export function FinanceMovimentacoes({
               onClick={() => { const a = mobileActionsAccount; setMobileActionsAccount(null); openEditAccount(a); }}
             >
               <Pencil className="h-4 w-4" />
-              Editar
+              {fin.movements.accountMenu.edit}
             </Button>
             {mobileActionsAccount.type !== 'cartao' && (
               <Button
@@ -705,7 +711,7 @@ export function FinanceMovimentacoes({
                 onClick={() => { const a = mobileActionsAccount; setMobileActionsAccount(null); handleAdjustBalance(a); }}
               >
                 <SlidersHorizontal className="h-4 w-4" />
-                Ajustar saldo
+                {fin.movements.accountMenu.adjustBalance}
               </Button>
             )}
             {mobileActionsAccount.type === 'cartao' && (
@@ -715,7 +721,7 @@ export function FinanceMovimentacoes({
                 onClick={() => { const a = mobileActionsAccount; setMobileActionsAccount(null); setRecalcCard(a); }}
               >
                 <Calculator className="h-4 w-4" />
-                Recalcular faturas
+                {fin.movements.accountMenu.recalculateBills}
               </Button>
             )}
             <Button
@@ -724,7 +730,7 @@ export function FinanceMovimentacoes({
               onClick={() => { const a = mobileActionsAccount; setMobileActionsAccount(null); setDeletingAccount(a); }}
             >
               <Trash2 className="h-4 w-4" />
-              Excluir
+              {fin.movements.accountMenu.delete}
             </Button>
           </div>
         )}
@@ -734,12 +740,14 @@ export function FinanceMovimentacoes({
       <AlertDialog open={!!deletingAccount} onOpenChange={(o) => { if (!o) setDeletingAccount(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {deletingAccount?.type === 'cartao' ? 'cartão' : 'conta'}</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza? Transações vinculadas perderão a referência à conta.</AlertDialogDescription>
+            <AlertDialogTitle>
+              {deletingAccount?.type === 'cartao' ? fin.movements.deleteAccountDialog.titleCard : fin.movements.deleteAccountDialog.titleAccount}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{fin.movements.deleteAccountDialog.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogCancel>{fin.movements.deleteAccountDialog.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">{fin.movements.deleteAccountDialog.confirm}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -748,14 +756,14 @@ export function FinanceMovimentacoes({
       <AlertDialog open={!!recalcCard} onOpenChange={(o) => { if (!o && !recalculateBills.isPending) setRecalcCard(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Recalcular faturas</AlertDialogTitle>
+            <AlertDialogTitle>{fin.movements.recalcDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? Isso vai recalcular a fatura de todas as despesas deste cartão{recalcCard ? ` "${recalcCard.name}"` : ''}.
-              As suas despesas e valores não serão alterados, só a fatura em que cada uma aparece.
+              {fin.movements.recalcDialog.description}{recalcCard ? ` "${recalcCard.name}"` : ''}.
+              {fin.movements.recalcDialog.descriptionSuffix}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={recalculateBills.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={recalculateBills.isPending}>{fin.movements.recalcDialog.cancel}</AlertDialogCancel>
             <AlertDialogAction
               disabled={recalculateBills.isPending}
               onClick={async (e) => {
@@ -771,10 +779,10 @@ export function FinanceMovimentacoes({
               {recalculateBills.isPending ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Recalculando...
+                  {fin.movements.recalcDialog.recalculating}
                 </>
               ) : (
-                'Recalcular'
+                fin.movements.recalcDialog.confirm
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -816,11 +824,11 @@ export function FinanceMovimentacoes({
           <div className="min-w-0">
             <p className="font-medium text-sm truncate opacity-90">{a.name}</p>
             <p className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
-              R$ {formatBRL(billTotal)}
+              {fmt(billTotal)}
             </p>
             <p className="text-xs opacity-80 mt-0.5">
-              Fatura aberta
-              {availableLimit !== null && <> · Disp. R$ {formatBRL(availableLimit)}</>}
+              {fin.movements.hero.openInvoice}
+              {availableLimit !== null && <> · {fin.movements.hero.available} {fmt(availableLimit)}</>}
             </p>
           </div>
         </div>
@@ -834,7 +842,7 @@ export function FinanceMovimentacoes({
             onClick={() => setMobileActionsAccount(a)}
           >
             <SlidersHorizontal className="h-4 w-4" />
-            Ações
+            {fin.movements.hero.actionsButton}
           </Button>
         )}
       </div>

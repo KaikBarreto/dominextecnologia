@@ -12,10 +12,9 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface FinanceDREProps {
   transactions: (FinancialTransaction & { customer?: any })[];
@@ -31,6 +30,9 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
   const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
 
   // Leitura tolerante a types ainda não regenerados — quando a migration
   // adicionar dre_start_date em company_settings, este cast vai funcionar sem
@@ -205,7 +207,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
             <span className="text-xs text-foreground/70 truncate">{c.name}</span>
           </div>
           <span className="text-xs font-medium text-destructive flex-shrink-0 ml-2">
-            -{formatCurrency(c.value)}
+            -{fmt(c.value)}
           </span>
         </div>
       ))}
@@ -221,7 +223,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
             <span className="text-xs text-foreground/70 truncate">{c.name}</span>
           </div>
           <span className="text-xs font-medium text-success flex-shrink-0 ml-2">
-            {formatCurrency(c.value)}
+            {fmt(c.value)}
           </span>
         </div>
       ))}
@@ -257,9 +259,9 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
       </button>
       {open && categories.length > 0 && (renderList ? renderList(categories) : renderCategoryList(categories))}
       <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between border-t border-border/30">
-        <span className="text-sm text-foreground/80 pl-2 sm:pl-4 font-medium">Total</span>
+        <span className="text-sm text-foreground/80 pl-2 sm:pl-4 font-medium">{fin.dre.table.total}</span>
         <span className={cn('text-sm font-medium', isNegative ? 'text-destructive' : 'text-success')}>
-          {isNegative ? `-${formatCurrency(total)}` : formatCurrency(total)}
+          {isNegative ? `-${fmt(total)}` : fmt(total)}
         </span>
       </div>
     </div>
@@ -271,20 +273,20 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
       <div className="grid gap-2 sm:gap-4 grid-cols-3">
         <Card className={cn('border-0', dre.margem >= 0 ? 'bg-success' : 'bg-destructive')}>
           <CardContent className="p-3 sm:p-5">
-            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">Margem</p>
+            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">{fin.dre.kpi.margin}</p>
             <p className="text-lg sm:text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 sm:p-5">
-            <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider leading-tight">Receita Líq.</p>
-            <p className="text-sm sm:text-3xl font-bold mt-1 truncate">{formatCurrency(dre.receitaLiquida)}</p>
+            <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider leading-tight">{fin.dre.kpi.netRevenue}</p>
+            <p className="text-sm sm:text-3xl font-bold mt-1 truncate">{fmt(dre.receitaLiquida)}</p>
           </CardContent>
         </Card>
         <Card className={cn('border-0', dre.resultadoLiquido >= 0 ? 'bg-success' : 'bg-destructive')}>
           <CardContent className="p-3 sm:p-5">
             <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">EBITDA</p>
-            <p className="text-sm sm:text-3xl font-bold mt-1 text-white truncate">{formatCurrency(dre.resultadoLiquido)}</p>
+            <p className="text-sm sm:text-3xl font-bold mt-1 text-white truncate">{fmt(dre.resultadoLiquido)}</p>
           </CardContent>
         </Card>
       </div>
@@ -294,7 +296,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
         <Card>
           <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Evolução Receita × Despesas{isMobile ? ' (6 meses)' : ''}
+              {isMobile ? fin.dre.chart.titleShort : fin.dre.chart.title}
             </CardTitle>
           </CardHeader>
           <CardContent className={cn(isMobile && 'p-2')}>
@@ -314,12 +316,12 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 11 }} />
-                <YAxis tick={{ fontSize: isMobile ? 10 : 11 }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <YAxis tick={{ fontSize: isMobile ? 10 : 11 }} tickFormatter={(v) => `${currency} ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value: number) => fmt(value)} />
                 <Area
                   type="monotone"
                   dataKey="receitas"
-                  name="Receitas"
+                  name={fin.dre.chart.revenue}
                   stroke="hsl(var(--success))"
                   strokeWidth={2}
                   fill="url(#dre-grad-area-success)"
@@ -327,7 +329,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
                 <Area
                   type="monotone"
                   dataKey="despesas"
-                  name="Despesas"
+                  name={fin.dre.chart.expenses}
                   stroke="hsl(var(--destructive))"
                   strokeWidth={2}
                   fill="url(#dre-grad-area-destructive)"
@@ -343,7 +345,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
         <CardHeader className="bg-foreground pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 text-background">
-              Demonstrativo de Resultado (DRE)
+              {fin.dre.table.title}
             </CardTitle>
             <Button
               variant="outline"
@@ -353,14 +355,14 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
               className="gap-2 text-xs bg-transparent border-background/20 text-background hover:bg-background/20 hover:text-background w-full sm:w-auto"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              {isExporting ? 'Exportando...' : 'Exportar'}
+              {isExporting ? fin.dre.table.exporting : fin.dre.table.export}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {/* Receita Bruta */}
           <CollapsibleSection
-            label="(+) Receita Bruta"
+            label={fin.dre.table.grossRevenue}
             total={dre.receitaBruta}
             isNegative={false}
             categories={receitaCategories}
@@ -372,7 +374,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
           {/* Impostos e Deduções */}
           {impostosCategories.length > 0 && (
             <CollapsibleSection
-              label="(-) Impostos e Deduções"
+              label={fin.dre.table.taxes}
               total={dre.impostos}
               categories={impostosCategories}
               open={showImpostos}
@@ -382,14 +384,14 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
 
           {/* Receita Líquida */}
           <div className={cn('px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between', dre.receitaLiquida >= 0 ? 'bg-success' : 'bg-destructive')}>
-            <span className="text-sm font-semibold text-white">(=) Receita Líquida</span>
-            <span className="text-base font-bold text-white">{formatCurrency(dre.receitaLiquida)}</span>
+            <span className="text-sm font-semibold text-white">{fin.dre.table.netRevenue}</span>
+            <span className="text-base font-bold text-white">{fmt(dre.receitaLiquida)}</span>
           </div>
 
           {/* CMV - Custo de Mercadoria/Serviço Vendido */}
           {cmvCategories.length > 0 && (
             <CollapsibleSection
-              label="(-) CMV (Custo da Mercadoria/Serviço)"
+              label={fin.dre.table.cogs}
               total={dre.cmv}
               categories={cmvCategories}
               open={showCpv}
@@ -400,15 +402,15 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
           {/* Lucro Bruto */}
           <div className={cn('px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between', getGrossProfitBg())}>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-white">(=) Lucro Bruto</span>
-              <span className="text-xs text-white/80">Margem: {dre.margem.toFixed(1)}%</span>
+              <span className="text-sm font-semibold text-white">{fin.dre.table.grossProfit}</span>
+              <span className="text-xs text-white/80">{fin.dre.table.margin}: {dre.margem.toFixed(1)}%</span>
             </div>
-            <span className="text-base font-bold text-white">{formatCurrency(dre.lucroBruto)}</span>
+            <span className="text-base font-bold text-white">{fmt(dre.lucroBruto)}</span>
           </div>
 
           {/* OPEX */}
           <CollapsibleSection
-            label="(-) Despesas Operacionais (OPEX)"
+            label={fin.dre.table.opex}
             total={dre.opex}
             categories={opexCategories}
             open={showOpex}
@@ -420,24 +422,23 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <ResultIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
               <div className="flex flex-col min-w-0">
-                <span className="text-sm sm:text-base font-bold text-white truncate">(=) Resultado Líquido (EBITDA)</span>
+                <span className="text-sm sm:text-base font-bold text-white truncate">{fin.dre.table.netResult}</span>
                 <span className="text-xs text-white/80">
-                  {dre.resultadoLiquido > 0 ? 'Superávit' : dre.resultadoLiquido < 0 ? 'Déficit' : 'Equilibrado'}
+                  {dre.resultadoLiquido > 0 ? fin.dre.table.surplus : dre.resultadoLiquido < 0 ? fin.dre.table.deficit : fin.dre.table.balanced}
                 </span>
               </div>
             </div>
             <span className="text-lg sm:text-xl font-bold text-white flex-shrink-0 ml-2">
-              {formatCurrency(dre.resultadoLiquido)}
+              {fmt(dre.resultadoLiquido)}
             </span>
           </div>
         </CardContent>
       </Card>
 
       <p className="text-xs text-muted-foreground text-center">
-        * O DRE é classificado automaticamente com base no campo "Grupo DRE" de cada categoria financeira.
-        Categorias marcadas como "Impostos" vão para deduções, "CMV" para custo do serviço, e "OPEX" para despesas operacionais.
+        {fin.dre.footnote}
         {dreStartDate && (
-          <> DRE contabilizado a partir de {format(parseISO(dreStartDate), 'dd/MM/yyyy')}.</>
+          <> {fin.dre.footnoteStartDate} {format(parseISO(dreStartDate), 'dd/MM/yyyy')}.</>
         )}
       </p>
     </div>

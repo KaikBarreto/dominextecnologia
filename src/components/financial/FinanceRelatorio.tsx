@@ -6,6 +6,8 @@ import { FinanceDRE } from './FinanceDRE';
 import { FinanceCategorias } from './FinanceCategorias';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface FinanceRelatorioProps {
   /** Transações filtradas pelo período selecionado no parent. */
@@ -41,15 +43,17 @@ export function FinanceRelatorio({
   onNewReceita,
   onNewDespesa,
 }: FinanceRelatorioProps) {
+  const { locale } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
   const { hasModule } = useCompanyModules();
   const hasAdvanced = hasModule('finance_advanced');
 
   const tabs: SettingsTab[] = [
-    { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
+    { value: 'visao-geral', label: fin.report.tabs.overview, icon: LayoutDashboard },
     ...(hasAdvanced
-      ? [{ value: 'dre', label: 'DRE - Resultado', icon: FileBarChart } as SettingsTab]
+      ? [{ value: 'dre', label: fin.report.tabs.incomeStatement, icon: FileBarChart } as SettingsTab]
       : []),
-    { value: 'categorias', label: 'Categorias', icon: Tags },
+    { value: 'categorias', label: fin.report.tabs.categories, icon: Tags },
   ];
 
   // Deep-link `?tab=dre` num tenant sem finance_advanced (downgrade/link antigo)
