@@ -8099,7 +8099,7 @@ export type Database = {
         Returns: undefined
       }
       seed_company_catalog: {
-        Args: { p_company_id: string }
+        Args: { p_company_id: string; p_language?: string }
         Returns: undefined
       }
       submit_public_os_rating: {

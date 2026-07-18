@@ -558,6 +558,7 @@ Deno.serve(async (req) => {
     try {
       const { error: seedCatalogError } = await supabaseAdmin.rpc('seed_company_catalog', {
         p_company_id: company.id,
+        p_language: regionalLanguage,
       });
       if (seedCatalogError) {
         console.error('Aviso: falha ao semear catálogo de serviço (não-fatal):', seedCatalogError);
