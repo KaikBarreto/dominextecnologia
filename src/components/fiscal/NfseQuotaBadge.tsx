@@ -1,6 +1,8 @@
 import { Gauge, Infinity as InfinityIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNfseQuota } from '@/hooks/useNfseQuota';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface NfseQuotaBadgeProps {
   companyId: string | null | undefined;
@@ -15,6 +17,8 @@ interface NfseQuotaBadgeProps {
  */
 export function NfseQuotaBadge({ companyId, className }: NfseQuotaBadgeProps) {
   const { quota, isLoading } = useNfseQuota(companyId);
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.nfse;
 
   if (isLoading || !quota) return null;
 
@@ -27,7 +31,7 @@ export function NfseQuotaBadge({ companyId, className }: NfseQuotaBadgeProps) {
         )}
       >
         <InfinityIcon className="h-3.5 w-3.5" />
-        Notas ilimitadas
+        {t.quota.unlimited}
       </span>
     );
   }
@@ -35,6 +39,10 @@ export function NfseQuotaBadge({ companyId, className }: NfseQuotaBadgeProps) {
   const limit = quota.limit ?? 0;
   const ratio = limit > 0 ? quota.used / limit : 0;
   const isNear = ratio >= 0.8;
+
+  const usedLabel = t.quota.used
+    .replace('{used}', String(quota.used))
+    .replace('{limit}', String(limit));
 
   return (
     <span
@@ -47,11 +55,7 @@ export function NfseQuotaBadge({ companyId, className }: NfseQuotaBadgeProps) {
       )}
     >
       <Gauge className="h-3.5 w-3.5" />
-      <span>
-        <span className={cn('font-semibold', isNear && 'text-warning')}>{quota.used}</span>
-        {' / '}
-        {limit} emitidas este mês
-      </span>
+      <span className={cn(isNear && 'font-semibold')}>{usedLabel}</span>
     </span>
   );
 }

@@ -13,6 +13,8 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   NfseQuotaBlockModal,
   type NfseQuotaBlockInfo,
@@ -42,6 +44,8 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
   const { emitNfse, isEmitting } = useNfse();
   const { companyId } = useUserCompany();
   const { serviceTypes, gapFillServiceTypeFiscal } = useServiceTypes();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.nfse;
 
   const [customerId, setCustomerId] = useState('');
   const [serviceTypeId, setServiceTypeId] = useState('');
@@ -169,11 +173,11 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
       }
       // 503 (não ativada), 422 (dados faltando) e demais erros já vêm com
       // mensagem PT-BR pronta do helper invokeFisqal.
-      toast.error(res.message ?? 'Não foi possível emitir a nota fiscal.');
+      toast.error(res.message ?? t.newNote.toasts.emitError);
       return;
     }
 
-    toast.success(res.message ?? 'Nota fiscal enviada para emissão.');
+    toast.success(res.message ?? t.newNote.toasts.emitSuccess);
 
     // Gap-fill silencioso: se a nota foi emitida a partir de um tipo de serviço
     // e o usuário completou códigos fiscais que estavam VAZIOS naquele serviço,
@@ -203,20 +207,20 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
 
   const handleSubmit = async () => {
     if (!customerId) {
-      toast.error('Selecione o cliente.');
+      toast.error(t.newNote.toasts.noCustomer);
       return;
     }
     if (customerMissingDoc) {
-      toast.error('O cliente está sem CPF/CNPJ. Complete os dados fiscais do cliente antes de emitir.');
+      toast.error(t.newNote.toasts.missingDoc);
       return;
     }
     if (!descricao.trim()) {
-      toast.error('Descreva o serviço prestado.');
+      toast.error(t.newNote.toasts.noDescription);
       return;
     }
     const v = num(valor);
     if (v == null) {
-      toast.error('Informe um valor de serviço válido.');
+      toast.error(t.newNote.toasts.invalidValue);
       return;
     }
     await runEmit(v);
@@ -234,11 +238,11 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Nova Nota Fiscal"
+      title={t.newNote.title}
       footer={
         <div className="flex items-center justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isEmitting}>
-            Cancelar
+            {t.newNote.cancelBtn}
           </Button>
           <Button onClick={handleSubmit} disabled={!canSubmit}>
             {isEmitting ? (
@@ -246,28 +250,27 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
             ) : (
               <FileText className="h-4 w-4 mr-2" />
             )}
-            Emitir nota
+            {t.newNote.submitBtn}
           </Button>
         </div>
       }
     >
       <div className="space-y-4 py-1">
         <div className="space-y-2">
-          <Label>Cliente (tomador)</Label>
+          <Label>{t.newNote.customer.label}</Label>
           <SearchableSelect
             options={customerOptions}
             value={customerId}
             onValueChange={setCustomerId}
-            placeholder="Selecione o cliente"
-            searchPlaceholder="Buscar cliente..."
-            emptyMessage="Nenhum cliente encontrado."
+            placeholder={t.newNote.customer.placeholder}
+            searchPlaceholder={t.newNote.customer.searchPlaceholder}
+            emptyMessage={t.newNote.customer.emptyMessage}
           />
           {customerMissingDoc && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                Este cliente está sem CPF/CNPJ. Complete os dados fiscais do cliente
-                (aba Fiscal) antes de emitir a nota.
+                {t.newNote.customer.missingDoc}
               </AlertDescription>
             </Alert>
           )}
@@ -275,50 +278,49 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
 
         {serviceTypeOptions.length > 0 && (
           <div className="space-y-2">
-            <Label>Tipo de serviço (opcional)</Label>
+            <Label>{t.newNote.serviceType.label}</Label>
             <SearchableSelect
               options={serviceTypeOptions}
               value={serviceTypeId}
               onValueChange={handleServiceTypeChange}
-              placeholder="Selecione um tipo de serviço"
-              searchPlaceholder="Buscar tipo de serviço..."
-              emptyMessage="Nenhum tipo de serviço encontrado."
+              placeholder={t.newNote.serviceType.placeholder}
+              searchPlaceholder={t.newNote.serviceType.searchPlaceholder}
+              emptyMessage={t.newNote.serviceType.emptyMessage}
             />
             <p className="text-[11px] text-muted-foreground">
-              Preenche código de serviço, NBS e ISS automaticamente. Você pode
-              ajustar cada campo abaixo.
+              {t.newNote.serviceType.hint}
             </p>
           </div>
         )}
 
         <div className="space-y-2">
-          <Label>Descrição do serviço</Label>
+          <Label>{t.newNote.description.label}</Label>
           <Textarea
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Ex: Manutenção preventiva de ar-condicionado split..."
+            placeholder={t.newNote.description.placeholder}
             rows={3}
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Valor do serviço (R$)</Label>
+            <Label>{t.newNote.value.label}</Label>
             <Input
               inputMode="decimal"
-              placeholder="350,00"
+              placeholder={t.newNote.value.placeholder}
               value={valor}
               onChange={(e) => setValor(e.target.value)}
             />
           </div>
           <div className="space-y-2">
             <Label>
-              Alíquota de ISS (%)
-              <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+              {t.newNote.iss.label}
+              <span className="ml-1 font-normal text-muted-foreground">{t.newNote.iss.optional}</span>
             </Label>
             <Input
               inputMode="decimal"
-              placeholder="5,00"
+              placeholder={t.newNote.iss.placeholder}
               value={issAliquota}
               onChange={(e) => setIssAliquota(e.target.value)}
             />
@@ -328,32 +330,36 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
         {/* Classificação fiscal: códigos do serviço. Pré-preenchidos pelo tipo de
             serviço selecionado — editáveis. */}
         <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
-          <p className="text-sm font-medium">Classificação fiscal</p>
+          <p className="text-sm font-medium">{t.newNote.fiscalClassification.sectionTitle}</p>
           <div className="space-y-2">
             <Label className="text-sm">
-              Código de serviço (cTribNac)
-              <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+              {t.newNote.fiscalClassification.serviceCode.label}
+              <span className="ml-1 font-normal text-muted-foreground">
+                {t.newNote.fiscalClassification.serviceCode.optional}
+              </span>
             </Label>
             <TaxCodeCombobox
               type="servico"
               value={codigoServico}
               onSelect={(codigo) => setCodigoServico(codigo)}
-              placeholder="Buscar por código ou descrição..."
+              placeholder={t.newNote.fiscalClassification.serviceCode.placeholder}
             />
           </div>
           <div className="space-y-2">
             <Label className="text-sm">
-              Código NBS
-              <span className="ml-1 font-normal text-muted-foreground">(opcional)</span>
+              {t.newNote.fiscalClassification.nbs.label}
+              <span className="ml-1 font-normal text-muted-foreground">
+                {t.newNote.fiscalClassification.nbs.optional}
+              </span>
             </Label>
             <TaxCodeCombobox
               type="nbs"
               value={codigoNbs}
               onSelect={(codigo) => setCodigoNbs(codigo)}
-              placeholder="Buscar por código ou descrição..."
+              placeholder={t.newNote.fiscalClassification.nbs.placeholder}
             />
             <p className="text-[11px] text-muted-foreground">
-              Nomenclatura Brasileira de Serviços. Digite ao menos 2 caracteres pra buscar.
+              {t.newNote.fiscalClassification.nbs.hint}
             </p>
           </div>
         </div>

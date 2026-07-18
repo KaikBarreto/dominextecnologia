@@ -23,7 +23,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { formatBRL } from '@/utils/currency';
+import { formatMoney, formatDateTime as formatDateTimeLib } from '@/lib/format';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   useNfse,
   useNfseEvents,
@@ -43,14 +45,7 @@ interface NfseDetailModalProps {
   initialAction?: NfseDetailAction | null;
 }
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-}
-
-/** Extrai uma mensagem legível do payload do evento (PT-BR), se houver. */
+/** Extrai uma mensagem legível do payload do evento, se houver. */
 function eventMessage(payload: unknown): string | null {
   if (!payload || typeof payload !== 'object') return null;
   const p = payload as Record<string, unknown>;
@@ -60,6 +55,8 @@ function eventMessage(payload: unknown): string | null {
 
 export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, initialAction }: NfseDetailModalProps) {
   const { emissions, refreshStatus, isRefreshingStatus, cancel, isCancelling } = useNfse();
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.nfse;
 
   // O `emissionProp` é um snapshot do momento em que a lista abriu o modal.
   // Re-derivamos do dataset fresco (invalidado pelo polling) pra o detalhe
@@ -91,10 +88,10 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
     if (!emission) return;
     const res = await refreshStatus(emission.id);
     if (!res.ok) {
-      toast.error(res.message ?? 'Não foi possível atualizar o status.');
+      toast.error(res.message ?? t.detail.toasts.refreshError);
       return;
     }
-    toast.success(res.message ?? 'Status atualizado.');
+    toast.success(res.message ?? t.detail.toasts.refreshSuccess);
   };
 
   // Deep-link de ação vinda do menu da lista: ao abrir, dispara a ação 1x.
@@ -127,15 +124,17 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
     setConfirmCancelOpen(false);
     setCancelMotivo('');
     if (!res.ok) {
-      toast.error(res.message ?? 'Não foi possível cancelar a nota.');
+      toast.error(res.message ?? t.detail.toasts.cancelError);
       return;
     }
-    toast.success(res.message ?? 'Cancelamento solicitado.');
+    toast.success(res.message ?? t.detail.toasts.cancelSuccess);
     onOpenChange(false);
   };
 
   // ----- Viewer dedicado (substitui o conteúdo do modal) -----
   if (viewer) {
+    const viewerTitle =
+      viewer.kind === 'pdf' ? t.detail.viewerTitlePdf : t.detail.viewerTitleXml;
     return (
       <ResponsiveModal
         open={open}
@@ -143,15 +142,15 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
           if (!v) setViewer(null);
           onOpenChange(v);
         }}
-        title={viewer.kind === 'pdf' ? 'PDF da nota' : 'XML da nota'}
+        title={viewerTitle}
         className="sm:max-w-[900px]"
       >
         <div className="space-y-3">
           <Button variant="outline" size="sm" onClick={() => setViewer(null)} className="gap-2">
-            <ArrowLeft className="h-4 w-4" /> Voltar
+            <ArrowLeft className="h-4 w-4" /> {t.detail.back}
           </Button>
           <iframe
-            title={viewer.kind === 'pdf' ? 'PDF da nota fiscal' : 'XML da nota fiscal'}
+            title={viewerTitle}
             src={viewer.url}
             className="w-full h-[70vh] rounded-lg border bg-background"
           />
@@ -165,7 +164,11 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
       <ResponsiveModal
         open={open}
         onOpenChange={onOpenChange}
-        title={emission.numero_nfse ? `Nota nº ${emission.numero_nfse}` : 'Nota fiscal'}
+        title={
+          emission.numero_nfse
+            ? `${t.detail.notePrefix} ${emission.numero_nfse}`
+            : t.detail.titleFallback
+        }
       >
         <div className="space-y-5 py-1">
           {/* Status + atualizar */}
@@ -175,7 +178,7 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
               {isPolling && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Processando…
+                  {t.detail.processing}
                 </span>
               )}
             </div>
@@ -191,7 +194,7 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              Atualizar status
+              {t.detail.refreshStatus}
             </Button>
           </div>
 
@@ -202,19 +205,47 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
               disabled={isRefreshingStatus}
               className="w-full rounded-lg border border-amber-300/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-left text-xs text-amber-700 dark:text-amber-300"
             >
-              Ainda em processamento — toque para atualizar.
+              {t.detail.stillProcessing}
             </button>
           )}
 
           {/* Dados */}
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-            <Field label="Valor do serviço" value={emission.valor_servico != null ? formatBRL(emission.valor_servico) : '—'} />
-            <Field label="ISS" value={emission.valor_iss != null ? formatBRL(emission.valor_iss) : '—'} />
-            <Field label="Emitida em" value={formatDateTime(emission.emitida_em)} />
-            <Field label="Criada em" value={formatDateTime(emission.created_at)} />
-            <Field label="Protocolo" value={emission.protocolo || '—'} />
-            <Field label="Chave de acesso" value={emission.chave_acesso || '—'} className="col-span-2 break-all" />
-            <Field label="Descrição" value={emission.descricao_servico || '—'} className="col-span-2" />
+            <Field
+              label={t.detail.fields.serviceValue}
+              value={
+                emission.valor_servico != null
+                  ? formatMoney(emission.valor_servico, currency, locale)
+                  : '—'
+              }
+            />
+            <Field
+              label={t.detail.fields.iss}
+              value={
+                emission.valor_iss != null
+                  ? formatMoney(emission.valor_iss, currency, locale)
+                  : '—'
+              }
+            />
+            <Field
+              label={t.detail.fields.issuedAt}
+              value={emission.emitida_em ? formatDateTimeLib(emission.emitida_em, locale, timezone) : '—'}
+            />
+            <Field
+              label={t.detail.fields.createdAt}
+              value={emission.created_at ? formatDateTimeLib(emission.created_at, locale, timezone) : '—'}
+            />
+            <Field label={t.detail.fields.protocol} value={emission.protocolo || '—'} />
+            <Field
+              label={t.detail.fields.accessKey}
+              value={emission.chave_acesso || '—'}
+              className="col-span-2 break-all"
+            />
+            <Field
+              label={t.detail.fields.description}
+              value={emission.descricao_servico || '—'}
+              className="col-span-2"
+            />
           </div>
 
           {emission.error_message && (
@@ -233,7 +264,7 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
                   className="gap-2"
                   onClick={() => setViewer({ url: emission.pdf_url!, kind: 'pdf' })}
                 >
-                  <FileText className="h-4 w-4" /> Ver PDF
+                  <FileText className="h-4 w-4" /> {t.detail.viewPdf}
                 </Button>
               )}
               {emission.xml_url && (
@@ -243,7 +274,7 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
                   className="gap-2"
                   onClick={() => setViewer({ url: emission.xml_url!, kind: 'xml' })}
                 >
-                  <FileCode className="h-4 w-4" /> Ver XML
+                  <FileCode className="h-4 w-4" /> {t.detail.viewXml}
                 </Button>
               )}
             </div>
@@ -258,19 +289,19 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
               onClick={() => setConfirmCancelOpen(true)}
               disabled={isCancelling}
             >
-              <Ban className="h-4 w-4" /> Cancelar nota
+              <Ban className="h-4 w-4" /> {t.detail.cancelNote}
             </Button>
           )}
 
           {/* Histórico */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
-              <History className="h-4 w-4 text-muted-foreground" /> Histórico
+              <History className="h-4 w-4 text-muted-foreground" /> {t.detail.history.title}
             </div>
             {eventsLoading ? (
-              <p className="text-xs text-muted-foreground">Carregando histórico…</p>
+              <p className="text-xs text-muted-foreground">{t.detail.history.loading}</p>
             ) : events.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhum evento registrado ainda.</p>
+              <p className="text-xs text-muted-foreground">{t.detail.history.empty}</p>
             ) : (
               <ul className="space-y-2">
                 {events.map((ev) => {
@@ -278,8 +309,14 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
                   return (
                     <li key={ev.id} className="rounded-lg border bg-muted/30 p-2.5 text-xs">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">{ev.event_type || ev.status || 'Evento'}</span>
-                        <span className="text-muted-foreground shrink-0">{formatDateTime(ev.created_at)}</span>
+                        <span className="font-medium">
+                          {ev.event_type || ev.status || t.detail.history.eventFallback}
+                        </span>
+                        <span className="text-muted-foreground shrink-0">
+                          {ev.created_at
+                            ? formatDateTimeLib(ev.created_at, locale, timezone)
+                            : '—'}
+                        </span>
                       </div>
                       {message && <p className="mt-1 text-muted-foreground">{message}</p>}
                     </li>
@@ -294,22 +331,24 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
       <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar esta nota fiscal?</AlertDialogTitle>
+            <AlertDialogTitle>{t.detail.confirmCancel.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              O cancelamento é registrado junto à prefeitura e não pode ser desfeito.
+              {t.detail.confirmCancel.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-1">
-            <Label className="text-xs">Motivo (opcional)</Label>
+            <Label className="text-xs">{t.detail.confirmCancel.motivoLabel}</Label>
             <Textarea
               value={cancelMotivo}
               onChange={(e) => setCancelMotivo(e.target.value)}
-              placeholder="Ex: Serviço não realizado / valor incorreto..."
+              placeholder={t.detail.confirmCancel.motivoPlaceholder}
               rows={2}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isCancelling}>Voltar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isCancelling}>
+              {t.detail.confirmCancel.backBtn}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -318,8 +357,12 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
               disabled={isCancelling}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isCancelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
-              Cancelar nota
+              {isCancelling ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Ban className="h-4 w-4 mr-2" />
+              )}
+              {t.detail.confirmCancel.confirmBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

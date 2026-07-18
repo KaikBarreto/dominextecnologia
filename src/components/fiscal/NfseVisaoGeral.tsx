@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { CheckCircle2, Loader2, XCircle, Ban, FileText } from 'lucide-react';
-import { formatBRL } from '@/utils/currency';
+import { formatMoney, formatDate as formatDateLib } from '@/lib/format';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { NfseStatusBadge } from './nfseStatus';
 import type { NfseEmission } from '@/hooks/useNfse';
@@ -12,13 +14,6 @@ interface NfseVisaoGeralProps {
   onOpenDetail: (e: NfseEmission) => void;
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-}
-
 /**
  * Visão Geral da aba Notas Fiscais — AGREGA (não repete a listagem).
  * Mostra contadores honestos por status, total emitido (autorizadas) e as
@@ -26,6 +21,8 @@ function formatDate(iso: string | null): string {
  * `useNfse`, sem inflar.
  */
 export function NfseVisaoGeral({ emissions, customerName, onOpenDetail }: NfseVisaoGeralProps) {
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.nfse;
   const stats = useMemo(() => {
     let autorizadas = 0;
     let processando = 0;
@@ -62,7 +59,7 @@ export function NfseVisaoGeral({ emissions, customerName, onOpenDetail }: NfseVi
     return (
       <div className="text-center py-16 text-muted-foreground">
         <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
-        <p>Nenhuma nota fiscal emitida ainda. Clique em "Nova Nota" para começar.</p>
+        <p>{t.overview.empty}</p>
       </div>
     );
   }
@@ -73,11 +70,13 @@ export function NfseVisaoGeral({ emissions, customerName, onOpenDetail }: NfseVi
           NÃO no StatCarousel (que formata como inteiro). */}
       <div className="rounded-xl border bg-card p-4">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">
-          Total emitido no período
+          {t.overview.totalIssued}
         </p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums">{formatBRL(stats.totalEmitido)}</p>
+        <p className="mt-1 text-2xl font-semibold tabular-nums">
+          {formatMoney(stats.totalEmitido, currency, locale)}
+        </p>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Soma das notas autorizadas ({stats.autorizadas}).
+          {t.overview.totalIssuedSub.replace('{count}', String(stats.autorizadas))}
         </p>
       </div>
 
@@ -86,38 +85,50 @@ export function NfseVisaoGeral({ emissions, customerName, onOpenDetail }: NfseVi
         <CountCard
           icon={CheckCircle2}
           iconClass="text-green-500"
-          label="Autorizadas"
+          label={t.overview.countAuthorized}
           value={stats.autorizadas}
         />
         <CountCard
           icon={Loader2}
           iconClass="text-indigo-500"
-          label="Processando"
+          label={t.overview.countProcessing}
           value={stats.processando}
         />
         <CountCard
           icon={XCircle}
           iconClass="text-red-500"
-          label="Rejeitadas"
+          label={t.overview.countRejected}
           value={stats.rejeitadas}
         />
-        <CountCard icon={Ban} iconClass="text-gray-500" label="Canceladas" value={stats.canceladas} />
+        <CountCard
+          icon={Ban}
+          iconClass="text-gray-500"
+          label={t.overview.countCancelled}
+          value={stats.canceladas}
+        />
       </div>
 
       {/* Últimas emissões (atalho — não é a listagem completa) */}
       <div className="space-y-2">
-        <p className="text-sm font-medium">Últimas emissões</p>
+        <p className="text-sm font-medium">{t.overview.recentTitle}</p>
         <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
           {recent.map((e) => (
             <MobileListItem
               key={e.id}
               onClick={() => onOpenDetail(e)}
               leading={<FileText className="h-5 w-5 text-muted-foreground" />}
-              title={e.numero_nfse ? `Nota nº ${e.numero_nfse}` : customerName(e.customer_id)}
+              title={
+                e.numero_nfse
+                  ? `${t.list.notePrefix} ${e.numero_nfse}`
+                  : customerName(e.customer_id)
+              }
               subtitle={
                 <span>
-                  {customerName(e.customer_id)} · {formatDate(e.created_at)}
-                  {e.valor_servico != null ? ` · ${formatBRL(e.valor_servico)}` : ''}
+                  {customerName(e.customer_id)} ·{' '}
+                  {e.created_at ? formatDateLib(e.created_at, locale, timezone) : '—'}
+                  {e.valor_servico != null
+                    ? ` · ${formatMoney(e.valor_servico, currency, locale)}`
+                    : ''}
                 </span>
               }
               trailing={<NfseStatusBadge status={e.status} />}

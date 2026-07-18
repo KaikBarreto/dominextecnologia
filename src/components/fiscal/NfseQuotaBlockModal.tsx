@@ -4,7 +4,9 @@ import { Loader2, ArrowUpCircle, Lock, Sparkles } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { useNfseTierChange } from '@/hooks/useNfseTierChange';
-import { formatBRL } from '@/utils/currency';
+import { formatMoney } from '@/lib/format';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface NfseQuotaBlockInfo {
   used: number;
@@ -38,6 +40,8 @@ export function NfseQuotaBlockModal({
 }: NfseQuotaBlockModalProps) {
   const { changeTier, isChanging } = useNfseTierChange();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.nfse;
 
   const nextTier = info?.nextTier ?? null;
 
@@ -46,16 +50,20 @@ export function NfseQuotaBlockModal({
     setErrorMsg(null);
     try {
       await changeTier({ companyId, targetTier: nextTier.tier });
-      toast.success('Nível atualizado! Você já pode emitir.');
+      toast.success(t.quotaBlock.toasts.upgraded);
       onOpenChange(false);
       onUpgraded();
     } catch (err) {
-      // Mensagem PT-BR do edge (ex: não é o responsável pela assinatura).
-      setErrorMsg(err instanceof Error ? err.message : 'Não foi possível atualizar o nível.');
+      setErrorMsg(
+        err instanceof Error ? err.message : t.quotaBlock.toasts.error,
+      );
     }
   };
 
-  const limitLabel = nextTier?.limit == null ? 'ilimitadas' : `${nextTier.limit.toLocaleString('pt-BR')} notas/mês`;
+  const limitLabel =
+    nextTier?.limit == null
+      ? t.quotaBlock.unlimitedNotes
+      : t.quotaBlock.limitedNotes.replace('{limit}', String(nextTier.limit));
 
   return (
     <ResponsiveModal
@@ -66,22 +74,27 @@ export function NfseQuotaBlockModal({
           onOpenChange(o);
         }
       }}
-      title="Limite de notas atingido"
+      title={t.quotaBlock.title}
       footer={
         nextTier ? (
           <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isChanging}>
-              Agora não
+              {t.quotaBlock.notNow}
             </Button>
             <Button onClick={handleUpgrade} disabled={isChanging || !companyId} className="gap-2">
-              {isChanging ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpCircle className="h-4 w-4" />}
-              Fazer upgrade para {nextTier.name} — R$ {formatBRL(nextTier.price)}/mês
+              {isChanging ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowUpCircle className="h-4 w-4" />
+              )}
+              {t.quotaBlock.upgradeBtn.replace('{name}', nextTier.name)} —{' '}
+              {formatMoney(nextTier.price, currency, locale)}{t.quotaBlock.priceMonth}
             </Button>
           </div>
         ) : (
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Fechar
+              {t.quotaBlock.close}
             </Button>
           </div>
         )
@@ -91,8 +104,9 @@ export function NfseQuotaBlockModal({
         <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3">
           <Lock className="h-5 w-5 text-warning shrink-0 mt-0.5" />
           <p className="text-sm text-foreground">
-            Você emitiu <strong>{info?.used ?? 0}</strong> de <strong>{info?.limit ?? 0}</strong> notas
-            fiscais este mês no seu nível atual. Para emitir mais notas ainda este mês, suba de nível.
+            {t.quotaBlock.warning
+              .replace('{used}', String(info?.used ?? 0))
+              .replace('{limit}', String(info?.limit ?? 0))}
           </p>
         </div>
 
@@ -101,7 +115,7 @@ export function NfseQuotaBlockModal({
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Próximo nível
+                {t.quotaBlock.nextTierLabel}
               </span>
             </div>
             <div className="flex items-end justify-between gap-3">
@@ -110,18 +124,19 @@ export function NfseQuotaBlockModal({
                 <p className="text-sm text-muted-foreground">{limitLabel}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xl font-bold text-primary">R$ {formatBRL(nextTier.price)}</p>
-                <p className="text-[11px] text-muted-foreground">/mês</p>
+                <p className="text-xl font-bold text-primary">
+                  {formatMoney(nextTier.price, currency, locale)}
+                </p>
+                <p className="text-[11px] text-muted-foreground">{t.quotaBlock.priceMonth}</p>
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-3">
-              O upgrade libera a cota maior na hora e a nota que você estava emitindo é concluída
-              automaticamente. O novo valor entra na próxima cobrança.
+              {t.quotaBlock.upgradeNote}
             </p>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Você já está no nível máximo. Se precisa de mais capacidade, fale com o suporte.
+            {t.quotaBlock.maxTierReached}
           </p>
         )}
 

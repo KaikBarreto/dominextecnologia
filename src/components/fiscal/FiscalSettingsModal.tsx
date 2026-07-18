@@ -41,6 +41,9 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { invokeFisqal } from '@/utils/fisqalEdge';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
+import { formatDate as formatDateLib } from '@/lib/format';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Seções internas do modal de configuração fiscal. */
 export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos';
@@ -58,18 +61,8 @@ interface FiscalSettingsModalProps {
  * subir o CERTIFICADO A1 (precisa do companyId já criado) → impostos. O `step`
  * numera a sequência guiada.
  */
-const SECTIONS: { value: FiscalSettingsSection; label: string; icon: LucideIcon; step: number }[] = [
-  { value: 'empresa', label: 'Empresa', icon: Building2, step: 1 },
-  { value: 'certificado', label: 'Certificado A1', icon: Shield, step: 2 },
-  { value: 'impostos', label: 'Tributação', icon: Landmark, step: 3 },
-];
-
-const REGIMES = [
-  { value: 'simples_nacional', label: 'Simples Nacional' },
-  { value: 'lucro_presumido', label: 'Lucro Presumido' },
-  { value: 'lucro_real', label: 'Lucro Real' },
-  { value: 'mei', label: 'MEI' },
-];
+// SECTIONS e REGIMES são construídos dinamicamente dentro do componente
+// para receber as traduções do locale ativo (ver FiscalSettingsModal).
 
 /** Form local — strings cruas pra inputs controlados (evita o "0" preso). */
 interface FiscalForm {
@@ -117,13 +110,6 @@ const EMPTY_FORM: FiscalForm = {
   uf: '',
 };
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-}
-
 /** Dias até a validade do certificado. */
 function daysUntil(iso: string | null): number | null {
   if (!iso) return null;
@@ -134,6 +120,21 @@ function daysUntil(iso: string | null): number | null {
 
 export function FiscalSettingsModal({ open, onOpenChange, initialSection }: FiscalSettingsModalProps) {
   const { settings, isLoading, save, isSaving, invalidate } = useFiscalSettings();
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.nfse;
+
+  const SECTIONS: { value: FiscalSettingsSection; label: string; icon: LucideIcon; step: number }[] = [
+    { value: 'empresa', label: t.settings.sections.empresa, icon: Building2, step: 1 },
+    { value: 'certificado', label: t.settings.sections.certificado, icon: Shield, step: 2 },
+    { value: 'impostos', label: t.settings.sections.impostos, icon: Landmark, step: 3 },
+  ];
+
+  const REGIMES = [
+    { value: 'simples_nacional', label: t.settings.impostos.regimes.simplesNacional },
+    { value: 'lucro_presumido', label: t.settings.impostos.regimes.lucroPresumido },
+    { value: 'lucro_real', label: t.settings.impostos.regimes.lucroReal },
+    { value: 'mei', label: t.settings.impostos.regimes.mei },
+  ];
   const {
     settings: companySettings,
     isLoading: isLoadingCompany,
@@ -210,9 +211,9 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     };
     try {
       await save(payload);
-      toast.success('Configurações fiscais salvas.');
+      toast.success(t.settings.impostos.toasts.saveSuccess);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Não foi possível salvar as configurações fiscais.');
+      toast.error(e instanceof Error ? e.message : t.settings.impostos.toasts.saveError);
     }
   };
 
@@ -245,7 +246,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         }),
         save(fiscalPayload),
       ]);
-      toast.success('Dados da empresa salvos.');
+      toast.success(t.settings.certificado.toasts.saveSuccess);
 
       // Após salvar, registra/atualiza a empresa na Fisqal automaticamente
       // (cria na 1ª vez, atualiza nas demais). Falha aqui NÃO derruba o fluxo:
@@ -254,23 +255,25 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
         const res = await invokeFisqal('fisqal-register-company');
         if (!res.ok) {
           toast.warning(
-            `Dados salvos, mas o registro para emissão falhou: ${
-              res.message ?? 'erro desconhecido'
-            }. Revise os dados e salve novamente.`,
+            t.settings.certificado.toasts.registerWarning.replace(
+              '{error}',
+              res.message ?? 'erro desconhecido',
+            ),
           );
         }
       } catch (regErr) {
         toast.warning(
-          `Dados salvos, mas o registro para emissão falhou: ${
-            regErr instanceof Error ? regErr.message : 'erro desconhecido'
-          }. Revise os dados e salve novamente.`,
+          t.settings.certificado.toasts.registerWarning.replace(
+            '{error}',
+            regErr instanceof Error ? regErr.message : 'erro desconhecido',
+          ),
         );
       } finally {
         // Atualiza isRegistered / status da emissão na UI.
         invalidate();
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Não foi possível salvar os dados da empresa.');
+      toast.error(e instanceof Error ? e.message : t.settings.certificado.toasts.saveError);
     }
   };
 
@@ -314,11 +317,11 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
 
   const handleUploadCertificate = async () => {
     if (!certFile) {
-      toast.error('Selecione o arquivo do certificado.');
+      toast.error(t.settings.certificado.toasts.noFile);
       return;
     }
     if (!certPassword.trim()) {
-      toast.error('Informe a senha do certificado.');
+      toast.error(t.settings.certificado.toasts.noPassword);
       return;
     }
     setUploadingCert(true);
@@ -329,10 +332,10 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
       fd.append('nome', certName.trim() || certFile.name);
       const res = await invokeFisqal('fisqal-upload-certificate', fd);
       if (!res.ok) {
-        toast.error(res.message ?? 'Falha ao enviar o certificado.');
+        toast.error(res.message ?? t.settings.certificado.toasts.uploadError);
         return;
       }
-      toast.success(res.message ?? 'Certificado enviado com sucesso.');
+      toast.success(res.message ?? t.settings.certificado.toasts.uploadSuccess);
       setCertFile(null);
       setCertPassword('');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -352,7 +355,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Configurações fiscais"
+      title={t.settings.title}
       className="sm:max-w-[640px]"
     >
       {isLoading ? (
@@ -365,14 +368,13 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
           <div className="flex flex-wrap items-center gap-2">
             {settings.pode_emitir && (
               <Badge className="bg-success text-success-foreground gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Apto a emitir
+                <CheckCircle2 className="h-3.5 w-3.5" /> {t.settings.readyBadge}
               </Badge>
             )}
           </div>
 
-          {/* Navegação por passos (estilo EcoSistema): grade de abas com nº do
-              passo, ícone e indicador de estado (cadeado quando bloqueado /
-              check quando concluído). Mobile-first: rótulo encolhe pro ícone. */}
+          {/* Navegação por passos: grade de abas com nº do passo, ícone e
+              indicador de estado. Mobile-first: rótulo encolhe pro ícone. */}
           <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-muted/50 p-1">
             {SECTIONS.map((s) => {
               const Icon = s.icon;
@@ -413,8 +415,8 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
               <Info className="h-4 w-4" />
               <AlertDescription className="text-xs">
                 {section === 'empresa'
-                  ? 'Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado.'
-                  : 'Passo 2 de 2: com a empresa já registrada, envie o certificado A1 (.pfx/.p12).'}
+                  ? t.settings.steps.hintEmpresa
+                  : t.settings.steps.hintCertificado}
               </AlertDescription>
             </Alert>
           )}
@@ -427,18 +429,18 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                   registro lê). */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Razão social / Nome</Label>
+                  <Label>{t.settings.empresa.companyName}</Label>
                   <Input
-                    placeholder="Nome da empresa"
+                    placeholder={t.settings.empresa.companyNamePlaceholder}
                     value={form.razao_social}
                     onChange={(e) => setForm((p) => ({ ...p, razao_social: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>CNPJ</Label>
+                  <Label>{t.settings.empresa.cnpj}</Label>
                   <Input
                     inputMode="numeric"
-                    placeholder="00.000.000/0000-00"
+                    placeholder={t.settings.empresa.cnpjPlaceholder}
                     value={form.cnpj}
                     onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))}
                   />
@@ -450,29 +452,29 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
               <div className="space-y-3 rounded-lg border p-3">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">Endereço fiscal</p>
+                  <p className="text-sm font-medium">{t.settings.empresa.addressSection}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label>CEP</Label>
+                  <Label>{t.settings.empresa.cep}</Label>
                   <CepLookup
                     value={form.cep}
                     onChange={(cep) => setForm((p) => ({ ...p, cep }))}
                     onAddressFound={handleAddressFound}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Preenche endereço, cidade e o código do município automaticamente.
+                    {t.settings.empresa.cepHint}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div className="space-y-2 sm:col-span-3">
-                    <Label>Logradouro</Label>
+                    <Label>{t.settings.empresa.street}</Label>
                     <Input
                       value={form.logradouro}
                       onChange={(e) => setForm((p) => ({ ...p, logradouro: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Número</Label>
+                    <Label>{t.settings.empresa.number}</Label>
                     <Input
                       value={form.numero}
                       onChange={(e) => setForm((p) => ({ ...p, numero: e.target.value }))}
@@ -481,14 +483,14 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Complemento</Label>
+                    <Label>{t.settings.empresa.complement}</Label>
                     <Input
                       value={form.complemento}
                       onChange={(e) => setForm((p) => ({ ...p, complemento: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Bairro</Label>
+                    <Label>{t.settings.empresa.neighborhood}</Label>
                     <Input
                       value={form.bairro}
                       onChange={(e) => setForm((p) => ({ ...p, bairro: e.target.value }))}
@@ -498,7 +500,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 {/* Cidade/UF: o seletor entrega o código IBGE do município, que
                     é o fallback caso o CEP ainda não traga `ibge`. */}
                 <div className="space-y-2">
-                  <Label>Cidade / UF</Label>
+                  <Label>{t.settings.empresa.cityUf}</Label>
                   <StateCitySelector
                     selectedState={form.uf}
                     selectedCity={form.cidade}
@@ -519,20 +521,20 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
               {/* Ambiente de emissão — alavanca on/off com rótulo dos dois lados */}
               <div className="flex flex-col gap-2 rounded-lg border p-3">
                 <div>
-                  <p className="text-sm font-medium">Ambiente de emissão de NFS-e</p>
+                  <p className="text-sm font-medium">{t.settings.empresa.environment}</p>
                   <p className="text-xs text-muted-foreground">
                     {form.fiscal_ambiente === 'producao'
-                      ? 'Produção: as notas valem de verdade (têm efeito fiscal).'
-                      : 'Homologação: notas de teste, sem valor fiscal.'}
+                      ? t.settings.empresa.environmentProduction
+                      : t.settings.empresa.environmentHomologation}
                   </p>
                 </div>
                 <LabeledSwitch
                   value={form.fiscal_ambiente}
                   onChange={(v) => setForm((p) => ({ ...p, fiscal_ambiente: v }))}
-                  off={{ value: 'homologacao', label: 'Homologação' }}
-                  on={{ value: 'producao', label: 'Produção' }}
+                  off={{ value: 'homologacao', label: t.settings.empresa.environmentOff }}
+                  on={{ value: 'producao', label: t.settings.empresa.environmentOn }}
                   size="default"
-                  aria-label="Ambiente de emissão de NFS-e"
+                  aria-label={t.settings.empresa.environment}
                 />
               </div>
 
@@ -546,12 +548,12 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
                 )}
-                Salvar dados da empresa
+                {t.settings.empresa.saveBtn}
               </Button>
 
               {/* Status do onboarding (realocado da antiga aba "Ativação"). */}
               <div className="flex flex-col gap-2 rounded-lg border p-3">
-                <p className="text-sm font-medium">Status da emissão</p>
+                <p className="text-sm font-medium">{t.settings.empresa.statusSection}</p>
                 <div className="flex items-center gap-2 text-xs">
                   {isRegistered ? (
                     <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
@@ -559,7 +561,9 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     <AlertCircle className="h-4 w-4 text-warning shrink-0" />
                   )}
                   <span className="text-muted-foreground">
-                    Empresa: {isRegistered ? 'registrada' : 'não registrada'}
+                    {isRegistered
+                      ? t.settings.empresa.statusCompanyRegistered
+                      : t.settings.empresa.statusCompanyPending}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
@@ -569,14 +573,16 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     <AlertCircle className="h-4 w-4 text-warning shrink-0" />
                   )}
                   <span className="text-muted-foreground">
-                    Certificado: {hasCertificate ? 'enviado' : 'pendente'}
+                    {hasCertificate
+                      ? t.settings.empresa.statusCertSent
+                      : t.settings.empresa.statusCertPending}
                   </span>
                 </div>
               </div>
 
               {isRegistered && (
                 <Button onClick={() => setSection('certificado')} className="w-full sm:w-auto">
-                  Próximo: enviar certificado <ArrowRight className="h-4 w-4 ml-2" />
+                  {t.settings.empresa.nextBtn} <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               )}
             </div>
@@ -587,13 +593,13 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Regime tributário</Label>
+                  <Label>{t.settings.impostos.regime}</Label>
                   <Select
                     value={form.regime_tributario}
                     onValueChange={(v) => setForm((p) => ({ ...p, regime_tributario: v }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={t.settings.impostos.regimePlaceholder} />
                     </SelectTrigger>
                     <SelectContent>
                       {REGIMES.map((r) => (
@@ -605,14 +611,14 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Inscrição Municipal</Label>
+                  <Label>{t.settings.impostos.inscricaoMunicipal}</Label>
                   <Input
                     value={form.inscricao_municipal}
                     onChange={(e) => setForm((p) => ({ ...p, inscricao_municipal: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Inscrição Estadual</Label>
+                  <Label>{t.settings.impostos.inscricaoEstadual}</Label>
                   <Input
                     value={form.inscricao_estadual}
                     onChange={(e) => setForm((p) => ({ ...p, inscricao_estadual: e.target.value }))}
@@ -621,8 +627,12 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
               </div>
 
               <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Salvar tributação
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {t.settings.impostos.saveBtn}
               </Button>
             </div>
           )}
@@ -634,15 +644,15 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 <Alert className="border-warning/40 bg-warning/10">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Registre a empresa antes de subir o certificado. Volte ao passo{' '}
+                    {t.settings.certificado.notRegisteredWarning.split('{link}')[0]}
                     <button
                       type="button"
                       onClick={() => setSection('empresa')}
                       className="font-semibold underline underline-offset-2"
                     >
-                      1. Empresa
-                    </button>{' '}
-                    e registre a empresa primeiro.
+                      {t.settings.certificado.notRegisteredLink}
+                    </button>
+                    {t.settings.certificado.notRegisteredWarning.split('{link}')[1]}
                   </AlertDescription>
                 </Alert>
               )}
@@ -664,18 +674,30 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                   )}
                   <AlertDescription className="text-xs">
                     {expired
-                      ? `Certificado vencido em ${formatDate(settings.certificate_expires_at)}. Envie um novo.`
+                      ? t.settings.certificado.certExpired.replace(
+                          '{date}',
+                          settings.certificate_expires_at
+                            ? formatDateLib(settings.certificate_expires_at, locale, timezone)
+                            : '',
+                        )
                       : settings.certificate_expires_at
-                        ? `Certificado válido até ${formatDate(settings.certificate_expires_at)}${
-                            expiringSoon ? ` — vence em ${expiresDays} dia(s).` : '.'
-                          }`
-                        : 'Certificado enviado.'}
+                        ? t.settings.certificado.certValidUntil.replace(
+                            '{date}',
+                            formatDateLib(settings.certificate_expires_at, locale, timezone),
+                          ) +
+                          (expiringSoon
+                            ? t.settings.certificado.certExpiringSoon.replace(
+                                '{days}',
+                                String(expiresDays),
+                              )
+                            : '.')
+                        : t.settings.certificado.certSent}
                   </AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label>Arquivo do certificado</Label>
+                <Label>{t.settings.certificado.fileLabel}</Label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -691,27 +713,27 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                   className="w-full justify-start"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {certFile ? certFile.name : 'Selecionar arquivo (.pfx / .p12)'}
+                  {certFile ? certFile.name : t.settings.certificado.fileBtn}
                 </Button>
               </div>
 
               <div className="space-y-2">
-                <Label>Nome do certificado (opcional)</Label>
+                <Label>{t.settings.certificado.nameLabel}</Label>
                 <Input
-                  placeholder="Ex: Certificado da empresa"
+                  placeholder={t.settings.certificado.namePlaceholder}
                   value={certName}
                   onChange={(e) => setCertName(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Senha do certificado</Label>
+                <Label>{t.settings.certificado.passwordLabel}</Label>
                 <div className="relative">
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={certPassword}
                     onChange={(e) => setCertPassword(e.target.value)}
-                    placeholder="Senha do arquivo .pfx/.p12"
+                    placeholder={t.settings.certificado.passwordPlaceholder}
                     autoComplete="off"
                     disabled={!isRegistered}
                     className="pr-10"
@@ -722,13 +744,17 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                     size="icon"
                     className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
                     onClick={() => setShowPassword((s) => !s)}
-                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-label={
+                      showPassword
+                        ? t.settings.certificado.hidePassword
+                        : t.settings.certificado.showPassword
+                    }
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Use a senha do próprio certificado, não a senha do sistema.
+                  {t.settings.certificado.passwordHint}
                 </p>
               </div>
 
@@ -742,7 +768,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
                 ) : (
                   <Shield className="h-4 w-4 mr-2" />
                 )}
-                Enviar certificado
+                {t.settings.certificado.uploadBtn}
               </Button>
             </div>
           )}

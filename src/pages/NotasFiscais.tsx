@@ -40,7 +40,9 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useNfse, useNfseListPolling, type NfseEmission } from '@/hooks/useNfse';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
-import { formatBRL } from '@/utils/currency';
+import { formatMoney, formatDate as formatDateLib } from '@/lib/format';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { FISCAL_SCREEN_PERMISSION } from '@/components/fiscal/fiscalPermissions';
 import {
   NfseStatusBadge,
@@ -59,18 +61,13 @@ import { FiscalSettingsModal } from '@/components/fiscal/FiscalSettingsModal';
 const normalize = (s: string) =>
   s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-}
-
 export default function NotasFiscais() {
   const isMobile = useIsMobile();
   const { hasScreenAccess } = useAuth();
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { companyId } = useUserCompany();
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.nfse;
   const { emissions, isLoading } = useNfse();
   const { customers } = useCustomers();
   const { settings, isLoading: settingsLoading } = useFiscalSettings();
@@ -153,7 +150,7 @@ export default function NotasFiscais() {
         <Alert variant="destructive">
           <Shield className="h-4 w-4" />
           <AlertDescription>
-            Você não tem acesso ao módulo de Notas Fiscais. Fale com o administrador da sua empresa.
+            {t.access.noAccess}
           </AlertDescription>
         </Alert>
       </div>
@@ -171,13 +168,13 @@ export default function NotasFiscais() {
     const actions: ItemAction[] = [
       {
         key: 'view',
-        label: 'Ver detalhe',
+        label: t.actions.viewDetail,
         icon: <Eye className="h-4 w-4" />,
         onClick: () => openDetail(e),
       },
       {
         key: 'refresh',
-        label: 'Atualizar status',
+        label: t.actions.refreshStatus,
         icon: <RefreshCw className="h-4 w-4" />,
         onClick: () => openDetail(e, 'refresh'),
       },
@@ -185,7 +182,7 @@ export default function NotasFiscais() {
     if (e.pdf_url) {
       actions.push({
         key: 'pdf',
-        label: 'Baixar PDF',
+        label: t.actions.downloadPdf,
         icon: <FileText className="h-4 w-4" />,
         onClick: () => openDetail(e, 'pdf'),
       });
@@ -193,21 +190,21 @@ export default function NotasFiscais() {
     if (e.xml_url) {
       actions.push({
         key: 'xml',
-        label: 'Baixar XML',
+        label: t.actions.downloadXml,
         icon: <FileCode className="h-4 w-4" />,
         onClick: () => openDetail(e, 'xml'),
       });
     }
     actions.push({
       key: 'history',
-      label: 'Histórico',
+      label: t.actions.history,
       icon: <History className="h-4 w-4" />,
       onClick: () => openDetail(e),
     });
     if (e.status === 'autorizada') {
       actions.push({
         key: 'cancel',
-        label: 'Cancelar',
+        label: t.actions.cancel,
         icon: <Ban className="h-4 w-4" />,
         variant: 'destructive',
         onClick: () => openDetail(e, 'cancel'),
@@ -216,12 +213,18 @@ export default function NotasFiscais() {
     return actions;
   };
 
+  // Opções de filtro de status com rótulos traduzidos.
+  const statusFilterOptions = NFSE_STATUS_FILTER_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t.status[o.value as keyof typeof t.status] ?? o.label,
+  }));
+
   const filterButton = (
     <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" className="gap-2 shrink-0">
           <SlidersHorizontal className="h-4 w-4" />
-          Filtros
+          {t.filters.button}
           {statusFilter.length > 0 && (
             <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
               {statusFilter.length}
@@ -231,15 +234,15 @@ export default function NotasFiscais() {
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
         <SheetHeader className="px-5 pt-5 pb-3 border-b">
-          <SheetTitle>Filtros</SheetTitle>
+          <SheetTitle>{t.filters.title}</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <FilterCheckboxGroup
-            label="Status"
-            options={NFSE_STATUS_FILTER_OPTIONS}
+            label={t.filters.status}
+            options={statusFilterOptions}
             selected={statusFilter}
             onChange={setStatusFilter}
-            emptyLabel="Todos"
+            emptyLabel={t.filters.allLabel}
           />
         </div>
         <div className="sticky bottom-0 border-t bg-background px-5 py-3 flex items-center gap-2">
@@ -249,37 +252,35 @@ export default function NotasFiscais() {
             onClick={() => setStatusFilter([])}
             disabled={statusFilter.length === 0}
           >
-            Limpar
+            {t.actions.clear}
           </Button>
           <Button className="flex-1" onClick={() => setFilterOpen(false)}>
-            Aplicar
+            {t.actions.apply}
           </Button>
         </div>
       </SheetContent>
     </Sheet>
   );
 
-  // Botão de acesso à config fiscal — rótulo "Configurações fiscais" (ícone + texto).
+  // Botão de acesso à config fiscal — rótulo traduzido (ícone + texto).
   // No mobile vira só ícone pra não estourar o header compacto; o rótulo continua
   // acessível via aria-label e nos estados vazios.
   const configButton = (
     <Button
       variant="outline"
       className="gap-2"
-      aria-label="Configurações fiscais"
+      aria-label={t.actions.fiscalSettings}
       onClick={() => setSettingsOpen(true)}
     >
       <Settings className="h-4 w-4" />
-      <span className="hidden sm:inline">Configurações fiscais</span>
+      <span className="hidden sm:inline">{t.actions.fiscalSettings}</span>
     </Button>
   );
 
-  // Sub-navegação Visão Geral / NFS-e: sidebar lateral no desktop + pills no
-  // mobile, reusando o MESMO componente do Relatório Financeiro
-  // (SettingsSidebarLayout). Sem pill-dentro-de-pill.
+  // Sub-navegação com rótulos traduzidos.
   const navTabs: SettingsTab[] = [
-    { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
-    { value: 'nfse', label: 'NFS-e', icon: FileText },
+    { value: 'visao-geral', label: t.tabs.overview, icon: LayoutDashboard },
+    { value: 'nfse', label: t.tabs.list, icon: FileText },
   ];
 
   // Estado vazio guiado: config incompleta → manda configurar; config OK sem
@@ -289,18 +290,18 @@ export default function NotasFiscais() {
       return (
         <EmptyState
           icon={<Settings className="h-10 w-10" />}
-          title="Configure seus dados fiscais"
-          description="Configure seus dados fiscais para começar a emitir notas."
-          action={{ label: 'Configurações fiscais', onClick: () => setSettingsOpen(true) }}
+          title={t.empty.configTitle}
+          description={t.empty.configDescription}
+          action={{ label: t.empty.configAction, onClick: () => setSettingsOpen(true) }}
         />
       );
     }
     return (
       <EmptyState
         icon={<FileText className="h-10 w-10" />}
-        title="Nenhuma nota emitida ainda"
-        description="Emita sua primeira NFS-e para acompanhá-la aqui."
-        action={{ label: 'Nova Nota', onClick: () => setNovaOpen(true) }}
+        title={t.empty.noNotesTitle}
+        description={t.empty.noNotesDescription}
+        action={{ label: t.empty.noNotesAction, onClick: () => setNovaOpen(true) }}
       />
     );
   };
@@ -311,14 +312,14 @@ export default function NotasFiscais() {
   return (
     <div className={cn('space-y-6', isMobile && 'pb-24 space-y-4')}>
       <MobilePageHeader
-        title="Notas Fiscais"
-        subtitle="Emita e acompanhe suas NFS-e."
+        title={t.page.title}
+        subtitle={t.page.subtitle}
         icon={FileText}
         actions={
           <>
             {configButton}
             <Button onClick={() => setNovaOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" /> Nova Nota
+              <Plus className="h-4 w-4" /> {t.actions.newNote}
             </Button>
           </>
         }
@@ -357,7 +358,7 @@ export default function NotasFiscais() {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar por número, cliente, descrição, chave..."
+                    placeholder={t.search.placeholder}
                     className="pl-9"
                   />
                 </div>
@@ -366,14 +367,14 @@ export default function NotasFiscais() {
 
               {search.trim() && statusFilter.length > 0 && (
                 <p className="text-[11px] text-muted-foreground italic">
-                  Buscando em todas as notas — o filtro de status fica suspenso enquanto há busca.
+                  {t.search.filterSuspended}
                 </p>
               )}
 
               {filtered.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                  <p>Nenhuma nota encontrada com esses filtros.</p>
+                  <p>{t.list.empty}</p>
                 </div>
               ) : (
                 <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border/60">
@@ -383,12 +384,19 @@ export default function NotasFiscais() {
                       onClick={() => openDetail(e)}
                       leading={<FileText className="h-5 w-5 text-muted-foreground" />}
                       title={
-                        e.numero_nfse ? `Nota nº ${e.numero_nfse}` : customerName(e.customer_id)
+                        e.numero_nfse
+                          ? `${t.list.notePrefix} ${e.numero_nfse}`
+                          : customerName(e.customer_id)
                       }
                       subtitle={
                         <span>
-                          {customerName(e.customer_id)} · {formatDate(e.created_at)}
-                          {e.valor_servico != null ? ` · ${formatBRL(e.valor_servico)}` : ''}
+                          {customerName(e.customer_id)} ·{' '}
+                          {e.created_at
+                            ? formatDateLib(e.created_at, locale, timezone)
+                            : '—'}
+                          {e.valor_servico != null
+                            ? ` · ${formatMoney(e.valor_servico, currency, locale)}`
+                            : ''}
                         </span>
                       }
                       trailing={<NfseStatusBadge status={e.status} />}
