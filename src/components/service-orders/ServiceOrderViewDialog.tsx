@@ -14,8 +14,7 @@ import { useIsCompact } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsStatus, FormQuestion } from '@/types/database';
 import { osTypeLabels, getOsTypeLabel, getOsStatusLabel } from '@/types/database';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+// date-fns format/ptBR removidos — datas agora via formatDate/formatDateTime da lib/format
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { SignedImg } from '@/components/ui/SignedImg';
@@ -24,6 +23,9 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { formatMoney, formatDate, formatDateTime } from '@/lib/format';
 
 interface OSPhoto {
   id: string;
@@ -73,6 +75,8 @@ const renderSignedImage = (url: string, alt: string, className: string) => (
 );
 
 export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onEdit, onDelete, onStatusChange }: ServiceOrderViewDialogProps) {
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const tv = MESSAGES[locale].app.os.viewDialog;
   const navigate = useNavigate();
   const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -217,7 +221,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
 
   const formatCurrency = (value: number | null) => {
     if (!value) return '-';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    return formatMoney(value, currency, locale);
   };
 
   if (!open) return null;
@@ -242,9 +246,9 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           | 'nao_conforme';
         const notes = serviceOrder.pmoc_conformity_notes;
         const CONFORMITY_LABEL = {
-          conforme: 'Conforme',
-          parcial: 'Parcial',
-          nao_conforme: 'Não-conforme',
+          conforme: tv.conformityLabel.conforme,
+          parcial: tv.conformityLabel.parcial,
+          nao_conforme: tv.conformityLabel.nao_conforme,
         } as const;
         const CONFORMITY_VARIANT = {
           conforme: 'success',
@@ -260,7 +264,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           <Card className={CONFORMITY_BORDER[status]}>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium">Conformidade PMOC</h4>
+                <h4 className="text-sm font-medium">{tv.sectionConformity}</h4>
                 <Badge variant={CONFORMITY_VARIANT[status]}>
                   {CONFORMITY_LABEL[status]}
                 </Badge>
@@ -279,14 +283,14 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         {serviceOrder.scheduled_date && (
           <span className="flex items-center gap-1 text-muted-foreground">
             <Calendar className="h-3 w-3" />
-            {format(new Date(serviceOrder.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
-            {serviceOrder.scheduled_time && ` às ${serviceOrder.scheduled_time.slice(0, 5)}`}
+            {formatDate(serviceOrder.scheduled_date, locale, timezone)}
+            {serviceOrder.scheduled_time && ` ${serviceOrder.scheduled_time.slice(0, 5)}`}
           </span>
         )}
       </div>
 
       <Card>
-        <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4" /> Cliente</CardTitle></CardHeader>
+        <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4" /> {tv.sectionCustomer}</CardTitle></CardHeader>
         <CardContent className="pt-0 text-sm">
           <p className="font-medium">{serviceOrder.customer?.name}</p>
           {serviceOrder.customer?.phone && <p className="text-muted-foreground">{serviceOrder.customer.phone}</p>}
@@ -296,11 +300,11 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
 
       {serviceOrder.equipment && (
         <Card>
-          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Wrench className="h-4 w-4" /> Equipamento</CardTitle></CardHeader>
+          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Wrench className="h-4 w-4" /> {tv.sectionEquipment}</CardTitle></CardHeader>
           <CardContent className="pt-0 text-sm">
             <p className="font-medium">{serviceOrder.equipment.name}</p>
             <p className="text-muted-foreground">{serviceOrder.equipment.brand} {serviceOrder.equipment.model}</p>
-            {serviceOrder.equipment.serial_number && <p className="text-muted-foreground text-xs">S/N: {serviceOrder.equipment.serial_number}</p>}
+            {serviceOrder.equipment.serial_number && <p className="text-muted-foreground text-xs">{tv.labelSerialNumber}: {serviceOrder.equipment.serial_number}</p>}
           </CardContent>
         </Card>
       )}
@@ -311,17 +315,17 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
 
       {(serviceOrder.check_in_time || serviceOrder.check_out_time) && (
         <Card>
-          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Clock className="h-4 w-4" /> Check-in / Check-out</CardTitle></CardHeader>
+          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Clock className="h-4 w-4" /> {tv.sectionCheckin}</CardTitle></CardHeader>
           <CardContent className="pt-0 text-sm space-y-1">
-            {serviceOrder.check_in_time && <p><strong>Check-in:</strong> {format(new Date(serviceOrder.check_in_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
-            {serviceOrder.check_out_time && <p><strong>Check-out:</strong> {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
+            {serviceOrder.check_in_time && <p><strong>{tv.labelCheckin}:</strong> {formatDateTime(serviceOrder.check_in_time, locale, timezone)}</p>}
+            {serviceOrder.check_out_time && <p><strong>{tv.labelCheckout}:</strong> {formatDateTime(serviceOrder.check_out_time, locale, timezone)}</p>}
           </CardContent>
         </Card>
       )}
 
       {photos.length > 0 && (
         <Card>
-          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Fotos ({photos.length})</CardTitle></CardHeader>
+          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> {tv.sectionPhotos} ({photos.length})</CardTitle></CardHeader>
           <CardContent className="pt-0">
             {(() => {
               const urls = photos.map((p) => p.photo_url);
@@ -421,7 +425,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
               {qType === 'boolean' ? (
                 <Badge variant={response.response_value === 'true' ? 'success' : 'destructive'} className="mt-1 gap-1">
                   {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                  {response.response_value === 'true' ? 'Sim' : 'Não'}
+                  {response.response_value === 'true' ? tv.answerYes : tv.answerNo}
                 </Badge>
               ) : qType === 'conformidade' ? (
                 <span className={`mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white ${
@@ -430,7 +434,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                     : 'bg-slate-500'
                 }`}>
                   {response.response_value === 'Conforme' ? <Check className="h-3 w-3" /> : response.response_value === 'Não Conforme' ? <X className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-                  {response.response_value || 'N/A'}
+                  {response.response_value || tv.answerNA}
                 </span>
               ) : (qType === 'number' || qType === 'pmoc_measurement') && hasTextValue ? (() => {
                 // Numérico/medição: valor + unidade, faixa esperada e aviso fora-da-faixa.
@@ -449,11 +453,11 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                     </span>
                     {(min != null || max != null) && (
                       <p className="text-xs text-muted-foreground">
-                        Faixa esperada: {min ?? '—'} a {max ?? '—'}{unit ? ` ${unit}` : ''}
+                        {tv.expectedRange} {min ?? '—'} a {max ?? '—'}{unit ? ` ${unit}` : ''}
                       </p>
                     )}
                     {isOutOfRange && (
-                      <p className="text-xs text-amber-700">Valor fora da faixa esperada.</p>
+                      <p className="text-xs text-amber-700">{tv.outOfRangeWarning}</p>
                     )}
                   </div>
                 );
@@ -561,7 +565,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
               <CollapsibleTrigger asChild>
                 <CardHeader className="group py-3 min-h-[44px] cursor-pointer w-full flex-row items-center justify-between gap-2">
                   <CardTitle className="text-sm flex items-center gap-2 text-left">
-                    <ClipboardCheck className="h-4 w-4 shrink-0" /> Checklist: {serviceOrder.form_template?.name}
+                    <ClipboardCheck className="h-4 w-4 shrink-0" /> {tv.checklistFallbackTitle}: {serviceOrder.form_template?.name}
                   </CardTitle>
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
                 </CardHeader>
@@ -578,11 +582,11 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
 
       {(serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
         <Card>
-          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><FileSignature className="h-4 w-4" /> Detalhes do Serviço</CardTitle></CardHeader>
+          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><FileSignature className="h-4 w-4" /> {tv.sectionServiceDetails}</CardTitle></CardHeader>
           <CardContent className="pt-0 space-y-3 text-sm">
-            {serviceOrder.diagnosis && <div><p className="font-medium text-muted-foreground">Diagnóstico</p><p>{serviceOrder.diagnosis}</p></div>}
-            {serviceOrder.solution && <div><p className="font-medium text-muted-foreground">Solução Aplicada</p><p>{serviceOrder.solution}</p></div>}
-            {serviceOrder.notes && <div><p className="font-medium text-muted-foreground">Observações</p><p>{serviceOrder.notes}</p></div>}
+            {serviceOrder.diagnosis && <div><p className="font-medium text-muted-foreground">{tv.labelDiagnosis}</p><p>{serviceOrder.diagnosis}</p></div>}
+            {serviceOrder.solution && <div><p className="font-medium text-muted-foreground">{tv.labelSolution}</p><p>{serviceOrder.solution}</p></div>}
+            {serviceOrder.notes && <div><p className="font-medium text-muted-foreground">{tv.labelNotes}</p><p>{serviceOrder.notes}</p></div>}
           </CardContent>
         </Card>
       )}
@@ -590,10 +594,10 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
       {(serviceOrder.labor_value || serviceOrder.parts_value || serviceOrder.total_value) && (
         <Card>
           <CardContent className="py-3">
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Mão de Obra</span><span>{formatCurrency(serviceOrder.labor_value)}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Peças</span><span>{formatCurrency(serviceOrder.parts_value)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-muted-foreground">{tv.labelLabor}</span><span>{formatCurrency(serviceOrder.labor_value)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-muted-foreground">{tv.labelParts}</span><span>{formatCurrency(serviceOrder.parts_value)}</span></div>
             <Separator className="my-2" />
-            <div className="flex justify-between font-medium"><span>Total</span><span>{formatCurrency(serviceOrder.total_value)}</span></div>
+            <div className="flex justify-between font-medium"><span>{tv.labelTotal}</span><span>{formatCurrency(serviceOrder.total_value)}</span></div>
           </CardContent>
         </Card>
       )}
@@ -610,33 +614,33 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         }> = [];
 
         if (onStatusChange && serviceOrder.status === 'pausada') {
-          actions.push({ key: 'resume', icon: Play, label: 'Retomar', tone: 'primary', onClick: async () => { await onStatusChange('em_andamento'); onOpenChange(false); } });
+          actions.push({ key: 'resume', icon: Play, label: tv.actionResume, tone: 'primary', onClick: async () => { await onStatusChange('em_andamento'); onOpenChange(false); } });
         }
         if (onStatusChange && (serviceOrder.status === 'em_andamento' || serviceOrder.status === 'a_caminho')) {
-          actions.push({ key: 'pause', icon: Pause, label: 'Pausar', tone: 'warning', onClick: async () => { await onStatusChange('pausada'); onOpenChange(false); } });
+          actions.push({ key: 'pause', icon: Pause, label: tv.actionPause, tone: 'warning', onClick: async () => { await onStatusChange('pausada'); onOpenChange(false); } });
         }
         if (onStatusChange && serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada') {
-          actions.push({ key: 'finalize', icon: CheckCircle, label: 'Finalizar', tone: 'success', onClick: async () => { await onStatusChange('concluida'); onOpenChange(false); } });
+          actions.push({ key: 'finalize', icon: CheckCircle, label: tv.actionFinalize, tone: 'success', onClick: async () => { await onStatusChange('concluida'); onOpenChange(false); } });
         }
         if (onStatusChange && serviceOrder.status === 'concluida') {
-          actions.push({ key: 'reopen', icon: RotateCcw, label: 'Reabrir', tone: 'warning', onClick: async () => { await onStatusChange('em_andamento'); onOpenChange(false); } });
+          actions.push({ key: 'reopen', icon: RotateCcw, label: tv.actionReopen, tone: 'warning', onClick: async () => { await onStatusChange('em_andamento'); onOpenChange(false); } });
         }
         if (onEdit) {
-          actions.push({ key: 'edit', icon: Pencil, label: 'Editar', tone: 'edit', onClick: () => { onOpenChange(false); onEdit(); } });
+          actions.push({ key: 'edit', icon: Pencil, label: tv.actionEdit, tone: 'edit', onClick: () => { onOpenChange(false); onEdit(); } });
         }
         if (onDelete) {
-          actions.push({ key: 'delete', icon: Trash2, label: 'Excluir', tone: 'destructive', onClick: () => { onOpenChange(false); onDelete(); } });
+          actions.push({ key: 'delete', icon: Trash2, label: tv.actionDelete, tone: 'destructive', onClick: () => { onOpenChange(false); onDelete(); } });
         }
         if (serviceOrder.customer_id) {
           actions.push({
             key: 'tracking-link',
             icon: linkCopied ? Check : Link2,
-            label: linkCopied ? 'Copiado!' : 'Link OS',
+            label: linkCopied ? tv.actionLinkCopied : tv.actionLinkOs,
             onClick: async () => {
               const url = `${window.location.origin}/acompanhamento/${serviceOrder.id}`;
               await navigator.clipboard.writeText(url);
               setLinkCopied(true);
-              toast({ title: 'Link copiado!' });
+              toast({ title: tv.toastLinkCopied });
               setTimeout(() => setLinkCopied(false), 2000);
             }
           });
@@ -687,7 +691,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                 onClick={() => { onOpenChange(false); navigate(`/os-tecnico/${serviceOrder.id}`); }}
               >
                 <ClipboardList className="h-5 w-5 mr-2" />
-                {serviceOrder.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
+                {serviceOrder.status === 'concluida' ? tv.ctaReport : tv.ctaFillOs}
               </Button>
             )}
           </div>
@@ -695,18 +699,18 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
       })()}
     </div>
   ) : (
-    <div className="p-6 text-center text-muted-foreground">OS não encontrada</div>
+    <div className="p-6 text-center text-muted-foreground">{tv.osNotFound}</div>
   );
 
   const title = serviceOrder ? (
     <span className="flex items-center gap-3">
       <Eye className="h-5 w-5" />
-      OS #{String(serviceOrder.order_number).padStart(6, '0')}
+      {tv.osPrefix}{String(serviceOrder.order_number).padStart(6, '0')}
       <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border ml-auto`}>
         {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
       </Badge>
     </span>
-  ) : 'Detalhes da OS';
+  ) : tv.titleFallback;
 
   const previewModal = (
     <ImagePreviewModal

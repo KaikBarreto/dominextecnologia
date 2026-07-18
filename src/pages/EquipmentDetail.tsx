@@ -47,6 +47,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { useEffect } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
@@ -82,6 +84,8 @@ export default function EquipmentDetail() {
   // id real do equipamento (alimenta os hooks abaixo).
   const id = equipment?.id ?? (isUuid(routeParam) ? routeParam : undefined);
 
+  const { locale } = useAppLocaleContext();
+  const te = MESSAGES[locale].app.equipment.detail;
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
   const { serviceOrders } = useServiceOrders();
@@ -203,23 +207,23 @@ export default function EquipmentDetail() {
   if (!equipment) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
-        <p className="text-muted-foreground">Equipamento não encontrado.</p>
+        <Button variant="ghost" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}><ArrowLeft className="mr-2 h-4 w-4" /> {te.back}</Button>
+        <p className="text-muted-foreground">{te.notFound}</p>
       </div>
     );
   }
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: 'geral', label: 'Geral' },
-    { key: 'anexos', label: 'Anexos' },
-    { key: 'tarefas', label: 'Histórico / Tarefas' },
+    { key: 'geral', label: te.tabGeneral },
+    { key: 'anexos', label: te.tabAttachments },
+    { key: 'tarefas', label: te.tabHistory },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Seta de voltar própria: só no desktop (Sidebar não tem voltar global; mobile/tablet usam a do shell) */}
-        <Button variant="ghost" size="icon" className="shrink-0 hidden lg:flex" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}>
+        <Button variant="ghost" size="icon" className="shrink-0 hidden lg:flex" aria-label={te.back} onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0 flex-1">
@@ -237,9 +241,9 @@ export default function EquipmentDetail() {
               </PopoverTrigger>
               <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Buscar equipamento..." />
+                  <CommandInput placeholder={te.switcherSearch} />
                   <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain">
-                    <CommandEmpty>Nenhum equipamento encontrado.</CommandEmpty>
+                    <CommandEmpty>{te.switcherEmpty}</CommandEmpty>
                     <CommandGroup>
                       {allEquipment.map((eq) => {
                         const sublabel = [eq.identifier, (eq as any).customer?.name].filter(Boolean).join(' · ') || undefined;
@@ -275,12 +279,12 @@ export default function EquipmentDetail() {
         </div>
         <div className="shrink-0 ml-auto">
           <RowActionsMenu
-            ariaLabel="Ações do equipamento"
-            label="Ações"
+            ariaLabel={te.actions}
+            label={te.actions}
             triggerClassName="border border-border px-3"
             actions={[
-              { label: 'Editar', icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
-              { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
+              { label: MESSAGES[locale].app.equipment.edit, icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
+              { label: MESSAGES[locale].app.equipment.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
             ]}
           />
         </div>
@@ -325,7 +329,7 @@ export default function EquipmentDetail() {
                       className="h-32 w-32 sm:h-48 sm:w-48 lg:h-56 lg:w-56 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => setPreviewImage(equipment.photo_url!)}
                     />
-                    <p className="text-xs text-muted-foreground">Foto do equipamento</p>
+                    <p className="text-xs text-muted-foreground">{te.fieldPhotoCaption}</p>
                   </div>
                 )}
                 {/* QR + ações */}
@@ -340,10 +344,10 @@ export default function EquipmentDetail() {
                   </button>
                   <div className="w-full space-y-2 text-center lg:text-left">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
-                    <p className="text-sm text-muted-foreground">QR Code do equipamento</p>
+                    <p className="text-sm text-muted-foreground">{te.qrCaption}</p>
                     <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-center lg:justify-start">
                       <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setLabelDialogOpen(true)}>
-                        <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
+                        <Tag className="mr-2 h-3.5 w-3.5" />{te.generateLabel}
                       </Button>
                       <Button
                         size="sm"
@@ -352,19 +356,19 @@ export default function EquipmentDetail() {
                         disabled={!hasPortalLink}
                         onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
                       >
-                        <ExternalLink className="mr-2 h-3.5 w-3.5" />Abrir link
+                        <ExternalLink className="mr-2 h-3.5 w-3.5" />{te.openLink}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         className="w-full sm:w-auto"
                         disabled={!hasPortalLink}
-                        onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: 'Link copiado!' }); }}
+                        onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: te.linkCopied }); }}
                       >
-                        <Copy className="mr-2 h-3.5 w-3.5" />Copiar link
+                        <Copy className="mr-2 h-3.5 w-3.5" />{te.copyLink}
                       </Button>
                     </div>
-                    {!hasPortalLink && <p className="text-xs text-muted-foreground">Cliente sem portal ativo</p>}
+                    {!hasPortalLink && <p className="text-xs text-muted-foreground">{te.noPortalActive}</p>}
                   </div>
                 </div>
               </div>
@@ -384,7 +388,7 @@ export default function EquipmentDetail() {
 
             if (category) {
               rows.push({
-                label: 'Categoria',
+                label: te.fieldCategory,
                 node: (
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
@@ -395,7 +399,7 @@ export default function EquipmentDetail() {
             }
             if ((equipment as any).customer?.name && equipment.customer_id) {
               rows.push({
-                label: 'Cliente',
+                label: te.fieldCustomer,
                 node: (
                   <button
                     type="button"
@@ -408,15 +412,15 @@ export default function EquipmentDetail() {
                 ),
               });
             } else if ((equipment as any).customer?.name) {
-              rows.push({ label: 'Cliente', node: <span className="text-sm font-medium">{(equipment as any).customer.name}</span> });
+              rows.push({ label: te.fieldCustomer, node: <span className="text-sm font-medium">{(equipment as any).customer.name}</span> });
             }
-            if (equipment.brand) rows.push({ label: 'Marca', node: <span className="text-sm font-medium">{equipment.brand}</span> });
-            if (equipment.model) rows.push({ label: 'Modelo', node: <span className="text-sm font-medium">{equipment.model}</span> });
-            if (equipment.serial_number) rows.push({ label: 'Nº de Série', node: <span className="text-sm font-medium">{equipment.serial_number}</span> });
-            if (equipment.capacity) rows.push({ label: 'Descrição', node: <span className="text-sm font-medium">{equipment.capacity}</span> });
-            if (equipment.location) rows.push({ label: 'Local', node: <span className="text-sm font-medium">{equipment.location}</span> });
-            if ((equipment as any).install_date) rows.push({ label: 'Data de Instalação', node: <span className="text-sm font-medium">{format(new Date((equipment as any).install_date), 'dd/MM/yyyy', { locale: ptBR })}</span> });
-            if ((equipment as any).warranty_until) rows.push({ label: 'Garantia até', node: <span className="text-sm font-medium">{format(new Date((equipment as any).warranty_until), 'dd/MM/yyyy', { locale: ptBR })}</span> });
+            if (equipment.brand) rows.push({ label: te.fieldBrand, node: <span className="text-sm font-medium">{equipment.brand}</span> });
+            if (equipment.model) rows.push({ label: te.fieldModel, node: <span className="text-sm font-medium">{equipment.model}</span> });
+            if (equipment.serial_number) rows.push({ label: te.fieldSerialNumber, node: <span className="text-sm font-medium">{equipment.serial_number}</span> });
+            if (equipment.capacity) rows.push({ label: te.fieldDescription, node: <span className="text-sm font-medium">{equipment.capacity}</span> });
+            if (equipment.location) rows.push({ label: te.fieldLocation, node: <span className="text-sm font-medium">{equipment.location}</span> });
+            if ((equipment as any).install_date) rows.push({ label: te.fieldInstallDate, node: <span className="text-sm font-medium">{format(new Date((equipment as any).install_date), 'dd/MM/yyyy', { locale: ptBR })}</span> });
+            if ((equipment as any).warranty_until) rows.push({ label: te.fieldWarrantyUntil, node: <span className="text-sm font-medium">{format(new Date((equipment as any).warranty_until), 'dd/MM/yyyy', { locale: ptBR })}</span> });
 
             visibleCustomFields.forEach(field => {
               let displayValue = String(customFields![field.field_key]);
@@ -431,7 +435,7 @@ export default function EquipmentDetail() {
             return (
               <Card>
                 <CardContent className="p-4 sm:p-6">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">Informações</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">{te.sectionInfo}</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {rows.map((row, i) => (
                       <div key={i} className="flex flex-col gap-0.5 min-w-0">
@@ -447,7 +451,7 @@ export default function EquipmentDetail() {
           {/* Observações em card próprio */}
           {equipment.notes && (
             <Card><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">{te.fieldNotes}</p>
               <p className="text-sm mt-1 whitespace-pre-wrap">{equipment.notes}</p>
             </CardContent></Card>
           )}
@@ -458,7 +462,7 @@ export default function EquipmentDetail() {
       {activeTab === 'anexos' && (
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Arquivos anexados</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{te.sectionAttachments}</h2>
             <div className="flex items-center gap-2">
               <div className="flex border rounded-lg overflow-hidden">
                 <button
@@ -477,7 +481,7 @@ export default function EquipmentDetail() {
                 </button>
               </div>
               <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
-                <Upload className="mr-2 h-4 w-4" />{uploadingFiles ? 'Enviando...' : 'Enviar'}
+                <Upload className="mr-2 h-4 w-4" />{uploadingFiles ? te.uploading : te.upload}
               </Button>
             </div>
             <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
@@ -486,7 +490,7 @@ export default function EquipmentDetail() {
           {uploadProgress && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Enviando {uploadProgress.current} de {uploadProgress.total}...</span>
+                <span>{te.uploadingProgress.replace('{current}', String(uploadProgress.current)).replace('{total}', String(uploadProgress.total))}</span>
                 <span>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
               </div>
               <Progress value={(uploadProgress.current / uploadProgress.total) * 100} className="h-2" />
@@ -497,7 +501,7 @@ export default function EquipmentDetail() {
           ) : attachments.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <Paperclip className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhum anexo</p>
+              <p className="text-sm text-muted-foreground">{te.emptyAttachments}</p>
             </div>
           ) : (() => {
             const imageAttachments = attachments.filter(att => /\.(webp|jpe?g|png|gif|heic|svg)$/i.test(att.file_name));
@@ -577,7 +581,7 @@ export default function EquipmentDetail() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
                       <Image className="h-4 w-4" />
-                      <span>Imagens ({imageAttachments.length})</span>
+                      <span>{te.attachImages} ({imageAttachments.length})</span>
                     </div>
                     {attachViewMode === 'gallery' ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -594,7 +598,7 @@ export default function EquipmentDetail() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
                       <FileText className="h-4 w-4" />
-                      <span>PDFs ({pdfAttachments.length})</span>
+                      <span>{te.attachPdfs} ({pdfAttachments.length})</span>
                     </div>
                     {attachViewMode === 'gallery' ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -611,7 +615,7 @@ export default function EquipmentDetail() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
                       <FileText className="h-4 w-4" />
-                      <span>Outros Documentos ({otherFileAttachments.length})</span>
+                      <span>{te.attachOther} ({otherFileAttachments.length})</span>
                     </div>
                     {attachViewMode === 'gallery' ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -636,12 +640,12 @@ export default function EquipmentDetail() {
           {/* OS History */}
           <div className="space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Ordens de Serviço Relacionadas
+              {te.sectionOrders}
             </h2>
             {equipmentOrders.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-center">
                 <ClipboardList className="mb-2 h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Nenhuma OS relacionada a este equipamento</p>
+                <p className="text-sm text-muted-foreground">{te.emptyOrders}</p>
               </div>
             ) : (
               <Card><CardContent className="p-0">
@@ -649,10 +653,10 @@ export default function EquipmentDetail() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <SortableTableHead sortKey="order_number" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>OS</SortableTableHead>
-                        <SortableTableHead sortKey="status" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>Status</SortableTableHead>
-                        <SortableTableHead sortKey="scheduled_date" sortConfig={eqOsSortConfig} onSort={handleEqOsSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={eqOsSortConfig} onSort={() => {}}>Ações</SortableTableHead>
+                        <SortableTableHead sortKey="order_number" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>{te.colOs}</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>{te.colStatus}</SortableTableHead>
+                        <SortableTableHead sortKey="scheduled_date" sortConfig={eqOsSortConfig} onSort={handleEqOsSort} className="hidden sm:table-cell">{te.colDate}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={eqOsSortConfig} onSort={() => {}}>{te.colActions}</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -686,11 +690,11 @@ export default function EquipmentDetail() {
           {/* Tasks */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Tarefas</h2>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{te.sectionTasks}</h2>
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Nova tarefa..."
+                placeholder={te.taskPlaceholder}
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
@@ -705,7 +709,7 @@ export default function EquipmentDetail() {
             ) : tasks.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-center">
                 <CheckCircle2 className="mb-2 h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Nenhuma tarefa</p>
+                <p className="text-sm text-muted-foreground">{te.emptyTasks}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -741,8 +745,8 @@ export default function EquipmentDetail() {
       <AlertDialog open={!!deleteAttachmentId} onOpenChange={() => setDeleteAttachmentId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir anexo</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir este anexo?</AlertDialogDescription>
+            <AlertDialogTitle>{te.deleteAttachmentTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{te.deleteAttachmentDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -757,9 +761,9 @@ export default function EquipmentDetail() {
       </AlertDialog>
 
       {/* Label dialog */}
-      <ResponsiveModal open={labelDialogOpen} onOpenChange={setLabelDialogOpen} title="Gerar Etiqueta de Identificação">
+      <ResponsiveModal open={labelDialogOpen} onOpenChange={setLabelDialogOpen} title={te.labelDialogTitle}>
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Escolha o tamanho da etiqueta para impressão.</p>
+          <p className="text-sm text-muted-foreground">{te.labelDialogDesc}</p>
           <div className="grid grid-cols-3 gap-3">
             {LABEL_SIZES.map((size) => (
               <button
@@ -786,15 +790,15 @@ export default function EquipmentDetail() {
                 </>
               )}
               <QRCodeSVG value={qrValue} size={100} />
-              <p className="text-[10px] text-muted-foreground">Nome do equipamento</p>
+              <p className="text-[10px] text-muted-foreground">{te.labelEqName}</p>
               <p className="text-xs font-bold">{equipment.name}</p>
-              <p className="text-[10px] text-muted-foreground">Identificador</p>
+              <p className="text-[10px] text-muted-foreground">{te.labelEqId}</p>
               <p className="text-xs font-bold">{equipment.identifier || '-'}</p>
             </div>
           </div>
           <div className="flex justify-end">
             <Button onClick={handleDownloadLabel}>
-              <Download className="mr-2 h-4 w-4" />Imprimir
+              <Download className="mr-2 h-4 w-4" />{te.labelPrint}
             </Button>
           </div>
         </div>
@@ -850,8 +854,8 @@ export default function EquipmentDetail() {
       <AlertDialog open={deleteEquipOpen} onOpenChange={setDeleteEquipOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir equipamento</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir "{equipment.name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle>{MESSAGES[locale].app.equipment.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{MESSAGES[locale].app.equipment.deleteConfirm.replace('{name}', equipment.name)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

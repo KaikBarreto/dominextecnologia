@@ -51,6 +51,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { StepTransition } from '@/components/ui/step-transition';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -83,14 +85,16 @@ interface ServiceOrderFormDialogProps {
 }
 
 const STEPS = [
-  { key: 'client', label: 'Cliente e Serviço' },
-  { key: 'equipment', label: 'Equipamento(s)' },
-  { key: 'details', label: 'Detalhes' },
+  { key: 'client' as const },
+  { key: 'equipment' as const },
+  { key: 'details' as const },
 ];
 
 export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultStatus,
 }: ServiceOrderFormDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.form;
   const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useProfiles();
   const { templates } = useFormTemplates();
@@ -150,14 +154,14 @@ export function ServiceOrderFormDialog({
   const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([]);
 
   const RECURRENCE_OPTIONS = [
-    { value: 'daily', label: 'Diária' },
-    { value: 'weekly', label: 'Semanal' },
-    { value: 'biweekly', label: 'Quinzenal' },
-    { value: 'monthly', label: 'Mensal' },
-    { value: 'yearly', label: 'Anual' },
-    { value: 'custom', label: 'Personalizado' },
+    { value: 'daily', label: t.recurrenceOptions.daily },
+    { value: 'weekly', label: t.recurrenceOptions.weekly },
+    { value: 'biweekly', label: t.recurrenceOptions.biweekly },
+    { value: 'monthly', label: t.recurrenceOptions.monthly },
+    { value: 'yearly', label: t.recurrenceOptions.yearly },
+    { value: 'custom', label: t.recurrenceOptions.custom },
   ];
-  const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const WEEKDAY_LABELS = t.weekdayLabels;
   const toggleWeekday = (day: number) => {
     setRecurrenceWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   };
@@ -473,7 +477,7 @@ export function ServiceOrderFormDialog({
 
       const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
       if (error) {
-        editToast({ variant: 'destructive', title: 'Erro ao criar OSs recorrentes', description: getErrorMessage(error) });
+        editToast({ variant: 'destructive', title: t.toastErrorRecurring, description: getErrorMessage(error) });
         return;
       }
 
@@ -497,7 +501,7 @@ export function ServiceOrderFormDialog({
         }
       }
 
-      editToast({ title: `${dates.length} OS(s) criada(s) com recorrência!` });
+      editToast({ title: t.toastRecurringCreated.replace('{n}', String(dates.length)) });
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       draft.clearDraft();
@@ -629,11 +633,11 @@ export function ServiceOrderFormDialog({
                 .update({ scheduled_date: formattedDate })
                 .eq('id', os.id);
             }
-            editToast({ title: `${futureOrders.length} ocorrência(s) futura(s) ajustada(s)` });
+            editToast({ title: t.toastFutureAdjusted.replace('{n}', String(futureOrders.length)) });
           }
         }
       } catch (err: any) {
-        editToast({ variant: 'destructive', title: 'Erro ao ajustar datas futuras', description: getErrorMessage(err) });
+        editToast({ variant: 'destructive', title: t.toastErrorFutureDates, description: getErrorMessage(err) });
       }
     }
 
@@ -685,10 +689,10 @@ export function ServiceOrderFormDialog({
             }
           }
           queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-          editToast({ title: `${groupOrders.length + 1} OS(s) da recorrência atualizadas!` });
+          editToast({ title: t.toastRecurrenceUpdated.replace('{n}', String(groupOrders.length + 1)) });
         }
       } catch (err: any) {
-        editToast({ variant: 'destructive', title: 'Erro ao atualizar recorrência', description: getErrorMessage(err) });
+        editToast({ variant: 'destructive', title: t.toastErrorRecurrenceUpdate, description: getErrorMessage(err) });
       }
     }
 
@@ -703,12 +707,18 @@ export function ServiceOrderFormDialog({
     );
   };
 
+  const STEPS_WITH_LABELS = useMemo(() => [
+    { key: 'client' as const, label: t.stepClient },
+    { key: 'equipment' as const, label: t.stepEquipment },
+    { key: 'details' as const, label: t.stepDetails },
+  ], [t.stepClient, t.stepEquipment, t.stepDetails]);
+
   const activeSteps = useMemo(() => {
-    if (serviceOrder) return STEPS;
-    if (customerMode === 'adhoc') return STEPS.filter(s => s.key !== 'equipment');
-    if (!showEquipmentStep) return STEPS.filter(s => s.key !== 'equipment');
-    return STEPS;
-  }, [showEquipmentStep, serviceOrder, customerMode]);
+    if (serviceOrder) return STEPS_WITH_LABELS;
+    if (customerMode === 'adhoc') return STEPS_WITH_LABELS.filter(s => s.key !== 'equipment');
+    if (!showEquipmentStep) return STEPS_WITH_LABELS.filter(s => s.key !== 'equipment');
+    return STEPS_WITH_LABELS;
+  }, [showEquipmentStep, serviceOrder, customerMode, STEPS_WITH_LABELS]);
 
   const currentStepKey = activeSteps[step]?.key || 'client';
 
@@ -736,24 +746,24 @@ export function ServiceOrderFormDialog({
       <div className="flex items-center justify-between gap-3">
         <Label className="cursor-default flex items-center gap-1.5 text-sm">
           <MapPinned className="h-4 w-4 text-primary" />
-          Endereço de serviço (diferente do cliente)
+          {t.serviceAddressLabel}
         </Label>
         <LabeledSwitch
           value={useServiceAddress ? 'on' : 'off'}
           onChange={(v) => setUseServiceAddress(v === 'on')}
-          off={{ value: 'off', label: 'Não' }}
-          on={{ value: 'on', label: 'Sim' }}
-          aria-label="Usar endereço de serviço diferente do cliente"
+          off={{ value: 'off', label: t.switchNo }}
+          on={{ value: 'on', label: t.switchYes }}
+          aria-label={t.serviceAddressLabel}
         />
       </div>
       {useServiceAddress && (
         <div className="space-y-3 pt-1">
           <p className="text-xs text-muted-foreground">
-            O atendimento será feito neste endereço (filial, obra, evento). Quando vazio, usa o endereço do cliente.
+            {t.serviceAddressNote}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label>CEP</Label>
+              <Label>{t.labelZip}</Label>
               <CepLookup
                 value={svcCep}
                 onChange={setSvcCep}
@@ -766,11 +776,11 @@ export function ServiceOrderFormDialog({
               />
             </div>
             <div>
-              <Label>Número</Label>
-              <Input value={svcNumber} onChange={e => setSvcNumber(e.target.value)} placeholder="Número" />
+              <Label>{t.labelNumber}</Label>
+              <Input value={svcNumber} onChange={e => setSvcNumber(e.target.value)} placeholder={t.placeholderNumber} />
             </div>
             <div className="sm:col-span-2">
-              <Label>Endereço</Label>
+              <Label>{t.labelAddress}</Label>
               <AddressAutocomplete
                 value={svcAddress}
                 onChange={setSvcAddress}
@@ -784,15 +794,15 @@ export function ServiceOrderFormDialog({
                     setSvcCep(c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c);
                   }
                 }}
-                placeholder="Rua, Avenida..."
+                placeholder={t.placeholderAddress}
               />
             </div>
             <div>
-              <Label>Bairro</Label>
-              <Input value={svcNeighborhood} onChange={e => setSvcNeighborhood(e.target.value)} placeholder="Bairro" />
+              <Label>{t.labelNeighborhood}</Label>
+              <Input value={svcNeighborhood} onChange={e => setSvcNeighborhood(e.target.value)} placeholder={t.labelNeighborhood} />
             </div>
             <div className="sm:col-span-2">
-              <Label>UF / Cidade</Label>
+              <Label>{t.labelStateCity}</Label>
               <StateCitySelector
                 selectedState={svcState}
                 selectedCity={svcCity}
@@ -814,22 +824,22 @@ export function ServiceOrderFormDialog({
           {step > 0 && (
             <Button type="button" variant="outline" onClick={goBack}>
               <ChevronLeft className="mr-2 h-4 w-4" />
-              Voltar
+              {t.btnBack}
             </Button>
           )}
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t.btnCancel}
           </Button>
           {isLastStep ? (
             <Button type="submit" form="os-edit-form" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar
+              {t.btnSave}
             </Button>
           ) : (
             <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
-              Próximo
+              {t.btnNext}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           )}
@@ -839,7 +849,7 @@ export function ServiceOrderFormDialog({
 
     return (
       <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS" className="sm:max-w-[920px]" footer={editFooter}>
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.titleEdit} className="sm:max-w-[920px]" footer={editFooter}>
         {isPmocOrder && (
           <PmocComplianceBadge variant="ribbon" withTooltip className="mb-4" />
         )}
@@ -874,14 +884,14 @@ export function ServiceOrderFormDialog({
               <div className="space-y-4">
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cliente *</FormLabel>
+                    <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
                       <SearchableSelect
                         options={customerOptions}
                         value={field.value}
                         onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }}
-                        placeholder="Selecione o cliente"
-                        searchPlaceholder="Buscar cliente..."
+                        placeholder={t.placeholderSelectCustomer}
+                        searchPlaceholder={t.placeholderSearchCustomer}
                       />
                     </FormControl>
                     <FormMessage />
@@ -893,12 +903,12 @@ export function ServiceOrderFormDialog({
 
                 <FormField control={form.control} name="service_type_id" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo de Serviço</FormLabel>
+                    <FormLabel>{t.labelServiceType}</FormLabel>
                     <FormControl>
                       <SearchableSelect
                         options={[
-                          { value: 'none', label: 'Nenhum' },
-                          ...serviceTypes.filter(t => t.is_active).map((st) => ({
+                          { value: 'none', label: t.noServiceType },
+                          ...serviceTypes.filter(st => st.is_active).map((st) => ({
                             value: st.id,
                             label: st.name,
                             icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
@@ -906,8 +916,8 @@ export function ServiceOrderFormDialog({
                         ]}
                         value={field.value || 'none'}
                         onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                        placeholder="Selecione"
-                        searchPlaceholder="Buscar tipo de serviço..."
+                        placeholder={t.placeholderSelectService}
+                        searchPlaceholder={t.placeholderSearchService}
                       />
                     </FormControl>
                     <FormMessage />
@@ -920,7 +930,7 @@ export function ServiceOrderFormDialog({
                   selectedTeamIds={selectedAssigneeTeamIds}
                   onChangeUsers={setSelectedAssigneeUserIds}
                   onChangeTeams={setSelectedAssigneeTeamIds}
-                  label="Responsáveis"
+                  label={t.labelAssignees}
                 />
               </div>
             )}
@@ -929,7 +939,7 @@ export function ServiceOrderFormDialog({
             {currentStepKey === 'equipment' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Selecione o(s) equipamento(s).</p>
+                  <p className="text-sm text-muted-foreground">{t.equipmentSelectOne}</p>
                   {equipment.length > 0 && (
                     <Button
                       type="button"
@@ -943,7 +953,7 @@ export function ServiceOrderFormDialog({
                         }
                       }}
                     >
-                      {selectedEquipmentIds.length === equipment.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                      {selectedEquipmentIds.length === equipment.length ? t.btnDeselectAll : t.btnSelectAll}
                     </Button>
                   )}
                 </div>
@@ -966,7 +976,7 @@ export function ServiceOrderFormDialog({
                   </label>
                 ))}
                 {equipment.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento cadastrado para este cliente.</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t.equipmentNone}</p>
                 )}
               </div>
             )}
@@ -977,49 +987,49 @@ export function ServiceOrderFormDialog({
                 <div className="grid gap-4 sm:grid-cols-3">
                   <FormField control={form.control} name="service_type_id" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo da OS</FormLabel>
+                      <FormLabel>{t.labelServiceType}</FormLabel>
                       <FormControl>
                         <SearchableSelect
                           value={field.value || 'none'}
                           options={[
-                            { value: 'none', label: 'Sem tipo' },
+                            { value: 'none', label: t.noServiceType },
                             ...serviceTypes.filter(st => st.is_active).map(st => ({
                               value: st.id,
                               label: st.name,
                             })),
                           ]}
                           onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                          placeholder="Selecione"
-                          searchPlaceholder="Buscar tipo de serviço..."
+                          placeholder={t.placeholderSelectService}
+                          searchPlaceholder={t.placeholderSearchService}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="scheduled_date" render={({ field }) => (
-                    <FormItem><FormLabel>Data Agendada</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="scheduled_time" render={({ field }) => (
-                    <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>{t.labelScheduledTime}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 <FormField control={form.control} name="duration_minutes" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duração</FormLabel>
+                    <FormLabel>{t.labelDuration}</FormLabel>
                     <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || 120)}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="15">15 min</SelectItem>
-                        <SelectItem value="30">30 min</SelectItem>
-                        <SelectItem value="45">45 min</SelectItem>
-                        <SelectItem value="60">1 hora</SelectItem>
-                        <SelectItem value="90">1h30</SelectItem>
-                        <SelectItem value="120">2 horas</SelectItem>
-                        <SelectItem value="180">3 horas</SelectItem>
-                        <SelectItem value="240">4 horas</SelectItem>
-                        <SelectItem value="300">5 horas</SelectItem>
-                        <SelectItem value="360">6 horas</SelectItem>
-                        <SelectItem value="480">8 horas</SelectItem>
+                        <SelectItem value="15">{t.duration15}</SelectItem>
+                        <SelectItem value="30">{t.duration30}</SelectItem>
+                        <SelectItem value="45">{t.duration45}</SelectItem>
+                        <SelectItem value="60">{t.duration60}</SelectItem>
+                        <SelectItem value="90">{t.duration90}</SelectItem>
+                        <SelectItem value="120">{t.duration120}</SelectItem>
+                        <SelectItem value="180">{t.duration180}</SelectItem>
+                        <SelectItem value="240">{t.duration240}</SelectItem>
+                        <SelectItem value="300">{t.duration300}</SelectItem>
+                        <SelectItem value="360">{t.duration360}</SelectItem>
+                        <SelectItem value="480">{t.duration480}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1029,21 +1039,21 @@ export function ServiceOrderFormDialog({
                 {/* Checklist per equipment */}
                 {selectedEquipmentIds.length > 0 ? (
                   <div className="space-y-3">
-                    <p className="text-sm font-medium">Checklists por equipamento</p>
+                    <p className="text-sm font-medium">{t.checklistByEquipment}</p>
                     {selectedEquipmentIds.map((eqId) => {
                       const eq = equipment.find(e => e.id === eqId);
                       const selectedTemplates = equipmentTemplateMap[eqId] || [];
-                      const availableTemplates = filteredTemplates.filter(t => !selectedTemplates.includes(t.id));
+                      const availableTemplates = filteredTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
                       return (
                         <div key={eqId} className="rounded-lg border p-3 space-y-2">
-                          <p className="text-sm font-medium">{eq?.name || 'Equipamento'}</p>
+                          <p className="text-sm font-medium">{eq?.name || t.checklistEquipmentFallback}</p>
                           {selectedTemplates.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                               {selectedTemplates.map(tId => {
-                                const tmpl = filteredTemplates.find(t => t.id === tId);
+                                const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
                                 return (
                                   <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                                    {tmpl?.name || 'Checklist'}
+                                    {tmpl?.name || t.checklistStandalone}
                                     <button
                                       type="button"
                                       className="ml-1 rounded-full hover:bg-muted p-0.5"
@@ -1072,16 +1082,16 @@ export function ServiceOrderFormDialog({
                               }}
                             >
                               <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Adicionar checklist..." />
+                                <SelectValue placeholder={t.placeholderAddChecklist} />
                               </SelectTrigger>
                               <SelectContent>
-                                {availableTemplates.map((t) => (
-                                  <SelectItem key={t.id} value={t.id}>
-                                    {t.name} ({t.questions?.length || 0} perguntas)
+                                {availableTemplates.map((tmpl) => (
+                                  <SelectItem key={tmpl.id} value={tmpl.id}>
+                                    {tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})
                                   </SelectItem>
                                 ))}
                                 {availableTemplates.length === 0 && (
-                                  <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
+                                  <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
                                 )}
                               </SelectContent>
                             </Select>
@@ -1090,7 +1100,7 @@ export function ServiceOrderFormDialog({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                title="Pré-visualizar checklist"
+                                title={t.btnPreviewChecklist}
                                 onClick={() => setPreviewTemplateId(selectedTemplates[0])}
                               >
                                 <Eye className="h-4 w-4" />
@@ -1103,14 +1113,14 @@ export function ServiceOrderFormDialog({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">Checklists</Label>
+                    <Label className="text-sm font-medium">{t.checklistStandalone}</Label>
                     {selectedStandaloneTemplateIds.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {selectedStandaloneTemplateIds.map(tId => {
-                          const tmpl = filteredTemplates.find(t => t.id === tId);
+                          const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
                           return (
                             <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                              {tmpl?.name || 'Checklist'}
+                              {tmpl?.name || t.checklistStandalone}
                               <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
                                 ✕
                               </button>
@@ -1121,18 +1131,18 @@ export function ServiceOrderFormDialog({
                     )}
                     <div className="flex gap-2 items-center">
                       <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
-                        <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar checklist..." /></SelectTrigger>
+                        <SelectTrigger className="flex-1"><SelectValue placeholder={t.placeholderAddChecklist} /></SelectTrigger>
                         <SelectContent>
-                          {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).map((t) => (
-                            <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
+                          {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).map((tmpl) => (
+                            <SelectItem key={tmpl.id} value={tmpl.id}>{tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})</SelectItem>
                           ))}
-                          {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).length === 0 && (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
+                          {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).length === 0 && (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
                           )}
                         </SelectContent>
                       </Select>
                       {selectedStandaloneTemplateIds.length > 0 && (
-                        <Button type="button" variant="ghost" size="icon" title="Pré-visualizar" onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
+                        <Button type="button" variant="ghost" size="icon" title={t.btnPreview} onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       )}
@@ -1142,35 +1152,35 @@ export function ServiceOrderFormDialog({
 
                 <FormField control={form.control} name="description" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descrição do Serviço</FormLabel>
+                    <FormLabel>{t.labelDescription}</FormLabel>
                     {isPmocOrder && (
                       <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground sm:text-sm">
                         <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
                         <p className="leading-relaxed">
-                          Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade — escreva pensando em quem está do outro lado (cliente, fiscal sanitário).
+                          {t.pmocDescriptionWarning}
                         </p>
                       </div>
                     )}
-                    <FormControl><Textarea placeholder="Descreva o serviço a ser realizado" {...field} /></FormControl>
+                    <FormControl><Textarea placeholder={t.placeholderDescription} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="notes" render={({ field }) => (
-                  <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>{t.labelNotes}</FormLabel><FormControl><Textarea placeholder={t.placeholderNotes} {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
 
                 {/* Pesquisa de Satisfação (NPS) ao finalizar */}
                 <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
                   <Label className="cursor-default flex items-center gap-1.5 text-sm">
                     <Star className="h-4 w-4 text-warning" />
-                    Gerar Pesquisa de Satisfação ao finalizar?
+                    {t.npsLabel}
                   </Label>
                   <LabeledSwitch
                     value={generateNpsSurvey ? 'on' : 'off'}
                     onChange={(v) => setGenerateNpsSurvey(v === 'on')}
-                    off={{ value: 'off', label: 'Não' }}
-                    on={{ value: 'on', label: 'Sim' }}
-                    aria-label="Gerar pesquisa de satisfação ao finalizar a OS"
+                    off={{ value: 'off', label: t.switchNo }}
+                    on={{ value: 'on', label: t.switchYes }}
+                    aria-label={t.npsLabel}
                   />
                 </div>
               </div>
@@ -1184,17 +1194,17 @@ export function ServiceOrderFormDialog({
       <AlertDialog open={contractDateDialogOpen} onOpenChange={setContractDateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Alterar data da recorrência?</AlertDialogTitle>
+            <AlertDialogTitle>{t.contractDateDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta OS pertence a um contrato recorrente. Deseja ajustar apenas esta data ou todas as ocorrências futuras?
+              {t.contractDateDialogDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={() => { setPendingEditData(null); }}>
-              Cancelar
+              {t.btnCancel}
             </AlertDialogCancel>
             <AlertDialogAction className="bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => handleContractDateChoice(false)}>
-              Apenas esta
+              {t.contractDateOnlyThis}
             </AlertDialogAction>
             <AlertDialogAction onClick={() => handleContractDateChoice(true)}>
               Esta e futuras
@@ -1207,20 +1217,20 @@ export function ServiceOrderFormDialog({
       <AlertDialog open={recurrenceEditDialogOpen} onOpenChange={setRecurrenceEditDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Editar recorrência</AlertDialogTitle>
+            <AlertDialogTitle>{t.recurrenceEditDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta OS faz parte de uma recorrência. Deseja aplicar as alterações apenas nesta OS ou em todas da recorrência?
+              {t.recurrenceEditDialogDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={() => { setPendingEditData(null); }}>
-              Cancelar
+              {t.btnCancel}
             </AlertDialogCancel>
             <AlertDialogAction className="bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => handleRecurrenceEditChoice(false)}>
-              Apenas esta
+              {t.recurrenceEditOnlyThis}
             </AlertDialogAction>
             <AlertDialogAction onClick={() => handleRecurrenceEditChoice(true)}>
-              Todas da recorrência
+              {t.recurrenceEditAll}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1235,22 +1245,22 @@ export function ServiceOrderFormDialog({
         {step > 0 && (
           <Button type="button" variant="outline" onClick={goBack}>
             <ChevronLeft className="mr-2 h-4 w-4" />
-            Voltar
+            {t.btnBack}
           </Button>
         )}
       </div>
       <div className="flex gap-2">
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-          Cancelar
+          {t.btnCancel}
         </Button>
         {isLastStep ? (
           <Button type="submit" form="os-create-form" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {recurrenceEnabled ? 'Criar OS Recorrentes' : 'Criar OS'}
+            {recurrenceEnabled ? t.btnCreateRecurring : t.btnCreate}
           </Button>
         ) : (
           <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
-            Próximo
+            {t.btnNext}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         )}
@@ -1259,7 +1269,7 @@ export function ServiceOrderFormDialog({
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço" className="sm:max-w-[920px]" footer={createFooter}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.titleCreate} className="sm:max-w-[920px]" footer={createFooter}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -1318,7 +1328,7 @@ export function ServiceOrderFormDialog({
                   size="sm"
                   onClick={() => { setCustomerMode('existing'); }}
                 >
-                  Cliente cadastrado
+                  {t.customerRegistered}
                 </Button>
                 <Button
                   type="button"
@@ -1326,14 +1336,14 @@ export function ServiceOrderFormDialog({
                   size="sm"
                   onClick={() => { setCustomerMode('adhoc'); form.setValue('customer_id', ''); setSelectedCustomerId(undefined); setSelectedEquipmentIds([]); }}
                 >
-                  Cliente avulso
+                  {t.customerAdhoc}
                 </Button>
               </div>
 
               {customerMode === 'existing' ? (
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cliente *</FormLabel>
+                    <FormLabel>{t.labelCustomer}</FormLabel>
                     <div className="flex gap-2">
                       <div className="flex-1">
                         <FormControl>
@@ -1341,12 +1351,12 @@ export function ServiceOrderFormDialog({
                             options={customerOptions}
                             value={field.value}
                             onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
-                            placeholder="Selecione o cliente"
-                            searchPlaceholder="Buscar cliente..."
+                            placeholder={t.placeholderSelectCustomer}
+                            searchPlaceholder={t.placeholderSearchCustomer}
                           />
                         </FormControl>
                       </div>
-                      <Button type="button" variant="outline" size="icon" title="Criar cliente" onClick={() => setQuickCreateCustomerOpen(true)}>
+                      <Button type="button" variant="outline" size="icon" title={t.btnCreateCustomer} onClick={() => setQuickCreateCustomerOpen(true)}>
                         <UserPlus className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1355,18 +1365,18 @@ export function ServiceOrderFormDialog({
                 )} />
               ) : (
                 <div className="space-y-3 rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">O cliente será criado automaticamente com os dados abaixo.</p>
+                  <p className="text-xs text-muted-foreground">{t.adhocNote}</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                      <Label>Nome *</Label>
-                      <Input value={adhocName} onChange={e => setAdhocName(e.target.value)} placeholder="Nome do cliente" />
+                      <Label>{t.labelName}</Label>
+                      <Input value={adhocName} onChange={e => setAdhocName(e.target.value)} placeholder={t.labelName.replace(' *', '')} />
                     </div>
                     <div>
-                      <Label>Telefone</Label>
+                      <Label>{t.labelPhone}</Label>
                       <Input value={adhocPhone} onChange={e => setAdhocPhone(e.target.value)} placeholder="(00) 00000-0000" />
                     </div>
                     <div>
-                      <Label>CEP</Label>
+                      <Label>{t.labelZip}</Label>
                       <CepLookup
                         value={adhocCep}
                         onChange={setAdhocCep}
@@ -1379,7 +1389,7 @@ export function ServiceOrderFormDialog({
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <Label>Endereço</Label>
+                      <Label>{t.labelAddress}</Label>
                       <AddressAutocomplete
                         value={adhocAddress}
                         onChange={setAdhocAddress}
@@ -1393,15 +1403,15 @@ export function ServiceOrderFormDialog({
                             setAdhocCep(c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
                           }
                         }}
-                        placeholder="Rua, Avenida..."
+                        placeholder={t.placeholderAddress}
                       />
                     </div>
                     <div>
-                      <Label>Bairro</Label>
-                      <Input value={adhocNeighborhood} onChange={e => setAdhocNeighborhood(e.target.value)} placeholder="Bairro" />
+                      <Label>{t.labelNeighborhood}</Label>
+                      <Input value={adhocNeighborhood} onChange={e => setAdhocNeighborhood(e.target.value)} placeholder={t.labelNeighborhood} />
                     </div>
                     <div className="sm:col-span-2">
-                      <Label>UF / Cidade</Label>
+                      <Label>{t.labelStateCity}</Label>
                       <StateCitySelector
                         selectedState={adhocState}
                         selectedCity={adhocCity}
@@ -1418,12 +1428,12 @@ export function ServiceOrderFormDialog({
 
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de Serviço</FormLabel>
+                  <FormLabel>{t.labelServiceType}</FormLabel>
                   <FormControl>
                     <SearchableSelect
                       options={[
-                        { value: 'none', label: 'Nenhum' },
-                        ...serviceTypes.filter(t => t.is_active).map((st) => ({
+                        { value: 'none', label: t.noServiceType },
+                        ...serviceTypes.filter(st => st.is_active).map((st) => ({
                           value: st.id,
                           label: st.name,
                           icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
@@ -1431,8 +1441,8 @@ export function ServiceOrderFormDialog({
                       ]}
                       value={field.value || 'none'}
                       onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                      placeholder="Selecione"
-                      searchPlaceholder="Buscar tipo de serviço..."
+                      placeholder={t.placeholderSelectService}
+                      searchPlaceholder={t.placeholderSearchService}
                     />
                   </FormControl>
                   <FormMessage />
@@ -1445,7 +1455,7 @@ export function ServiceOrderFormDialog({
                 selectedTeamIds={selectedAssigneeTeamIds}
                 onChangeUsers={setSelectedAssigneeUserIds}
                 onChangeTeams={setSelectedAssigneeTeamIds}
-                label="Responsáveis"
+                label={t.labelAssignees}
               />
             </div>
           )}
@@ -1455,7 +1465,7 @@ export function ServiceOrderFormDialog({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {equipment.length > 1 ? 'Selecione um ou mais equipamentos para esta OS.' : 'Selecione o equipamento.'}
+                  {equipment.length > 1 ? t.equipmentSelectMany : t.equipmentSelectOne}
                 </p>
                 {equipment.length > 1 && (
                   <Button
@@ -1471,15 +1481,15 @@ export function ServiceOrderFormDialog({
                     }}
                   >
                     <Check className="h-3.5 w-3.5 mr-1" />
-                    {selectedEquipmentIds.length === equipment.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                    {selectedEquipmentIds.length === equipment.length ? t.btnDeselectAll : t.btnSelectAll}
                   </Button>
                 )}
               </div>
               {equipment.length === 0 && selectedCustomerId && (
-                <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente.</p>
+                <p className="text-sm text-muted-foreground">{t.equipmentNone}</p>
               )}
               {!selectedCustomerId && (
-                <p className="text-sm text-muted-foreground">Selecione um cliente primeiro para ver equipamentos.</p>
+                <p className="text-sm text-muted-foreground">{t.equipmentSelectFirst}</p>
               )}
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {equipment.map((eq) => (
@@ -1505,7 +1515,7 @@ export function ServiceOrderFormDialog({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{eq.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {[eq.brand, eq.model].filter(Boolean).join(' - ') || 'Sem detalhes'}
+                        {[eq.brand, eq.model].filter(Boolean).join(' - ') || t.equipmentNoDetails}
                       </p>
                       {(eq as any).location && (
                         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -1523,7 +1533,7 @@ export function ServiceOrderFormDialog({
               {selectedCustomerId && (
                 <Button type="button" variant="outline" size="sm" onClick={() => setQuickCreateOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Criar equipamento
+                  {t.btnCreateEquipment}
                 </Button>
               )}
             </div>
@@ -1534,28 +1544,28 @@ export function ServiceOrderFormDialog({
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField control={form.control} name="scheduled_date" render={({ field }) => (
-                  <FormItem><FormLabel>Data Agendada</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="scheduled_time" render={({ field }) => (
-                  <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>{t.labelScheduledTime}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="duration_minutes" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duração</FormLabel>
+                    <FormLabel>{t.labelDuration}</FormLabel>
                     <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || 120)}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="15">15 min</SelectItem>
-                        <SelectItem value="30">30 min</SelectItem>
-                        <SelectItem value="45">45 min</SelectItem>
-                        <SelectItem value="60">1 hora</SelectItem>
-                        <SelectItem value="90">1h30</SelectItem>
-                        <SelectItem value="120">2 horas</SelectItem>
-                        <SelectItem value="180">3 horas</SelectItem>
-                        <SelectItem value="240">4 horas</SelectItem>
-                        <SelectItem value="300">5 horas</SelectItem>
-                        <SelectItem value="360">6 horas</SelectItem>
-                        <SelectItem value="480">8 horas</SelectItem>
+                        <SelectItem value="15">{t.duration15}</SelectItem>
+                        <SelectItem value="30">{t.duration30}</SelectItem>
+                        <SelectItem value="45">{t.duration45}</SelectItem>
+                        <SelectItem value="60">{t.duration60}</SelectItem>
+                        <SelectItem value="90">{t.duration90}</SelectItem>
+                        <SelectItem value="120">{t.duration120}</SelectItem>
+                        <SelectItem value="180">{t.duration180}</SelectItem>
+                        <SelectItem value="240">{t.duration240}</SelectItem>
+                        <SelectItem value="300">{t.duration300}</SelectItem>
+                        <SelectItem value="360">{t.duration360}</SelectItem>
+                        <SelectItem value="480">{t.duration480}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1566,21 +1576,21 @@ export function ServiceOrderFormDialog({
               {/* Checklist per equipment */}
               {selectedEquipmentIds.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">Checklists por equipamento</p>
+                  <p className="text-sm font-medium">{t.checklistByEquipment}</p>
                   {selectedEquipmentIds.map((eqId) => {
                     const eq = equipment.find(e => e.id === eqId);
                     const selectedTemplates = equipmentTemplateMap[eqId] || [];
-                    const availableTemplates = filteredTemplates.filter(t => !selectedTemplates.includes(t.id));
+                    const availableTemplates = filteredTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
                     return (
                       <div key={eqId} className="rounded-lg border p-3 space-y-2">
-                        <p className="text-sm font-medium">{eq?.name || 'Equipamento'}</p>
+                        <p className="text-sm font-medium">{eq?.name || t.checklistEquipmentFallback}</p>
                         {selectedTemplates.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {selectedTemplates.map(tId => {
-                              const tmpl = filteredTemplates.find(t => t.id === tId);
+                              const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
                               return (
                                 <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                                  {tmpl?.name || 'Checklist'}
+                                  {tmpl?.name || t.checklistStandalone}
                                   <button
                                     type="button"
                                     className="ml-1 rounded-full hover:bg-muted p-0.5"
@@ -1609,16 +1619,16 @@ export function ServiceOrderFormDialog({
                             }}
                           >
                             <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Adicionar checklist..." />
+                              <SelectValue placeholder={t.placeholderAddChecklist} />
                             </SelectTrigger>
                             <SelectContent>
-                              {availableTemplates.map((t) => (
-                                <SelectItem key={t.id} value={t.id}>
-                                  {t.name} ({t.questions?.length || 0} perguntas)
+                              {availableTemplates.map((tmpl) => (
+                                <SelectItem key={tmpl.id} value={tmpl.id}>
+                                  {tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})
                                 </SelectItem>
                               ))}
                               {availableTemplates.length === 0 && (
-                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
                               )}
                             </SelectContent>
                           </Select>
@@ -1627,7 +1637,7 @@ export function ServiceOrderFormDialog({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              title="Pré-visualizar checklist"
+                              title={t.btnPreviewChecklist}
                               onClick={() => setPreviewTemplateId(selectedTemplates[0])}
                             >
                               <Eye className="h-4 w-4" />
@@ -1640,14 +1650,14 @@ export function ServiceOrderFormDialog({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Checklists</Label>
+                  <Label className="text-sm font-medium">{t.checklistStandalone}</Label>
                   {selectedStandaloneTemplateIds.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedStandaloneTemplateIds.map(tId => {
-                        const tmpl = filteredTemplates.find(t => t.id === tId);
+                        const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
                         return (
                           <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                            {tmpl?.name || 'Checklist'}
+                            {tmpl?.name || t.checklistStandalone}
                             <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
                               ✕
                             </button>
@@ -1658,18 +1668,18 @@ export function ServiceOrderFormDialog({
                   )}
                   <div className="flex gap-2 items-center">
                     <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
-                      <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar checklist..." /></SelectTrigger>
+                      <SelectTrigger className="flex-1"><SelectValue placeholder={t.placeholderAddChecklist} /></SelectTrigger>
                       <SelectContent>
-                        {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).map((t) => (
-                          <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
+                        {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).map((tmpl) => (
+                          <SelectItem key={tmpl.id} value={tmpl.id}>{tmpl.name} ({tmpl.questions?.length || 0} {t.checklistQuestionCount.replace('{n}', '').trim()})</SelectItem>
                         ))}
-                        {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).length === 0 && (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
+                        {filteredTemplates.filter(tmpl => !selectedStandaloneTemplateIds.includes(tmpl.id)).length === 0 && (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.checklistNoneAvailable}</div>
                         )}
                       </SelectContent>
                     </Select>
                     {selectedStandaloneTemplateIds.length > 0 && (
-                      <Button type="button" variant="ghost" size="icon" title="Pré-visualizar" onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
+                      <Button type="button" variant="ghost" size="icon" title={t.btnPreview} onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
                         <Eye className="h-4 w-4" />
                       </Button>
                     )}
@@ -1678,10 +1688,10 @@ export function ServiceOrderFormDialog({
               )}
 
               <FormField control={form.control} name="description" render={({ field }) => (
-                <FormItem><FormLabel>Descrição do Serviço</FormLabel><FormControl><Textarea placeholder="Descreva o serviço a ser realizado" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>{t.labelDescription}</FormLabel><FormControl><Textarea placeholder={t.placeholderDescription} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>{t.labelNotes}</FormLabel><FormControl><Textarea placeholder={t.placeholderNotes} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
 
               {/* Recurrence */}
@@ -1690,14 +1700,14 @@ export function ServiceOrderFormDialog({
                   <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
                   <Label className="cursor-pointer flex items-center gap-1.5">
                     <Repeat className="h-4 w-4" />
-                    Recorrência
+                    {t.recurrenceLabel}
                   </Label>
                 </div>
                 {recurrenceEnabled && (
                   <div className="space-y-3 pt-1">
                     <div className="grid gap-3 sm:grid-cols-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Frequência</Label>
+                        <Label className="text-xs">{t.recurrenceFrequency}</Label>
                         <Select value={recurrenceType} onValueChange={setRecurrenceType}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -1708,25 +1718,25 @@ export function ServiceOrderFormDialog({
                         </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">A cada</Label>
+                        <Label className="text-xs">{t.recurrenceEvery}</Label>
                         <div className="flex items-center gap-1.5">
                           <NumericInput value={String(recurrenceInterval ?? '')} onValueChange={(v) => setRecurrenceInterval(Number(v) || 0)} />
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {recurrenceType === 'daily' ? 'dia(s)' :
-                             recurrenceType === 'monthly' ? 'mês(es)' :
-                             recurrenceType === 'yearly' ? 'ano(s)' :
-                             'semana(s)'}
+                            {recurrenceType === 'daily' ? t.recurrenceUnitDays :
+                             recurrenceType === 'monthly' ? t.recurrenceUnitMonths :
+                             recurrenceType === 'yearly' ? t.recurrenceUnitYears :
+                             t.recurrenceUnitWeeks}
                           </span>
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Até</Label>
+                        <Label className="text-xs">{t.recurrenceUntil}</Label>
                         <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
                       </div>
                     </div>
                     {(recurrenceType === 'custom' || recurrenceType === 'weekly') && (
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Repetir em:</Label>
+                        <Label className="text-xs">{t.recurrenceRepeatOn}</Label>
                         <div className="flex gap-1">
                           {WEEKDAY_LABELS.map((label, idx) => (
                             <button
@@ -1754,14 +1764,14 @@ export function ServiceOrderFormDialog({
               <div className="rounded-lg border p-3 flex items-center justify-between gap-3">
                 <Label className="cursor-default flex items-center gap-1.5 text-sm">
                   <Star className="h-4 w-4 text-warning" />
-                  Gerar Pesquisa de Satisfação ao finalizar?
+                  {t.npsLabel}
                 </Label>
                 <LabeledSwitch
                   value={generateNpsSurvey ? 'on' : 'off'}
                   onChange={(v) => setGenerateNpsSurvey(v === 'on')}
-                  off={{ value: 'off', label: 'Não' }}
-                  on={{ value: 'on', label: 'Sim' }}
-                  aria-label="Gerar pesquisa de satisfação ao finalizar a OS"
+                  off={{ value: 'off', label: t.switchNo }}
+                  on={{ value: 'on', label: t.switchYes }}
+                  aria-label={t.npsLabel}
                 />
               </div>
             </div>

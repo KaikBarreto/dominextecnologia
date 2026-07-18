@@ -40,6 +40,8 @@ import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface EquipmentGridCardProps {
   eq: Equipment & { customer?: any };
@@ -56,6 +58,8 @@ function EquipmentGridCard({
   eq, categoryName, categoryColor, isMobile, canManage, onOpen, onEdit, onDelete,
 }: EquipmentGridCardProps) {
   const customerName = eq.customer?.name;
+  const { locale } = useAppLocaleContext();
+  const tEqCard = MESSAGES[locale].app.equipment;
   return (
     <Card
       className="cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99]"
@@ -90,10 +94,10 @@ function EquipmentGridCard({
           ) : <span />}
           {!isMobile && canManage && (
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title="Editar">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-warning" onClick={(e) => onEdit(e)} title={tEqCard.edit}>
                 <Pencil className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title="Excluir">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => onDelete(e)} title={tEqCard.delete}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
@@ -120,6 +124,8 @@ export function EquipmentPanel() {
   const [viewMode, setViewMode] = useViewMode('equipment-view-mode');
 
   const canManageEquipment = isAdminOrGestor() || hasPermission('fn:manage_equipment');
+  const { locale } = useAppLocaleContext();
+  const tEq = MESSAGES[locale].app.equipment;
 
   const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
@@ -243,7 +249,7 @@ export function EquipmentPanel() {
   const filterContent = (
     <div className="space-y-4">
       <FilterCheckboxGroup
-        label="Categoria"
+        label={tEq.filterCategory}
         options={categories.map((cat) => ({
           value: cat.id,
           label: cat.name,
@@ -251,14 +257,14 @@ export function EquipmentPanel() {
         }))}
         selected={categoryFilter}
         onChange={setCategoryFilter}
-        emptyLabel="Todas categorias"
+        emptyLabel={tEq.filterAllCategories}
       />
       <FilterCheckboxGroup
-        label="Cliente"
+        label={tEq.filterCustomer}
         options={customersWithEquipment.map((c) => ({ value: c.id, label: c.name }))}
         selected={customerFilter}
         onChange={setCustomerFilter}
-        emptyLabel="Todos clientes"
+        emptyLabel={tEq.filterAllCustomers}
       />
     </div>
   );
@@ -272,14 +278,14 @@ export function EquipmentPanel() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar equipamentos..."
+                placeholder={tEq.searchPlaceholderMobile}
                 className="pl-10 h-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <FilterSheet
-              triggerLabel="Filtros"
+              triggerLabel={tEq.filterLabel}
               activeCount={activeFilterCount}
               onClear={clearFilters}
             >
@@ -291,8 +297,8 @@ export function EquipmentPanel() {
                 size="icon"
                 className="h-10 w-10 shrink-0 text-warning"
                 onClick={() => setConfigOpen(true)}
-                title="Configurar campos"
-                aria-label="Configurar campos"
+                title={tEq.configureFields}
+                aria-label={tEq.configureFields}
               >
                 <Settings className="h-4 w-4" />
               </Button>
@@ -311,7 +317,7 @@ export function EquipmentPanel() {
             <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, identificador, marca ou cliente..."
+                placeholder={tEq.searchPlaceholder}
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -325,17 +331,17 @@ export function EquipmentPanel() {
           <div className="flex gap-2 flex-wrap">
             <Button
               onClick={() => setConfigOpen(true)}
-              title="Configurar campos"
+              title={tEq.configureFields}
               size="sm"
               className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
             >
               <Settings className="h-4 w-4 mr-2" />
-              Configurar Campos
+              {tEq.configureFields}
             </Button>
             {canManageEquipment && (
               <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewEquipment}>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Equipamento
+                {tEq.newEquipment}
               </Button>
             )}
           </div>
@@ -351,15 +357,15 @@ export function EquipmentPanel() {
         ) : isError ? (
           <EmptyState
             icon={<Package className="h-12 w-12 text-destructive" />}
-            title="Erro ao carregar equipamentos"
-            description="Não foi possível conectar ao servidor. Tente novamente."
-            action={{ label: 'Tentar novamente', onClick: () => refetch() }}
+            title={tEq.loadError}
+            description={tEq.loadErrorDesc}
+            action={{ label: tEq.retry, onClick: () => refetch() }}
           />
         ) : filteredEquipment.length === 0 ? (
           <EmptyState
             icon={<Package className="h-12 w-12" />}
-            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
-            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Tente filtros diferentes' : 'Adicione um equipamento para começar'}
+            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
+            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescAdd}
           />
         ) : (
           <>
@@ -398,15 +404,15 @@ export function EquipmentPanel() {
         ) : isError ? (
           <EmptyState
             icon={<Package className="h-12 w-12 text-destructive" />}
-            title="Erro ao carregar equipamentos"
-            description="Não foi possível conectar ao servidor. Tente novamente."
-            action={{ label: 'Tentar novamente', onClick: () => refetch() }}
+            title={tEq.loadError}
+            description={tEq.loadErrorDesc}
+            action={{ label: tEq.retry, onClick: () => refetch() }}
           />
         ) : filteredEquipment.length === 0 ? (
           <EmptyState
             icon={<Package className="h-12 w-12" />}
-            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
-            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Tente filtros diferentes' : 'Toque em "Novo Equipamento" para começar'}
+            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
+            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescTapMobile}
           />
         ) : (
           <>
@@ -417,14 +423,14 @@ export function EquipmentPanel() {
                     ? [
                         {
                           key: 'edit',
-                          label: 'Editar',
+                          label: tEq.edit,
                           icon: <Pencil className="h-4 w-4" />,
                           variant: 'edit' as const,
                           onClick: () => handleEdit(eq),
                         },
                         {
                           key: 'delete',
-                          label: 'Excluir',
+                          label: tEq.delete,
                           icon: <Trash2 className="h-4 w-4" />,
                           variant: 'destructive' as const,
                           onClick: () => handleDeleteClick(eq),
@@ -483,7 +489,7 @@ export function EquipmentPanel() {
                           variant={eq.status === 'active' ? 'default' : 'secondary'}
                           className="text-[10px] px-2 py-0.5"
                         >
-                          {eq.status === 'active' ? 'Ativo' : 'Inativo'}
+                          {eq.status === 'active' ? tEq.statusActive : tEq.statusInactive}
                         </Badge>
                       ) : undefined
                     }
@@ -506,7 +512,7 @@ export function EquipmentPanel() {
       ) : (
         <div>
           <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
-            Lista de Equipamentos
+            {tEq.listHeading}
           </h2>
           <Card>
             <CardContent className="p-0">
@@ -519,20 +525,18 @@ export function EquipmentPanel() {
               ) : isError ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Package className="mb-4 h-12 w-12 text-destructive" />
-                  <h3 className="text-lg font-medium">Erro ao carregar equipamentos</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Não foi possível conectar ao servidor. Tente novamente.
-                  </p>
-                  <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
+                  <h3 className="text-lg font-medium">{tEq.loadError}</h3>
+                  <p className="text-muted-foreground mb-4">{tEq.loadErrorDesc}</p>
+                  <Button variant="outline" onClick={() => refetch()}>{tEq.retry}</Button>
                 </div>
               ) : filteredEquipment.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Package className="mb-4 h-12 w-12 text-muted-foreground" />
                   <h3 className="text-lg font-medium">
-                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
+                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
                   </h3>
                   <p className="text-muted-foreground">
-                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Tente filtros diferentes' : 'Clique em "Novo Equipamento" para começar'}
+                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescClick}
                   </p>
                 </div>
               ) : (
@@ -541,13 +545,13 @@ export function EquipmentPanel() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[60px] text-xs uppercase tracking-wider">Foto</TableHead>
-                          <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                          <SortableTableHead sortKey="location" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Local</SortableTableHead>
-                          <SortableTableHead sortKey="_customer_name_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Cliente</SortableTableHead>
-                          <SortableTableHead sortKey="_category_name_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Categoria</SortableTableHead>
-                          <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Status</SortableTableHead>
-                          <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
+                          <TableHead className="w-[60px] text-xs uppercase tracking-wider">{tEq.colPhoto}</TableHead>
+                          <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{tEq.colName}</SortableTableHead>
+                          <SortableTableHead sortKey="location" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">{tEq.colLocation}</SortableTableHead>
+                          <SortableTableHead sortKey="_customer_name_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{tEq.colCustomer}</SortableTableHead>
+                          <SortableTableHead sortKey="_category_name_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{tEq.colCategory}</SortableTableHead>
+                          <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{tEq.colStatus}</SortableTableHead>
+                          <TableHead className="w-[100px] text-xs uppercase tracking-wider">{tEq.colActions}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -581,7 +585,7 @@ export function EquipmentPanel() {
                             </TableCell>
                             <TableCell className="hidden lg:table-cell">
                               <Badge variant={(eq as any).status === 'active' ? 'default' : 'secondary'}>
-                                {(eq as any).status === 'active' ? 'Ativo' : 'Inativo'}
+                                {(eq as any).status === 'active' ? tEq.statusActive : tEq.statusInactive}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -589,8 +593,8 @@ export function EquipmentPanel() {
                                 {canManageEquipment && (
                                   <RowActionsMenu
                                     actions={[
-                                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEdit(eq) },
-                                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(eq) },
+                                      { label: tEq.edit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(eq) },
+                                      { label: tEq.delete, icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(eq) },
                                     ]}
                                   />
                                 )}
@@ -646,18 +650,18 @@ export function EquipmentPanel() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir equipamento</AlertDialogTitle>
+            <AlertDialogTitle>{tEq.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir "{equipmentToDelete?.name}"? Esta ação não pode ser desfeita.
+              {tEq.deleteConfirm.replace('{name}', equipmentToDelete?.name ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tEq.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {tEq.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

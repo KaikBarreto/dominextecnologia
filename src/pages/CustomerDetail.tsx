@@ -54,6 +54,8 @@ import { CustomerTransactionDetailModal } from '@/components/financial/CustomerT
 import { parseISO } from 'date-fns';
 import type { FinancialTransaction } from '@/types/database';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
 
@@ -77,6 +79,9 @@ export default function CustomerDetail() {
   // por id (UUID) ou por `public_short_code`. `id` abaixo é sempre o id real.
   const { id: routeParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const tCustomers = MESSAGES[locale].app.customers;
+  const t = tCustomers.detail;
   const isMobile = useIsMobile();
   const { isAdminOrGestor, hasPermission } = useAuth();
   const canViewCustomerFinancial = isAdminOrGestor() || hasPermission('fn:view_customer_financial');
@@ -155,10 +160,10 @@ export default function CustomerDetail() {
     if (!equipmentToDelete) return;
     const { error } = await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
     if (error) {
-      toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: t.equipDeleteError, description: getErrorMessage(error) });
     } else {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      toast({ title: 'Equipamento excluído!' });
+      toast({ title: t.equipDeleted });
     }
     setEquipmentToDelete(null);
   };
@@ -175,9 +180,9 @@ export default function CustomerDetail() {
     if (!taskToDelete) return;
     try {
       await deleteServiceOrder.mutateAsync(taskToDelete.id);
-      toast({ title: 'Tarefa excluída' });
+      toast({ title: t.taskDeleted });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro ao excluir tarefa', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.taskDeleteError, description: getErrorMessage(err) });
     } finally {
       setTaskToDelete(null);
     }
@@ -224,20 +229,20 @@ export default function CustomerDetail() {
 
   const tabs: { key: TabKey; label: string }[] = useMemo(() => {
     const allTabs: { key: TabKey; label: string }[] = [
-      { key: 'geral', label: 'Geral' },
-      { key: 'equipamentos', label: 'Equipamentos' },
-      { key: 'historico', label: 'Histórico de OS' },
-      { key: 'tarefas', label: 'Tarefas' },
+      { key: 'geral', label: t.tabGeneral },
+      { key: 'equipamentos', label: t.tabEquipment },
+      { key: 'historico', label: t.tabHistory },
+      { key: 'tarefas', label: t.tabTasks },
     ];
     if (hasPortal) {
-      allTabs.push({ key: 'chamados', label: 'Chamados' });
+      allTabs.push({ key: 'chamados', label: t.tabTickets });
     }
-    allTabs.push({ key: 'contratos', label: 'Contratos' });
+    allTabs.push({ key: 'contratos', label: t.tabContracts });
     if (canViewCustomerFinancial) {
-      allTabs.push({ key: 'financeiro', label: 'Financeiro' });
+      allTabs.push({ key: 'financeiro', label: t.tabFinancial });
     }
     return allTabs;
-  }, [canViewCustomerFinancial, hasPortal]);
+  }, [canViewCustomerFinancial, hasPortal, t]);
 
   // Portal é criado automaticamente para todo cliente: apenas buscamos o token ativo existente.
   useEffect(() => {
@@ -272,10 +277,10 @@ export default function CustomerDetail() {
     setUpdatingPortalVisibility(false);
     if (error) {
       setPortalIsPublic(prev);
-      toast({ variant: 'destructive', title: 'Erro ao atualizar portal', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: t.portalUpdateError, description: getErrorMessage(error) });
       return;
     }
-    toast({ title: next ? 'Portal público ativado' : 'Portal agora exige login' });
+    toast({ title: next ? t.portalPublicOn : t.portalPublicOff });
   };
 
   if (isLoading) {
@@ -285,8 +290,8 @@ export default function CustomerDetail() {
   if (!customer) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/clientes')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
-        <p className="text-muted-foreground">Cliente não encontrado.</p>
+        <Button variant="ghost" onClick={() => navigate('/clientes')}><ArrowLeft className="mr-2 h-4 w-4" /> {t.back}</Button>
+        <p className="text-muted-foreground">{t.notFound}</p>
       </div>
     );
   }
@@ -327,9 +332,9 @@ export default function CustomerDetail() {
               </PopoverTrigger>
               <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Buscar cliente..." />
+                  <CommandInput placeholder={t.switcherSearch} />
                   <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain">
-                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                    <CommandEmpty>{t.switcherEmpty}</CommandEmpty>
                     <CommandGroup>
                       {customerOptions.map((opt) => (
                         <CommandItem
@@ -369,7 +374,7 @@ export default function CustomerDetail() {
                 <TooltipTrigger asChild>
                   <label className="flex items-center gap-1.5 cursor-pointer select-none">
                     <span className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
-                      Portal Público
+                      {t.portalPublicLabel}
                     </span>
                     <Switch
                       checked={portalIsPublic}
@@ -380,38 +385,35 @@ export default function CustomerDetail() {
                   </label>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[260px]">
-                  <p>
-                    Ligado: qualquer pessoa com o link vê o portal (somente leitura).
-                    Desligado: o link exige login da sua empresa.
-                  </p>
+                  <p>{t.portalPublicTooltip}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
           <RowActionsMenu
-            label="Ações"
+            label={t.actions}
             triggerClassName="border border-border px-3"
             actions={[
               {
-                label: 'Copiar link do portal',
+                label: t.copyPortalLink,
                 icon: Copy,
-                onClick: () => { if (portalLink) { navigator.clipboard.writeText(portalLink); toast({ title: 'Link do portal copiado!' }); } },
+                onClick: () => { if (portalLink) { navigator.clipboard.writeText(portalLink); toast({ title: t.portalLinkCopied }); } },
                 hidden: !hasPortal || !portalLink,
               },
               {
-                label: 'Abrir portal',
+                label: t.openPortal,
                 icon: ExternalLink,
                 onClick: () => { if (portalLink) window.open(portalLink, '_blank', 'noopener,noreferrer'); },
                 hidden: !hasPortal || !portalLink,
               },
               {
-                label: 'Editar',
+                label: tCustomers.edit,
                 icon: Edit,
                 variant: 'edit',
                 onClick: () => setEditCustomerOpen(true),
               },
               {
-                label: 'Excluir',
+                label: tCustomers.delete,
                 icon: Trash2,
                 variant: 'delete',
                 onClick: () => setDeleteConfirmOpen(true),
@@ -456,7 +458,7 @@ export default function CustomerDetail() {
               const originData = activeOrigins.find(o => o.name === originName);
               const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
               rows.push({
-                label: 'Origem',
+                label: t.fieldOrigin,
                 node: (
                   <div className="flex items-center gap-2">
                     {LucideIcon && originData && (
@@ -470,11 +472,11 @@ export default function CustomerDetail() {
               });
             }
             if (customer.document) {
-              rows.push({ label: 'CPF/CNPJ', node: <span className="text-sm font-medium leading-tight">{customer.document}</span> });
+              rows.push({ label: t.fieldDocument, node: <span className="text-sm font-medium leading-tight">{customer.document}</span> });
             }
             if (customer.email) {
               rows.push({
-                label: 'Email',
+                label: t.fieldEmail,
                 node: (
                   <span className="text-sm font-medium flex items-center gap-1 leading-tight">
                     <Mail className="h-3 w-3 shrink-0" />{customer.email}
@@ -486,7 +488,7 @@ export default function CustomerDetail() {
               const whatsappNumber = customer.phone.replace(/\D/g, '');
               const whatsappUrl = `https://wa.me/55${whatsappNumber}`;
               rows.push({
-                label: 'Telefone',
+                label: t.fieldPhone,
                 node: (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium flex items-center gap-1 leading-tight">
@@ -509,7 +511,7 @@ export default function CustomerDetail() {
             }
             if (customer.birth_date) {
               rows.push({
-                label: 'Data de Nascimento',
+                label: t.fieldBirthDate,
                 node: (
                   <span className="text-sm font-medium flex items-center gap-1 leading-tight">
                     <Calendar className="h-3 w-3 shrink-0" />
@@ -523,7 +525,7 @@ export default function CustomerDetail() {
             return (
               <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}>
                 <CardContent className="p-4 sm:p-6">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">Informações</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">{t.sectionInfo}</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {rows.map((row, i) => (
                       <div key={i} className="flex flex-col gap-0.5 min-w-0">
@@ -551,7 +553,7 @@ export default function CustomerDetail() {
 
             return (
               <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.sectionAddress}</p>
                 <p className="text-sm font-medium flex items-center gap-1">
                   <MapPin className="h-3 w-3 shrink-0" />
                   {fullAddress}
@@ -576,7 +578,7 @@ export default function CustomerDetail() {
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 min-h-[44px] text-xs font-medium transition-all hover:bg-accent active:scale-[0.98]"
                   >
                     <img src="/icons/google-maps.png" alt="Google Maps" className="h-5 w-5 object-contain" />
-                    Abrir no Google Maps
+                    {t.openGoogleMaps}
                   </a>
                   <a
                     href={wazeUrl}
@@ -585,7 +587,7 @@ export default function CustomerDetail() {
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 min-h-[44px] text-xs font-medium transition-all hover:bg-accent active:scale-[0.98]"
                   >
                     <img src="/icons/waze.png" alt="Waze" className="h-5 w-5 object-contain" />
-                    Abrir no Waze
+                    {t.openWaze}
                   </a>
                 </div>
               </CardContent></Card>
@@ -596,7 +598,7 @@ export default function CustomerDetail() {
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                 <UserCircle className="h-3.5 w-3.5" />
-                Responsável no Local (falar com)
+                {t.sectionContacts}
               </p>
               <Button
                 variant="outline"
@@ -604,16 +606,16 @@ export default function CustomerDetail() {
                 className="min-h-[44px]"
                 onClick={() => { setEditingContact(null); setContactFormOpen(true); }}
               >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
+                <Plus className="h-3.5 w-3.5 mr-1" /> {t.addContact}
               </Button>
             </div>
             {contacts.length === 0 ? (
               <EmptyState
                 size="compact"
                 icon={<UserCircle className="h-10 w-10" />}
-                title="Nenhum contato cadastrado"
-                description="Cadastre quem falar no local deste cliente"
-                action={{ label: 'Adicionar contato', onClick: () => { setEditingContact(null); setContactFormOpen(true); } }}
+                title={t.emptyContactsTitle}
+                description={t.emptyContactsDesc}
+                action={{ label: t.addContactAction, onClick: () => { setEditingContact(null); setContactFormOpen(true); } }}
               />
             ) : (
               <div className="space-y-2">
@@ -643,19 +645,19 @@ export default function CustomerDetail() {
                           triggerClassName="h-7 w-7"
                           actions={[
                             {
-                              label: 'WhatsApp',
+                              label: t.whatsapp,
                               icon: Phone,
                               onClick: () => whatsappUrl && window.open(whatsappUrl, '_blank', 'noopener,noreferrer'),
                               hidden: !whatsappUrl,
                             },
                             {
-                              label: 'Editar contato',
+                              label: t.editContact,
                               icon: Edit,
                               variant: 'edit',
                               onClick: () => { setEditingContact(c); setContactFormOpen(true); },
                             },
                             {
-                              label: 'Excluir contato',
+                              label: t.deleteContact,
                               icon: Trash2,
                               variant: 'delete',
                               onClick: () => setDeleteContactId(c.id),
@@ -672,7 +674,7 @@ export default function CustomerDetail() {
 
           {customer.notes && (
             <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.sectionNotes}</p>
               <p className="text-sm mt-1 leading-relaxed">{customer.notes}</p>
             </CardContent></Card>
           )}
@@ -683,20 +685,20 @@ export default function CustomerDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Equipamentos do Cliente
+              {t.equipmentHeading}
             </h2>
             <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingEquipment(null); setEquipFormOpen(true); }}>
               <Plus className="mr-2 h-4 w-4" />
-              Novo Equipamento
+              {t.newEquipment}
             </Button>
           </div>
           {customerEquipment.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<Package className="h-10 w-10" />}
-              title="Nenhum equipamento"
-              description="Cadastre o primeiro equipamento deste cliente"
-              action={{ label: 'Adicionar equipamento', onClick: () => { setEditingEquipment(null); setEquipFormOpen(true); } }}
+              title={t.emptyEquipmentTitle}
+              description={t.emptyEquipmentDesc}
+              action={{ label: t.addEquipmentAction, onClick: () => { setEditingEquipment(null); setEquipFormOpen(true); } }}
             />
           ) : isMobile ? (
             <div className="rounded-xl border bg-card overflow-hidden">
@@ -706,14 +708,14 @@ export default function CustomerDetail() {
                 const itemActions: ItemAction[] = [
                   {
                     key: 'edit',
-                    label: 'Editar',
+                    label: tCustomers.edit,
                     icon: <Pencil className="h-4 w-4" />,
                     variant: 'edit' as const,
                     onClick: () => handleEditEquipment(eq),
                   },
                   {
                     key: 'delete',
-                    label: 'Excluir',
+                    label: tCustomers.delete,
                     icon: <Trash2 className="h-4 w-4" />,
                     variant: 'destructive' as const,
                     onClick: () => setEquipmentToDelete(eq),
@@ -755,7 +757,7 @@ export default function CustomerDetail() {
                     }
                     trailing={
                       <Badge variant={eq.status === 'active' ? 'default' : 'secondary'} className="text-[10px] px-2 py-0.5">
-                        {eq.status === 'active' ? 'Ativo' : 'Inativo'}
+                        {eq.status === 'active' ? t.equipStatusActive : t.equipStatusInactive}
                       </Badge>
                     }
                   />
@@ -769,12 +771,12 @@ export default function CustomerDetail() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableCell className="w-[60px] text-xs uppercase tracking-wider font-medium text-muted-foreground">Foto</TableCell>
-                        <TableCell className="text-xs uppercase tracking-wider font-medium text-muted-foreground">Nome</TableCell>
-                        <TableCell className="hidden sm:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">Local</TableCell>
-                        <TableCell className="hidden lg:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">Categoria</TableCell>
-                        <TableCell className="hidden lg:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">Status</TableCell>
-                        <TableCell className="w-[100px] text-xs uppercase tracking-wider font-medium text-muted-foreground">Ações</TableCell>
+                        <TableCell className="w-[60px] text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colEquipPhoto}</TableCell>
+                        <TableCell className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colEquipName}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colEquipLocation}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colEquipCategory}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colEquipStatus}</TableCell>
+                        <TableCell className="w-[100px] text-xs uppercase tracking-wider font-medium text-muted-foreground">{t.colEquipActions}</TableCell>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -809,15 +811,15 @@ export default function CustomerDetail() {
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             <Badge variant={eq.status === 'active' ? 'default' : 'secondary'}>
-                              {eq.status === 'active' ? 'Ativo' : 'Inativo'}
+                              {eq.status === 'active' ? t.equipStatusActive : t.equipStatusInactive}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <div onClick={(e) => e.stopPropagation()}>
                               <RowActionsMenu
                                 actions={[
-                                  { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEditEquipment(eq) },
-                                  { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setEquipmentToDelete(eq) },
+                                  { label: tCustomers.edit, icon: Pencil, variant: 'edit', onClick: () => handleEditEquipment(eq) },
+                                  { label: tCustomers.delete, icon: Trash2, variant: 'delete', onClick: () => setEquipmentToDelete(eq) },
                                 ]}
                               />
                             </div>
@@ -833,7 +835,7 @@ export default function CustomerDetail() {
           {isMobile && (
             <FABButton
               icon={<Plus className="h-5 w-5" />}
-              label="Equipamento"
+              label={t.newEquipment}
               onClick={() => { setEditingEquipment(null); setEquipFormOpen(true); }}
             />
           )}
@@ -843,19 +845,19 @@ export default function CustomerDetail() {
       {activeTab === 'historico' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Histórico de OS</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.historyHeading}</h2>
             <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOsFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Nova OS
+              {t.newOs}
             </Button>
           </div>
           {customerOrders.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<ClipboardList className="h-10 w-10" />}
-              title="Nenhuma OS registrada"
-              description="Crie a primeira ordem de serviço deste cliente"
-              action={{ label: 'Nova OS', onClick: () => setOsFormOpen(true) }}
+              title={t.emptyHistoryTitle}
+              description={t.emptyHistoryDesc}
+              action={{ label: t.newOs, onClick: () => setOsFormOpen(true) }}
             />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
@@ -863,10 +865,10 @@ export default function CustomerDetail() {
                 <Table>
                   <TableHeader>
                      <TableRow>
-                      <SortableTableHead sortKey="order_number" sortConfig={osSortConfig} onSort={handleOsSort}>OS</SortableTableHead>
-                      <SortableTableHead sortKey="status" sortConfig={osSortConfig} onSort={handleOsSort}>Status</SortableTableHead>
-                      <SortableTableHead sortKey="scheduled_date" sortConfig={osSortConfig} onSort={handleOsSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={osSortConfig} onSort={() => {}}>Ações</SortableTableHead>
+                      <SortableTableHead sortKey="order_number" sortConfig={osSortConfig} onSort={handleOsSort}>{t.colOsNumber}</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={osSortConfig} onSort={handleOsSort}>{t.colOsStatus}</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_date" sortConfig={osSortConfig} onSort={handleOsSort} className="hidden sm:table-cell">{t.colOsDate}</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={osSortConfig} onSort={() => {}}>{t.colOsActions}</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -893,7 +895,7 @@ export default function CustomerDetail() {
           {isMobile && (
             <FABButton
               icon={<Plus className="h-5 w-5" />}
-              label="OS"
+              label={t.newOs}
               onClick={() => setOsFormOpen(true)}
             />
           )}
@@ -903,19 +905,19 @@ export default function CustomerDetail() {
       {activeTab === 'tarefas' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Tarefas do Cliente</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.tasksHeading}</h2>
             <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setTaskFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Nova Tarefa
+              {t.newTask}
             </Button>
           </div>
           {customerTasks.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<CheckSquare className="h-10 w-10" />}
-              title="Nenhuma tarefa"
-              description="Crie a primeira tarefa deste cliente"
-              action={{ label: 'Nova tarefa', onClick: () => setTaskFormOpen(true) }}
+              title={t.emptyTasksTitle}
+              description={t.emptyTasksDesc}
+              action={{ label: t.newTask, onClick: () => setTaskFormOpen(true) }}
             />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
@@ -923,11 +925,11 @@ export default function CustomerDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <SortableTableHead sortKey="task_title" sortConfig={taskSortConfig} onSort={handleTaskSort}>Tarefa</SortableTableHead>
-                      <SortableTableHead sortKey="status" sortConfig={taskSortConfig} onSort={handleTaskSort}>Status</SortableTableHead>
-                      <SortableTableHead sortKey="scheduled_date" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                      <SortableTableHead sortKey="scheduled_time" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Horário</SortableTableHead>
-                      <TableCell className="w-12 text-right">Ações</TableCell>
+                      <SortableTableHead sortKey="task_title" sortConfig={taskSortConfig} onSort={handleTaskSort}>{t.colTaskTitle}</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={taskSortConfig} onSort={handleTaskSort}>{t.colTaskStatus}</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_date" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">{t.colTaskDate}</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_time" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">{t.colTaskTime}</SortableTableHead>
+                      <TableCell className="w-12 text-right">{t.colTaskActions}</TableCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -943,7 +945,7 @@ export default function CustomerDetail() {
                           </TableCell>
                           <TableCell>
                             <Badge variant={isDone ? 'default' : 'outline'}>
-                              {isDone ? 'Concluída' : task.status === 'em_andamento' ? 'Em andamento' : 'Pendente'}
+                              {isDone ? t.taskDone : task.status === 'em_andamento' ? t.taskInProgress : t.taskPending}
                             </Badge>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
@@ -956,13 +958,13 @@ export default function CustomerDetail() {
                             <RowActionsMenu
                               actions={[
                                 {
-                                  label: 'Editar tarefa',
+                                  label: t.editTask,
                                   icon: Edit,
                                   variant: 'edit',
                                   onClick: () => handleEditTask(task),
                                 },
                                 {
-                                  label: 'Excluir tarefa',
+                                  label: t.deleteTask,
                                   icon: Trash2,
                                   variant: 'delete',
                                   onClick: () => setTaskToDelete(task),
@@ -982,7 +984,7 @@ export default function CustomerDetail() {
           {isMobile && (
             <FABButton
               icon={<Plus className="h-5 w-5" />}
-              label="Tarefa"
+              label={t.newTask}
               onClick={() => setTaskFormOpen(true)}
             />
           )}
@@ -992,14 +994,14 @@ export default function CustomerDetail() {
       {activeTab === 'chamados' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Chamados do Portal</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.ticketsHeading}</h2>
           </div>
           {portalTickets.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<Megaphone className="h-10 w-10" />}
-              title="Nenhum chamado"
-              description={!portalLink ? 'Gere o link do portal para o cliente abrir chamados' : 'Nenhum chamado aberto pelo portal do cliente'}
+              title={t.emptyTicketsTitle}
+              description={!portalLink ? t.emptyTicketsNoPortal : t.emptyTicketsNoData}
             />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
@@ -1007,11 +1009,11 @@ export default function CustomerDetail() {
                 <Table>
                   <TableHeader>
                      <TableRow>
-                      <SortableTableHead sortKey="order_number" sortConfig={ticketSortConfig} onSort={handleTicketSort}>OS</SortableTableHead>
-                      <SortableTableHead sortKey="description" sortConfig={ticketSortConfig} onSort={handleTicketSort}>Descrição</SortableTableHead>
-                      <SortableTableHead sortKey="status" sortConfig={ticketSortConfig} onSort={handleTicketSort}>Status</SortableTableHead>
-                      <SortableTableHead sortKey="created_at" sortConfig={ticketSortConfig} onSort={handleTicketSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={ticketSortConfig} onSort={() => {}}>Ações</SortableTableHead>
+                      <SortableTableHead sortKey="order_number" sortConfig={ticketSortConfig} onSort={handleTicketSort}>{t.colTicketOs}</SortableTableHead>
+                      <SortableTableHead sortKey="description" sortConfig={ticketSortConfig} onSort={handleTicketSort}>{t.colTicketDesc}</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={ticketSortConfig} onSort={handleTicketSort}>{t.colTicketStatus}</SortableTableHead>
+                      <SortableTableHead sortKey="created_at" sortConfig={ticketSortConfig} onSort={handleTicketSort} className="hidden sm:table-cell">{t.colTicketDate}</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={ticketSortConfig} onSort={() => {}}>{t.colTicketActions}</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1042,19 +1044,19 @@ export default function CustomerDetail() {
       {activeTab === 'contratos' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Contratos</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.contractsHeading}</h2>
             <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setContractFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Novo Contrato
+              {t.newContract}
             </Button>
           </div>
           {customerContracts.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<FileText className="h-10 w-10" />}
-              title="Nenhum contrato"
-              description="Vincule o primeiro contrato a este cliente"
-              action={{ label: 'Novo contrato', onClick: () => setContractFormOpen(true) }}
+              title={t.emptyContractsTitle}
+              description={t.emptyContractsDesc}
+              action={{ label: t.addContractAction, onClick: () => setContractFormOpen(true) }}
             />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
@@ -1062,11 +1064,11 @@ export default function CustomerDetail() {
                 <Table>
                   <TableHeader>
                      <TableRow>
-                      <SortableTableHead sortKey="name" sortConfig={contractSortConfig} onSort={handleContractSort}>Nome</SortableTableHead>
-                      <SortableTableHead sortKey="status" sortConfig={contractSortConfig} onSort={handleContractSort}>Status</SortableTableHead>
-                      <SortableTableHead sortKey="frequency_type" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">Frequência</SortableTableHead>
-                      <SortableTableHead sortKey="start_date" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">Início</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={contractSortConfig} onSort={() => {}}>Ações</SortableTableHead>
+                      <SortableTableHead sortKey="name" sortConfig={contractSortConfig} onSort={handleContractSort}>{t.colContractName}</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={contractSortConfig} onSort={handleContractSort}>{t.colContractStatus}</SortableTableHead>
+                      <SortableTableHead sortKey="frequency_type" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">{t.colContractFrequency}</SortableTableHead>
+                      <SortableTableHead sortKey="start_date" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">{t.colContractStart}</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={contractSortConfig} onSort={() => {}}>{t.colContractActions}</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1075,7 +1077,7 @@ export default function CustomerDetail() {
                         <TableCell><p className="font-medium truncate max-w-[200px] leading-tight">{c.name}</p></TableCell>
                         <TableCell>
                           <Badge variant={c.status === 'active' ? 'default' : 'secondary'}>
-                            {c.status === 'active' ? 'Ativo' : c.status === 'paused' ? 'Pausado' : 'Encerrado'}
+                            {c.status === 'active' ? t.contractStatusActive : c.status === 'paused' ? t.contractStatusPaused : t.contractStatusClosed}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">
@@ -1100,7 +1102,7 @@ export default function CustomerDetail() {
           {isMobile && (
             <FABButton
               icon={<Plus className="h-5 w-5" />}
-              label="Contrato"
+              label={t.newContract}
               onClick={() => setContractFormOpen(true)}
             />
           )}
@@ -1109,15 +1111,15 @@ export default function CustomerDetail() {
 
       {activeTab === 'financeiro' && (
         <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Transações do Cliente</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.financialHeading}</h2>
 
           {/* Subabas: Tudo / A vencer / Pagas — mobile usa pills scrolláveis, desktop botões */}
           {isMobile ? (
             <MobilePillTabs
               tabs={[
-                { value: 'tudo', label: 'Tudo' },
-                { value: 'a_vencer', label: 'A vencer' },
-                { value: 'pagas', label: 'Pagas' },
+                { value: 'tudo', label: t.subTabAll },
+                { value: 'a_vencer', label: t.subTabDue },
+                { value: 'pagas', label: t.subTabPaid },
               ]}
               activeTab={financeSubTab}
               onTabChange={(v) => setFinanceSubTab(v as FinanceSubTab)}
@@ -1125,9 +1127,9 @@ export default function CustomerDetail() {
           ) : (
             <div className="flex gap-2">
               {([
-                { value: 'tudo', label: 'Tudo' },
-                { value: 'a_vencer', label: 'A vencer' },
-                { value: 'pagas', label: 'Pagas' },
+                { value: 'tudo', label: t.subTabAll },
+                { value: 'a_vencer', label: t.subTabDue },
+                { value: 'pagas', label: t.subTabPaid },
               ] as const).map((opt) => (
                 <Button
                   key={opt.value}
@@ -1147,17 +1149,17 @@ export default function CustomerDetail() {
               icon={<DollarSign className="h-10 w-10" />}
               title={
                 financeSubTab === 'a_vencer'
-                  ? 'Nada a vencer'
+                  ? t.emptyFinancialDue
                   : financeSubTab === 'pagas'
-                  ? 'Nenhuma transação paga'
-                  : 'Nenhuma transação'
+                  ? t.emptyFinancialPaid
+                  : t.emptyFinancialAll
               }
               description={
                 financeSubTab === 'a_vencer'
-                  ? 'Nenhum lançamento pendente com vencimento a partir de hoje'
+                  ? t.emptyFinancialDueDesc
                   : financeSubTab === 'pagas'
-                  ? 'Nenhum lançamento quitado para este cliente'
-                  : 'Nenhuma transação registrada para este cliente'
+                  ? t.emptyFinancialPaidDesc
+                  : t.emptyFinancialAllDesc
               }
             />
           ) : (
@@ -1166,28 +1168,28 @@ export default function CustomerDetail() {
                 <Table>
                   <TableHeader>
                      <TableRow>
-                      <SortableTableHead sortKey="description" sortConfig={finSortConfig} onSort={handleFinSort}>Descrição</SortableTableHead>
-                      <SortableTableHead sortKey="amount" sortConfig={finSortConfig} onSort={handleFinSort}>Valor</SortableTableHead>
-                      <SortableTableHead sortKey="transaction_date" sortConfig={finSortConfig} onSort={handleFinSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                      <SortableTableHead sortKey="is_paid" sortConfig={finSortConfig} onSort={handleFinSort}>Status</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={finSortConfig} onSort={() => {}}>Ações</SortableTableHead>
+                      <SortableTableHead sortKey="description" sortConfig={finSortConfig} onSort={handleFinSort}>{t.colTxnDesc}</SortableTableHead>
+                      <SortableTableHead sortKey="amount" sortConfig={finSortConfig} onSort={handleFinSort}>{t.colTxnAmount}</SortableTableHead>
+                      <SortableTableHead sortKey="transaction_date" sortConfig={finSortConfig} onSort={handleFinSort} className="hidden sm:table-cell">{t.colTxnDate}</SortableTableHead>
+                      <SortableTableHead sortKey="is_paid" sortConfig={finSortConfig} onSort={handleFinSort}>{t.colTxnStatus}</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={finSortConfig} onSort={() => {}}>{t.colTxnActions}</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactionsPagination.paginatedItems.map((t) => (
-                      <TableRow key={t.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
-                        <TableCell><p className="font-medium leading-tight">{t.description}</p></TableCell>
+                    {transactionsPagination.paginatedItems.map((txn) => (
+                      <TableRow key={txn.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
+                        <TableCell><p className="font-medium leading-tight">{txn.description}</p></TableCell>
                         <TableCell>
-                          <span className={t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}>
-                            {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
+                          <span className={txn.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}>
+                            {txn.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(txn.amount)}
                           </span>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          {format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
+                          {format(new Date(txn.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={t.is_paid ? 'default' : 'secondary'}>
-                            {t.is_paid ? 'Pago' : 'Pendente'}
+                          <Badge variant={txn.is_paid ? 'default' : 'secondary'}>
+                            {txn.is_paid ? t.txnPaid : t.txnPending}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -1195,7 +1197,7 @@ export default function CustomerDetail() {
                             variant="ghost"
                             size="icon"
                             className="min-h-[44px] min-w-[44px]"
-                            onClick={() => setViewingTxn(t)}
+                            onClick={() => setViewingTxn(txn)}
                             title="Ver detalhes"
                           >
                             <Eye className="h-4 w-4" />
@@ -1221,11 +1223,11 @@ export default function CustomerDetail() {
           if (editingEquipment) {
             const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
             if (error) {
-              toast({ variant: 'destructive', title: 'Erro ao atualizar', description: getErrorMessage(error) });
+              toast({ variant: 'destructive', title: t.equipUpdateError, description: getErrorMessage(error) });
               return;
             }
             queryClient.invalidateQueries({ queryKey: ['equipment'] });
-            toast({ title: 'Equipamento atualizado!' });
+            toast({ title: t.equipUpdated });
           } else {
             await createEquipment.mutateAsync({ ...data, customer_id: id });
           }
@@ -1240,9 +1242,9 @@ export default function CustomerDetail() {
       <AlertDialog open={!!equipmentToDelete} onOpenChange={(open) => { if (!open) setEquipmentToDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir equipamento</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteEquipTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir "{equipmentToDelete?.name}"? Esta ação não pode ser desfeita.
+              {t.deleteEquipConfirm.replace('{name}', equipmentToDelete?.name ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1294,11 +1296,9 @@ export default function CustomerDetail() {
       <AlertDialog open={!!taskToDelete} onOpenChange={(open) => { if (!open) setTaskToDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteTaskTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              {taskToDelete?.recurrence_group_id
-                ? 'Esta tarefa faz parte de uma série. Apenas esta ocorrência será excluída — as demais permanecem na agenda.'
-                : 'A tarefa será removida da agenda. Esta ação não pode ser desfeita.'}
+              {taskToDelete?.recurrence_group_id ? t.deleteTaskSeries : t.deleteTaskSingle}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1336,8 +1336,8 @@ export default function CustomerDetail() {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir o cliente "{customer.name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle>{t.deleteCustomerTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.deleteCustomerConfirm.replace('{name}', customer.name)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -1373,8 +1373,8 @@ export default function CustomerDetail() {
       <AlertDialog open={!!deleteContactId} onOpenChange={(open) => { if (!open) setDeleteContactId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir contato</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir este contato?</AlertDialogDescription>
+            <AlertDialogTitle>{t.deleteContactTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.deleteContactConfirm}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

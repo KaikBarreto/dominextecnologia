@@ -18,21 +18,25 @@ import { Card, CardContent } from '@/components/ui/card';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState('equipamentos');
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const tEq = MESSAGES[locale].app.equipment;
 
   const tabItems = [
-    { key: 'equipamentos', label: 'Equipamentos', icon: Package },
-    { key: 'categorias', label: 'Categorias', icon: Tag },
+    { key: 'equipamentos', label: tEq.tabEquipment, icon: Package },
+    { key: 'categorias', label: tEq.tabCategories, icon: Tag },
   ];
 
   return (
     <div className="space-y-6">
       <MobilePageHeader
-        title="Equipamentos"
-        subtitle="Gerencie equipamentos e categorias"
+        title={tEq.title}
+        subtitle={tEq.subtitle}
         icon={Boxes}
       />
 
@@ -88,6 +92,8 @@ export default function EquipmentPage() {
 
 function CategoriesPanel() {
   const { categories, createCategory, updateCategory, deleteCategory } = useEquipmentCategories();
+  const { locale } = useAppLocaleContext();
+  const tc = MESSAGES[locale].app.equipment.categories;
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#3b82f6');
@@ -120,11 +126,11 @@ function CategoriesPanel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-          Categorias de Equipamentos
+          {tc.heading}
         </h2>
         <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Nova Categoria
+          {tc.newCategory}
         </Button>
       </div>
 
@@ -148,8 +154,8 @@ function CategoriesPanel() {
                     onChange={(e) => setEditColor(e.target.value)}
                     className="h-8 w-8 rounded border cursor-pointer"
                   />
-                  <Button size="sm" variant="outline" onClick={handleUpdate}>Salvar</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+                  <Button size="sm" variant="outline" onClick={handleUpdate}>{tc.save}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>{tc.cancel}</Button>
                 </>
               ) : (
                 <>
@@ -183,28 +189,28 @@ function CategoriesPanel() {
           <EmptyState
             size="compact"
             icon={<Tag className="h-10 w-10" />}
-            title="Nenhuma categoria criada"
-            description="Crie categorias para organizar seus equipamentos"
-            action={{ label: 'Nova categoria', onClick: () => setCreateOpen(true) }}
+            title={tc.emptyTitle}
+            description={tc.emptyDesc}
+            action={{ label: tc.newCategory, onClick: () => setCreateOpen(true) }}
           />
         )}
       </div>
 
       {/* Create Category Modal */}
-      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Nova Categoria">
+      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title={tc.newCategory}>
         <div className="space-y-4">
           <div>
-            <Label>Nome da categoria</Label>
+            <Label>{tc.nameLabel}</Label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Ex: Split, Cassete, VRF..."
+              placeholder={tc.namePlaceholder}
               className="mt-1"
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
           </div>
           <div>
-            <Label>Cor</Label>
+            <Label>{tc.colorLabel}</Label>
             <div className="flex items-center gap-3 mt-1">
               <input
                 type="color"
@@ -216,13 +222,13 @@ function CategoriesPanel() {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{tc.cancel}</Button>
             <Button
               className="bg-accent text-accent-foreground hover:bg-accent/90"
               onClick={handleCreate}
               disabled={!newName.trim() || createCategory.isPending}
             >
-              Criar
+              {tc.create}
             </Button>
           </div>
         </div>
@@ -231,11 +237,11 @@ function CategoriesPanel() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita. Equipamentos com esta categoria perderão a associação.</AlertDialogDescription>
+            <AlertDialogTitle>{tc.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tc.deleteDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tc.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
             </AlertDialogAction>
