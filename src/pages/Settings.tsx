@@ -110,8 +110,10 @@ export default function Settings() {
 
   const visibleTabs = settingsTabs.filter(t => {
     if (t.value === 'usuarios') return hasScreenAccess('screen:users');
-    // Regional (idioma/moeda/fuso da empresa) é configuração de admin.
-    if (t.value === 'regional') return canResetSystem;
+    // Regional: aba visível para TODOS (qualquer usuário muda o próprio idioma).
+    // Dentro da aba, campos da empresa (idioma padrão, moeda, fuso) continuam
+    // bloqueados para não-admin via canResetSystem repassado ao componente.
+    if (t.value === 'regional') return true;
     return true;
   });
   const setActiveTab = (tab: string) => {
@@ -1056,7 +1058,7 @@ export default function Settings() {
         );
 
       case 'regional':
-        return <SettingsRegionalContent />;
+        return <SettingsRegionalContent isAdmin={canResetSystem} />;
 
       case 'usabilidade':
         return (

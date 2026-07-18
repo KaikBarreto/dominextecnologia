@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Globe, Coins, Clock, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Globe, Coins, Clock, Loader2, CheckCircle2, AlertTriangle, User } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -14,6 +14,7 @@ import {
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import FlagIcon from '@/components/i18n/FlagIcon';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useToast } from '@/hooks/use-toast';
 import { LOCALES, getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
 import { CURRENCIES, currencyLabel } from '@/lib/i18n/currencies';
@@ -25,17 +26,42 @@ import {
 } from '@/lib/i18n/regionalDefaults';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Configurações → Regional (nível EMPRESA). Define idioma padrão, moeda de
-// operação e fuso da empresa. Auto-save com debounce (padrão da tela). Só admin
-// edita (o card só é montado sob esse gate no Settings.tsx). RLS reforça no
-// servidor — filtro client é só UX.
+// Configurações → Regional.
+//
+// Seção 1 — "Meu idioma": preferência PESSOAL do usuário logado, acessível
+// para qualquer um. Chama setUserLanguage do AppLocaleContext (upsert own-row,
+// otimista). Aplica na hora — sem precisar salvar.
+//
+// Seção 2 — "Padrões da empresa": idioma padrão, moeda e fuso da empresa.
+// Visível para todos, mas editável apenas por admin (prop isAdmin). RLS reforça
+// no servidor — filtro client é só UX.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AUTO_SAVE_DELAY = 700;
 
-export function SettingsRegionalContent() {
+interface SettingsRegionalContentProps {
+  /** true = usuário é admin do tenant (ou super_admin). Libera edição dos campos da empresa. */
+  isAdmin?: boolean;
+}
+
+export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalContentProps) {
+  const { locale: userLocale, setUserLanguage } = useAppLocaleContext();
   const { settings, isLoading, updateSettings, canSave } = useCompanySettings();
   const { toast } = useToast();
+
+  // Estado otimista do seletor pessoal (reflete na hora; hook reverte se falhar).
+  const [personalLocale, setPersonalLocale] = useState<LocaleCode>(userLocale);
+
+  // Sincroniza se o contexto mudar (ex: outro dispositivo / reversal de erro).
+  useEffect(() => {
+    setPersonalLocale(userLocale);
+  }, [userLocale]);
+
+  const handlePersonalLocaleChange = (next: LocaleCode) => {
+    if (next === personalLocale) return;
+    setPersonalLocale(next); // otimista imediato
+    void setUserLanguage(next);
+  };
 
   const [language, setLanguage] = useState<LocaleCode>('pt-br');
   const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
@@ -175,34 +201,84 @@ export function SettingsRegionalContent() {
   })();
 
   return (
-    <Card>
+    <div className="space-y-6">
+      {/* ── SEÇÃO 1: Meu idioma (todos os usuários) ─────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            <CardTitle>Meu idioma</CardTitle>
+          </div>
+          <CardDescription>O idioma que VOCÊ vê no sistema. Aplica na hora, só para você.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-primary" />
+              Idioma
+            </Label>
+            <Select
+              value={personalLocale}
+              onValueChange={(v) => handlePersonalLocaleChange(v as LocaleCode)}
+            >
+              <SelectTrigger>
+                <SelectValue>
+                  <span className="flex items-center gap-2">
+                    <FlagIcon locale={personalLocale} size={18} />
+                    {LOCALES.find((l) => l.code === personalLocale)?.label}
+                  </span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {LOCALES.map((l) => (
+                  <SelectItem key={l.code} value={l.code}>
+                    <span className="flex items-center gap-2">
+                      <FlagIcon locale={l.code} size={18} />
+                      {l.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Preferência pessoal. Sobrepõe o idioma padrão da empresa só para você.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── SEÇÃO 2: Padrões da empresa (somente admin) ──────────────────────── */}
+      <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Globe className="h-5 w-5 text-primary" />
-              <CardTitle>Regional</CardTitle>
+              <CardTitle>Padrões da empresa</CardTitle>
             </div>
-            <CardDescription>Idioma padrão, moeda e fuso horário da empresa</CardDescription>
+            <CardDescription>
+              Idioma padrão, moeda e fuso horário para toda a empresa
+              {!isAdmin && <span className="ml-1 text-muted-foreground/70">(somente admin)</span>}
+            </CardDescription>
           </div>
           {saveStatus}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Idioma padrão */}
+        {/* Idioma padrão da empresa */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-primary" />
             Idioma padrão da empresa
           </Label>
           <p className="text-xs text-muted-foreground">
-            Idioma usado quando o usuário não escolheu um pessoalmente. Cada pessoa pode trocar o próprio no topo do sistema.
+            Idioma aplicado a todos que não escolheram um pessoalmente.
           </p>
           <Select
             value={language}
             onValueChange={(v) => handleLanguageChange(v as LocaleCode)}
-            disabled={!canSave}
+            disabled={!canSave || !isAdmin}
           >
             <SelectTrigger>
               <SelectValue />
@@ -244,7 +320,7 @@ export function SettingsRegionalContent() {
             <Coins className="h-4 w-4 text-primary" />
             Moeda
           </Label>
-          <Select value={currency} onValueChange={setCurrency} disabled={!canSave}>
+          <Select value={currency} onValueChange={setCurrency} disabled={!canSave || !isAdmin}>
             <SelectTrigger>
               <SelectValue>{currencyLabel(currency)}</SelectValue>
             </SelectTrigger>
@@ -289,10 +365,11 @@ export function SettingsRegionalContent() {
             placeholder="Selecione o fuso"
             searchPlaceholder="Buscar fuso (ex: Sao Paulo)"
             emptyMessage="Nenhum fuso encontrado."
-            disabled={!canSave}
+            disabled={!canSave || !isAdmin}
           />
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }
