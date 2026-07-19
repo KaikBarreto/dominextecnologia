@@ -4,6 +4,8 @@ import { idealForeground } from '@/lib/colorContrast';
 import type { RefrigerantGas } from '@/hooks/useEquipmentCatalog';
 import { GasBadge } from './GasBadge';
 import { explicacaoBadge } from './gasBadgeInfo';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Cinza neutro pra gás sem cor cadastrada (régua: gás sempre com bolinha). */
 const COR_NEUTRA = '#6b7280';
@@ -72,6 +74,8 @@ function darken(hex: string, amount = 0.18): string {
  * guia do fabricante quando existir).
  */
 export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => void }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.gasDetail;
   const cor = gas.cor || COR_NEUTRA;
   const fg = idealForeground(cor);
   const inflamavel = gasInflamavel(gas.classe_seguranca);
@@ -79,17 +83,17 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
   // `explain` marca as linhas cujo valor é um badge com tooltip (tipo do gás e
   // classe de segurança). Só vira tooltip se houver explicação no mapa.
   const rows: { label: string; value: string | null; explain?: boolean }[] = [
-    { label: 'Composição', value: gas.composicao },
-    { label: 'Tipo', value: gas.tipo, explain: true },
-    { label: 'GWP', value: num(gas.gwp) },
-    { label: 'ODP', value: num(gas.odp) },
-    { label: 'Ponto de ebulição', value: num(gas.ponto_ebulicao_c) != null ? `${num(gas.ponto_ebulicao_c)} °C` : null },
-    { label: 'Glide', value: num(gas.glide_k) != null ? `${num(gas.glide_k)} K` : null },
-    { label: 'Classe de segurança', value: gas.classe_seguranca, explain: true },
-    { label: 'Óleo', value: gas.oleo },
-    { label: 'Substitui', value: gas.substitui },
-    { label: 'Aplicação', value: gas.aplicacao },
-    { label: 'Observações', value: gas.observacoes },
+    { label: t.composition, value: gas.composicao },
+    { label: t.type, value: gas.tipo, explain: true },
+    { label: t.gwp, value: num(gas.gwp) },
+    { label: t.odp, value: num(gas.odp) },
+    { label: t.boilingPoint, value: num(gas.ponto_ebulicao_c) != null ? `${num(gas.ponto_ebulicao_c)} °C` : null },
+    { label: t.glide, value: num(gas.glide_k) != null ? `${num(gas.glide_k)} K` : null },
+    { label: t.safetyClass, value: gas.classe_seguranca, explain: true },
+    { label: t.oil, value: gas.oleo },
+    { label: t.replaces, value: gas.substitui },
+    { label: t.application, value: gas.aplicacao },
+    { label: t.notes, value: gas.observacoes },
   ];
   const visibleRows = rows.filter((r) => r.value && r.value.trim().length > 0);
 
@@ -108,7 +112,7 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
           }
         >
           <Download className="h-5 w-5 shrink-0" />
-          Ficha técnica
+          {t.technicalSheet}
         </Button>
       )}
       {gas.guia_oficial_url && (
@@ -124,7 +128,7 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
           }
         >
           <Download className="h-5 w-5 shrink-0" />
-          Guia do fabricante
+          {t.manufacturerGuide}
         </Button>
       )}
     </>
@@ -140,7 +144,7 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Droplet className="h-6 w-6 shrink-0 text-foreground/70" />
           <h1 className="truncate text-lg font-semibold tracking-tight lg:text-2xl">
-            Fluido Refrigerante
+            {t.heading}
           </h1>
         </div>
       </div>
@@ -200,10 +204,10 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
                   ) : (
                     r.value
                   )}
-                  {r.label === 'Classe de segurança' && inflamavel && (
+                  {r.label === t.safetyClass && inflamavel && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-orange-600 dark:text-orange-400">
                       <Flame className="h-3 w-3 shrink-0" fill="currentColor" strokeWidth={2} aria-hidden />
-                      Inflamável
+                      {t.flammable}
                     </span>
                   )}
                 </span>

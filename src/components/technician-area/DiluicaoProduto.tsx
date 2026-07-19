@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Modo da calculadora. */
 type Modo = 'preparar' | 'tenho';
@@ -50,6 +52,8 @@ function GarrafaDiluicao({
   unidadeLabel,
   clipId,
   legendaZerada = false,
+  waterLabel,
+  productLabel,
 }: {
   produto: number;
   agua: number;
@@ -59,6 +63,8 @@ function GarrafaDiluicao({
   /** Quando true, a legenda e o aria-label mostram 0/0 mesmo com o desenho cheio
    *  (estado vazio: galão cheio de água só para ilustrar). */
   legendaZerada?: boolean;
+  waterLabel: string;
+  productLabel: string;
 }) {
   const total = produto + agua;
   const temLiquido = total > 0;
@@ -144,7 +150,7 @@ function GarrafaDiluicao({
             style={{ backgroundColor: sky }}
           />
           <span className="text-foreground">
-            Água {fmt(legAgua)} {unidadeLabel}
+            {waterLabel} {fmt(legAgua)} {unidadeLabel}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -153,7 +159,7 @@ function GarrafaDiluicao({
             style={{ backgroundColor: produtoCor }}
           />
           <span className="text-foreground">
-            Produto {fmt(legProduto)} {unidadeLabel}
+            {productLabel} {fmt(legProduto)} {unidadeLabel}
           </span>
         </div>
       </div>
@@ -162,6 +168,8 @@ function GarrafaDiluicao({
 }
 
 export function DiluicaoProduto() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.dilution;
   const [modo, setModo] = usePersistedState<Modo>('tt:state:diluicao:modo', 'preparar');
   const [unidade, setUnidade] = usePersistedState<Unidade>('tt:state:diluicao:unidade', 'ml');
 
@@ -205,11 +213,9 @@ export function DiluicaoProduto() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Diluição de Produto</h2>
+        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          {modo === 'preparar'
-            ? 'Quanto de produto e de água para chegar no volume desejado.'
-            : 'Quanto de água adicionar ao produto que você já tem.'}
+          {modo === 'preparar' ? t.subtitlePrepare : t.subtitleHave}
         </p>
       </div>
 
@@ -217,12 +223,12 @@ export function DiluicaoProduto() {
       <div className="space-y-4 rounded-lg border border-border bg-card p-4">
         {/* Alavanca de modo */}
         <div className="flex flex-col items-center gap-1.5 border-b border-border pb-4">
-          <Label className="text-base text-muted-foreground md:text-lg">Modo de Diluição</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.modeLabel}</Label>
           <LabeledSwitch
             value={modo}
             onChange={setModo}
-            off={{ value: 'preparar', label: 'Preparar solução' }}
-            on={{ value: 'tenho', label: 'Tenho X de produto' }}
+            off={{ value: 'preparar', label: t.modePrepare }}
+            on={{ value: 'tenho', label: t.modeHave }}
             size="lg"
             aria-label="Modo de cálculo da diluição"
           />
@@ -230,9 +236,9 @@ export function DiluicaoProduto() {
 
         {/* Proporção + presets — centralizado */}
         <div className="flex flex-col items-center gap-2">
-          <Label className="text-base text-muted-foreground md:text-lg">Proporção</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.ratioLabel}</Label>
           <div className="flex items-center gap-3">
-            <span className="text-2xl font-bold text-muted-foreground">1 para</span>
+            <span className="text-2xl font-bold text-muted-foreground">{t.ratioPrefix}</span>
             <NumericInput
               decimal
               value={n}
@@ -268,7 +274,7 @@ export function DiluicaoProduto() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:mx-auto lg:max-w-md">
             <div className="space-y-1.5">
               <Label className="text-base text-muted-foreground md:text-lg">
-                Volume final desejado
+                {t.volumeFinalLabel}
               </Label>
               <NumericInput
                 decimal
@@ -279,7 +285,7 @@ export function DiluicaoProduto() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">Unidade</Label>
+              <Label className="text-base text-muted-foreground md:text-lg">{t.unitLabel}</Label>
               <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
                 <LabeledSwitch
                   value={unidade}
@@ -296,7 +302,7 @@ export function DiluicaoProduto() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:mx-auto lg:max-w-md">
             <div className="space-y-1.5">
               <Label className="text-base text-muted-foreground md:text-lg">
-                Quantidade de produto
+                {t.productQtyLabel}
               </Label>
               <NumericInput
                 decimal
@@ -307,7 +313,7 @@ export function DiluicaoProduto() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">Unidade</Label>
+              <Label className="text-base text-muted-foreground md:text-lg">{t.unitLabel}</Label>
               <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
                 <LabeledSwitch
                   value={unidade}
@@ -333,13 +339,15 @@ export function DiluicaoProduto() {
                 agua={resultadoPreparar.agua}
                 unidadeLabel={unidadeLabel}
                 clipId="galao-preparar"
+                waterLabel={t.waterLabel}
+                productLabel={t.productLabel}
               />
               <div className="min-w-0 space-y-4">
                 {/* Caixa única com os dois valores (divisor vertical) */}
                 <div className="grid grid-cols-2 divide-x divide-border rounded-lg border border-border bg-muted/30 lg:mx-auto lg:grid-cols-1 lg:max-w-xs lg:divide-x-0 lg:divide-y">
                   <div className="p-3 text-center">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Produto
+                      {t.resultProduct}
                     </p>
                     <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                       {fmt(resultadoPreparar.produto)}
@@ -348,7 +356,7 @@ export function DiluicaoProduto() {
                   </div>
                   <div className="p-3 text-center">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Água
+                      {t.resultWater}
                     </p>
                     <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                       {fmt(resultadoPreparar.agua)}
@@ -357,8 +365,10 @@ export function DiluicaoProduto() {
                   </div>
                 </div>
                 <p className="text-center text-sm text-muted-foreground">
-                  Total: {fmt(resultadoPreparar.volumeFinal)} {unidadeLabel} na proporção 1:
-                  {fmt(nNum)}.
+                  {t.resultTotalSummary
+                    .replace('{vol}', fmt(resultadoPreparar.volumeFinal))
+                    .replace('{unit}', unidadeLabel)
+                    .replace('{ratio}', fmt(nNum))}
                 </p>
               </div>
             </div>
@@ -370,10 +380,12 @@ export function DiluicaoProduto() {
                 unidadeLabel={unidadeLabel}
                 clipId="galao-preparar-vazio"
                 legendaZerada
+                waterLabel={t.waterLabel}
+                productLabel={t.productLabel}
               />
               <div className="min-w-0">
                 <p className="text-center text-sm text-muted-foreground">
-                  Informe a proporção e o volume final para ver o quanto de produto e água usar.
+                  {t.emptyPrepare}
                 </p>
               </div>
             </div>
@@ -385,13 +397,15 @@ export function DiluicaoProduto() {
               agua={resultadoTenho.agua}
               unidadeLabel={unidadeLabel}
               clipId="galao-tenho"
+              waterLabel={t.waterLabel}
+              productLabel={t.productLabel}
             />
             <div className="min-w-0 space-y-4">
               {/* Caixa única com os dois valores (divisor vertical) */}
               <div className="grid grid-cols-2 divide-x divide-border rounded-lg border border-border bg-muted/30 lg:mx-auto lg:grid-cols-1 lg:max-w-xs lg:divide-x-0 lg:divide-y">
                 <div className="p-3 text-center">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Água a adicionar
+                    {t.resultWaterToAdd}
                   </p>
                   <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                     {fmt(resultadoTenho.agua)}
@@ -400,17 +414,20 @@ export function DiluicaoProduto() {
                 </div>
                 <div className="p-3 text-center">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Volume final
+                    {t.resultFinalVolume}
                   </p>
                   <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                     {fmt(resultadoTenho.volumeFinal)}
                     <span className="ml-1 text-base font-semibold sm:text-lg">{unidadeLabel}</span>
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">(capacidade do galão)</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t.resultCapacity}</p>
                 </div>
               </div>
               <p className="text-center text-sm text-muted-foreground">
-                {fmt(resultadoTenho.produto)} {unidadeLabel} de produto na proporção 1:{fmt(nNum)}.
+                {t.resultProductSummary
+                  .replace('{qty}', fmt(resultadoTenho.produto))
+                  .replace('{unit}', unidadeLabel)
+                  .replace('{ratio}', fmt(nNum))}
               </p>
             </div>
           </div>
@@ -422,10 +439,12 @@ export function DiluicaoProduto() {
               unidadeLabel={unidadeLabel}
               clipId="galao-tenho-vazio"
               legendaZerada
+              waterLabel={t.waterLabel}
+              productLabel={t.productLabel}
             />
             <div className="min-w-0">
               <p className="text-center text-sm text-muted-foreground">
-                Informe a proporção e a quantidade de produto para ver quanta água adicionar.
+                {t.emptyHave}
               </p>
             </div>
           </div>
@@ -436,12 +455,12 @@ export function DiluicaoProduto() {
       <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
         <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
         <p className="text-xs leading-relaxed">
-          <span className="font-semibold text-foreground">Como ler: </span>
-          Proporção 1:N = 1 parte de produto para N partes de água.
+          <span className="font-semibold text-foreground">{t.howToReadLabel}</span>
+          {t.howToReadText}
         </p>
       </div>
 
-      <ToolDisclaimer texto="Ferramenta de apoio. Os valores são uma referência — confira sempre o rótulo do produto, a ficha técnica do fabricante e as normas de segurança aplicáveis antes de usar." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );
 }

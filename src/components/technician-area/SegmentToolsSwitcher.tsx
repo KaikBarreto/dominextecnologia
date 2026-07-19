@@ -12,6 +12,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { getSiteSegments, getSegment } from '@/utils/companySegments';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface SegmentToolsSwitcherProps {
   /** Nicho atualmente selecionado (pode diferir do da empresa). */
@@ -33,6 +35,8 @@ export function SegmentToolsSwitcher({
   companySegment,
   onSelect,
 }: SegmentToolsSwitcherProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.home;
   const [open, setOpen] = useState(false);
   const selectedSeg = getSegment(selected);
 
@@ -73,9 +77,9 @@ export function SegmentToolsSwitcher({
           overlay, então é inofensivo (não regride). */}
       <PopoverContent align="start" className="z-[70] w-[260px] p-0 sm:w-[320px]">
         <Command>
-          <CommandInput placeholder="Buscar nicho..." />
+          <CommandInput placeholder={t.segmentSearch} />
           <CommandList>
-            <CommandEmpty>Nenhum nicho encontrado.</CommandEmpty>
+            <CommandEmpty>{t.segmentNotFound}</CommandEmpty>
             <CommandGroup>
               {options.map((seg) => {
                 const isSelected = seg.value === selected;
@@ -99,7 +103,7 @@ export function SegmentToolsSwitcher({
                     <span className="flex-1 whitespace-normal break-words leading-snug">{seg.label}</span>
                     {isCompany && (
                       <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Incluído
+                        {t.segmentIncluded}
                       </span>
                     )}
                     <Check

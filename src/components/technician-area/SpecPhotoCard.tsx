@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Zap, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface Spec {
   label: string;
@@ -34,6 +36,9 @@ export function SpecPhotoCard({
   fallbackIcon: FallbackIcon = Zap,
   className,
 }: SpecPhotoCardProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools;
+
   const [imgErro, setImgErro] = useState(false);
   // Viewer dedicado em tela cheia (mesmo da OS). Nunca abre em nova aba.
   const [ampliada, setAmpliada] = useState(false);
@@ -59,7 +64,7 @@ export function SpecPhotoCard({
               src={fotoSrc}
               alt={fotoAlt}
               role="button"
-              aria-label="Ampliar foto"
+              aria-label={t.common.enlargePhoto}
               tabIndex={0}
               onClick={() => fotoClicavel && setAmpliada(true)}
               onKeyDown={(e) => {

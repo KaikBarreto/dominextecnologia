@@ -19,6 +19,8 @@ import {
   formatarCaboNumero,
   type TensaoCaboValue,
 } from '@/lib/caboEletrico';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Valor sentinela do select para o modo de BTU livre. */
 const PERSONALIZADO = 'personalizado';
@@ -30,6 +32,8 @@ function num(s: string, fallback = 0): number {
 }
 
 export function CaboEletrico() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.wireGauge;
   // Default: 220v (mais comum em campo) e primeiro BTU disponível dessa tensão.
   const [tensao, setTensao] = usePersistedState<TensaoCaboValue>('tt:state:cabo-eletrico:tensao', '220');
   const [btu, setBtu] = usePersistedState<string>('tt:state:cabo-eletrico:btu', '');
@@ -62,9 +66,9 @@ export function CaboEletrico() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Cabo Elétrico</h2>
+        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          Seleção de seção do cabo elétrico para ar-condicionado em geral.
+          {t.subtitle}
         </p>
       </div>
 
@@ -73,7 +77,7 @@ export function CaboEletrico() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label className="text-base text-muted-foreground md:text-lg">
-              Selecione a capacidade (BTU)
+              {t.selectBtu}
             </Label>
             <Select value={btu} onValueChange={setBtu}>
               <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
@@ -85,7 +89,7 @@ export function CaboEletrico() {
                     {b.toLocaleString('pt-BR')} BTUs
                   </SelectItem>
                 ))}
-                <SelectItem value={PERSONALIZADO}>Personalizado</SelectItem>
+                <SelectItem value={PERSONALIZADO}>{t.custom}</SelectItem>
               </SelectContent>
             </Select>
             {isPersonalizado && (
@@ -104,7 +108,7 @@ export function CaboEletrico() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">Selecione a tensão</Label>
+            <Label className="text-base text-muted-foreground md:text-lg">{t.selectVoltage}</Label>
             <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
               <LabeledSwitch
                 value={tensao}
@@ -119,7 +123,7 @@ export function CaboEletrico() {
 
           <div className="space-y-1.5 md:col-span-2">
             <Label className="text-base text-muted-foreground md:text-lg">
-              Distância do quadro elétrico (m)
+              {t.distanceLabel}
             </Label>
             <div className="relative">
               <NumericInput
@@ -144,20 +148,20 @@ export function CaboEletrico() {
             <div className="min-w-0 flex-1 space-y-4">
             <div className="text-center">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                É recomendado utilizar
+                {t.resultLabel}
               </p>
               <p className="mt-2 text-xl font-semibold leading-snug sm:text-2xl">
-                Cabo elétrico:{' '}
+                {t.wirePrefix}{' '}
                 <span className="whitespace-nowrap text-primary">
                   {formatarCaboNumero(resultado.secaoMM2)} mm²
                 </span>
                 <span className="mx-1.5 text-muted-foreground">·</span>
-                Disjuntor:{' '}
+                {t.breakerPrefix}{' '}
                 <span className="whitespace-nowrap text-primary">
                   {resultado.tipo} Din C{resultado.disjuntorA}
                 </span>
                 <span className="mx-1.5 text-muted-foreground">·</span>
-                Tensão do AC:{' '}
+                {t.voltagePrefix}{' '}
                 <span className="whitespace-nowrap text-primary">{resultado.tensao}v</span>
               </p>
             </div>
@@ -165,7 +169,7 @@ export function CaboEletrico() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Corrente de projeto
+                  {t.projectCurrent}
                 </p>
                 <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                   {formatarCaboNumero(resultado.correnteProjeto)}
@@ -174,7 +178,7 @@ export function CaboEletrico() {
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Queda de tensão
+                  {t.voltageDrop}
                 </p>
                 <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                   {formatarCaboNumero(resultado.quedaPct)}
@@ -185,29 +189,26 @@ export function CaboEletrico() {
 
             {resultado.correnteEstimada && (
               <p className="rounded-lg border border-border bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
-                Valor estimado: BTU fora da faixa tabelada. A corrente foi aproximada pelo ponto mais
-                próximo — confira a etiqueta do equipamento.
+                {t.estimatedNote}
               </p>
             )}
 
             {resultado.alerta127Alto && (
               <p className="rounded-lg border border-border bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
-                Evite 127V acima de ~18.000 BTU: a corrente fica alta demais para a rede monofásica.
-                Considere usar 220V.
+                {t.highCurrentNote}
               </p>
             )}
 
             {resultado.foraDeAlcance && (
               <p className="rounded-lg border border-border bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
-                Distância muito grande para as seções disponíveis. Mostrando a maior seção (25 mm²)
-                como melhor esforço — valide com um eletricista.
+                {t.outOfRangeNote}
               </p>
             )}
             </div>
 
             <SpecPhotoCard
               className="lg:order-first lg:w-[22rem] lg:shrink-0"
-              titulo="Disjuntor recomendado"
+              titulo={t.breakerTitle}
               fotoSrc={
                 resultado.tipo === 'Bipolar'
                   ? '/images/disjuntores/din-bipolar.png'
@@ -217,27 +218,27 @@ export function CaboEletrico() {
               fallbackIcon={Zap}
               specs={
                 [
-                  { label: 'Tipo', value: resultado.tipo },
-                  { label: 'Curva', value: 'C' },
-                  { label: 'Corrente (In)', value: `${resultado.disjuntorA} A` },
+                  { label: t.specType, value: resultado.tipo },
+                  { label: t.specCurve, value: 'C' },
+                  { label: t.specCurrentIn, value: `${resultado.disjuntorA} A` },
                   {
-                    label: 'Polos',
+                    label: t.specPoles,
                     value: `${resultado.tipo === 'Bipolar' ? 2 : 1} (${resultado.tipo})`,
                   },
-                  { label: 'Tensão', value: `${tensao}V` },
-                  { label: 'Padrão', value: 'NBR NM 60898' },
+                  { label: t.specVoltage, value: `${tensao}V` },
+                  { label: t.specStandard, value: 'NBR NM 60898' },
                 ] satisfies Spec[]
               }
             />
           </div>
         ) : (
           <p className="text-center text-sm text-muted-foreground">
-            Selecione capacidade, tensão e distância.
+            {t.selectAll}
           </p>
         )}
       </div>
 
-      <ToolDisclaimer texto="Ferramenta de apoio. Estimativa de referência baseada na NBR 5410 — confira sempre a corrente (A) na etiqueta do equipamento e valide com um eletricista habilitado antes de executar. Cabo ou disjuntor subdimensionado é risco de incêndio." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );
 }

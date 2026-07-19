@@ -25,6 +25,10 @@ import {
   type UnidadePressao,
   type Curva,
 } from '@/lib/refrigerantes';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+
+type TPtChart = (typeof MESSAGES)['pt-br']['app']['technicianTools']['ptChart'];
 
 /** Converte string crua de input numérico em number, com default seguro. */
 function num(str: string, def = NaN): number {
@@ -54,12 +58,14 @@ function ehMistura(r: Refrigerante): boolean {
 }
 
 /** Seções rotuladas da listagem de gases: Puros primeiro, depois Misturas. */
-function secoesPurosEMisturas(): { label: string; refrigerantes: Refrigerante[] }[] {
+function secoesPurosEMisturas(
+  sections: TPtChart['sections'],
+): { label: string; refrigerantes: Refrigerante[] }[] {
   const puros = REFRIGERANTES.filter((r) => !ehMistura(r));
   const misturas = REFRIGERANTES.filter((r) => ehMistura(r));
   return [
-    { label: 'Puros', refrigerantes: puros },
-    { label: 'Misturas (blends)', refrigerantes: misturas },
+    { label: sections.pure, refrigerantes: puros },
+    { label: sections.blends, refrigerantes: misturas },
   ].filter((s) => s.refrigerantes.length > 0);
 }
 
@@ -87,12 +93,14 @@ function ReguaDupla({
   refrigId,
   curva,
   unidade,
+  dragHint,
 }: {
   tempClamped: number;
   setTemp: (t: number) => void;
   refrigId: string;
   curva: Curva;
   unidade: UnidadePressao;
+  dragHint: string;
 }) {
   const trilhoRef = useRef<HTMLDivElement>(null);
   const arrastando = useRef(false);
@@ -217,7 +225,7 @@ function ReguaDupla({
         </div>
       </div>
 
-      <div className="text-[10px] text-muted-foreground">arraste ↑ ↓</div>
+      <div className="text-[10px] text-muted-foreground">{dragHint}</div>
     </div>
   );
 }
@@ -232,9 +240,11 @@ function ReguaDupla({
 function ReguaUnificada({
   unidade,
   setUnidade,
+  t,
 }: {
   unidade: UnidadePressao;
   setUnidade: (u: UnidadePressao) => void;
+  t: TPtChart;
 }) {
   const [tempStr, setTempStr] = usePersistedState('tt:state:regua-gases:tempStr', '5');
   const [pressaoStr, setPressaoStr] = usePersistedState('tt:state:regua-gases:pressaoStr', '');
@@ -332,7 +342,7 @@ function ReguaUnificada({
         : '';
 
   // Gases agrupados pro select em 2 seções rotuladas: Puros / Misturas (blends).
-  const secoes = useMemo(() => secoesPurosEMisturas(), []);
+  const secoes = useMemo(() => secoesPurosEMisturas(t.sections), [t.sections]);
 
   return (
     <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 lg:gap-6">
@@ -342,33 +352,34 @@ function ReguaUnificada({
         refrigId={refrigId}
         curva={curva}
         unidade={unidade}
+        dragHint={t.dragHint}
       />
 
       <div className="flex w-40 flex-col items-stretch gap-3 lg:w-56 lg:gap-4">
         {/* Fórmula — alavanca centralizada abaixo do label */}
         <div className="flex flex-col items-center gap-1.5">
-          <Label className="text-xs font-semibold text-muted-foreground">Fórmula</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t.formulaLabel}</Label>
           <LabeledSwitch
             value={formulaEfetiva}
             onChange={setFormula}
             off={{ value: 'dew', label: 'Dew' }}
             on={{ value: 'bubble', label: 'Bubble' }}
             disabled={!refrig?.temGlide}
-            aria-label="Fórmula da curva"
+            aria-label={t.formulaLabel}
           />
           {!refrig?.temGlide && (
             <span className="text-[10px] font-medium text-muted-foreground">
-              curva única (sem glide)
+              {t.singleCurve}
             </span>
           )}
         </div>
 
         {/* Gás */}
         <div className="space-y-1">
-          <Label className="text-xs font-semibold text-muted-foreground">Gás</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t.gasLabel}</Label>
           <Select value={refrigId} onValueChange={setRefrigId}>
             <SelectTrigger className="h-11 text-sm font-semibold lg:h-12 lg:text-base">
-              <SelectValue placeholder="Gás" />
+              <SelectValue placeholder={t.gasLabel} />
             </SelectTrigger>
             <SelectContent>
               {secoes.map((sec) => (
@@ -385,13 +396,13 @@ function ReguaUnificada({
 
         {/* Unidade — alavanca centralizada abaixo do label */}
         <div className="flex flex-col items-center gap-1.5">
-          <Label className="text-xs font-semibold text-muted-foreground">Unidade</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t.unitLabel}</Label>
           <LabeledSwitch
             value={unidade}
             onChange={setUnidade}
             off={{ value: 'psi', label: 'psi' }}
             on={{ value: 'bar', label: 'bar' }}
-            aria-label="Unidade de pressão"
+            aria-label={t.unitLabel}
           />
         </div>
 
@@ -435,17 +446,17 @@ function ReguaUnificada({
           </div>
           {refrig?.temGlide && (
             <span className="mt-2 block text-center text-[11px] font-medium text-amber-600 dark:text-amber-400 lg:text-xs">
-              {formula === 'dew' ? 'vapor (dew)' : 'líquido (bubble)'}
+              {formula === 'dew' ? t.vapour : t.liquid}
             </span>
           )}
           {/* Aviso de pressão fora da faixa (fonte = pressão) */}
           {pressaoForaFaixa && (
             <div className="mt-2 rounded-md border border-border bg-muted px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
-              Pressão fora da faixa da tabela para este gás na unidade{' '}
+              {t.outsideRange}{' '}
               <span className="font-semibold">{unidade === 'bar' ? 'bar' : 'psi'}</span>.
               {sugestao && (
                 <>
-                  {' '}Parece estar em{' '}
+                  {' '}{t.seemsIn}{' '}
                   <button
                     type="button"
                     onClick={() => setUnidade(sugestao.unidadeSugerida)}
@@ -453,7 +464,7 @@ function ReguaUnificada({
                   >
                     {sugestao.unidadeSugerida === 'bar' ? 'bar' : 'psi'}
                   </button>{' '}
-                  (daria {Math.round(sugestao.tempSat)} °C). Toque para trocar.
+                  {t.givesTemp.replace('{temp}', String(Math.round(sugestao.tempSat)))}
                 </>
               )}
             </div>
@@ -465,6 +476,9 @@ function ReguaUnificada({
 }
 
 export function ReguaGases() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.ptChart;
+
   const [unidade, setUnidade] = usePersistedState<UnidadePressao>(
     'tt:state:regua-gases:unidade',
     'psi',
@@ -473,21 +487,16 @@ export function ReguaGases() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Régua de Gases</h2>
+        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          Pressão de saturação dos refrigerantes por temperatura.
+          {t.subtitle}
         </p>
       </div>
 
       {/* Régua de escala dupla unificada (mobile + desktop) */}
-      <ReguaUnificada unidade={unidade} setUnidade={setUnidade} />
+      <ReguaUnificada unidade={unidade} setUnidade={setUnidade} t={t} />
 
-      <ToolDisclaimer>
-        Ferramenta de apoio. Os valores são estimativas de referência e não devem ser usados
-        isoladamente — confira sempre o manual do fabricante antes de decidir carga ou diagnóstico.
-        Os blends com glide ({GASES_COM_GLIDE}) têm curvas bubble/dew diferentes; nos demais a curva
-        é única.
-      </ToolDisclaimer>
+      <ToolDisclaimer texto={t.disclaimer.replace('{blends}', GASES_COM_GLIDE)} />
     </div>
   );
 }

@@ -18,6 +18,8 @@ import {
   useRemoteConfig,
   type EquipmentModel,
 } from '@/hooks/useEquipmentCatalog';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Detalhes técnicos de um controle remoto (modos, símbolos, reset/desbloqueio,
@@ -31,6 +33,8 @@ export function RemoteConfig({
   model: EquipmentModel;
   onBack: () => void;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.remoteDetail;
   const { data: config, isLoading } = useRemoteConfig(model.id);
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -40,12 +44,12 @@ export function RemoteConfig({
 
   const sections: { label: string; value: string | null; icon: LucideIcon }[] = config
     ? [
-        { label: 'Como configurar', value: config.instrucoes, icon: ListChecks },
-        { label: 'Código universal', value: config.codigo_universal, icon: KeyRound },
-        { label: 'Reset', value: config.reset, icon: RotateCcw },
-        { label: 'Desbloqueio', value: config.desbloqueio, icon: LockOpen },
-        { label: 'Modos', value: config.modos, icon: SlidersHorizontal },
-        { label: 'Observações', value: config.observacoes, icon: Info },
+        { label: t.sections.instructions, value: config.instrucoes, icon: ListChecks },
+        { label: t.sections.universalCode, value: config.codigo_universal, icon: KeyRound },
+        { label: t.sections.reset, value: config.reset, icon: RotateCcw },
+        { label: t.sections.unlock, value: config.desbloqueio, icon: LockOpen },
+        { label: t.sections.modes, value: config.modos, icon: SlidersHorizontal },
+        { label: t.sections.notes, value: config.observacoes, icon: Info },
       ]
     : [];
   const visibleSections = sections.filter((s) => s.value && s.value.trim().length > 0);
@@ -53,7 +57,7 @@ export function RemoteConfig({
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Settings2} eyebrow="Detalhes Técnicos" title={tituloTopo} onBack={onBack} />
+      <Header icon={Settings2} eyebrow={t.eyebrow} title={tituloTopo} onBack={onBack} />
 
       {/* Foto em destaque */}
       {temFoto ? (
@@ -73,7 +77,7 @@ export function RemoteConfig({
       ) : (
         <div className="flex h-48 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-white">
           <PackageSearch className="h-12 w-12 text-neutral-300" />
-          <span className="text-xs text-neutral-400">Sem foto</span>
+          <span className="text-xs text-neutral-400">{t.noPhoto}</span>
         </div>
       )}
 
@@ -81,8 +85,8 @@ export function RemoteConfig({
         <LoadingBlock />
       ) : semConfig ? (
         <EmptyState
-          title="Em atualização"
-          message="As instruções de configuração deste controle estão sendo cadastradas. Volte em breve."
+          title={t.emptyTitle}
+          message={t.emptyMessage}
         />
       ) : (
         <div className="space-y-3">

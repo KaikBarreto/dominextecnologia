@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Cpu, Download, Flame, Loader2, PackageSearch } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -116,6 +118,8 @@ export function CompressorFicha({
   model: EquipmentModel;
   onBack: () => void;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.compressorSheet;
   const { data: spec, isLoading } = useCompressorSpec(model.id);
   const { data: gases = [] } = useRefrigerantGases();
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -182,7 +186,7 @@ export function CompressorFicha({
     <div className="space-y-6 pb-8">
       <Header
         icon={Cpu}
-        eyebrow="Ficha Técnica"
+        eyebrow={t.eyebrow}
         title={tituloTopo}
         onBack={onBack}
       />
@@ -205,7 +209,7 @@ export function CompressorFicha({
       ) : (
         <div className="flex h-48 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-white">
           <PackageSearch className="h-12 w-12 text-neutral-300" />
-          <span className="text-xs text-neutral-400">Sem foto</span>
+          <span className="text-xs text-neutral-400">{t.noPhoto}</span>
         </div>
       )}
 
@@ -214,8 +218,8 @@ export function CompressorFicha({
         <LoadingBlock />
       ) : semFicha ? (
         <EmptyState
-          title="Ficha em atualização"
-          message="A ficha técnica deste compressor está sendo cadastrada. Volte em breve."
+          title={t.emptyTitle}
+          message={t.emptyMessage}
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -223,7 +227,7 @@ export function CompressorFicha({
             {temGas && (
               <li className="flex items-start justify-between gap-3 px-4 py-3">
                 <span className="shrink-0 pt-0.5 text-sm font-medium text-muted-foreground">
-                  Gás
+                  {t.gasLabel}
                 </span>
                 <div className="flex min-w-0 flex-col items-end gap-1">
                   <TooltipProvider delayDuration={150}>
@@ -256,7 +260,7 @@ export function CompressorFicha({
                                     />
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>Inflamável</TooltipContent>
+                                <TooltipContent>{t.flammable}</TooltipContent>
                               </Tooltip>
                             )}
                           </span>

@@ -26,6 +26,8 @@ import {
   COSPHI_PADRAO,
   FATOR_SERVICO,
 } from '@/lib/contator';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Valor sentinela do select para o modo de BTU livre. */
 const PERSONALIZADO = 'personalizado';
@@ -39,10 +41,13 @@ type Modo = 'btu' | 'lra';
 /** Modo de entrada trifásico: corrente direta da placa (A) ou potência (CV). */
 type ModoTri = 'corrente' | 'cv';
 
+type TCapacitor = (typeof MESSAGES)['pt-br']['app']['technicianTools']['capacitor'];
+
 /** Props compartilhadas pelos ramos: o switch de Fase mora no topo de cada ramo. */
 interface RamoProps {
   fase: Fase;
   setFase: (v: Fase) => void;
+  t: TCapacitor;
 }
 
 /** Converte string crua em número, com fallback (padrão do projeto p/ inputs numéricos). */
@@ -52,31 +57,31 @@ function num(s: string, fallback = 0): number {
 }
 
 export function CalculoCapacitor() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.capacitor;
   // Fase da máquina. Default: monofásico (mantém o comportamento atual).
   const [fase, setFase] = usePersistedState<Fase>('tt:state:capacitor:fase', 'mono');
 
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Cálculo de Capacitor</h2>
+        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          {fase === 'mono'
-            ? 'Capacitor recomendado pela fase, BTU/LRA e tensão.'
-            : 'Máquina trifásica não usa capacitor: dimensione contatora e relé térmico.'}
+          {fase === 'mono' ? t.subtitleMono : t.subtitleTri}
         </p>
       </div>
 
       {fase === 'mono' ? (
-        <RamoMonofasico fase={fase} setFase={setFase} />
+        <RamoMonofasico fase={fase} setFase={setFase} t={t} />
       ) : (
-        <RamoTrifasico fase={fase} setFase={setFase} />
+        <RamoTrifasico fase={fase} setFase={setFase} t={t} />
       )}
     </div>
   );
 }
 
 /** Ramo MONOFÁSICO — fluxo original (capacitor por BTU ou LRA). Sem regressão. */
-function RamoMonofasico({ fase, setFase }: RamoProps) {
+function RamoMonofasico({ fase, setFase, t }: RamoProps) {
   // Modo de cálculo. Default: estimativa por BTU (comportamento atual).
   const [modo, setModo] = usePersistedState<Modo>('tt:state:capacitor:modo', 'btu');
 
@@ -115,22 +120,22 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
         {/* Dois switches lado a lado, na mesma linha, cada um com seu rótulo */}
         <div className="grid grid-cols-1 gap-4 border-b border-border pb-4 sm:grid-cols-2">
           <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Fase</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.phaseLabel}</Label>
             <LabeledSwitch
               value={fase}
               onChange={(v) => setFase(v)}
-              off={{ value: 'mono', label: 'Monofásico' }}
-              on={{ value: 'tri', label: 'Trifásico' }}
+              off={{ value: 'mono', label: t.mono }}
+              on={{ value: 'tri', label: t.tri }}
               aria-label="Fase da máquina"
             />
           </div>
           <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Cálculo</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.calcLabel}</Label>
             <LabeledSwitch
               value={modo}
               onChange={(v) => setModo(v)}
-              off={{ value: 'btu', label: 'Estimativa (BTU)' }}
-              on={{ value: 'lra', label: 'Preciso (LRA)' }}
+              off={{ value: 'btu', label: t.calcBtu }}
+              on={{ value: 'lra', label: t.calcLra }}
               aria-label="Modo de cálculo do capacitor"
             />
           </div>
@@ -140,7 +145,7 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
           /* Seleções — grid 2 colunas no desktop, 1 no mobile */
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">Selecione o BTU</Label>
+              <Label className="text-base text-muted-foreground md:text-lg">{t.selectBtu}</Label>
               <Select value={btu} onValueChange={setBtu}>
                 <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
                   <SelectValue placeholder="BTU" />
@@ -151,7 +156,7 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
                       {b.toLocaleString('pt-BR')} BTUs
                     </SelectItem>
                   ))}
-                  <SelectItem value={PERSONALIZADO}>Personalizado</SelectItem>
+                  <SelectItem value={PERSONALIZADO}>{t.custom}</SelectItem>
                 </SelectContent>
               </Select>
               {isPersonalizado && (
@@ -166,7 +171,7 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
 
             <div className="space-y-1.5">
               <Label className="text-base text-muted-foreground md:text-lg">
-                Selecione a tensão
+                {t.selectVoltage}
               </Label>
               <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
                 <LabeledSwitch
@@ -184,7 +189,7 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
           /* Entrada LRA */
           <div className="space-y-1.5">
             <Label className="text-base text-muted-foreground md:text-lg">
-              LRA (Locked Rotor Amps)
+              {t.lraLabel}
             </Label>
             <NumericInput
               decimal
@@ -194,7 +199,7 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
               className="h-14 text-lg md:h-14 md:text-lg"
             />
             <p className="text-xs text-muted-foreground">
-              Está na etiqueta do compressor (LRA).
+              {t.lraNote}
             </p>
           </div>
         )}
@@ -208,19 +213,19 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
               <div className="min-w-0 flex-1 space-y-4">
                 <div className="text-center">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Capacitor recomendado
+                    {t.resultTitle}
                   </p>
                   <p className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
-                    Use o capacitor de{' '}
+                    {t.resultUse}{' '}
                     <span className="text-primary">{formatarNumero(resultado.capacitorUF)} µF</span>{' '}
-                    à 380/440v
+                    {t.resultRating}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Amper
+                      {t.resultAmper}
                     </p>
                     <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                       {formatarNumero(resultado.amper)}
@@ -229,7 +234,7 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
                   </div>
                   <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Potência
+                      {t.resultPower}
                     </p>
                     <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                       {formatarNumero(resultado.potenciaWatts)}
@@ -241,22 +246,22 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
 
               <SpecPhotoCard
                 className="lg:order-first lg:w-[22rem] lg:shrink-0"
-                titulo="Capacitor recomendado"
+                titulo={t.resultTitle}
                 fotoSrc="/images/capacitores/capacitor.png"
                 fotoAlt="Capacitor permanente"
                 fallbackIcon={CircuitBoard}
                 specs={
                   [
-                    { label: 'Capacitância', value: `${formatarNumero(resultado.capacitorUF)} µF` },
-                    { label: 'Tensão', value: '380/440 VAC' },
-                    { label: 'Tipo', value: 'Permanente (regime)' },
+                    { label: t.specCapacitance, value: `${formatarNumero(resultado.capacitorUF)} µF` },
+                    { label: t.specVoltage, value: '380/440 VAC' },
+                    { label: t.specType, value: t.specTypePermanent },
                   ] satisfies Spec[]
                 }
               />
             </div>
           ) : (
             <p className="text-center text-sm text-muted-foreground">
-              Selecione o BTU e a tensão para ver o capacitor recomendado.
+              {t.selectBtuAndVoltage}
             </p>
           )}
         </div>
@@ -266,47 +271,47 @@ function RamoMonofasico({ fase, setFase }: RamoProps) {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
               <div className="min-w-0 flex-1 space-y-2 text-center">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Capacitor recomendado
+                  {t.resultTitle}
                 </p>
                 <p className="text-2xl font-semibold leading-tight sm:text-3xl">
-                  Use o capacitor de{' '}
-                  <span className="text-primary">{formatarNumero(capacitorLRA)} µF</span> à 380/440v
+                  {t.resultUse}{' '}
+                  <span className="text-primary">{formatarNumero(capacitorLRA)} µF</span> {t.resultRating}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Calculado a partir de LRA {formatarNumero(lraNum)} A.
+                  {t.calculatedFromLra.replace('{lra}', formatarNumero(lraNum))}
                 </p>
               </div>
 
               <SpecPhotoCard
                 className="lg:order-first lg:w-[22rem] lg:shrink-0"
-                titulo="Capacitor recomendado"
+                titulo={t.resultTitle}
                 fotoSrc="/images/capacitores/capacitor.png"
                 fotoAlt="Capacitor permanente"
                 fallbackIcon={CircuitBoard}
                 specs={
                   [
-                    { label: 'Capacitância', value: `${formatarNumero(capacitorLRA)} µF` },
-                    { label: 'Tensão', value: '380/440 VAC' },
-                    { label: 'Tipo', value: 'Permanente (regime)' },
+                    { label: t.specCapacitance, value: `${formatarNumero(capacitorLRA)} µF` },
+                    { label: t.specVoltage, value: '380/440 VAC' },
+                    { label: t.specType, value: t.specTypePermanent },
                   ] satisfies Spec[]
                 }
               />
             </div>
           ) : (
             <p className="text-center text-sm text-muted-foreground">
-              Informe o LRA do compressor para ver o capacitor recomendado.
+              {t.enterLra}
             </p>
           )}
         </div>
       )}
 
-      <ToolDisclaimer texto="Ferramenta de apoio. O cálculo por BTU é uma estimativa de mercado (média de potência dos 10 principais modelos de ar condicionado no Brasil); o modo Preciso usa o LRA da etiqueta do compressor. Confira sempre a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </>
   );
 }
 
 /** Ramo TRIFÁSICO — sem capacitor: dimensiona contator AC-3 + relé térmico. */
-function RamoTrifasico({ fase, setFase }: RamoProps) {
+function RamoTrifasico({ fase, setFase, t }: RamoProps) {
   const [avancadoAberto, setAvancadoAberto] = useState(false);
 
   // Modo de entrada. Default: corrente direta da placa (preferido).
@@ -364,22 +369,22 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
         {/* Dois switches lado a lado, na mesma linha, cada um com seu rótulo */}
         <div className="grid grid-cols-1 gap-4 border-b border-border pb-4 sm:grid-cols-2">
           <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Fase</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.phaseLabel}</Label>
             <LabeledSwitch
               value={fase}
               onChange={(v) => setFase(v)}
-              off={{ value: 'mono', label: 'Monofásico' }}
-              on={{ value: 'tri', label: 'Trifásico' }}
+              off={{ value: 'mono', label: t.mono }}
+              on={{ value: 'tri', label: t.tri }}
               aria-label="Fase da máquina"
             />
           </div>
           <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Entrada</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.entryLabel}</Label>
             <LabeledSwitch
               value={modoTri}
               onChange={(v) => setModoTri(v)}
-              off={{ value: 'corrente', label: 'Corrente (A)' }}
-              on={{ value: 'cv', label: 'Potência (CV)' }}
+              off={{ value: 'corrente', label: t.entryCurrent }}
+              on={{ value: 'cv', label: t.entryPower }}
               aria-label="Modo de entrada trifásico"
             />
           </div>
@@ -388,7 +393,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
         {modoTri === 'corrente' ? (
           <div className="space-y-1.5">
             <Label className="text-base text-muted-foreground md:text-lg">
-              Corrente nominal (A) — do motor/compressor
+              {t.currentLabel}
             </Label>
             <NumericInput
               decimal
@@ -398,14 +403,14 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
               className="h-14 text-lg md:h-14 md:text-lg"
             />
             <p className="text-xs text-muted-foreground">
-              Use o valor de corrente (In) impresso na placa do motor/compressor.
+              {t.currentNote}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-base text-muted-foreground md:text-lg">Potência (CV)</Label>
+                <Label className="text-base text-muted-foreground md:text-lg">{t.powerLabel}</Label>
                 <NumericInput
                   decimal
                   value={cvStr}
@@ -416,7 +421,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-base text-muted-foreground md:text-lg">
-                  Tensão trifásica
+                  {t.triVoltageLabel}
                 </Label>
                 <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
                   <LabeledSwitch
@@ -439,12 +444,12 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
                 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Settings2 className="h-4 w-4" />
-                Parâmetros de placa (avançado)
+                {t.advancedParams}
               </button>
               {avancadoAberto && (
                 <div className="mt-3 grid grid-cols-1 gap-4 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Rendimento (η)</Label>
+                    <Label className="text-sm text-muted-foreground">{t.efficiency}</Label>
                     <NumericInput
                       decimal
                       value={rendimentoStr}
@@ -454,7 +459,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Fator de potência (cosφ)</Label>
+                    <Label className="text-sm text-muted-foreground">{t.powerFactor}</Label>
                     <NumericInput
                       decimal
                       value={cosphiStr}
@@ -464,8 +469,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground md:col-span-2">
-                    Padrões de placa WEG W22 premium. Ajuste se a placa do motor trouxer valores
-                    diferentes.
+                    {t.advancedNote}
                   </p>
                 </div>
               )}
@@ -481,26 +485,26 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
             <div className="min-w-0 flex-1 space-y-4">
               <div className="text-center">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Contator recomendado
+                  {t.contactor}
                 </p>
                 <p className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
-                  Contator de{' '}
+                  {t.contactorOf}{' '}
                   <span className="whitespace-nowrap text-primary">
                     {formatarNumero(resultado.contatorAC3)} A
                   </span>
                 </p>
                 <p className="text-base font-medium leading-tight text-muted-foreground sm:text-lg">
-                  categoria AC-3
+                  {t.categoryAC3}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Tripolar, para motor trifásico.
+                  {t.tripolarNote}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Corrente nominal
+                    {t.nominalCurrent}
                   </p>
                   <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                     {formatarNumero(resultado.correnteNominal)}
@@ -509,7 +513,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
                 </div>
                 <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Corrente de emprego
+                    {t.serviceCurrent}
                   </p>
                   <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
                     {formatarNumero(resultado.correnteEmprego)}
@@ -527,8 +531,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
                 <div className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                   <p className="text-xs leading-relaxed text-foreground">
-                    Corrente acima da linha comercial padrão. Consulte dimensionamento
-                    especializado.
+                    {t.aboveCommercial}
                   </p>
                 </div>
               )}
@@ -536,17 +539,17 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
 
             <SpecPhotoCard
               className="lg:order-first lg:w-[22rem] lg:shrink-0"
-              titulo="Manobra trifásica"
+              titulo={t.contactor}
               fotoSrc="/images/contatora.png"
               fotoAlt="Contatora tripolar AC-3"
               fallbackIcon={Zap}
               specs={
                 [
-                  { label: 'Contator', value: `${formatarNumero(resultado.contatorAC3)} A AC-3` },
-                  { label: 'Tipo', value: 'Tripolar (potência)' },
+                  { label: t.triSpec.contactor, value: `${formatarNumero(resultado.contatorAC3)} A AC-3` },
+                  { label: t.triSpec.type, value: t.triSpec.typeTripolar },
                   {
-                    label: 'Relé térmico',
-                    value: `regular ~${formatarNumero(resultado.releTermico)} A`,
+                    label: t.triSpec.thermalRelay,
+                    value: t.triSpec.thermalRelayValue.replace('{val}', formatarNumero(resultado.releTermico)),
                   },
                 ] satisfies Spec[]
               }
@@ -554,9 +557,7 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
           </div>
         ) : (
           <p className="text-center text-sm text-muted-foreground">
-            {modoTri === 'corrente'
-              ? 'Informe a corrente nominal (A) da placa para dimensionar o contator.'
-              : 'Informe a potência (CV) e a tensão para dimensionar o contator.'}
+            {modoTri === 'corrente' ? t.enterCurrentTri : t.enterPowerTri}
           </p>
         )}
       </div>
@@ -566,8 +567,8 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
         <div className="mx-auto flex max-w-4xl gap-2.5 rounded-lg border border-border bg-card p-3">
           <Settings2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p className="text-sm leading-relaxed text-foreground">
-            <span className="font-semibold">Relé térmico: </span>regule para a corrente nominal do
-            motor (~{formatarNumero(resultado.releTermico)} A).
+            <span className="font-semibold">{t.thermalRelay} </span>
+            {t.thermalRelayNote.replace('{current}', formatarNumero(resultado.releTermico))}
           </p>
         </div>
       )}
@@ -576,12 +577,11 @@ function RamoTrifasico({ fase, setFase }: RamoProps) {
       <div className="mx-auto flex max-w-4xl gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
         <p className="text-sm leading-relaxed text-foreground">
-          <span className="font-semibold">Máquina trifásica não usa capacitor.</span> A partida é
-          feita pelas 3 fases e a manobra/proteção por contatora (AC-3) + relé térmico.
+          <span className="font-semibold">{t.triNoCapacitor}</span> {t.triNoCapacitorNote}
         </p>
       </div>
 
-      <ToolDisclaimer />
+      <ToolDisclaimer texto={t.disclaimer} />
     </>
   );
 }

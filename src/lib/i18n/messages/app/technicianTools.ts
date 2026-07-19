@@ -25,6 +25,9 @@ export const technicianTools = {
         electrical: 'Elétrica e Instalação',
         gases: 'Gases e Nomenclatura',
       },
+      segmentSearch: 'Buscar nicho...',
+      segmentNotFound: 'Nenhum nicho encontrado.',
+      segmentIncluded: 'Incluído',
     },
     // ── Catálogo ────────────────────────────────────────────────────────────
     catalog: {
@@ -273,6 +276,7 @@ export const technicianTools = {
         pure: 'Puros',
         blends: 'Misturas (blends)',
       },
+      disclaimer: 'Ferramenta de apoio. Os valores são estimativas de referência e não devem ser usados isoladamente — confira sempre o manual do fabricante antes de decidir carga ou diagnóstico. Os blends com glide ({blends}) têm curvas bubble/dew diferentes; nos demais a curva é única.',
     },
     // ── Diluição de Produto ─────────────────────────────────────────────────
     dilution: {
@@ -456,6 +460,11 @@ export const technicianTools = {
     disclaimer: {
       default: 'Ferramenta de apoio. Os valores são estimativas de referência — confira sempre a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis antes de executar.',
     },
+    // ── Common (acessibilidade compartilhada) ────────────────────────────────
+    common: {
+      enlargePhoto: 'Ampliar foto',
+      cycleDiagramAria: 'Diagrama do ciclo de refrigeração em loop fechado. Compressor embaixo no centro inline com a linha de sucção e descarga, evaporador à esquerda (caixa azul fria com serpentina em meandro), condensador à direita (caixa laranja quente com serpentina em meandro) e válvula de expansão no topo-centro inline com a linha de líquido e expansão. Lado esquerdo é baixa pressão (azul) e lado direito é alta pressão (laranja). Manômetro e termômetro marcados na linha de sucção.',
+    },
   },
 
   // ── INGLÊS ────────────────────────────────────────────────────────────────
@@ -474,6 +483,9 @@ export const technicianTools = {
         electrical: 'Electrical and Installation',
         gases: 'Gases and Nomenclature',
       },
+      segmentSearch: 'Search niche...',
+      segmentNotFound: 'No niche found.',
+      segmentIncluded: 'Included',
     },
     catalog: {
       title: 'Catalog',
@@ -694,6 +706,7 @@ export const technicianTools = {
         pure: 'Pure',
         blends: 'Blends',
       },
+      disclaimer: 'Reference tool. Values are reference estimates and should not be used in isolation — always check the manufacturer manual before deciding on charge or diagnosis. Blends with glide ({blends}) have distinct bubble/dew curves; all others use a single curve.',
     },
     dilution: {
       title: 'Product Dilution',
@@ -868,6 +881,11 @@ export const technicianTools = {
     disclaimer: {
       default: 'Reference tool. Values are reference estimates — always check the equipment nameplate, manufacturer manuals and applicable technical standards before proceeding.',
     },
+    // ── Common (shared accessibility) ────────────────────────────────────────
+    common: {
+      enlargePhoto: 'Enlarge photo',
+      cycleDiagramAria: 'Diagram of the refrigeration cycle in a closed loop. Compressor at the bottom centre inline with the suction and discharge lines, evaporator on the left (cold blue box with serpentine coil), condenser on the right (hot orange box with serpentine coil) and expansion valve at the top-centre inline with the liquid and expansion lines. The left side is low pressure (blue) and the right side is high pressure (orange). Pressure gauge and thermometer marked on the suction line.',
+    },
   },
 
   // ── ESPANHOL ──────────────────────────────────────────────────────────────
@@ -886,6 +904,9 @@ export const technicianTools = {
         electrical: 'Eléctrica e Instalación',
         gases: 'Gases y Nomenclatura',
       },
+      segmentSearch: 'Buscar nicho...',
+      segmentNotFound: 'No se encontró ningún nicho.',
+      segmentIncluded: 'Incluido',
     },
     catalog: {
       title: 'Catálogo',
@@ -1106,6 +1127,7 @@ export const technicianTools = {
         pure: 'Puros',
         blends: 'Mezclas (blends)',
       },
+      disclaimer: 'Herramienta de referencia. Los valores son estimaciones de referencia y no deben usarse de forma aislada — consulta siempre el manual del fabricante antes de decidir sobre carga o diagnóstico. Los blends con glide ({blends}) tienen curvas bubble/dew distintas; los demás usan una curva única.',
     },
     dilution: {
       title: 'Dilución de Producto',
@@ -1280,6 +1302,11 @@ export const technicianTools = {
     disclaimer: {
       default: 'Herramienta de referencia. Los valores son estimaciones — consulta siempre la placa del equipo, los manuales del fabricante y las normas técnicas aplicables antes de ejecutar.',
     },
+    // ── Common (accesibilidad compartida) ────────────────────────────────────
+    common: {
+      enlargePhoto: 'Ampliar foto',
+      cycleDiagramAria: 'Diagrama del ciclo de refrigeración en bucle cerrado. Compresor en la parte inferior al centro, en línea con las tuberías de succión y descarga; evaporador a la izquierda (caja azul fría con serpentín en meandro); condensador a la derecha (caja naranja caliente con serpentín en meandro) y válvula de expansión en la parte superior al centro, en línea con las tuberías de líquido y expansión. El lado izquierdo es baja presión (azul) y el lado derecho es alta presión (naranja). Manómetro y termómetro marcados en la tubería de succión.',
+    },
   },
 
   // ── FRANCÊS ───────────────────────────────────────────────────────────────
@@ -1298,6 +1325,9 @@ export const technicianTools = {
         electrical: 'Électricité et installation',
         gases: 'Fluides frigorigènes et nomenclature',
       },
+      segmentSearch: 'Rechercher un segment...',
+      segmentNotFound: 'Aucun segment trouvé.',
+      segmentIncluded: 'Inclus',
     },
     catalog: {
       title: 'Catalogue',
@@ -1518,6 +1548,7 @@ export const technicianTools = {
         pure: 'Purs',
         blends: 'Mélanges (blends)',
       },
+      disclaimer: `Outil de référence. Les valeurs sont des estimations et ne doivent pas être utilisées seules — consultez toujours le manuel du fabricant avant de décider de la charge ou du diagnostic. Les mélanges avec glide ({blends}) ont des courbes bubble/dew distinctes ; les autres n'en ont qu'une seule.`,
     },
     dilution: {
       title: 'Dilution de produit',
@@ -1691,6 +1722,11 @@ export const technicianTools = {
     },
     disclaimer: {
       default: `Outil de référence. Les valeurs sont des estimations — consultez toujours la plaque signalétique de l'équipement, les manuels du fabricant et les normes techniques applicables avant d'intervenir.`,
+    },
+    // ── Common (accessibilité partagée) ─────────────────────────────────────
+    common: {
+      enlargePhoto: `Agrandir la photo`,
+      cycleDiagramAria: `Schéma du cycle frigorifique en boucle fermée. Compresseur en bas au centre, aligné avec les lignes d'aspiration et de refoulement ; évaporateur à gauche (caisson bleu froid avec serpentin en méandre) ; condensateur à droite (caisson orange chaud avec serpentin en méandre) et détendeur en haut au centre, aligné avec les lignes de liquide et d'expansion. Le côté gauche est la basse pression (bleu) et le côté droit est la haute pression (orange). Manomètre et thermomètre indiqués sur la ligne d'aspiration.`,
     },
   },
 };

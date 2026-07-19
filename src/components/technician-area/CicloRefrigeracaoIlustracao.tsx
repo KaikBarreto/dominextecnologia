@@ -41,6 +41,8 @@
 import { useEffect, useState } from "react";
 import { useIsDark } from "@/hooks/useIsDark";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 const TIPS = {
   compressor: {
@@ -311,6 +313,9 @@ function meanderPath(opts: {
 }
 
 export function CicloRefrigeracaoIlustracao() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools;
+
   // No tema escuro o fundo das peças é preto; no claro fica transparente para a
   // zona de cor aparecer atrás (borda/serpentina/ícone seguem iguais).
   const isDark = useIsDark();
@@ -504,7 +509,7 @@ export function CicloRefrigeracaoIlustracao() {
           // coordenadas próprias (sem rotação). DESKTOP: paisagem original.
           viewBox={isMobile ? "0 0 408 760" : "-24 0 828 480"}
           role="img"
-          aria-label="Diagrama do ciclo de refrigeração em loop fechado. Compressor embaixo no centro inline com a linha de sucção e descarga, evaporador à esquerda (caixa azul fria com serpentina em meandro), condensador à direita (caixa laranja quente com serpentina em meandro) e válvula de expansão no topo-centro inline com a linha de líquido e expansão. Lado esquerdo é baixa pressão (azul) e lado direito é alta pressão (laranja). Manômetro e termômetro marcados na linha de sucção."
+          aria-label={t.common.cycleDiagramAria}
           className={
             isMobile
               ? "block h-auto w-full max-h-[80vh]"

@@ -19,6 +19,10 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteInflamavel } from '@/components/technician-area/RefrigeranteInflamavel';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+
+type TRetrofit = (typeof MESSAGES)['pt-br']['app']['technicianTools']['refrigerantRetrofit'];
 
 /** Bolinha de cor do gás (régua do projeto: refrigerante sempre com cor). */
 function BolinhaGas({ cor, className }: { cor: string; className?: string }) {
@@ -70,10 +74,10 @@ function temAlgumaPressao(p: PressoesTrabalho | null): p is PressoesTrabalho {
 }
 
 /** Renderiza "Baixa ~X · Alta ~Y" omitindo o lado sem número. */
-function textoPressoes(p: PressoesTrabalho, unidade: UnidadePressao): string {
+function textoPressoes(p: PressoesTrabalho, unidade: UnidadePressao, t: TRetrofit): string {
   const partes: string[] = [];
-  if (p.baixa !== null) partes.push(`Baixa ~${formatarPressao(p.baixa, unidade)}`);
-  if (p.alta !== null) partes.push(`Alta ~${formatarPressao(p.alta, unidade)}`);
+  if (p.baixa !== null) partes.push(t.lowSide.replace('{val}', formatarPressao(p.baixa, unidade)));
+  if (p.alta !== null) partes.push(t.highSide.replace('{val}', formatarPressao(p.alta, unidade)));
   return partes.join(' · ');
 }
 
@@ -87,10 +91,12 @@ function PressaoTrabalhoOpcao({
   op,
   gas,
   unidade,
+  t,
 }: {
   op: OpcaoRetrofit;
   gas: GasSaida;
   unidade: UnidadePressao;
+  t: TRetrofit;
 }) {
   const pSub = pressoesTrabalho(op.refrigeranteId, unidade);
   const pLegado = pressoesTrabalho(gas.refrigeranteId, unidade);
@@ -99,7 +105,7 @@ function PressaoTrabalhoOpcao({
   if (!temAlgumaPressao(pSub)) {
     return (
       <div className="flex gap-2">
-        <dt className="shrink-0 font-medium text-muted-foreground">Pressão</dt>
+        <dt className="shrink-0 font-medium text-muted-foreground">{t.pressure}</dt>
         <dd className="text-foreground">{op.pressao}</dd>
       </div>
     );
@@ -108,21 +114,24 @@ function PressaoTrabalhoOpcao({
   return (
     <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Pressão de trabalho{' '}
+        {t.workingPressure}{' '}
         <span className="font-normal normal-case">
-          (evap. +{RETROFIT_TEMP_BAIXA} °C · cond. +{RETROFIT_TEMP_ALTA} °C, {unidade})
+          ({t.workingPressureConditions
+            .replace('{low}', String(RETROFIT_TEMP_BAIXA))
+            .replace('{high}', String(RETROFIT_TEMP_ALTA))
+            .replace('{unit}', unidade)})
         </span>
       </p>
       <div className="mt-1 flex items-baseline gap-1.5">
         <BolinhaGas cor={op.cor} />
         <span className="text-sm font-bold text-foreground">{op.gasNovo}</span>
-        <span className="text-sm font-semibold text-foreground">{textoPressoes(pSub, unidade)}</span>
+        <span className="text-sm font-semibold text-foreground">{textoPressoes(pSub, unidade, t)}</span>
       </div>
       {temAlgumaPressao(pLegado) && (
         <div className="mt-0.5 flex items-baseline gap-1.5">
           <BolinhaGas cor={gas.cor} />
           <span className="text-xs font-medium text-muted-foreground">{gas.nome}</span>
-          <span className="text-xs text-muted-foreground">{textoPressoes(pLegado, unidade)}</span>
+          <span className="text-xs text-muted-foreground">{textoPressoes(pLegado, unidade, t)}</span>
         </div>
       )}
     </div>
@@ -142,6 +151,8 @@ function PressaoTrabalhoOpcao({
  * qualitativo. A unidade (psi/bar) é uma alavanca persistida.
  */
 export function RetrofitGas() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.refrigerantRetrofit;
   const [primeiro] = RETROFIT_GASES;
   // Valor selecionado = refrigeranteId do gás de saída.
   const [gasSel, setGasSel] = usePersistedState<string>(
@@ -158,9 +169,9 @@ export function RetrofitGas() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Retrofit de Gás</h2>
+        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          Gases drop-in para trocar o refrigerante direto na mesma máquina.
+          {t.subtitle}
         </p>
       </div>
 
@@ -168,12 +179,12 @@ export function RetrofitGas() {
       <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center justify-between gap-3">
           <Label className="shrink-0 text-xl font-bold leading-tight text-foreground md:text-2xl">
-            Gás atual:
+            {t.currentGas}
           </Label>
           <Select value={gas.refrigeranteId} onValueChange={setGasSel}>
             <SelectTrigger
               className="h-14 max-w-[60%] text-xl [&>span]:flex [&>span]:items-center [&_svg]:h-6 [&_svg]:w-6 md:h-16 md:text-2xl"
-              aria-label="Gás de saída para retrofit"
+              aria-label={t.gasSelectLabel}
             >
               <SelectValue />
             </SelectTrigger>
@@ -192,7 +203,7 @@ export function RetrofitGas() {
         <p className="text-xs leading-snug text-muted-foreground">{gas.contexto}</p>
 
         <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-          <Label className="shrink-0 text-sm font-medium text-muted-foreground">Unidade:</Label>
+          <Label className="shrink-0 text-sm font-medium text-muted-foreground">{t.unit}</Label>
           <LabeledSwitch
             value={unidade}
             onChange={(v) => setUnidade(v as UnidadePressao)}
@@ -207,15 +218,13 @@ export function RetrofitGas() {
       <div className="flex gap-2.5 rounded-lg border border-border bg-muted p-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Drop-in</span> é a troca de gás no mesmo
-          equipamento — em geral só trocando o óleo e o filtro secador. Sempre siga a ficha técnica
-          do gás e do compressor.
+          <span className="font-semibold text-foreground">Drop-in</span> {t.dropInNote}
         </p>
       </div>
 
       {/* Título grande antes dos cards — nome do gás em destaque (cor + chama) */}
       <h2 className="mt-5 text-xl font-semibold leading-snug text-foreground md:text-2xl">
-        Gases que podem substituir o{' '}
+        {t.substituteTitle}{' '}
         <span className="inline-flex items-center gap-1.5 align-middle font-bold">
           <BolinhaGas cor={gas.cor} className="h-3.5 w-3.5 md:h-4 md:w-4" />
           {gas.nome}
@@ -226,7 +235,7 @@ export function RetrofitGas() {
 
       {/* Subtítulo único — todas as opções agora são drop-in (troca na mesma máquina) */}
       <p className="-mt-2 text-sm leading-relaxed text-muted-foreground">
-        Troca o {gas.nome} por este gás na mesma máquina — em geral só trocando o óleo e o filtro secador.
+        {t.substituteSubtitle.replace('{gas}', gas.nome)}
       </p>
 
       {/* Todas as opções são drop-in: grid único (1 col mobile, 2 desktop) */}
@@ -257,7 +266,7 @@ export function RetrofitGas() {
                     style={{ backgroundColor: op.cor }}
                   >
                     <Star className="h-3 w-3 fill-current" aria-hidden />
-                    Mais indicado
+                    {t.mostRecommended}
                   </span>
                 )}
               </div>
@@ -270,15 +279,15 @@ export function RetrofitGas() {
               {/* Óleo + pressão de trabalho (número onde há curva; texto onde não há) */}
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex gap-2">
-                  <dt className="shrink-0 font-medium text-muted-foreground">Óleo</dt>
+                  <dt className="shrink-0 font-medium text-muted-foreground">{t.oil}</dt>
                   <dd className="text-foreground">{op.oleo}</dd>
                 </div>
-                <PressaoTrabalhoOpcao op={op} gas={gas} unidade={unidade} />
+                <PressaoTrabalhoOpcao op={op} gas={gas} unidade={unidade} t={t} />
               </dl>
 
               {/* Cuidados — subtítulo leve + bullets, sem caixa pesada */}
               <div className="mt-3 border-t border-border pt-3">
-                <p className="mb-1.5 text-xs font-semibold text-muted-foreground">Cuidados</p>
+                <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t.precautions}</p>
                 <ul className="space-y-1.5">
                   {op.cuidados.map((c, i) => (
                     <li
@@ -310,7 +319,7 @@ export function RetrofitGas() {
         );
       })()}
 
-      <ToolDisclaimer texto="Ferramenta de apoio. As opções de drop-in são uma referência rápida — confira sempre a ficha técnica do gás e do compressor, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );
 }

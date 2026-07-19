@@ -82,6 +82,10 @@ import { getRefrigerante, REFRIGERANTES } from '@/lib/refrigerantes';
 import { RefrigeranteInflamavel } from '@/components/technician-area/RefrigeranteInflamavel';
 import { idealForeground } from '@/lib/colorContrast';
 import { slugify } from '@/lib/slugify';
+import { MESSAGES } from '@/lib/i18n/messages';
+
+type TCatalog = (typeof MESSAGES)['pt-br']['app']['technicianTools']['catalog'];
+type TErrorCodes = (typeof MESSAGES)['pt-br']['app']['technicianTools']['errorCodes'];
 
 /**
  * Marcas mais conhecidas de COMPRESSORES, em ordem de prioridade.
@@ -308,21 +312,22 @@ async function baixarManual(url: string, nome: string) {
 type CatalogTab = EquipmentDomain | 'fluido_refrigerante';
 
 /** Subabas do catálogo, na ordem de exibição (cada uma com ícone). */
-const DOMAIN_OPTIONS: { value: CatalogTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
-  { value: 'ar_condicionado', label: 'Ar Condicionado', icon: AirVent },
-  { value: 'compressor', label: 'Compressores', icon: CompressorGlyph },
-  { value: 'linha_branca', label: 'Linha Branca', icon: Refrigerator },
-  { value: 'controle_remoto', label: 'Controles Remotos', icon: RemoteGlyph },
-  { value: 'fluido_refrigerante', label: 'Fluidos Refrigerantes', icon: Droplet },
-];
+function getDomainOptions(t: TCatalog): { value: CatalogTab; label: string; icon: ComponentType<{ className?: string }> }[] {
+  return [
+    { value: 'ar_condicionado', label: t.domains.ar_condicionado, icon: AirVent },
+    { value: 'compressor', label: t.domains.compressor, icon: CompressorGlyph },
+    { value: 'linha_branca', label: t.domains.linha_branca, icon: Refrigerator },
+    { value: 'controle_remoto', label: t.domains.controle_remoto, icon: RemoteGlyph },
+    { value: 'fluido_refrigerante', label: t.domains.fluido_refrigerante, icon: Droplet },
+  ];
+}
 
 /**
  * Título da página por subaba ativa: "Catálogo - <label da subaba>".
- * Reusa o label de DOMAIN_OPTIONS pra não duplicar texto.
  */
-function tituloCatalogo(tab: CatalogTab): string {
-  const label = DOMAIN_OPTIONS.find((o) => o.value === tab)?.label ?? 'Catálogo';
-  return `Catálogo - ${label}`;
+function tituloCatalogo(tab: CatalogTab, t: TCatalog): string {
+  const label = getDomainOptions(t).find((o) => o.value === tab)?.label ?? t.title;
+  return `${t.title} - ${label}`;
 }
 
 type View =
@@ -340,13 +345,16 @@ type View =
 function DomainSelector({
   value,
   onChange,
+  t,
 }: {
   value: CatalogTab;
   onChange: (d: CatalogTab) => void;
+  t: TCatalog;
 }) {
+  const domainOptions = getDomainOptions(t);
   return (
     <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
-      {DOMAIN_OPTIONS.map((o) => {
+      {domainOptions.map((o) => {
         const Icon = o.icon;
         const ativo = o.value === value;
         return (
@@ -465,6 +473,8 @@ function CatalogoRouted() {
 function CatalogTabScreen() {
   const { catalogTab } = useParams<{ catalogTab: string }>();
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
 
   // Subaba inválida → cai na default (replace, não polui o history).
   if (!catalogTab || !CATALOG_TABS.has(catalogTab)) {
@@ -475,16 +485,17 @@ function CatalogTabScreen() {
 
   return (
     <div className="space-y-4 pb-4">
-      <DomainSelector value={tab} onChange={(d) => navigate(`../${d}`)} />
+      <DomainSelector value={tab} onChange={(d) => navigate(`../${d}`)} t={t} />
       {tab === 'fluido_refrigerante' ? (
         <GasesList
           onSelectGas={(gas) =>
             navigate(`gas/${encodeURIComponent(gas.code)}`)
           }
+          t={t}
         />
       ) : tab === 'controle_remoto' ? (
         // Controle remoto: lista global, sem etapa de marca → URL flat por slug do nome.
-        <RemotesList onSelectDetail={(model) => navigate(`modelo/${slugify(model.name)}`)} />
+        <RemotesList onSelectDetail={(model) => navigate(`modelo/${slugify(model.name)}`)} t={t} />
       ) : (
         <BrandsList
           domain={domain}
@@ -495,9 +506,10 @@ function CatalogTabScreen() {
           onSelectModelErrors={(model, initialCode) =>
             navigate(modelPath(tab, model, { codigo: initialCode }))
           }
+          t={t}
         />
       )}
-      <ToolDisclaimer texto="Conteúdo de apoio. Capacidades, consumo e códigos podem variar por versão — confira sempre a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );
 }
@@ -512,6 +524,8 @@ function CatalogBrandScreen() {
   const { catalogTab, brandSlug: slugParam } = useParams<{ catalogTab: string; brandSlug: string }>();
   const navigate = useNavigate();
   const catalogBase = useCatalogBase();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
 
   const tabValido =
     !!catalogTab && CATALOG_TABS.has(catalogTab) && catalogTab !== 'fluido_refrigerante';
@@ -540,8 +554,8 @@ function CatalogBrandScreen() {
   if (!brand) {
     return (
       <NotFoundCatalog
-        title="Marca não encontrada"
-        message="Essa marca não está mais disponível no catálogo."
+        title={t.brandNotFound}
+        message={t.brandNotFoundMessage}
         backTo={tabPath}
       />
     );
@@ -566,6 +580,7 @@ function CatalogBrandScreen() {
           })}`,
         )
       }
+      t={t}
     />
   );
 }
@@ -613,6 +628,8 @@ function CatalogModelScreen() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const catalogBase = useCatalogBase();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
 
   const tabValido = !!catalogTab && CATALOG_TABS.has(catalogTab);
   const tab = (tabValido ? catalogTab : DEFAULT_CATALOG_TAB) as CatalogTab;
@@ -663,8 +680,8 @@ function CatalogModelScreen() {
   if (!model) {
     return (
       <NotFoundCatalog
-        title="Modelo não encontrado"
-        message="Esse modelo não está mais disponível no catálogo."
+        title={t.modelNotFound}
+        message={t.modelNotFoundMessage}
         backTo={tabPath}
       />
     );
@@ -686,6 +703,8 @@ function CatalogRemoteModelScreen() {
   const { modelSlug } = useParams<{ modelSlug: string }>();
   const navigate = useNavigate();
   const catalogBase = useCatalogBase();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
   const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
   const tabPath = `${catalogBase}/controle_remoto`;
 
@@ -699,8 +718,8 @@ function CatalogRemoteModelScreen() {
   if (!model) {
     return (
       <NotFoundCatalog
-        title="Modelo não encontrado"
-        message="Esse modelo não está mais disponível no catálogo."
+        title={t.modelNotFound}
+        message={t.modelNotFoundMessage}
         backTo={tabPath}
       />
     );
@@ -714,6 +733,8 @@ function CatalogGasScreen() {
   const { gasCode } = useParams<{ gasCode: string }>();
   const navigate = useNavigate();
   const catalogBase = useCatalogBase();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
   const { data: gases = [], isLoading } = useRefrigerantGases();
   const fluidoPath = `${catalogBase}/fluido_refrigerante`;
 
@@ -727,8 +748,8 @@ function CatalogGasScreen() {
   if (!gas) {
     return (
       <NotFoundCatalog
-        title="Fluido não encontrado"
-        message="Esse fluido refrigerante não está no catálogo."
+        title={t.fluidNotFound}
+        message={t.fluidNotFoundMessage}
         backTo={fluidoPath}
       />
     );
@@ -747,13 +768,15 @@ function NotFoundCatalog({
   backTo: string;
 }) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
   return (
     <div className="space-y-4 pb-4">
       <EmptyState title={title} message={message} />
       <div className="flex justify-center">
         <Button variant="outline" onClick={() => navigate(backTo)}>
           <ArrowLeft className="h-4 w-4" />
-          Voltar ao catálogo
+          {t.backToCatalog}
         </Button>
       </div>
     </div>
@@ -767,6 +790,8 @@ function NotFoundCatalog({
 function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
   const [tab, setTab] = useState<CatalogTab>('ar_condicionado');
   const [view, setView] = useState<View>({ kind: 'brands' });
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
 
   // Trocar de subaba reseta a navegação interna pra lista inicial daquela subaba.
   const onChangeDomain = (d: CatalogTab) => {
@@ -804,6 +829,7 @@ function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
         onBack={() => setView({ kind: 'brands' })}
         onSelectBrand={(b) => setView({ kind: 'models', brand: b })}
         onSelectDetail={(model) => setView({ kind: detailKind(domain), model, brand: view.brand })}
+        t={t}
       />
     );
   }
@@ -817,6 +843,7 @@ function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
         onBack={() =>
           setView(originBrand ? { kind: 'models', brand: originBrand } : { kind: 'brands' })
         }
+        t={MESSAGES[locale].app.technicianTools.errorCodes}
       />
     );
   }
@@ -851,11 +878,11 @@ function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
 
   return (
     <div className="space-y-4 pb-4">
-      <DomainSelector value={tab} onChange={onChangeDomain} />
+      <DomainSelector value={tab} onChange={onChangeDomain} t={t} />
       {tab === 'fluido_refrigerante' ? (
-        <GasesList onSelectGas={(gas) => setView({ kind: 'gas', gas })} />
+        <GasesList onSelectGas={(gas) => setView({ kind: 'gas', gas })} t={t} />
       ) : tab === 'controle_remoto' ? (
-        <RemotesList onSelectDetail={(model) => setView({ kind: 'remote', model })} />
+        <RemotesList onSelectDetail={(model) => setView({ kind: 'remote', model })} t={t} />
       ) : (
         <BrandsList
           domain={domain}
@@ -864,6 +891,7 @@ function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
           onSelectModelErrors={(model, initialCode) =>
             setView({ kind: 'errors', model, initialCode })
           }
+          t={t}
         />
       )}
     </div>
@@ -896,12 +924,14 @@ function BrandsList({
   onSelectBrand,
   onSelectModelDetail,
   onSelectModelErrors,
+  t,
 }: {
   domain: EquipmentDomain;
   onSelectBrand: (brand: EquipmentBrand) => void;
   /** Ação primária do card (erros / ficha / configurar, conforme o domínio). */
   onSelectModelDetail: (model: EquipmentModel) => void;
   onSelectModelErrors: (model: EquipmentModel, initialCode?: string) => void;
+  t: TCatalog;
 }) {
   const { data: brands = [], isLoading } = useEquipmentBrands(domain);
 
@@ -1073,16 +1103,16 @@ function BrandsList({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">{tituloCatalogo(domain)}</h2>
+          <h2 className="text-base font-semibold tracking-tight md:text-xl">{tituloCatalogo(domain, t)}</h2>
           <p className="text-sm text-muted-foreground md:text-base">
             {errorSearchEnabled
-              ? 'Consulte modelos e códigos de erro.'
-              : 'Consulte os modelos do catálogo.'}
+              ? t.subtitleWithErrors
+              : t.subtitleBrowse}
           </p>
         </div>
         {allModels.length > 0 && (
           <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
-            {allModels.length} itens
+            {allModels.length} {t.items}
           </span>
         )}
       </div>
@@ -1096,8 +1126,8 @@ function BrandsList({
               type="text"
               placeholder={
                 errorSearchEnabled
-                  ? 'Buscar por marca, equipamento ou código de erro'
-                  : 'Buscar por marca ou equipamento'
+                  ? t.searchPlaceholderWithErrors
+                  : t.searchPlaceholder
               }
               value={termoRaw}
               onChange={(e) => setTermoRaw(e.target.value)}
@@ -1111,7 +1141,7 @@ function BrandsList({
             className={cn('h-14 shrink-0', activeFilterCount > 0 && 'border-primary/50 text-primary')}
           >
             <SlidersHorizontal className="h-4 w-4" />
-            Filtros
+            {t.filters}
             {activeFilterCount > 0 && (
               <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
                 {activeFilterCount}
@@ -1121,7 +1151,7 @@ function BrandsList({
         </div>
         {!searching && !filtering && (
           <p className="text-xs text-muted-foreground">
-            Ou selecione uma marca para ver os modelos.
+            {t.searchHintBrowse}
           </p>
         )}
       </div>
@@ -1130,7 +1160,7 @@ function BrandsList({
       <ResponsiveModal
         open={filtersOpen}
         onOpenChange={setFiltersOpen}
-        title="Filtros"
+        title={t.filters}
         footer={
           <div className="flex items-center justify-between gap-2">
             <Button
@@ -1139,32 +1169,32 @@ function BrandsList({
               onClick={limparFiltros}
               disabled={activeFilterCount === 0}
             >
-              Limpar filtros
+              {t.clearFilters}
             </Button>
             <Button type="button" onClick={() => setFiltersOpen(false)}>
-              Ver resultados
+              {t.viewResults}
             </Button>
           </div>
         }
       >
         <div className="space-y-5">
           <FilterCheckboxGroup
-            label="Potência"
+            label={t.filterPower}
             options={btuOptions}
             selected={selectedBtus}
             onChange={setSelectedBtus}
-            emptyLabel="Todas"
+            emptyLabel={t.filterAllFeminine}
           />
           <FilterCheckboxGroup
-            label="Tipo"
+            label={t.filterType}
             options={typeOptions}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            emptyLabel="Todos"
+            emptyLabel={t.filterAll}
           />
           {gasFilterEnabled && gasOptions.length > 0 && (
             <FilterCheckboxGroup
-              label="Gás refrigerante"
+              label={t.filterRefrigerant}
               options={gasOptions.map((o) => ({
                 value: o.value,
                 label: o.label,
@@ -1173,7 +1203,7 @@ function BrandsList({
               }))}
               selected={selectedGases}
               onChange={setSelectedGases}
-              emptyLabel="Todos"
+              emptyLabel={t.filterAll}
             />
           )}
         </div>
@@ -1185,14 +1215,14 @@ function BrandsList({
           <LoadingBlock />
         ) : nadaEncontrado ? (
           <EmptyState
-            title="Nenhum resultado encontrado"
+            title={t.emptySearchTitle}
             message={`Não localizamos nada para "${termo}". Tente outra marca, modelo ou código.`}
           />
         ) : (
           <div className="space-y-6">
             {modelHits.length > 0 && (
               <section className="space-y-3">
-                <SectionHeader label="Catálogo" count={modelHits.length} />
+                <SectionHeader label={t.sectionCatalog} count={modelHits.length} />
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   {modelHits.map((model) => (
                     <ModelCard
@@ -1202,6 +1232,7 @@ function BrandsList({
                       brandName={model.brand?.name ?? 'Marca'}
                       hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
                       onSelectDetail={() => onSelectModelDetail(model)}
+                      t={t}
                     />
                   ))}
                 </div>
@@ -1210,12 +1241,13 @@ function BrandsList({
 
             {codeGroups.length > 0 && (
               <section className="space-y-3">
-                <SectionHeader label="Códigos de Erro" count={codeGroups.length} />
+                <SectionHeader label={t.sectionErrorCodes} count={codeGroups.length} />
                 {codeGroups.map((group) => (
                   <ErrorCodeGroupCard
                     key={group.code}
                     group={group}
                     onSelectMachine={(occ) => onSelectModelErrors(occ.model, group.code)}
+                    t={t}
                   />
                 ))}
               </section>
@@ -1228,12 +1260,12 @@ function BrandsList({
           <LoadingBlock />
         ) : filteredModels.length === 0 ? (
           <EmptyState
-            title="Nenhum equipamento encontrado"
-            message="Nenhum modelo corresponde aos filtros selecionados. Ajuste a potência ou o tipo."
+            title={t.emptyEquipmentTitle}
+            message={t.emptyEquipmentFilterMessage}
           />
         ) : (
           <section className="space-y-3">
-            <SectionHeader label="Catálogo" count={filteredModels.length} />
+            <SectionHeader label={t.sectionCatalog} count={filteredModels.length} />
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {filteredModels.map((model) => (
                 <ModelCard
@@ -1243,6 +1275,7 @@ function BrandsList({
                   brandName={model.brand?.name ?? 'Marca'}
                   hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
                   onSelectDetail={() => onSelectModelDetail(model)}
+                  t={t}
                 />
               ))}
             </div>
@@ -1252,8 +1285,8 @@ function BrandsList({
         <LoadingBlock />
       ) : brands.length === 0 ? (
         <EmptyState
-          title="Catálogo em atualização"
-          message="As marcas e modelos para consulta estão sendo cadastrados. Volte em breve."
+          title={t.emptyBrandsTitle}
+          message={t.emptyBrandsMessage}
         />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -1312,9 +1345,11 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 function ErrorCodeGroupCard({
   group,
   onSelectMachine,
+  t,
 }: {
   group: GroupedErrorCode;
   onSelectMachine: (occ: CodeOccurrence) => void;
+  t: TCatalog;
 }) {
   const LIMIT = 6;
   const [expanded, setExpanded] = useState(false);
@@ -1333,7 +1368,7 @@ function ErrorCodeGroupCard({
       </div>
 
       <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {group.occurrences.length === 1 ? 'Máquina' : 'Máquinas'}
+        {group.occurrences.length === 1 ? t.machine : t.machines}
       </p>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {visiveis.map((occ) => (
@@ -1361,7 +1396,7 @@ function ErrorCodeGroupCard({
               'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             )}
           >
-            <span className="text-primary">+{restantes} mais</span>
+            <span className="text-primary">{t.showMore.replace('{n}', String(restantes))}</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary" />
           </button>
         )}
@@ -1375,7 +1410,7 @@ function ErrorCodeGroupCard({
               'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             )}
           >
-            <span className="text-primary">ver menos</span>
+            <span className="text-primary">{t.showLess}</span>
             <ChevronUp className="h-3.5 w-3.5 shrink-0 text-primary" />
           </button>
         )}
@@ -1394,12 +1429,14 @@ function ModelosList({
   onBack,
   onSelectBrand,
   onSelectDetail,
+  t,
 }: {
   brand: EquipmentBrand;
   domain: EquipmentDomain;
   onBack: () => void;
   onSelectBrand: (brand: EquipmentBrand) => void;
   onSelectDetail: (model: EquipmentModel) => void;
+  t: TCatalog;
 }) {
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
@@ -1527,7 +1564,7 @@ function ModelosList({
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Boxes} title={tituloCatalogo(domain)} subtitle={brand.name} onBack={onBack} />
+      <Header icon={Boxes} title={tituloCatalogo(domain, t)} subtitle={brand.name} onBack={onBack} />
 
       {/* Carrossel de marcas: a atual no centro, vizinhas espiando nas laterais.
           Deslizar/tocar numa marca troca a marca ativa (mostra os modelos dela). */}
@@ -1574,11 +1611,11 @@ function ModelosList({
           {/* Setas pra navegar entre marcas (anterior/próxima). Sobrepõem as
               laterais; auto-desabilitam na primeira/última marca. */}
           <CarouselPrevious
-            aria-label="Marca anterior"
+            aria-label={t.brandPrevious}
             className="left-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
           />
           <CarouselNext
-            aria-label="Próxima marca"
+            aria-label={t.brandNext}
             className="right-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
           />
         </Carousel>
@@ -1604,7 +1641,7 @@ function ModelosList({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Buscar equipamento ou código..."
+            placeholder={t.searchModelPlaceholder}
             value={termoRaw}
             onChange={(e) => setTermoRaw(e.target.value)}
             className="h-14 pl-10 text-lg"
@@ -1617,7 +1654,7 @@ function ModelosList({
           className={cn('h-14 shrink-0', activeFilterCount > 0 && 'border-primary/50 text-primary')}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          Filtros
+          {t.filters}
           {activeFilterCount > 0 && (
             <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
               {activeFilterCount}
@@ -1629,7 +1666,7 @@ function ModelosList({
       <ResponsiveModal
         open={filtersOpen}
         onOpenChange={setFiltersOpen}
-        title="Filtros"
+        title={t.filters}
         footer={
           <div className="flex items-center justify-between gap-2">
             <Button
@@ -1638,32 +1675,32 @@ function ModelosList({
               onClick={limparFiltros}
               disabled={activeFilterCount === 0}
             >
-              Limpar filtros
+              {t.clearFilters}
             </Button>
             <Button type="button" onClick={() => setFiltersOpen(false)}>
-              Ver resultados
+              {t.viewResults}
             </Button>
           </div>
         }
       >
         <div className="space-y-5">
           <FilterCheckboxGroup
-            label="Potência"
+            label={t.filterPower}
             options={btuOptions}
             selected={selectedBtus}
             onChange={setSelectedBtus}
-            emptyLabel="Todas"
+            emptyLabel={t.filterAllFeminine}
           />
           <FilterCheckboxGroup
-            label="Tipo"
+            label={t.filterType}
             options={typeOptions}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            emptyLabel="Todos"
+            emptyLabel={t.filterAll}
           />
           {gasFilterEnabled && gasOptions.length > 0 && (
             <FilterCheckboxGroup
-              label="Gás refrigerante"
+              label={t.filterRefrigerant}
               options={gasOptions.map((o) => ({
                 value: o.value,
                 label: o.label,
@@ -1672,7 +1709,7 @@ function ModelosList({
               }))}
               selected={selectedGases}
               onChange={setSelectedGases}
-              emptyLabel="Todos"
+              emptyLabel={t.filterAll}
             />
           )}
         </div>
@@ -1682,13 +1719,13 @@ function ModelosList({
         <LoadingBlock />
       ) : models.length === 0 ? (
         <EmptyState
-          title="Nenhum modelo cadastrado"
+          title={t.emptyModelsTitle}
           message={`Ainda não há modelos da ${brand.name} no catálogo.`}
         />
       ) : semResultado ? (
         <EmptyState
-          title="Nenhum equipamento encontrado"
-          message="Nenhum modelo corresponde à busca ou aos filtros. Ajuste os critérios."
+          title={t.emptyEquipmentTitle}
+          message={t.emptyEquipmentMessage}
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -1700,6 +1737,7 @@ function ModelosList({
               brandName={brand.name}
               hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
               onSelectDetail={() => onSelectDetail(model)}
+              t={t}
             />
           ))}
         </div>
@@ -1749,8 +1787,10 @@ function brandBadgeColor(name: string): string {
  */
 function RemotesList({
   onSelectDetail,
+  t,
 }: {
   onSelectDetail: (model: EquipmentModel) => void;
+  t: TCatalog;
 }) {
   const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
 
@@ -1786,15 +1826,15 @@ function RemotesList({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold tracking-tight md:text-xl">
-            {tituloCatalogo('controle_remoto')}
+            {tituloCatalogo('controle_remoto', t)}
           </h2>
           <p className="text-sm text-muted-foreground md:text-base">
-            Consulte os controles remotos do catálogo.
+            {t.remotesSubtitle}
           </p>
         </div>
         {models.length > 0 && (
           <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
-            {models.length} controles
+            {models.length} {t.controls}
           </span>
         )}
       </div>
@@ -1804,7 +1844,7 @@ function RemotesList({
         <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Buscar por marca ou controle"
+          placeholder={t.remotesSearchPlaceholder}
           value={termoRaw}
           onChange={(e) => setTermoRaw(e.target.value)}
           className="h-14 pl-10 text-lg"
@@ -1815,12 +1855,12 @@ function RemotesList({
         <LoadingBlock />
       ) : models.length === 0 ? (
         <EmptyState
-          title="Catálogo em atualização"
-          message="Os controles remotos para consulta estão sendo cadastrados. Volte em breve."
+          title={t.emptyRemotesTitle}
+          message={t.emptyRemotesMessage}
         />
       ) : semResultado ? (
         <EmptyState
-          title="Nenhum controle encontrado"
+          title={t.emptyRemoteSearchTitle}
           message={`Não localizamos nada para "${termo}". Tente outra marca ou controle.`}
         />
       ) : (
@@ -1831,6 +1871,7 @@ function RemotesList({
               model={model}
               brandName={model.brand?.name ?? 'Marca'}
               onSelectDetail={() => onSelectDetail(model)}
+              t={t}
             />
           ))}
         </div>
@@ -1844,10 +1885,12 @@ function RemoteCard({
   model,
   brandName,
   onSelectDetail,
+  t,
 }: {
   model: EquipmentModel;
   brandName: string;
   onSelectDetail: () => void;
+  t: TCatalog;
 }) {
   const temFoto = Boolean(model.image_url);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -1873,7 +1916,7 @@ function RemoteCard({
       ) : (
         <div className="flex h-44 w-full flex-col items-center justify-center gap-1 bg-white">
           <PackageSearch className="h-12 w-12 text-neutral-300" />
-          <span className="text-xs text-neutral-400">Sem foto</span>
+          <span className="text-xs text-neutral-400">{t.noPhoto}</span>
         </div>
       )}
 
@@ -1898,7 +1941,7 @@ function RemoteCard({
           className="mt-4 w-full"
         >
           <Settings2 className="h-4 w-4" />
-          Ver detalhes técnicos
+          {t.remoteDetails}
         </Button>
       </div>
 
@@ -1937,7 +1980,7 @@ function gasInflamavel(classeSeguranca: string | null | undefined): boolean {
  * própria `refrigerant_gases` (não navega por marca). Busca filtra por code/name.
  * Ordem por `sort` (já vem do hook).
  */
-function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void }) {
+function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => void; t: TCatalog }) {
   const { data: gases = [], isLoading } = useRefrigerantGases();
 
   const [termoRaw, setTermoRaw] = useState('');
@@ -1974,15 +2017,15 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold tracking-tight md:text-xl">
-            {tituloCatalogo('fluido_refrigerante')}
+            {tituloCatalogo('fluido_refrigerante', t)}
           </h2>
           <p className="text-sm text-muted-foreground md:text-base">
-            Consulte os fluidos refrigerantes do catálogo.
+            {t.fluidsSubtitle}
           </p>
         </div>
         {gases.length > 0 && (
           <span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
-            {gases.length} fluidos
+            {gases.length} {t.fluids}
           </span>
         )}
       </div>
@@ -1992,7 +2035,7 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
         <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Buscar por código ou nome (ex: R-410A)"
+          placeholder={t.fluidsSearchPlaceholder}
           value={termoRaw}
           onChange={(e) => setTermoRaw(e.target.value)}
           className="h-14 pl-10 text-lg"
@@ -2003,12 +2046,12 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
         <LoadingBlock />
       ) : gases.length === 0 ? (
         <EmptyState
-          title="Catálogo em atualização"
-          message="Os fluidos refrigerantes para consulta estão sendo cadastrados. Volte em breve."
+          title={t.emptyFluidTitle}
+          message={t.emptyFluidMessage}
         />
       ) : semResultado ? (
         <EmptyState
-          title="Nenhum fluido encontrado"
+          title={t.emptyFluidSearchTitle}
           message={`Não localizamos nada para "${termo}". Tente outro código ou nome.`}
         />
       ) : (
@@ -2017,7 +2060,7 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
           {puros.length > 0 && (
             <section className="space-y-3">
               <h3 className="text-base font-bold tracking-tight text-foreground md:text-lg">
-                Puros
+                {t.pureGases}
               </h3>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {puros.map((gas) => (
@@ -2029,7 +2072,7 @@ function GasesList({ onSelectGas }: { onSelectGas: (gas: RefrigerantGas) => void
           {misturas.length > 0 && (
             <section className="space-y-3">
               <h3 className="text-base font-bold tracking-tight text-foreground md:text-lg">
-                Misturas (blends)
+                {t.blendGases}
               </h3>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {misturas.map((gas) => (
@@ -2289,6 +2332,8 @@ function kwh(v: number): string {
  * gasto/h = kWh/h × tarifa; gasto/mês = kWh/mês × tarifa.
  */
 function ConsumoEnergia({ model }: { model: EquipmentModel }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.catalog;
   const [cfg, setCfg] = useEnergiaConfig();
   const [open, setOpen] = useState(false);
   const [tarifaStr, setTarifaStr] = useState(() => String(cfg.tarifa).replace('.', ','));
@@ -2343,7 +2388,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <Zap className="h-4 w-4 text-amber-500" />
-          Consumo de energia
+          {t.energyConsumption}
         </div>
         <Popover
           open={open}
@@ -2359,13 +2404,13 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              Ajustar
+              {t.adjust}
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 space-y-3">
-            <p className="text-sm font-medium text-foreground">Tarifa e uso</p>
+            <p className="text-sm font-medium text-foreground">{t.rateAndUsage}</p>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Tarifa (R$/kWh)</label>
+              <label className="text-xs text-muted-foreground">{t.rate}</label>
               <Input
                 inputMode="decimal"
                 value={tarifaStr}
@@ -2375,7 +2420,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs text-muted-foreground">Horas de uso por dia</label>
+                <label className="text-xs text-muted-foreground">{t.usageHoursPerDay}</label>
                 <span className="text-sm font-semibold tabular-nums text-foreground">
                   {horasNum} h
                 </span>
@@ -2387,23 +2432,23 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
                 value={[horasNum]}
                 onValueChange={(v) => setHorasNum(v[0])}
                 className="py-1.5"
-                aria-label="Horas de uso por dia"
+                aria-label={t.usageHoursPerDay}
               />
             </div>
             <Button size="sm" className="w-full" onClick={commitConfig}>
-              Aplicar
+              {t.apply}
             </Button>
           </PopoverContent>
         </Popover>
       </div>
 
       {!temDado ? (
-        <p className="mt-2 text-xs text-muted-foreground">Consumo não informado</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t.noConsumptionData}</p>
       ) : (
         <div className="mt-2 space-y-1.5 text-sm">
           {kwhHora != null && (
             <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 font-medium text-foreground">Por hora</span>
+              <span className="min-w-0 font-medium text-foreground">{t.perHour}</span>
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhHora)}/h
                 {gastoHora != null && (
@@ -2415,11 +2460,11 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           {kwhMes != null && (
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0 font-medium text-foreground">
-                Por mês
+                {t.perMonth}
                 <span className="block text-[11px] font-normal leading-tight text-muted-foreground">
                   {continuo
-                    ? '24 h/dia'
-                    : `estimado · ${String(cfg.horasDia).replace('.', ',')} h/dia`}
+                    ? t.continuousOp
+                    : `${t.estimatedOp} · ${String(cfg.horasDia).replace('.', ',')} ${t.hoursPerDay}`}
                 </span>
               </span>
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
@@ -2431,8 +2476,8 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
             </div>
           )}
           <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
-            Estimativa com base em dados públicos da internet.
-            {baseEhPotencia && ' Calculada pela potência nominal; consulte o manual.'}
+            {t.energyEstimateNote}
+            {baseEhPotencia && t.energyPowerNote}
           </p>
         </div>
       )}
@@ -2445,15 +2490,15 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
 /* ------------------------------------------------------------------ */
 
 /** Configuração da ação primária do card (rótulo + ícone) por domínio. */
-function detailAction(domain: EquipmentDomain): { label: string; icon: typeof AlertCircle } {
+function detailAction(domain: EquipmentDomain, t: TCatalog): { label: string; icon: typeof AlertCircle } {
   switch (domain) {
     case 'compressor':
-      return { label: 'Ficha técnica', icon: Cpu };
+      return { label: t.technicalSheet, icon: Cpu };
     case 'controle_remoto':
-      return { label: 'Ver detalhes técnicos', icon: Settings2 };
+      return { label: t.techDetails, icon: Settings2 };
     default:
       // ar_condicionado e linha_branca → códigos de erro.
-      return { label: 'Códigos de erro', icon: AlertCircle };
+      return { label: t.errorCodes, icon: AlertCircle };
   }
 }
 
@@ -2463,6 +2508,7 @@ function ModelCard({
   brandName,
   onSelectDetail,
   hasErrorCodes,
+  t,
 }: {
   model: EquipmentModel;
   domain: EquipmentDomain;
@@ -2475,6 +2521,7 @@ function ModelCard({
    * "Manual Indisponível"). Nos outros domínios é ignorado.
    */
   hasErrorCodes?: boolean;
+  t: TCatalog;
 }) {
   const categoria = model.category?.name ?? null;
   // Compressor de refrigeração comercial (câmara fria): badge dedicado.
@@ -2504,7 +2551,7 @@ function ModelCard({
   const isErrorsDomain = detailKind(domain) === 'errors';
   const codigosIndisponiveis = isErrorsDomain && hasErrorCodes !== true;
 
-  const detalhe = detailAction(domain);
+  const detalhe = detailAction(domain, t);
   const DetalheIcon = detalhe.icon;
 
   // Viewer dedicado da foto (igual OS) — abre no clique, fecha fora, baixa, mobile/desktop.
@@ -2558,7 +2605,7 @@ function ModelCard({
       ) : (
         <div className="flex h-44 w-full flex-col items-center justify-center gap-1 bg-white">
           <PackageSearch className="h-12 w-12 text-neutral-300" />
-          <span className="text-xs text-neutral-400">Sem foto</span>
+          <span className="text-xs text-neutral-400">{t.noPhoto}</span>
         </div>
       )}
 
@@ -2585,7 +2632,7 @@ function ModelCard({
             {camaraFria && (
               <span className="inline-flex items-center gap-1 rounded-md bg-cyan-600 px-2 py-0.5 text-xs font-semibold text-white">
                 <Snowflake className="h-3 w-3" />
-                Câmara frigorífica
+                {t.coldRoom}
               </span>
             )}
             {/* Gás: só badge quando UM gás só. Compressores de câmara fria têm
@@ -2609,7 +2656,7 @@ function ModelCard({
               })()}
             {model.code && (
               <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                Cód.: {model.code}
+                {t.code} {model.code}
               </span>
             )}
             {mostraManualBadge && (
@@ -2639,7 +2686,7 @@ function ModelCard({
         >
           {codigosIndisponiveis ? (
             <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
-              Códigos de Erro Indisponíveis
+              {t.noErrorCodes}
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
@@ -2662,11 +2709,11 @@ function ModelCard({
                 className="w-full"
               >
                 <Download className="h-4 w-4 shrink-0" />
-                <span className="truncate">Baixar manual</span>
+                <span className="truncate">{t.downloadManual}</span>
               </Button>
             ) : (
               <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
-                Manual Indisponível
+                {t.noManual}
               </div>
             ))}
 
@@ -2690,7 +2737,7 @@ function ModelCard({
               </Button>
             ) : (
               <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
-                Datasheet Indisponível
+                {t.noDatasheet}
               </div>
             ))}
         </div>
@@ -2774,11 +2821,15 @@ function CodigosErro({
   model,
   initialCode,
   onBack,
+  t: tProp,
 }: {
   model: EquipmentModel;
   initialCode?: string;
   onBack: () => void;
+  t?: TErrorCodes;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = tProp ?? MESSAGES[locale].app.technicianTools.errorCodes;
   const { data: codes = [], isLoading } = useEquipmentErrorCodes(model.id);
   const [filtro, setFiltro] = useState(initialCode ?? '');
 
@@ -2813,14 +2864,14 @@ function CodigosErro({
     <div className="space-y-6 pb-8">
       <Header
         icon={AlertCircle}
-        eyebrow="Códigos de erro"
+        eyebrow={t.eyebrow}
         title={tituloTopo}
         onBack={onBack}
         action={
           <button
             type="button"
             aria-pressed={favorito}
-            aria-label={favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            aria-label={favorito ? t.removeFavorite : t.addFavorite}
             onClick={onToggleFavorito}
             className={cn(
               'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95',
@@ -2837,10 +2888,10 @@ function CodigosErro({
 
       {/* Campo de busca estilo display */}
       <div className="space-y-2">
-        <p className="text-sm font-medium">Informe o código de erro no display</p>
+        <p className="text-sm font-medium">{t.displayLabel}</p>
         <Input
           type="text"
-          placeholder="Ex: E1, F0, P4..."
+          placeholder={t.displayPlaceholder}
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
           className="h-14 text-center text-2xl font-bold uppercase tracking-widest"
@@ -2849,10 +2900,9 @@ function CodigosErro({
 
       {/* Instruções */}
       <div className="rounded-xl border border-border bg-muted/40 p-4">
-        <p className="text-sm font-semibold">Instruções</p>
+        <p className="text-sm font-semibold">{t.instructionsTitle}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Digite o código exibido no painel do equipamento para ver o diagnóstico. Você também pode
-          percorrer a lista completa de códigos abaixo.
+          {t.instructionsText}
         </p>
       </div>
 
@@ -2861,12 +2911,12 @@ function CodigosErro({
         <LoadingBlock />
       ) : codes.length === 0 ? (
         <EmptyState
-          title="Sem códigos cadastrados"
-          message="Ainda não há códigos de erro registrados para este modelo."
+          title={t.emptyTitle}
+          message={t.emptyMessage}
         />
       ) : filtrados.length === 0 ? (
         <EmptyState
-          title="Código não encontrado"
+          title={t.notFoundTitle}
           message={`Nenhum código corresponde a "${filtro.trim()}" neste modelo.`}
         />
       ) : (
@@ -2888,7 +2938,7 @@ function CodigosErro({
                 <div className="mt-3">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <Stethoscope className="h-3.5 w-3.5" />
-                    Diagnóstico
+                    {t.diagnosis}
                   </p>
                   <TextoAcionavel texto={ec.diagnosis} contador="bg-sky-500" />
                 </div>
@@ -2898,7 +2948,7 @@ function CodigosErro({
                 <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                     <Wrench className="h-3.5 w-3.5" />
-                    Solução
+                    {t.solution}
                   </p>
                   <TextoAcionavel texto={ec.solution} contador="bg-emerald-600" />
                 </div>
@@ -2906,7 +2956,7 @@ function CodigosErro({
 
               {ec.component && (
                 <div className="mt-3 flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">Componente:</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t.component}</span>
                   <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
                     {ec.component}
                   </span>

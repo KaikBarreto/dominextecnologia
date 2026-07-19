@@ -12,6 +12,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { CicloRefrigeracaoIlustracao } from './CicloRefrigeracaoIlustracao';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type CicloView = 'ilustracao' | 'imagem';
 
@@ -23,6 +25,8 @@ type CicloView = 'ilustracao' | 'imagem';
  * glossário em accordion específico do ciclo básico.
  */
 export function CicloRefrigeracao() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.refrigerationCycle;
   const [view, setView] = usePersistedState<CicloView>(
     'tt:state:ciclo-refrigeracao:view',
     'ilustracao',
@@ -43,10 +47,10 @@ export function CicloRefrigeracao() {
     <div className="space-y-4 pb-4">
       <div>
         <h2 className="text-base font-semibold tracking-tight md:text-xl">
-          Ciclo Básico de Refrigeração
+          {t.title}
         </h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          Entenda como o gás circula pelo sistema e o que cada componente faz.
+          {t.subtitle}
         </p>
       </div>
 
@@ -61,7 +65,7 @@ export function CicloRefrigeracao() {
           }`}
         >
           <Sparkles className="h-4 w-4 shrink-0" />
-          Ilustração
+          {t.viewIllustration}
         </button>
         <Switch
           aria-label="Alternar entre ilustração e imagem 2D"
@@ -77,7 +81,7 @@ export function CicloRefrigeracao() {
           }`}
         >
           <ImageIcon className="h-4 w-4 shrink-0" />
-          Imagem 2D
+          {t.viewImage}
         </button>
       </div>
 
@@ -88,7 +92,7 @@ export function CicloRefrigeracao() {
         <img
           key={imagemSrc}
           src={imagemSrc}
-          alt="Diagrama do ciclo básico de refrigeração"
+          alt={t.imageAlt}
           loading="lazy"
           className="mx-auto h-auto w-full max-w-5xl rounded-xl"
         />
@@ -99,25 +103,25 @@ export function CicloRefrigeracao() {
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <h2 className="text-base font-semibold md:text-xl">Termos do ciclo</h2>
+            <h2 className="text-base font-semibold md:text-xl">{t.glossaryTitle}</h2>
             <p className="text-sm text-muted-foreground md:text-base">
-              Cada componente e conceito do ciclo, explicado.
+              {t.glossarySubtitle}
             </p>
           </div>
         </div>
 
         <Accordion type="single" collapsible>
-          {GLOSSARIO_CICLO.map((t) => (
-            <AccordionItem key={t.id} value={t.id} className="last:border-b-0">
+          {GLOSSARIO_CICLO.map((entry) => (
+            <AccordionItem key={entry.id} value={entry.id} className="last:border-b-0">
               <AccordionTrigger className="min-w-0 text-left text-sm font-semibold md:text-base">
-                <span className="truncate pr-2">{t.termo}</span>
+                <span className="truncate pr-2">{entry.termo}</span>
               </AccordionTrigger>
               <AccordionContent className="space-y-2">
-                <p className="text-sm text-muted-foreground">{t.descricao}</p>
-                {t.exemplo && (
+                <p className="text-sm text-muted-foreground">{entry.descricao}</p>
+                {entry.exemplo && (
                   <p className="rounded-lg bg-muted px-3 py-2 text-sm">
-                    <span className="font-medium text-primary">Exemplo: </span>
-                    <span className="text-foreground/90">{t.exemplo}</span>
+                    <span className="font-medium text-primary">{t.glossaryExample}</span>
+                    <span className="text-foreground/90">{entry.exemplo}</span>
                   </p>
                 )}
               </AccordionContent>
@@ -126,7 +130,7 @@ export function CicloRefrigeracao() {
         </Accordion>
       </section>
 
-      <ToolDisclaimer texto="Conteúdo de apoio e didático. Confira sempre os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );
 }

@@ -8,6 +8,8 @@ import { Calculator } from 'lucide-react';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { calcularCargaTermica, formatarBtus } from '@/lib/cargaTermica';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface CargaTermicaProps {
   /**
@@ -24,23 +26,27 @@ function num(str: string, def = 0): number {
   return Number.isFinite(parsed) ? parsed : def;
 }
 
+type TThermalLoad = (typeof MESSAGES)['pt-br']['app']['technicianTools']['thermalLoad'];
+
 interface CampoNum {
   id: string;
-  label: string;
+  fieldKey: keyof TThermalLoad['fields'];
   placeholder?: string;
   inputMode?: 'decimal' | 'numeric';
 }
 
 const CAMPOS: CampoNum[] = [
-  { id: 'altura', label: 'Altura (metros)', placeholder: 'Ex: 2,8', inputMode: 'decimal' },
-  { id: 'largura', label: 'Largura (metros)', placeholder: 'Ex: 4', inputMode: 'decimal' },
-  { id: 'comprimento', label: 'Comprimento (metros)', placeholder: 'Ex: 5', inputMode: 'decimal' },
-  { id: 'pessoas', label: 'Quantidade de pessoas', placeholder: 'Ex: 2', inputMode: 'numeric' },
-  { id: 'eletronicos', label: 'Eletroeletrônicos', placeholder: 'Ex: 3', inputMode: 'numeric' },
-  { id: 'janelas', label: 'Janelas (2 x 1,5 metros)', placeholder: 'Ex: 1', inputMode: 'numeric' },
+  { id: 'altura', fieldKey: 'height', placeholder: 'Ex: 2,8', inputMode: 'decimal' },
+  { id: 'largura', fieldKey: 'width', placeholder: 'Ex: 4', inputMode: 'decimal' },
+  { id: 'comprimento', fieldKey: 'length', placeholder: 'Ex: 5', inputMode: 'decimal' },
+  { id: 'pessoas', fieldKey: 'people', placeholder: 'Ex: 2', inputMode: 'numeric' },
+  { id: 'eletronicos', fieldKey: 'electronics', placeholder: 'Ex: 3', inputMode: 'numeric' },
+  { id: 'janelas', fieldKey: 'windows', placeholder: 'Ex: 1', inputMode: 'numeric' },
 ];
 
 export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.thermalLoad;
   // Estado em string crua — convertido com num() só no cálculo.
   const [valores, setValores] = usePersistedState<Record<string, string>>(
     'tt:state:carga-termica:valores',
@@ -84,8 +90,8 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Carga Térmica</h2>
-        <p className="text-sm text-muted-foreground md:text-base">Dimensione a capacidade em BTUs do ambiente.</p>
+        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <p className="text-sm text-muted-foreground md:text-base">{t.subtitle}</p>
       </div>
 
       {/* Form agrupado num card — grid 2 colunas no desktop, 1 no mobile */}
@@ -94,7 +100,7 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
           {CAMPOS.map((campo) => (
             <div key={campo.id} className="space-y-1.5">
               <Label htmlFor={campo.id} className="text-base text-muted-foreground md:text-lg">
-                {campo.label}
+                {t.fields[campo.fieldKey]}
               </Label>
               <Input
                 id={campo.id}
@@ -111,15 +117,15 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
           {/* Toggle ocupa a linha inteira no fim do grid */}
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 md:col-span-2">
             <Label htmlFor="ensolarado" className="cursor-pointer text-base text-foreground">
-              Ambiente ensolarado?
+              {t.sunny}
             </Label>
             <div className="flex items-center gap-2.5">
               <span className={`text-sm font-medium ${!ensolarado ? 'text-foreground' : 'text-muted-foreground'}`}>
-                Não
+                {t.no}
               </span>
               <Switch id="ensolarado" checked={ensolarado} onCheckedChange={setEnsolarado} />
               <span className={`text-sm font-medium ${ensolarado ? 'text-foreground' : 'text-muted-foreground'}`}>
-                Sim
+                {t.yes}
               </span>
             </div>
           </div>
@@ -139,7 +145,7 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
           />
         </div>
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Capacidade necessária
+          {t.resultLabel}
         </p>
         <p className="mt-2 text-5xl font-bold leading-none text-primary sm:text-7xl">
           {unidadeResultado === 'btu' ? (
@@ -158,9 +164,7 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
         </p>
         {temArea && (
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            {unidadeResultado === 'tr'
-              ? '1 TR (Tonelada de Refrigeração) = 12.000 BTU/h. Recomenda-se não utilizar aparelhos abaixo da potência indicada.'
-              : 'Recomenda-se não utilizar aparelhos de ar condicionado abaixo da potência indicada.'}
+            {unidadeResultado === 'tr' ? t.trNote : t.btuNote}
           </p>
         )}
       </div>
@@ -178,11 +182,11 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
             onApply(trBR);
           }}
         >
-          <Calculator className="mr-1.5 h-4 w-4" /> Usar resultado
+          <Calculator className="mr-1.5 h-4 w-4" /> {t.useResult}
         </Button>
       )}
 
-      <ToolDisclaimer texto="Ferramenta de apoio. Esta simulação é uma referência aproximada e não corresponde integralmente às diferentes realidades do local de instalação — confira sempre a placa do equipamento, os manuais do fabricante e as normas técnicas aplicáveis antes de executar." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );
 }

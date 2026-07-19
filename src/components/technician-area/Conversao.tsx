@@ -25,6 +25,10 @@ import {
   useToolHistory,
 } from '@/lib/technicianAreaHistory';
 import { usePersistedState } from '@/hooks/usePersistedState';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+
+type TConversion = (typeof MESSAGES)['pt-br']['app']['technicianTools']['conversion'];
 
 /** Par inicial de deep-link vindo de Recentes/Favoritos do Início. */
 export interface ConversaoInicial {
@@ -90,6 +94,17 @@ const ORDEM: ConversaoCategoria[] = [
 ];
 
 export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.conversion;
+
+  // Rótulo traduzido por categoria (sobrescreve CATEGORIA_LABEL do módulo).
+  const categoriaLabel: Record<ConversaoCategoria, string> = {
+    pressao: t.categories.pressure,
+    temperatura: t.categories.temperature,
+    potencia: t.categories.power,
+    comprimento: t.categories.length,
+  };
+
   // Categoria persiste na sessão (sobrevive à troca de aba). Deep-link tem
   // prioridade: quando vem com `inicial`, aplicamos a categoria dele na 1ª
   // montagem por cima do que estava salvo.
@@ -127,8 +142,8 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">Conversão</h2>
-        <p className="text-sm text-muted-foreground md:text-base">Converta entre unidades de medida.</p>
+        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <p className="text-sm text-muted-foreground md:text-base">{t.subtitle}</p>
       </div>
 
       {/* Seleção de categoria — chips compactos que quebram linha (flex-wrap) */}
@@ -153,7 +168,7 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              <span className="leading-none">{CATEGORIA_LABEL[cat]}</span>
+              <span className="leading-none">{categoriaLabel[cat]}</span>
             </button>
           );
         })}
@@ -165,6 +180,7 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
         inicial={parInicial}
         atalhos={ATALHOS_RAPIDOS}
         onAtalho={aplicarAtalho}
+        t={t}
       />
     </div>
   );
@@ -175,11 +191,13 @@ function ConversaoCategoriaView({
   inicial,
   atalhos,
   onAtalho,
+  t,
 }: {
   categoria: ConversaoCategoria;
   inicial?: ConversaoInicial;
   atalhos: AtalhoConversao[];
   onAtalho: (a: AtalhoConversao) => void;
+  t: TConversion;
 }) {
   return (
     <ConversaoNumericaView
@@ -187,6 +205,7 @@ function ConversaoCategoriaView({
       inicial={inicial}
       atalhos={atalhos}
       onAtalho={onAtalho}
+      t={t}
     />
   );
 }
@@ -196,11 +215,13 @@ function ConversaoNumericaView({
   inicial,
   atalhos,
   onAtalho,
+  t,
 }: {
   categoria: ConversaoCategoriaNumerica;
   inicial?: ConversaoInicial;
   atalhos: AtalhoConversao[];
   onAtalho: (a: AtalhoConversao) => void;
+  t: TConversion;
 }) {
   const { unidades } = CONVERSAO_CATEGORIAS[categoria];
 
@@ -315,11 +336,11 @@ function ConversaoNumericaView({
     <div className="space-y-3">
     {isParHpBtu && (
       <div className="rounded-lg border border-border bg-card p-3">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Modo de cálculo</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">{t.calcModeLabel}</p>
         <div className="grid grid-cols-2 gap-2">
           {([
-            { key: 'refrigeracao', label: 'Refrigeração', fator: '1 HP = 9.000 BTU/h', accent: 'hsl(217 91% 60%)' },
-            { key: 'energia', label: 'Energia', fator: '1 HP = 2.544 BTU/h', accent: 'hsl(25 95% 53%)' },
+            { key: 'refrigeracao', label: t.calcModeRefrigeration, fator: '1 HP = 9.000 BTU/h', accent: 'hsl(217 91% 60%)' },
+            { key: 'energia', label: t.calcModeEnergy, fator: '1 HP = 2.544 BTU/h', accent: 'hsl(25 95% 53%)' },
           ] as const).map((opt) => {
             const isActive = modo === opt.key;
             return (
@@ -351,7 +372,7 @@ function ConversaoNumericaView({
         <button
           type="button"
           aria-pressed={isFavorito}
-          aria-label={isFavorito ? 'Remover dos favoritos' : 'Favoritar conversão'}
+          aria-label={isFavorito ? t.favoriteRemove : t.favoriteAdd}
           onClick={() => toggleConversaoFavorita({ categoria, de: origemCode, para: destinoCode })}
           className={cn(
             'absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full transition-all active:scale-[0.92]',
@@ -367,9 +388,9 @@ function ConversaoNumericaView({
       {/* ===== Layout MOBILE (3 linhas: labels / selects+⇄ / valores+"=") ===== */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2 lg:hidden">
         {/* Linha 1: labels */}
-        <Label className="text-base text-muted-foreground text-center">De</Label>
+        <Label className="text-base text-muted-foreground text-center">{t.from}</Label>
         <span aria-hidden className="w-12" />
-        <Label className="text-base text-muted-foreground text-center">Para</Label>
+        <Label className="text-base text-muted-foreground text-center">{t.to}</Label>
 
         {/* Linha 2: selects + botão de troca no meio */}
         <Select value={de} onValueChange={trocarDe}>
@@ -388,7 +409,7 @@ function ConversaoNumericaView({
         <button
           type="button"
           onClick={handleSwap}
-          aria-label="Inverter unidades"
+          aria-label={t.swapUnits}
           className={cn(
             'flex h-14 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors',
             'hover:border-primary/40 hover:text-primary',
@@ -442,9 +463,9 @@ function ConversaoNumericaView({
       {/* ===== Layout DESKTOP (3 linhas: labels / selects+⇄ / valores+"=") ===== */}
       <div className="hidden grid-cols-[1fr_auto_1fr] items-end gap-3 lg:grid">
         {/* Linha 1: labels */}
-        <Label className="text-lg text-muted-foreground">De</Label>
+        <Label className="text-lg text-muted-foreground">{t.from}</Label>
         <span aria-hidden className="w-16" />
-        <Label className="text-lg text-muted-foreground">Para</Label>
+        <Label className="text-lg text-muted-foreground">{t.to}</Label>
 
         {/* Linha 2: selects + botão de troca no meio */}
         <Select value={de} onValueChange={trocarDe}>
@@ -463,7 +484,7 @@ function ConversaoNumericaView({
         <button
           type="button"
           onClick={handleSwap}
-          aria-label="Inverter unidades"
+          aria-label={t.swapUnits}
           className={cn(
             'flex h-14 w-16 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors',
             'hover:border-primary/40 hover:text-primary',
@@ -516,7 +537,7 @@ function ConversaoNumericaView({
 
       {/* Mais usadas — atalhos globais (cross-categoria) no rodapé do card */}
       <div className="mt-4 border-t border-border pt-3">
-        <p className="mb-2 text-[11px] font-medium text-muted-foreground">Mais usadas</p>
+        <p className="mb-2 text-[11px] font-medium text-muted-foreground">{t.mostUsed}</p>
         <div className="flex flex-wrap gap-2">
           {atalhos.map((a) => (
             <button
@@ -538,7 +559,7 @@ function ConversaoNumericaView({
       {/* Favoritas — conversões marcadas com estrela, globais (cross-categoria) */}
       {favoritosConversao.length > 0 && (
         <div className="mt-4 border-t border-border pt-3">
-          <p className="mb-2 text-[11px] font-medium text-muted-foreground">Favoritas</p>
+          <p className="mb-2 text-[11px] font-medium text-muted-foreground">{t.favorites}</p>
           <div className="flex flex-wrap gap-2">
             {favoritosConversao.map((fav) => {
               const label = `${fav.de} → ${fav.para}`;
@@ -568,10 +589,9 @@ function ConversaoNumericaView({
         <div className="flex gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-muted-foreground">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
           <p className="text-xs leading-relaxed">
-            Escolha o tipo de cálculo: <span className="font-semibold text-foreground">Energia</span>{' '}
-            converte a unidade física (1 HP = 2.544 BTU/h).{' '}
-            <span className="font-semibold text-foreground">Refrigeração</span> usa a referência
-            comercial: um compressor ou ar-condicionado de 1 HP equivale a ~9.000 BTUs de capacidade.
+            {t.hpBtuNote
+              .replace('{energy}', t.calcModeEnergy)
+              .replace('{refrigeration}', t.calcModeRefrigeration)}
           </p>
         </div>
       )}
