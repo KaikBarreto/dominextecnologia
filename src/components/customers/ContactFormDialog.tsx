@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface ContactFormDialogProps {
   open: boolean;
@@ -21,6 +23,8 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
   onCancel: () => void;
   isLoading: boolean;
 }) {
+  const { locale } = useAppLocaleContext();
+  const tc = MESSAGES[locale].app.customers.contact;
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -54,26 +58,26 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="contact-name">Nome *</Label>
-        <Input id="contact-name" value={name} onChange={e => setName(e.target.value)} placeholder="Nome do contato" required disabled={isLoading} />
+        <Label htmlFor="contact-name">{tc.fieldName}</Label>
+        <Input id="contact-name" value={name} onChange={e => setName(e.target.value)} placeholder={tc.namePlaceholder} required disabled={isLoading} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="contact-position">Cargo</Label>
-        <Input id="contact-position" value={position} onChange={e => setPosition(e.target.value)} placeholder="Ex: Gerente, Supervisor, Zelador" disabled={isLoading} />
+        <Label htmlFor="contact-position">{tc.fieldPosition}</Label>
+        <Input id="contact-position" value={position} onChange={e => setPosition(e.target.value)} placeholder={tc.positionPlaceholder} disabled={isLoading} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="contact-phone">Telefone</Label>
-        <Input id="contact-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(00) 00000-0000" disabled={isLoading} />
+        <Label htmlFor="contact-phone">{tc.fieldPhone}</Label>
+        <Input id="contact-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder={tc.phonePlaceholder} disabled={isLoading} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="contact-email">Email corporativo</Label>
-        <Input id="contact-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@empresa.com" disabled={isLoading} />
+        <Label htmlFor="contact-email">{tc.fieldEmail}</Label>
+        <Input id="contact-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={tc.emailPlaceholder} disabled={isLoading} />
       </div>
       <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-2">
-        <Button type="button" variant="destructive-ghost" onClick={onCancel} disabled={isLoading}>Cancelar</Button>
+        <Button type="button" variant="destructive-ghost" onClick={onCancel} disabled={isLoading}>{tc.cancel}</Button>
         <Button type="submit" disabled={isLoading || !name.trim()}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {contact ? 'Salvar' : 'Adicionar'}
+          {contact ? tc.save : tc.add}
         </Button>
       </div>
     </form>
@@ -82,7 +86,9 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
 
 export function ContactFormDialog({ open, onOpenChange, contact, onSubmit, isLoading }: ContactFormDialogProps) {
   const isMobile = useIsMobile();
-  const title = contact ? 'Editar Contato' : 'Novo Contato';
+  const { locale } = useAppLocaleContext();
+  const tc = MESSAGES[locale].app.customers.contact;
+  const title = contact ? tc.titleEdit : tc.titleNew;
 
   const handleSubmit = async (data: { name: string; phone?: string; email?: string; position?: string }) => {
     await onSubmit(data);

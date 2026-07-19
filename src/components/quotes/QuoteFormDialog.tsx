@@ -517,7 +517,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
     setItems(prev => [...prev, {
       item_type: 'servico',
-      description: st?.name ?? 'Serviço',
+      description: st?.name ?? tq.serviceFallback,
       quantity: addSvcQty,
       unit_total_cost: unitTotalCost,
       unit_price: unitPrice,
@@ -898,11 +898,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">{tq.recipientPhoneLabel}</Label>
-                    <Input placeholder="(00) 00000-0000" value={prospectPhone} onChange={e => setProspectPhone(e.target.value)} />
+                    <Input placeholder={tq.recipientPhonePlaceholder} value={prospectPhone} onChange={e => setProspectPhone(e.target.value)} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">{tq.recipientEmailLabel}</Label>
-                    <Input type="email" placeholder="email@exemplo.com" value={prospectEmail} onChange={e => setProspectEmail(e.target.value)} />
+                    <Input type="email" placeholder={tq.recipientEmailPlaceholder} value={prospectEmail} onChange={e => setProspectEmail(e.target.value)} />
                   </div>
                 </div>
               )}

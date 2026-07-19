@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2, ArrowRight } from 'lucide-react';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface TransferFormDialogProps {
   open: boolean;
@@ -19,6 +21,8 @@ interface TransferFormDialogProps {
 }
 
 export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isLoading }: TransferFormDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.finance.transferForm;
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
   const [amount, setAmount] = useState(0);
@@ -46,22 +50,22 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
 
   const footer = (
     <div className="flex justify-end gap-3">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
       <Button type="submit" form="transfer-form" disabled={isLoading || !fromId || !toId || fromId === toId || amount <= 0}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Transferir
+        {t.confirmLabel}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Transferência entre Contas" className="sm:max-w-[460px]" footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.title} className="sm:max-w-[460px]" footer={footer}>
       <form id="transfer-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
           <div className="space-y-1.5">
-            <Label>Origem</Label>
+            <Label>{t.originLabel}</Label>
             <Select value={fromId} onValueChange={setFromId}>
-              <SelectTrigger><SelectValue placeholder="Conta" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t.originPlaceholder} /></SelectTrigger>
               <SelectContent>
                 {activeAccounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
               </SelectContent>
@@ -69,9 +73,9 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
           </div>
           <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
           <div className="space-y-1.5">
-            <Label>Destino</Label>
+            <Label>{t.destLabel}</Label>
             <Select value={toId} onValueChange={setToId}>
-              <SelectTrigger><SelectValue placeholder="Conta" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t.destPlaceholder} /></SelectTrigger>
               <SelectContent>
                 {activeAccounts.filter(a => a.id !== fromId).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
               </SelectContent>
@@ -81,18 +85,18 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Valor (R$)</Label>
-            <Input placeholder="0,00" value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
+            <Label>{t.amountLabel}</Label>
+            <Input placeholder={t.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
           </div>
           <div className="space-y-1.5">
-            <Label>Data</Label>
+            <Label>{t.dateLabel}</Label>
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label>Descrição (opcional)</Label>
-          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex: Transferência para pagar fornecedor" rows={2} />
+          <Label>{t.descriptionLabel}</Label>
+          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} rows={2} />
         </div>
 
       </form>

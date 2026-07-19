@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate, Enums } from '@/integrations/supabase/types';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { MESSAGES } from '@/lib/i18n/messages';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 export type Lead = Tables<'leads'> & {
   customers?: Partial<Tables<'customers'>> | null;
@@ -18,6 +20,7 @@ export type LeadInteraction = Tables<'lead_interactions'> & {
 };
 export type LeadInteractionInsert = TablesInsert<'lead_interactions'>;
 
+/** @deprecated Use getLeadStatusLabels(locale) para labels traduzidas. Mantido para retrocompatibilidade. */
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   lead: 'Lead',
   proposta: 'Proposta',
@@ -25,6 +28,18 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   fechado_ganho: 'Negócio Fechado (Ganho)',
   fechado_perdido: 'Negócio Perdido',
 };
+
+/** Retorna mapa de status → label no locale solicitado. */
+export function getLeadStatusLabels(locale: LocaleCode): Record<LeadStatus, string> {
+  const tl = MESSAGES[locale].app.crm.leads;
+  return {
+    lead: tl.statusLead,
+    proposta: tl.statusProposta,
+    negociacao: tl.statusNegociacao,
+    fechado_ganho: tl.statusFechadoGanho,
+    fechado_perdido: tl.statusFechadoPerdido,
+  };
+}
 
 export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   lead: 'bg-muted-foreground text-white',
@@ -34,6 +49,7 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   fechado_perdido: 'bg-destructive text-white',
 };
 
+/** @deprecated Use getInteractionTypes(locale) para labels traduzidas. Mantido para retrocompatibilidade. */
 export const INTERACTION_TYPES = [
   { value: 'ligacao', label: 'Ligação', icon: '📞' },
   { value: 'email', label: 'E-mail', icon: '📧' },
@@ -43,6 +59,20 @@ export const INTERACTION_TYPES = [
   { value: 'proposta', label: 'Proposta Enviada', icon: '📄' },
   { value: 'outro', label: 'Outro', icon: '📝' },
 ];
+
+/** Retorna lista de tipos de interação com labels no locale solicitado. */
+export function getInteractionTypes(locale: LocaleCode) {
+  const tl = MESSAGES[locale].app.crm.leads;
+  return [
+    { value: 'ligacao', label: tl.interactionLigacao, icon: '📞' },
+    { value: 'email', label: tl.interactionEmail, icon: '📧' },
+    { value: 'whatsapp', label: tl.interactionWhatsapp, icon: '💬' },
+    { value: 'reuniao', label: tl.interactionReuniao, icon: '🤝' },
+    { value: 'visita', label: tl.interactionVisita, icon: '🏢' },
+    { value: 'proposta', label: tl.interactionProposta, icon: '📄' },
+    { value: 'outro', label: tl.interactionOutro, icon: '📝' },
+  ] as const;
+}
 
 export const LEAD_SOURCES = [
   'Indicação',

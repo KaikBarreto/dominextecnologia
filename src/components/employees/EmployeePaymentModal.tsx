@@ -9,6 +9,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { BalanceSummary } from '@/utils/employeeCalculations';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface PaymentPayload {
   valeDiscount: number;
@@ -36,6 +38,8 @@ interface EmployeePaymentModalProps {
 export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary, balance, onSubmit, isPending, financialTransactionId, payrollPeriodLabel }: EmployeePaymentModalProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const { accounts, balances } = useFinancialAccounts();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.paymentModal;
   const activeAccounts = useMemo(() => {
     const active = accounts.filter(a => a.is_active);
     // Sort: "Conta Principal" or "Caixa" first, then by sort_order
@@ -92,54 +96,54 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
       <Button onClick={() => onSubmit({ valeDiscount, accountId, description: description || undefined })} disabled={!canSubmit}>
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Confirmar Pagamento
+        {t.confirmLabel}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={handleOpenChange} title={`Pagamento — ${employeeName}`} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={handleOpenChange} title={`${t.titlePrefix} ${employeeName}`} footer={footer}>
       <div className="space-y-4 p-1">
         {financialTransactionId && (
           <div className="rounded-lg border-2 border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-            Quitando folha pendente{payrollPeriodLabel ? ` — período ${payrollPeriodLabel}` : ''}
+            {t.payrollPendingPrefix}{payrollPeriodLabel ? `${t.payrollPendingPeriodInfix} ${payrollPeriodLabel}` : ''}
           </div>
         )}
         {/* Financial Summary */}
         <div className="rounded-lg border p-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Salário</span>
+            <span className="text-muted-foreground">{t.summary.salary}</span>
             <span className="font-medium">{fmt(salary)}</span>
           </div>
           {balance.totalBonus > 0 && (
             <div className="flex justify-between text-green-600">
-              <span>Total de Bônus</span>
+              <span>{t.summary.totalBonus}</span>
               <span>{fmt(balance.totalBonus)}</span>
             </div>
           )}
           {(balance.totalVales > 0 || balance.totalFaltas > 0) && (
             <>
               <div className="flex justify-between text-destructive font-medium">
-                <span>Descontos</span>
+                <span>{t.summary.discounts}</span>
                 <span>{fmt(balance.totalVales + balance.totalFaltas)}</span>
               </div>
               {balance.totalVales > 0 && (
                 <div className="flex justify-between text-muted-foreground pl-4">
-                  <span>Vales</span>
+                  <span>{t.summary.advances}</span>
                   <span>{fmt(balance.totalVales)}</span>
                 </div>
               )}
               <div className="flex justify-between text-muted-foreground pl-4">
-                <span>Faltas</span>
+                <span>{t.summary.absences}</span>
                 <span>{fmt(balance.totalFaltas)}</span>
               </div>
             </>
           )}
           <div className="border-t pt-2 flex justify-between font-medium">
-            <span>Subtotal</span>
+            <span>{t.summary.subtotal}</span>
             <span>{fmt(subtotal)}</span>
           </div>
         </div>
@@ -147,16 +151,16 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
         {/* Vale Discount */}
         {balance.totalVales > 0 && (
           <div className="space-y-2">
-            <Label>Descontar dos Vales</Label>
+            <Label>{t.advanceDiscount.label}</Label>
             <Input
               value={valeDiscountStr}
               onChange={e => setValeDiscountStr(currencyMask(e.target.value))}
               placeholder={fmt(balance.totalVales)}
             />
             <p className="text-xs text-muted-foreground">
-              Total de vales: {fmt(balance.totalVales)} — Padrão: 100%
+              {t.advanceDiscount.info.replace('{total}', fmt(balance.totalVales))}
               {remainingVales > 0 && (
-                <span className="text-amber-600 font-medium"> • Restante: {fmt(remainingVales)} (será relançado)</span>
+                <span className="text-amber-600 font-medium"> • {t.advanceDiscount.remaining.replace('{value}', fmt(remainingVales))}</span>
               )}
             </p>
           </div>
@@ -164,13 +168,13 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
 
         {/* Amount to Pay */}
         <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 text-center">
-          <p className="text-sm text-muted-foreground mb-1">Valor a Pagar</p>
+          <p className="text-sm text-muted-foreground mb-1">{t.amountToPay.label}</p>
           <p className={`text-2xl font-bold ${toPay >= 0 ? 'text-green-600' : 'text-destructive'}`}>
             {fmt(toPay)}
           </p>
           {valeDiscount > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
-              {fmt(subtotal)} - {fmt(valeDiscount)} (vales)
+              {t.amountToPay.formulaLabel.replace('{subtotal}', fmt(subtotal)).replace('{discount}', fmt(valeDiscount))}
             </p>
           )}
         </div>
@@ -178,7 +182,7 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
         {/* Account Selection */}
         {activeAccounts.length > 0 && (
           <div className="space-y-2">
-            <Label>Pagar com</Label>
+            <Label>{t.accountSelection.label}</Label>
             <RadioGroup value={accountId} onValueChange={setAccountId} className="space-y-2">
               {activeAccounts.map(acc => {
                 const accBalance = balances[acc.id] ?? acc.initial_balance;
@@ -212,11 +216,11 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
 
         {/* Notes */}
         <div className="space-y-2">
-          <Label>Observações (opcional)</Label>
+          <Label>{t.notes.label}</Label>
           <Textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="Observações sobre este pagamento..."
+            placeholder={t.notes.placeholder}
             rows={2}
           />
         </div>

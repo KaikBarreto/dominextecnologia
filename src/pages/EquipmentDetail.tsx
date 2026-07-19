@@ -273,7 +273,7 @@ export default function EquipmentDetail() {
           <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
             {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
             <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
-              {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
+              {equipment.status === 'active' ? te.statusActive : te.statusInactive}
             </Badge>
           </p>
         </div>
@@ -424,7 +424,7 @@ export default function EquipmentDetail() {
 
             visibleCustomFields.forEach(field => {
               let displayValue = String(customFields![field.field_key]);
-              if (field.field_type === 'boolean') displayValue = customFields![field.field_key] ? 'Sim' : 'Não';
+              if (field.field_type === 'boolean') displayValue = customFields![field.field_key] ? te.booleanYes : te.booleanNo;
               if (field.field_type === 'date' && customFields![field.field_key]) {
                 try { displayValue = format(new Date(customFields![field.field_key]), 'dd/MM/yyyy', { locale: ptBR }); } catch { /* keep raw */ }
               }
@@ -749,12 +749,12 @@ export default function EquipmentDetail() {
             <AlertDialogDescription>{te.deleteAttachmentDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{te.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => { if (deleteAttachmentId) { deleteAttachment.mutate(deleteAttachmentId); setDeleteAttachmentId(null); } }}
             >
-              Excluir
+              {te.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -858,7 +858,7 @@ export default function EquipmentDetail() {
             <AlertDialogDescription>{MESSAGES[locale].app.equipment.deleteConfirm.replace('{name}', equipment.name)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{te.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={async () => {
@@ -870,7 +870,7 @@ export default function EquipmentDetail() {
                 }
               }}
             >
-              Excluir
+              {te.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

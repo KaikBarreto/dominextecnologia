@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FileText, Trash2, Pencil, BookOpen } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
@@ -36,6 +38,8 @@ function getServiceIds(template: unknown): string[] | undefined {
 export function ChecklistsPanel() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.checklists;
   const [createOpen, setCreateOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -89,15 +93,15 @@ export function ChecklistsPanel() {
           fica enxuto e as ações viram botão de catálogo + FAB de criar. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Checklists</h2>
+          <h2 className="text-lg font-semibold">{t.title}</h2>
           <p className="text-sm text-muted-foreground">
-            Modelos de checklist reutilizáveis em OS e PMOC
+            {t.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setCatalogOpen(true)}>
             <BookOpen className="mr-2 h-4 w-4" />
-            {isMobile ? 'Catálogo' : 'Catálogo de Checklists'}
+            {isMobile ? t.btnCatalog : t.btnCatalogFull}
           </Button>
           {!isMobile && (
             <Button
@@ -105,7 +109,7 @@ export function ChecklistsPanel() {
               onClick={() => setCreateOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Novo checklist
+              {t.btnNew}
             </Button>
           )}
         </div>
@@ -115,16 +119,16 @@ export function ChecklistsPanel() {
         isMobile ? (
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
-            title="Nenhum checklist criado"
-            description='Toque em "Novo Checklist" para começar'
+            title={t.emptyTitle}
+            description={t.emptyDescriptionMobile}
           />
         ) : (
           <Card>
             <CardContent className="p-0">
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-medium">Nenhum checklist criado</h3>
-                <p className="text-muted-foreground">Clique em "Novo checklist" para começar</p>
+                <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
+                <p className="text-muted-foreground">{t.emptyDescriptionDesktop}</p>
               </div>
             </CardContent>
           </Card>
@@ -139,21 +143,21 @@ export function ChecklistsPanel() {
             const appliesToAll = !serviceIds || serviceIds.length === 0;
             const questionsCount = template.questions?.length || 0;
             const scopeLabel = appliesToAll
-              ? 'Todos os serviços'
-              : `${serviceIds!.length} serviço${serviceIds!.length === 1 ? '' : 's'}`;
-            const questionsLabel = `${questionsCount} pergunta${questionsCount === 1 ? '' : 's'}`;
+              ? t.scopeAll
+              : (serviceIds!.length === 1 ? t.scopeServices : t.scopeServicesPlural).replace('{n}', String(serviceIds!.length));
+            const questionsLabel = (questionsCount === 1 ? t.questionsCount : t.questionsCountPlural).replace('{n}', String(questionsCount));
 
             const itemActions: ItemAction[] = [
               {
                 key: 'edit',
-                label: 'Visualizar / Editar',
+                label: t.actionEditView,
                 icon: <Pencil className="h-4 w-4" />,
                 variant: 'edit',
                 onClick: () => navigate(`/checklists/${template.id}`),
               },
               {
                 key: 'delete',
-                label: 'Excluir',
+                label: t.actionDelete,
                 icon: <Trash2 className="h-4 w-4" />,
                 variant: 'destructive',
                 onClick: () => setDeleteId(template.id),
@@ -186,11 +190,11 @@ export function ChecklistsPanel() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>Perguntas</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>Serviços</SortableTableHead>
-                    <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
+                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.colName}</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>{t.colQuestions}</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>{t.colServices}</SortableTableHead>
+                    <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>{t.colStatus}</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">{t.colActions}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -218,7 +222,7 @@ export function ChecklistsPanel() {
                         </TableCell>
                         <TableCell>
                           {appliesToAll ? (
-                            <Badge variant="secondary" className="text-xs">Todos</Badge>
+                            <Badge variant="secondary" className="text-xs">{t.badgeAll}</Badge>
                           ) : (
                             <div className="flex flex-wrap gap-1">
                               {linkedServices.slice(0, 3).map(st => (
@@ -235,15 +239,15 @@ export function ChecklistsPanel() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
-                            {template.is_active ? 'Ativo' : 'Inativo'}
+                            {template.is_active ? t.badgeActive : t.badgeInactive}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div onClick={(e) => e.stopPropagation()}>
                             <RowActionsMenu
                               actions={[
-                                { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => navigate(`/checklists/${template.id}`) },
-                                { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(template.id) },
+                                { label: t.actionEditView, icon: Pencil, variant: 'edit', onClick: () => navigate(`/checklists/${template.id}`) },
+                                { label: t.actionDelete, icon: Trash2, variant: 'delete', onClick: () => setDeleteId(template.id) },
                               ]}
                             />
                           </div>
@@ -262,7 +266,7 @@ export function ChecklistsPanel() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Checklist"
+          label={t.fabLabel}
           onClick={() => setCreateOpen(true)}
         />
       )}
@@ -271,40 +275,40 @@ export function ChecklistsPanel() {
       <ResponsiveModal
         open={createOpen}
         onOpenChange={setCreateOpen}
-        title="Novo Checklist"
+        title={t.createTitle}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t.btnCancel}</Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCreate}
               disabled={!newName.trim() || createTemplate.isPending}
             >
-              Criar
+              {t.btnCreate}
             </Button>
           </div>
         }
       >
         <div className="space-y-4">
           <div>
-            <Label>Nome do checklist</Label>
+            <Label>{t.labelName}</Label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Ex: Checklist de manutenção preventiva"
+              placeholder={t.placeholderName}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } }}
               className="mt-1"
             />
           </div>
 
           <div className="space-y-3">
-            <Label>Serviços habilitados</Label>
+            <Label>{t.labelServices}</Label>
             <div className="flex items-center gap-2">
               <Switch checked={allServices} onCheckedChange={(checked) => {
                 setAllServices(checked);
                 if (checked) setSelectedServiceIds([]);
               }} />
-              <Label className="text-sm cursor-pointer">Todos os serviços</Label>
+              <Label className="text-sm cursor-pointer">{t.switchAllServices}</Label>
             </div>
             {!allServices && (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -336,20 +340,20 @@ export function ChecklistsPanel() {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar checklist?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deactivateTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {templateToDelete
-                ? `O checklist "${templateToDelete.name}" deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.`
-                : 'O checklist deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.'}
+                ? t.deactivateDescriptionWithName.replace('{name}', templateToDelete.name)
+                : t.deactivateDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.btnCancelDelete}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Desativar
+              {t.btnDeactivate}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

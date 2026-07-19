@@ -75,6 +75,22 @@ export const crm = {
     emptyMobileDesc: 'Tente ajustar os filtros ou estágio selecionado',
     emptyMobileLeadDesc: 'Toque em "Novo Lead" para começar a gerenciar seu pipeline',
 
+    // ── Status canônicos de Lead (mapa chave-banco → label exibida) ──
+    leads: {
+      statusLead: 'Lead',
+      statusProposta: 'Proposta',
+      statusNegociacao: 'Negociação',
+      statusFechadoGanho: 'Negócio Fechado (Ganho)',
+      statusFechadoPerdido: 'Negócio Perdido',
+      interactionLigacao: 'Ligação',
+      interactionEmail: 'E-mail',
+      interactionWhatsapp: 'WhatsApp',
+      interactionReuniao: 'Reunião',
+      interactionVisita: 'Visita',
+      interactionProposta: 'Proposta Enviada',
+      interactionOutro: 'Outro',
+    },
+
     // ── LeadCard ──
     card: {
       probability: 'Probabilidade',
@@ -331,7 +347,10 @@ export const crm = {
       recipientNameLabel: 'Nome *',
       recipientNamePlaceholder: 'Nome do prospecto',
       recipientPhoneLabel: 'Telefone',
+      recipientPhonePlaceholder: '(00) 00000-0000',
       recipientEmailLabel: 'E-mail',
+      recipientEmailPlaceholder: 'email@exemplo.com',
+      serviceFallback: 'Serviço',
 
       servicesHeader: 'Serviços e Mão de Obra',
       bdiHeader: 'Configurações BDI',
@@ -661,6 +680,21 @@ export const crm = {
     emptyMobileDesc: 'Try adjusting the filters or selected stage',
     emptyMobileLeadDesc: 'Tap "New Lead" to start managing your pipeline',
 
+    leads: {
+      statusLead: 'Lead',
+      statusProposta: 'Proposal',
+      statusNegociacao: 'Negotiation',
+      statusFechadoGanho: 'Deal Won',
+      statusFechadoPerdido: 'Deal Lost',
+      interactionLigacao: 'Call',
+      interactionEmail: 'E-mail',
+      interactionWhatsapp: 'WhatsApp',
+      interactionReuniao: 'Meeting',
+      interactionVisita: 'Site Visit',
+      interactionProposta: 'Proposal Sent',
+      interactionOutro: 'Other',
+    },
+
     card: {
       probability: 'Probability',
     },
@@ -891,7 +925,10 @@ export const crm = {
       recipientNameLabel: 'Name *',
       recipientNamePlaceholder: 'Prospect name',
       recipientPhoneLabel: 'Phone',
+      recipientPhonePlaceholder: '(000) 000-0000',
       recipientEmailLabel: 'E-mail',
+      recipientEmailPlaceholder: 'email@example.com',
+      serviceFallback: 'Service',
 
       servicesHeader: 'Services & Labor',
       bdiHeader: 'BDI Settings',
@@ -1215,6 +1252,21 @@ export const crm = {
     emptyMobileDesc: 'Intenta ajustar los filtros o la etapa seleccionada',
     emptyMobileLeadDesc: 'Toca "Nuevo Lead" para empezar a gestionar tu pipeline',
 
+    leads: {
+      statusLead: 'Lead',
+      statusProposta: 'Propuesta',
+      statusNegociacao: 'Negociación',
+      statusFechadoGanho: 'Negocio Cerrado (Ganado)',
+      statusFechadoPerdido: 'Negocio Perdido',
+      interactionLigacao: 'Llamada',
+      interactionEmail: 'Correo',
+      interactionWhatsapp: 'WhatsApp',
+      interactionReuniao: 'Reunión',
+      interactionVisita: 'Visita',
+      interactionProposta: 'Propuesta Enviada',
+      interactionOutro: 'Otro',
+    },
+
     card: {
       probability: 'Probabilidad',
     },
@@ -1445,7 +1497,10 @@ export const crm = {
       recipientNameLabel: 'Nombre *',
       recipientNamePlaceholder: 'Nombre del prospecto',
       recipientPhoneLabel: 'Teléfono',
+      recipientPhonePlaceholder: '(00) 0000-0000',
       recipientEmailLabel: 'Correo',
+      recipientEmailPlaceholder: 'correo@ejemplo.com',
+      serviceFallback: 'Servicio',
 
       servicesHeader: 'Servicios y Mano de Obra',
       bdiHeader: 'Configuración BDI',
@@ -1769,6 +1824,21 @@ export const crm = {
     emptyMobileDesc: "Essayez d'ajuster les filtres ou l'étape sélectionnée",
     emptyMobileLeadDesc: 'Touchez « Nouveau Lead » pour commencer à gérer votre pipeline',
 
+    leads: {
+      statusLead: 'Lead',
+      statusProposta: 'Proposition',
+      statusNegociacao: 'Négociation',
+      statusFechadoGanho: 'Affaire Gagnée',
+      statusFechadoPerdido: 'Affaire Perdue',
+      interactionLigacao: 'Appel',
+      interactionEmail: 'E-mail',
+      interactionWhatsapp: 'WhatsApp',
+      interactionReuniao: 'Réunion',
+      interactionVisita: 'Visite',
+      interactionProposta: 'Proposition Envoyée',
+      interactionOutro: 'Autre',
+    },
+
     card: {
       probability: 'Probabilité',
     },
@@ -1999,7 +2069,10 @@ export const crm = {
       recipientNameLabel: 'Nom *',
       recipientNamePlaceholder: 'Nom du prospect',
       recipientPhoneLabel: 'Téléphone',
+      recipientPhonePlaceholder: '00 00 00 00 00',
       recipientEmailLabel: 'E-mail',
+      recipientEmailPlaceholder: 'email@exemple.com',
+      serviceFallback: 'Service',
 
       servicesHeader: 'Services et Main-d\'œuvre',
       bdiHeader: 'Paramètres BDI',

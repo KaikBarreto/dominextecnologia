@@ -12,12 +12,8 @@ import { Landmark, Wallet, CreditCard } from 'lucide-react';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
 import { BankInstitutionCombobox, BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
-
-const ACCOUNT_TYPES = [
-  { value: 'caixa', label: 'Caixa', icon: Wallet },
-  { value: 'banco', label: 'Conta Bancária', icon: Landmark },
-  { value: 'cartao', label: 'Cartão de Crédito', icon: CreditCard },
-];
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const ACCOUNT_COLORS = [
   '#0F172A', '#1E293B', '#334155', '#0EA5E9', '#0284C7', '#1D4ED8',
@@ -29,9 +25,14 @@ const ACCOUNT_COLORS = [
 const CLOSING_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const DUE_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
+const ACCOUNT_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  caixa: Wallet,
+  banco: Landmark,
+  cartao: CreditCard,
+};
+
 function getTypeIcon(type: string) {
-  const found = ACCOUNT_TYPES.find(t => t.value === type);
-  return found?.icon || Landmark;
+  return ACCOUNT_TYPE_ICONS[type] || Landmark;
 }
 
 interface AccountFormDialogProps {
@@ -50,6 +51,13 @@ interface AccountFormDialogProps {
  */
 export function AccountFormDialog({ open, onOpenChange, editing, defaultType = 'banco' }: AccountFormDialogProps) {
   const { createAccount, updateAccount } = useFinancialAccounts();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.finance.accountForm;
+  const accountTypes = [
+    { value: 'caixa', label: t.types.caixa, icon: Wallet },
+    { value: 'banco', label: t.types.banco, icon: Landmark },
+    { value: 'cartao', label: t.types.cartao, icon: CreditCard },
+  ];
 
   const [name, setName] = useState('');
   const [type, setType] = useState('banco');
@@ -131,9 +139,9 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
 
   const footer = (
     <div className="flex justify-end gap-3">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
       <Button type="submit" form="account-form" disabled={!name || createAccount.isPending || updateAccount.isPending}>
-        {editing ? 'Salvar' : type === 'cartao' ? 'Criar Cartão' : 'Criar Conta'}
+        {editing ? t.saveLabel : type === 'cartao' ? t.createCardLabel : t.createAccountLabel}
       </Button>
     </div>
   );
@@ -142,29 +150,29 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={editing ? (editing.type === 'cartao' ? 'Editar Cartão' : 'Editar Conta') : (type === 'cartao' ? 'Novo Cartão' : 'Nova Conta')}
+      title={editing ? (editing.type === 'cartao' ? t.titleEditCard : t.titleEditAccount) : (type === 'cartao' ? t.titleNewCard : t.titleNewAccount)}
       className="sm:max-w-[480px]"
       footer={footer}
     >
       <form id="account-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label>Nome da Conta *</Label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Nubank Crédito" required />
+          <Label>{t.nameLabel}</Label>
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.namePlaceholder} required />
         </div>
 
         <div className="space-y-1.5">
-          <Label>Tipo</Label>
+          <Label>{t.typeLabel}</Label>
           <Select value={type} onValueChange={setType}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {ACCOUNT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              {accountTypes.map(at => <SelectItem key={at.value} value={at.value}>{at.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
 
         {(type === 'banco' || type === 'cartao') && (
           <div className="space-y-1.5">
-            <Label>Instituição</Label>
+            <Label>{t.institutionLabel}</Label>
             <BankInstitutionCombobox value={institution} onChange={setInstitution} />
           </div>
         )}
@@ -173,7 +181,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
           <>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Dia de fechamento *</Label>
+                <Label>{t.closingDayLabel}</Label>
                 <Select value={String(closingDay)} onValueChange={v => setClosingDay(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -182,7 +190,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Dia de vencimento *</Label>
+                <Label>{t.dueDayLabel}</Label>
                 <Select value={String(dueDay)} onValueChange={v => setDueDay(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -191,13 +199,13 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                 </Select>
                 {dueDay <= closingDay && (
                   <p className="text-[11px] text-muted-foreground leading-tight">
-                    Vencimento no mês seguinte ao fechamento
+                    {t.dueDayNextMonth}
                   </p>
                 )}
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Limite de crédito (R$) <span className="text-muted-foreground font-normal">opcional</span></Label>
+              <Label>{t.creditLimitLabel} <span className="text-muted-foreground font-normal">{t.creditLimitOptional}</span></Label>
               <Input
                 placeholder="0,00"
                 value={creditLimitDisplay}
@@ -208,16 +216,16 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
           </>
         ) : (
           <div className="space-y-1.5">
-            <Label>Saldo Inicial (R$)</Label>
+            <Label>{t.initialBalanceLabel}</Label>
             <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} inputMode="numeric" />
             {editing && (
-              <p className="text-xs text-muted-foreground">⚠️ Editar o saldo inicial recalcula o saldo atual da conta.</p>
+              <p className="text-xs text-muted-foreground">⚠️ {t.initialBalanceEditWarning}</p>
             )}
           </div>
         )}
 
         <div className="space-y-1.5">
-          <Label>Cor</Label>
+          <Label>{t.colorLabel}</Label>
           <div className="flex gap-1.5 flex-wrap items-center">
             {ACCOUNT_COLORS.map(c => (
               <button key={c} type="button" onClick={() => setColor(c)}
@@ -232,14 +240,14 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                 <button
                   type="button"
                   className="h-7 w-7 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center text-muted-foreground hover:border-foreground hover:text-foreground transition-all"
-                  aria-label="Cor personalizada"
+                  aria-label={t.customColorLabel}
                 >
                   +
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-3">
                 <div className="space-y-2">
-                  <Label className="text-xs">Cor personalizada</Label>
+                  <Label className="text-xs">{t.customColorLabel}</Label>
                   <input
                     type="color"
                     value={color}
@@ -255,7 +263,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
 
         {/* Pré-visualização */}
         <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pré-visualização</Label>
+          <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t.previewLabel}</Label>
           <Card className="overflow-hidden">
             <div className="h-1.5 w-full" style={{ backgroundColor: color }} />
             <CardContent className="p-3 flex items-center gap-3">
@@ -269,11 +277,11 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                 </div>
               )}
               <div className="min-w-0">
-                <p className="font-semibold text-sm truncate">{name || 'Nome da conta'}</p>
+                <p className="font-semibold text-sm truncate">{name || t.namePlaceholder}</p>
                 {institution?.name && <p className="text-xs text-muted-foreground truncate">{institution.name}</p>}
                 {type === 'cartao' && closingDay && (
                   <p className="text-xs text-muted-foreground">
-                    Fecha dia {closingDay} · Vence dia {dueDay}{dueDay <= closingDay ? ' (mês seguinte)' : ''}
+                    {t.previewCardSuffix.replace('{closing}', String(closingDay)).replace('{due}', String(dueDay))}{dueDay <= closingDay ? t.previewCardNextMonth : ''}
                   </p>
                 )}
               </div>

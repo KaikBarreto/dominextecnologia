@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { MESSAGES } from '@/lib/i18n/messages';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 export interface QuoteItem {
   id?: string;
@@ -109,6 +111,7 @@ export interface Quote {
   proposal_templates?: { slug: string; name: string } | null;
 }
 
+/** @deprecated Use getQuoteStatusLabels(locale) para labels traduzidas. Mantido para retrocompatibilidade. */
 const STATUS_LABELS: Record<string, string> = {
   rascunho: 'Rascunho',
   enviado: 'Enviado',
@@ -117,6 +120,19 @@ const STATUS_LABELS: Record<string, string> = {
   expirado: 'Expirado',
   convertido: 'Convertido',
 };
+
+/** Retorna mapa de status de orçamento → label no locale solicitado. */
+export function getQuoteStatusLabels(locale: LocaleCode): Record<string, string> {
+  const tq = MESSAGES[locale].app.crm.quotes;
+  return {
+    rascunho: tq.statusDraft,
+    enviado: tq.statusSent,
+    aprovado: tq.statusApproved,
+    rejeitado: tq.statusRejected,
+    expirado: tq.statusExpired,
+    convertido: tq.statusConverted,
+  };
+}
 
 const STATUS_COLORS: Record<string, string> = {
   rascunho: 'bg-muted text-muted-foreground',

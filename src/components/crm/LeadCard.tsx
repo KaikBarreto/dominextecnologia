@@ -4,10 +4,18 @@ import { User, Calendar, DollarSign, TrendingUp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Lead } from '@/hooks/useLeads';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
+
+const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es: esLocale,
+  fr: frLocale,
+};
 
 interface LeadCardProps {
   lead: Lead;
@@ -17,6 +25,7 @@ interface LeadCardProps {
 export function LeadCard({ lead, onClick }: LeadCardProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
+  const dfLocale = DATE_FNS_LOCALES[locale];
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
@@ -105,7 +114,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
           {lead.expected_close_date && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex items-center gap-1">
               <Calendar className="h-2.5 w-2.5" />
-              {format(new Date(lead.expected_close_date), 'dd/MM', { locale: ptBR })}
+              {format(new Date(lead.expected_close_date), 'dd/MM', { locale: dfLocale })}
             </Badge>
           )}
         </div>

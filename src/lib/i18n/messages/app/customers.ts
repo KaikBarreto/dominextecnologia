@@ -259,6 +259,23 @@ export const customers = {
       taskDeleteError: 'Erro ao excluir tarefa',
     },
 
+    // ── Diálogo de contato (ContactFormDialog.tsx) ──
+    contact: {
+      titleNew: 'Novo Contato',
+      titleEdit: 'Editar Contato',
+      fieldName: 'Nome *',
+      namePlaceholder: 'Nome do contato',
+      fieldPosition: 'Cargo',
+      positionPlaceholder: 'Ex: Gerente, Supervisor, Zelador',
+      fieldPhone: 'Telefone',
+      phonePlaceholder: '(00) 00000-0000',
+      fieldEmail: 'Email corporativo',
+      emailPlaceholder: 'contato@empresa.com',
+      save: 'Salvar',
+      add: 'Adicionar',
+      cancel: 'Cancelar',
+    },
+
     // ── Portal do Cliente (CustomerPortal.tsx) ──
     portal: {
       // Estados de carregamento / erro
@@ -549,6 +566,22 @@ export const customers = {
       taskDeleteError: 'Error deleting task',
     },
 
+    contact: {
+      titleNew: 'New Contact',
+      titleEdit: 'Edit Contact',
+      fieldName: 'Name *',
+      namePlaceholder: 'Contact name',
+      fieldPosition: 'Position',
+      positionPlaceholder: 'e.g. Manager, Supervisor, Janitor',
+      fieldPhone: 'Phone',
+      phonePlaceholder: '(00) 00000-0000',
+      fieldEmail: 'Corporate email',
+      emailPlaceholder: 'contact@company.com',
+      save: 'Save',
+      add: 'Add',
+      cancel: 'Cancel',
+    },
+
     portal: {
       loading: 'Loading...',
       errorTitle: 'Access Unavailable',
@@ -824,6 +857,22 @@ export const customers = {
       taskDeleteError: 'Error al eliminar tarea',
     },
 
+    contact: {
+      titleNew: 'Nuevo Contacto',
+      titleEdit: 'Editar Contacto',
+      fieldName: 'Nombre *',
+      namePlaceholder: 'Nombre del contacto',
+      fieldPosition: 'Cargo',
+      positionPlaceholder: 'Ej: Gerente, Supervisor, Conserje',
+      fieldPhone: 'Teléfono',
+      phonePlaceholder: '(00) 00000-0000',
+      fieldEmail: 'Correo corporativo',
+      emailPlaceholder: 'contacto@empresa.com',
+      save: 'Guardar',
+      add: 'Agregar',
+      cancel: 'Cancelar',
+    },
+
     portal: {
       loading: 'Cargando...',
       errorTitle: 'Acceso No Disponible',
@@ -1097,6 +1146,22 @@ export const customers = {
       equipDeleteError: 'Erreur lors de la suppression',
       taskDeleted: 'Tâche supprimée',
       taskDeleteError: 'Erreur lors de la suppression de la tâche',
+    },
+
+    contact: {
+      titleNew: 'Nouveau Contact',
+      titleEdit: 'Modifier le Contact',
+      fieldName: 'Nom *',
+      namePlaceholder: 'Nom du contact',
+      fieldPosition: 'Poste',
+      positionPlaceholder: 'Ex : Gérant, Superviseur, Gardien',
+      fieldPhone: 'Téléphone',
+      phonePlaceholder: '(00) 00000-0000',
+      fieldEmail: 'E-mail professionnel',
+      emailPlaceholder: 'contact@entreprise.com',
+      save: 'Enregistrer',
+      add: 'Ajouter',
+      cancel: 'Annuler',
     },
 
     portal: {

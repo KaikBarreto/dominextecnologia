@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   Star, TrendingUp, Users, MessageSquare, ThumbsUp, Minus, ThumbsDown,
   Trophy, AlertTriangle, Filter, Settings,
@@ -58,6 +60,9 @@ function NpsGauge({ nps }: { nps: number }) {
 }
 
 export function NpsDashboard() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.nps;
+
   const { ratings, isLoading } = useServiceRatings();
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
 
@@ -101,11 +106,11 @@ export function NpsDashboard() {
       }));
   }, [filteredRatings]);
 
-  // Pie data
+  // Pie data — rótulos canônicos de NPS traduzidos.
   const pieData = [
-    { name: 'Promotores', value: npsData.promoters, color: NPS_COLORS.promoter },
-    { name: 'Neutros', value: npsData.passives, color: NPS_COLORS.passive },
-    { name: 'Detratores', value: npsData.detractors, color: NPS_COLORS.detractor },
+    { name: t.labelPromoters, value: npsData.promoters, color: NPS_COLORS.promoter },
+    { name: t.labelPassives, value: npsData.passives, color: NPS_COLORS.passive },
+    { name: t.labelDetractors, value: npsData.detractors, color: NPS_COLORS.detractor },
   ].filter((d) => d.value > 0);
 
   // Média por categoria — critérios dinâmicos por empresa (RPC do período).
@@ -186,7 +191,7 @@ export function NpsDashboard() {
           onClick={() => setSettingsOpen(true)}
         >
           <Settings className="h-4 w-4 text-muted-foreground" />
-          <span className="hidden sm:inline">Configurações</span>
+          <span className="hidden sm:inline">{t.dashboardSettings}</span>
         </Button>
       </div>
 
@@ -201,7 +206,7 @@ export function NpsDashboard() {
                 <TrendingUp className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">NPS Score</p>
+                <p className="text-xs text-muted-foreground">{t.kpiNpsScore}</p>
                 <p className="text-2xl font-bold">{npsData.nps}</p>
               </div>
             </div>
@@ -214,7 +219,7 @@ export function NpsDashboard() {
                 <Star className="h-5 w-5 text-warning" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Média Geral</p>
+                <p className="text-xs text-muted-foreground">{t.kpiAvgRating}</p>
                 <p className="text-2xl font-bold">
                   {overallStarAvg > 0 ? overallStarAvg.toFixed(1) : '—'}
                 </p>
@@ -229,7 +234,7 @@ export function NpsDashboard() {
                 <Users className="h-5 w-5 text-info" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Respostas</p>
+                <p className="text-xs text-muted-foreground">{t.kpiResponses}</p>
                 <p className="text-2xl font-bold">{npsData.total}</p>
               </div>
             </div>
@@ -242,7 +247,7 @@ export function NpsDashboard() {
                 <MessageSquare className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Taxa de Resposta</p>
+                <p className="text-xs text-muted-foreground">{t.kpiResponseRate}</p>
                 <p className="text-2xl font-bold">{responseRate}%</p>
               </div>
             </div>
@@ -255,7 +260,7 @@ export function NpsDashboard() {
         {/* NPS Gauge + Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Distribuição NPS</CardTitle>
+            <CardTitle className="text-sm">{t.chartNpsDistribution}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center gap-4">
@@ -263,15 +268,15 @@ export function NpsDashboard() {
               <div className="flex gap-4 text-sm">
                 <div className="flex items-center gap-1.5">
                   <ThumbsUp className="h-4 w-4 text-success" />
-                  <span>Promotores: {npsData.total > 0 ? Math.round((npsData.promoters / npsData.total) * 100) : 0}%</span>
+                  <span>{t.labelPromoters}: {npsData.total > 0 ? Math.round((npsData.promoters / npsData.total) * 100) : 0}%</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Minus className="h-4 w-4 text-warning" />
-                  <span>Neutros: {npsData.total > 0 ? Math.round((npsData.passives / npsData.total) * 100) : 0}%</span>
+                  <span>{t.labelPassives}: {npsData.total > 0 ? Math.round((npsData.passives / npsData.total) * 100) : 0}%</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <ThumbsDown className="h-4 w-4 text-destructive" />
-                  <span>Detratores: {npsData.total > 0 ? Math.round((npsData.detractors / npsData.total) * 100) : 0}%</span>
+                  <span>{t.labelDetractors}: {npsData.total > 0 ? Math.round((npsData.detractors / npsData.total) * 100) : 0}%</span>
                 </div>
               </div>
               {pieData.length > 0 && (
@@ -301,7 +306,7 @@ export function NpsDashboard() {
         {/* Star Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Média por Categoria</CardTitle>
+            <CardTitle className="text-sm">{t.chartAvgByCategory}</CardTitle>
           </CardHeader>
           <CardContent>
             {criteriaAvgLoading ? (
@@ -325,7 +330,7 @@ export function NpsDashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
-                Nenhuma avaliação no período
+                {t.noDataPeriod}
               </div>
             )}
           </CardContent>
@@ -336,7 +341,7 @@ export function NpsDashboard() {
       {trendData.length > 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Tendência NPS</CardTitle>
+            <CardTitle className="text-sm">{t.chartNpsTrend}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
@@ -369,7 +374,7 @@ export function NpsDashboard() {
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Trophy className="h-4 w-4 text-warning" />
-            Ranking de Técnicos
+            {t.rankingTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -379,21 +384,21 @@ export function NpsDashboard() {
             </div>
           ) : ranking.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Sem avaliações por técnico no período
+              {t.rankingEmpty}
             </p>
           ) : (
             <div className="space-y-5">
               {/* Pódio top 3 */}
               <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                {podium.map((t, i) => (
+                {podium.map((tech, i) => (
                   <div
-                    key={t.user_id}
+                    key={tech.user_id}
                     className="flex flex-col items-center text-center rounded-xl border p-3 bg-muted/30"
                   >
                     <div className="relative">
                       <Avatar className="h-12 w-12 sm:h-14 sm:w-14 ring-2" style={{ '--tw-ring-color': PODIUM_COLORS[i] } as React.CSSProperties}>
-                        <AvatarImage src={t.avatar_url || undefined} />
-                        <AvatarFallback>{initials(t.full_name)}</AvatarFallback>
+                        <AvatarImage src={tech.avatar_url || undefined} />
+                        <AvatarFallback>{initials(tech.full_name)}</AvatarFallback>
                       </Avatar>
                       <span
                         className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold"
@@ -402,16 +407,16 @@ export function NpsDashboard() {
                         {i + 1}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs font-medium truncate w-full" title={t.full_name || ''}>
-                      {t.full_name || 'Sem nome'}
+                    <p className="mt-2 text-xs font-medium truncate w-full" title={tech.full_name || ''}>
+                      {tech.full_name || t.noNameFallback}
                     </p>
-                    <p className="text-lg font-bold leading-tight">{t.nps_medio ?? '—'}</p>
-                    <p className="text-[10px] text-muted-foreground">NPS médio</p>
+                    <p className="text-lg font-bold leading-tight">{tech.nps_medio ?? '—'}</p>
+                    <p className="text-[10px] text-muted-foreground">{t.npsMedian}</p>
                     <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
                       <Star className="h-3 w-3 fill-warning text-warning" />
-                      {t.media_estrelas ?? '—'}
+                      {tech.media_estrelas ?? '—'}
                       <span className="mx-0.5">·</span>
-                      {t.respostas} resp.
+                      {tech.respostas} {t.responsesSuffix}
                     </div>
                   </div>
                 ))}
@@ -420,36 +425,36 @@ export function NpsDashboard() {
               {/* Restante da lista */}
               {restRanking.length > 0 && (
                 <div className="rounded-xl border divide-y divide-border/60">
-                  {restRanking.map((t, i) => {
-                    const isAttention = t.user_id === attentionId && (t.nps_medio ?? 0) <= 6;
+                  {restRanking.map((tech, i) => {
+                    const isAttention = tech.user_id === attentionId && (tech.nps_medio ?? 0) <= 6;
                     return (
                       <div
-                        key={t.user_id}
+                        key={tech.user_id}
                         className={`flex items-center gap-3 px-3 py-2.5 ${isAttention ? 'bg-destructive/5' : ''}`}
                       >
                         <span className="w-5 text-center text-xs font-semibold text-muted-foreground">
                           {i + 4}
                         </span>
                         <Avatar className="h-9 w-9">
-                          <AvatarImage src={t.avatar_url || undefined} />
-                          <AvatarFallback>{initials(t.full_name)}</AvatarFallback>
+                          <AvatarImage src={tech.avatar_url || undefined} />
+                          <AvatarFallback>{initials(tech.full_name)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{t.full_name || 'Sem nome'}</p>
+                          <p className="text-sm font-medium truncate">{tech.full_name || t.noNameFallback}</p>
                           <p className="text-[11px] text-muted-foreground">
-                            {t.respostas} respostas · {Math.round((t.taxa_resposta ?? 0) * 100)}% de retorno
+                            {tech.respostas} {t.responsesSuffix} · {Math.round((tech.taxa_resposta ?? 0) * 100)}% {t.returnRate}
                           </p>
                         </div>
                         {isAttention && (
                           <Badge variant="outline" className="border-destructive text-destructive gap-1 shrink-0">
                             <AlertTriangle className="h-3 w-3" />
-                            Atenção
+                            {t.attentionBadge}
                           </Badge>
                         )}
                         <div className="flex items-center gap-1 shrink-0">
                           <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                          <span className="text-xs text-muted-foreground w-7 text-right">{t.media_estrelas ?? '—'}</span>
-                          <span className="ml-2 text-base font-bold w-8 text-right">{t.nps_medio ?? '—'}</span>
+                          <span className="text-xs text-muted-foreground w-7 text-right">{tech.media_estrelas ?? '—'}</span>
+                          <span className="ml-2 text-base font-bold w-8 text-right">{tech.nps_medio ?? '—'}</span>
                         </div>
                       </div>
                     );
@@ -466,7 +471,7 @@ export function NpsDashboard() {
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
-            Detratores em Aberto
+            {t.openDetractorsTitle}
             {openDetractors.length > 0 && (
               <Badge variant="outline" className="border-destructive text-destructive ml-1">
                 {openDetractors.length}
@@ -479,7 +484,7 @@ export function NpsDashboard() {
             <div className="space-y-3">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20" />)}</div>
           ) : openDetractors.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Nenhum detrator em aberto no período. 🎉
+              {t.openDetractorsEmpty}
             </p>
           ) : (
             <div className="space-y-3">
@@ -499,7 +504,7 @@ export function NpsDashboard() {
                   </div>
                   {d.comment && <p className="text-sm text-foreground/80">{d.comment}</p>}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                    {d.technician_name && <span>Técnico: {d.technician_name}</span>}
+                    {d.technician_name && <span>{t.labelTechnician} {d.technician_name}</span>}
                     {d.rated_by_name && <span>• {d.rated_by_name}</span>}
                     <span>• {format(new Date(d.rated_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
                   </div>
@@ -515,13 +520,13 @@ export function NpsDashboard() {
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-sm flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-info" />
-            Feed de Feedbacks
+            {t.feedTitle}
           </CardTitle>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2 h-9">
                 <Filter className="h-4 w-4 text-muted-foreground" />
-                Filtros
+                {t.feedFilterLabel}
                 {feedFiltersActive > 0 && (
                   <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[11px]">{feedFiltersActive}</Badge>
                 )}
@@ -529,19 +534,19 @@ export function NpsDashboard() {
             </PopoverTrigger>
             <PopoverContent className="w-72 space-y-4" align="end">
               <FilterCheckboxGroup
-                label="Classificação"
-                emptyLabel="Todas"
+                label={t.feedFilterClassification}
+                emptyLabel={t.feedFilterClassificationAll}
                 options={[
-                  { value: 'promoter', label: 'Promotores (9-10)', color: NPS_COLORS.promoter },
-                  { value: 'passive', label: 'Neutros (7-8)', color: NPS_COLORS.passive },
-                  { value: 'detractor', label: 'Detratores (0-6)', color: NPS_COLORS.detractor },
+                  { value: 'promoter', label: t.promotersFilter, color: NPS_COLORS.promoter },
+                  { value: 'passive', label: t.passivesFilter, color: NPS_COLORS.passive },
+                  { value: 'detractor', label: t.detractorsFilter, color: NPS_COLORS.detractor },
                 ]}
                 selected={feedClasses}
                 onChange={setFeedClasses}
               />
               <FilterCheckboxGroup
-                label="Técnico"
-                emptyLabel="Todos"
+                label={t.feedFilterTechnician}
+                emptyLabel={t.feedFilterTechnicianAll}
                 options={techOptions}
                 selected={feedTechs}
                 onChange={setFeedTechs}
@@ -552,7 +557,7 @@ export function NpsDashboard() {
         <CardContent>
           {filteredFeed.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              {feedFiltersActive > 0 ? 'Nenhum feedback com esses filtros' : 'Nenhum feedback no período'}
+              {feedFiltersActive > 0 ? t.feedEmptyFiltered : t.feedEmpty}
             </p>
           ) : (
             <div className="space-y-4">
@@ -594,7 +599,7 @@ export function NpsDashboard() {
                     </div>
                     {r.comment && <p className="text-sm text-foreground/80">{r.comment}</p>}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                      {r.technician_name && <span>Técnico: {r.technician_name}</span>}
+                      {r.technician_name && <span>{t.labelTechnician} {r.technician_name}</span>}
                       {r.rated_by_name && <span>• {r.rated_by_name}</span>}
                       {r.rated_at && <span>• {format(new Date(r.rated_at), 'dd/MM/yyyy', { locale: ptBR })}</span>}
                     </div>

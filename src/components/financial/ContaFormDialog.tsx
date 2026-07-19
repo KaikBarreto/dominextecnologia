@@ -17,6 +17,8 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -30,6 +32,8 @@ type Recurrence = 'unica' | 'mensal' | 'semanal' | 'anual';
 export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', editingTransaction }: ContaFormDialogProps) {
   const { createTransaction, updateTransaction } = useFinancial();
   const { categories } = useFinancialCategories();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.finance.contaForm;
   const { employees } = useEmployees();
   const { contracts } = useContracts();
   const { customers } = useCustomers();
@@ -181,9 +185,11 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
       <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount || !accountId}>
-        {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? 'Salvando...' : 'Criando...'}</> : (isEditing ? 'Salvar' : 'Criar Conta')}
+        {isSubmitting
+          ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? t.savingLabel : t.creatingLabel}</>
+          : (isEditing ? t.saveLabel : t.createLabel)}
       </Button>
     </div>
   );
@@ -192,64 +198,64 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? 'Editar Conta' : 'Nova Conta'}
+      title={isEditing ? t.titleEdit : t.titleNew}
       className="sm:max-w-lg"
       footer={footer}
     >
       <p className="text-sm text-muted-foreground -mt-2 mb-4">
         {isEditing
-          ? `Editando conta ${tipo === 'saida' ? 'a pagar' : 'a receber'}`
-          : `Crie uma conta a ${tipo === 'saida' ? 'pagar' : 'receber'}, com opção de recorrência.`
+          ? (tipo === 'saida' ? t.subtitleEditPayable : t.subtitleEditReceivable)
+          : t.subtitleNew.replace('{tipo}', tipo === 'saida' ? t.types.saida.toLowerCase() : t.types.entrada.toLowerCase())
         }
       </p>
 
       <div className="space-y-4 pb-2">
           <div className="space-y-1.5">
-            <Label>Tipo</Label>
+            <Label>{t.typeLabel}</Label>
             <Select value={tipo} onValueChange={(v) => { setTipo(v as TransactionType); setCategory(''); setEmployeeId(''); setContractId(''); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="saida">A Pagar</SelectItem>
-                <SelectItem value="entrada">A Receber</SelectItem>
+                <SelectItem value="saida">{t.types.saida}</SelectItem>
+                <SelectItem value="entrada">{t.types.entrada}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Descrição *</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex: Aluguel do escritório" />
+            <Label>{t.descriptionLabel}</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Valor (R$) *</Label>
-              <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
+              <Label>{t.amountLabel}</Label>
+              <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t.amountPlaceholder} />
             </div>
             <div className="space-y-1.5">
-              <Label>Vencimento</Label>
+              <Label>{t.dueDateLabel}</Label>
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Categoria</Label>
+            <Label>{t.categoryLabel}</Label>
             <SearchableSelect
               options={categoryOptions}
               value={category}
               onValueChange={(v) => { setCategory(v); setEmployeeId(''); setContractId(''); }}
-              placeholder="Selecione uma categoria"
+              placeholder={t.categoryPlaceholder}
             />
           </div>
 
           {/* Employee selector for salary categories */}
           {isSalaryCategory && tipo === 'saida' && (
             <div className="space-y-1.5">
-              <Label>Funcionário vinculado</Label>
+              <Label>{t.employeeLabel}</Label>
               <SearchableSelect
                 options={employeeOptions}
                 value={employeeId}
                 onValueChange={setEmployeeId}
-                placeholder="Selecione um funcionário"
+                placeholder={t.employeePlaceholder}
               />
             </div>
           )}
@@ -257,48 +263,48 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           {/* Contract selector for receivables */}
           {showContractSelector && (
             <div className="space-y-1.5">
-              <Label>Contrato vinculado</Label>
+              <Label>{t.contractLabel}</Label>
               <SearchableSelect
                 options={contractOptions}
                 value={contractId}
                 onValueChange={setContractId}
-                placeholder="Selecione um contrato (opcional)"
+                placeholder={t.contractPlaceholder}
               />
             </div>
           )}
 
           {/* Customer selector */}
           <div className="space-y-1.5">
-            <Label>Cliente vinculado</Label>
+            <Label>{t.customerLabel}</Label>
             <SearchableSelect
               options={customerOptions}
               value={customerId}
               onValueChange={setCustomerId}
-              placeholder="Selecione um cliente (opcional)"
+              placeholder={t.customerPlaceholder}
             />
           </div>
 
           {/* Account selector — required */}
           {accounts.length === 0 ? (
             <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">Nenhuma conta cadastrada</p>
+              <p className="font-medium text-amber-900 dark:text-amber-200">{t.noAccountTitle}</p>
               <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                É necessário cadastrar uma conta ou caixa.{' '}
-                <a href="/financeiro/caixas-bancos" className="underline font-medium">Cadastrar agora</a>
+                {t.noAccountDescription}{' '}
+                <a href="/financeiro/caixas-bancos" className="underline font-medium">{t.noAccountLink}</a>
               </p>
             </div>
           ) : (
             <div className="space-y-1.5">
-              <Label>Conta Bancária / Caixa <span className="text-destructive">*</span></Label>
+              <Label>{t.accountLabel} <span className="text-destructive">*</span></Label>
               <Select value={accountId} onValueChange={setAccountId}>
-                <SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t.accountPlaceholder} /></SelectTrigger>
                 <SelectContent>
                   {accounts.filter(a => a.is_active).map(a => (
                     <SelectItem key={a.id} value={a.id}>
                       <span className="flex items-center gap-2">
                         <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />
                         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
-                        {a.type === 'caixa' ? `${a.name} (em dinheiro)` : a.name}
+                        {a.name}
                       </span>
                     </SelectItem>
                   ))}
@@ -310,29 +316,29 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           {!isEditing && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Recorrência</Label>
+                <Label>{t.recurrenceLabel}</Label>
                 <Select value={recurrence} onValueChange={(v) => setRecurrence(v as Recurrence)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unica">Única</SelectItem>
-                    <SelectItem value="semanal">Semanal</SelectItem>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                    <SelectItem value="anual">Anual</SelectItem>
+                    <SelectItem value="unica">{t.recurrences.unica}</SelectItem>
+                    <SelectItem value="semanal">{t.recurrences.semanal}</SelectItem>
+                    <SelectItem value="mensal">{t.recurrences.mensal}</SelectItem>
+                    <SelectItem value="anual">{t.recurrences.anual}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {recurrence !== 'unica' && (
                 <div className="space-y-1.5">
-                  <Label>Parcelas</Label>
-                  <NumericInput value={occurrences} onValueChange={setOccurrences} placeholder="12" />
+                  <Label>{t.installmentsLabel}</Label>
+                  <NumericInput value={occurrences} onValueChange={setOccurrences} placeholder={t.installmentsPlaceholder} />
                 </div>
               )}
             </div>
           )}
 
           <div className="space-y-1.5">
-            <Label>Observações</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Notas internas" />
+            <Label>{t.notesLabel}</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={t.notesPlaceholder} />
           </div>
         </div>
     </ResponsiveModal>

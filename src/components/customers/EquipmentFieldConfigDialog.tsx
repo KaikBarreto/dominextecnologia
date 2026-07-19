@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEquipmentFieldConfig, type EquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import {
@@ -43,34 +45,34 @@ interface Props {
 
 type FieldType = EquipmentFieldConfig['field_type'];
 
-// Mapeia tipo de campo → ícone + label PT-BR.
-const FIELD_TYPE_META: Record<string, { icon: ReactNode; label: string }> = {
-  text: { icon: <Type className="h-4 w-4" />, label: 'Texto' },
-  number: { icon: <Hash className="h-4 w-4" />, label: 'Número' },
-  date: { icon: <Calendar className="h-4 w-4" />, label: 'Data' },
-  boolean: { icon: <ToggleLeft className="h-4 w-4" />, label: 'Sim/Não' },
-  select: { icon: <List className="h-4 w-4" />, label: 'Lista de opções' },
+// Ícone por tipo — sem label (label vem do i18n dentro do componente).
+const FIELD_TYPE_ICONS: Record<string, ReactNode> = {
+  text: <Type className="h-4 w-4" />,
+  number: <Hash className="h-4 w-4" />,
+  date: <Calendar className="h-4 w-4" />,
+  boolean: <ToggleLeft className="h-4 w-4" />,
+  select: <List className="h-4 w-4" />,
 };
 
-const FIELD_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
-  { value: 'text', label: 'Texto' },
-  { value: 'number', label: 'Número' },
-  { value: 'date', label: 'Data' },
-  { value: 'boolean', label: 'Sim/Não' },
-  { value: 'select', label: 'Lista de opções' },
-];
-
-function getFieldTypeMeta(type: string) {
-  return FIELD_TYPE_META[type] ?? { icon: <Type className="h-4 w-4" />, label: type };
+function getFieldTypeIcon(type: string): ReactNode {
+  return FIELD_TYPE_ICONS[type] ?? <Type className="h-4 w-4" />;
 }
 
 // ─── Editor de opções (lista de inputs + adicionar/remover) ──────────────────
 function OptionsEditor({
   options,
   onChange,
+  optionsLabel,
+  optionPlaceholderTemplate,
+  removeOptionAriaLabel,
+  addOptionLabel,
 }: {
   options: string[];
   onChange: (next: string[]) => void;
+  optionsLabel: string;
+  optionPlaceholderTemplate: string;
+  removeOptionAriaLabel: string;
+  addOptionLabel: string;
 }) {
   const list = options.length > 0 ? options : [''];
 
@@ -89,13 +91,13 @@ function OptionsEditor({
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs text-muted-foreground">Opções da lista</Label>
+      <Label className="text-xs text-muted-foreground">{optionsLabel}</Label>
       <div className="space-y-2">
         {list.map((opt, idx) => (
           <div key={idx} className="flex items-center gap-2">
             <Input
               className="h-8 flex-1"
-              placeholder={`Opção ${idx + 1}`}
+              placeholder={optionPlaceholderTemplate.replace('{n}', String(idx + 1))}
               value={opt}
               onChange={(e) => update(idx, e.target.value)}
             />
@@ -105,7 +107,7 @@ function OptionsEditor({
               size="icon"
               className="h-8 w-8 text-destructive shrink-0"
               onClick={() => remove(idx)}
-              aria-label="Remover opção"
+              aria-label={removeOptionAriaLabel}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -113,7 +115,7 @@ function OptionsEditor({
         ))}
       </div>
       <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={add}>
-        <Plus className="h-3.5 w-3.5" /> Adicionar opção
+        <Plus className="h-3.5 w-3.5" /> {addOptionLabel}
       </Button>
     </div>
   );
@@ -171,6 +173,9 @@ function AutoResizeNameField({
 function SortableFieldRow({
   field,
   justSaved,
+  fieldTypeOptions,
+  getFieldTypeMeta,
+  labels,
   onLabelChange,
   onToggleVisible,
   onToggleRequired,
@@ -180,6 +185,20 @@ function SortableFieldRow({
 }: {
   field: EquipmentFieldConfig;
   justSaved: boolean;
+  fieldTypeOptions: { value: FieldType; label: string }[];
+  getFieldTypeMeta: (type: string) => { icon: ReactNode; label: string };
+  labels: {
+    dragAriaLabel: string;
+    savedLabel: string;
+    hiddenLabel: string;
+    visibleAriaLabel: string;
+    hiddenAriaLabel: string;
+    typeDataPreserved: string;
+    optionsLabel: string;
+    optionPlaceholderTemplate: string;
+    removeOptionAriaLabel: string;
+    addOptionLabel: string;
+  };
   onLabelChange: (label: string) => void;
   onToggleVisible: () => void;
   onToggleRequired: () => void;
@@ -211,7 +230,7 @@ function SortableFieldRow({
           {...listeners}
           type="button"
           className="w-5 shrink-0 flex justify-center pt-1.5 touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
-          aria-label="Arrastar para reordenar"
+          aria-label={labels.dragAriaLabel}
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -224,12 +243,12 @@ function SortableFieldRow({
           />
           {justSaved && (
             <span className="inline-flex items-center gap-1 text-xs text-success shrink-0 pt-1.5">
-              <Check className="h-3.5 w-3.5" /> Salvo
+              <Check className="h-3.5 w-3.5" /> {labels.savedLabel}
             </span>
           )}
           {!field.is_visible && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0 pt-1.5">
-              <EyeOff className="h-3.5 w-3.5" /> Oculto
+              <EyeOff className="h-3.5 w-3.5" /> {labels.hiddenLabel}
             </span>
           )}
         </div>
@@ -244,7 +263,7 @@ function SortableFieldRow({
               </span>
             </SelectTrigger>
             <SelectContent>
-              {FIELD_TYPE_OPTIONS.map((o) => {
+              {fieldTypeOptions.map((o) => {
                 const meta = getFieldTypeMeta(o.value);
                 return (
                   <SelectItem key={o.value} value={o.value}>
@@ -267,7 +286,7 @@ function SortableFieldRow({
           <Switch
             checked={field.is_visible}
             onCheckedChange={onToggleVisible}
-            aria-label={field.is_visible ? 'Campo visível' : 'Campo oculto'}
+            aria-label={field.is_visible ? labels.visibleAriaLabel : labels.hiddenAriaLabel}
           />
         </div>
 
@@ -291,9 +310,16 @@ function SortableFieldRow({
 
       {field.field_type === 'select' && (
         <div className="px-3 pb-3 pl-10 space-y-2">
-          <OptionsEditor options={field.options ?? []} onChange={onOptionsChange} />
+          <OptionsEditor
+            options={field.options ?? []}
+            onChange={onOptionsChange}
+            optionsLabel={labels.optionsLabel}
+            optionPlaceholderTemplate={labels.optionPlaceholderTemplate}
+            removeOptionAriaLabel={labels.removeOptionAriaLabel}
+            addOptionLabel={labels.addOptionLabel}
+          />
           <p className="text-xs text-muted-foreground">
-            Trocar o tipo muda só como o valor é exibido — o dado já salvo é preservado.
+            {labels.typeDataPreserved}
           </p>
         </div>
       )}
@@ -303,6 +329,41 @@ function SortableFieldRow({
 
 export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const tfc = MESSAGES[locale].app.equipment.fieldConfig;
+
+  // Computed from i18n — tipos CANÔNICOS traduzem.
+  const FIELD_TYPE_META_I18N: Record<string, { icon: ReactNode; label: string }> = {
+    text: { icon: getFieldTypeIcon('text'), label: tfc.typeText },
+    number: { icon: getFieldTypeIcon('number'), label: tfc.typeNumber },
+    date: { icon: getFieldTypeIcon('date'), label: tfc.typeDate },
+    boolean: { icon: getFieldTypeIcon('boolean'), label: tfc.typeBoolean },
+    select: { icon: getFieldTypeIcon('select'), label: tfc.typeSelect },
+  };
+  const getFieldTypeMetaI18n = (type: string) =>
+    FIELD_TYPE_META_I18N[type] ?? { icon: getFieldTypeIcon(type), label: type };
+
+  const FIELD_TYPE_OPTIONS_I18N: { value: FieldType; label: string }[] = [
+    { value: 'text', label: tfc.typeText },
+    { value: 'number', label: tfc.typeNumber },
+    { value: 'date', label: tfc.typeDate },
+    { value: 'boolean', label: tfc.typeBoolean },
+    { value: 'select', label: tfc.typeSelect },
+  ];
+
+  const sortableRowLabels = {
+    dragAriaLabel: tfc.dragAriaLabel,
+    savedLabel: tfc.labelSaved,
+    hiddenLabel: tfc.labelHidden,
+    visibleAriaLabel: tfc.fieldVisible,
+    hiddenAriaLabel: tfc.fieldHidden,
+    typeDataPreserved: tfc.typeDataPreserved,
+    optionsLabel: tfc.optionsLabel,
+    optionPlaceholderTemplate: tfc.optionPlaceholder,
+    removeOptionAriaLabel: tfc.removeOptionAriaLabel,
+    addOptionLabel: tfc.addOption,
+  };
+
   const { fields, isLoading, updateField, createField, deleteField, reorderFields } = useEquipmentFieldConfig();
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<FieldType>('text');
@@ -405,10 +466,10 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
   // Bloco "adicionar novo campo" — usado em ambos viewports.
   const addBlock = (
     <div className="border-t pt-4">
-      <p className="text-sm font-medium mb-2">Adicionar novo campo</p>
+      <p className="text-sm font-medium mb-2">{tfc.addFieldHeading}</p>
       <div className="flex gap-2">
         <Input
-          placeholder="Nome do campo"
+          placeholder={tfc.fieldNamePlaceholder}
           value={newFieldLabel}
           onChange={(e) => setNewFieldLabel(e.target.value)}
           className="flex-1"
@@ -417,13 +478,13 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
         <Select value={newFieldType} onValueChange={(v) => setNewFieldType(v as FieldType)}>
           <SelectTrigger className="w-40 [&>span]:!flex [&>span]:flex-row [&>span]:items-center">
             <span className="flex flex-row items-center gap-2 min-w-0 whitespace-nowrap">
-              <span className="shrink-0">{getFieldTypeMeta(newFieldType).icon}</span>
-              <span className="truncate">{getFieldTypeMeta(newFieldType).label}</span>
+              <span className="shrink-0">{getFieldTypeMetaI18n(newFieldType).icon}</span>
+              <span className="truncate">{getFieldTypeMetaI18n(newFieldType).label}</span>
             </span>
           </SelectTrigger>
           <SelectContent>
-            {FIELD_TYPE_OPTIONS.map((o) => {
-              const meta = getFieldTypeMeta(o.value);
+            {FIELD_TYPE_OPTIONS_I18N.map((o) => {
+              const meta = getFieldTypeMetaI18n(o.value);
               return (
                 <SelectItem key={o.value} value={o.value}>
                   <span className="flex flex-row items-center gap-2 whitespace-nowrap">
@@ -443,14 +504,21 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
       </div>
       {newFieldType === 'select' && (
         <div className="mt-3 rounded-lg border bg-muted/30 p-3 space-y-3">
-          <OptionsEditor options={newFieldOptions} onChange={setNewFieldOptions} />
+          <OptionsEditor
+            options={newFieldOptions}
+            onChange={setNewFieldOptions}
+            optionsLabel={tfc.optionsLabel}
+            optionPlaceholderTemplate={tfc.optionPlaceholder}
+            removeOptionAriaLabel={tfc.removeOptionAriaLabel}
+            addOptionLabel={tfc.addOption}
+          />
           <Button
             size="sm"
             className="gap-1.5"
             onClick={handleAddField}
             disabled={!newFieldLabel.trim() || newFieldOptions.every((o) => !o.trim())}
           >
-            <Plus className="h-4 w-4" /> Adicionar campo
+            <Plus className="h-4 w-4" /> {tfc.addField}
           </Button>
         </div>
       )}
@@ -459,10 +527,10 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
 
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Configurar Campos do Equipamento" className="sm:max-w-3xl">
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tfc.dialogTitle} className="sm:max-w-3xl">
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Configure quais campos aparecem no cadastro de equipamentos. Você pode excluir, ocultar, renomear, reordenar e definir como obrigatório.
+            {tfc.dialogDesc}
           </p>
 
           {isLoading ? (
@@ -474,45 +542,45 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
             // Ações secundárias (editar tipo/opções, mover, toggle, excluir) vão no overflow menu.
             <div className="rounded-xl border bg-card overflow-hidden">
               {fields.map((field, idx) => {
-                const meta = getFieldTypeMeta(field.field_type);
+                const meta = getFieldTypeMetaI18n(field.field_type);
 
                 const actions: ItemAction[] = [
                   {
                     key: 'configure',
-                    label: 'Tipo e opções',
+                    label: tfc.menuConfigure,
                     icon: <Settings2 className="h-4 w-4" />,
                     variant: 'edit',
                     onClick: () => setEditId(field.id),
                   },
                   {
                     key: 'move-up',
-                    label: 'Mover para cima',
+                    label: tfc.menuMoveUp,
                     icon: <ChevronUp className="h-4 w-4" />,
                     disabled: idx === 0,
                     onClick: () => moveField(field, -1),
                   },
                   {
                     key: 'move-down',
-                    label: 'Mover para baixo',
+                    label: tfc.menuMoveDown,
                     icon: <ChevronDown className="h-4 w-4" />,
                     disabled: idx === fields.length - 1,
                     onClick: () => moveField(field, 1),
                   },
                   {
                     key: 'toggle-visible',
-                    label: field.is_visible ? 'Ocultar' : 'Mostrar',
+                    label: field.is_visible ? tfc.menuToggleHide : tfc.menuToggleShow,
                     icon: field.is_visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />,
                     onClick: () => handleToggleVisible(field),
                   },
                   {
                     key: 'toggle-required',
-                    label: field.is_required ? 'Tornar opcional' : 'Tornar obrigatório',
+                    label: field.is_required ? tfc.menuMakeOptional : tfc.menuMakeRequired,
                     icon: <ToggleLeft className="h-4 w-4" />,
                     onClick: () => handleToggleRequired(field),
                   },
                   {
                     key: 'delete',
-                    label: 'Excluir',
+                    label: tfc.delete,
                     icon: <Trash2 className="h-4 w-4" />,
                     variant: 'destructive',
                     onClick: () => setDeleteId(field.id),
@@ -549,12 +617,12 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                     }
                     subtitle={
                       <span className="inline-flex items-center gap-1.5 flex-wrap">
-                        <span>{meta.label}</span>
+                        <span>{getFieldTypeMetaI18n(field.field_type).label}</span>
                         {savedId === field.id && (
                           <>
                             <span className="text-muted-foreground/50">•</span>
                             <span className="inline-flex items-center gap-1 text-success">
-                              <Check className="h-3 w-3" /> Salvo
+                              <Check className="h-3 w-3" /> {tfc.labelSaved}
                             </span>
                           </>
                         )}
@@ -562,14 +630,14 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                           <>
                             <span className="text-muted-foreground/50">•</span>
                             <span className="inline-flex items-center gap-1">
-                              <EyeOff className="h-3 w-3" /> Oculto
+                              <EyeOff className="h-3 w-3" /> {tfc.labelHidden}
                             </span>
                           </>
                         )}
                         {field.is_required && (
                           <>
                             <span className="text-muted-foreground/50">•</span>
-                            <span className="text-warning">Obrigatório</span>
+                            <span className="text-warning">{tfc.labelRequired}</span>
                           </>
                         )}
                       </span>
@@ -579,24 +647,24 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                 );
               })}
               {fields.length === 0 && (
-                <p className="text-sm text-center text-muted-foreground py-6">Nenhum campo configurado</p>
+                <p className="text-sm text-center text-muted-foreground py-6">{tfc.noneConfigured}</p>
               )}
             </div>
           ) : (
             // Desktop: lista com drag-and-drop para reordenar.
             fields.length === 0 ? (
               <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-                Nenhum campo configurado
+                {tfc.noneConfigured}
               </div>
             ) : (
               <div className="rounded-lg border border-border overflow-hidden">
                 {/* Cabeçalho da tabela — colunas alinhadas às linhas */}
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <span className="w-5 shrink-0" aria-hidden />
-                  <span className="flex-1 min-w-0 px-2">Nome</span>
-                  <span className="w-40 shrink-0 px-2">Tipo</span>
-                  <span className="w-14 shrink-0 text-center">Visível</span>
-                  <span className="w-16 shrink-0 text-center">Obrig.</span>
+                  <span className="flex-1 min-w-0 px-2">{tfc.colName}</span>
+                  <span className="w-40 shrink-0 px-2">{tfc.colType}</span>
+                  <span className="w-14 shrink-0 text-center">{tfc.colVisible}</span>
+                  <span className="w-16 shrink-0 text-center">{tfc.colRequired}</span>
                   <span className="w-10 shrink-0" aria-hidden />
                 </div>
 
@@ -608,6 +676,9 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                           key={field.id}
                           field={field}
                           justSaved={savedId === field.id}
+                          fieldTypeOptions={FIELD_TYPE_OPTIONS_I18N}
+                          getFieldTypeMeta={getFieldTypeMetaI18n}
+                          labels={sortableRowLabels}
                           onLabelChange={(label) => handleLabelChange(field, label)}
                           onToggleVisible={() => handleToggleVisible(field)}
                           onToggleRequired={() => handleToggleRequired(field)}
@@ -631,25 +702,25 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
       <ResponsiveModal
         open={!!editField}
         onOpenChange={(o) => { if (!o) setEditId(null); }}
-        title={editField ? `Configurar "${editField.label}"` : 'Configurar campo'}
+        title={editField ? tfc.configFieldTitle.replace('{name}', editField.label) : tfc.configFieldTitleFallback}
       >
         {editField && (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Tipo do campo</Label>
+              <Label className="text-xs text-muted-foreground">{tfc.typeLabel}</Label>
               <Select
                 value={editField.field_type}
                 onValueChange={(v) => handleTypeChange(editField, v as FieldType)}
               >
                 <SelectTrigger className="[&>span]:!flex [&>span]:flex-row [&>span]:items-center">
                   <span className="flex flex-row items-center gap-2 min-w-0 whitespace-nowrap">
-                    <span className="shrink-0">{getFieldTypeMeta(editField.field_type).icon}</span>
-                    <span className="truncate">{getFieldTypeMeta(editField.field_type).label}</span>
+                    <span className="shrink-0">{getFieldTypeMetaI18n(editField.field_type).icon}</span>
+                    <span className="truncate">{getFieldTypeMetaI18n(editField.field_type).label}</span>
                   </span>
                 </SelectTrigger>
                 <SelectContent>
-                  {FIELD_TYPE_OPTIONS.map((o) => {
-                    const meta = getFieldTypeMeta(o.value);
+                  {FIELD_TYPE_OPTIONS_I18N.map((o) => {
+                    const meta = getFieldTypeMetaI18n(o.value);
                     return (
                       <SelectItem key={o.value} value={o.value}>
                         <span className="flex flex-row items-center gap-2 whitespace-nowrap">
@@ -662,7 +733,7 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Trocar o tipo muda só como o valor é exibido — o dado já salvo é preservado.
+                {tfc.typeDataPreserved}
               </p>
             </div>
 
@@ -671,6 +742,10 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                 <OptionsEditor
                   options={editField.options ?? []}
                   onChange={(opts) => handleOptionsChange(editField, opts)}
+                  optionsLabel={tfc.optionsLabel}
+                  optionPlaceholderTemplate={tfc.optionPlaceholder}
+                  removeOptionAriaLabel={tfc.removeOptionAriaLabel}
+                  addOptionLabel={tfc.addOption}
                 />
               </div>
             )}
@@ -681,15 +756,15 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir campo</AlertDialogTitle>
+            <AlertDialogTitle>{tfc.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este campo? Dados já salvos neste campo serão mantidos no banco de dados.
+              {tfc.deleteDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tfc.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              {tfc.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -20,6 +20,8 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface Props {
   open: boolean;
@@ -131,20 +133,21 @@ function useOsRequiredFields() {
   return { fields: query.data ?? [], isLoading: query.isLoading, addField, removeField };
 }
 
-const OS_FIELD_OPTIONS = [
-  { key: 'description', label: 'Descrição' },
-  { key: 'diagnosis', label: 'Diagnóstico' },
-  { key: 'solution', label: 'Solução' },
-  { key: 'notes', label: 'Observações' },
-  { key: 'client_signature', label: 'Assinatura do cliente' },
-];
+const OS_FIELD_KEYS = ['description', 'diagnosis', 'solution', 'notes', 'client_signature'] as const;
+type OsFieldKey = typeof OS_FIELD_KEYS[number];
 
 export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.statusManager;
+
   const { statuses, isLoading: statusLoading, createStatus, updateStatus, deleteStatus, reorderStatuses } = useOsStatuses();
   const { config, isLoading: configLoading, updateConfig } = useOsConfig();
   const { serviceTypes } = useServiceTypes();
   const { slaList, upsertSla, deleteSla } = useOsSla();
   const { fields: requiredFields, addField, removeField } = useOsRequiredFields();
+
+  // Rótulos traduzidos dos campos canônicos (mapeados pela chave interna).
+  const fieldLabels: Record<OsFieldKey, string> = t.fieldLabels;
 
   const [newLabel, setNewLabel] = useState('');
   const [newColor, setNewColor] = useState('#3b82f6');
@@ -235,14 +238,14 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Configurações de OS">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.dialogTitle}>
       <div className="space-y-4">
           <div className="rounded-lg border p-3 space-y-2">
-            <p className="text-sm font-medium">Novo status</p>
+            <p className="text-sm font-medium">{t.newStatus}</p>
             <div className="flex gap-2">
-              <Input placeholder="Nome do status" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} className="flex-1" onKeyDown={(e) => e.key === 'Enter' && handleCreate()} />
+              <Input placeholder={t.placeholderStatusName} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} className="flex-1" onKeyDown={(e) => e.key === 'Enter' && handleCreate()} />
               <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-9 w-9 rounded border cursor-pointer" />
-              <Button size="sm" onClick={handleCreate} disabled={!newLabel.trim()}><Plus className="mr-2 h-4 w-4" />Criar</Button>
+              <Button size="sm" onClick={handleCreate} disabled={!newLabel.trim()}><Plus className="mr-2 h-4 w-4" />{t.btnCreate}</Button>
             </div>
           </div>
 
@@ -272,8 +275,8 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
                       <GripVertical className="h-4 w-4 text-muted-foreground/60 cursor-grab" />
                       <input type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} className="h-8 w-8 rounded border cursor-pointer shrink-0" />
                       <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="flex-1 h-8" onKeyDown={(e) => e.key === 'Enter' && handleUpdate()} />
-                      <Button size="sm" variant="outline" onClick={handleUpdate}>Salvar</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+                      <Button size="sm" variant="outline" onClick={handleUpdate}>{t.btnSave}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>{t.btnCancel}</Button>
                     </>
                   ) : (
                     <>
@@ -284,8 +287,8 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
                       <RowActionsMenu
                         triggerClassName="h-7 w-7"
                         actions={[
-                          { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => { setEditingId(status.id); setEditLabel(status.label); setEditColor(status.color); } },
-                          { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(status.id) },
+                          { label: MESSAGES[locale].app.os.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => { setEditingId(status.id); setEditLabel(status.label); setEditColor(status.color); } },
+                          { label: t.btnDelete, icon: Trash2, variant: 'delete', onClick: () => setDeleteId(status.id) },
                         ]}
                       />
                     </>
@@ -299,12 +302,12 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir status</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza? OS com este status podem ser afetadas.</AlertDialogDescription>
+            <AlertDialogTitle>{t.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.deleteDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t.btnDelete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

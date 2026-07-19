@@ -1248,12 +1248,12 @@ export default function CustomerDetail() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tCustomers.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteEquipment}
             >
-              Excluir
+              {tCustomers.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1302,12 +1302,12 @@ export default function CustomerDetail() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tCustomers.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteTask}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {tCustomers.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1340,7 +1340,7 @@ export default function CustomerDetail() {
             <AlertDialogDescription>{t.deleteCustomerConfirm.replace('{name}', customer.name)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tCustomers.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={async () => {
@@ -1348,7 +1348,7 @@ export default function CustomerDetail() {
                 navigate('/clientes');
               }}
             >
-              Excluir
+              {tCustomers.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1377,7 +1377,7 @@ export default function CustomerDetail() {
             <AlertDialogDescription>{t.deleteContactConfirm}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tCustomers.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={async () => {
@@ -1387,7 +1387,7 @@ export default function CustomerDetail() {
                 }
               }}
             >
-              Excluir
+              {tCustomers.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

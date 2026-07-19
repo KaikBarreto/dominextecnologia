@@ -626,7 +626,7 @@ export function EquipmentPanel() {
       {isMobile && canManageEquipment && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Equipamento"
+          label={tEq.newEquipmentShort}
           onClick={openNewEquipment}
         />
       )}

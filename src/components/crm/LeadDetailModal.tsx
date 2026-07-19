@@ -8,22 +8,33 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  User, Phone, Mail, Calendar, DollarSign, TrendingUp, 
+import {
+  User, Phone, Mail, Calendar, DollarSign, TrendingUp,
   MessageSquare, Clock, Plus, Send, Edit, Trash2, X
 } from 'lucide-react';
-import { 
-  useLeadInteractions, 
-  type Lead, 
+import {
+  useLeadInteractions,
+  type Lead,
   type LeadStatus,
-  LEAD_STATUS_LABELS,
   LEAD_STATUS_COLORS,
-  INTERACTION_TYPES,
+  getLeadStatusLabels,
+  getInteractionTypes,
   useLeads
 } from '@/hooks/useLeads';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
+
+const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es: esLocale,
+  fr: frLocale,
+};
 
 interface LeadDetailModalProps {
   open: boolean;
@@ -32,15 +43,16 @@ interface LeadDetailModalProps {
   onEdit: (lead: Lead) => void;
 }
 
-const STATUSES: { value: LeadStatus; label: string }[] = [
-  { value: 'lead', label: 'Lead' },
-  { value: 'proposta', label: 'Proposta' },
-  { value: 'negociacao', label: 'Negociação' },
-  { value: 'fechado_ganho', label: 'Negócio Fechado (Ganho)' },
-  { value: 'fechado_perdido', label: 'Negócio Perdido' },
-];
-
 export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetailModalProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm;
+  const dfLocale = DATE_FNS_LOCALES[locale];
+  const leadStatusLabels = getLeadStatusLabels(locale);
+  const interactionTypes = getInteractionTypes(locale);
+  const STATUSES = (Object.keys(leadStatusLabels) as LeadStatus[]).map((value) => ({
+    value,
+    label: leadStatusLabels[value],
+  }));
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
   const { updateLead, deleteLead } = useLeads();
   
@@ -54,12 +66,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
 
   if (!lead) return null;
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
   const handleStatusChange = async (newStatus: LeadStatus) => {
     await updateLead.mutateAsync({ id: lead.id, status: newStatus });
@@ -81,19 +88,19 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
   };
 
   const handleDelete = async () => {
-    if (confirm('Tem certeza que deseja excluir este lead?')) {
+    if (confirm(t.detail.deleteConfirm)) {
       await deleteLead.mutateAsync(lead.id);
       onOpenChange(false);
     }
   };
 
   const getInteractionIcon = (type: string) => {
-    const found = INTERACTION_TYPES.find(t => t.value === type);
+    const found = interactionTypes.find(it => it.value === type);
     return found?.icon || '📝';
   };
 
   const getInteractionLabel = (type: string) => {
-    const found = INTERACTION_TYPES.find(t => t.value === type);
+    const found = interactionTypes.find(it => it.value === type);
     return found?.label || type;
   };
 
@@ -114,7 +121,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
             <div className="flex items-center gap-2">
               <Button variant="edit-ghost" size="sm" onClick={() => onEdit(lead)}>
                 <Edit className="h-4 w-4 mr-1" />
-                Editar
+                {t.detail.edit}
               </Button>
               <Button variant="destructive-ghost" size="sm" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4" />
@@ -125,16 +132,16 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
 
         <Tabs defaultValue="detalhes" className="flex-1 overflow-hidden flex flex-col">
           <TabsList className="flex-shrink-0">
-            <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+            <TabsTrigger value="detalhes">{t.detail.tabDetails}</TabsTrigger>
             <TabsTrigger value="historico">
-              Histórico ({interactions.length})
+              {t.detail.tabHistory} ({interactions.length})
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="detalhes" className="flex-1 overflow-auto mt-4 space-y-6">
             {/* Status */}
             <div className="flex flex-wrap items-center gap-3">
-              <Label className="text-muted-foreground">Status:</Label>
+              <Label className="text-muted-foreground">{t.detail.statusLabel}</Label>
               <Select value={lead.status} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue />
@@ -146,7 +153,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                 </SelectContent>
               </Select>
               <Badge className={LEAD_STATUS_COLORS[lead.status]}>
-                {LEAD_STATUS_LABELS[lead.status]}
+                {leadStatusLabels[lead.status]}
               </Badge>
             </div>
 
@@ -155,17 +162,17 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
               <div className="rounded-lg border bg-card p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <DollarSign className="h-4 w-4" />
-                  <span className="text-xs">Valor Estimado</span>
+                  <span className="text-xs">{t.detail.valueEstimated}</span>
                 </div>
                 <p className="text-xl font-bold text-primary">
-                  {lead.value ? formatCurrency(lead.value) : 'Não informado'}
+                  {lead.value ? formatCurrency(lead.value) : t.detail.valueNotSet}
                 </p>
               </div>
 
               <div className="rounded-lg border bg-card p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <TrendingUp className="h-4 w-4" />
-                  <span className="text-xs">Probabilidade</span>
+                  <span className="text-xs">{t.detail.probability}</span>
                 </div>
                 <p className="text-xl font-bold">{lead.probability || 50}%</p>
               </div>
@@ -173,21 +180,21 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
               <div className="rounded-lg border bg-card p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <Calendar className="h-4 w-4" />
-                  <span className="text-xs">Previsão Fechamento</span>
+                  <span className="text-xs">{t.detail.closeDate}</span>
                 </div>
                 <p className="text-sm font-medium">
-                  {lead.expected_close_date 
-                    ? format(new Date(lead.expected_close_date), "dd 'de' MMM, yyyy", { locale: ptBR })
-                    : 'Não definida'}
+                  {lead.expected_close_date
+                    ? format(new Date(lead.expected_close_date), "dd MMM yyyy", { locale: dfLocale })
+                    : t.detail.closeDateNotSet}
                 </p>
               </div>
 
               <div className="rounded-lg border bg-card p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <MessageSquare className="h-4 w-4" />
-                  <span className="text-xs">Origem</span>
+                  <span className="text-xs">{t.detail.origin}</span>
                 </div>
-                <p className="text-sm font-medium">{lead.source || 'Não informada'}</p>
+                <p className="text-sm font-medium">{lead.source || t.detail.originNotSet}</p>
               </div>
             </div>
 
@@ -196,7 +203,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
               <div className="rounded-lg border p-4 space-y-3">
                 <h4 className="font-semibold flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  Contato do Cliente
+                  {t.detail.customerContact}
                 </h4>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {lead.customers.phone && (
@@ -240,15 +247,15 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
             {/* Notes */}
             {lead.notes && (
               <div className="rounded-lg border p-4">
-                <h4 className="font-semibold mb-2">Observações</h4>
+                <h4 className="font-semibold mb-2">{t.detail.notes}</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lead.notes}</p>
               </div>
             )}
 
             {/* Timeline info */}
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>Criado em: {format(new Date(lead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-              <p>Atualizado: {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true, locale: ptBR })}</p>
+              <p>{t.detail.createdAt} {format(new Date(lead.created_at), 'dd/MM/yyyy HH:mm', { locale: dfLocale })}</p>
+              <p>{t.detail.updatedAt} {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true, locale: dfLocale })}</p>
             </div>
           </TabsContent>
 
@@ -258,12 +265,12 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
               {!isAddingInteraction ? (
                 <Button onClick={() => setIsAddingInteraction(true)} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Nova Interação
+                  {t.detail.newInteraction}
                 </Button>
               ) : (
                 <div className="rounded-lg border p-4 space-y-4 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">Registrar Interação</h4>
+                    <h4 className="font-semibold">{t.detail.registerInteraction}</h4>
                     <Button variant="ghost" size="icon" onClick={() => setIsAddingInteraction(false)}>
                       <X className="h-4 w-4" />
                     </Button>
@@ -271,46 +278,46 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                   
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Tipo de Interação *</Label>
+                      <Label>{t.detail.interactionType}</Label>
                       <Select
                         value={newInteraction.type}
                         onValueChange={(value) => setNewInteraction(prev => ({ ...prev, type: value }))}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder={t.detail.interactionTypePlaceholder} />
                         </SelectTrigger>
                         <SelectContent>
-                          {INTERACTION_TYPES.map(t => (
-                            <SelectItem key={t.value} value={t.value}>
-                              {t.icon} {t.label}
+                          {interactionTypes.map(it => (
+                            <SelectItem key={it.value} value={it.value}>
+                              {it.icon} {it.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div className="space-y-2">
-                      <Label>Próxima Ação</Label>
+                      <Label>{t.detail.nextAction}</Label>
                       <Input
                         value={newInteraction.next_action}
                         onChange={(e) => setNewInteraction(prev => ({ ...prev, next_action: e.target.value }))}
-                        placeholder="Ex: Enviar proposta"
+                        placeholder={t.detail.nextActionPlaceholder}
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Descrição *</Label>
+                    <Label>{t.detail.description}</Label>
                     <Textarea
                       value={newInteraction.description}
                       onChange={(e) => setNewInteraction(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Descreva o que foi conversado..."
+                      placeholder={t.detail.descriptionPlaceholder}
                       rows={3}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Data da Próxima Ação</Label>
+                    <Label>{t.detail.nextActionDate}</Label>
                     <Input
                       type="date"
                       value={newInteraction.next_action_date}
@@ -318,13 +325,13 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                     />
                   </div>
 
-                  <Button 
+                  <Button
                     onClick={handleAddInteraction}
                     disabled={!newInteraction.type || !newInteraction.description || createInteraction.isPending}
                     className="gap-2"
                   >
                     <Send className="h-4 w-4" />
-                    Registrar
+                    {t.detail.register}
                   </Button>
                 </div>
               )}
@@ -341,9 +348,9 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
               ) : interactions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-medium">Nenhuma interação registrada</h3>
+                  <h3 className="font-medium">{t.detail.noInteractions}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Clique em "Nova Interação" para registrar o primeiro contato
+                    {t.detail.noInteractionsDesc}
                   </p>
                 </div>
               ) : (
@@ -364,7 +371,7 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                                 {getInteractionLabel(interaction.interaction_type)}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {format(new Date(interaction.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                {format(new Date(interaction.created_at), 'dd/MM/yyyy HH:mm', { locale: dfLocale })}
                               </p>
                             </div>
                           </div>
@@ -374,10 +381,10 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
                           {interaction.next_action && (
                             <div className="mt-2 flex items-center gap-2 text-xs bg-warning/10 text-warning p-2 rounded">
                               <Clock className="h-3 w-3" />
-                              <span>Próxima ação: {interaction.next_action}</span>
+                              <span>{t.detail.nextActionPrefix} {interaction.next_action}</span>
                               {interaction.next_action_date && (
                                 <span>
-                                  ({format(new Date(interaction.next_action_date), 'dd/MM/yyyy', { locale: ptBR })})
+                                  ({format(new Date(interaction.next_action_date), 'dd/MM/yyyy', { locale: dfLocale })})
                                 </span>
                               )}
                             </div>

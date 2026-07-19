@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { formatBRL } from '@/utils/currency';
 import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Data de hoje (YYYY-MM-DD) no fuso de São Paulo — o padrão de data do app. */
 function todayBR(): string {
@@ -40,6 +42,8 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
   const { balances } = useFinancialAccounts();
   const { createTransaction } = useFinancial();
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.finance.adjustBalance;
 
   // Saldo atual derivado das transações (fallback no saldo inicial).
   const currentBalance = account
@@ -82,7 +86,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     if (submitGuard.current) return;
 
     if (isNeutral) {
-      toast({ title: 'O saldo já está nesse valor', description: 'Nenhum ajuste foi necessário.' });
+      toast({ title: t.toastNeutral, description: t.toastNeutralDesc });
       onOpenChange(false);
       return;
     }
@@ -102,8 +106,8 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
         is_paid: true,
       });
       toast({
-        title: 'Saldo ajustado!',
-        description: `Novo saldo da conta: R$ ${formatBRL(targetBalance)}.`,
+        title: t.toastSuccess,
+        description: t.toastSuccessDesc.replace('{amount}', `R$ ${formatBRL(targetBalance)}`),
       });
       onOpenChange(false);
     } catch {
@@ -117,16 +121,16 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
   const footer = account ? (
     <div className="flex justify-end gap-3">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-        Cancelar
+        {t.cancelLabel}
       </Button>
       <Button type="button" onClick={handleConfirm} disabled={submitting || isNeutral}>
         {submitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Ajustando...
+            {t.confirmingLabel}
           </>
         ) : (
-          'Confirmar ajuste'
+          t.confirmLabel
         )}
       </Button>
     </div>
@@ -136,7 +140,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     <ResponsiveModal
       open={open}
       onOpenChange={(v) => { if (!v && !submitting) onOpenChange(false); }}
-      title={account ? `Ajustar saldo · ${account.name}` : 'Ajustar saldo'}
+      title={account ? `${t.titlePrefix} · ${account.name}` : t.titlePrefix}
       className="sm:max-w-[440px]"
       footer={footer}
     >
@@ -144,7 +148,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
         <div className="space-y-4">
           {/* Saldo atual da conta */}
           <div className="rounded-lg border bg-muted/30 px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Saldo atual</span>
+            <span className="text-sm text-muted-foreground">{t.currentBalanceLabel}</span>
             <span className={cn('text-base font-bold tabular-nums', currentBalance >= 0 ? 'text-success' : 'text-destructive')}>
               R$ {formatBRL(currentBalance)}
             </span>
@@ -152,23 +156,23 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
 
           {/* Novo saldo desejado */}
           <div className="space-y-1.5">
-            <Label>Saldo em conta (R$)</Label>
+            <Label>{t.targetBalanceLabel}</Label>
             <Input
-              placeholder="0,00"
+              placeholder={t.targetBalancePlaceholder}
               value={targetDisplay}
               onChange={handleCurrencyChange}
               inputMode="numeric"
               autoFocus
             />
             <p className="text-xs text-muted-foreground">
-              Informe quanto a conta realmente tem. O sistema lança a diferença automaticamente.
+              {t.targetBalanceHint}
             </p>
           </div>
 
           {/* Preview do ajuste */}
           {isNeutral ? (
             <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground text-center">
-              O saldo já está nesse valor.
+              {t.neutralMessage}
             </div>
           ) : (
             <div className={cn(
@@ -181,11 +185,11 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
                 <ArrowDownCircle className="h-5 w-5 text-destructive shrink-0" />
               )}
               <p className="text-sm">
-                Será lançado um ajuste de{' '}
+                {t.adjustEntryPrefix}{' '}
                 <span className={cn('font-bold', isEntrada ? 'text-success' : 'text-destructive')}>
                   {isEntrada ? '+' : '−'}R$ {formatBRL(Math.abs(delta))}
                 </span>{' '}
-                <span className="text-muted-foreground">({isEntrada ? 'entrada' : 'saída'})</span>.
+                <span className="text-muted-foreground">({isEntrada ? t.directionEntrada : t.directionSaida})</span>.
               </p>
             </div>
           )}

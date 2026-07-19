@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { escapeHtml } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
@@ -36,6 +38,8 @@ const LABEL_SIZES = [
 ] as const;
 
 export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) {
+  const { locale } = useAppLocaleContext();
+  const tfc = MESSAGES[locale].app.equipment.fieldConfig;
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(equipment?.id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(equipment?.id);
@@ -128,9 +132,9 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
             ${companySettings.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}
           ` : ''}
           ${svgData}
-          <div class="eq-label">Nome do equipamento</div>
+          <div class="eq-label">${escapeHtml(tfc.detailDialogLabelEqName)}</div>
           <div class="eq-name">${escapeHtml(equipment.name)}</div>
-          <div class="eq-label">Identificador</div>
+          <div class="eq-label">${escapeHtml(tfc.detailDialogLabelEqId)}</div>
           <div class="eq-id">${escapeHtml(equipment.identifier) || '-'}</div>
         </div>
         <script>setTimeout(() => window.print(), 300);</script>
@@ -143,9 +147,9 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   if (!equipment) return null;
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: 'geral', label: 'Geral' },
-    { key: 'anexos', label: 'Anexos' },
-    { key: 'tarefas', label: 'Tarefas' },
+    { key: 'geral', label: tfc.detailDialogTabGeneral },
+    { key: 'anexos', label: tfc.detailDialogTabAttachments },
+    { key: 'tarefas', label: tfc.detailDialogTabTasks },
   ];
 
   return (
@@ -190,7 +194,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     >
                       <Package className={cn('h-10 w-10', !equipment.category?.color && 'text-muted-foreground')} />
                       <span className={cn('text-xs font-medium', !equipment.category?.color && 'text-muted-foreground')}>
-                        Sem foto
+                        {tfc.detailDialogNoPhoto}
                       </span>
                     </div>
                   )}
@@ -219,11 +223,11 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                       </p>
                     )}
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      QR Code do equipamento
+                      {tfc.detailDialogQrCaption}
                     </p>
                     {!portalTokenPending && !hasPortalLink && (
                       <p className="text-xs text-center text-muted-foreground">
-                        Equipamento sem cliente vinculado
+                        {tfc.detailDialogNoClient}
                       </p>
                     )}
                   </div>
@@ -236,7 +240,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                       onClick={() => setLabelDialogOpen(true)}
                     >
                       <Tag className="mr-2 h-4 w-4" />
-                      Gerar Etiqueta
+                      {tfc.detailDialogGenerateLabel}
                     </Button>
                     <Button
                       variant="outline"
@@ -245,16 +249,16 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                       onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
                     >
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Abrir link
+                      {tfc.detailDialogOpenLink}
                     </Button>
                     <Button
                       variant="outline"
                       className="h-11 w-full justify-center sm:h-9"
                       disabled={!hasPortalLink}
-                      onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: 'Link copiado!' }); }}
+                      onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: tfc.detailDialogLinkCopied }); }}
                     >
                       <Copy className="mr-2 h-4 w-4" />
-                      Copiar link
+                      {tfc.detailDialogCopyLink}
                     </Button>
                   </div>
                 </div>
@@ -263,64 +267,64 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
 
             {equipment.customer?.name && (
               <div>
-                <p className="text-xs text-muted-foreground">Cliente</p>
+                <p className="text-xs text-muted-foreground">{tfc.detailDialogClient}</p>
                 <p className="text-sm font-medium">{equipment.customer.name}</p>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
               {equipment.brand && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Marca</p>
+                  <p className="text-xs text-muted-foreground">{tfc.detailDialogBrand}</p>
                   <p className="text-sm">{equipment.brand}</p>
                 </div>
               )}
               {equipment.model && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Modelo</p>
+                  <p className="text-xs text-muted-foreground">{tfc.detailDialogModel}</p>
                   <p className="text-sm">{equipment.model}</p>
                 </div>
               )}
               {equipment.serial_number && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Nº de Série</p>
+                  <p className="text-xs text-muted-foreground">{tfc.detailDialogSerial}</p>
                   <p className="text-sm">{equipment.serial_number}</p>
                 </div>
               )}
               {equipment.capacity && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Capacidade/Especificação</p>
+                  <p className="text-xs text-muted-foreground">{tfc.detailDialogCapacity}</p>
                   <p className="text-sm">{equipment.capacity}</p>
                 </div>
               )}
               {equipment.location && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Local</p>
+                  <p className="text-xs text-muted-foreground">{tfc.detailDialogLocation}</p>
                   <p className="text-sm">{equipment.location}</p>
                 </div>
               )}
               {equipment.install_date && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Data de Instalação</p>
+                  <p className="text-xs text-muted-foreground">{tfc.detailDialogInstallDate}</p>
                   <p className="text-sm">{equipment.install_date}</p>
                 </div>
               )}
               {(equipment as any).warranty_until && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Validade da Garantia</p>
+                  <p className="text-xs text-muted-foreground">{tfc.detailDialogWarranty}</p>
                   <p className="text-sm">{(equipment as any).warranty_until}</p>
                 </div>
               )}
             </div>
             {equipment.notes && (
               <div>
-                <p className="text-xs text-muted-foreground">Observações</p>
+                <p className="text-xs text-muted-foreground">{tfc.detailDialogNotes}</p>
                 <p className="text-sm">{equipment.notes}</p>
               </div>
             )}
             <div>
-              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xs text-muted-foreground">{tfc.detailDialogStatus}</p>
               <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
-                {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
+                {equipment.status === 'active' ? tfc.detailDialogStatusActive : tfc.detailDialogStatusInactive}
               </Badge>
             </div>
             {/* Custom fields */}
@@ -333,7 +337,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                 <div className="grid grid-cols-2 gap-3 col-span-2">
                   {visibleFields.map(field => {
                     let displayValue = String(customFields[field.field_key]);
-                    if (field.field_type === 'boolean') displayValue = customFields[field.field_key] ? 'Sim' : 'Não';
+                    if (field.field_type === 'boolean') displayValue = customFields[field.field_key] ? tfc.detailDialogBooleanYes : tfc.detailDialogBooleanNo;
                     return (
                       <div key={field.id}>
                         <p className="text-xs text-muted-foreground">{field.label}</p>
@@ -351,10 +355,10 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
         {activeTab === 'anexos' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Arquivos anexados</p>
+              <p className="text-sm font-medium">{tfc.detailDialogAttachments}</p>
               <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
                 <Upload className="mr-2 h-4 w-4" />
-                {uploadingFiles ? 'Enviando...' : 'Enviar arquivos'}
+                {uploadingFiles ? tfc.detailDialogUploading : tfc.detailDialogUpload}
               </Button>
               <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
             </div>
@@ -364,7 +368,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
             ) : attachments.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-center">
                 <Paperclip className="mb-2 h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Nenhum anexo</p>
+                <p className="text-sm text-muted-foreground">{tfc.detailDialogNoAttachments}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -389,7 +393,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
           <div className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder="Nova tarefa..."
+                placeholder={tfc.detailDialogTasks}
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
@@ -405,7 +409,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
             ) : tasks.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-center">
                 <CheckCircle2 className="mb-2 h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Nenhuma tarefa</p>
+                <p className="text-sm text-muted-foreground">{tfc.detailDialogNoTasks}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -439,16 +443,16 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
         <AlertDialog open={!!deleteAttachmentId} onOpenChange={() => setDeleteAttachmentId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir anexo</AlertDialogTitle>
-              <AlertDialogDescription>Tem certeza que deseja excluir este anexo?</AlertDialogDescription>
+              <AlertDialogTitle>{tfc.detailDialogDeleteAttachTitle}</AlertDialogTitle>
+              <AlertDialogDescription>{tfc.detailDialogDeleteAttachDesc}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>{tfc.detailDialogDeleteAttachCancel}</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={() => { if (deleteAttachmentId) { deleteAttachment.mutate(deleteAttachmentId); setDeleteAttachmentId(null); } }}
               >
-                Excluir
+                {tfc.detailDialogDeleteAttachConfirm}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -456,10 +460,10 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
       </ResponsiveModal>
 
       {/* Label size selection dialog */}
-      <ResponsiveModal open={labelDialogOpen} onOpenChange={setLabelDialogOpen} title="Gerar Etiqueta de Identificação">
+      <ResponsiveModal open={labelDialogOpen} onOpenChange={setLabelDialogOpen} title={tfc.detailDialogLabelTitle}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Escolha o tamanho da etiqueta para impressão.
+            {tfc.detailDialogLabelDesc}
           </p>
           <div className="grid grid-cols-3 gap-3">
             {LABEL_SIZES.map((size) => (
@@ -482,7 +486,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
 
           <div className="bg-accent/50 rounded-lg p-3 text-sm text-muted-foreground flex items-start gap-2">
             <span className="text-primary">ℹ</span>
-            Ao imprimir, certifique-se que nas configurações de impressão o dimensionamento está em <strong>tamanho real</strong>.
+            {tfc.detailDialogLabelPrintHint}
           </div>
 
           {/* Label preview */}
@@ -506,9 +510,9 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                   <QrCode className="h-7 w-7 text-muted-foreground" />
                 </div>
               )}
-              <p className="text-[10px] text-muted-foreground">Nome do equipamento</p>
+              <p className="text-[10px] text-muted-foreground">{tfc.detailDialogLabelEqName}</p>
               <p className="text-xs font-bold">{equipment.name}</p>
-              <p className="text-[10px] text-muted-foreground">Identificador</p>
+              <p className="text-[10px] text-muted-foreground">{tfc.detailDialogLabelEqId}</p>
               <p className="text-xs font-bold">{equipment.identifier || '-'}</p>
             </div>
           </div>
@@ -516,7 +520,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
           <div className="flex justify-end">
             <Button onClick={handleDownloadLabel}>
               <Download className="mr-2 h-4 w-4" />
-              Download
+              {tfc.detailDialogLabelDownload}
             </Button>
           </div>
         </div>

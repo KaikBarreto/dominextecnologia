@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -40,6 +42,9 @@ const defaultForm: TaskTypeForm = {
 };
 
 export function TaskTypesPanel() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.taskTypes;
+
   const { taskTypes, isLoading, createTaskType, updateTaskType, deleteTaskType } = useTaskTypes();
   const isMobile = useIsMobile();
   const { sortedItems: sortedTypes, sortConfig, handleSort } = useTableSort(taskTypes);
@@ -99,14 +104,14 @@ export function TaskTypesPanel() {
       {!isMobile && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Tipos de Tarefas</h2>
+            <h2 className="text-lg font-semibold">{t.title}</h2>
             <p className="text-sm text-muted-foreground">
-              Configure os tipos de tarefas utilizadas na agenda
+              {t.subtitle}
             </p>
           </div>
           <Button onClick={handleNew}>
             <Plus className="mr-2 h-4 w-4" />
-            Novo Tipo
+            {t.btnNew}
           </Button>
         </div>
       )}
@@ -115,15 +120,15 @@ export function TaskTypesPanel() {
         isMobile ? (
           <EmptyState
             icon={<CheckSquare className="h-12 w-12" />}
-            title="Nenhum tipo de tarefa"
-            description="Toque em Novo Tipo para cadastrar"
+            title={t.emptyTitle}
+            description={t.emptyDescriptionMobile}
           />
         ) : (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <CheckSquare className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">Nenhum tipo de tarefa</h3>
-              <p className="text-muted-foreground">Cadastre tipos de tarefas para organizar sua agenda</p>
+              <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
+              <p className="text-muted-foreground">{t.emptyDescriptionDesktop}</p>
             </CardContent>
           </Card>
         )
@@ -136,14 +141,14 @@ export function TaskTypesPanel() {
             const itemActions: ItemAction[] = [
               {
                 key: 'edit',
-                label: 'Editar',
+                label: t.actionEdit,
                 icon: <Pencil className="h-4 w-4" />,
                 variant: 'edit',
                 onClick: () => handleEdit(tt),
               },
               {
                 key: 'delete',
-                label: 'Excluir',
+                label: t.actionDelete,
                 icon: <Trash2 className="h-4 w-4" />,
                 variant: 'destructive',
                 onClick: () => { setToDeleteId(tt.id); setDeleteDialogOpen(true); },
@@ -171,7 +176,7 @@ export function TaskTypesPanel() {
                       <span className="truncate">{tt.description}</span>
                     )}
                     {!tt.is_active && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Inativo</Badge>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t.badgeInactive}</Badge>
                     )}
                   </span>
                 }
@@ -188,11 +193,11 @@ export function TaskTypesPanel() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>Cor</SortableTableHead>
-                  <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                  <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
-                  <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                  <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
+                  <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>{t.colColor}</SortableTableHead>
+                  <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.colName}</SortableTableHead>
+                  <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>{t.colDescription}</SortableTableHead>
+                  <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>{t.colStatus}</SortableTableHead>
+                  <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">{t.colActions}</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -207,14 +212,14 @@ export function TaskTypesPanel() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={tt.is_active ? 'default' : 'secondary'} className="text-xs">
-                        {tt.is_active ? 'Ativo' : 'Inativo'}
+                        {tt.is_active ? t.badgeActive : t.badgeInactive}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <RowActionsMenu
                         actions={[
-                          { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEdit(tt) },
-                          { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => { setToDeleteId(tt.id); setDeleteDialogOpen(true); } },
+                          { label: t.actionEdit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(tt) },
+                          { label: t.actionDelete, icon: Trash2, variant: 'delete', onClick: () => { setToDeleteId(tt.id); setDeleteDialogOpen(true); } },
                         ]}
                       />
                     </TableCell>
@@ -230,7 +235,7 @@ export function TaskTypesPanel() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Tipo"
+          label={t.fabLabel}
           onClick={handleNew}
         />
       )}
@@ -238,27 +243,27 @@ export function TaskTypesPanel() {
       <ResponsiveModal
         open={formOpen}
         onOpenChange={setFormOpen}
-        title={editingId ? 'Editar Tipo de Tarefa' : 'Novo Tipo de Tarefa'}
+        title={editingId ? t.modalTitleEdit : t.modalTitleCreate}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>{t.btnCancel}</Button>
             <Button onClick={handleSave} disabled={!form.name.trim()}>
-              {editingId ? 'Salvar' : 'Criar'}
+              {editingId ? t.btnSave : t.btnCreate}
             </Button>
           </div>
         }
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Nome *</Label>
+            <Label>{t.labelName}</Label>
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ex: Reunião, Entrega, Compra"
+              placeholder={t.placeholderName}
             />
           </div>
           <div className="space-y-2">
-            <Label>Cor</Label>
+            <Label>{t.labelColor}</Label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
@@ -274,11 +279,11 @@ export function TaskTypesPanel() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Descrição</Label>
+            <Label>{t.labelDescription}</Label>
             <Textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Descrição do tipo de tarefa"
+              placeholder={t.placeholderDescription}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -286,7 +291,7 @@ export function TaskTypesPanel() {
               checked={form.is_active}
               onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
             />
-            <Label>Ativo</Label>
+            <Label>{t.labelActive}</Label>
           </div>
         </div>
       </ResponsiveModal>
@@ -294,18 +299,18 @@ export function TaskTypesPanel() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Tipo de Tarefa</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este tipo de tarefa? Esta ação não pode ser desfeita.
+              {t.deleteDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.btnCancelDelete}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {t.btnDelete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

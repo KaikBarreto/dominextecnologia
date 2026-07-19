@@ -17,14 +17,40 @@ import {
 } from 'lucide-react';
 import { format, differenceInMinutes, getDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
-const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+/**
+ * Gera os rótulos dos dias da semana (Dom..Sáb) no locale correto usando Intl.
+ * Usa abreviação de 3 letras (narrow é 1 letra só, short é 3-4, narrow é 1).
+ */
+function getWeekdayLabels(localeTag: string): string[] {
+  // Domingo = 0, ..., Sábado = 6
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(2024, 0, 7 + i); // 7 jan 2024 = domingo
+    return new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(date);
+  });
+}
+
+// Mapeamento de locale app → BCP 47 para Intl.DateTimeFormat.
+const LOCALE_TO_BCP47: Record<string, string> = {
+  'pt-br': 'pt-BR',
+  en: 'en-US',
+  es: 'es',
+  fr: 'fr',
+};
 
 export function OsReportDashboard() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.report;
+
   const { serviceOrders } = useServiceOrders();
   const { statuses } = useOsStatuses();
   const { data: profiles } = useProfiles();
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
+
+  // Labels dos dias da semana no locale atual (locale-aware via Intl).
+  const WEEKDAY_LABELS = getWeekdayLabels(LOCALE_TO_BCP47[locale] ?? 'pt-BR');
 
   const filtered = useMemo(() => filterByDate(serviceOrders, 'scheduled_date'), [serviceOrders, range]);
 
@@ -133,7 +159,7 @@ export function OsReportDashboard() {
       counts[getDay(d)]++;
     });
     return WEEKDAY_LABELS.map((label, i) => ({ day: label, total: counts[i] }));
-  }, [filtered]);
+  }, [filtered, WEEKDAY_LABELS]);
 
   const pieConfig: ChartConfig = Object.fromEntries(
     statusData.map(s => [s.name, { label: s.name, color: s.color }])
@@ -158,7 +184,7 @@ export function OsReportDashboard() {
           <CardContent className="p-4 flex items-center gap-4">
             <div className="rounded-full bg-primary/10 p-3"><ClipboardCheck className="h-5 w-5 text-primary" /></div>
             <div>
-              <p className="text-xs text-muted-foreground">Total de OS</p>
+              <p className="text-xs text-muted-foreground">{t.kpiTotal}</p>
               <p className="text-2xl font-bold">{kpis.total}</p>
             </div>
           </CardContent>
@@ -167,9 +193,9 @@ export function OsReportDashboard() {
           <CardContent className="p-4 flex items-center gap-4">
             <div className="rounded-full bg-success/10 p-3"><TrendingUp className="h-5 w-5 text-success" /></div>
             <div>
-              <p className="text-xs text-muted-foreground">Taxa de conclusão</p>
+              <p className="text-xs text-muted-foreground">{t.kpiCompletionRate}</p>
               <p className="text-2xl font-bold">{kpis.rate}%</p>
-              <p className="text-[11px] text-muted-foreground">{kpis.concluded} concluídas</p>
+              <p className="text-[11px] text-muted-foreground">{t.kpiCompletionRateSub.replace('{n}', String(kpis.concluded))}</p>
             </div>
           </CardContent>
         </Card>
@@ -177,7 +203,7 @@ export function OsReportDashboard() {
           <CardContent className="p-4 flex items-center gap-4">
             <div className="rounded-full bg-info/10 p-3"><Clock className="h-5 w-5 text-info" /></div>
             <div>
-              <p className="text-xs text-muted-foreground">Tempo médio</p>
+              <p className="text-xs text-muted-foreground">{t.kpiAvgTime}</p>
               <p className="text-2xl font-bold">{kpis.avgMinutes > 0 ? formatMinutes(kpis.avgMinutes) : '—'}</p>
             </div>
           </CardContent>
@@ -186,7 +212,7 @@ export function OsReportDashboard() {
           <CardContent className="p-4 flex items-center gap-4">
             <div className="rounded-full bg-warning/10 p-3"><DollarSign className="h-5 w-5 text-warning" /></div>
             <div>
-              <p className="text-xs text-muted-foreground">Faturamento</p>
+              <p className="text-xs text-muted-foreground">{t.kpiBilling}</p>
               <p className="text-2xl font-bold">R$ {formatBRL(kpis.revenue)}</p>
             </div>
           </CardContent>
@@ -197,10 +223,10 @@ export function OsReportDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* OS by status pie */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">OS por Status</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartByStatus}</CardTitle></CardHeader>
           <CardContent className="overflow-hidden">
             {statusData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem dados</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t.noData}</p>
             ) : (
               <>
                 <ChartContainer config={pieConfig} className="h-[220px] w-full">
@@ -241,10 +267,10 @@ export function OsReportDashboard() {
 
         {/* OS by service type bar */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">OS por Tipo de Serviço</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartByServiceType}</CardTitle></CardHeader>
           <CardContent>
             {serviceTypeData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem dados</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t.noData}</p>
             ) : (
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -260,7 +286,7 @@ export function OsReportDashboard() {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis type="number" allowDecimals={false} />
                     <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(v: number) => [v, 'OS']} />
+                    <Tooltip formatter={(v: number) => [v, t.tooltipWo]} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                       {serviceTypeData.map((entry, i) => (
                         <Cell key={i} fill={`url(#os-grad-svc-${i})`} stroke={entry.color} />
@@ -278,10 +304,10 @@ export function OsReportDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Timeline */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Volume de OS ao Longo do Tempo</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartTimeline}</CardTitle></CardHeader>
           <CardContent>
             {timelineData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem dados</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t.noData}</p>
             ) : (
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -295,7 +321,7 @@ export function OsReportDashboard() {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis allowDecimals={false} />
-                    <Tooltip formatter={(v: number) => [v, 'OS']} />
+                    <Tooltip formatter={(v: number) => [v, t.tooltipWo]} />
                     <Line
                       type="monotone"
                       dataKey="total"
@@ -312,10 +338,10 @@ export function OsReportDashboard() {
 
         {/* Revenue over time */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Faturamento ao Longo do Tempo</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartRevenue}</CardTitle></CardHeader>
           <CardContent>
             {timelineData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem dados</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t.noData}</p>
             ) : (
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -329,7 +355,7 @@ export function OsReportDashboard() {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: number) => [`R$ ${formatBRL(v)}`, 'Faturamento']} />
+                    <Tooltip formatter={(v: number) => [`R$ ${formatBRL(v)}`, t.tooltipBilling]} />
                     <Bar dataKey="revenue" fill="url(#os-grad-revenue-vertical)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -341,7 +367,7 @@ export function OsReportDashboard() {
 
       {/* Weekday chart */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">OS por Dia da Semana</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t.chartByWeekday}</CardTitle></CardHeader>
         <CardContent>
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -355,7 +381,7 @@ export function OsReportDashboard() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                 <XAxis dataKey="day" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />
-                <Tooltip formatter={(v: number) => [v, 'OS']} />
+                <Tooltip formatter={(v: number) => [v, t.tooltipWo]} />
                 <Bar dataKey="total" fill="url(#os-grad-weekday-vertical)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -369,21 +395,21 @@ export function OsReportDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4" /> Top 10 Clientes
+              <Users className="h-4 w-4" /> {t.rankingCustomers}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Cliente</TableHead>
-                  <TableHead className="text-xs text-center">OS</TableHead>
-                  <TableHead className="text-xs text-right">Valor Total</TableHead>
+                  <TableHead className="text-xs">{t.colCustomer}</TableHead>
+                  <TableHead className="text-xs text-center">{t.colWo}</TableHead>
+                  <TableHead className="text-xs text-right">{t.colTotal}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {topCustomers.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Sem dados</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">{t.noData}</TableCell></TableRow>
                 ) : topCustomers.map((c, i) => (
                   <TableRow key={i}>
                     <TableCell className="text-sm font-medium">{c.name}</TableCell>
@@ -400,27 +426,27 @@ export function OsReportDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Wrench className="h-4 w-4" /> Top Técnicos (Concluídas)
+              <Wrench className="h-4 w-4" /> {t.rankingTechnicians}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Técnico</TableHead>
-                  <TableHead className="text-xs text-center">OS</TableHead>
-                  <TableHead className="text-xs text-right">Tempo Médio</TableHead>
+                  <TableHead className="text-xs">{t.colTechnician}</TableHead>
+                  <TableHead className="text-xs text-center">{t.colWo}</TableHead>
+                  <TableHead className="text-xs text-right">{t.colAvgTime}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {topTechnicians.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Sem dados</TableCell></TableRow>
-                ) : topTechnicians.map((t, i) => (
+                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">{t.noData}</TableCell></TableRow>
+                ) : topTechnicians.map((tech, i) => (
                   <TableRow key={i}>
-                    <TableCell className="text-sm font-medium">{t.name}</TableCell>
-                    <TableCell className="text-center">{t.count}</TableCell>
+                    <TableCell className="text-sm font-medium">{tech.name}</TableCell>
+                    <TableCell className="text-center">{tech.count}</TableCell>
                     <TableCell className="text-right text-sm">
-                      {t.withTime > 0 ? formatMinutes(Math.round(t.totalMin / t.withTime)) : '—'}
+                      {tech.withTime > 0 ? formatMinutes(Math.round(tech.totalMin / tech.withTime)) : '—'}
                     </TableCell>
                   </TableRow>
                 ))}

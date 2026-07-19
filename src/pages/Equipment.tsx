@@ -167,13 +167,13 @@ function CategoriesPanel() {
                     triggerClassName="h-7 w-7"
                     actions={[
                       {
-                        label: 'Editar',
+                        label: MESSAGES[locale].app.equipment.edit,
                         icon: Pencil,
                         variant: 'edit',
                         onClick: () => { setEditingId(cat.id); setEditName(cat.name); setEditColor(cat.color); },
                       },
                       {
-                        label: 'Excluir',
+                        label: tc.delete,
                         icon: Trash2,
                         variant: 'delete',
                         onClick: () => setDeleteId(cat.id),
@@ -243,7 +243,7 @@ function CategoriesPanel() {
           <AlertDialogFooter>
             <AlertDialogCancel>{tc.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              {tc.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

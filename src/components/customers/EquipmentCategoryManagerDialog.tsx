@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +23,8 @@ interface Props {
 
 export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const tcat = MESSAGES[locale].app.equipment.categories;
   const { categories, createCategory, updateCategory, deleteCategory } = useEquipmentCategories();
   const { equipment } = useEquipment();
   const [newName, setNewName] = useState('');
@@ -69,7 +73,7 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
   const addBlock = (
     <div className="flex gap-2">
       <Input
-        placeholder="Nome da categoria"
+        placeholder={tcat.newCategoryPlaceholder}
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
         className="flex-1"
@@ -80,7 +84,7 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
         value={newColor}
         onChange={(e) => setNewColor(e.target.value)}
         className="h-9 w-9 rounded border cursor-pointer"
-        aria-label="Cor da categoria"
+        aria-label={tcat.colorAriaLabel}
       />
       <Button size="sm" onClick={handleCreate} disabled={!newName.trim()}>
         <Plus className="h-4 w-4" />
@@ -90,10 +94,10 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
 
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Categorias de Equipamentos">
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tcat.dialogTitle}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Crie categorias para organizar seus equipamentos.
+            {tcat.dialogDesc}
           </p>
 
           {addBlock}
@@ -103,8 +107,8 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
             categories.length === 0 ? (
               <EmptyState
                 icon={<Tag className="h-12 w-12" />}
-                title="Nenhuma categoria criada"
-                description="Use o campo acima para adicionar a primeira categoria."
+                title={tcat.emptyDialogTitle}
+                description={tcat.emptyDialogDesc}
               />
             ) : (
               <div className="rounded-xl border bg-card overflow-hidden">
@@ -136,25 +140,26 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
                           value={editColor}
                           onChange={(e) => setEditColor(e.target.value)}
                           className="h-9 w-9 rounded border cursor-pointer"
-                          aria-label="Cor da categoria"
+                          aria-label={tcat.colorAriaLabel}
                         />
-                        <Button size="sm" variant="outline" onClick={handleUpdate}>Salvar</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+                        <Button size="sm" variant="outline" onClick={handleUpdate}>{tcat.save}</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>{tcat.cancel}</Button>
                       </div>
                     );
                   }
 
+                  const tEq = MESSAGES[locale].app.equipment;
                   const actions: ItemAction[] = [
                     {
                       key: 'edit',
-                      label: 'Editar',
+                      label: tEq.edit,
                       icon: <Pencil className="h-4 w-4" />,
                       variant: 'edit',
                       onClick: () => startEdit(cat.id, cat.name, cat.color),
                     },
                     {
                       key: 'delete',
-                      label: 'Excluir',
+                      label: tcat.delete,
                       icon: <Trash2 className="h-4 w-4" />,
                       variant: 'destructive',
                       onClick: () => setDeleteId(cat.id),
@@ -172,7 +177,7 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
                         />
                       }
                       title={cat.name}
-                      subtitle={count === 1 ? '1 equipamento' : `${count} equipamentos`}
+                      subtitle={count === 1 ? tcat.countSingular : tcat.countPlural.replace('{n}', String(count))}
                       actions={actions}
                     />
                   );
@@ -197,9 +202,10 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
                         value={editColor}
                         onChange={(e) => setEditColor(e.target.value)}
                         className="h-8 w-8 rounded border cursor-pointer"
+                        aria-label={tcat.colorAriaLabel}
                       />
-                      <Button size="sm" variant="outline" onClick={handleUpdate}>Salvar</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+                      <Button size="sm" variant="outline" onClick={handleUpdate}>{tcat.save}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>{tcat.cancel}</Button>
                     </>
                   ) : (
                     <>
@@ -207,8 +213,8 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
                       <RowActionsMenu
                         triggerClassName="h-7 w-7"
                         actions={[
-                          { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEdit(cat.id, cat.name, cat.color) },
-                          { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) },
+                          { label: MESSAGES[locale].app.equipment.edit, icon: Pencil, variant: 'edit', onClick: () => startEdit(cat.id, cat.name, cat.color) },
+                          { label: tcat.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) },
                         ]}
                       />
                     </>
@@ -216,7 +222,7 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
                 </div>
               ))}
               {categories.length === 0 && (
-                <p className="text-sm text-center text-muted-foreground py-4">Nenhuma categoria criada</p>
+                <p className="text-sm text-center text-muted-foreground py-4">{tcat.emptyDialogTitle}</p>
               )}
             </div>
           )}
@@ -226,13 +232,13 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita. Equipamentos com esta categoria perderão a associação.</AlertDialogDescription>
+            <AlertDialogTitle>{tcat.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tcat.deleteDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tcat.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              {tcat.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

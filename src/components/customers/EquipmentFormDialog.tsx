@@ -17,6 +17,8 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { buildStorageFilePath } from '@/utils/storagePath';
@@ -26,8 +28,8 @@ import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
 const CACHE_KEY = 'equipment-form-draft';
 
 const equipmentSchema = z.object({
-  customer_id: z.string().min(1, 'Selecione um cliente'),
-  name: z.string().min(1, 'Nome é obrigatório'),
+  customer_id: z.string().min(1, 'customer_required'),
+  name: z.string().min(1, 'name_required'),
   category_id: z.string().optional(),
   identifier: z.string().optional(),
   brand: z.string().optional(),
@@ -60,6 +62,8 @@ export function EquipmentFormDialog({
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const tf = MESSAGES[locale].app.equipment.form;
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -200,7 +204,7 @@ export function EquipmentFormDialog({
       setCustomFieldErrors(missing.map(f => f.field_key));
       toast({
         variant: 'destructive',
-        title: 'Preencha os campos obrigatórios',
+        title: tf.requiredFieldsTitle,
         description: missing.map(f => f.label).join(', '),
       });
       return;
@@ -243,10 +247,10 @@ export function EquipmentFormDialog({
       setCustomFieldValues({});
       onOpenChange(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Não foi possível salvar o equipamento.';
+      const message = error instanceof Error ? error.message : tf.saveErrorFallback;
       toast({
         variant: 'destructive',
-        title: 'Erro ao salvar equipamento',
+        title: tf.saveError,
         description: message,
       });
     }
@@ -265,10 +269,10 @@ export function EquipmentFormDialog({
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tf.cancel}</Button>
       <Button type="submit" form="equipment-form" disabled={isLoading || uploadingPhoto}>
         {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {equipment ? 'Salvar' : 'Criar'}
+        {equipment ? tf.save : tf.create}
       </Button>
     </div>
   );
@@ -277,7 +281,7 @@ export function EquipmentFormDialog({
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={equipment ? 'Editar Equipamento' : 'Novo Equipamento'}
+      title={equipment ? tf.titleEdit : tf.titleNew}
       footer={footer}
     >
       <Form {...form}>
@@ -285,7 +289,7 @@ export function EquipmentFormDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Photo upload */}
             <div className="sm:col-span-2">
-              <FormLabel>Foto</FormLabel>
+              <FormLabel>{tf.photo}</FormLabel>
               <div className="mt-1.5 flex items-center gap-4">
                 {photoPreview ? (
                   <div className="relative h-24 w-24 rounded-lg overflow-hidden border bg-muted">
@@ -305,7 +309,7 @@ export function EquipmentFormDialog({
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <ImagePlus className="h-6 w-6" />
-                    <span className="text-[10px]">Adicionar</span>
+                    <span className="text-[10px]">{tf.photoAdd}</span>
                   </button>
                 )}
                 <input
@@ -322,14 +326,14 @@ export function EquipmentFormDialog({
               name="customer_id"
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
-                  <FormLabel>Cliente *</FormLabel>
+                  <FormLabel>{tf.fieldCustomer}</FormLabel>
                   <FormControl>
                       <SearchableSelect
                         options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
                         value={field.value}
                         onValueChange={field.onChange}
-                        placeholder="Selecione o cliente"
-                        searchPlaceholder="Buscar cliente..."
+                        placeholder={tf.customerPlaceholder}
+                        searchPlaceholder={tf.customerSearch}
                       />
                     </FormControl>
                     <FormMessage />
@@ -341,8 +345,8 @@ export function EquipmentFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome *</FormLabel>
-                  <FormControl><Input placeholder="Nome do equipamento" {...field} /></FormControl>
+                  <FormLabel>{tf.fieldName}</FormLabel>
+                  <FormControl><Input placeholder={tf.namePlaceholder} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -352,10 +356,10 @@ export function EquipmentFormDialog({
               name="identifier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Identificador</FormLabel>
+                  <FormLabel>{tf.fieldIdentifier}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder={equipment ? '' : 'Gerado automaticamente ao salvar'}
+                      placeholder={equipment ? '' : tf.identifierPlaceholder}
                       {...field}
                       readOnly
                       className="bg-muted"
@@ -371,11 +375,11 @@ export function EquipmentFormDialog({
                 name="category_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Categoria</FormLabel>
+                    <FormLabel>{tf.fieldCategory}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder={tf.categoryPlaceholder} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -459,11 +463,11 @@ export function EquipmentFormDialog({
                       onValueChange={setCustom}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
+                        <SelectValue placeholder={tf.booleanPlaceholder} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sim">Sim</SelectItem>
-                        <SelectItem value="nao">Não</SelectItem>
+                        <SelectItem value="sim">{tf.booleanYes}</SelectItem>
+                        <SelectItem value="nao">{tf.booleanNo}</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : fc.field_type === 'select' && fc.options?.length ? (
@@ -472,7 +476,7 @@ export function EquipmentFormDialog({
                       onValueChange={setCustom}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
+                        <SelectValue placeholder={tf.categoryPlaceholder} />
                       </SelectTrigger>
                       <SelectContent>
                         {fc.options.map((opt) => (
@@ -488,7 +492,7 @@ export function EquipmentFormDialog({
                     />
                   )}
                   {hasError && (
-                    <p className="text-sm font-medium text-destructive">Campo obrigatório</p>
+                    <p className="text-sm font-medium text-destructive">{tf.fieldRequired}</p>
                   )}
                 </div>
               );
@@ -499,7 +503,7 @@ export function EquipmentFormDialog({
               name="warranty_until"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Validade da Garantia</FormLabel>
+                  <FormLabel>{tf.fieldWarranty}</FormLabel>
                   <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -511,8 +515,8 @@ export function EquipmentFormDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl>
+                  <FormLabel>{tf.fieldNotes}</FormLabel>
+                  <FormControl><Textarea placeholder={tf.notesPlaceholder} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

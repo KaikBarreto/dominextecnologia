@@ -9,6 +9,8 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useCustomerOrigins, type CustomerOrigin } from '@/hooks/useCustomerOrigins';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const ICON_OPTIONS = ['Globe', 'UserPlus', 'Megaphone', 'Handshake', 'Phone', 'Mail', 'MapPin', 'Star', 'Heart', 'Target', 'Zap', 'TrendingUp', 'Share2', 'Users', 'MessageCircle', 'Search', 'Instagram', 'Facebook', 'CalendarDays', 'Tag'];
 
@@ -24,6 +26,9 @@ interface Props {
 }
 
 export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
+  const { locale } = useAppLocaleContext();
+  const tor = MESSAGES[locale].app.equipment.origins;
+  const tEq = MESSAGES[locale].app.equipment;
   const { origins, isLoading, createOrigin, seedDefaultOrigins, updateOrigin, deleteOrigin } = useCustomerOrigins();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -57,17 +62,17 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Origens de Clientes">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tor.dialogTitle}>
       <div className="space-y-4">
         {/* Empty state com CTA de seed */}
         {!isLoading && origins.length === 0 && (
           <EmptyState
             size="compact"
             icon={<Tag className="h-8 w-8" />}
-            title="Nenhuma origem cadastrada"
-            description="Crie um conjunto inicial de origens (Indicação, Site, WhatsApp, Google…) e edite ou exclua à vontade depois."
+            title={tor.emptyTitle}
+            description={tor.emptyDesc}
             action={{
-              label: seedDefaultOrigins.isPending ? 'Criando…' : 'Criar origens padrão',
+              label: seedDefaultOrigins.isPending ? tor.seedButtonPending : tor.seedButton,
               onClick: () => { if (!seedDefaultOrigins.isPending) seedDefaultOrigins.mutate(); },
             }}
           />
@@ -113,8 +118,8 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
                   <RowActionsMenu
                     triggerClassName="h-7 w-7"
                     actions={[
-                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEdit(o) },
-                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => deleteOrigin.mutate(o.id) },
+                      { label: tEq.edit, icon: Pencil, variant: 'edit', onClick: () => startEdit(o) },
+                      { label: tEq.delete, icon: Trash2, variant: 'delete', onClick: () => deleteOrigin.mutate(o.id) },
                     ]}
                   />
                 </>
@@ -125,7 +130,7 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
 
         {/* Add new */}
         <div className="flex items-center gap-2 p-2 rounded-lg border border-dashed flex-wrap">
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nova origem..." className="flex-1 h-8 min-w-[120px]" />
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={tor.newPlaceholder} className="flex-1 h-8 min-w-[120px]" />
           <Select value={newIcon} onValueChange={setNewIcon}>
             <SelectTrigger className="w-[100px] h-8">
               <div className="flex items-center gap-1.5">
@@ -146,7 +151,7 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
           </Select>
           <ColorPicker value={newColor} onChange={setNewColor} />
           <Button size="sm" className="h-8" onClick={handleCreate} disabled={!newName.trim()}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
+            <Plus className="h-3.5 w-3.5 mr-1" /> {tor.addButton}
           </Button>
         </div>
       </div>

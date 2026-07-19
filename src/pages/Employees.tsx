@@ -157,15 +157,15 @@ export default function Employees() {
         const link = `${window.location.origin}/ponto/${slug}`;
         try {
           await navigator.clipboard.writeText(link);
-          toast({ title: 'Link gerado e copiado!', description: link, duration: 10000 });
+          toast({ title: t.toasts.linkCopied, description: link, duration: 10000 });
         } catch {
-          toast({ title: 'Link do ponto gerado', description: link, duration: 10000 });
+          toast({ title: t.toasts.pontoLinkGenerated, description: link, duration: 10000 });
         }
       }
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao gerar link do ponto', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toasts.pontoLinkError, description: getErrorMessage(err) });
     }
-  }, [queryClient, toast]);
+  }, [queryClient, toast, t]);
 
   const handleCreateOrUpdate = async (data: Partial<Employee> & { _createAccess?: boolean; _password?: string }) => {
     const { _createAccess, _password, ...employeeData } = data as any;
@@ -220,14 +220,14 @@ export default function Employees() {
                 }
 
                 toast({
-                  title: 'Acesso ao sistema criado!',
-                  description: `Email: ${employeeData.email} — Senha: ${_password}`,
+                  title: t.toasts.accessCreated,
+                  description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
                   duration: 15000,
                 });
               } catch (err: any) {
                 toast({
                   variant: 'destructive',
-                  title: 'Funcionário atualizado, mas erro ao criar acesso',
+                  title: t.toasts.employeeUpdatedAccessError,
                   description: getErrorMessage(err),
                 });
               }
@@ -268,14 +268,14 @@ export default function Employees() {
               }
               
               toast({
-                title: 'Acesso ao sistema criado!',
-                description: `Email: ${employeeData.email} — Senha: ${_password}`,
+                title: t.toasts.accessCreated,
+                description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
                 duration: 15000,
               });
             } catch (err: any) {
               toast({
                 variant: 'destructive',
-                title: 'Funcionário criado, mas erro ao criar acesso',
+                title: t.toasts.employeeCreatedAccessError,
                 description: getErrorMessage(err),
               });
             }
@@ -318,7 +318,7 @@ export default function Employees() {
         console.error('Erro ao registrar despesa de funcionário:', error);
         toast({
           variant: 'destructive',
-          title: 'Erro ao registrar despesa',
+          title: t.toasts.errorExpense,
           description: getErrorMessage(error),
         });
         throw error;
@@ -334,13 +334,13 @@ export default function Employees() {
         console.error('Falha inesperada ao registrar despesa:', err);
         toast({
           variant: 'destructive',
-          title: 'Erro ao registrar despesa',
+          title: t.toasts.errorExpense,
           description: getErrorMessage(err, 'Erro desconhecido. Tente novamente.'),
         });
       }
       throw err;
     }
-  }, [queryClient, user?.id, toast]);
+  }, [queryClient, user?.id, toast, t]);
 
   const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string }) => {
     if (!movementEmployee) return;
@@ -435,7 +435,7 @@ export default function Employees() {
           } as any);
           if (ajusteError) {
             console.error('Erro ao registrar ajuste:', ajusteError);
-            toast({ variant: 'destructive', title: 'Erro ao resetar saldo', description: 'O pagamento foi registrado mas o saldo não foi resetado. Contate o suporte.' });
+            toast({ variant: 'destructive', title: t.toasts.errorBalance, description: t.toasts.errorBalanceDesc });
           }
 
           // 3. Re-register remaining vales if partial discount
@@ -450,7 +450,7 @@ export default function Employees() {
             } as any);
             if (valeError) {
               console.error('Erro ao relançar vales:', valeError);
-              toast({ variant: 'destructive', title: 'Erro ao relançar vales residuais' });
+              toast({ variant: 'destructive', title: t.toasts.errorRemainingAdvances });
             }
           }
 
@@ -498,7 +498,7 @@ export default function Employees() {
           }
         } catch (err) {
           console.error('Erro no fluxo de pagamento:', err);
-          toast({ variant: 'destructive', title: 'Erro no fluxo de pagamento', description: 'Alguns registros podem não ter sido criados.' });
+          toast({ variant: 'destructive', title: t.toasts.errorPaymentFlow, description: t.toasts.errorPaymentFlowDesc });
         }
 
         queryClient.invalidateQueries({ queryKey: ['employee-movements'] });
@@ -537,11 +537,11 @@ export default function Employees() {
         const fnData = response.data;
         if (fnData?.error) throw new Error(fnData.error);
       } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Erro ao excluir usuário', description: getErrorMessage(err) });
+        toast({ variant: 'destructive', title: t.toasts.errorDeleteUser, description: getErrorMessage(err) });
       }
     }
     deleteEmployee.mutate(employee.id);
-  }, [deleteEmployee, toast]);
+  }, [deleteEmployee, toast, t]);
 
   const fmtCurrency = (v: number) => formatMoney(v, currency, locale);
 

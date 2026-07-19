@@ -26,6 +26,8 @@ import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from '@/components/service-orders/MonthlyCostCalculatorModal';
 import { formatBRL } from '@/utils/currency';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -38,6 +40,9 @@ interface EmployeeFormDialogProps {
 export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending }: EmployeeFormDialogProps) {
   const { toast } = useToast();
   const { users } = useUsers();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.form;
+  const tv = MESSAGES[locale].app.employees.form.validations;
   const isEditing = !!employee;
   const { monthlyHours: resolvedMonthlyHours } = useEmployeeWorkHours(employee?.id || null);
   const [name, setName] = useState('');
@@ -130,7 +135,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     if (!file) return;
     file = await processImageFile(file);
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      toast({ variant: 'destructive', title: tv.photoTooLarge });
       return;
     }
     setUploading(true);
@@ -142,7 +147,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       const { data: { publicUrl } } = supabase.storage.from('employee-photos').getPublicUrl(path);
       setPhotoUrl(publicUrl);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar foto', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: tv.photoUploadError, description: getErrorMessage(err) });
     } finally {
       setUploading(false);
     }
@@ -150,11 +155,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: 'Nome é obrigatório' }); return; }
-    if (parseCurrency(salary) <= 0) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: 'Salário é obrigatório' }); return; }
-    if (createAccess && !email.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: 'Email é obrigatório para criar acesso' }); return; }
+    if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.nameRequired }); return; }
+    if (parseCurrency(salary) <= 0) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.salaryRequired }); return; }
+    if (createAccess && !email.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.emailRequired }); return; }
     const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
-    if (createAccess && finalPassword.length < 6) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
+    if (createAccess && finalPassword.length < 6) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.passwordMinLength }); return; }
     draft.clearDraft();
     onSubmit({
       name: name.trim(),
@@ -185,16 +190,16 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
       <Button type="submit" form="employee-form" disabled={isPending}>
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {employee ? 'Salvar' : 'Criar Funcionário'}
+        {employee ? t.submitEdit : t.submitNew}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={employee ? 'Editar Funcionário' : 'Novo Funcionário'} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={employee ? t.titleEdit : t.titleNew} footer={footer}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -214,13 +219,13 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
               value={TAB_DADOS}
               className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              Dados
+              {t.tabData}
             </TabsTrigger>
             <TabsTrigger
               value={TAB_REMUNERACAO}
               className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              Remuneração & Acesso
+              {t.tabPayment}
             </TabsTrigger>
           </TabsList>
 
@@ -252,43 +257,43 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
           </label>
           <label className="cursor-pointer text-xs font-medium text-primary hover:underline">
-            {photoUrl ? 'Trocar foto' : 'Adicionar foto do funcionário'}
+            {photoUrl ? t.photo.change : t.photo.add}
             <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
           </label>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Nome Completo *</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nome do funcionário" required />
+            <Label>{t.fields.fullName}</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.fields.fullNamePlaceholder} required />
           </div>
           <div className="space-y-1.5">
-            <Label>CPF</Label>
+            <Label>{t.fields.cpf}</Label>
             <Input value={cpf} onChange={e => setCpf(cpfCnpjMask(e.target.value))} placeholder="000.000.000-00" />
           </div>
           <div className="space-y-1.5">
-            <Label>Telefone</Label>
+            <Label>{t.fields.phone}</Label>
             <Input value={phone} onChange={e => setPhone(phoneMask(e.target.value))} placeholder="(00) 00000-0000" />
           </div>
           <div className="space-y-1.5">
-            <Label>Email</Label>
+            <Label>{t.fields.email}</Label>
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
           </div>
           <div className="space-y-1.5">
-            <Label>Cargo</Label>
-            <Input value={position} onChange={e => setPosition(e.target.value)} placeholder="Ex: Técnico" />
+            <Label>{t.fields.position}</Label>
+            <Input value={position} onChange={e => setPosition(e.target.value)} placeholder={t.fields.positionPlaceholder} />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Endereço</Label>
-            <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Endereço completo" />
+            <Label>{t.fields.address}</Label>
+            <Input value={address} onChange={e => setAddress(e.target.value)} placeholder={t.fields.addressPlaceholder} />
           </div>
           <div className="space-y-1.5">
-            <Label>Data de Admissão</Label>
+            <Label>{t.fields.hireDate}</Label>
             <Input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Chave PIX</Label>
-            <Input value={pixKey} onChange={e => setPixKey(pixKeyMask(e.target.value))} placeholder="CPF, email, telefone ou chave aleatória" />
+            <Label>{t.fields.pixKey}</Label>
+            <Input value={pixKey} onChange={e => setPixKey(pixKeyMask(e.target.value))} placeholder={t.fields.pixKeyPlaceholder} />
           </div>
         </div>
 
@@ -297,52 +302,52 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <TabsContent value={TAB_REMUNERACAO} className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Salário *</Label>
+            <Label>{t.fields.salary}</Label>
             <Input value={salary} onChange={e => setSalary(currencyMask(e.target.value))} placeholder="R$ 0,00" />
           </div>
           <div className="space-y-1.5">
-            <Label>Custo mensal total</Label>
+            <Label>{t.fields.monthlyCost}</Label>
             <div className="flex gap-1">
               <Input value={monthlyCost} onChange={e => setMonthlyCost(currencyMask(e.target.value))} placeholder="R$ 0,00" />
-              <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title="Calcular custo mensal detalhado">
+              <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title={t.fields.monthlyCostHint}>
                 <Calculator className="h-4 w-4 mr-1" />
-                Calcular
+                {t.fields.calculateButton}
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">Salário + encargos + benefícios</p>
+            <p className="text-[11px] text-muted-foreground">{t.fields.monthlyCostHint}</p>
           </div>
         </div>
 
         {/* Configuração de pagamento */}
         <div className="rounded-lg border p-3 space-y-3">
-          <Label className="text-sm font-medium">Configuração de Pagamento</Label>
+          <Label className="text-sm font-medium">{t.paymentConfig.sectionTitle}</Label>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Frequência</Label>
+              <Label className="text-xs text-muted-foreground">{t.paymentConfig.frequencyLabel}</Label>
               <Select value={paymentFrequency} onValueChange={(v) => setPaymentFrequency(v as PaymentFrequency)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monthly">Mensal</SelectItem>
-                  <SelectItem value="biweekly">Quinzenal</SelectItem>
-                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="monthly">{t.paymentConfig.monthly}</SelectItem>
+                  <SelectItem value="biweekly">{t.paymentConfig.biweekly}</SelectItem>
+                  <SelectItem value="weekly">{t.paymentConfig.weekly}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {paymentFrequency !== 'weekly' && (
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Tipo de dia</Label>
+                <Label className="text-xs text-muted-foreground">{t.paymentConfig.dayTypeLabel}</Label>
                 <Select value={paymentDayType} onValueChange={(v) => setPaymentDayType(v as PaymentDayType)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="business">Dia útil</SelectItem>
-                    <SelectItem value="calendar">Dia corrido</SelectItem>
+                    <SelectItem value="business">{t.paymentConfig.businessDay}</SelectItem>
+                    <SelectItem value="calendar">{t.paymentConfig.calendarDay}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             )}
             {paymentFrequency === 'monthly' && (
               <div className="space-y-1.5 sm:col-span-2">
-                <Label className="text-xs text-muted-foreground">{paymentDayType === 'business' ? 'N° dia útil do mês' : 'Dia do mês'}</Label>
+                <Label className="text-xs text-muted-foreground">{paymentDayType === 'business' ? t.paymentConfig.businessDayLabel : t.paymentConfig.calendarDayLabel}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -355,7 +360,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             {paymentFrequency === 'biweekly' && (
               <>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">1° pagamento</Label>
+                  <Label className="text-xs text-muted-foreground">{t.paymentConfig.firstPaymentLabel}</Label>
                   <Input
                     type="number" min={1} max={31}
                     value={paymentDay}
@@ -363,7 +368,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">2° pagamento</Label>
+                  <Label className="text-xs text-muted-foreground">{t.paymentConfig.secondPaymentLabel}</Label>
                   <Input
                     type="number" min={1} max={31}
                     value={paymentDay2}
@@ -374,24 +379,24 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             )}
             {paymentFrequency === 'weekly' && (
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Dia da semana</Label>
+                <Label className="text-xs text-muted-foreground">{t.paymentConfig.weekdayLabel}</Label>
                 <Select value={String(paymentWeekday)} onValueChange={(v) => setPaymentWeekday(parseInt(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0">Domingo</SelectItem>
-                    <SelectItem value="1">Segunda-feira</SelectItem>
-                    <SelectItem value="2">Terça-feira</SelectItem>
-                    <SelectItem value="3">Quarta-feira</SelectItem>
-                    <SelectItem value="4">Quinta-feira</SelectItem>
-                    <SelectItem value="5">Sexta-feira</SelectItem>
-                    <SelectItem value="6">Sábado</SelectItem>
+                    <SelectItem value="0">{t.paymentConfig.weekdays['0']}</SelectItem>
+                    <SelectItem value="1">{t.paymentConfig.weekdays['1']}</SelectItem>
+                    <SelectItem value="2">{t.paymentConfig.weekdays['2']}</SelectItem>
+                    <SelectItem value="3">{t.paymentConfig.weekdays['3']}</SelectItem>
+                    <SelectItem value="4">{t.paymentConfig.weekdays['4']}</SelectItem>
+                    <SelectItem value="5">{t.paymentConfig.weekdays['5']}</SelectItem>
+                    <SelectItem value="6">{t.paymentConfig.weekdays['6']}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             )}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Valor da folha aparece automaticamente em Contas a Pagar conforme essa configuração.
+            {t.paymentConfig.hint}
           </p>
         </div>
 
@@ -401,16 +406,16 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <div>
-                <Label className="text-sm font-medium">Ponto eletrônico</Label>
-                <p className="text-xs text-muted-foreground">Gera um link público pro funcionário bater o ponto pelo celular</p>
+                <Label className="text-sm font-medium">{t.timeclock.sectionTitle}</Label>
+                <p className="text-xs text-muted-foreground">{t.timeclock.description}</p>
               </div>
             </div>
             <LabeledSwitch
               value={pontoEnabled ? 'on' : 'off'}
               onChange={(v) => setPontoEnabled(v === 'on')}
-              off={{ value: 'off', label: 'Desativado' }}
-              on={{ value: 'on', label: 'Ativado' }}
-              aria-label="Ponto eletrônico ativado"
+              off={{ value: 'off', label: t.timeclock.statusOff }}
+              on={{ value: 'on', label: t.timeclock.statusOn }}
+              aria-label={t.timeclock.ariaLabel}
             />
           </div>
           {pontoEnabled && (
@@ -431,18 +436,18 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                     const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
                     try {
                       await navigator.clipboard.writeText(link);
-                      toast({ title: 'Link gerado e copiado!', description: link });
+                      toast({ title: MESSAGES[locale].app.employees.toasts.linkCopied, description: link });
                     } catch {
-                      toast({ variant: 'destructive', title: 'Não foi possível copiar', description: link });
+                      toast({ variant: 'destructive', title: MESSAGES[locale].app.employees.toasts.linkCopyFailed, description: link });
                     }
                   }}
                 >
-                  <Copy className="h-3.5 w-3.5" /> Copiar
+                  <Copy className="h-3.5 w-3.5" /> {t.timeclock.copyButton}
                 </Button>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Salve o funcionário para gerar o link de ponto — ele será copiado automaticamente.
+                {t.timeclock.pendingLinkHint}
               </p>
             )
           )}
@@ -452,14 +457,14 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         <div className="rounded-lg border p-3 space-y-2">
           <div className="flex items-center gap-2">
             <Link2 className="h-4 w-4 text-muted-foreground" />
-            <Label className="text-sm font-medium">Vincular a um usuário do sistema</Label>
+            <Label className="text-sm font-medium">{t.linkUser.sectionTitle}</Label>
           </div>
           <Select value={linkedUserId || '_none'} onValueChange={(v) => setLinkedUserId(v === '_none' ? null : v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Nenhum usuário vinculado" />
+              <SelectValue placeholder={t.linkUser.placeholder} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none">Nenhum</SelectItem>
+              <SelectItem value="_none">{t.linkUser.noUser}</SelectItem>
               {users.map(u => (
                 <SelectItem key={u.user_id} value={u.user_id}>
                   {u.full_name} {u.phone ? `(${u.phone})` : ''}
@@ -467,7 +472,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">Vincula este funcionário a um usuário existente no sistema</p>
+          <p className="text-xs text-muted-foreground">{t.linkUser.hint}</p>
         </div>
 
         {/* Create system access toggle - on creation OR on edit when no linked user */}
@@ -476,38 +481,38 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <div className="flex items-center gap-2">
               <Switch checked={createAccess} onCheckedChange={(v) => { setCreateAccess(v); if (v && !password) setPassword(''); }} />
               <div>
-                <Label className="text-sm cursor-pointer">Criar acesso ao sistema</Label>
-                <p className="text-xs text-muted-foreground">Cria automaticamente um usuário com perfil Técnico{employee ? ' usando os dados deste funcionário' : ''}</p>
+                <Label className="text-sm cursor-pointer">{t.createAccess.toggleLabel}</Label>
+                <p className="text-xs text-muted-foreground">{employee ? t.createAccess.toggleDescriptionEdit : t.createAccess.toggleDescriptionNew}</p>
               </div>
             </div>
             {createAccess && (
               <div className="space-y-3 pt-1">
-                {!email && <p className="text-xs text-destructive">Preencha o email acima para criar o acesso</p>}
+                {!email && <p className="text-xs text-destructive">{t.createAccess.missingEmailWarning}</p>}
                 {email && (
                   <div className="rounded-md bg-muted/50 px-3 py-2">
-                    <p className="text-xs text-muted-foreground">Login de acesso</p>
+                    <p className="text-xs text-muted-foreground">{t.createAccess.loginLabel}</p>
                     <p className="text-sm font-medium">{email}</p>
                   </div>
                 )}
                 <div className="flex items-center gap-2">
                   <Switch checked={useTemporaryPassword} onCheckedChange={(v) => { setUseTemporaryPassword(v); setPassword(''); }} />
-                  <Label className="text-xs cursor-pointer">Senha temporária (gerada automaticamente)</Label>
+                  <Label className="text-xs cursor-pointer">{t.createAccess.tempPasswordToggle}</Label>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{useTemporaryPassword ? 'Senha temporária' : 'Senha *'}</Label>
+                  <Label>{useTemporaryPassword ? t.createAccess.tempPasswordLabel : t.createAccess.passwordLabel}</Label>
                   {useTemporaryPassword ? (
                     <div className="flex gap-2">
                       <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
-                      <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>{t.createAccess.generateButton}</Button>
                     </div>
                   ) : (
                     <>
-                      <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder="Crie uma senha segura" />
+                      <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder={t.createAccess.passwordPlaceholder} />
                       <PasswordStrengthIndicator password={password} />
                     </>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    {useTemporaryPassword ? 'Anote a senha — ela será exibida apenas uma vez' : 'Defina a senha que o funcionário usará para acessar o sistema'}
+                    {useTemporaryPassword ? t.createAccess.tempPasswordHint : t.createAccess.passwordHint}
                   </p>
                 </div>
               </div>

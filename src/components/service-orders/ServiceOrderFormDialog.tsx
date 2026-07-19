@@ -1207,7 +1207,7 @@ export function ServiceOrderFormDialog({
               {t.contractDateOnlyThis}
             </AlertDialogAction>
             <AlertDialogAction onClick={() => handleContractDateChoice(true)}>
-              Esta e futuras
+              {t.contractDateThisAndFuture}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -40,7 +40,7 @@ import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
@@ -48,6 +48,17 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
+
+const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es: esLocale,
+  fr: frLocale,
+};
 
 interface Filters {
   search: string;
@@ -61,6 +72,9 @@ type ViewMode = 'list' | 'kanban';
 
 export default function CRM() {
   const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm;
+  const dfLocale = DATE_FNS_LOCALES[locale];
   const { leads, isLoading, updateLead } = useLeads();
   const { users } = useUsers();
   const { stages, isLoading: stagesLoading, seedDefaultStages } = useCrmStages();
@@ -147,9 +161,7 @@ export default function CRM() {
     label: user.full_name,
   }));
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  };
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
   const handleEdit = (lead: Lead) => {
     setEditingLead(lead);
@@ -195,7 +207,7 @@ export default function CRM() {
 
   const handleLossConfirm = async (reason: string, details: string) => {
     if (!pendingLossDrop) return;
-    const lossNotes = `Motivo da perda: ${reason}${details ? `\n${details}` : ''}`;
+    const lossNotes = `${t.lossNotePrefix} ${reason}${details ? `\n${details}` : ''}`;
     await updateLead.mutateAsync({
       id: pendingLossDrop.leadId,
       stage_id: pendingLossDrop.stageId,
@@ -267,36 +279,36 @@ export default function CRM() {
   const filterSheetContent = (
     <div className="space-y-4">
       <FilterCheckboxGroup
-        label="Origem"
+        label={t.filterOrigin}
         options={sourceOptions}
         selected={filters.source}
         onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
-        emptyLabel="Todas"
+        emptyLabel={t.filterOriginAll}
       />
 
       <FilterCheckboxGroup
-        label="Vendedor"
+        label={t.filterSalesperson}
         options={assignedToOptions}
         selected={filters.assignedTo}
         onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
-        emptyLabel="Todos"
+        emptyLabel={t.filterSalespersonAll}
       />
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Valor mínimo</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filterMinValue}</label>
           <Input
             type="number"
-            placeholder="R$ 0"
+            placeholder={t.filterMinPlaceholder}
             value={filters.minValue}
             onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Valor máximo</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filterMaxValue}</label>
           <Input
             type="number"
-            placeholder="R$ 999.999"
+            placeholder={t.filterMaxPlaceholder}
             value={filters.maxValue}
             onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
           />
@@ -304,7 +316,7 @@ export default function CRM() {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Visualização</label>
+        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filterView}</label>
         <div className="flex rounded-lg border overflow-hidden w-fit">
           <button
             className={cn(
@@ -314,7 +326,7 @@ export default function CRM() {
             onClick={() => setViewMode('list')}
             type="button"
           >
-            <LayoutList className="h-4 w-4" /> Lista
+            <LayoutList className="h-4 w-4" /> {t.viewList}
           </button>
           <button
             className={cn(
@@ -324,23 +336,23 @@ export default function CRM() {
             onClick={() => setViewMode('kanban')}
             type="button"
           >
-            <LayoutGrid className="h-4 w-4" /> Kanban
+            <LayoutGrid className="h-4 w-4" /> {t.viewKanban}
           </button>
         </div>
       </div>
 
       <div className="pt-2 border-t space-y-2">
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Configurações</label>
+        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{t.filterConfig}</label>
         <StageManagerDialog>
           <Button variant="outline" className="w-full justify-start gap-2" type="button">
             <Settings2 className="h-4 w-4" />
-            Gerenciar estágios
+            {t.manageStages}
           </Button>
         </StageManagerDialog>
         <WebhookManagerDialog>
           <Button variant="outline" className="w-full justify-start gap-2" type="button">
             <Webhook className="h-4 w-4" />
-            Configurar webhooks
+            {t.configWebhooks}
           </Button>
         </WebhookManagerDialog>
       </div>
@@ -356,7 +368,7 @@ export default function CRM() {
     <div className="grid grid-cols-2 gap-2">
       <div className="rounded-2xl border bg-primary text-white p-3 flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-white/70">Total de leads</p>
+          <p className="text-[10px] uppercase tracking-wider text-white/70">{t.totalLeads}</p>
           {isLoading ? (
             <Skeleton className="h-7 w-12 mt-1 bg-white/20" />
           ) : (
@@ -367,7 +379,7 @@ export default function CRM() {
       </div>
       <div className="rounded-2xl border bg-success text-white p-3 flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-white/70">Valor total</p>
+          <p className="text-[10px] uppercase tracking-wider text-white/70">{t.totalValue}</p>
           {isLoading ? (
             <Skeleton className="h-7 w-20 mt-1 bg-white/20" />
           ) : (
@@ -388,10 +400,10 @@ export default function CRM() {
       {!isMobile && (
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Pipeline de Vendas</h2>
+          <h2 className="text-lg font-semibold">{t.pipeline}</h2>
           {filteredLeads.length !== leads.length && (
             <Badge variant="outline" className="ml-2">
-              {filteredLeads.length} de {leads.length}
+              {t.xOfY.replace('{filtered}', String(filteredLeads.length)).replace('{total}', String(leads.length))}
             </Badge>
           )}
         </div>
@@ -414,10 +426,10 @@ export default function CRM() {
           <CardContent className="py-8">
             <EmptyState
               icon={<Settings2 className="h-12 w-12" />}
-              title="Configure seu funil de vendas"
-              description="Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito."
+              title={t.emptyStagesTitle}
+              description={t.emptyStagesDesc}
               action={{
-                label: seedDefaultStages.isPending ? 'Criando estágios...' : 'Começar com estágios padrão',
+                label: seedDefaultStages.isPending ? t.creatingStages : t.startDefaultStages,
                 onClick: () => {
                   if (seedDefaultStages.isPending) return;
                   seedDefaultStages.mutate();
@@ -428,7 +440,7 @@ export default function CRM() {
               <StageManagerDialog>
                 <Button variant="outline" size="sm" className="gap-2">
                   <Settings2 className="h-4 w-4" />
-                  Personalizar estágios
+                  {t.customizeStages}
                 </Button>
               </StageManagerDialog>
             </div>
@@ -439,12 +451,10 @@ export default function CRM() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">
-              {leads.length === 0 ? 'Nenhuma oportunidade' : 'Nenhum resultado encontrado'}
+              {leads.length === 0 ? t.emptyOpportunities : t.emptySearch}
             </h3>
             <p className="text-muted-foreground max-w-sm">
-              {leads.length === 0
-                ? 'Toque em "Nova Oportunidade" para começar a gerenciar seu pipeline de vendas'
-                : 'Tente ajustar os filtros para encontrar as oportunidades desejadas'}
+              {leads.length === 0 ? t.emptyOpportunitiesDesc : t.emptySearchDesc}
             </p>
           </CardContent>
         </Card>
@@ -496,7 +506,7 @@ export default function CRM() {
                       <EmptyState
                         size="compact"
                         icon={<TrendingUp className="h-10 w-10" />}
-                        title="Sem oportunidades"
+                        title={t.emptyStageTitle}
                       />
                     )}
                   </div>
@@ -524,12 +534,8 @@ export default function CRM() {
       ) : mobileListLeads.length === 0 ? (
         <EmptyState
           icon={<TrendingUp className="h-12 w-12" />}
-          title={leads.length === 0 ? 'Nenhuma oportunidade' : 'Nenhum resultado encontrado'}
-          description={
-            leads.length === 0
-              ? 'Toque em "Novo Lead" para começar a gerenciar seu pipeline'
-              : 'Tente ajustar os filtros ou estágio selecionado'
-          }
+          title={leads.length === 0 ? t.emptyOpportunities : t.emptySearch}
+          description={leads.length === 0 ? t.emptyMobileLeadDesc : t.emptyMobileDesc}
         />
       ) : (
         <div className="rounded-xl border bg-card overflow-hidden">
@@ -542,7 +548,7 @@ export default function CRM() {
               .filter((s) => s.id !== currentStage?.id)
               .map((s) => ({
                 key: `move-${s.id}`,
-                label: `Mover para ${s.name}`,
+                label: t.moveTo.replace('{stage}', s.name),
                 icon: (
                   <span
                     className="h-3 w-3 rounded-full"
@@ -555,7 +561,7 @@ export default function CRM() {
             const itemActions: ItemAction[] = [
               {
                 key: 'edit',
-                label: 'Editar',
+                label: t.detail.edit,
                 icon: <Pencil className="h-4 w-4" />,
                 variant: 'edit',
                 onClick: () => handleEdit(lead),
@@ -596,7 +602,7 @@ export default function CRM() {
                     {lead.expected_close_date && (
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(lead.expected_close_date), 'dd/MM', { locale: ptBR })}
+                        {format(new Date(lead.expected_close_date), 'dd/MM', { locale: dfLocale })}
                       </span>
                     )}
                   </div>
@@ -625,8 +631,8 @@ export default function CRM() {
     return (
       <div className="space-y-4 pb-24 min-w-0">
         <MobilePageHeader
-          title="CRM"
-          subtitle="Pipeline de vendas"
+          title={t.title}
+          subtitle={t.subtitleMobile}
           icon={TrendingUp}
         />
 
@@ -637,7 +643,7 @@ export default function CRM() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar lead ou cliente..."
+              placeholder={t.searchPlaceholderMobile}
               className="pl-10 h-10"
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -661,7 +667,7 @@ export default function CRM() {
         {viewMode === 'list' && stageFilter && (
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="gap-1">
-              Estágio: {stages.find(s => s.id === stageFilter)?.name}
+              {t.stageFilterLabel}: {stages.find(s => s.id === stageFilter)?.name}
               <X className="h-3 w-3 cursor-pointer" onClick={() => setStageFilter(null)} />
             </Badge>
           </div>
@@ -672,7 +678,7 @@ export default function CRM() {
 
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Lead"
+          label={t.newOpportunityShort}
           onClick={() => setDialogOpen(true)}
         />
 
@@ -710,24 +716,24 @@ export default function CRM() {
   return (
     <div className="space-y-6 min-w-0">
       <PageHeader
-        title="CRM"
-        subtitle="Gerencie oportunidades e leads"
+        title={t.title}
+        subtitle={t.subtitle}
         icon={TrendingUp}
         actions={
           <>
             <StageManagerDialog>
-              <Button variant="outline" size="icon" title="Gerenciar Estágios">
+              <Button variant="outline" size="icon" title={t.manageStages}>
                 <Settings2 className="h-4 w-4" />
               </Button>
             </StageManagerDialog>
             <WebhookManagerDialog>
-              <Button variant="outline" size="icon" title="Configurar Webhooks">
+              <Button variant="outline" size="icon" title={t.configWebhooks}>
                 <Webhook className="h-4 w-4" />
               </Button>
             </WebhookManagerDialog>
             <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
               <Plus className="h-4 w-4" />
-              Nova Oportunidade
+              {t.newOpportunity}
             </Button>
           </>
         }
@@ -739,7 +745,7 @@ export default function CRM() {
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
               <div className="min-w-0 w-full">
-                <p className="text-sm text-white/70">Total de Leads</p>
+                <p className="text-sm text-white/70">{t.totalLeads}</p>
                 {isLoading ? <Skeleton className="h-8 w-12 mt-1 bg-white/20" /> : <p className="text-2xl sm:text-3xl font-bold">{filteredStats.total}</p>}
               </div>
               <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><Target className="h-6 w-6" /></div>
@@ -751,7 +757,7 @@ export default function CRM() {
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
               <div className="min-w-0 w-full">
-                <p className="text-sm text-white/70">Valor Total</p>
+                <p className="text-sm text-white/70">{t.totalValue}</p>
                 {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(filteredStats.totalValue)}</p>}
               </div>
               <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><DollarSign className="h-6 w-6" /></div>
@@ -793,7 +799,7 @@ export default function CRM() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por título ou cliente..."
+            placeholder={t.searchPlaceholder}
             className="pl-10"
             value={filters.search}
             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -805,36 +811,36 @@ export default function CRM() {
           onClear={clearFilters}
         >
           <FilterCheckboxGroup
-            label="Origem"
+            label={t.filterOrigin}
             options={sourceOptions}
             selected={filters.source}
             onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
-            emptyLabel="Todas"
+            emptyLabel={t.filterOriginAll}
           />
 
           <FilterCheckboxGroup
-            label="Vendedor"
+            label={t.filterSalesperson}
             options={assignedToOptions}
             selected={filters.assignedTo}
             onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
-            emptyLabel="Todos"
+            emptyLabel={t.filterSalespersonAll}
           />
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
-              <Label>Valor Mínimo</Label>
+              <Label>{t.filterMinValue}</Label>
               <Input
                 type="number"
-                placeholder="R$ 0"
+                placeholder={t.filterMinPlaceholder}
                 value={filters.minValue}
                 onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Valor Máximo</Label>
+              <Label>{t.filterMaxValue}</Label>
               <Input
                 type="number"
-                placeholder="R$ 999.999"
+                placeholder={t.filterMaxPlaceholder}
                 value={filters.maxValue}
                 onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
               />
@@ -848,28 +854,31 @@ export default function CRM() {
         <div className="flex flex-wrap gap-2">
           {filters.source.length > 0 && (
             <Badge className="gap-1 bg-foreground text-background">
-              Origem: {filters.source.length === 1 ? filters.source[0] : `${filters.source.length} selecionadas`}
+              {t.badgeOrigin}:{' '}
+              {filters.source.length === 1
+                ? filters.source[0]
+                : t.badgeSelected_other.replace('{count}', String(filters.source.length))}
               <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, source: [] }))} />
             </Badge>
           )}
           {filters.assignedTo.length > 0 && (
             <Badge className="gap-1 bg-foreground text-background">
-              Vendedor:{' '}
+              {t.badgeSalesperson}:{' '}
               {filters.assignedTo.length === 1
                 ? users.find((u) => u.user_id === filters.assignedTo[0])?.full_name || 'N/A'
-                : `${filters.assignedTo.length} selecionados`}
+                : t.badgeSelectedM_other.replace('{count}', String(filters.assignedTo.length))}
               <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, assignedTo: [] }))} />
             </Badge>
           )}
           {filters.minValue && (
             <Badge className="gap-1 bg-foreground text-background">
-              Min: {formatCurrency(parseFloat(filters.minValue))}
+              {t.badgeMin}: {formatCurrency(parseFloat(filters.minValue))}
               <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, minValue: '' }))} />
             </Badge>
           )}
           {filters.maxValue && (
             <Badge className="gap-1 bg-foreground text-background">
-              Max: {formatCurrency(parseFloat(filters.maxValue))}
+              {t.badgeMax}: {formatCurrency(parseFloat(filters.maxValue))}
               <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, maxValue: '' }))} />
             </Badge>
           )}

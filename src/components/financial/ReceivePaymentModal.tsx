@@ -9,6 +9,8 @@ import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface ReceivePaymentResult {
   account_id: string;
@@ -42,16 +44,7 @@ interface ReceivePaymentModalProps {
   isSubmitting?: boolean;
 }
 
-const PAYMENT_METHODS = [
-  { value: 'dinheiro', label: 'Dinheiro' },
-  { value: 'pix', label: 'PIX' },
-  { value: 'debito', label: 'Cartão de Débito' },
-  { value: 'credito_avista', label: 'Cartão de Crédito (à vista)' },
-  { value: 'credito_parcelado', label: 'Cartão de Crédito (parcelado)' },
-  { value: 'boleto', label: 'Boleto' },
-  { value: 'transferencia', label: 'Transferência' },
-  { value: 'cheque', label: 'Cheque' },
-];
+// Payment methods are now built from locale keys inside the component.
 
 function fmt(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -84,11 +77,26 @@ export function ReceivePaymentModal({
   allowPartial = false,
   installmentTotal = 1,
   currentDueDate,
-  title = 'Como foi recebido?',
+  title,
   description, defaultMethod = 'pix', onConfirm, isSubmitting,
 }: ReceivePaymentModalProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.finance.receivePayment;
   const { accounts } = useFinancialAccounts();
   const activeAccounts = useMemo(() => accounts.filter(a => a.is_active), [accounts]);
+
+  const paymentMethods = [
+    { value: 'dinheiro', label: t.paymentMethods.dinheiro },
+    { value: 'pix', label: t.paymentMethods.pix },
+    { value: 'debito', label: t.paymentMethods.debito },
+    { value: 'credito_avista', label: t.paymentMethods.credito_avista },
+    { value: 'credito_parcelado', label: t.paymentMethods.credito_parcelado },
+    { value: 'boleto', label: t.paymentMethods.boleto },
+    { value: 'transferencia', label: t.paymentMethods.transferencia },
+    { value: 'cheque', label: t.paymentMethods.cheque },
+  ];
+
+  const modalTitle = title ?? t.defaultTitle;
 
   // Saldo que falta receber (total - já recebido).
   const restante = useMemo(() => Math.max(0, Number((amount - amountReceived).toFixed(2))), [amount, amountReceived]);
@@ -131,8 +139,8 @@ export function ReceivePaymentModal({
   const valorInvalido = partialEnabled && (valorEfetivo <= 0 || valorEfetivo > restante);
   let valorErro: string | null = null;
   if (partialEnabled) {
-    if (valorEfetivo <= 0) valorErro = 'Informe um valor maior que zero.';
-    else if (valorEfetivo > restante) valorErro = `Valor não pode ser maior que o restante (${fmt(restante)}).`;
+    if (valorEfetivo <= 0) valorErro = t.validations.amountZero;
+    else if (valorEfetivo > restante) valorErro = t.validations.amountExceedsRemaining.replace('{amount}', fmt(restante));
   }
 
   const novoVencimentoInvalido = isPartial && !novoVencimento;
@@ -158,14 +166,14 @@ export function ReceivePaymentModal({
   const footer = (
     <div className="flex justify-end gap-2">
       <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-        Cancelar
+        {t.cancelLabel}
       </Button>
       <Button
         onClick={handleSubmit}
         disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido}
         className="bg-success hover:bg-success/90 text-white"
       >
-        {isSubmitting ? 'Confirmando...' : 'Confirmar recebimento'}
+        {isSubmitting ? t.confirmingLabel : t.confirmLabel}
       </Button>
     </div>
   );
@@ -174,7 +182,7 @@ export function ReceivePaymentModal({
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={title}
+      title={modalTitle}
       description={description ?? `Valor: ${fmt(amount)}`}
       footer={footer}
     >
@@ -182,11 +190,11 @@ export function ReceivePaymentModal({
         {/* Valor recebido — primeiro campo lógico, só renderiza quando parcial habilitado */}
         {partialEnabled && (
           <div>
-            <Label>Valor recebido *</Label>
+            <Label>{t.partialReceivedLabel}</Label>
             <Input
               type="text"
               inputMode="decimal"
-              placeholder="0,00"
+              placeholder={t.partialReceivedPlaceholder}
               value={valorRecebidoStr}
               onChange={e => setValorRecebidoStr(e.target.value)}
               disabled={isParcelada}
@@ -194,14 +202,13 @@ export function ReceivePaymentModal({
             />
             {isParcelada ? (
               <p className="text-xs text-muted-foreground mt-1">
-                Conta parcelada — recebimento parcial não está disponível.
+                {t.installmentDisabledHint}
               </p>
             ) : valorErro ? (
               <p className="text-xs text-destructive mt-1">{valorErro}</p>
             ) : (
               <p className="text-xs text-muted-foreground mt-1">
-                Restante a receber: <span className="font-medium">{fmt(restante)}</span>.
-                Informe um valor menor para registrar um recebimento parcial.
+                {t.partialRemainingHint.replace('{amount}', fmt(restante))}
               </p>
             )}
           </div>
@@ -209,25 +216,25 @@ export function ReceivePaymentModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Forma de pagamento *</Label>
+            <Label>{t.paymentMethodLabel}</Label>
             <Select value={method} onValueChange={setMethod}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {PAYMENT_METHODS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                {paymentMethods.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Data do recebimento *</Label>
+            <Label>{t.receivedDateLabel}</Label>
             <Input type="date" value={paidDate} onChange={e => setPaidDate(e.target.value)} />
           </div>
         </div>
 
         <div>
-          <Label>Caixa / Conta bancária *</Label>
+          <Label>{t.accountLabel}</Label>
           <Select value={accountId} onValueChange={setAccountId}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um caixa ou conta" />
+              <SelectValue placeholder={t.accountPlaceholder} />
             </SelectTrigger>
             <SelectContent>
               {activeAccounts.map(a => {
@@ -238,7 +245,7 @@ export function ReceivePaymentModal({
                       <span className="rounded-full p-1" style={{ backgroundColor: a.color }}>
                         <Icon className="h-3 w-3 text-white" />
                       </span>
-                      {a.type === 'caixa' ? `${a.name} (dinheiro)` : a.name}
+                      {a.name}
                     </span>
                   </SelectItem>
                 );
@@ -246,28 +253,28 @@ export function ReceivePaymentModal({
             </SelectContent>
           </Select>
           {activeAccounts.length === 0 && (
-            <p className="text-xs text-destructive mt-1">Cadastre um caixa ou conta primeiro.</p>
+            <p className="text-xs text-destructive mt-1">{t.noAccountHint}</p>
           )}
         </div>
 
         <div>
-          <Label>Tarifa de máquina/gateway (R$)</Label>
+          <Label>{t.feeLabel}</Label>
           <Input
             type="text"
             inputMode="decimal"
-            placeholder="0,00"
+            placeholder={t.feePlaceholder}
             value={feeAmount}
             onChange={e => setFeeAmount(e.target.value)}
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Será lançado como despesa em "Tarifas e Taxas" (deduzida da receita líquida no DRE).
+            {t.feeHint}
           </p>
         </div>
 
         {/* Novo vencimento do saldo restante — só quando há saldo restante após este recebimento */}
         {isPartial && (
           <div>
-            <Label>Novo vencimento do saldo restante *</Label>
+            <Label>{t.newDueDateLabel}</Label>
             <Input
               type="date"
               value={novoVencimento}
@@ -275,7 +282,7 @@ export function ReceivePaymentModal({
               className={cn(novoVencimentoInvalido && 'border-destructive focus-visible:ring-destructive')}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Saldo de <span className="font-medium">{fmt(restanteApos)}</span> ficará pendente com este novo vencimento.
+              {t.newDueDateHint.replace('{amount}', fmt(restanteApos))}
             </p>
           </div>
         )}
@@ -283,19 +290,19 @@ export function ReceivePaymentModal({
         {fee > 0 && (
           <Card className="p-3 bg-muted/30 border-warning/30">
             <div className="flex justify-between text-sm">
-              <span>Valor bruto recebido</span><span className="font-medium">{fmt(valorEfetivo)}</span>
+              <span>{t.grossLabel}</span><span className="font-medium">{fmt(valorEfetivo)}</span>
             </div>
             <div className="flex justify-between text-sm text-destructive">
-              <span>Tarifa</span><span>− {fmt(fee)}</span>
+              <span>{t.feeRowLabel}</span><span>− {fmt(fee)}</span>
             </div>
             <div className="flex justify-between text-sm font-semibold pt-1 border-t mt-1">
-              <span>Líquido na conta</span><span className="text-success">{fmt(liquid)}</span>
+              <span>{t.liquidLabel}</span><span className="text-success">{fmt(liquid)}</span>
             </div>
           </Card>
         )}
 
         <div>
-          <Label>Observação</Label>
+          <Label>{t.observationLabel}</Label>
           <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
 
@@ -303,21 +310,21 @@ export function ReceivePaymentModal({
         {partialEnabled && (
           <Card className="p-3 bg-muted/40 border-border space-y-1.5">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Valor da conta</span>
+              <span className="text-muted-foreground">{t.summaryAmountLabel}</span>
               <span className="font-medium">{fmt(amount)}</span>
             </div>
             {amountReceived > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Já recebido</span>
+                <span className="text-muted-foreground">{t.summaryAlreadyReceivedLabel}</span>
                 <span className="font-medium">{fmt(amountReceived)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Recebendo agora</span>
+              <span className="text-muted-foreground">{t.summaryReceivingNowLabel}</span>
               <span className="font-medium">{fmt(valorEfetivo)}</span>
             </div>
             <div className="flex justify-between text-sm font-semibold pt-1.5 border-t">
-              <span>Restante após este recebimento</span>
+              <span>{t.summaryRemainingLabel}</span>
               <span className={cn(restanteApos === 0 ? 'text-success' : 'text-primary')}>
                 {fmt(restanteApos)}
               </span>

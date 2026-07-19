@@ -7,11 +7,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNpsSettings, NPS_DEFAULT_QUESTION } from '@/hooks/useNpsSettings';
 import { useNpsCriteria } from '@/hooks/useNpsCriteria';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface NpsSettingsModalProps {
   open: boolean;
@@ -25,6 +31,8 @@ interface NpsSettingsModalProps {
  */
 export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.nps;
   const { hasPermission } = useAuth();
   const { settings, isLoading, save, isSaving } = useNpsSettings();
   const {
@@ -43,6 +51,10 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
   const [question, setQuestion] = useState('');
   const [requireStars, setRequireStars] = useState(false);
   const [generateOnFinish, setGenerateOnFinish] = useState(true);
+
+  // AlertDialog de confirmação para remover critério (substitui window.confirm).
+  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
+  const [removeConfirmLabel, setRemoveConfirmLabel] = useState('');
 
   // Rascunho local dos rótulos (edição inline) — grava no blur/Enter.
   const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({});
@@ -65,10 +77,10 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
         require_stars: requireStars,
         generate_on_finish: generateOnFinish,
       });
-      toast({ title: 'Configurações de NPS salvas' });
+      toast({ title: t.toastSaved });
       onOpenChange(false);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível salvar', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastSaveError, description: getErrorMessage(err) });
     }
   };
 
@@ -84,9 +96,9 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
     if (!next || next === original) return;
     try {
       await updateCriterion({ id, label: next });
-      toast({ title: 'Critério atualizado' });
+      toast({ title: t.toastCriterionUpdated });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível salvar', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastCriterionUpdateError, description: getErrorMessage(err) });
     }
   };
 
@@ -94,7 +106,7 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
     try {
       await updateCriterion({ id, active });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível salvar', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastCriterionUpdateError, description: getErrorMessage(err) });
     }
   };
 
@@ -109,62 +121,71 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
         updateCriterion({ id: b.id, position: a.position }),
       ]);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível reordenar', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastReorderError, description: getErrorMessage(err) });
     }
   };
 
   const handleAdd = async () => {
     const nextPos = criteria.length > 0 ? Math.max(...criteria.map((c) => c.position)) + 1 : 0;
     try {
-      await createCriterion({ label: 'Novo critério', position: nextPos });
-      toast({ title: 'Critério adicionado' });
+      await createCriterion({ label: t.newCriterionDefault, position: nextPos });
+      toast({ title: t.toastCriterionAdded });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível adicionar', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastCriterionAddError, description: getErrorMessage(err) });
     }
   };
 
-  const handleRemove = async (id: string, label: string) => {
-    if (!window.confirm(`Remover o critério "${label}"? Ele deixará de aparecer na pesquisa.`)) return;
+  // Abre o AlertDialog de confirmação (não usa window.confirm — i18n-aware).
+  const handleRemoveRequest = (id: string, label: string) => {
+    setRemoveConfirmId(id);
+    setRemoveConfirmLabel(label);
+  };
+
+  const handleRemoveConfirmed = async () => {
+    if (!removeConfirmId) return;
+    const id = removeConfirmId;
+    setRemoveConfirmId(null);
     try {
       await removeCriterion(id);
-      toast({ title: 'Critério removido' });
+      toast({ title: t.toastCriterionRemoved });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível remover', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastCriterionRemoveError, description: getErrorMessage(err) });
     }
   };
 
   return (
+    <>
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Configurações de NPS"
+      title={t.settingsTitle}
       footer={
         canEdit ? (
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-              Cancelar
+              {t.btnCancel}
             </Button>
             <Button onClick={handleSave} disabled={isSaving || isLoading}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar
+              {t.btnSave}
             </Button>
           </div>
         ) : (
           <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
             <Lock className="h-3.5 w-3.5" />
-            Somente a gestão pode alterar estas configurações.
+            {t.readonlyFooter}
           </div>
         )
       }
     >
       <div className="space-y-6 py-1">
         <p className="text-sm text-muted-foreground">
-          Defina o que o cliente vê na pesquisa de satisfação enviada ao concluir uma OS.
+          {t.settingsSubtitle}
         </p>
 
         <div className="space-y-2">
           <Label htmlFor="nps-question" className="text-sm font-medium">
-            Pergunta da escala 0–10
+            {t.labelQuestion}
           </Label>
           <Textarea
             id="nps-question"
@@ -175,29 +196,29 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
             disabled={!canEdit || isLoading}
           />
           <p className="text-xs text-muted-foreground">
-            Texto que o cliente vê acima das notas de 0 a 10 no link da pesquisa.
+            {t.helperQuestion}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Avaliação por estrelas</Label>
+          <Label className="text-sm font-medium">{t.labelStarRating}</Label>
           <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <span className="text-sm text-muted-foreground">
-              Exigir que o cliente toque nas estrelas de todos os critérios.
+              {t.helperStarRating}
             </span>
             <LabeledSwitch
               value={requireStars ? 'on' : 'off'}
               onChange={(v) => canEdit && setRequireStars(v === 'on')}
-              off={{ value: 'off', label: 'Opcional' }}
-              on={{ value: 'on', label: 'Obrigatória' }}
-              aria-label="Exigir avaliação por estrelas"
+              off={{ value: 'off', label: t.switchStarOptional }}
+              on={{ value: 'on', label: t.switchStarRequired }}
+              aria-label={t.helperStarRating}
             />
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <Label className="text-sm font-medium">Critérios de avaliação</Label>
+            <Label className="text-sm font-medium">{t.labelCriteria}</Label>
             {canEdit && (
               <Button
                 type="button"
@@ -208,22 +229,22 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
                 disabled={criteriaLoading || criteriaMutating}
               >
                 <Plus className="h-4 w-4" />
-                Adicionar
+                {t.btnAddCriterion}
               </Button>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Cada critério é avaliado de 1 a 5 estrelas pelo cliente na pesquisa.
+            {t.helperCriteria}
           </p>
 
           {criteriaLoading ? (
             <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Carregando critérios…
+              {t.criteriaLoading}
             </div>
           ) : criteria.length === 0 ? (
             <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-              Nenhum critério cadastrado.
+              {t.criteriaEmpty}
             </div>
           ) : (
             <div className="space-y-2">
@@ -253,7 +274,7 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
                           className="h-5 w-6"
                           onClick={() => handleMove(i, -1)}
                           disabled={i === 0 || criteriaMutating}
-                          aria-label="Mover para cima"
+                          aria-label={t.ariaMoveCriterionUp}
                         >
                           <ChevronUp className="h-4 w-4" />
                         </Button>
@@ -264,7 +285,7 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
                           className="h-5 w-6"
                           onClick={() => handleMove(i, 1)}
                           disabled={i === criteria.length - 1 || criteriaMutating}
-                          aria-label="Mover para baixo"
+                          aria-label={t.ariaMoveCriterionDown}
                         >
                           <ChevronDown className="h-4 w-4" />
                         </Button>
@@ -273,23 +294,23 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
                         checked={c.active}
                         onCheckedChange={(v) => handleToggleActive(c.id, v)}
                         disabled={criteriaMutating}
-                        aria-label={c.active ? 'Critério ativo' : 'Critério inativo'}
+                        aria-label={c.active ? t.labelCriteria : t.criteriaInactive}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         className="h-9 w-9 text-destructive hover:text-destructive"
-                        onClick={() => handleRemove(c.id, c.label)}
+                        onClick={() => handleRemoveRequest(c.id, c.label)}
                         disabled={criteriaMutating}
-                        aria-label="Remover critério"
+                        aria-label={t.ariaRemoveCriterion}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </>
                   ) : (
                     !c.active && (
-                      <span className="shrink-0 text-xs text-muted-foreground">Inativo</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{t.criteriaInactive}</span>
                     )
                   )}
                 </div>
@@ -299,21 +320,43 @@ export function NpsSettingsModal({ open, onOpenChange }: NpsSettingsModalProps) 
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Gerar pesquisa ao finalizar OS (padrão)</Label>
+          <Label className="text-sm font-medium">{t.labelGenerateOnFinish}</Label>
           <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <span className="text-sm text-muted-foreground">
-              Padrão aplicado a novas OS. Pode ser ajustado caso a caso na própria OS.
+              {t.helperGenerateOnFinish}
             </span>
             <LabeledSwitch
               value={generateOnFinish ? 'on' : 'off'}
               onChange={(v) => canEdit && setGenerateOnFinish(v === 'on')}
-              off={{ value: 'off', label: 'Não' }}
-              on={{ value: 'on', label: 'Sim' }}
-              aria-label="Gerar pesquisa de satisfação ao finalizar OS"
+              off={{ value: 'off', label: t.switchGenerateNo }}
+              on={{ value: 'on', label: t.switchGenerateYes }}
+              aria-label={t.labelGenerateOnFinish}
             />
           </div>
         </div>
       </div>
     </ResponsiveModal>
+
+    {/* AlertDialog de confirmação de remoção de critério (i18n — substitui window.confirm). */}
+    <AlertDialog open={!!removeConfirmId} onOpenChange={(o) => !o && setRemoveConfirmId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.ariaRemoveCriterion}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t.confirmRemoveCriterion.replace('{label}', removeConfirmLabel)}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleRemoveConfirmed}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {t.toastCriterionRemoved}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

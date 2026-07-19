@@ -15,6 +15,8 @@ import { currencyMask, parseCurrency, calculateDailyValue } from '@/utils/employ
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface MovementCashAccount {
   id: string;
@@ -40,8 +42,6 @@ interface EmployeeMovementModalProps {
   cashBankAccounts?: MovementCashAccount[];
 }
 
-const typeLabels: Record<string, string> = { vale: 'Vale', bonus: 'Bônus', falta: 'Falta' };
-
 type MovementDraft = { amount: string; description: string };
 
 export function EmployeeMovementModal({
@@ -54,6 +54,9 @@ export function EmployeeMovementModal({
   const [applyDSR, setApplyDSR] = useState(false);
   const [accountId, setAccountId] = useState('');
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.movementModal;
+  const typeLabels: Record<string, string> = { vale: t.typeLabels.vale, bonus: t.typeLabels.bonus, falta: t.typeLabels.falta };
 
   const draft = useFormDraft<MovementDraft>({ key: `employee-movement-${type}`, isOpen: open });
 
@@ -111,8 +114,8 @@ export function EmployeeMovementModal({
     if (type === 'vale' && !accountId) {
       toast({
         variant: 'destructive',
-        title: 'Selecione a conta de saída',
-        description: 'O vale precisa ser vinculado a uma conta ou caixa para gerar a despesa correta.',
+        title: t.validationNoAccount,
+        description: t.validationNoAccountDescription,
       });
       return;
     }
@@ -159,16 +162,16 @@ export function EmployeeMovementModal({
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
       <Button type="submit" form="employee-movement-form" disabled={isPending}>
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Registrar {typeLabels[type]}
+        {t.submitLabel.replace('{type}', typeLabels[type])}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registrar ${typeLabels[type]} — ${employeeName}`} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`${t.titlePrefix} ${typeLabels[type]} — ${employeeName}`} footer={footer}>
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -186,7 +189,7 @@ export function EmployeeMovementModal({
       />
       <form id="employee-movement-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <div className="rounded-lg bg-muted p-3 text-sm">
-          Saldo atual: <span className={currentBalance >= 0 ? 'text-green-600 font-semibold' : 'text-destructive font-semibold'}>
+          {t.currentBalance}: <span className={currentBalance >= 0 ? 'text-green-600 font-semibold' : 'text-destructive font-semibold'}>
             {currentBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
         </div>
@@ -195,20 +198,20 @@ export function EmployeeMovementModal({
             (caixa/conta corrente) pra aparecer no extrato + bater saldo. */}
         {type === 'vale' && (
           <div className="space-y-1.5">
-            <Label>De qual conta sai o vale? *</Label>
+            <Label>{t.advance.sourceLabel}</Label>
             {cashBankAccounts.length === 0 ? (
               <p className="text-xs text-destructive">
-                Nenhuma conta ou caixa ativo encontrado. Cadastre uma conta em Financeiro &rarr; Contas e Cartões.
+                {t.advance.noAccountsWarning}
               </p>
             ) : (
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Selecione a conta de saída" />
+                  <SelectValue placeholder={t.advance.accountPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {cashBankAccounts.map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>
-                      {acc.type === 'caixa' ? `${acc.name} (em dinheiro)` : acc.name}
+                      {acc.type === 'caixa' ? `${acc.name} ${t.advance.cashSuffix}` : acc.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -220,20 +223,20 @@ export function EmployeeMovementModal({
         {/* Falta mode selection */}
         {type === 'falta' && (
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Tipo de desconto</Label>
+            <Label className="text-sm font-medium">{t.absence.discountTypeLabel}</Label>
             <RadioGroup value={faltaMode} onValueChange={(v) => setFaltaMode(v as 'salario' | 'banco')} className="grid grid-cols-1 gap-2">
               <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5">
                 <RadioGroupItem value="salario" />
                 <div>
-                  <p className="text-sm font-medium">Descontar do salário</p>
-                  <p className="text-xs text-muted-foreground">Valor será deduzido do saldo financeiro</p>
+                  <p className="text-sm font-medium">{t.absence.deductFromSalary}</p>
+                  <p className="text-xs text-muted-foreground">{t.absence.deductFromSalaryDescription}</p>
                 </div>
               </label>
               <label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5">
                 <RadioGroupItem value="banco" />
                 <div>
-                  <p className="text-sm font-medium">Descontar do banco de horas</p>
-                  <p className="text-xs text-muted-foreground">Registra {dailyHours.toFixed(1)}h negativas no banco de horas</p>
+                  <p className="text-sm font-medium">{t.absence.deductFromHoursBank}</p>
+                  <p className="text-xs text-muted-foreground">{t.absence.deductFromHoursBankDescription.replace('{hours}', dailyHours.toFixed(1))}</p>
                 </div>
               </label>
             </RadioGroup>
@@ -241,12 +244,14 @@ export function EmployeeMovementModal({
         )}
 
         <div className="space-y-1.5">
-          <Label>Valor *</Label>
+          <Label>{t.amountLabel}</Label>
           <Input value={amount} onChange={e => setAmount(currencyMask(e.target.value))} placeholder="R$ 0,00" required />
           {type === 'falta' && salary > 0 && (
             <p className="text-xs text-muted-foreground">
-              Sugestão: {suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/dia 
-              ({dailyHours.toFixed(1)}h/dia · {Math.round(monthlyHours)}h/mês)
+              {t.absenceSuggestion
+                .replace('{value}', suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
+                .replace('{dailyHours}', dailyHours.toFixed(1))
+                .replace('{monthlyHours}', String(Math.round(monthlyHours)))}
             </p>
           )}
         </div>
@@ -262,14 +267,14 @@ export function EmployeeMovementModal({
                 className="mt-0.5"
               />
               <label htmlFor="dsr" className="cursor-pointer">
-                <p className="text-sm font-medium">Aplicar perda de DSR</p>
+                <p className="text-sm font-medium">{t.absence.dsrLabel}</p>
                 {faltaMode === 'salario' ? (
                   <p className="text-xs text-muted-foreground">
-                    A falta injustificada resulta na perda do Descanso Semanal Remunerado (valor × 2)
+                    {t.absence.dsrDescriptionSalary}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Desconta 1 dia proporcional do salário (DSR) e 1 dia de trabalho ({dailyHours.toFixed(1)}h) do banco de horas
+                    {t.absence.dsrDescriptionBank.replace('{hours}', dailyHours.toFixed(1))}
                   </p>
                 )}
               </label>
@@ -281,30 +286,30 @@ export function EmployeeMovementModal({
                 {faltaMode === 'salario' ? (
                   <>
                     <div className="flex justify-between">
-                      <span>Dia faltado</span>
+                      <span>{t.absence.summaryDayMissed}</span>
                       <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Perda DSR</span>
+                      <span>{t.absence.summaryDsrLoss}</span>
                       <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1 mt-1">
-                      <span>Total desconto do salário</span>
+                      <span>{t.absence.summaryTotalDiscount}</span>
                       <span className="text-destructive">{(baseValue * 2).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="flex justify-between">
-                      <span>Banco de horas</span>
+                      <span>{t.absence.summaryBankHours}</span>
                       <span>−{dailyHours.toFixed(1)}h</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Perda DSR (desconto salarial)</span>
+                      <span>{t.absence.summaryDsrFinancial}</span>
                       <span>{suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1 mt-1">
-                      <span>Total</span>
+                      <span>{t.absence.summaryTotal}</span>
                       <span className="text-destructive">
                         {dailyHours.toFixed(1)}h + {suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
@@ -320,7 +325,7 @@ export function EmployeeMovementModal({
         {type === 'falta' && !applyDSR && baseValue > 0 && (
           <div className="text-xs bg-muted rounded-lg p-2">
             <div className="flex justify-between font-medium">
-              <span>Total desconto</span>
+              <span>{t.absence.summaryTotalDiscount2}</span>
               <span className="text-destructive">
                 {faltaMode === 'salario'
                   ? baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -332,8 +337,8 @@ export function EmployeeMovementModal({
         )}
 
         <div className="space-y-1.5">
-          <Label>Descrição</Label>
-          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Observação opcional..." rows={2} />
+          <Label>{t.descriptionLabel}</Label>
+          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} rows={2} />
         </div>
 
       </form>
