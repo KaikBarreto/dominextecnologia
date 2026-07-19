@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.0',
+    date: '19 de julho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Dominex agora fala 4 idiomas',
+        description: 'O sistema agora está disponível em português, inglês, espanhol e francês. Cada pessoa da equipe escolhe o próprio idioma em Configurações, e valores, datas e formatos se ajustam sozinhos. Os links que você compartilha com o cliente (ordem de serviço, portal do cliente, portal do contrato, orçamento e ponto eletrônico) aparecem no idioma da sua empresa. Feito para quem trabalha com equipes ou clientes fora do Brasil.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.16.0',
     date: '15 de julho de 2026',
     type: 'minor',

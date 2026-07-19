@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.16.0";
+export const APP_VERSION = "1.17.0";
 
-export const VERSION_NOTES = "Agora uma pergunta do checklist da ordem de serviço pode pedir vídeo: o técnico grava um clipe curto pelo aparelho, em campo, e ele aparece na OS e no link do cliente. Disponível nos planos Pro e Business.";
+export const VERSION_NOTES = "O Dominex agora fala 4 idiomas: português, inglês, espanhol e francês. Escolha o seu em Configurações; os links que você envia ao cliente seguem o idioma da sua empresa.";
