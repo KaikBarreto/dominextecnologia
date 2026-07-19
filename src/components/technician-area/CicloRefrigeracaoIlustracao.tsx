@@ -44,70 +44,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
 
-const TIPS = {
-  compressor: {
-    titulo: "Compressor",
-    descricao:
-      "Aspira o vapor frio de baixa pressão e o comprime, elevando muito a pressão e a temperatura. É aqui que o lado de baixa vira alta pressão — o 'coração' do sistema.",
-  },
-  condensador: {
-    titulo: "Condensador",
-    descricao:
-      "Recebe o vapor quente de alta pressão e troca calor com o ar externo. O gás esfria e se condensa, virando líquido de alta pressão. É onde o calor é jogado para fora.",
-  },
-  evaporador: {
-    titulo: "Evaporador",
-    descricao:
-      "Recebe o líquido frio de baixa pressão, que evapora absorvendo calor do ambiente — é aqui que o ar é resfriado. Sai como vapor frio de baixa pressão.",
-  },
-  expansao: {
-    titulo: "Válvula de expansão",
-    descricao:
-      "Restringe a passagem do líquido de alta pressão e provoca uma queda brusca de pressão. O líquido vira uma mistura fria de baixa pressão antes de entrar no evaporador. Pode ser válvula termostática, eletrônica (EEV) ou tubo capilar.",
-  },
-  linhaDescarga: {
-    titulo: "Linha de descarga",
-    descricao:
-      "Tubo entre o compressor e o condensador. Carrega o vapor quente em alta pressão recém-comprimido.",
-  },
-  linhaLiquido: {
-    titulo: "Linha de líquido",
-    descricao:
-      "Tubo entre o condensador e a válvula de expansão. Carrega o refrigerante líquido em alta pressão.",
-  },
-  linhaExpansao: {
-    titulo: "Linha de expansão",
-    descricao:
-      "Tubo entre a válvula de expansão e o evaporador. Carrega a mistura líquido-vapor fria em baixa pressão.",
-  },
-  linhaSuccao: {
-    titulo: "Linha de sucção",
-    descricao:
-      "Tubo entre o evaporador e o compressor. Carrega vapor frio em baixa pressão. É aqui que se medem a pressão e a temperatura para calcular o superaquecimento.",
-  },
-  manometro: {
-    titulo: "Manômetro",
-    descricao:
-      "Mede a pressão na linha de sucção. Convertida em temperatura de saturação (pela tabela do gás), é a base do cálculo de superaquecimento.",
-  },
-  termometro: {
-    titulo: "Termômetro",
-    descricao:
-      "Mede a temperatura real do tubo na linha de sucção. O superaquecimento é essa temperatura menos a temperatura de saturação.",
-  },
-  altaPressao: {
-    titulo: "Alta pressão",
-    descricao:
-      "Lado de alta pressão: da saída do compressor, passando pelo condensador, até a entrada da válvula de expansão.",
-  },
-  baixaPressao: {
-    titulo: "Baixa pressão",
-    descricao:
-      "Lado de baixa pressão: da saída da válvula de expansão, passando pelo evaporador, até a sucção do compressor.",
-  },
-} as const;
-
-type TipKey = keyof typeof TIPS;
+type TipKey = 'compressor' | 'condensador' | 'evaporador' | 'expansao' | 'linhaDescarga' | 'linhaLiquido' | 'linhaExpansao' | 'linhaSuccao' | 'manometro' | 'termometro' | 'altaPressao' | 'baixaPressao';
 
 // `d` do ícone vetorial de compressor (path principal extraído do SVG de origem).
 // O SVG original mapeia coords grandes para 600x575 via o transform
@@ -315,6 +252,7 @@ function meanderPath(opts: {
 export function CicloRefrigeracaoIlustracao() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools;
+  const svg = t.cycleSvg;
 
   // No tema escuro o fundo das peças é preto; no claro fica transparente para a
   // zona de cor aparecer atrás (borda/serpentina/ícone seguem iguais).
@@ -434,7 +372,7 @@ export function CicloRefrigeracaoIlustracao() {
   const valveY = 110;
   const valveCx = 380;
 
-  const currentTip = tip ? TIPS[tip.key] : null;
+  const currentTip = tip ? svg.tips[tip.key] : null;
 
   // ===================================================================
   // GEOMETRIA MOBILE (RETRATO) — coordenadas PRÓPRIAS, sem rotação.
@@ -561,7 +499,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="start"
             className="fill-sky-600 dark:fill-sky-400 text-[13px] font-bold uppercase tracking-wide"
           >
-            Baixa pressão
+            {svg.lowPressure}
           </text>
           <text
             x="740"
@@ -569,7 +507,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="end"
             className="fill-orange-600 dark:fill-orange-400 text-[13px] font-bold uppercase tracking-wide"
           >
-            Alta pressão
+            {svg.highPressure}
           </text>
 
           {/* ===================================================================
@@ -595,7 +533,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="start"
             className="fill-sky-600 dark:fill-sky-400 text-[11px] font-semibold"
           >
-            Vapor — baixa pressão
+            {svg.vaporLow}
           </text>
 
           {/* DESCARGA (laranja): Compressor (direita, 410,400) → Condensador (base, 630,320) */}
@@ -615,7 +553,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="end"
             className="fill-orange-600 dark:fill-orange-400 text-[11px] font-semibold"
           >
-            Vapor — alta pressão
+            {svg.vaporHigh}
           </text>
 
           {/* LÍQUIDO (laranja): Condensador (topo, 630,190) → Válvula (lado dir., 406,110) */}
@@ -635,7 +573,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="end"
             className="fill-orange-600 dark:fill-orange-400 text-[11px] font-semibold"
           >
-            Líquido — alta pressão
+            {svg.liquidHigh}
           </text>
 
           {/* EXPANSÃO (azul): Válvula (lado esq., 354,110) → Evaporador (topo, 130,190) */}
@@ -655,7 +593,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="start"
             className="fill-sky-600 dark:fill-sky-400 text-[11px] font-semibold"
           >
-            Líquido / vapor — baixa pressão
+            {svg.liquidVaporLow}
           </text>
 
           {/* ===================================================================
@@ -680,7 +618,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="middle"
             className="fill-foreground text-[19px] font-extrabold uppercase tracking-wide"
           >
-            Compressor
+            {svg.compressor}
           </text>
 
           {/* Evaporador — ESQUERDA (caixa azul fria + serpentina em MEANDRO) */}
@@ -711,7 +649,7 @@ export function CicloRefrigeracaoIlustracao() {
             transform={`rotate(-90 ${evapX - 14} ${boxTop + boxH / 2})`}
             className="fill-foreground text-[19px] font-extrabold uppercase tracking-wide"
           >
-            Evaporador
+            {svg.evaporator}
           </text>
 
           {/* Condensador — DIREITA (caixa laranja quente + serpentina em MEANDRO) */}
@@ -742,7 +680,7 @@ export function CicloRefrigeracaoIlustracao() {
             transform={`rotate(-90 ${condX + condW + 30} ${boxTop + boxH / 2})`}
             className="fill-foreground text-[19px] font-extrabold uppercase tracking-wide"
           >
-            Condensador
+            {svg.condenser}
           </text>
 
           {/* Válvula de expansão — BAIXO-CENTRO (bowtie), inline na linha de baixo */}
@@ -760,7 +698,9 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="middle"
             className="fill-foreground text-[17px] font-extrabold uppercase tracking-wide"
           >
-            Válvula de expansão
+            {svg.expansionValve2
+              ? `${svg.expansionValve1} ${svg.expansionValve2}`
+              : svg.expansionValve1}
           </text>
 
           {/* ===================================================================
@@ -790,7 +730,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="middle"
             className="fill-sky-600 dark:fill-sky-300 text-[11px] font-semibold"
           >
-            Manômetro
+            {svg.manometer}
           </text>
 
           {/* Termômetro — círculo de contraste + ícone vetorial dentro */}
@@ -809,7 +749,7 @@ export function CicloRefrigeracaoIlustracao() {
             textAnchor="middle"
             className="fill-sky-600 dark:fill-sky-300 text-[11px] font-semibold"
           >
-            Termômetro
+            {svg.thermometer}
           </text>
 
           {/* ===================================================================
@@ -884,7 +824,7 @@ export function CicloRefrigeracaoIlustracao() {
                 textAnchor="middle"
                 className="fill-sky-600 dark:fill-sky-400 text-[14px] font-bold uppercase tracking-wide"
               >
-                Baixa pressão
+                {svg.lowPressure}
               </text>
               <text
                 x={M.cx + (M.W - M.cx) / 2}
@@ -892,7 +832,7 @@ export function CicloRefrigeracaoIlustracao() {
                 textAnchor="middle"
                 className="fill-orange-600 dark:fill-orange-400 text-[14px] font-bold uppercase tracking-wide"
               >
-                Alta pressão
+                {svg.highPressure}
               </text>
 
               {/* ===================================================================
@@ -952,48 +892,46 @@ export function CicloRefrigeracaoIlustracao() {
                    líquido/expansão correm EM CIMA (entre valveY=118 e boxTop=300). */}
               {/* SUCÇÃO — trecho vertical base-esquerda (Evap→Compressor). Rótulo
                    à DIREITA do tubo (x=93), na metade baixa-pressão. */}
-              <text
-                x={mEvapCx + 8}
-                y={514}
-                textAnchor="start"
-                className="fill-sky-600 dark:fill-sky-400 text-[12px] font-semibold"
-              >
-                Vapor —
-                <tspan x={mEvapCx + 8} dy="15">baixa pressão</tspan>
-              </text>
+              {(() => {
+                const [l1, l2] = svg.vaporLow.split(' — ');
+                return (
+                  <text x={mEvapCx + 8} y={514} textAnchor="start" className="fill-sky-600 dark:fill-sky-400 text-[12px] font-semibold">
+                    {l2 ? <>{l1} —<tspan x={mEvapCx + 8} dy="15">{l2}</tspan></> : svg.vaporLow}
+                  </text>
+                );
+              })()}
               {/* DESCARGA — trecho vertical base-direita (Compressor→Cond). Rótulo
                    à ESQUERDA do tubo (x=307), na metade alta-pressão. */}
-              <text
-                x={mCondCx - 8}
-                y={514}
-                textAnchor="end"
-                className="fill-orange-600 dark:fill-orange-400 text-[12px] font-semibold"
-              >
-                Vapor —
-                <tspan x={mCondCx - 8} dy="15">alta pressão</tspan>
-              </text>
+              {(() => {
+                const [l1, l2] = svg.vaporHigh.split(' — ');
+                return (
+                  <text x={mCondCx - 8} y={514} textAnchor="end" className="fill-orange-600 dark:fill-orange-400 text-[12px] font-semibold">
+                    {l2 ? <>{l1} —<tspan x={mCondCx - 8} dy="15">{l2}</tspan></> : svg.vaporHigh}
+                  </text>
+                );
+              })()}
               {/* LÍQUIDO — trecho vertical topo-direita (Cond→Válvula). Rótulo à
                    ESQUERDA do tubo (x=307), na metade alta-pressão. */}
-              <text
-                x={mCondCx - 8}
-                y={216}
-                textAnchor="end"
-                className="fill-orange-600 dark:fill-orange-400 text-[12px] font-semibold"
-              >
-                Líquido —
-                <tspan x={mCondCx - 8} dy="15">alta pressão</tspan>
-              </text>
+              {(() => {
+                const [l1, l2] = svg.liquidHigh.split(' — ');
+                return (
+                  <text x={mCondCx - 8} y={216} textAnchor="end" className="fill-orange-600 dark:fill-orange-400 text-[12px] font-semibold">
+                    {l2 ? <>{l1} —<tspan x={mCondCx - 8} dy="15">{l2}</tspan></> : svg.liquidHigh}
+                  </text>
+                );
+              })()}
               {/* EXPANSÃO — trecho vertical topo-esquerda (Válvula→Evap). Rótulo à
                    DIREITA do tubo (x=93), na metade baixa-pressão. */}
-              <text
-                x={mEvapCx + 8}
-                y={216}
-                textAnchor="start"
-                className="fill-sky-600 dark:fill-sky-400 text-[12px] font-semibold"
-              >
-                Líquido / vapor
-                <tspan x={mEvapCx + 8} dy="15">— baixa pressão</tspan>
-              </text>
+              {(() => {
+                // "Líquido / vapor — baixa pressão" → split at " — " gives:
+                // l1="Líquido / vapor" l2="baixa pressão"
+                const [l1, l2] = svg.liquidVaporLow.split(' — ');
+                return (
+                  <text x={mEvapCx + 8} y={216} textAnchor="start" className="fill-sky-600 dark:fill-sky-400 text-[12px] font-semibold">
+                    {l2 ? <>{l1}<tspan x={mEvapCx + 8} dy="15">— {l2}</tspan></> : svg.liquidVaporLow}
+                  </text>
+                );
+              })()}
 
               {/* ===================================================================
                   COMPONENTES
@@ -1016,7 +954,7 @@ export function CicloRefrigeracaoIlustracao() {
                 textAnchor="middle"
                 className="fill-foreground text-[16px] font-extrabold uppercase tracking-wide"
               >
-                Compressor
+                {svg.compressor}
               </text>
 
               {/* Evaporador — ESQUERDA (caixa azul + serpentina ALTA) */}
@@ -1046,7 +984,7 @@ export function CicloRefrigeracaoIlustracao() {
                 transform={`rotate(-90 ${M.evapX - 14} ${M.boxTop + mBoxH / 2})`}
                 className="fill-foreground text-[15px] font-extrabold uppercase tracking-wide"
               >
-                Evaporador
+                {svg.evaporator}
               </text>
 
               {/* Condensador — DIREITA (caixa laranja + serpentina ALTA) */}
@@ -1078,7 +1016,7 @@ export function CicloRefrigeracaoIlustracao() {
                 transform={`rotate(-90 ${M.condX + M.boxW + 24} ${M.boxTop + mBoxH / 2})`}
                 className="fill-foreground text-[15px] font-extrabold uppercase tracking-wide"
               >
-                Condensador
+                {svg.condenser}
               </text>
 
               {/* Válvula de expansão — BASE-CENTRO (bowtie) */}
@@ -1098,11 +1036,13 @@ export function CicloRefrigeracaoIlustracao() {
                 className="fill-foreground text-[15px] font-extrabold uppercase tracking-wide"
               >
                 <tspan x={M.cx} dy="0">
-                  Válvula de
+                  {svg.expansionValve1}
                 </tspan>
-                <tspan x={M.cx} dy="20">
-                  expansão
-                </tspan>
+                {svg.expansionValve2 && (
+                  <tspan x={M.cx} dy="20">
+                    {svg.expansionValve2}
+                  </tspan>
+                )}
               </text>
 
               {/* ===== INSTRUMENTOS na linha de sucção (UM conjunto só) =====
@@ -1135,7 +1075,7 @@ export function CicloRefrigeracaoIlustracao() {
                 textAnchor="start"
                 className="fill-sky-600 dark:fill-sky-300 text-[12px] font-semibold"
               >
-                Manômetro
+                {svg.manometer}
               </text>
               {/* Termômetro — círculo de contraste + ícone vetorial dentro */}
               <circle
@@ -1161,7 +1101,7 @@ export function CicloRefrigeracaoIlustracao() {
                 textAnchor="start"
                 className="fill-sky-600 dark:fill-sky-300 text-[12px] font-semibold"
               >
-                Termômetro
+                {svg.thermometer}
               </text>
 
               {/* ===================================================================
@@ -1234,11 +1174,11 @@ export function CicloRefrigeracaoIlustracao() {
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="h-0.5 w-5 rounded-full bg-sky-500 dark:bg-sky-400" />
-          Baixa pressão (frio)
+          {svg.legendLow}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-0.5 w-5 rounded-full bg-orange-500 dark:bg-orange-400" />
-          Alta pressão (quente)
+          {svg.legendHigh}
         </span>
       </div>
     </div>

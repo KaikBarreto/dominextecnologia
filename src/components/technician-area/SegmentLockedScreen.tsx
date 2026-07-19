@@ -21,14 +21,17 @@ interface SegmentLockedScreenProps {
 export function SegmentLockedScreen({ segment }: SegmentLockedScreenProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.segmentLocked;
+  const segmentLabels = MESSAGES[locale].app.technicianTools.segments;
 
   const seg = getSegment(segment);
   if (!seg) return null;
 
+  const segLabel = segmentLabels[seg.value as keyof typeof segmentLabels] ?? seg.label;
+
   const handleContact = () => {
     // Já é cliente: usa fragmento próprio (a frase vira "Olá! Vim ${fragment}
     // da Dominex...") preservando a intenção de contratar o segmento bloqueado.
-    const fragmento = `da Área do Técnico e já uso a Dominex, gostaria de contratar as ferramentas do segmento de *${seg.label}*`;
+    const fragmento = `da Área do Técnico e já uso a Dominex, gostaria de contratar as ferramentas do segmento de *${segLabel}*`;
     const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), fragmento);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -53,16 +56,16 @@ export function SegmentLockedScreen({ segment }: SegmentLockedScreenProps) {
             style={{ backgroundColor: seg.color }}
           >
             <seg.icon className="h-3 w-3" />
-            <span className="truncate">{seg.label}</span>
+            <span className="truncate">{segLabel}</span>
           </Badge>
           <h2 className="text-lg font-semibold tracking-tight">
-            {t.toolsOf} {seg.label}
+            {t.toolsOf} {segLabel}
           </h2>
         </div>
 
         <p className="text-sm text-muted-foreground">
           {t.noAccess}{' '}
-          <span className="font-medium text-foreground">{seg.label}</span>.
+          <span className="font-medium text-foreground">{segLabel}</span>.
           <br />
           {t.contactNote}
         </p>

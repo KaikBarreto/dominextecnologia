@@ -37,6 +37,7 @@ export function SegmentToolsSwitcher({
 }: SegmentToolsSwitcherProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.home;
+  const segmentLabels = MESSAGES[locale].app.technicianTools.segments;
   const [open, setOpen] = useState(false);
   const selectedSeg = getSegment(selected);
 
@@ -64,7 +65,9 @@ export function SegmentToolsSwitcher({
               style={{ backgroundColor: selectedSeg.color }}
             >
               <selectedSeg.icon className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
-              <span className="truncate">{selectedSeg.label}</span>
+              <span className="truncate">
+                {segmentLabels[selectedSeg.value as keyof typeof segmentLabels] ?? selectedSeg.label}
+              </span>
               <ChevronDown className="h-3 w-3 opacity-80 lg:h-3.5 lg:w-3.5" />
             </Badge>
           ) : null}
@@ -87,7 +90,7 @@ export function SegmentToolsSwitcher({
                 return (
                   <CommandItem
                     key={seg.value}
-                    value={seg.label}
+                    value={segmentLabels[seg.value as keyof typeof segmentLabels] ?? seg.label}
                     onSelect={() => {
                       onSelect(seg.value);
                       setOpen(false);
@@ -100,7 +103,9 @@ export function SegmentToolsSwitcher({
                     >
                       <seg.icon className="h-3 w-3 text-white" />
                     </span>
-                    <span className="flex-1 whitespace-normal break-words leading-snug">{seg.label}</span>
+                    <span className="flex-1 whitespace-normal break-words leading-snug">
+                      {segmentLabels[seg.value as keyof typeof segmentLabels] ?? seg.label}
+                    </span>
                     {isCompany && (
                       <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
                         {t.segmentIncluded}

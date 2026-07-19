@@ -43,19 +43,20 @@ interface SecaoGlossario {
 }
 
 /**
- * Gera as seções do glossário com rótulos traduzidos pelo locale ativo.
+ * Gera as seções do glossário com rótulos e termos traduzidos pelo locale ativo.
+ * Se o locale é pt-br usa os arrays estáticos originais; caso contrário usa os
+ * arrays traduzidos de MESSAGES (que derivam do mesmo conjunto de ids).
  */
-function buildGlossarioSecoes(rotulos: {
-  measurements: string;
-  cycle: string;
-  electrical: string;
-  gases: string;
-}): SecaoGlossario[] {
+function buildGlossarioSecoes(
+  rotulos: { measurements: string; cycle: string; electrical: string; gases: string },
+  glossary: { medidas: { id: string; termo: string; descricao: string; exemplo?: string }[]; ciclo: { id: string; termo: string; descricao: string; exemplo?: string }[]; eletrica: { id: string; termo: string; descricao: string; exemplo?: string }[]; gases: { id: string; termo: string; descricao: string; exemplo?: string }[] },
+  isPtBr: boolean,
+): SecaoGlossario[] {
   return [
-    { id: 'medidas', rotulo: rotulos.measurements, icon: Ruler, termos: GLOSSARIO },
-    { id: 'ciclo', rotulo: rotulos.cycle, icon: RefreshCcw, termos: GLOSSARIO_CICLO },
-    { id: 'eletrica', rotulo: rotulos.electrical, icon: Cable, termos: GLOSSARIO_ELETRICA },
-    { id: 'gases', rotulo: rotulos.gases, icon: Snowflake, termos: GLOSSARIO_GASES },
+    { id: 'medidas', rotulo: rotulos.measurements, icon: Ruler, termos: isPtBr ? GLOSSARIO : glossary.medidas },
+    { id: 'ciclo', rotulo: rotulos.cycle, icon: RefreshCcw, termos: isPtBr ? GLOSSARIO_CICLO : glossary.ciclo },
+    { id: 'eletrica', rotulo: rotulos.electrical, icon: Cable, termos: isPtBr ? GLOSSARIO_ELETRICA : glossary.eletrica },
+    { id: 'gases', rotulo: rotulos.gases, icon: Snowflake, termos: isPtBr ? GLOSSARIO_GASES : glossary.gases },
   ];
 }
 
@@ -79,7 +80,8 @@ function semAcento(s: string): string {
 
 export function Inicio({ onNavigate }: InicioProps) {
   const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.technicianTools.home;
+  const tTools = MESSAGES[locale].app.technicianTools;
+  const t = tTools.home;
 
   const { settings } = useCompanySettings();
   // Cards = ferramentas do segmento da empresa (fonte única do config).
@@ -87,8 +89,8 @@ export function Inicio({ onNavigate }: InicioProps) {
   const [buscaGlossario, setBuscaGlossario] = useState('');
 
   const GLOSSARIO_SECOES = useMemo(
-    () => buildGlossarioSecoes(t.glossarySections),
-    [t.glossarySections],
+    () => buildGlossarioSecoes(t.glossarySections, tTools.glossary, locale === 'pt-br'),
+    [t.glossarySections, tTools.glossary, locale],
   );
 
   const secoesFiltradas = useMemo(() => {
@@ -118,48 +120,58 @@ export function Inicio({ onNavigate }: InicioProps) {
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
           <div className="flex gap-3 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {atalhos.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => onNavigate(a.id)}
-                className="snap-start shrink-0 flex w-[185px] flex-col items-center gap-3 rounded-2xl p-5 text-center text-white shadow-sm transition-all active:scale-95"
-                style={{ backgroundColor: a.accent }}
-              >
-                <span className="flex h-12 items-center justify-center shrink-0">
-                  <a.icon className="h-9 w-9" />
-                </span>
-                <span className="text-base font-semibold leading-tight">{a.label}</span>
-                <span className="text-xs leading-snug text-white/85">{a.descricao}</span>
-              </button>
-            ))}
+            {atalhos.map((a) => {
+              const tr = tTools.toolsRegistry[a.id as keyof typeof tTools.toolsRegistry];
+              const label = tr?.label ?? a.label;
+              const desc = tr?.description ?? a.descricao;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => onNavigate(a.id)}
+                  className="snap-start shrink-0 flex w-[185px] flex-col items-center gap-3 rounded-2xl p-5 text-center text-white shadow-sm transition-all active:scale-95"
+                  style={{ backgroundColor: a.accent }}
+                >
+                  <span className="flex h-12 items-center justify-center shrink-0">
+                    <a.icon className="h-9 w-9" />
+                  </span>
+                  <span className="text-base font-semibold leading-tight">{label}</span>
+                  <span className="text-xs leading-snug text-white/85">{desc}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Desktop: grid de cards */}
         <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-4">
-          {atalhos.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => onNavigate(a.id)}
-              className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
-            >
-              <div className="flex items-center justify-between">
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-white shrink-0"
-                  style={{ backgroundColor: a.accent }}
-                >
-                  <a.icon className="h-5 w-5" />
-                </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-semibold">{a.label}</p>
-                <p className="text-xs text-muted-foreground leading-snug">{a.descricao}</p>
-              </div>
-            </button>
-          ))}
+          {atalhos.map((a) => {
+            const tr = tTools.toolsRegistry[a.id as keyof typeof tTools.toolsRegistry];
+            const label = tr?.label ?? a.label;
+            const desc = tr?.description ?? a.descricao;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => onNavigate(a.id)}
+                className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-white shrink-0"
+                    style={{ backgroundColor: a.accent }}
+                  >
+                    <a.icon className="h-5 w-5" />
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">{label}</p>
+                  <p className="text-xs text-muted-foreground leading-snug">{desc}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
