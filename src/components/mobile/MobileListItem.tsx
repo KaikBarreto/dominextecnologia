@@ -9,6 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 export type ItemActionVariant = 'default' | 'edit' | 'destructive' | 'whatsapp' | 'success';
 
@@ -94,6 +96,8 @@ export function MobileListItem({
 }: MobileListItemProps) {
   const isMobile = useIsMobile();
   const instanceId = useId();
+  const { locale } = useAppLocaleContext();
+  const tP = MESSAGES[locale].app.shell.mobilePrimitives;
 
   // Variants que ganham botão colorido no swipe (têm cor própria definida).
   const SWIPE_VARIANTS: ItemActionVariant[] = ['edit', 'destructive', 'whatsapp', 'success'];
@@ -202,7 +206,7 @@ export function MobileListItem({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              aria-label="Mais ações"
+              aria-label={tP.moreActions}
               onClick={(e) => {
                 e.stopPropagation();
               }}

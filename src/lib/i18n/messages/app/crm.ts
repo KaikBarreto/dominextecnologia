@@ -327,6 +327,8 @@ export const crm = {
       viewViewedCount: 'Visualizada {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      // Mensagem do WhatsApp share (moeda formatada pelo caller via formatMoney)
+      whatsAppMsg: 'Olá! Segue a proposta #{number} no valor de {value}.\n\nAcesse: {url}',
 
       // QuoteFormDialog — wizard steps
       formTitleNew: 'Novo Orçamento',
@@ -801,6 +803,20 @@ export const crm = {
       },
     },
 
+    // ── BDISummaryCard ──
+    bdiSummary: {
+      title: 'Resumo do Orçamento',
+      bdiCalculated: 'BDI Calculado',
+      avgProfit: 'Lucro Médio',
+      totalCost: 'Custo Total',
+      displacement: '+ Deslocamento',
+      finalPrice: 'Preço Final',
+      paymentOptions: 'Opções de Pagamento',
+      cashDiscount: 'À vista ({pct}% desc.)',
+      cardInstallments: '{n}x cartão',
+      marginNote: 'Margem calculada automaticamente',
+    },
+
     // ── PDF de Proposta (VanguardaTemplate / AuroraTemplate / PrismaTemplate) ──
     // Apenas rótulos FIXOS dos templates. Conteúdo personalizado pelo tenant não
     // entra aqui (textos de proposal_customization, nomes de serviços, etc.).
@@ -1158,6 +1174,7 @@ export const crm = {
       viewViewedCount: 'Viewed {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      whatsAppMsg: 'Hi! Here is proposal #{number} for {value}.\n\nAccess it at: {url}',
 
       formTitleNew: 'New Quote',
       formTitleEdit: 'Edit Quote #{number}',
@@ -1611,6 +1628,19 @@ export const crm = {
       },
     },
 
+    bdiSummary: {
+      title: 'Quote Summary',
+      bdiCalculated: 'Calculated BDI',
+      avgProfit: 'Avg. Profit',
+      totalCost: 'Total Cost',
+      displacement: '+ Travel',
+      finalPrice: 'Final Price',
+      paymentOptions: 'Payment Options',
+      cashDiscount: 'Cash ({pct}% off)',
+      cardInstallments: '{n}x card',
+      marginNote: 'Margin calculated automatically',
+    },
+
     proposalPdf: {
       proposalLabel: 'Proposal',
       proposalTitle: 'Commercial',
@@ -1954,6 +1984,7 @@ export const crm = {
       viewViewedCount: 'Visto {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      whatsAppMsg: '¡Hola! Te comparto la propuesta #{number} por valor de {value}.\n\nAccede aquí: {url}',
 
       formTitleNew: 'Nuevo Presupuesto',
       formTitleEdit: 'Editar Presupuesto #{number}',
@@ -2407,6 +2438,19 @@ export const crm = {
       },
     },
 
+    bdiSummary: {
+      title: 'Resumen del Presupuesto',
+      bdiCalculated: 'BDI Calculado',
+      avgProfit: 'Ganancia Media',
+      totalCost: 'Costo Total',
+      displacement: '+ Desplazamiento',
+      finalPrice: 'Precio Final',
+      paymentOptions: 'Opciones de Pago',
+      cashDiscount: 'Al contado ({pct}% desc.)',
+      cardInstallments: '{n}x tarjeta',
+      marginNote: 'Margen calculado automáticamente',
+    },
+
     proposalPdf: {
       proposalLabel: 'Propuesta',
       proposalTitle: 'Comercial',
@@ -2750,6 +2794,7 @@ export const crm = {
       viewViewedCount: 'Consulté {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      whatsAppMsg: 'Bonjour ! Voici la proposition #{number} pour un montant de {value}.\n\nAccédez-y ici : {url}',
 
       formTitleNew: 'Nouveau Devis',
       formTitleEdit: 'Modifier le Devis #{number}',
@@ -3201,6 +3246,19 @@ export const crm = {
         equipment: 'Équipements',
         other: 'Autre',
       },
+    },
+
+    bdiSummary: {
+      title: 'Récapitulatif du Devis',
+      bdiCalculated: 'BDI Calculé',
+      avgProfit: 'Marge Moyenne',
+      totalCost: 'Coût Total',
+      displacement: '+ Déplacement',
+      finalPrice: 'Prix Final',
+      paymentOptions: 'Options de Paiement',
+      cashDiscount: 'Au comptant ({pct}% remise)',
+      cardInstallments: '{n}x carte',
+      marginNote: 'Marge calculée automatiquement',
     },
 
     proposalPdf: {

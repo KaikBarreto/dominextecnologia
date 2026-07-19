@@ -262,7 +262,7 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
   const handleDownloadSaved = async (att: TransactionAttachment) => {
     const url = await createAttachmentSignedUrl(att.storage_path);
     if (!url) {
-      toast({ variant: 'destructive', title: 'Não foi possível gerar o link', description: 'Tente novamente.' });
+      toast({ variant: 'destructive', title: tf.toastLinkError, description: tf.toastLinkErrorDesc });
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -318,7 +318,7 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => handleDownloadSaved(att)}
-                title="Baixar"
+                title={tf.attachmentDownloadTitle}
               >
                 <Download className="h-4 w-4" />
               </Button>
@@ -329,7 +329,7 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
                 className="h-8 w-8 text-destructive hover:text-destructive"
                 onClick={() => handleRemoveSaved(att)}
                 disabled={removeMutation.isPending}
-                title="Remover"
+                title={tf.attachmentRemoveTitle}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -360,7 +360,7 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
                 size="icon"
                 className="h-8 w-8 text-destructive hover:text-destructive"
                 onClick={() => removePending(p.id)}
-                title="Remover"
+                title={tf.attachmentRemoveTitle}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -566,8 +566,8 @@ export function TransactionFormDialog({
         if (txnIds.length === 0) {
           toast({
             variant: 'destructive',
-            title: 'Anexos não foram enviados',
-            description: 'A transação foi salva, mas não conseguimos vincular os comprovantes. Reabra a transação e anexe novamente.',
+            title: tf.toastAttachmentsNotSent,
+            description: tf.toastAttachmentsNotSentDesc,
           });
         } else {
           let failures = 0;
@@ -581,12 +581,16 @@ export function TransactionFormDialog({
           if (failures > 0) {
             toast({
               variant: 'destructive',
-              title: `${failures} anexo${failures !== 1 ? 's' : ''} não enviado${failures !== 1 ? 's' : ''}`,
-              description: 'A transação foi salva. Reabra para anexar novamente.',
+              title: failures !== 1
+                ? tf.toastAttachmentFailPlural.replace('{count}', String(failures))
+                : tf.toastAttachmentFail.replace('{count}', String(failures)),
+              description: tf.toastAttachmentFailDesc,
             });
           } else if (txnIds.length > 1) {
             toast({
-              title: `${pendingFiles.length} comprovante${pendingFiles.length !== 1 ? 's' : ''} anexado${pendingFiles.length !== 1 ? 's' : ''} em todas as ${txnIds.length} parcelas`,
+              title: pendingFiles.length !== 1
+                ? tf.toastAttachmentSuccessPlural.replace('{count}', String(pendingFiles.length)).replace('{total}', String(txnIds.length))
+                : tf.toastAttachmentSuccess.replace('{count}', String(pendingFiles.length)).replace('{total}', String(txnIds.length)),
             });
           }
         }
@@ -760,7 +764,7 @@ export function TransactionFormDialog({
                         <span className="flex items-center gap-2">
                           <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />
                           <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
-                          {a.type === 'caixa' ? `${a.name} (em dinheiro)` : a.name}
+                          {a.type === 'caixa' ? `${a.name} ${tf.cashSuffix}` : a.name}
                         </span>
                       </SelectItem>
                     ))}

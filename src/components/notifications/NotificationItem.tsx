@@ -1,5 +1,4 @@
 import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import {
   Bell,
   Package,
@@ -16,6 +15,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { UserNotification } from '@/hooks/useUserNotifications';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
+import { getDateFnsLocale } from '@/lib/format';
 
 /**
  * Mapa de ícone (string do banco) → componente Lucide. Mantém compatível com
@@ -52,6 +54,9 @@ interface NotificationItemProps {
 export function NotificationItem({ notification, onClick, onDismiss }: NotificationItemProps) {
   const Icon = getNotificationIcon(notification.icon);
   const isUnread = notification.read_at === null;
+  const { locale } = useAppLocaleContext();
+  const tPrimitives = MESSAGES[locale].app.shell.mobilePrimitives;
+  const dfLocale = getDateFnsLocale(locale);
 
   return (
     <div
@@ -76,7 +81,7 @@ export function NotificationItem({ notification, onClick, onDismiss }: Notificat
             size="icon"
             className="h-5 w-5 shrink-0 -mt-0.5 -mr-1 hover:bg-destructive hover:text-destructive-foreground"
             onClick={onDismiss}
-            aria-label="Dispensar notificação"
+            aria-label={tPrimitives.dismissNotification}
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -89,7 +94,7 @@ export function NotificationItem({ notification, onClick, onDismiss }: Notificat
         <p className="text-[10px] text-muted-foreground mt-1">
           {formatDistanceToNow(new Date(notification.created_at), {
             addSuffix: true,
-            locale: ptBR,
+            locale: dfLocale,
           })}
         </p>
       </div>

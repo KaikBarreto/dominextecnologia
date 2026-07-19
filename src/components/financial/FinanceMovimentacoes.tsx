@@ -217,7 +217,7 @@ export function FinanceMovimentacoes({
                 : 'text-muted-foreground group-hover/tab:text-current hover:bg-white/20'
             )}
             onClick={(e) => e.stopPropagation()}
-            aria-label={`Ações de ${a.name}`}
+            aria-label={fin.movements.actionsAriaLabel.replace('{name}', a.name)}
           >
             <MoreVertical className="h-3.5 w-3.5" />
           </Button>
@@ -641,7 +641,7 @@ export function FinanceMovimentacoes({
           )
         ) : (
           <TransactionListPanel
-            title="Movimentações"
+            title={fin.movements.fallbackTitle}
             type="all"
             transactions={transactions}
             isLoading={isLoading}
@@ -680,7 +680,7 @@ export function FinanceMovimentacoes({
       <ResponsiveModal
         open={!!mobileActionsAccount}
         onOpenChange={(v) => { if (!v) setMobileActionsAccount(null); }}
-        title={mobileActionsAccount ? mobileActionsAccount.name : 'Ações'}
+        title={mobileActionsAccount ? mobileActionsAccount.name : fin.movements.actionsFallback}
         className="sm:max-w-[400px]"
       >
         {mobileActionsAccount && (

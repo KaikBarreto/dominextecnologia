@@ -109,7 +109,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const activeContracts = (contracts || []).filter((c: any) => c.status === 'active');
   const contractOptions = activeContracts.map((c: any) => ({
     value: c.id,
-    label: `${c.name} - ${c.customer?.name || 'Sem cliente'}`,
+    label: `${c.name} - ${c.customer?.name || t.noCustomer}`,
   }));
 
   const activeCustomers = (customers || []).filter((c: any) => !c.is_deleted);

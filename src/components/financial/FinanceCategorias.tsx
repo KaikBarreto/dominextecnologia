@@ -355,7 +355,7 @@ export function FinanceCategorias() {
                 </div>
                 <div>
                   <h3 className="font-bold">{fin.categories.sections.revenueTitle}</h3>
-                  <p className="text-xs text-muted-foreground">{receitas.length} categorias · {fin.categories.sections.reorderHint}</p>
+                  <p className="text-xs text-muted-foreground">{receitas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleNew('entrada')}>
@@ -382,7 +382,7 @@ export function FinanceCategorias() {
                 </div>
                 <div>
                   <h3 className="font-bold">{fin.categories.sections.expenseTitle}</h3>
-                  <p className="text-xs text-muted-foreground">{despesas.length} categorias · {fin.categories.sections.reorderHint}</p>
+                  <p className="text-xs text-muted-foreground">{despesas.length} {fin.categories.sections.countSuffix} · {fin.categories.sections.reorderHint}</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleNew('saida')}>
@@ -414,13 +414,13 @@ export function FinanceCategorias() {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza? Transações com esta categoria não serão afetadas.</AlertDialogDescription>
+            <AlertDialogTitle>{fin.categories.deleteDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>{fin.categories.deleteDialog.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{fin.categories.deleteDialog.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              {fin.categories.deleteDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

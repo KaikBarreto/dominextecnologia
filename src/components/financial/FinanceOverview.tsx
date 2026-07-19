@@ -17,19 +17,11 @@ import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
-// Versão compacta pra StatCarousel mobile — "R$ 1,2k" ou "R$ 1,2M".
-function formatCurrencyShort(value: number) {
-  const abs = Math.abs(value);
-  const sign = value < 0 ? '-' : '';
-  if (abs >= 1_000_000) return `${sign}R$ ${(abs / 1_000_000).toFixed(1).replace('.', ',')}M`;
-  if (abs >= 1_000) return `${sign}R$ ${(abs / 1_000).toFixed(1).replace('.', ',')}k`;
-  return formatCurrency(value);
-}
+// formatCurrency e formatCurrencyShort estão inline no componente (usam currency do contexto).
 
 interface FinanceOverviewProps {
   transactions: (FinancialTransaction & { customer?: any })[];
@@ -54,6 +46,23 @@ const CHART_COLORS = [
 export function FinanceOverview({ transactions, summary, onNavigate, onNewReceita, onNewDespesa }: FinanceOverviewProps) {
   const { accounts, balances, cardBillTotals } = useFinancialAccounts();
   const isMobile = useIsMobile();
+  const { locale, currency } = useAppLocaleContext();
+  const ov = MESSAGES[locale].app.finance.overview;
+
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
+
+  // Versão compacta pra carrossel mobile. Extrai o símbolo do Intl pra não hardcode.
+  const formatCurrencyShort = (value: number) => {
+    const abs = Math.abs(value);
+    if (abs < 1_000) return formatCurrency(value);
+    const sign = value < 0 ? '-' : '';
+    // Pega símbolo da moeda via Intl (sem cravar "R$")
+    const sym = new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency;
+    if (abs >= 1_000_000) return `${sign}${sym} ${(abs / 1_000_000).toFixed(1)}M`;
+    return `${sign}${sym} ${(abs / 1_000).toFixed(1)}k`;
+  };
+
   const activeAccounts = accounts.filter(a => a.is_active);
 
   const getTypeIcon = (type: string) => {
@@ -95,14 +104,22 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
   const recentTransactions = transactions.slice(0, 8);
 
   const handleExportCSV = () => {
-    const headers = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Valor', 'Status'];
+    const fin = MESSAGES[locale].app.finance;
+    const headers = [
+      fin.transactionList.table.date,
+      fin.transactionList.table.type,
+      fin.transactionList.table.description,
+      fin.transactionList.table.category,
+      fin.transactionList.table.amount,
+      fin.accounts.table.status,
+    ];
     const rows = transactions.map((t) => [
       t.transaction_date,
-      t.transaction_type === 'entrada' ? 'Receita' : 'Despesa',
+      t.transaction_type === 'entrada' ? fin.transactionList.badges.revenue : fin.transactionList.badges.expense,
       `"${(t.description || '').replace(/"/g, '""')}"`,
       t.category || '',
       Number(t.amount).toFixed(2).replace('.', ','),
-      t.is_paid ? 'Pago' : 'Pendente',
+      t.is_paid ? ov.status.paid : ov.status.pending,
     ]);
     const csv = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -122,7 +139,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
   const mobileStats = [
     {
       key: 'entradas',
-      label: 'Receitas',
+      label: ov.kpi.revenue,
       value: summary.totalEntradas,
       icon: <TrendingUp className="h-5 w-5" />,
       color: 'hsl(var(--success))',
@@ -130,7 +147,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     },
     {
       key: 'saidas',
-      label: 'Despesas',
+      label: ov.kpi.expenses,
       value: summary.totalSaidas,
       icon: <TrendingDown className="h-5 w-5" />,
       color: 'hsl(var(--destructive))',
@@ -138,7 +155,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     },
     {
       key: 'saldo',
-      label: 'Saldo',
+      label: ov.kpi.balance,
       value: summary.saldo,
       icon: <Wallet className="h-5 w-5" />,
       color: summary.saldo >= 0 ? 'hsl(var(--info))' : 'hsl(var(--destructive))',
@@ -146,7 +163,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     },
     {
       key: 'a-receber',
-      label: 'A Receber',
+      label: ov.kpi.receivable,
       value: summary.aReceber,
       icon: <Clock className="h-5 w-5" />,
       color: 'hsl(var(--success))',
@@ -154,7 +171,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     },
     {
       key: 'a-pagar',
-      label: 'A Pagar',
+      label: ov.kpi.payable,
       value: summary.aPagar,
       icon: <Clock className="h-5 w-5" />,
       color: 'hsl(var(--destructive))',
@@ -204,7 +221,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               <CardContent className="p-3 sm:p-5">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Receitas</p>
+                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">{ov.kpi.revenue}</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalEntradas)}</p>
                   </div>
                   <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
@@ -217,7 +234,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               <CardContent className="p-3 sm:p-5">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Despesas</p>
+                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">{ov.kpi.expenses}</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalSaidas)}</p>
                   </div>
                   <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
@@ -231,22 +248,22 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1">
-                      <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo do Período</p>
+                      <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">{ov.kpi.balance}</p>
                       <UiTooltip>
                         <TooltipTrigger asChild>
-                          <button type="button" className="text-white/70 hover:text-white transition-colors" aria-label="Como o saldo é calculado">
+                          <button type="button" className="text-white/70 hover:text-white transition-colors" aria-label={ov.kpi.balanceAriaLabel}>
                             <HelpCircle className="h-3 w-3" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[240px]">
-                          O saldo do período é o total de receitas já recebidas menos o total de despesas já pagas dentro do período filtrado. Não considera valores a receber/a pagar nem o saldo existente nas contas.
+                          {ov.kpi.balanceTooltip}
                         </TooltipContent>
                       </UiTooltip>
                     </div>
                     <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">
                       {formatCurrency(summary.saldo)}
                     </p>
-                    <p className="text-[10px] text-white/70 mt-0.5">(Receitas − Despesas)</p>
+                    <p className="text-[10px] text-white/70 mt-0.5">{ov.kpi.balanceFormula}</p>
                   </div>
                   <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
                     <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
@@ -261,7 +278,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
             <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
               <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">{ov.kpi.receivable}</p>
                   <p className="text-lg font-bold text-success">{formatCurrency(summary.aReceber)}</p>
                 </div>
                 <Clock className="h-5 w-5 text-muted-foreground" />
@@ -270,7 +287,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
             <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
               <CardContent className="p-3 sm:p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Pagar</p>
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">{ov.kpi.payable}</p>
                   <p className="text-lg font-bold text-destructive">{formatCurrency(summary.aPagar)}</p>
                 </div>
                 <Clock className="h-5 w-5 text-muted-foreground" />
@@ -283,7 +300,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       {/* Account balances */}
       {activeAccounts.length > 0 && (
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70 mb-3">Saldo por Conta</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70 mb-3">{ov.accounts.sectionTitle}</h3>
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {activeAccounts.map(a => {
               const Icon = getTypeIcon(a.type);
@@ -308,7 +325,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-muted-foreground truncate">
                         {a.name}
-                        {isCard && <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">· fatura</span>}
+                        {isCard && <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">· {ov.accounts.invoiceSuffix}</span>}
                       </p>
                       <p className={`text-sm font-bold ${valueClass}`}>
                         {formatCurrency(balance)}
@@ -326,15 +343,15 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
         <Button size="sm" className="bg-success hover:bg-success/90 text-white gap-2 h-10 sm:h-9" onClick={onNewReceita}>
           <Plus className="h-4 w-4" />
-          Nova Receita
+          {ov.actions.newRevenue}
         </Button>
         <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-white gap-2 h-10 sm:h-9" onClick={onNewDespesa}>
           <Plus className="h-4 w-4" />
-          Nova Despesa
+          {ov.actions.newExpense}
         </Button>
         <Button size="sm" variant="outline" className="gap-2 col-span-2 sm:col-span-1 h-10 sm:h-9" onClick={handleExportCSV}>
           <FileDown className="h-4 w-4" />
-          Exportar CSV
+          {ov.actions.exportCsv}
         </Button>
       </div>
 
@@ -343,7 +360,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
         <Card>
           <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Fluxo de Caixa{isMobile && cashFlowAll.length > 3 ? ' (últimos 3 meses)' : ''}
+              {isMobile && cashFlowAll.length > 3 ? ov.charts.cashFlowShort : ov.charts.cashFlow}
             </CardTitle>
           </CardHeader>
           <CardContent className={cn(isMobile && 'p-2')}>
@@ -365,8 +382,8 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                 <YAxis tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
-                <Bar dataKey="entradas" name="Receitas" fill="url(#finov-grad-success-vertical)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="saidas" name="Despesas" fill="url(#finov-grad-destructive-vertical)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="entradas" name={ov.charts.revenueBar} fill="url(#finov-grad-success-vertical)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="saidas" name={ov.charts.expenseBar} fill="url(#finov-grad-destructive-vertical)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -378,7 +395,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
         <Card>
           <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Distribuição por Categoria{isMobile ? ' (top 5)' : ''}
+              {isMobile ? ov.charts.categoryDistShort : ov.charts.categoryDist}
             </CardTitle>
           </CardHeader>
           <CardContent className={cn(isMobile && 'p-2')}>
@@ -386,8 +403,8 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               <EmptyState
                 size="compact"
                 icon={<BarChart3 className="h-10 w-10" />}
-                title="Sem dados no período"
-                description="Nenhuma movimentação para distribuir por categoria neste período."
+                title={ov.empty.noCategoryData}
+                description={ov.empty.noCategoryDescription}
               />
             ) : (
               <div className="flex flex-col items-center gap-4">
@@ -445,13 +462,13 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
         <Card className="hidden lg:block">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Últimas Movimentações
+              {ov.charts.recentMovements}
             </CardTitle>
             <button
               onClick={() => onNavigate('historico')}
               className="text-xs text-primary hover:underline font-medium"
             >
-              Ver todas →
+              {ov.charts.viewAll}
             </button>
           </CardHeader>
           <CardContent>
@@ -459,8 +476,8 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               <EmptyState
                 size="compact"
                 icon={<Wallet className="h-10 w-10" />}
-                title="Sem dados no período"
-                description="As movimentações deste período aparecem aqui."
+                title={ov.empty.noMovements}
+                description={ov.empty.noMovementsDescription}
               />
             ) : (
               <div className="space-y-3">
@@ -487,7 +504,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                         {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                       </p>
                       <Badge variant={t.is_paid ? 'default' : 'secondary'} className="text-[10px]">
-                        {t.is_paid ? 'Pago' : 'Pendente'}
+                        {t.is_paid ? ov.status.paid : ov.status.pending}
                       </Badge>
                     </div>
                   </div>

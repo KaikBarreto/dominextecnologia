@@ -101,6 +101,9 @@ export const finance = {
       footnote:
         '* O DRE é classificado automaticamente com base no campo "Grupo DRE" de cada categoria financeira. Categorias marcadas como "Impostos" vão para deduções, "CMV" para custo do serviço, e "OPEX" para despesas operacionais.',
       footnoteStartDate: 'DRE contabilizado a partir de',
+      fallbackCategory: 'Sem categoria',
+      fallbackCompany: 'Minha Empresa',
+      fallbackPeriod: 'Período Atual',
     },
 
     // ── Contas a Pagar / Receber (FinanceContas) ────────────────────────────
@@ -212,6 +215,12 @@ export const finance = {
           check: 'Cheque',
         },
       },
+      payroll: {
+        toastError: 'Erro ao pagar folha',
+        toastSuccess: 'Folha quitada com sucesso',
+        receiveTitle: 'Como foi recebido?',
+        noCustomer: 'Sem cliente',
+      },
     },
 
     // ── Movimentações (FinanceMovimentacoes) ────────────────────────────────
@@ -263,6 +272,9 @@ export const finance = {
         confirm: 'Recalcular',
         cancel: 'Cancelar',
       },
+      fallbackTitle: 'Movimentações',
+      actionsFallback: 'Ações',
+      actionsAriaLabel: 'Ações de {name}',
     },
 
     // ── Lista de transações (TransactionListPanel) ───────────────────────────
@@ -328,6 +340,12 @@ export const finance = {
         expense: 'Despesa',
         transaction: 'Transação',
       },
+      toastDeleted: 'Lançamento excluído!',
+      toastDeletedPlural: 'Lançamentos excluídos!',
+      toastDeleteError: 'Erro ao excluir',
+      toastPdfError: 'Erro ao gerar PDF',
+      toastExcelError: 'Erro ao gerar Excel',
+      cashSuffix: '(dinheiro)',
     },
 
     // ── Categorias (FinanceCategorias) ───────────────────────────────────────
@@ -345,6 +363,7 @@ export const finance = {
         expenseTitle: 'Categorias de Despesa',
         reorderHint: 'arraste para reordenar',
         newButton: 'Nova',
+        countSuffix: 'categorias',
       },
       system: 'Sistema',
       systemTooltip: 'Categoria do sistema',
@@ -447,6 +466,18 @@ export const finance = {
       },
       changeInstallmentConfirm: 'Você está alterando esta despesa para {count} parcelas. A transação original será removida e {count} novas parcelas serão criadas no lugar. Os anexos serão preservados em todas as parcelas. Continuar?',
       changeMethodConfirm: 'Você está alterando a forma de pagamento desta despesa. {groupInfo} e será recriada ({parcelas}) com a nova forma de pagamento. Os anexos serão preservados. Continuar?',
+      attachmentDownloadTitle: 'Baixar',
+      attachmentRemoveTitle: 'Remover',
+      toastLinkError: 'Não foi possível gerar o link',
+      toastLinkErrorDesc: 'Tente novamente.',
+      toastAttachmentsNotSent: 'Anexos não foram enviados',
+      toastAttachmentsNotSentDesc: 'A transação foi salva, mas não conseguimos vincular os comprovantes. Reabra a transação e anexe novamente.',
+      toastAttachmentFail: '{count} anexo não enviado',
+      toastAttachmentFailPlural: '{count} anexos não enviados',
+      toastAttachmentFailDesc: 'A transação foi salva. Reabra para anexar novamente.',
+      toastAttachmentSuccess: '{count} comprovante anexado em todas as {total} parcelas',
+      toastAttachmentSuccessPlural: '{count} comprovantes anexados em todas as {total} parcelas',
+      cashSuffix: '(em dinheiro)',
     },
 
     // ── TransferFormDialog ─────────────────────────────────────────────────────
@@ -463,6 +494,17 @@ export const finance = {
       descriptionPlaceholder: 'Ex: Transferência para pagar fornecedor',
       cancelLabel: 'Cancelar',
       confirmLabel: 'Transferir',
+    },
+
+    // ── BankInstitutionCombobox ────────────────────────────────────────────────
+    bankCombobox: {
+      placeholder: 'Selecione a instituição',
+      loading: 'Carregando bancos...',
+      searching: 'Carregando...',
+      empty: 'Nenhum banco encontrado.',
+      searchPlaceholder: 'Buscar banco...',
+      headingPopular: 'Mais populares',
+      headingAll: 'Todos os bancos',
     },
 
     // ── AccountFormDialog ──────────────────────────────────────────────────────
@@ -496,6 +538,8 @@ export const finance = {
       saveLabel: 'Salvar',
       createAccountLabel: 'Criar Conta',
       createCardLabel: 'Criar Cartão',
+      dayLabel: 'Dia {d}',
+      colorAriaLabel: 'Cor {c}',
     },
 
     // ── CategoryFormDialog ─────────────────────────────────────────────────────
@@ -574,6 +618,7 @@ export const finance = {
       createLabel: 'Criar Conta',
       savingLabel: 'Salvando...',
       creatingLabel: 'Criando...',
+      noCustomer: 'Sem cliente',
     },
 
     // ── AdjustBalanceDialog ────────────────────────────────────────────────────
@@ -867,6 +912,9 @@ export const finance = {
       footnote:
         '* The income statement is automatically classified based on the "DRE Group" field of each financial category. Categories marked as "Taxes" go to deductions, "COGS" to cost of service, and "OPEX" to operating expenses.',
       footnoteStartDate: 'Income statement calculated from',
+      fallbackCategory: 'No category',
+      fallbackCompany: 'My Company',
+      fallbackPeriod: 'Current Period',
     },
     accounts: {
       header: {
@@ -975,6 +1023,12 @@ export const finance = {
           check: 'Check',
         },
       },
+      payroll: {
+        toastError: 'Error paying payroll',
+        toastSuccess: 'Payroll settled successfully',
+        receiveTitle: 'How was it received?',
+        noCustomer: 'No customer',
+      },
     },
     movements: {
       header: {
@@ -1024,6 +1078,9 @@ export const finance = {
         confirm: 'Recalculate',
         cancel: 'Cancel',
       },
+      fallbackTitle: 'Movements',
+      actionsFallback: 'Actions',
+      actionsAriaLabel: 'Actions for {name}',
     },
     transactionList: {
       countSingular: 'record',
@@ -1087,6 +1144,12 @@ export const finance = {
         expense: 'Expense',
         transaction: 'Transaction',
       },
+      toastDeleted: 'Entry deleted!',
+      toastDeletedPlural: 'Entries deleted!',
+      toastDeleteError: 'Error deleting',
+      toastPdfError: 'Error generating PDF',
+      toastExcelError: 'Error generating Excel',
+      cashSuffix: '(cash)',
     },
     categories: {
       header: {
@@ -1102,6 +1165,7 @@ export const finance = {
         expenseTitle: 'Expense Categories',
         reorderHint: 'drag to reorder',
         newButton: 'New',
+        countSuffix: 'categories',
       },
       system: 'System',
       systemTooltip: 'System category',
@@ -1203,6 +1267,18 @@ export const finance = {
       },
       changeInstallmentConfirm: 'You are changing this expense to {count} installments. The original transaction will be removed and {count} new installments will be created. Attachments will be preserved in all installments. Continue?',
       changeMethodConfirm: 'You are changing the payment method of this expense. {groupInfo} and will be recreated ({parcelas}) with the new payment method. Attachments will be preserved. Continue?',
+      attachmentDownloadTitle: 'Download',
+      attachmentRemoveTitle: 'Remove',
+      toastLinkError: 'Could not generate link',
+      toastLinkErrorDesc: 'Please try again.',
+      toastAttachmentsNotSent: 'Attachments not sent',
+      toastAttachmentsNotSentDesc: 'The transaction was saved, but we could not link the receipts. Reopen the transaction to attach again.',
+      toastAttachmentFail: '{count} attachment not sent',
+      toastAttachmentFailPlural: '{count} attachments not sent',
+      toastAttachmentFailDesc: 'The transaction was saved. Reopen to attach again.',
+      toastAttachmentSuccess: '{count} receipt attached to all {total} installments',
+      toastAttachmentSuccessPlural: '{count} receipts attached to all {total} installments',
+      cashSuffix: '(cash)',
     },
 
     transferForm: {
@@ -1218,6 +1294,16 @@ export const finance = {
       descriptionPlaceholder: 'e.g. Transfer to pay supplier',
       cancelLabel: 'Cancel',
       confirmLabel: 'Transfer',
+    },
+
+    bankCombobox: {
+      placeholder: 'Select institution',
+      loading: 'Loading banks...',
+      searching: 'Loading...',
+      empty: 'No bank found.',
+      searchPlaceholder: 'Search bank...',
+      headingPopular: 'Most popular',
+      headingAll: 'All banks',
     },
 
     accountForm: {
@@ -1250,6 +1336,8 @@ export const finance = {
       saveLabel: 'Save',
       createAccountLabel: 'Create Account',
       createCardLabel: 'Create Card',
+      dayLabel: 'Day {d}',
+      colorAriaLabel: 'Color {c}',
     },
 
     categoryForm: {
@@ -1326,6 +1414,7 @@ export const finance = {
       createLabel: 'Create Bill',
       savingLabel: 'Saving...',
       creatingLabel: 'Creating...',
+      noCustomer: 'No customer',
     },
 
     adjustBalance: {
@@ -1613,6 +1702,9 @@ export const finance = {
       footnote:
         '* El estado de resultados se clasifica automáticamente según el campo "Grupo DRE" de cada categoría financiera. Las marcadas como "Impuestos" van a deducciones, "Costo" al costo del servicio y "OPEX" a gastos operativos.',
       footnoteStartDate: 'Estado contabilizado desde',
+      fallbackCategory: 'Sin categoría',
+      fallbackCompany: 'Mi Empresa',
+      fallbackPeriod: 'Período Actual',
     },
     accounts: {
       header: {
@@ -1722,6 +1814,12 @@ export const finance = {
           check: 'Cheque',
         },
       },
+      payroll: {
+        toastError: 'Error al pagar la nómina',
+        toastSuccess: 'Nómina liquidada con éxito',
+        receiveTitle: '¿Cómo fue recibido?',
+        noCustomer: 'Sin cliente',
+      },
     },
     movements: {
       header: {
@@ -1771,6 +1869,9 @@ export const finance = {
         confirm: 'Recalcular',
         cancel: 'Cancelar',
       },
+      fallbackTitle: 'Movimientos',
+      actionsFallback: 'Acciones',
+      actionsAriaLabel: 'Acciones de {name}',
     },
     transactionList: {
       countSingular: 'registro',
@@ -1834,6 +1935,12 @@ export const finance = {
         expense: 'Gasto',
         transaction: 'Transacción',
       },
+      toastDeleted: '¡Registro eliminado!',
+      toastDeletedPlural: '¡Registros eliminados!',
+      toastDeleteError: 'Error al eliminar',
+      toastPdfError: 'Error al generar PDF',
+      toastExcelError: 'Error al generar Excel',
+      cashSuffix: '(efectivo)',
     },
     categories: {
       header: {
@@ -1849,6 +1956,7 @@ export const finance = {
         expenseTitle: 'Categorías de Gastos',
         reorderHint: 'arrastre para reordenar',
         newButton: 'Nueva',
+        countSuffix: 'categorías',
       },
       system: 'Sistema',
       systemTooltip: 'Categoría del sistema',
@@ -1950,6 +2058,18 @@ export const finance = {
       },
       changeInstallmentConfirm: 'Está cambiando este gasto a {count} cuotas. La transacción original será eliminada y se crearán {count} cuotas nuevas. Los archivos adjuntos se mantendrán en todas las cuotas. ¿Continuar?',
       changeMethodConfirm: 'Está cambiando la forma de pago de este gasto. {groupInfo} y se recreará ({parcelas}) con la nueva forma de pago. Los archivos se mantendrán. ¿Continuar?',
+      attachmentDownloadTitle: 'Descargar',
+      attachmentRemoveTitle: 'Eliminar',
+      toastLinkError: 'No se pudo generar el enlace',
+      toastLinkErrorDesc: 'Inténtelo de nuevo.',
+      toastAttachmentsNotSent: 'Archivos no enviados',
+      toastAttachmentsNotSentDesc: 'La transacción fue guardada, pero no pudimos vincular los comprobantes. Vuelva a abrir la transacción para adjuntar.',
+      toastAttachmentFail: '{count} archivo no enviado',
+      toastAttachmentFailPlural: '{count} archivos no enviados',
+      toastAttachmentFailDesc: 'La transacción fue guardada. Vuelva a abrir para adjuntar.',
+      toastAttachmentSuccess: '{count} comprobante adjunto en las {total} cuotas',
+      toastAttachmentSuccessPlural: '{count} comprobantes adjuntos en las {total} cuotas',
+      cashSuffix: '(efectivo)',
     },
 
     transferForm: {
@@ -1965,6 +2085,16 @@ export const finance = {
       descriptionPlaceholder: 'Ej.: Transferencia para pago de proveedor',
       cancelLabel: 'Cancelar',
       confirmLabel: 'Transferir',
+    },
+
+    bankCombobox: {
+      placeholder: 'Seleccione la institución',
+      loading: 'Cargando bancos...',
+      searching: 'Cargando...',
+      empty: 'Ningún banco encontrado.',
+      searchPlaceholder: 'Buscar banco...',
+      headingPopular: 'Más populares',
+      headingAll: 'Todos los bancos',
     },
 
     accountForm: {
@@ -1997,6 +2127,8 @@ export const finance = {
       saveLabel: 'Guardar',
       createAccountLabel: 'Crear Cuenta',
       createCardLabel: 'Crear Tarjeta',
+      dayLabel: 'Día {d}',
+      colorAriaLabel: 'Color {c}',
     },
 
     categoryForm: {
@@ -2073,6 +2205,7 @@ export const finance = {
       createLabel: 'Crear Cuenta',
       savingLabel: 'Guardando...',
       creatingLabel: 'Creando...',
+      noCustomer: 'Sin cliente',
     },
 
     adjustBalance: {
@@ -2360,6 +2493,9 @@ export const finance = {
       footnote:
         '* Le compte de résultat est classifié automatiquement selon le champ "Groupe DRE" de chaque catégorie financière. Les catégories marquées "Impôts" vont en déductions, "Coût" au coût du service et "OPEX" aux charges d\'exploitation.',
       footnoteStartDate: 'Résultat comptabilisé à partir du',
+      fallbackCategory: 'Sans catégorie',
+      fallbackCompany: 'Mon Entreprise',
+      fallbackPeriod: 'Période Actuelle',
     },
     accounts: {
       header: {
@@ -2469,6 +2605,12 @@ export const finance = {
           check: 'Chèque',
         },
       },
+      payroll: {
+        toastError: 'Erreur lors du paiement de la paie',
+        toastSuccess: 'Paie réglée avec succès',
+        receiveTitle: 'Comment a-t-il été reçu ?',
+        noCustomer: 'Sans client',
+      },
     },
     movements: {
       header: {
@@ -2518,6 +2660,9 @@ export const finance = {
         confirm: 'Recalculer',
         cancel: 'Annuler',
       },
+      fallbackTitle: 'Mouvements',
+      actionsFallback: 'Actions',
+      actionsAriaLabel: 'Actions pour {name}',
     },
     transactionList: {
       countSingular: 'enregistrement',
@@ -2581,6 +2726,12 @@ export const finance = {
         expense: 'Charge',
         transaction: 'Transaction',
       },
+      toastDeleted: 'Écriture supprimée !',
+      toastDeletedPlural: 'Écritures supprimées !',
+      toastDeleteError: 'Erreur lors de la suppression',
+      toastPdfError: 'Erreur lors de la génération du PDF',
+      toastExcelError: 'Erreur lors de la génération du fichier Excel',
+      cashSuffix: '(espèces)',
     },
     categories: {
       header: {
@@ -2596,6 +2747,7 @@ export const finance = {
         expenseTitle: 'Catégories de Charges',
         reorderHint: 'glisser pour réorganiser',
         newButton: 'Nouveau',
+        countSuffix: 'catégories',
       },
       system: 'Système',
       systemTooltip: 'Catégorie système',
@@ -2697,6 +2849,18 @@ export const finance = {
       },
       changeInstallmentConfirm: 'Vous modifiez cette dépense en {count} versements. La transaction originale sera supprimée et {count} nouveaux versements seront créés. Les fichiers seront conservés dans tous les versements. Continuer ?',
       changeMethodConfirm: 'Vous modifiez le mode de paiement de cette dépense. {groupInfo} et sera recréé ({parcelas}) avec le nouveau mode de paiement. Les fichiers seront conservés. Continuer ?',
+      attachmentDownloadTitle: 'Télécharger',
+      attachmentRemoveTitle: 'Supprimer',
+      toastLinkError: 'Impossible de générer le lien',
+      toastLinkErrorDesc: 'Veuillez réessayer.',
+      toastAttachmentsNotSent: 'Pièces jointes non envoyées',
+      toastAttachmentsNotSentDesc: 'La transaction a été enregistrée, mais nous n\'avons pas pu lier les justificatifs. Rouvrez la transaction pour les joindre à nouveau.',
+      toastAttachmentFail: '{count} pièce jointe non envoyée',
+      toastAttachmentFailPlural: '{count} pièces jointes non envoyées',
+      toastAttachmentFailDesc: 'La transaction a été enregistrée. Rouvrez pour joindre à nouveau.',
+      toastAttachmentSuccess: '{count} justificatif joint à tous les {total} versements',
+      toastAttachmentSuccessPlural: '{count} justificatifs joints à tous les {total} versements',
+      cashSuffix: '(espèces)',
     },
 
     transferForm: {
@@ -2712,6 +2876,16 @@ export const finance = {
       descriptionPlaceholder: 'Ex. : Virement pour règlement fournisseur',
       cancelLabel: 'Annuler',
       confirmLabel: 'Virer',
+    },
+
+    bankCombobox: {
+      placeholder: 'Sélectionner l\'établissement',
+      loading: 'Chargement des banques...',
+      searching: 'Chargement...',
+      empty: 'Aucune banque trouvée.',
+      searchPlaceholder: 'Rechercher une banque...',
+      headingPopular: 'Les plus populaires',
+      headingAll: 'Toutes les banques',
     },
 
     accountForm: {
@@ -2744,6 +2918,8 @@ export const finance = {
       saveLabel: 'Enregistrer',
       createAccountLabel: 'Créer le Compte',
       createCardLabel: 'Créer la Carte',
+      dayLabel: 'Jour {d}',
+      colorAriaLabel: 'Couleur {c}',
     },
 
     categoryForm: {
@@ -2820,6 +2996,7 @@ export const finance = {
       createLabel: 'Créer la facture',
       savingLabel: 'Enregistrement...',
       creatingLabel: 'Création...',
+      noCustomer: 'Sans client',
     },
 
     adjustBalance: {

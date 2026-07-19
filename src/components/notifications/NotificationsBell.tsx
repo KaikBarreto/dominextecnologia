@@ -11,17 +11,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserNotifications, type UserNotification } from '@/hooks/useUserNotifications';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { NotificationItem } from './NotificationItem';
 import { NotificationDetailModal } from './NotificationDetailModal';
 
 type GroupKey = 'today' | 'yesterday' | 'week' | 'older';
-
-const GROUP_LABELS: Record<GroupKey, string> = {
-  today: 'Hoje',
-  yesterday: 'Ontem',
-  week: 'Esta semana',
-  older: 'Anteriores',
-};
 
 const GROUP_ORDER: GroupKey[] = ['today', 'yesterday', 'week', 'older'];
 
@@ -65,6 +60,8 @@ export function NotificationsBell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<UserNotification | null>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss } = useUserNotifications();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.shell.notifications;
 
   // Agrupa por data (BRT). Preserva a ordem original (created_at DESC) dentro
   // de cada bucket porque iteramos sobre `notifications` já ordenada pelo hook.
@@ -79,10 +76,16 @@ export function NotificationsBell() {
     for (const n of notifications) {
       buckets[notificationGroup(n.created_at, todayIndex)].push(n);
     }
-    return GROUP_ORDER.map((key) => ({ key, label: GROUP_LABELS[key], items: buckets[key] })).filter(
+    const groupLabels: Record<GroupKey, string> = {
+      today: t.groupToday,
+      yesterday: t.groupYesterday,
+      week: t.groupWeek,
+      older: t.groupOlder,
+    };
+    return GROUP_ORDER.map((key) => ({ key, label: groupLabels[key], items: buckets[key] })).filter(
       (g) => g.items.length > 0,
     );
-  }, [notifications]);
+  }, [notifications, t]);
 
   // Click na notif: marca como lida + abre detalhe (em vez de navegar direto).
   // Detalhe tem botão "Abrir" que dispara o action_url efetivo.
@@ -109,7 +112,7 @@ export function NotificationsBell() {
       size="icon"
       className="relative h-9 w-9"
       onClick={isMobile ? () => setDrawerOpen(true) : undefined}
-      aria-label={unreadCount > 0 ? `${unreadCount} notificações não lidas` : 'Notificações'}
+      aria-label={unreadCount > 0 ? t.ariaLabelUnread.replace('{n}', String(unreadCount)) : t.ariaLabel}
     >
       <Bell className="h-5 w-5" />
       {unreadCount > 0 && (
@@ -128,7 +131,7 @@ export function NotificationsBell() {
       {notifications.length === 0 ? (
         <div className="py-12 text-center text-muted-foreground">
           <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">Nenhuma notificação</p>
+          <p className="text-sm">{t.empty}</p>
         </div>
       ) : (
         <>
@@ -155,7 +158,7 @@ export function NotificationsBell() {
                 className="w-full text-muted-foreground hover:bg-primary hover:text-primary-foreground"
                 onClick={() => markAllAsRead()}
               >
-                Marcar todas como lidas
+                {t.markAllRead}
               </Button>
             </div>
           )}
@@ -182,10 +185,10 @@ export function NotificationsBell() {
             <DrawerHeader className="text-left">
               <DrawerTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
-                Notificações
+                {t.title}
                 {unreadCount > 0 && (
                   <Badge variant="destructive" className="ml-auto">
-                    {unreadCount} nova{unreadCount !== 1 ? 's' : ''}
+                    {(unreadCount !== 1 ? t.badgeNewPlural : t.badgeNew).replace('{n}', String(unreadCount))}
                   </Badge>
                 )}
               </DrawerTitle>
@@ -210,7 +213,7 @@ export function NotificationsBell() {
           <div className="px-2 py-1.5 mb-1 border-b">
             <div className="text-sm font-semibold flex items-center gap-2">
               <Bell className="h-4 w-4 text-primary" />
-              Notificações
+              {t.title}
               {unreadCount > 0 && (
                 <Badge variant="destructive" className="ml-auto">
                   {unreadCount}

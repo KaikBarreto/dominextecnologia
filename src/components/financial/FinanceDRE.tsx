@@ -96,7 +96,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
 
     transactions.forEach((t) => {
       const amount = Number(t.amount);
-      const cat = t.category || 'Sem categoria';
+      const cat = t.category || fin.dre.fallbackCategory;
       if (t.transaction_type === 'entrada') {
         receitaBruta += amount;
         receitaMap.set(cat, (receitaMap.get(cat) || 0) + amount);
@@ -159,7 +159,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
     try {
       generateDreHtml({
         company: {
-          name: settings?.name || 'Minha Empresa',
+          name: settings?.name || fin.dre.fallbackCompany,
           document: settings?.document || undefined,
           phone: settings?.phone || undefined,
           email: settings?.email || undefined,
@@ -168,7 +168,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
           state: settings?.state || undefined,
           logo_url: settings?.logo_url || undefined,
         },
-        period: 'Período Atual',
+        period: fin.dre.fallbackPeriod,
         receitaBruta: dre.receitaBruta,
         impostos: dre.impostos,
         impostosCategories,

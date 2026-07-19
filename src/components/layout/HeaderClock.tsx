@@ -45,7 +45,7 @@ export function HeaderClock() {
     <Tooltip>
       <TooltipTrigger asChild>
         <time
-          aria-label={`${shellT.clockDateTimeLabel ?? 'Data e hora'}: ${label}`}
+          aria-label={`${shellT.clockDateTimeLabel}: ${label}`}
           className="hidden lg:flex items-center text-[13px] font-medium tabular-nums text-muted-foreground select-none cursor-default"
         >
           {label}

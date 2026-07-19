@@ -187,10 +187,10 @@ export function TransactionListPanel({
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['account-balances'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
-      toast({ title: deleteAllRelated ? 'Lançamentos excluídos!' : 'Lançamento excluído!' });
+      toast({ title: deleteAllRelated ? fin.transactionList.toastDeletedPlural : fin.transactionList.toastDeleted });
       setPendingDelete(null);
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(e) });
+      toast({ variant: 'destructive', title: fin.transactionList.toastDeleteError, description: getErrorMessage(e) });
     } finally {
       setIsDeleting(false);
     }
@@ -229,7 +229,7 @@ export function TransactionListPanel({
         rows: buildExportRows(),
       });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: getErrorMessage(e) });
+      toast({ variant: 'destructive', title: fin.transactionList.toastPdfError, description: getErrorMessage(e) });
     }
   };
 
@@ -237,7 +237,7 @@ export function TransactionListPanel({
     try {
       await generateMovimentacoesExcel({ title, rows: buildExportRows() });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Erro ao gerar Excel', description: getErrorMessage(e) });
+      toast({ variant: 'destructive', title: fin.transactionList.toastExcelError, description: getErrorMessage(e) });
     }
   };
 
@@ -515,7 +515,7 @@ export function TransactionListPanel({
                       {!hideAccountColumn && (t as any).account && (
                         <span className="inline-flex items-center gap-1 whitespace-nowrap">
                           <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
-                          {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
+                          {(t as any).account.type === 'caixa' ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}` : (t as any).account.name}
                         </span>
                       )}
                       {t.customer && <span className="truncate">{t.customer.name}</span>}
@@ -608,7 +608,7 @@ export function TransactionListPanel({
                             <Badge variant="secondary" className="text-[10px] flex items-center gap-1 w-fit whitespace-nowrap">
                               <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
                               <span className="whitespace-nowrap">
-                                {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
+                                {(t as any).account.type === 'caixa' ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}` : (t as any).account.name}
                               </span>
                             </Badge>
                           )}

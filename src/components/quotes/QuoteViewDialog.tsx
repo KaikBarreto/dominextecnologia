@@ -21,6 +21,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface QuoteViewDialogProps {
   open: boolean;
@@ -32,7 +33,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
   const isMobile = useIsMobile();
   const { settings: company } = useCompanySettings();
   const printRef = useRef<HTMLDivElement>(null);
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
 
   if (!quote) return null;
@@ -52,7 +53,11 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
 
   const handleWhatsApp = () => {
     const url = `${window.location.origin}/proposta/${quote.token}`;
-    const msg = `Olá! Segue a proposta #${quote.quote_number} no valor de R$ ${(quote.total_value ?? 0).toFixed(2)}.\n\nAcesse: ${url}`;
+    const value = formatMoney(quote.total_value ?? 0, currency, locale);
+    const msg = tq.whatsAppMsg
+      .replace('{number}', String(quote.quote_number))
+      .replace('{value}', value)
+      .replace('{url}', url);
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

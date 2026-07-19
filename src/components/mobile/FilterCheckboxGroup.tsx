@@ -4,6 +4,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 /** Normaliza para busca: ignora acentos e caixa. */
 const normalize = (s: string) =>
@@ -39,10 +41,13 @@ export function FilterCheckboxGroup({
   options,
   selected,
   onChange,
-  emptyLabel = 'Todos',
+  emptyLabel,
   searchThreshold = 6,
   className,
 }: FilterCheckboxGroupProps) {
+  const { locale } = useAppLocaleContext();
+  const tP = MESSAGES[locale].app.shell.mobilePrimitives;
+  const resolvedEmptyLabel = emptyLabel ?? tP.filterAll;
   const allSelected = selected.length === options.length;
   const noneSelected = selected.length === 0;
 
@@ -96,7 +101,7 @@ export function FilterCheckboxGroup({
           {label}
           {!noneSelected && !allSelected && (
             <span className="ml-1.5 text-[10px] text-primary normal-case font-normal tracking-normal">
-              ({selected.length} selecionados)
+              {tP.filterSelected.replace('{n}', String(selected.length))}
             </span>
           )}
         </label>
@@ -106,7 +111,7 @@ export function FilterCheckboxGroup({
               type="button"
               variant="ghost"
               size="icon"
-              aria-label={searchOpen ? 'Fechar busca' : 'Buscar'}
+              aria-label={searchOpen ? tP.filterCloseSearch : tP.filterOpenSearch}
               className={cn(
                 'h-9 w-9 text-muted-foreground hover:text-foreground',
                 searchOpen && 'text-primary',
@@ -125,7 +130,7 @@ export function FilterCheckboxGroup({
               className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
               onClick={selectAll}
             >
-              Todos
+              {tP.filterSelectAll}
             </Button>
           )}
           {!noneSelected && (
@@ -136,7 +141,7 @@ export function FilterCheckboxGroup({
               className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
               onClick={clearAll}
             >
-              Limpar
+              {tP.filterClear}
             </Button>
           )}
         </div>
@@ -149,7 +154,7 @@ export function FilterCheckboxGroup({
           inputMode="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar..."
+          placeholder={tP.filterPlaceholder}
           className="h-9 text-sm"
         />
       )}
@@ -157,11 +162,11 @@ export function FilterCheckboxGroup({
       <div className="rounded-xl border bg-card divide-y divide-border/60 max-h-[44vh] overflow-y-auto">
         {options.length === 0 ? (
           <div className="px-3 py-3 text-xs text-muted-foreground text-center">
-            Nenhuma opção disponível
+            {tP.filterEmptyOptions}
           </div>
         ) : visibleOptions.length === 0 ? (
           <div className="px-3 py-3 text-xs text-muted-foreground text-center">
-            Nenhuma opção encontrada
+            {tP.filterEmptySearch}
           </div>
         ) : (
           visibleOptions.map((opt) => {
@@ -194,7 +199,7 @@ export function FilterCheckboxGroup({
 
       {noneSelected && (
         <p className="text-[11px] text-muted-foreground italic">
-          Vazio = {emptyLabel.toLowerCase()}
+          {tP.filterHint.replace('{emptyLabel}', resolvedEmptyLabel.toLowerCase())}
         </p>
       )}
     </div>

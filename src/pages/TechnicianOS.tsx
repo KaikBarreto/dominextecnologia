@@ -82,7 +82,7 @@ import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress, haver
 import { osTypeLabels, getOsTypeLabel, getOsStatusLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PublicAppLocaleProvider } from '@/contexts/AppLocaleContext';
+import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
@@ -164,6 +164,7 @@ function OsEquipmentAccordionItem({
   registerAutoFill,
   visibility,
   validations,
+  tFlow,
 }: {
   /** Chave do accordion = por EQUIPAMENTO (equipment_id ou standalone). */
   groupKey: string;
@@ -193,6 +194,7 @@ function OsEquipmentAccordionItem({
    * Usado só pra montar o selo de pendência/concluído de CADA checklist aninhado.
    */
   validations: Record<string, FormValidationResult>;
+  tFlow: typeof MESSAGES['pt-br']['app']['os']['technicianFlow'];
 }) {
   // SÓ o equipamento ABERTO fica sticky (mesmo critério do PMOC) — evita
   // empilhamento de cabeçalhos sobrepostos e briga de z-index.
@@ -277,7 +279,7 @@ function OsEquipmentAccordionItem({
           statusBadge={
             isComplete ? (
               <Badge variant="success" className="gap-1 shrink-0">
-                <Check className="h-3 w-3" /> Concluído
+                <Check className="h-3 w-3" /> {tFlow.checklistBadgeDone}
               </Badge>
             ) : visibleTotal > 0 ? (
               // Contador "X de Y" — respondidas/total de perguntas do equipamento
@@ -328,7 +330,7 @@ function OsEquipmentAccordionItem({
                     </p>
                     {checklistComplete ? (
                       <Badge variant="success" className="gap-1 shrink-0 text-[10px]">
-                        <Check className="h-3 w-3" /> Concluído
+                        <Check className="h-3 w-3" /> {tFlow.checklistBadgeDone}
                       </Badge>
                     ) : v && v.visibleCount > 0 ? (
                       // Contador EXIBIDO = respondidas/total de perguntas da visita
@@ -339,7 +341,7 @@ function OsEquipmentAccordionItem({
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        Pendente
+                        {tFlow.checklistBadgePending}
                       </Badge>
                     )}
                     <ChevronDown
@@ -404,6 +406,12 @@ function TechnicianOSInner() {
   // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
   // nem admin Auctus, então é seguro chamá-lo sempre (regras de hooks).
   const { blocked: subscriptionBlocked, screen: subscriptionScreen } = useSubscriptionBlock();
+  // Strings do fluxo autenticado do técnico. No modo público (anon) o hook
+  // aponta pro locale da sessão corrente — não interfere, pois as strings deste
+  // namespace só são usadas no caminho isAuthenticated===true.
+  const { locale: appLocale } = useAppLocaleContext();
+  const tFlow = MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.technicianFlow
+    ?? MESSAGES['pt-br'].app.os.technicianFlow;
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any; contract?: any }) | null>(null);
   // UUID REAL da OS — fonte ÚNICA e estável pra TODA escrita/consulta keyed por
@@ -781,10 +789,10 @@ function TechnicianOSInner() {
       });
       await navigator.clipboard.writeText(link);
       setTrackingLinkCopied(true);
-      toast({ title: 'Link copiado!' });
+      toast({ title: tFlow.toastLinkCopied });
       setTimeout(() => setTrackingLinkCopied(false), 2000);
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível copiar o link', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: tFlow.toastLinkCopyError, description: getErrorMessage(error) });
     }
   };
   // Fecha o mapa em tela cheia com Esc.
@@ -1400,7 +1408,7 @@ function TechnicianOSInner() {
   const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Seu navegador não suporta geolocalização. Use um navegador atualizado.'));
+        reject(new Error(tFlow.geoNotSupported));
         return;
       }
 
@@ -1414,17 +1422,13 @@ function TechnicianOSInner() {
       const buildMessage = (code: number, isFallback: boolean): string => {
         switch (code) {
           case 1 /* PERMISSION_DENIED */:
-            return 'Você precisa permitir o acesso à localização para registrar o serviço. Abra as configurações do navegador, libere a localização para este site e tente novamente.';
+            return tFlow.geoDenied;
           case 2 /* POSITION_UNAVAILABLE */:
-            return isFallback
-              ? 'Não conseguimos obter sua localização nem pelo GPS, nem pelas redes próximas. Verifique se o GPS do aparelho está ligado, se você tem sinal de internet, e tente sair pra um local mais aberto.'
-              : 'Não conseguimos obter sua localização agora. Verifique se o GPS do aparelho está ligado e se você tem sinal.';
+            return isFallback ? tFlow.geoUnavailableFallback : tFlow.geoUnavailable;
           case 3 /* TIMEOUT */:
-            return isFallback
-              ? 'A localização demorou demais pra responder, mesmo tentando GPS e redes próximas. Tente sair pra um local mais aberto e finalize a OS daqui a alguns segundos.'
-              : 'A localização demorou demais para responder. Tente de novo daqui a alguns segundos.';
+            return isFallback ? tFlow.geoTimeoutFallback : tFlow.geoTimeout;
           default:
-            return 'Não foi possível obter sua localização. Verifique permissão e GPS, e tente novamente.';
+            return tFlow.geoUnknown;
         }
       };
 
@@ -1538,7 +1542,7 @@ function TechnicianOSInner() {
       setCheckInLocation(location);
       setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus, check_in_time: now } : null);
 
-      toast({ title: 'Check-in realizado com sucesso!' });
+      toast({ title: tFlow.toastCheckInDone });
 
       // Endereço em BACKGROUND: o check-in já gravou {lat,lng} (rápido, sem
       // depender da rede). Quando o reverse geocode resolver, faz um UPDATE leve
@@ -1557,7 +1561,7 @@ function TechnicianOSInner() {
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro no check-in',
+        title: tFlow.toastCheckInError,
         description: getErrorMessage(error),
       });
     }
@@ -1577,18 +1581,18 @@ function TechnicianOSInner() {
       }
       toast({
         variant: 'destructive',
-        title: 'Campos obrigatórios pendentes',
-        description: `Preencha os campos: ${allMissingQuestions.slice(0, 3).join(', ')}${allMissingQuestions.length > 3 ? '...' : ''}`,
+        title: tFlow.toastMissingRequired,
+        description: tFlow.toastMissingRequiredDesc.replace('{fields}', `${allMissingQuestions.slice(0, 3).join(', ')}${allMissingQuestions.length > 3 ? '...' : ''}`),
       });
       return;
     }
 
     if ((serviceOrder as any)?.require_tech_signature && !techSignature) {
-      toast({ variant: 'destructive', title: 'Assinatura do técnico obrigatória' });
+      toast({ variant: 'destructive', title: tFlow.toastTechSigRequired });
       return;
     }
     if ((serviceOrder as any)?.require_client_signature && !clientSignature) {
-      toast({ variant: 'destructive', title: 'Assinatura do cliente obrigatória' });
+      toast({ variant: 'destructive', title: tFlow.toastClientSigRequired });
       return;
     }
 
@@ -1597,16 +1601,16 @@ function TechnicianOSInner() {
       if (!conformityStatus) {
         toast({
           variant: 'destructive',
-          title: 'Classificação PMOC obrigatória',
-          description: 'Selecione conforme, parcial ou não-conforme antes de finalizar.',
+          title: tFlow.toastPmocRequired,
+          description: tFlow.toastPmocRequiredDesc,
         });
         return;
       }
       if ((conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && !conformityNotes.trim()) {
         toast({
           variant: 'destructive',
-          title: 'Notas obrigatórias',
-          description: 'Descreva o que foi observado para classificação parcial ou não-conforme.',
+          title: tFlow.toastPmocNotesRequired,
+          description: tFlow.toastPmocNotesRequiredDesc,
         });
         return;
       }
@@ -1741,11 +1745,11 @@ function TechnicianOSInner() {
       setCheckOutLocation(location);
       setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus, check_out_time: now, partial_finish: false } as any : null);
 
-      toast({ title: 'OS finalizada com sucesso!' });
+      toast({ title: tFlow.toastFinishDone });
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao finalizar OS',
+        title: tFlow.toastFinishError,
         description: getErrorMessage(error),
       });
     } finally {
@@ -1788,7 +1792,7 @@ function TechnicianOSInner() {
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Não foi possível concluir',
+        title: tFlow.toastCannotComplete,
         description: getErrorMessage(error),
       });
     } finally {
@@ -1941,7 +1945,7 @@ function TechnicianOSInner() {
       const naoConforme = group.some((a) => a.conformity_status === 'nao_conforme');
       const pending = group.some((a) => !a.conformity_status);
       const status: OsSidebarStatus = naoConforme ? 'nao_conforme' : pending ? 'pendente' : 'concluido';
-      const name = key === '__geral__' ? 'Geral / Local' : key;
+      const name = key === '__geral__' ? tFlow.sidebarGeneralLabel : key;
       const meta = key === '__geral__' ? undefined : metaByName.get(key);
       return {
         key,
@@ -2200,7 +2204,7 @@ function TechnicianOSInner() {
                 onClick={() => navigate(-1)}
               >
                 <ArrowLeft className="h-5 w-5" />
-                <span className="text-sm font-medium">Voltar</span>
+                <span className="text-sm font-medium">{tFlow.btnBack}</span>
               </Button>
               <Badge
                 variant={statusBadgeVariant[serviceOrder.status]}
@@ -2979,9 +2983,9 @@ function TechnicianOSInner() {
         .eq('id', resolvedOsId);
       if (error) throw error;
       setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
-      toast({ title: 'OS pausada com sucesso!' });
+      toast({ title: tFlow.toastPauseDone });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Erro ao pausar OS', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: tFlow.toastPauseError, description: getErrorMessage(error) });
     }
   };
   const handleResumeOS = async () => {
@@ -2992,9 +2996,9 @@ function TechnicianOSInner() {
         .eq('id', resolvedOsId);
       if (error) throw error;
       setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
-      toast({ title: 'OS retomada com sucesso!' });
+      toast({ title: tFlow.toastResumeDone });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Erro ao retomar OS', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: tFlow.toastResumeError, description: getErrorMessage(error) });
     }
   };
 
@@ -3012,10 +3016,10 @@ function TechnicianOSInner() {
       if (error) throw error;
       setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus, partial_finish: true } as any : null);
       setPartialConfirmOpen(false);
-      toast({ title: 'OS finalizada parcialmente' });
+      toast({ title: tFlow.toastPartialDone });
       navigate(-1);
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Erro ao finalizar parcialmente', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: tFlow.toastPartialError, description: getErrorMessage(error) });
     } finally {
       setFinishingPartial(false);
     }
@@ -3160,11 +3164,11 @@ function TechnicianOSInner() {
       if (error) throw error;
 
       setServiceOrder((prev) => prev ? { ...prev, status: 'a_caminho' as OsStatus } : null);
-      toast({ title: 'Status atualizado: A Caminho!' });
+      toast({ title: tFlow.toastEnRouteDone });
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao atualizar status',
+        title: tFlow.toastEnRouteError,
         description: getErrorMessage(error),
       });
     }
@@ -3191,7 +3195,7 @@ function TechnicianOSInner() {
       ? `https://waze.com/ul?q=${encodeURIComponent(destAddress)}&navigate=yes`
       : null;
     if (!url) {
-      toast({ variant: 'destructive', title: 'Sem endereço para abrir a navegação.' });
+      toast({ variant: 'destructive', title: tFlow.toastNoAddress });
       return;
     }
     window.open(url, '_blank', 'noopener');
@@ -3207,7 +3211,7 @@ function TechnicianOSInner() {
       url = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`;
     }
     if (!url) {
-      toast({ variant: 'destructive', title: 'Sem endereço para abrir a navegação.' });
+      toast({ variant: 'destructive', title: tFlow.toastNoAddress });
       return;
     }
     window.open(url, '_blank', 'noopener');
@@ -3223,7 +3227,7 @@ function TechnicianOSInner() {
       <div className="p-3">
         <div className="flex items-center gap-2 mb-1.5">
           <User className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">Cliente</span>
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">{tFlow.sidebarSectionClient}</span>
         </div>
         <p className="font-semibold text-sm break-words">{serviceOrder.customer?.name}</p>
         {serviceOrder.customer?.phone && (
@@ -3260,7 +3264,7 @@ function TechnicianOSInner() {
         <div className="p-3">
           <div className="flex items-center gap-2 mb-1.5">
             <Wrench className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Técnico</span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">{tFlow.sidebarSectionTechnician}</span>
           </div>
           <div className="flex items-center gap-2.5">
             {technicianProfile.avatar_url ? (
@@ -3285,11 +3289,11 @@ function TechnicianOSInner() {
         <div className="p-3 space-y-2">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Execução</span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">{tFlow.sidebarSectionExecution}</span>
           </div>
           {checkInTime && (
             <div>
-              <p className="text-[11px] text-muted-foreground font-semibold">CHECK-IN</p>
+              <p className="text-[11px] text-muted-foreground font-semibold">{tFlow.labelCheckin}</p>
               <p className="text-xs font-medium text-foreground">
                 {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </p>
@@ -3297,7 +3301,7 @@ function TechnicianOSInner() {
           )}
           {checkOutTime && (
             <div>
-              <p className="text-[11px] text-muted-foreground font-semibold">CHECK-OUT</p>
+              <p className="text-[11px] text-muted-foreground font-semibold">{tFlow.labelCheckout}</p>
               <p className="text-xs font-medium text-foreground">
                 {format(new Date(checkOutTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </p>
@@ -3309,7 +3313,7 @@ function TechnicianOSInner() {
       {/* Descrição do serviço */}
       {serviceOrder.description && (
         <div className="p-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">Descrição do serviço</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">{tFlow.sidebarSectionServiceDescription}</p>
           <p className="text-sm break-words">{serviceOrder.description}</p>
         </div>
       )}
@@ -3423,7 +3427,7 @@ function TechnicianOSInner() {
           <Card className="border-indigo-600/30 overflow-hidden">
             <div className="bg-indigo-600 border-b border-indigo-700 px-3 py-2 flex items-center gap-2 text-sm font-medium text-white">
               <MapPinned className="h-4 w-4 shrink-0" />
-              Rota até o cliente
+              {tFlow.routeCardTitle}
             </div>
             <CardContent className="p-0">
               {/* Mapa: some com elegância se nem origem nem destino resolverem */}
@@ -3438,11 +3442,11 @@ function TechnicianOSInner() {
                   <button
                     type="button"
                     onClick={() => setRouteFullscreen(true)}
-                    aria-label="Ampliar mapa"
+                    aria-label={tFlow.ariaEnlargeMap}
                     className="absolute bottom-3 right-3 z-[400] flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2 text-sm font-medium text-indigo-700 shadow-md active:scale-95 transition"
                   >
                     <Maximize2 className="h-4 w-4" />
-                    Ampliar
+                    {tFlow.routeBtnEnlarge}
                   </button>
                 )}
               </div>
@@ -3454,7 +3458,7 @@ function TechnicianOSInner() {
                   onClick={openWaze}
                 >
                   <Navigation className="h-4 w-4 mr-2" />
-                  Waze
+                  {tFlow.routeBtnWaze}
                 </Button>
                 <Button
                   type="button"
@@ -3463,7 +3467,7 @@ function TechnicianOSInner() {
                   onClick={openGoogleMaps}
                 >
                   <MapIcon className="h-4 w-4 mr-2" />
-                  Google Maps
+                  {tFlow.routeBtnGoogleMaps}
                 </Button>
               </div>
             </CardContent>
@@ -3476,7 +3480,7 @@ function TechnicianOSInner() {
             className="fixed inset-0 z-[3000] bg-background flex flex-col"
             role="dialog"
             aria-modal="true"
-            aria-label="Mapa da rota em tela cheia"
+            aria-label={tFlow.ariaMapFullscreen}
           >
             {/* Topo: respeita o status bar do iPhone */}
             <div
@@ -3485,12 +3489,12 @@ function TechnicianOSInner() {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <MapPinned className="h-4 w-4 shrink-0" />
-                <span className="text-sm font-medium truncate">Rota até o cliente</span>
+                <span className="text-sm font-medium truncate">{tFlow.routeCardTitle}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setRouteFullscreen(false)}
-                aria-label="Fechar mapa"
+                aria-label={tFlow.ariaCloseMap}
                 className="flex items-center justify-center h-9 w-9 rounded-full bg-white/20 active:scale-95 transition shrink-0"
               >
                 <X className="h-5 w-5" />
@@ -3520,7 +3524,7 @@ function TechnicianOSInner() {
                 onClick={openWaze}
               >
                 <Navigation className="h-4 w-4 mr-2" />
-                Waze
+                {tFlow.routeBtnWaze}
               </Button>
               <Button
                 type="button"
@@ -3529,7 +3533,7 @@ function TechnicianOSInner() {
                 onClick={openGoogleMaps}
               >
                 <MapIcon className="h-4 w-4 mr-2" />
-                Google Maps
+                {tFlow.routeBtnGoogleMaps}
               </Button>
             </div>
           </div>
@@ -3541,29 +3545,29 @@ function TechnicianOSInner() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 {isPending ? <Navigation className="h-4 w-4 text-primary" /> : <Play className="h-4 w-4 text-primary" />}
-                {isPending ? 'Ir para o Atendimento' : 'Iniciar Atendimento'}
+                {isPending ? tFlow.cardEnRouteTitle : tFlow.cardCheckInTitle}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {isPending && (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Informe ao cliente que você está a caminho ou faça o check-in ao chegar.
+                    {tFlow.enRouteHint}
                   </p>
                   <Button className="w-full lg:hidden bg-indigo-500 hover:bg-indigo-600 text-white" size="lg" onClick={handleEnRoute}>
                     <Navigation className="h-4 w-4 mr-2" />
-                    A Caminho
+                    {tFlow.btnEnRoute}
                   </Button>
                 </>
               )}
               {isACaminho && (
                 <p className="text-sm text-muted-foreground">
-                  Chegou no local? Faça o check-in para iniciar.
+                  {tFlow.arrivedHint}
                 </p>
               )}
               <Button className="w-full lg:hidden" size="lg" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
                 <Play className="h-4 w-4 mr-2" />
-                Fazer Check-in
+                {tFlow.btnCheckIn}
               </Button>
             </CardContent>
           </Card>
@@ -3575,12 +3579,12 @@ function TechnicianOSInner() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base text-amber-600">
                 <Pause className="h-4 w-4" />
-                OS Pausada
+                {tFlow.pausedTitle}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Esta OS foi pausada. Retome o atendimento para continuar o preenchimento.
+                {tFlow.pausedHint}
               </p>
               {/* Retomar no mobile vive no rodapé fixo (faixa preta) abaixo. */}
             </CardContent>
@@ -3594,7 +3598,7 @@ function TechnicianOSInner() {
               <div className="flex items-center gap-2">
                 <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="text-xs sm:text-sm">
-                  Check-in: {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  {tFlow.checkInStamp} {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </span>
               </div>
               {checkInLocation && (
@@ -3614,7 +3618,7 @@ function TechnicianOSInner() {
           <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <User className="h-4 w-4 text-primary" />
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tFlow.sectionClientTitle}</span>
             </div>
             <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
             {serviceOrder.customer?.document && (
@@ -3640,14 +3644,14 @@ function TechnicianOSInner() {
               <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 p-2.5">
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                   <MapPinned className="h-3.5 w-3.5 shrink-0" />
-                  Endereço deste serviço
+                  {tFlow.serviceAddressLabel}
                 </div>
                 <p className="text-sm text-foreground flex items-start gap-1.5 mt-1">
                   <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
                   <span className="break-words">{destAddress}</span>
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  O atendimento é neste local, diferente do endereço cadastrado do cliente.
+                  {tFlow.serviceAddressNote}
                 </p>
               </div>
             )}
@@ -3671,7 +3675,7 @@ function TechnicianOSInner() {
         {serviceOrder.description && (
           <Card className="lg:hidden">
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Serviço</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{tFlow.sectionDescriptionTitle}</p>
               <p className="text-sm break-words">{serviceOrder.description}</p>
             </CardContent>
           </Card>
@@ -3679,7 +3683,7 @@ function TechnicianOSInner() {
         {serviceOrder.notes && (
           <Card>
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Observações</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{tFlow.sectionNotesTitle}</p>
               <p className="text-sm break-words">{serviceOrder.notes}</p>
             </CardContent>
           </Card>
@@ -3691,7 +3695,7 @@ function TechnicianOSInner() {
             <CardHeader className="pb-2 px-3 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold">
                 <ClipboardCheck className="h-5 w-5 text-primary shrink-0" />
-                Checklists
+                {tFlow.checklistsTitle}
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3">
@@ -3699,7 +3703,7 @@ function TechnicianOSInner() {
                 <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
                   <Lock className="h-4 w-4 mt-0.5 shrink-0" />
                   <p className="text-sm font-medium">
-                    OS pausada — retome o atendimento para preencher os checklists.
+                    {tFlow.checklistPausedWarning}
                   </p>
                 </div>
               )}
@@ -3764,6 +3768,7 @@ function TechnicianOSInner() {
                       registerAutoFill={registerFormAutoFill}
                       visibility={visibilityForEquipment(firstItem.equipment_id)}
                       validations={formValidations}
+                      tFlow={tFlow}
                     />
                   );
                 })}
@@ -3820,7 +3825,7 @@ function TechnicianOSInner() {
                 <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
                   <Lock className="h-4 w-4 mt-0.5 shrink-0" />
                   <p className="text-sm font-medium">
-                    OS pausada — retome o atendimento para preencher os checklists.
+                    {tFlow.checklistPausedWarning}
                   </p>
                 </div>
               )}
@@ -3857,7 +3862,7 @@ function TechnicianOSInner() {
               {/* Seção de assinaturas é centralizada de propósito (título + pad) — decisão CEO. */}
               <CardTitle className="flex items-center justify-center text-center gap-2 text-base">
                 <PenTool className="h-4 w-4 text-primary" />
-                Assinaturas
+                {tFlow.signaturesTitle}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -3867,7 +3872,7 @@ function TechnicianOSInner() {
                   <SignaturePad
                     value={techSignature}
                     onChange={handleTechSignatureChange}
-                    label="Assinatura do Técnico"
+                    label={tFlow.sigTech}
                     disabled={isPaused}
                   />
                   {techSignature && (() => {
@@ -3894,7 +3899,7 @@ function TechnicianOSInner() {
                   <SignaturePad
                     value={clientSignature}
                     onChange={handleClientSignatureChange}
-                    label="Assinatura do Cliente"
+                    label={tFlow.sigClient}
                     disabled={isPaused}
                   />
                   {clientSignature && (() => {
@@ -3928,12 +3933,12 @@ function TechnicianOSInner() {
                   <ShieldCheck className="h-3.5 w-3.5" />
                   PMOC
                 </span>
-                <CardTitle className="text-base">Classificação de Conformidade PMOC</CardTitle>
+                <CardTitle className="text-base">{tFlow.pmocConformityTitle}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Esta OS pertence a contrato PMOC. Indique a conformidade com a Lei 13.589/2018:
+                {tFlow.pmocConformityHint}
               </p>
               <RadioGroup
                 value={conformityStatus}
@@ -3943,21 +3948,21 @@ function TechnicianOSInner() {
                   {
                     value: 'conforme' as const,
                     id: 'conformity-conforme',
-                    label: 'Conforme — tudo dentro do esperado',
+                    label: tFlow.conformeLabel,
                     dot: 'bg-success',
                     on: 'bg-success border-success',
                   },
                   {
                     value: 'parcial' as const,
                     id: 'conformity-parcial',
-                    label: 'Parcial — alguma medida fora da faixa, mas operacional',
+                    label: tFlow.parcialLabel,
                     dot: 'bg-warning',
                     on: 'bg-warning border-warning',
                   },
                   {
                     value: 'nao_conforme' as const,
                     id: 'conformity-nao-conforme',
-                    label: 'Não-conforme — problema técnico a registrar',
+                    label: tFlow.naoConformeLabel,
                     dot: 'bg-destructive',
                     on: 'bg-destructive border-destructive',
                   },
@@ -3989,7 +3994,7 @@ function TechnicianOSInner() {
               </RadioGroup>
               <div className="space-y-1.5">
                 <Label htmlFor="conformity-notes" className="text-xs">
-                  Notas de conformidade
+                  {tFlow.conformityNotesLabel}
                   {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
                     <span className="text-destructive ml-1">*</span>
                   )}
@@ -3998,13 +4003,13 @@ function TechnicianOSInner() {
                   id="conformity-notes"
                   value={conformityNotes}
                   onChange={(e) => setConformityNotes(e.target.value)}
-                  placeholder="Descreva o que foi observado..."
+                  placeholder={tFlow.conformityNotesPlaceholder}
                   rows={3}
                   className="text-sm"
                 />
                 {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
                   <p className="text-xs text-muted-foreground">
-                    Obrigatório quando a classificação é parcial ou não-conforme.
+                    {tFlow.conformityNotesRequired}
                   </p>
                 )}
               </div>
@@ -4031,12 +4036,12 @@ function TechnicianOSInner() {
           {isPending && (
             <Button className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white" onClick={handleEnRoute}>
               <Navigation className="h-4 w-4 mr-2" />
-              A Caminho
+              {tFlow.btnEnRoute}
             </Button>
           )}
           <Button className="flex-1" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
             <Play className="h-4 w-4 mr-2" />
-            Fazer Check-in
+            {tFlow.btnCheckIn}
           </Button>
         </OsActionFooter>
       )}
@@ -4044,7 +4049,7 @@ function TechnicianOSInner() {
         <OsActionFooter>
           <Button className="flex-1" onClick={handleResumeOS}>
             <Play className="h-4 w-4 mr-2" />
-            Retomar OS
+            {tFlow.btnResumeOS}
           </Button>
         </OsActionFooter>
       )}
@@ -4057,7 +4062,7 @@ function TechnicianOSInner() {
             disabled={finishing}
           >
             <BadgeCheck className="h-4 w-4 mr-2" />
-            {finishing ? 'Finalizando...' : 'Finalizar OS'}
+            {finishing ? tFlow.btnFinishing : tFlow.btnFinishOS}
           </Button>
           {/* Ação secundária: largura de conteúdo (flex-none), ícone de parcial. */}
           <Button
@@ -4067,7 +4072,7 @@ function TechnicianOSInner() {
             disabled={finishingPartial}
           >
             <Pause className="h-4 w-4 mr-2" />
-            Finalizar Parcial
+            {tFlow.btnPartialFinish}
           </Button>
           {/* Menu de mais-ações (hambúrguer) — action-sheet próprio ancorado
               acima do botão, com backdrop. Sem Radix (não trava scroll). */}
@@ -4076,7 +4081,7 @@ function TechnicianOSInner() {
               <>
                 <button
                   type="button"
-                  aria-label="Fechar menu"
+                  aria-label={tFlow.ariaCloseMenu}
                   onClick={closeDesktopActions}
                   onAnimationEnd={() => { if (desktopActionsClosing) finishCloseDesktopActions(); }}
                   className={cn(
@@ -4096,7 +4101,7 @@ function TechnicianOSInner() {
                     <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
                       <Pause className="h-4 w-4" />
                     </span>
-                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Pausar OS</span>
+                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnPauseOS}</span>
                   </button>
                   <button
                     type="button"
@@ -4109,7 +4114,7 @@ function TechnicianOSInner() {
                     <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
                       <Link2 className="h-4 w-4" />
                     </span>
-                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Copiar link do cliente</span>
+                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyClientLink}</span>
                   </button>
                 </div>
               </>
@@ -4118,7 +4123,7 @@ function TechnicianOSInner() {
               variant="ghost"
               size="icon"
               onClick={() => (desktopActionsOpen ? closeDesktopActions() : setDesktopActionsOpen(true))}
-              aria-label="Mais ações"
+              aria-label={tFlow.ariaMoreActions}
               aria-expanded={desktopActionsOpen}
               className={cn(
                 'relative z-50 shrink-0 transition-colors [&_svg]:size-6',
@@ -4158,7 +4163,7 @@ function TechnicianOSInner() {
         <>
           <button
             type="button"
-            aria-label="Fechar menu"
+            aria-label={tFlow.ariaCloseMenu}
             onClick={closeMobileActions}
             onAnimationEnd={() => { if (mobileActionsClosing) finishCloseMobileActions(); }}
             className={cn(
@@ -4182,7 +4187,7 @@ function TechnicianOSInner() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
                   <Pause className="h-4 w-4" />
                 </span>
-                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Pausar OS</span>
+                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnPauseOS}</span>
               </button>
             ) : (
               <button
@@ -4197,7 +4202,7 @@ function TechnicianOSInner() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
                   <BadgeCheck className="h-4 w-4" />
                 </span>
-                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Finalizar OS</span>
+                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnFinalizeOS}</span>
               </button>
             )}
             <button
@@ -4211,7 +4216,7 @@ function TechnicianOSInner() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
                 <Link2 className="h-4 w-4" />
               </span>
-              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Copiar link da OS</span>
+              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyOsLink}</span>
             </button>
             {/* Sair do preenchimento — sempre disponível (equivale ao "Voltar"
                 do header). Garante que o menu nunca fique sem ação útil. */}
@@ -4226,7 +4231,7 @@ function TechnicianOSInner() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
                 <LogOut className="h-4 w-4" />
               </span>
-              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">Sair do preenchimento</span>
+              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnExitFill}</span>
             </button>
           </div>
         </>
@@ -4249,7 +4254,7 @@ function TechnicianOSInner() {
                 onClick={handleResumeOS}
               >
                 <Play className="h-4 w-4 mr-2" />
-                Retomar OS
+                {tFlow.btnResumeOS}
               </Button>
             ) : (
               <>
@@ -4262,7 +4267,7 @@ function TechnicianOSInner() {
                   disabled={finishing}
                 >
                   <BadgeCheck className="h-4 w-4" />
-                  {finishing ? 'Finalizando...' : 'Finalizar OS'}
+                  {finishing ? tFlow.btnFinishing : tFlow.btnFinishOS}
                 </Button>
                 {/* Ação secundária: laranja saturado com texto branco, MESMA
                     altura do primário (size lg). Largura de conteúdo (flex-none)
@@ -4275,7 +4280,7 @@ function TechnicianOSInner() {
                   disabled={finishingPartial}
                 >
                   <Pause className="h-4 w-4" />
-                  Finalizar Parcial
+                  {tFlow.btnPartialFinish}
                 </Button>
               </>
             )}
@@ -4286,7 +4291,7 @@ function TechnicianOSInner() {
               variant="ghost"
               size="icon"
               onClick={() => (mobileActionsOpen ? closeMobileActions() : setMobileActionsOpen(true))}
-              aria-label="Mais ações"
+              aria-label={tFlow.ariaMoreActions}
               aria-expanded={mobileActionsOpen}
               className={cn(
                 'relative z-50 shrink-0 h-11 w-11 transition-colors [&_svg]:size-6',
@@ -4318,7 +4323,7 @@ function TechnicianOSInner() {
       <ResponsiveModal
         open={checklistGapOpen}
         onOpenChange={(o) => { if (!markingChecklist) setChecklistGapOpen(o); }}
-        title="Checklist incompleto"
+        title={tFlow.modalChecklistTitle}
         footer={
           <div className="flex flex-col sm:flex-row gap-2">
             <Button
@@ -4327,7 +4332,7 @@ function TechnicianOSInner() {
               disabled={markingChecklist}
               onClick={() => setChecklistGapOpen(false)}
             >
-              Voltar e preencher
+              {tFlow.modalChecklistBtnBack}
             </Button>
             <Button
               className="w-full sm:flex-1 bg-success hover:bg-success/90 text-success-foreground"
@@ -4335,23 +4340,23 @@ function TechnicianOSInner() {
               onClick={handleMarkRestAndFinish}
             >
               {markingChecklist
-                ? 'Concluindo...'
-                : `Marcar ${pendingChecklistCount} como Conforme e concluir`}
+                ? tFlow.modalChecklistBtnCompleting
+                : tFlow.modalChecklistBtnMark.replace('{n}', String(pendingChecklistCount))}
             </Button>
           </div>
         }
       >
         <div className="space-y-3 py-1">
           <p className="text-sm text-foreground">
-            Faltam <strong>{pendingChecklistCount}</strong> item{pendingChecklistCount > 1 ? 's' : ''} do
-            checklist sem resposta. Você pode voltar e preencher, ou marcar
-            {' '}{pendingChecklistCount > 1 ? `os ${pendingChecklistCount} restantes` : 'o restante'}
-            {' '}como <strong>Conforme</strong> para concluir agora.
+            {tFlow.modalChecklistBody
+              .replace('{n}', String(pendingChecklistCount))
+              .replace('{plural}', pendingChecklistCount > 1 ? 's' : '')
+              .replace('{nLabel}', pendingChecklistCount > 1
+                ? tFlow.modalChecklistNLabelPlural.replace('{n}', String(pendingChecklistCount))
+                : tFlow.modalChecklistNLabelSingular)}
           </p>
           <p className="text-xs text-muted-foreground">
-            Isto é apenas uma facilidade de preenchimento: o conteúdo é de
-            responsabilidade do técnico e do responsável técnico, e o sistema não
-            se responsabiliza pelo que for preenchido.
+            {tFlow.modalChecklistDisclaimer}
           </p>
         </div>
       </ResponsiveModal>
@@ -4362,7 +4367,7 @@ function TechnicianOSInner() {
       <ResponsiveModal
         open={partialConfirmOpen}
         onOpenChange={(o) => { if (!finishingPartial) setPartialConfirmOpen(o); }}
-        title="Finalizar parcialmente?"
+        title={tFlow.modalPartialTitle}
         footer={
           <div className="flex flex-col sm:flex-row gap-2">
             <Button
@@ -4371,26 +4376,24 @@ function TechnicianOSInner() {
               disabled={finishingPartial}
               onClick={() => setPartialConfirmOpen(false)}
             >
-              Cancelar
+              {tFlow.modalPartialBtnCancel}
             </Button>
             <Button
               className="w-full sm:flex-1 bg-orange-600 hover:bg-orange-700 text-white"
               disabled={finishingPartial}
               onClick={handleFinishPartially}
             >
-              {finishingPartial ? 'Finalizando...' : 'Finalizar Parcialmente'}
+              {finishingPartial ? tFlow.modalPartialBtnConfirming : tFlow.modalPartialBtnConfirm}
             </Button>
           </div>
         }
       >
         <div className="space-y-2 py-1">
           <p className="text-sm text-foreground">
-            A OS ficará marcada como <strong>Parcialmente Concluída</strong> e
-            aparecerá nas OS pausadas até ser concluída de verdade.
+            {tFlow.modalPartialBody}
           </p>
           <p className="text-xs text-muted-foreground">
-            O que você já preencheu fica salvo. Você pode retomar e concluir
-            quando terminar o serviço.
+            {tFlow.modalPartialNote}
           </p>
         </div>
       </ResponsiveModal>
@@ -4401,7 +4404,7 @@ function TechnicianOSInner() {
       <ResponsiveModal
         open={finishConfirmOpen}
         onOpenChange={(o) => { if (!finishing) setFinishConfirmOpen(o); }}
-        title="Finalizar OS?"
+        title={tFlow.modalFinishTitle}
         footer={
           <div className="flex flex-col sm:flex-row gap-2">
             <Button
@@ -4410,21 +4413,21 @@ function TechnicianOSInner() {
               disabled={finishing}
               onClick={() => setFinishConfirmOpen(false)}
             >
-              Cancelar
+              {tFlow.modalFinishBtnCancel}
             </Button>
             <Button
               className="w-full sm:flex-1 bg-success hover:bg-success/90 text-success-foreground"
               disabled={finishing}
               onClick={handleConfirmFinish}
             >
-              {finishing ? 'Finalizando...' : 'Finalizar'}
+              {finishing ? tFlow.modalFinishBtnConfirming : tFlow.modalFinishBtnConfirm}
             </Button>
           </div>
         }
       >
         <div className="py-1">
           <p className="text-sm text-foreground">
-            Tem certeza que deseja finalizar e concluir esta OS?
+            {tFlow.modalFinishBody}
           </p>
         </div>
       </ResponsiveModal>
@@ -4492,7 +4495,7 @@ function TechnicianOSInner() {
               className="w-full gap-2 bg-destructive text-white hover:bg-destructive/90"
             >
               <ArrowLeft className="h-4 w-4" />
-              Voltar para OS
+              {tFlow.btnReturnToOS}
             </Button>
           </div>
         </div>

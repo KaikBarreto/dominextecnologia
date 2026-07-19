@@ -2,6 +2,8 @@ import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -90,6 +92,8 @@ export function SpeedDialFAB({
   mainBackgroundNode,
 }: SpeedDialFABProps) {
   const [open, setOpen] = useState(false);
+  const { locale } = useAppLocaleContext();
+  const tP = MESSAGES[locale].app.shell.mobilePrimitives;
   // Imagem do FAB falhou ao carregar → cai pro ícone/accent (fallback).
   const [imageFailed, setImageFailed] = useState(false);
   // FAB de função única: o toque dispara a ação direto, sem speed-dial.
@@ -121,7 +125,7 @@ export function SpeedDialFAB({
       {open && !isDirect && (
         <button
           type="button"
-          aria-label="Fechar menu"
+          aria-label={tP.fabCloseMenu}
           onClick={() => setOpen(false)}
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in"
         />
@@ -205,8 +209,8 @@ export function SpeedDialFAB({
               isDirect
                 ? actions[0].label
                 : open
-                  ? 'Fechar menu'
-                  : ariaLabel ?? 'Abrir menu de ferramentas'
+                  ? tP.fabCloseMenu
+                  : ariaLabel ?? tP.fabOpenMenu
             }
             aria-expanded={isDirect ? undefined : open}
             className={cn(

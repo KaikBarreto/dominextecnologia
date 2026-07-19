@@ -5,6 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useBrazilBanks, getBankLogo, type BrazilBank } from '@/hooks/useBrazilBanks';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface BankLogoProps {
   code?: number | string | null;
@@ -45,9 +47,12 @@ interface BankInstitutionComboboxProps {
   placeholder?: string;
 }
 
-export function BankInstitutionCombobox({ value, onChange, placeholder = 'Selecione a instituição' }: BankInstitutionComboboxProps) {
+export function BankInstitutionCombobox({ value, onChange, placeholder }: BankInstitutionComboboxProps) {
   const [open, setOpen] = useState(false);
   const { banks, popular, loading } = useBrazilBanks();
+  const { locale } = useAppLocaleContext();
+  const bc = MESSAGES[locale].app.finance.bankCombobox;
+  const resolvedPlaceholder = placeholder ?? bc.placeholder;
 
   const handleSelect = (bank: BrazilBank) => {
     onChange({ code: bank.code, name: bank.name, ispb: bank.ispb });
@@ -70,18 +75,18 @@ export function BankInstitutionCombobox({ value, onChange, placeholder = 'Seleci
               <span className="truncate">{value.name}</span>
             </span>
           ) : (
-            <span className="text-muted-foreground">{loading ? 'Carregando bancos...' : placeholder}</span>
+            <span className="text-muted-foreground">{loading ? bc.loading : resolvedPlaceholder}</span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Buscar banco..." />
+          <CommandInput placeholder={bc.searchPlaceholder} />
           <CommandList>
-            <CommandEmpty>{loading ? 'Carregando...' : 'Nenhum banco encontrado.'}</CommandEmpty>
+            <CommandEmpty>{loading ? bc.searching : bc.empty}</CommandEmpty>
             {popular.length > 0 && (
-              <CommandGroup heading="Mais populares">
+              <CommandGroup heading={bc.headingPopular}>
                 {popular.map(b => (
                   <CommandItem key={`pop-${b.code}`} value={`${b.code} ${b.name}`} onSelect={() => handleSelect(b)}>
                     <BankLogo code={b.code} name={b.name} size={20} className="mr-2" />
@@ -91,7 +96,7 @@ export function BankInstitutionCombobox({ value, onChange, placeholder = 'Seleci
                 ))}
               </CommandGroup>
             )}
-            <CommandGroup heading="Todos os bancos">
+            <CommandGroup heading={bc.headingAll}>
               {banks.map(b => (
                 <CommandItem key={`all-${b.code}-${b.ispb}`} value={`${b.code} ${b.name}`} onSelect={() => handleSelect(b)}>
                   <BankLogo code={b.code} name={b.name} size={20} className="mr-2" />

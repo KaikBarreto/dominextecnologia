@@ -151,7 +151,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     });
 
     if (error) {
-      toast({ variant: 'destructive', title: 'Erro ao pagar folha', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: fin.accounts.payroll.toastError, description: getErrorMessage(error) });
       return;
     }
 
@@ -161,7 +161,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
     queryClient.invalidateQueries({ queryKey: ['employee-movements'] });
     queryClient.invalidateQueries({ queryKey: ['all-employee-movements'] });
     setPayrollTxn(null);
-    toast({ title: 'Folha quitada com sucesso' });
+    toast({ title: fin.accounts.payroll.toastSuccess });
   };
 
   const today = startOfDay(new Date());
@@ -973,7 +973,7 @@ export function FinanceContas({ transactions, allTransactions, isLoading, onMark
         allowPartial
         installmentTotal={receivingTxn?.installment_total ?? 1}
         currentDueDate={receivingTxn?.due_date}
-        title="Como foi recebido?"
+        title={fin.accounts.payroll.receiveTitle}
         description={receivingTxn?.description}
         onConfirm={async (payment) => {
           if (!receivingTxn) return;

@@ -102,6 +102,54 @@ export const shell = {
     // ── Relógio do header (tooltip de fuso + aria-label) ─────────────────────
     clockTimezoneLabel: 'Fuso horário',
     clockDateTimeLabel: 'Data e hora',
+
+    // ── Sino de notificações ─────────────────────────────────────────────────
+    notifications: {
+      // aria-label do sino
+      ariaLabelUnread: '{n} notificações não lidas',
+      ariaLabel: 'Notificações',
+      // Título no drawer/dropdown
+      title: 'Notificações',
+      // Badge de contagem no drawer
+      badgeNew: '{n} nova',
+      badgeNewPlural: '{n} novas',
+      // Empty state
+      empty: 'Nenhuma notificação',
+      // Botão "marcar todas como lidas"
+      markAllRead: 'Marcar todas como lidas',
+      // Rótulos dos grupos de data
+      groupToday: 'Hoje',
+      groupYesterday: 'Ontem',
+      groupWeek: 'Esta semana',
+      groupOlder: 'Anteriores',
+    },
+
+    // ── Primitivos mobile ─────────────────────────────────────────────────────
+    mobilePrimitives: {
+      // FilterCheckboxGroup
+      filterAll: 'Todos',
+      filterSelected: '({n} selecionados)',
+      filterCloseSearch: 'Fechar busca',
+      filterOpenSearch: 'Buscar',
+      filterSelectAll: 'Todos',
+      filterClear: 'Limpar',
+      filterPlaceholder: 'Buscar...',
+      filterEmptyOptions: 'Nenhuma opção disponível',
+      filterEmptySearch: 'Nenhuma opção encontrada',
+      filterHint: 'Vazio = {emptyLabel}',
+      // NotificationItem
+      dismissNotification: 'Dispensar notificação',
+      // NotificationDetailModal
+      modalClose: 'Fechar',
+      modalReadTerms: 'Ler Termos de Uso',
+      modalOpen: 'Abrir',
+      modalAvailableUntil: 'Disponível até',
+      // SpeedDialFAB
+      fabCloseMenu: 'Fechar menu',
+      fabOpenMenu: 'Abrir menu de ferramentas',
+      // MobileListItem
+      moreActions: 'Mais ações',
+    },
   },
 
   en: {
@@ -171,6 +219,41 @@ export const shell = {
     defaultUserName: 'User',
     clockTimezoneLabel: 'Time zone',
     clockDateTimeLabel: 'Date and time',
+
+    notifications: {
+      ariaLabelUnread: '{n} unread notifications',
+      ariaLabel: 'Notifications',
+      title: 'Notifications',
+      badgeNew: '{n} new',
+      badgeNewPlural: '{n} new',
+      empty: 'No notifications',
+      markAllRead: 'Mark all as read',
+      groupToday: 'Today',
+      groupYesterday: 'Yesterday',
+      groupWeek: 'This week',
+      groupOlder: 'Earlier',
+    },
+
+    mobilePrimitives: {
+      filterAll: 'All',
+      filterSelected: '({n} selected)',
+      filterCloseSearch: 'Close search',
+      filterOpenSearch: 'Search',
+      filterSelectAll: 'All',
+      filterClear: 'Clear',
+      filterPlaceholder: 'Search...',
+      filterEmptyOptions: 'No options available',
+      filterEmptySearch: 'No options found',
+      filterHint: 'Empty = {emptyLabel}',
+      dismissNotification: 'Dismiss notification',
+      modalClose: 'Close',
+      modalReadTerms: 'Read Terms of Use',
+      modalOpen: 'Open',
+      modalAvailableUntil: 'Available until',
+      fabCloseMenu: 'Close menu',
+      fabOpenMenu: 'Open tools menu',
+      moreActions: 'More actions',
+    },
   },
 
   es: {
@@ -240,6 +323,41 @@ export const shell = {
     defaultUserName: 'Usuario',
     clockTimezoneLabel: 'Zona horaria',
     clockDateTimeLabel: 'Fecha y hora',
+
+    notifications: {
+      ariaLabelUnread: '{n} notificaciones no leídas',
+      ariaLabel: 'Notificaciones',
+      title: 'Notificaciones',
+      badgeNew: '{n} nueva',
+      badgeNewPlural: '{n} nuevas',
+      empty: 'Sin notificaciones',
+      markAllRead: 'Marcar todas como leídas',
+      groupToday: 'Hoy',
+      groupYesterday: 'Ayer',
+      groupWeek: 'Esta semana',
+      groupOlder: 'Anteriores',
+    },
+
+    mobilePrimitives: {
+      filterAll: 'Todos',
+      filterSelected: '({n} seleccionados)',
+      filterCloseSearch: 'Cerrar búsqueda',
+      filterOpenSearch: 'Buscar',
+      filterSelectAll: 'Todos',
+      filterClear: 'Limpiar',
+      filterPlaceholder: 'Buscar...',
+      filterEmptyOptions: 'Sin opciones disponibles',
+      filterEmptySearch: 'Sin resultados',
+      filterHint: 'Vacío = {emptyLabel}',
+      dismissNotification: 'Descartar notificación',
+      modalClose: 'Cerrar',
+      modalReadTerms: 'Leer Términos de Uso',
+      modalOpen: 'Abrir',
+      modalAvailableUntil: 'Disponible hasta',
+      fabCloseMenu: 'Cerrar menú',
+      fabOpenMenu: 'Abrir menú de herramientas',
+      moreActions: 'Más acciones',
+    },
   },
 
   fr: {
@@ -309,5 +427,40 @@ export const shell = {
     defaultUserName: 'Utilisateur',
     clockTimezoneLabel: 'Fuseau horaire',
     clockDateTimeLabel: 'Date et heure',
+
+    notifications: {
+      ariaLabelUnread: '{n} notifications non lues',
+      ariaLabel: 'Notifications',
+      title: 'Notifications',
+      badgeNew: '{n} nouvelle',
+      badgeNewPlural: '{n} nouvelles',
+      empty: 'Aucune notification',
+      markAllRead: 'Tout marquer comme lu',
+      groupToday: "Aujourd'hui",
+      groupYesterday: 'Hier',
+      groupWeek: 'Cette semaine',
+      groupOlder: 'Précédentes',
+    },
+
+    mobilePrimitives: {
+      filterAll: 'Tous',
+      filterSelected: '({n} sélectionnés)',
+      filterCloseSearch: 'Fermer la recherche',
+      filterOpenSearch: 'Rechercher',
+      filterSelectAll: 'Tous',
+      filterClear: 'Effacer',
+      filterPlaceholder: 'Rechercher...',
+      filterEmptyOptions: 'Aucune option disponible',
+      filterEmptySearch: 'Aucune option trouvée',
+      filterHint: 'Vide = {emptyLabel}',
+      dismissNotification: 'Ignorer la notification',
+      modalClose: 'Fermer',
+      modalReadTerms: "Lire les Conditions d'utilisation",
+      modalOpen: 'Ouvrir',
+      modalAvailableUntil: "Disponible jusqu'au",
+      fabCloseMenu: 'Fermer le menu',
+      fabOpenMenu: "Ouvrir le menu d'outils",
+      moreActions: "Plus d'actions",
+    },
   },
 };

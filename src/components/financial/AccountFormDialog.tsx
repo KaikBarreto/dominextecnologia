@@ -185,7 +185,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                 <Select value={String(closingDay)} onValueChange={v => setClosingDay(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CLOSING_DAYS.map(d => <SelectItem key={d} value={String(d)}>Dia {d}</SelectItem>)}
+                    {CLOSING_DAYS.map(d => <SelectItem key={d} value={String(d)}>{t.dayLabel.replace('{d}', String(d))}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -194,7 +194,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                 <Select value={String(dueDay)} onValueChange={v => setDueDay(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {DUE_DAYS.map(d => <SelectItem key={d} value={String(d)}>Dia {d}</SelectItem>)}
+                    {DUE_DAYS.map(d => <SelectItem key={d} value={String(d)}>{t.dayLabel.replace('{d}', String(d))}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {dueDay <= closingDay && (
@@ -233,7 +233,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
                   'h-7 w-7 rounded-full border-2 transition-all',
                   color === c ? 'border-foreground scale-110 ring-2 ring-foreground/20' : 'border-transparent'
                 )}
-                style={{ backgroundColor: c }} aria-label={`Cor ${c}`} />
+                style={{ backgroundColor: c }} aria-label={t.colorAriaLabel.replace('{c}', c)} />
             ))}
             <Popover>
               <PopoverTrigger asChild>

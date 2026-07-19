@@ -21,7 +21,32 @@
 //  • Tudo defensivo/SSR-safe: try/catch com fallback pro valor cru.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { Locale } from 'date-fns';
+import { ptBR, enUS, es, fr } from 'date-fns/locale';
 import type { LocaleCode } from '@/lib/i18n/locales';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATE-FNS LOCALE
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es: es,
+  fr: fr,
+};
+
+/**
+ * Retorna o objeto Locale do date-fns para o locale interno da aplicação.
+ * Use em vez de importar `ptBR` fixo nos componentes — assim datas relativas
+ * (formatDistanceToNow, format) respeitam o idioma escolhido pelo usuário.
+ *
+ * Exemplo:
+ *   formatDistanceToNow(date, { addSuffix: true, locale: getDateFnsLocale(locale) })
+ */
+export function getDateFnsLocale(locale: LocaleCode): Locale {
+  return DATE_FNS_LOCALES[locale] ?? ptBR;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LocaleCode (interno) → BCP-47 (o que o Intl entende).
