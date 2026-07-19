@@ -1136,15 +1136,17 @@ function TechnicianOSInner() {
         }
       }
     } catch (error: any) {
+      const tErr = MESSAGES[publicLocale.language as keyof typeof MESSAGES]?.app?.os?.publicView
+        ?? MESSAGES['pt-br'].app.os.publicView;
       toast({
         variant: 'destructive',
-        title: 'Erro ao carregar OS',
+        title: tErr.loadError,
         description: getErrorMessage(error),
       });
     } finally {
       setLoading(false);
     }
-  }, [id, toast, applyCompany, canonicalizeUrl]);
+  }, [id, toast, applyCompany, canonicalizeUrl, publicLocale.language]);
 
   const fetchServiceOrder = useCallback(async () => {
     try {
@@ -1202,7 +1204,7 @@ function TechnicianOSInner() {
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao carregar OS',
+        title: MESSAGES['pt-br'].app.os.publicView.loadError,
         description: getErrorMessage(error),
       });
     } finally {
@@ -2792,7 +2794,7 @@ function TechnicianOSInner() {
                                     const val = typeof r.response_value === 'string' ? r.response_value : null;
                                     return (
                                       <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                                        <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                                        <p className="text-xs font-medium text-muted-foreground">{r.question?.question || tPublic.questionFallback}</p>
                                         {val ? (
                                           <p className="text-sm mt-0.5">
                                             {val === 'true' ? '✅ Sim' : val === 'false' ? '❌ Não' : val.includes('|||') ? (
@@ -2860,7 +2862,7 @@ function TechnicianOSInner() {
                         const val = typeof r.response_value === 'string' ? r.response_value : null;
                         return (
                           <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                            <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                            <p className="text-xs font-medium text-muted-foreground">{r.question?.question || tPublic.questionFallback}</p>
                             {val ? (
                               <p className="text-sm mt-0.5">
                                 {val === 'true' ? '✅ Sim' : val === 'false' ? '❌ Não' : val.includes('|||') ? (
@@ -2870,7 +2872,7 @@ function TechnicianOSInner() {
                                 ) : val}
                               </p>
                             ) : (
-                              <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                              <p className="text-xs text-muted-foreground/60 mt-0.5 italic">{tPublic.awaitingAnswer}</p>
                             )}
                             {r.response_photo_url && (() => {
                               const urls = r.response_photo_url!.split(',').filter(Boolean).map((u: string) => u.trim());

@@ -315,6 +315,9 @@ export const customers = {
       statusACaminho: 'A caminho',
       statusConcluida: 'Concluída',
       statusCancelada: 'Cancelada',
+      // Valores booleanos (campo dinâmico de equipamento)
+      booleanYes: 'Sim',
+      booleanNo: 'Não',
     },
   },
 
@@ -588,6 +591,8 @@ export const customers = {
       statusACaminho: 'On the way',
       statusConcluida: 'Completed',
       statusCancelada: 'Cancelled',
+      booleanYes: 'Yes',
+      booleanNo: 'No',
     },
   },
 
@@ -861,6 +866,8 @@ export const customers = {
       statusACaminho: 'En camino',
       statusConcluida: 'Completada',
       statusCancelada: 'Cancelada',
+      booleanYes: 'Sí',
+      booleanNo: 'No',
     },
   },
 
@@ -1134,6 +1141,8 @@ export const customers = {
       statusACaminho: 'En route',
       statusConcluida: 'Terminé',
       statusCancelada: 'Annulé',
+      booleanYes: 'Oui',
+      booleanNo: 'Non',
     },
   },
 };

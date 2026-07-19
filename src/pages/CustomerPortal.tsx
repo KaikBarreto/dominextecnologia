@@ -24,6 +24,7 @@ import PortalUnavailable from '@/components/portal/PortalUnavailable';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate } from '@/lib/format';
+import { detectMachineLocale } from '@/lib/i18n/detectLocale';
 
 /**
  * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
@@ -177,7 +178,7 @@ export default function CustomerPortal() {
         .rpc('get_portal_data', { p_token: token! });
 
       if (rpcError || !data) {
-        setError('Portal não encontrado ou desativado.');
+        setError('portal_not_found');
         setLoading(false);
         return;
       }
@@ -205,7 +206,7 @@ export default function CustomerPortal() {
       setEquipmentFieldConfig(payload.equipment_field_config ?? []);
       setServiceOrders(payload.service_orders ?? []);
     } catch {
-      setError('Erro ao carregar portal.');
+      setError('portal_load_error');
     } finally {
       setLoading(false);
     }
@@ -240,8 +241,10 @@ export default function CustomerPortal() {
     return <PortalUnavailable companyName={unavailableCompanyName} />;
   }
 
-  // Portal privado: não temos company_settings ainda → tela em pt-br (visitante bloqueado).
+  // Portal privado: não temos company_settings ainda → idioma do navegador do visitante.
   if (accessDenied) {
+    const machineLocale = detectMachineLocale() ?? 'pt-br';
+    const tp = MESSAGES[machineLocale].app.customers.portal;
     const portalPath = `/portal/${token}`;
     return (
       <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
@@ -256,18 +259,18 @@ export default function CustomerPortal() {
             className="text-5xl md:text-7xl font-black leading-none tracking-tighter text-white select-none"
             style={{ fontFamily: "'Lufga', sans-serif", fontWeight: 900 }}
           >
-            Portal privado
+            {tp.privateTitle}
           </h1>
           <div className="space-y-2">
             <p className="text-white/70 text-base max-w-md mx-auto">
-              Este portal é restrito e exige que você entre com a conta da empresa.
+              {tp.privateDesc}
             </p>
             <p className="text-white/40 text-sm max-w-md mx-auto">
-              Se você já está conectado e ainda vê esta mensagem, sua conta não tem acesso a este portal.
+              {tp.privateHint}
             </p>
           </div>
           <a href={`/login?redirect=${encodeURIComponent(portalPath)}`}>
-            <Button size="lg" className="mt-2">Fazer login</Button>
+            <Button size="lg" className="mt-2">{tp.loginBtn}</Button>
           </a>
         </div>
       </div>
@@ -275,11 +278,18 @@ export default function CustomerPortal() {
   }
 
   if (error || !customer) {
+    const machineLocale = detectMachineLocale() ?? 'pt-br';
+    const tp = MESSAGES[machineLocale].app.customers.portal;
+    const errorMsg = error === 'portal_not_found'
+      ? tp.errorFallback
+      : error === 'portal_load_error'
+        ? tp.loading
+        : tp.errorFallback;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <h1 className="text-xl font-bold mb-2">Acesso Indisponível</h1>
-        <p className="text-muted-foreground text-center">{error || 'Portal não encontrado.'}</p>
+        <h1 className="text-xl font-bold mb-2">{tp.errorTitle}</h1>
+        <p className="text-muted-foreground text-center">{errorMsg}</p>
       </div>
     );
   }
@@ -408,9 +418,8 @@ function CustomerPortalContent({
   // Formata valor de campo dinâmico usando locale/timezone da empresa.
   const formatFieldValue = (value: any, fieldType: string): string => {
     if (fieldType === 'boolean') {
-      // boolean semântico (Sim/Não) — mantém pt-br por convenção de dado estrutural.
       const truthy = value === true || value === 'sim' || value === 'true' || value === 1;
-      return truthy ? 'Sim' : 'Não';
+      return truthy ? t.booleanYes : t.booleanNo;
     }
     if (fieldType === 'date') {
       if (!value) return '';

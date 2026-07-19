@@ -25,6 +25,8 @@ import DarkVeil from '@/components/ui/DarkVeil';
 import { parseISO } from 'date-fns';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { formatDate, formatDateTime } from '@/lib/format';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { detectMachineLocale } from '@/lib/i18n/detectLocale';
 
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { PmocExecutionHistoryView } from '@/components/pmoc/PmocExecutionHistoryView';
@@ -85,45 +87,48 @@ import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
  * Plano: docs/planos/2026-05-24-pmoc-portal-publico-redesign.md
  */
 
-const HEALTH_CONFIG: Record<PortalHealthStatus, {
-  label: string;
+// Labels de saúde e status de OS vêm do i18n (MESSAGES[locale].app.pmoc.publicPortal).
+// Estes objetos guardam apenas os dados de estilo (invariantes por locale).
+const HEALTH_STYLE: Record<PortalHealthStatus, {
   tone: 'success' | 'warning' | 'destructive';
   ringClass: string;
 }> = {
-  em_dia: { label: 'Em dia', tone: 'success', ringClass: 'ring-success/30' },
-  manutencao_pendente: { label: 'Manutenção pendente', tone: 'warning', ringClass: 'ring-warning/30' },
-  necessita_atencao: { label: 'ATENÇÃO', tone: 'destructive', ringClass: 'ring-destructive/30' },
+  em_dia: { tone: 'success', ringClass: 'ring-success/30' },
+  manutencao_pendente: { tone: 'warning', ringClass: 'ring-warning/30' },
+  necessita_atencao: { tone: 'destructive', ringClass: 'ring-destructive/30' },
 };
 
-const OS_STATUS_CONFIG: Record<PortalOsStatus, { label: string; className: string }> = {
-  agendada: { label: 'Agendada', className: 'bg-muted text-muted-foreground' },
-  pendente: { label: 'Pendente', className: 'bg-muted text-muted-foreground' },
-  a_caminho: { label: 'A caminho', className: 'bg-info/15 text-info' },
-  em_andamento: { label: 'Em andamento', className: 'bg-info/15 text-info' },
-  pausada: { label: 'Pausada', className: 'bg-warning/15 text-warning' },
-  concluida: { label: 'Concluída', className: 'bg-success/15 text-success' },
-  cancelada: { label: 'Cancelada', className: 'bg-destructive/10 text-destructive' },
+const OS_STATUS_CLASS: Record<PortalOsStatus, string> = {
+  agendada: 'bg-muted text-muted-foreground',
+  pendente: 'bg-muted text-muted-foreground',
+  a_caminho: 'bg-info/15 text-info',
+  em_andamento: 'bg-info/15 text-info',
+  pausada: 'bg-warning/15 text-warning',
+  concluida: 'bg-success/15 text-success',
+  cancelada: 'bg-destructive/10 text-destructive',
 };
+
+type PublicPortalMessages = typeof MESSAGES['pt-br']['app']['pmoc']['publicPortal'];
 
 /**
  * Abas do portal. "Documentos" só entra pra contrato PMOC. "Ocorrências" é a
  * linha do tempo completa das visitas do contrato (read-only; viewer logado da
  * empresa ganha "Preencher OS").
  */
-function buildTabs(isPmoc: boolean, hasExecutionHistory: boolean): SettingsTab[] {
+function buildTabs(isPmoc: boolean, hasExecutionHistory: boolean, t: PublicPortalMessages): SettingsTab[] {
   const tabs: SettingsTab[] = [
-    { value: 'visao-geral', label: 'Visão Geral', icon: House },
-    { value: 'cronograma', label: 'Cronograma', icon: CalendarClock },
-    { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
+    { value: 'visao-geral', label: t.tabOverview, icon: House },
+    { value: 'cronograma', label: t.tabSchedule, icon: CalendarClock },
+    { value: 'ocorrencias', label: t.tabOccurrences, icon: Repeat },
   ];
   if (isPmoc) {
-    tabs.push({ value: 'documentos', label: 'Documentos', icon: FileText });
+    tabs.push({ value: 'documentos', label: t.tabDocuments, icon: FileText });
   }
-  tabs.push({ value: 'historico', label: 'Histórico', icon: Wrench });
+  tabs.push({ value: 'historico', label: t.tabHistory, icon: Wrench });
   // Frente F: prova de cumprimento da Planilha PMOC, tarefa-a-tarefa. Só PMOC e
   // só quando há execução liberada (a edge gateia por documents_released).
   if (isPmoc && hasExecutionHistory) {
-    tabs.push({ value: 'historico-pmoc', label: 'Histórico PMOC', icon: ClipboardCheck });
+    tabs.push({ value: 'historico-pmoc', label: t.tabHistoryPmoc, icon: ClipboardCheck });
   }
   return tabs;
 }
@@ -348,6 +353,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   // Usado via `lastUpdate` (formatDateTime) e repassado implicitamente pelo
   // contexto para os sub-componentes (TabOverview, HistoryItem, etc.).
   const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
 
   // Compat: payloads antigos (sem `is_pmoc`) eram sempre PMOC.
   const isPmoc = is_pmoc !== false;
@@ -379,8 +385,8 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const hasExecutionHistory = isPmoc && executionRows.length > 0;
 
   const tabs = useMemo(
-    () => buildTabs(isPmoc, hasExecutionHistory),
-    [isPmoc, hasExecutionHistory],
+    () => buildTabs(isPmoc, hasExecutionHistory, t),
+    [isPmoc, hasExecutionHistory, t],
   );
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
@@ -520,7 +526,11 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
               contract.health_status === 'necessita_atencao' && 'bg-destructive/10 text-destructive',
             )}
           >
-            {HEALTH_CONFIG[contract.health_status]?.label ?? '—'}
+            {contract.health_status === 'em_dia'
+              ? t.healthEmDia
+              : contract.health_status === 'manutencao_pendente'
+                ? t.healthManutencaoPendente
+                : t.healthNecessitaAtencao}
           </span>
         </div>
       </div>
@@ -665,9 +675,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide sm:text-sm"
         style={{ backgroundColor: headerConfig.statusBarColor, color: '#ffffff' }}
       >
-        {isPmoc
-          ? 'Plano de Manutenção, Operação e Controle — Lei 13.589/2018'
-          : 'Portal do Contrato'}
+        {isPmoc ? t.statusBarPmoc : t.statusBarContract}
       </div>
 
       {/* Sentinel pra detectar quando o hero sai do viewport (sticky bar aparece). */}
@@ -713,9 +721,9 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
             {isPmoc && activeTab === 'historico-pmoc' && (
               <div className="space-y-3">
                 <div>
-                  <h2 className="text-base font-semibold sm:text-lg">Histórico PMOC</h2>
+                  <h2 className="text-base font-semibold sm:text-lg">{t.historyPmocTitle}</h2>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Prova de cumprimento da Planilha, tarefa por tarefa, em cada visita.
+                    {t.historyPmocDesc}
                   </p>
                 </div>
                 <PmocExecutionHistoryView rows={executionRows} showHeader={false} />
@@ -757,33 +765,34 @@ function TabOverview({
   isPmoc: boolean;
 }) {
   const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
   const fmt = (d: string | null) => formatLocal(d, locale, timezone);
   return (
     <div className="space-y-6">
-      <Section title="Contrato" icon={CalendarClock}>
+      <Section title={t.sectionContract} icon={CalendarClock}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <InfoCard label={isPmoc ? 'Plano' : 'Contrato'} value={contract.name ?? '—'} />
-          <InfoCard label="Frequência" value={contract.frequency_label} />
+          <InfoCard label={isPmoc ? t.infoCardPlan : t.infoCardContract} value={contract.name ?? '—'} />
+          <InfoCard label={t.infoCardFrequency} value={contract.frequency_label} />
           <InfoCard
-            label={isPmoc ? 'Próxima manutenção' : 'Próximo atendimento'}
+            label={isPmoc ? t.infoCardNextMaint : t.infoCardNextService}
             value={contract.next_pmoc_generation_date
               ? fmt(contract.next_pmoc_generation_date)
-              : 'A definir'}
+              : t.infoCardTbd}
           />
-          <InfoCard label="Início do contrato" value={fmt(contract.start_date)} />
+          <InfoCard label={t.infoCardContractStart} value={fmt(contract.start_date)} />
           {isPmoc && (
             <InfoCard
-              label="Conformidade"
+              label={t.infoCardCompliance}
               value={contract.compliance_text}
               valueClassName="text-info"
             />
           )}
-          <InfoCard label="Status" value={contract.status_label} />
+          <InfoCard label={t.infoCardStatus} value={contract.status_label} />
         </div>
       </Section>
 
       {responsibleTechnician && (
-        <Section title="Responsável Técnico" icon={Award}>
+        <Section title={t.sectionResponsibleTech} icon={Award}>
           <div
             className={cn(
               'flex items-start gap-3 rounded-2xl border border-border bg-card p-4',
@@ -809,7 +818,7 @@ function TabOverview({
               )}
               {responsibleTechnician.registry_number && (
                 <p className="break-words text-xs text-muted-foreground">
-                  Registro: {responsibleTechnician.registry_number}
+                  {t.rtRegistryPrefix} {responsibleTechnician.registry_number}
                 </p>
               )}
             </div>
@@ -827,6 +836,8 @@ function TabSchedule({
   orders: PmocCronogramaCalendarOrder[];
   onOsClick: (order: PmocCronogramaCalendarOrder) => void;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
   return (
     <div className="space-y-3">
       <PmocCronogramaCalendar
@@ -838,11 +849,11 @@ function TabSchedule({
       />
       {orders.length === 0 && (
         <p className="text-center text-xs text-muted-foreground">
-          Ainda não há manutenções registradas para esta unidade.
+          {t.scheduleEmpty}
         </p>
       )}
       <p className="text-center text-[11px] text-muted-foreground">
-        Toque em uma manutenção do calendário para ver detalhes.
+        {t.scheduleHint}
       </p>
     </div>
   );
@@ -864,12 +875,13 @@ function TabOccurrences({
   onOsClick: (os: PortalOsEntry) => void;
 }) {
   const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
   const fmt = (d: string | null) => formatLocal(d, locale, timezone);
   if (occurrences.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Ainda não há ocorrências registradas para este contrato.
+          {t.occurrencesEmpty}
         </p>
       </div>
     );
@@ -881,7 +893,17 @@ function TabOccurrences({
   return (
     <ol className="space-y-3">
       {occurrences.map((entry, i) => {
-        const statusCfg = OS_STATUS_CONFIG[entry.status] ?? OS_STATUS_CONFIG.agendada;
+        const statusClass = OS_STATUS_CLASS[entry.status] ?? OS_STATUS_CLASS.agendada;
+        const statusLabel = entry.status_label || (
+          entry.status === 'agendada' ? t.osStatusAgendada :
+          entry.status === 'pendente' ? t.osStatusPendente :
+          entry.status === 'a_caminho' ? t.osStatusACaminho :
+          entry.status === 'em_andamento' ? t.osStatusEmAndamento :
+          entry.status === 'pausada' ? t.osStatusPausada :
+          entry.status === 'concluida' ? t.osStatusConcluida :
+          entry.status === 'cancelada' ? t.osStatusCancelada :
+          entry.status
+        );
         const displayDate = entry.completed_at || entry.scheduled_date;
         const showFill = canFill && !TERMINAL.includes(entry.status);
         return (
@@ -904,10 +926,10 @@ function TabOccurrences({
                   <span
                     className={cn(
                       'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                      statusCfg.className,
+                      statusClass,
                     )}
                   >
-                    {entry.status_label || statusCfg.label}
+                    {statusLabel}
                   </span>
                 </div>
                 <p className="mt-1 text-sm font-medium leading-relaxed">{fmt(displayDate)}</p>
@@ -933,7 +955,7 @@ function TabOccurrences({
                   )}
                 >
                   <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                  Preencher OS
+                  {t.fillOs}
                 </a>
               )}
             </div>
@@ -955,13 +977,16 @@ function TabDocuments({
   const available = documents.filter((d) => d.available);
   const unavailable = documents.filter((d) => !d.available);
 
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
+
   // Gate fechado: não há documentos a mostrar (vêm vazios da edge). Exibe um
   // aviso neutro, sem header de seção vazio.
   if (!released || documents.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Os documentos desta unidade serão disponibilizados em breve.
+          {t.docsEmpty}
         </p>
       </div>
     );
@@ -980,7 +1005,7 @@ function TabDocuments({
         <>
           {available.length > 0 && (
             <h3 className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Em breve
+              {t.docsComingSoon}
             </h3>
           )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1001,11 +1026,14 @@ function TabHistory({
   history: PortalOsEntry[];
   onOsClick: (os: PortalOsEntry) => void;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
+
   if (history.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Nenhuma manutenção concluída ainda.
+          {t.historyEmpty}
         </p>
       </div>
     );
@@ -1067,12 +1095,17 @@ function HealthBadge({
   /** @deprecated mantido por compat; o badge agora pinta SEMPRE bg sólido + texto branco. */
   textColor?: string;
 }) {
-  const cfg = HEALTH_CONFIG[status] ?? HEALTH_CONFIG.em_dia;
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
+  const style = HEALTH_STYLE[status] ?? HEALTH_STYLE.em_dia;
+  const label = status === 'em_dia' ? t.healthEmDia
+    : status === 'manutencao_pendente' ? t.healthManutencaoPendente
+    : t.healthNecessitaAtencao;
   // bg saturado por status + texto branco sempre (cor do bg JÁ comunica o estado;
   // dot virou redundante e foi removido).
-  const bgClass = cfg.tone === 'success'
+  const bgClass = style.tone === 'success'
     ? 'bg-success'
-    : cfg.tone === 'warning'
+    : style.tone === 'warning'
       ? 'bg-warning'
       : 'bg-destructive';
   return (
@@ -1085,17 +1118,17 @@ function HealthBadge({
         // Desktop: bloco vertical com header "STATUS" + label + pendências.
         'sm:flex sm:flex-col sm:items-end sm:gap-0.5 sm:rounded-xl sm:px-3 sm:py-2',
       )}
-      aria-label={`Status sanitário: ${cfg.label}${overdueCount > 0 ? ` (${overdueCount} pendência${overdueCount === 1 ? '' : 's'})` : ''}`}
+      aria-label={`${t.healthBadgeStatusLabel}: ${label}${overdueCount > 0 ? ` (${overdueCount} ${overdueCount === 1 ? t.healthBadgePendenciaSingular : t.healthBadgePendenciaPlural})` : ''}`}
     >
       <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-white/80 sm:block">
-        Status
+        {t.healthBadgeStatusLabel}
       </span>
       <span className="text-xs font-semibold leading-none sm:text-sm sm:font-bold sm:leading-tight">
-        {cfg.label}
+        {label}
       </span>
       {overdueCount > 0 && (
         <span className="hidden text-[10px] text-white/85 sm:block">
-          {overdueCount} {overdueCount === 1 ? 'pendência' : 'pendências'}
+          {overdueCount} {overdueCount === 1 ? t.healthBadgePendenciaSingular : t.healthBadgePendenciaPlural}
         </span>
       )}
     </div>
@@ -1130,11 +1163,12 @@ function InfoCard({
 
 function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
   const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
   const fmt = (d: string | null) => formatLocal(d, locale, timezone);
   const available = doc.available && !!doc.pdf_url;
   const sub = available && doc.generated_at
-    ? `Atualizado em ${fmt(doc.generated_at)}${doc.version ? ` — v${doc.version}` : ''}`
-    : 'Disponível em breve';
+    ? `${t.docUpdatedAt} ${fmt(doc.generated_at)}${doc.version ? ` — v${doc.version}` : ''}`
+    : t.docAvailableSoon;
 
   const showPendingSignature = available && doc.signature_status === 'pending';
 
@@ -1173,7 +1207,7 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
           {showValidity && (
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-muted-foreground">
-                Válido até {fmt(validUntil)}
+                {t.docValidUntil} {fmt(validUntil)}
               </span>
               <span
                 className={cn(
@@ -1195,7 +1229,7 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
               title="Documento gerado com linha em branco pra assinar à mão"
             >
               <AlertCircle className="h-2.5 w-2.5" aria-hidden="true" />
-              Assinatura pendente
+              {t.docPendingSignature}
             </span>
           )}
         </div>
@@ -1213,7 +1247,7 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
           )}
         >
           <Download className="h-4 w-4" aria-hidden="true" />
-          Baixar PDF
+          {t.docDownloadPdf}
         </a>
       )}
     </div>
@@ -1228,8 +1262,19 @@ function HistoryItem({
   onClick: () => void;
 }) {
   const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
   const fmt = (d: string | null) => formatLocal(d, locale, timezone);
-  const statusCfg = OS_STATUS_CONFIG[entry.status] ?? OS_STATUS_CONFIG.agendada;
+  const statusClass = OS_STATUS_CLASS[entry.status] ?? OS_STATUS_CLASS.agendada;
+  const statusLabel = entry.status_label || (
+    entry.status === 'agendada' ? t.osStatusAgendada :
+    entry.status === 'pendente' ? t.osStatusPendente :
+    entry.status === 'a_caminho' ? t.osStatusACaminho :
+    entry.status === 'em_andamento' ? t.osStatusEmAndamento :
+    entry.status === 'pausada' ? t.osStatusPausada :
+    entry.status === 'concluida' ? t.osStatusConcluida :
+    entry.status === 'cancelada' ? t.osStatusCancelada :
+    entry.status
+  );
   const displayDate = entry.completed_at || entry.scheduled_date;
   const photos = entry.public_photos ?? [];
 
@@ -1253,10 +1298,10 @@ function HistoryItem({
               <span
                 className={cn(
                   'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                  statusCfg.className,
+                  statusClass,
                 )}
               >
-                {entry.status_label || statusCfg.label}
+                {statusLabel}
               </span>
               {entry.rating != null && entry.rating > 0 && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
@@ -1280,13 +1325,13 @@ function HistoryItem({
 
         {entry.technician_first_name && (
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            Executado por <span className="font-medium">{entry.technician_first_name}</span>
+            {t.historyExecutedBy} <span className="font-medium">{entry.technician_first_name}</span>
           </p>
         )}
 
         {photos.length > 0 && (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            {photos.length} {photos.length === 1 ? 'foto anexada' : 'fotos anexadas'} — toque para ver
+            {photos.length} {photos.length === 1 ? t.historyPhotoSingular : t.historyPhotoPlural} — {t.historyPhotoHint}
           </p>
         )}
       </button>
@@ -1305,6 +1350,8 @@ function PortalFooter({
   portalUrl: string;
   lastUpdate: string;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.pmoc.publicPortal;
   return (
     <footer
       className="mx-auto mt-10 w-full max-w-5xl space-y-6 px-4 pt-8 sm:px-6"
@@ -1314,7 +1361,7 @@ function PortalFooter({
 
       <div className="space-y-1 text-center">
         <p className="text-[11px] text-muted-foreground">
-          Portal atualizado em {lastUpdate}
+          {t.footerUpdatedAt} {lastUpdate}
         </p>
         <p className="break-all text-[11px] text-muted-foreground">{portalUrl}</p>
       </div>
@@ -1403,12 +1450,24 @@ function PortalSkeleton() {
 }
 
 /**
+ * Helper: resolve o locale para estados de erro/acesso renderizados FORA do
+ * PublicAppLocaleProvider (antes dos dados do tenant chegarem). Usa
+ * detectMachineLocale() — idioma do navegador do visitante — com fallback pt-br.
+ */
+function useMachineLocaleMessages() {
+  const machineLocale = detectMachineLocale();
+  const locale = machineLocale ?? 'pt-br';
+  return MESSAGES[locale].app.pmoc.publicPortal;
+}
+
+/**
  * Tela "Portal privado" — espelha a do Portal do Cliente (CustomerPortal).
  * Portal com `portal_is_public=false` aberto por anônimo (ou usuário de outra
  * empresa). Sóbria, com DarkVeil + opção de login preservando o retorno pro
  * próprio portal (quem é da empresa dona entra e vê o conteúdo).
  */
 function PortalPrivate({ token, companyName }: { token: string; companyName?: string | null }) {
+  const t = useMachineLocaleMessages();
   const portalPath = `/contrato/unidade/${token}`;
   return (
     <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden p-4">
@@ -1432,17 +1491,17 @@ function PortalPrivate({ token, companyName }: { token: string; companyName?: st
         )}
         <div className="space-y-2">
           <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
-            Portal privado
+            {t.privateTitle}
           </h1>
           <p className="mx-auto max-w-sm text-sm leading-relaxed text-white/60">
-            Este portal é restrito e exige que você entre com a conta da empresa.
+            {t.privateDesc}
           </p>
           <p className="mx-auto max-w-sm text-xs leading-relaxed text-white/40">
-            Se você já está conectado e ainda vê esta mensagem, sua conta não tem acesso a este portal.
+            {t.privateHint}
           </p>
         </div>
         <a href={`/login?redirect=${encodeURIComponent(portalPath)}`}>
-          <Button size="lg" className="mt-2">Fazer login</Button>
+          <Button size="lg" className="mt-2">{t.privateLoginBtn}</Button>
         </a>
       </div>
     </div>
@@ -1450,6 +1509,7 @@ function PortalPrivate({ token, companyName }: { token: string; companyName?: st
 }
 
 function PortalNotFound() {
+  const t = useMachineLocaleMessages();
   return (
     <div
       className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6 text-center"
@@ -1461,10 +1521,9 @@ function PortalNotFound() {
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
         <AlertCircle className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
       </div>
-      <h1 className="mt-6 text-xl font-bold leading-tight">Portal não encontrado</h1>
+      <h1 className="mt-6 text-xl font-bold leading-tight">{t.notFoundTitle}</h1>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-        Este link de QR Code não está mais ativo ou pode ter sido renovado.
-        Procure a empresa responsável pela manutenção para obter o link atualizado.
+        {t.notFoundDesc}
       </p>
       <a
         href="https://dominex.app"
@@ -1474,13 +1533,14 @@ function PortalNotFound() {
           'transition-all duration-100 hover:bg-primary/90 active:scale-[0.98]',
         )}
       >
-        Ir para o Dominex
+        {t.notFoundBtn}
       </a>
     </div>
   );
 }
 
 function PortalNetworkError({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
+  const t = useMachineLocaleMessages();
   return (
     <div
       className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6 text-center"
@@ -1492,9 +1552,9 @@ function PortalNetworkError({ onRetry, retrying }: { onRetry: () => void; retryi
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-warning/10">
         <AlertCircle className="h-8 w-8 text-warning" aria-hidden="true" />
       </div>
-      <h1 className="mt-6 text-xl font-bold leading-tight">Não foi possível carregar</h1>
+      <h1 className="mt-6 text-xl font-bold leading-tight">{t.networkErrorTitle}</h1>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-        Verifique sua conexão e tente novamente.
+        {t.networkErrorDesc}
       </p>
       <button
         type="button"
@@ -1508,7 +1568,7 @@ function PortalNetworkError({ onRetry, retrying }: { onRetry: () => void; retryi
         )}
       >
         {retrying && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-        Tentar novamente
+        {t.networkErrorBtn}
       </button>
     </div>
   );

@@ -330,6 +330,8 @@ export const os = {
       btnLinkCopied: 'Link copiado!',
       notFoundTitle: 'OS não encontrada',
       notFoundDescription: 'Verifique o link e tente novamente.',
+      loadError: 'Erro ao carregar OS',
+      questionFallback: 'Pergunta',
     },
   },
 
@@ -607,6 +609,8 @@ export const os = {
       btnLinkCopied: 'Link copied!',
       notFoundTitle: 'Work order not found',
       notFoundDescription: 'Check the link and try again.',
+      loadError: 'Error loading work order',
+      questionFallback: 'Question',
     },
   },
 
@@ -884,6 +888,8 @@ export const os = {
       btnLinkCopied: '¡Enlace copiado!',
       notFoundTitle: 'Orden no encontrada',
       notFoundDescription: 'Verifica el enlace e inténtalo de nuevo.',
+      loadError: 'Error al cargar la orden',
+      questionFallback: 'Pregunta',
     },
   },
 
@@ -1161,6 +1167,8 @@ export const os = {
       btnLinkCopied: 'Lien copié !',
       notFoundTitle: 'Bon introuvable',
       notFoundDescription: 'Vérifiez le lien et réessayez.',
+      loadError: 'Erreur lors du chargement du bon',
+      questionFallback: 'Question',
     },
   },
 };
