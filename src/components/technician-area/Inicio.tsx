@@ -25,6 +25,8 @@ import { GLOSSARIO_GASES } from '@/lib/glossarioGases';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getTechToolsForSegment, type TechToolId } from '@/config/technicianArea';
 import type { ToolNavPayload } from '@/pages/TechnicianArea';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Ids das abas — fonte única em `@/config/technicianArea`. */
 export type ToolNavId = TechToolId;
@@ -41,31 +43,21 @@ interface SecaoGlossario {
 }
 
 /**
- * Seções do glossário exibidas em "Termos Técnicos Explicados".
- * Os value dos AccordionItem são prefixados com o id da seção (`<secao>:<termo>`)
- * pra garantir unicidade global entre seções.
+ * Gera as seções do glossário com rótulos traduzidos pelo locale ativo.
  */
-const GLOSSARIO_SECOES: SecaoGlossario[] = [
-  { id: 'medidas', rotulo: 'Medidas e Unidades', icon: Ruler, termos: GLOSSARIO },
-  {
-    id: 'ciclo',
-    rotulo: 'Ciclo Básico de Refrigeração',
-    icon: RefreshCcw,
-    termos: GLOSSARIO_CICLO,
-  },
-  {
-    id: 'eletrica',
-    rotulo: 'Elétrica e Instalação',
-    icon: Cable,
-    termos: GLOSSARIO_ELETRICA,
-  },
-  {
-    id: 'gases',
-    rotulo: 'Gases e Nomenclatura',
-    icon: Snowflake,
-    termos: GLOSSARIO_GASES,
-  },
-];
+function buildGlossarioSecoes(rotulos: {
+  measurements: string;
+  cycle: string;
+  electrical: string;
+  gases: string;
+}): SecaoGlossario[] {
+  return [
+    { id: 'medidas', rotulo: rotulos.measurements, icon: Ruler, termos: GLOSSARIO },
+    { id: 'ciclo', rotulo: rotulos.cycle, icon: RefreshCcw, termos: GLOSSARIO_CICLO },
+    { id: 'eletrica', rotulo: rotulos.electrical, icon: Cable, termos: GLOSSARIO_ELETRICA },
+    { id: 'gases', rotulo: rotulos.gases, icon: Snowflake, termos: GLOSSARIO_GASES },
+  ];
+}
 
 interface InicioProps {
   /**
@@ -86,19 +78,28 @@ function semAcento(s: string): string {
 }
 
 export function Inicio({ onNavigate }: InicioProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.home;
+
   const { settings } = useCompanySettings();
   // Cards = ferramentas do segmento da empresa (fonte única do config).
   const atalhos = getTechToolsForSegment(settings?.segment);
   const [buscaGlossario, setBuscaGlossario] = useState('');
+
+  const GLOSSARIO_SECOES = useMemo(
+    () => buildGlossarioSecoes(t.glossarySections),
+    [t.glossarySections],
+  );
+
   const secoesFiltradas = useMemo(() => {
     const q = semAcento(buscaGlossario);
     const casa = (termo: string, descricao: string) =>
       !q || semAcento(termo).includes(q) || semAcento(descricao).includes(q);
     return GLOSSARIO_SECOES.map((s) => ({
       ...s,
-      termos: s.termos.filter((t) => casa(t.termo, t.descricao)),
+      termos: s.termos.filter((item) => casa(item.termo, item.descricao)),
     })).filter((s) => s.termos.length > 0);
-  }, [buscaGlossario]);
+  }, [buscaGlossario, GLOSSARIO_SECOES]);
   const semResultado = secoesFiltradas.length === 0;
 
   return (
@@ -106,9 +107,9 @@ export function Inicio({ onNavigate }: InicioProps) {
       {/* Navegação pras ferramentas */}
       <section className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold md:text-xl">Ferramentas</h2>
+          <h2 className="text-base font-semibold md:text-xl">{t.toolsTitle}</h2>
           <p className="text-sm text-muted-foreground md:text-base">
-            Escolha uma ferramenta para começar.
+            {t.toolsSubtitle}
           </p>
         </div>
 
@@ -167,9 +168,9 @@ export function Inicio({ onNavigate }: InicioProps) {
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <h2 className="text-base font-semibold md:text-xl">Termos Técnicos Explicados</h2>
+            <h2 className="text-base font-semibold md:text-xl">{t.glossaryTitle}</h2>
             <p className="text-sm text-muted-foreground md:text-base">
-              Não entendeu uma sigla ou unidade? Busque e veja em linguagem simples.
+              {t.glossarySubtitle}
             </p>
           </div>
         </div>
@@ -180,7 +181,7 @@ export function Inicio({ onNavigate }: InicioProps) {
           <Input
             type="text"
             inputMode="search"
-            placeholder="Buscar termo (ex: BTU, capacitor, pressão)"
+            placeholder={t.glossaryPlaceholder}
             value={buscaGlossario}
             onChange={(e) => setBuscaGlossario(e.target.value)}
             className="pl-9"
@@ -189,7 +190,7 @@ export function Inicio({ onNavigate }: InicioProps) {
 
         {semResultado ? (
           <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            Nenhum termo encontrado.
+            {t.glossaryEmpty}
           </p>
         ) : (
           <div className="space-y-6">
@@ -218,7 +219,7 @@ export function Inicio({ onNavigate }: InicioProps) {
                         <p className="text-sm text-muted-foreground">{t.descricao}</p>
                         {t.exemplo && (
                           <p className="rounded-lg bg-muted px-3 py-2 text-sm">
-                            <span className="font-medium text-primary">Exemplo: </span>
+                            <span className="font-medium text-primary">{MESSAGES[locale].app.technicianTools.home.glossaryExampleLabel}</span>
                             <span className={cn('text-foreground/90')}>{t.exemplo}</span>
                           </p>
                         )}

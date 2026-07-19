@@ -10,9 +10,13 @@ import {
 } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 export default function DomiflixMinhaLista() {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
   const { data: titles = [], isLoading: titlesLoading } = useDomiflixTitles();
   const { data: watchlist = [], isLoading: wlLoading } = useDomiflixWatchlist();
   const { data: episodeCounts = {} } = useDomiflixEpisodeCounts();
@@ -33,10 +37,10 @@ export default function DomiflixMinhaLista() {
       <div className="px-4 md:px-12">
         <div className="flex items-center gap-3 mb-2">
           <Bookmark className="w-7 h-7 text-[#E50914]" />
-          <h1 className="text-2xl md:text-3xl font-bold">Minha Lista</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">{t.watchlist.title}</h1>
         </div>
         <p className="text-white/50 text-sm md:text-base mb-8">
-          Títulos que você salvou para assistir depois
+          {t.watchlist.subtitle}
         </p>
 
         {isLoading ? (
@@ -48,15 +52,15 @@ export default function DomiflixMinhaLista() {
         ) : myTitles.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <Bookmark className="w-20 h-20 text-white/15" />
-            <p className="text-xl font-semibold text-white/40">Sua lista está vazia</p>
+            <p className="text-xl font-semibold text-white/40">{t.watchlist.empty}</p>
             <p className="text-sm text-white/25 max-w-md text-center">
-              Adicione títulos clicando no botão "Minha Lista" na página de cada conteúdo.
+              {t.watchlist.emptyHint}
             </p>
             <button
               onClick={() => navigate("/domiflix")}
               className="mt-4 px-6 py-2.5 rounded font-semibold text-white bg-[#6d6d6eb3] hover:bg-[#6d6d6e] transition-all text-sm border border-white/20"
             >
-              Explorar conteúdo
+              {t.watchlist.exploreContent}
             </button>
           </div>
         ) : (
@@ -106,15 +110,15 @@ export default function DomiflixMinhaLista() {
                           className="font-bold text-[10px] tracking-[0.18em] uppercase"
                           style={{ color: "#E50914" }}
                         >
-                          {title.type === "series" ? "Módulo" : "Live"}
+                          {title.type === "series" ? t.watchlist.typeModule : t.watchlist.typeLive}
                         </span>
                         {epCount > 0 && (
                           <span className="text-white/40 text-xs">
-                            • {epCount} {epCount === 1 ? "episódio" : "episódios"}
+                            • {epCount === 1 ? t.watchlist.episode_one.replace('{{count}}', '1') : t.watchlist.episode_other.replace('{{count}}', String(epCount))}
                           </span>
                         )}
                         {hasProgress && (
-                          <span className="text-white/50 text-xs">• Em andamento</span>
+                          <span className="text-white/50 text-xs">• {t.watchlist.inProgress}</span>
                         )}
                       </div>
                       <h3 className="text-white font-bold text-base sm:text-lg leading-tight line-clamp-1">
@@ -135,7 +139,7 @@ export default function DomiflixMinhaLista() {
                         }}
                         className="text-xs sm:text-sm font-semibold text-black bg-white hover:bg-white/85 px-4 py-1.5 rounded transition-colors"
                       >
-                        Ver detalhes
+                        {t.watchlist.viewDetails}
                       </button>
                       <button
                         onClick={(e) => {
@@ -144,7 +148,7 @@ export default function DomiflixMinhaLista() {
                         }}
                         className="text-xs sm:text-sm font-medium text-white/70 hover:text-white border border-white/20 hover:border-white/40 px-4 py-1.5 rounded transition-colors"
                       >
-                        Remover
+                        {t.watchlist.remove}
                       </button>
                     </div>
                   </div>

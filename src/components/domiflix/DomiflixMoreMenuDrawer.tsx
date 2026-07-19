@@ -11,6 +11,8 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 import { cn } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
@@ -51,6 +53,8 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tipoParam = searchParams.get("tipo");
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
 
   const { user, profile, isAdminUser } = useAuth();
   const { avatarUrl: domiflixAvatarUrl } = useDomiflixAvatar();
@@ -131,25 +135,25 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
   }> = [
     {
       icon: Home,
-      label: "Início",
+      label: t.nav.home,
       path: "/domiflix",
       isActive: () => location.pathname === "/domiflix" && !tipoParam,
     },
     {
       icon: Layers,
-      label: "Módulos",
+      label: t.nav.modules,
       path: "/domiflix?tipo=modulos",
       isActive: () => location.pathname === "/domiflix" && tipoParam === "modulos",
     },
     {
       icon: Radio,
-      label: "Lives",
+      label: t.nav.lives,
       path: "/domiflix?tipo=lives",
       isActive: () => location.pathname === "/domiflix" && tipoParam === "lives",
     },
     {
       icon: Bookmark,
-      label: "Minha Lista",
+      label: t.nav.myList,
       path: "/domiflix/minha-lista",
       isActive: () =>
         location.pathname === "/domiflix/minha-lista" ||
@@ -167,10 +171,10 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
         )}
       >
         <VisuallyHidden asChild>
-          <DrawerTitle>Menu Domiflix</DrawerTitle>
+          <DrawerTitle>{t.menu.title}</DrawerTitle>
         </VisuallyHidden>
         <VisuallyHidden asChild>
-          <DrawerDescription>Navegação e atalhos da Domiflix</DrawerDescription>
+          <DrawerDescription>{t.menu.description}</DrawerDescription>
         </VisuallyHidden>
 
         <div className="flex flex-col h-full min-h-0 max-h-[85vh]">
@@ -182,8 +186,8 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                 type="button"
                 onClick={() => handleNavigate("/domiflix/perfil")}
                 className="shrink-0 group"
-                aria-label="Editar perfil Domiflix"
-                title="Editar perfil Domiflix"
+                aria-label={t.nav.editProfile}
+                title={t.nav.editProfile}
               >
                 {domiflixAvatarUrl ? (
                   <img
@@ -216,7 +220,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                 type="button"
                 onClick={close}
                 className="text-white/70 hover:text-white p-1.5 rounded-md transition-colors"
-                aria-label="Fechar menu"
+                aria-label={t.menu.closeMenu}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -229,7 +233,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
               <Search className="w-4 h-4 text-white/50 shrink-0" />
               <input
                 type="text"
-                placeholder="Buscar títulos..."
+                placeholder={t.menu.searchPlaceholder}
                 value={navSearchQuery}
                 onChange={(e) => setNavSearchQuery(e.target.value)}
                 className="bg-transparent text-white text-sm placeholder-white/30 outline-none flex-1 h-full"
@@ -239,7 +243,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                   type="button"
                   onClick={() => setNavSearchQuery("")}
                   className="text-white/50 hover:text-white"
-                  aria-label="Limpar busca"
+                  aria-label={t.menu.clearSearch}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -254,7 +258,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
               <div className="px-2 pt-1">
                 {navSearchResults.length === 0 ? (
                   <p className="text-white/40 text-xs py-6 text-center">
-                    Nenhum resultado para "{navSearchQuery}"
+                    {t.menu.noResults.replace('{{query}}', navSearchQuery)}
                   </p>
                 ) : (
                   <div className="space-y-1">
@@ -399,7 +403,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                   )}
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Voltar ao sistema
+                  {t.menu.backToSystem}
                 </button>
               </nav>
             )}
@@ -433,7 +437,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                 </Link>
                 <span>•</span>
                 <span>
-                  Desenvolvido por{" "}
+                  {t.menu.developedBy}{" "}
                   <a
                     href="https://auctustech.com.br"
                     target="_blank"
@@ -447,7 +451,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
 
               {/* Copyright */}
               <span className="text-[10px] text-white/30 text-center">
-                Copyright © {new Date().getFullYear()} | Todos os Direitos Reservados
+                {t.menu.copyright.replace('{{year}}', String(new Date().getFullYear()))}
               </span>
             </div>
           </div>

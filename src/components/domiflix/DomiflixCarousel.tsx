@@ -5,6 +5,8 @@ import { DomiflixTitle, DomiflixProgress, DomiflixWatchlistItem, DomiflixEpisode
 import { DomiflixCard } from "./DomiflixCard";
 import { cn } from "@/lib/utils";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 interface DomiflixCarouselProps {
   label: string;
@@ -37,6 +39,8 @@ export function DomiflixCarousel({
   showProgress = false,
 }: DomiflixCarouselProps) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(true);
@@ -87,7 +91,7 @@ export function DomiflixCarousel({
         <h2 className="text-white text-base md:text-[1.1rem] font-bold">{label}</h2>
         {renderSectionProgress && (
           <span className="text-xs md:text-sm text-white/60">
-            {sectionPct}% concluído
+            {t.browse.sectionProgress.replace('{{pct}}', String(sectionPct))}
           </span>
         )}
         {exploreUrl && (
@@ -98,7 +102,7 @@ export function DomiflixCarousel({
               labelVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"
             )}
           >
-            Explorar todos
+            {t.browse.exploreAll}
             <ChevronRight className="w-3 h-3" />
           </button>
         )}
@@ -120,7 +124,7 @@ export function DomiflixCarousel({
       <div className="relative">
         <button
           onClick={() => scroll("left")}
-          aria-label="Anterior"
+          aria-label={t.browse.previous}
           className={cn(
             "absolute left-0 top-0 bottom-0 z-10 w-10 md:w-14 flex items-center justify-center",
             "bg-gradient-to-r from-black/90 to-transparent",
@@ -154,7 +158,7 @@ export function DomiflixCarousel({
 
         <button
           onClick={() => scroll("right")}
-          aria-label="Próximo"
+          aria-label={t.browse.next}
           className={cn(
             "absolute right-0 top-0 bottom-0 z-10 w-10 md:w-14 flex items-center justify-center",
             "bg-gradient-to-l from-black/90 to-transparent",

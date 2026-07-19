@@ -1,6 +1,8 @@
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Home, Layers, Radio, Bookmark, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 interface SideNavItem {
   to: string;
@@ -16,28 +18,25 @@ interface SideNavItem {
 }
 
 // Itens laterais à esquerda do botão central "Início"
-const LEFT_ITEMS: SideNavItem[] = [
+const LEFT_ITEM_DEFS = [
   {
     to: "/domiflix?tipo=modulos",
-    label: "Módulos",
     icon: Layers,
-    isActive: (pathname, tipo) => pathname === "/domiflix" && tipo === "modulos",
+    isActive: (pathname: string, tipo: string | null) => pathname === "/domiflix" && tipo === "modulos",
   },
   {
     to: "/domiflix?tipo=lives",
-    label: "Lives",
     icon: Radio,
-    isActive: (pathname, tipo) => pathname === "/domiflix" && tipo === "lives",
+    isActive: (pathname: string, tipo: string | null) => pathname === "/domiflix" && tipo === "lives",
   },
 ];
 
 // Itens laterais à direita do botão central
-const RIGHT_ITEMS: SideNavItem[] = [
+const RIGHT_ITEM_DEFS = [
   {
     to: "/domiflix/minha-lista",
-    label: "Minha Lista",
     icon: Bookmark,
-    isActive: (pathname) =>
+    isActive: (pathname: string) =>
       pathname === "/domiflix/minha-lista" ||
       pathname.startsWith("/domiflix/minha-lista/"),
   },
@@ -45,9 +44,8 @@ const RIGHT_ITEMS: SideNavItem[] = [
 
 // Botão central destacado — "Início" da Domiflix (espelha o estilo do "+"
 // do MobileBottomNav global: círculo grande, cor saturada, sombra colorida).
-const CENTER_HOME = {
+const CENTER_HOME_DEF = {
   to: "/domiflix",
-  label: "Início",
   isActive: (pathname: string, tipo: string | null) =>
     pathname === "/domiflix" && !tipo,
 };
@@ -80,8 +78,18 @@ export function DomiflixMobileBottomNav({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const tipoParam = searchParams.get("tipo");
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
 
-  const homeActive = CENTER_HOME.isActive(location.pathname, tipoParam);
+  const LEFT_ITEMS: SideNavItem[] = [
+    { ...LEFT_ITEM_DEFS[0], label: t.nav.modules },
+    { ...LEFT_ITEM_DEFS[1], label: t.nav.lives },
+  ];
+  const RIGHT_ITEMS: SideNavItem[] = [
+    { ...RIGHT_ITEM_DEFS[0], label: t.nav.myList },
+  ];
+
+  const homeActive = CENTER_HOME_DEF.isActive(location.pathname, tipoParam);
 
   // Estilo unificado pros itens laterais (Módulos, Lives, Minha Lista).
   // Botão "Menu" reusa o mesmo visual.
@@ -133,7 +141,7 @@ export function DomiflixMobileBottomNav({
         // Safe-area iOS (notch inferior)
         "pb-[env(safe-area-inset-bottom,0px)]",
       )}
-      aria-label="Navegação Domiflix"
+      aria-label={t.nav.domiflixNav}
     >
       <ul className="flex justify-around items-stretch h-16 px-1">
         {/* Esquerda: Módulos, Lives */}
@@ -142,7 +150,7 @@ export function DomiflixMobileBottomNav({
         {/* Centro: Início (botão destacado, redondo, vermelho) */}
         <li className="flex-1 flex items-start justify-center">
           <Link
-            to={CENTER_HOME.to}
+            to={CENTER_HOME_DEF.to}
             className={cn(
               "relative flex items-center justify-center",
               "w-14 h-14 rounded-full",
@@ -155,7 +163,7 @@ export function DomiflixMobileBottomNav({
                 ? "shadow-xl shadow-[#e50914]/70"
                 : "shadow-lg shadow-[#e50914]/40",
             )}
-            aria-label="Início"
+            aria-label={t.nav.home}
             aria-current={homeActive ? "page" : undefined}
           >
             <Home
@@ -165,7 +173,7 @@ export function DomiflixMobileBottomNav({
               )}
               strokeWidth={2.5}
             />
-            <span className="sr-only">Início</span>
+            <span className="sr-only">{t.nav.home}</span>
           </Link>
         </li>
 
@@ -183,10 +191,10 @@ export function DomiflixMobileBottomNav({
               "min-h-[44px]",
               "text-white/55 hover:text-white active:text-white",
             )}
-            aria-label="Abrir menu"
+            aria-label={t.nav.openMenu}
           >
             <Menu className="w-5 h-5" strokeWidth={2} />
-            <span className="text-[11px] leading-none font-medium">Menu</span>
+            <span className="text-[11px] leading-none font-medium">{t.nav.menu}</span>
           </button>
         </li>
       </ul>

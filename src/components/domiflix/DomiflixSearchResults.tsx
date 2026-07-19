@@ -4,6 +4,8 @@ import { useState } from "react";
 import { DomiflixTitle, DomiflixEpisode } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 interface DomiflixSearchResultsProps {
   results: DomiflixTitle[];
@@ -23,15 +25,17 @@ export function DomiflixSearchResults({
   episodeSeasonMap = {},
 }: DomiflixSearchResultsProps) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
   const q = query.trim().toLowerCase();
 
   if (results.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3 px-4">
         <p className="text-white/40 text-lg font-medium">
-          Nenhum resultado para "<span className="text-white/60">{query}</span>"
+          {t.browse.noResults} "<span className="text-white/60">{query}</span>"
         </p>
-        <p className="text-white/25 text-sm">Tente buscar com outros termos</p>
+        <p className="text-white/25 text-sm">{t.browse.tryOtherTerms}</p>
       </div>
     );
   }
@@ -39,7 +43,7 @@ export function DomiflixSearchResults({
   return (
     <div className="px-4 md:px-12 space-y-3">
       <p className="text-white/50 text-sm mb-4">
-        {results.length} resultado{results.length !== 1 ? "s" : ""} para "
+        {(results.length === 1 ? t.browse.resultsCount_one : t.browse.resultsCount_other).replace('{{count}}', String(results.length))} "
         <span className="text-white/70">{query}</span>"
       </p>
 
@@ -79,12 +83,14 @@ interface SearchResultCardProps {
 }
 
 function SearchResultCard({ title, epCount, matchingEpisodes, episodeSeasonMap, onOpenTitle, onPlayEpisode }: SearchResultCardProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
   const bgImage = title.banner_url || title.thumbnail_url;
   const desc = title.description || "";
   const [expanded, setExpanded] = useState(false);
   const truncatedDesc = desc.length > MAX_DESC && !expanded ? desc.slice(0, MAX_DESC) + "…" : desc;
   const hasMatchingEps = matchingEpisodes.length > 0;
-  const epCountLabel = title.type === "series" ? "episódios" : "gravações";
+  const epCountLabel = title.type === "series" ? t.browse.episodes : t.browse.recordings;
 
   return (
     <div className="rounded-lg overflow-hidden bg-[#1a1a1a] hover:bg-[#222] transition-colors">
@@ -121,7 +127,7 @@ function SearchResultCard({ title, epCount, matchingEpisodes, episodeSeasonMap, 
               {desc.length > MAX_DESC && (
                 <button onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
                   className="text-white/75 font-medium ml-1 hover:underline">
-                  {expanded ? "ver menos" : "ver mais..."}
+                  {expanded ? t.browse.seeLess : t.browse.seeMore}
                 </button>
               )}
             </p>
@@ -140,7 +146,7 @@ function SearchResultCard({ title, epCount, matchingEpisodes, episodeSeasonMap, 
       {hasMatchingEps && (
         <div className="border-t border-white/[0.06] bg-black/20">
           <p className="text-[11px] uppercase tracking-wider text-white/40 font-semibold px-4 sm:px-6 pt-3 pb-2">
-            {matchingEpisodes.length} episódio{matchingEpisodes.length !== 1 ? "s" : ""} correspondente{matchingEpisodes.length !== 1 ? "s" : ""}
+            {(matchingEpisodes.length === 1 ? t.browse.matchingEpisodes_one : t.browse.matchingEpisodes_other).replace('{{count}}', String(matchingEpisodes.length))}
           </p>
           <div className="pb-2">
             {matchingEpisodes.slice(0, 6).map((ep) => {
@@ -159,7 +165,7 @@ function SearchResultCard({ title, epCount, matchingEpisodes, episodeSeasonMap, 
             {matchingEpisodes.length > 6 && (
               <button onClick={(e) => { e.stopPropagation(); onOpenTitle(); }}
                 className="w-full text-left text-xs text-white/45 hover:text-white/70 px-4 sm:px-6 py-2 pl-8 sm:pl-12">
-                + {matchingEpisodes.length - 6} outros episódios — ver todos
+                {t.browse.moreEpisodes.replace('{{count}}', String(matchingEpisodes.length - 6))}
               </button>
             )}
           </div>

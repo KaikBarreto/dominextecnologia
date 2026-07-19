@@ -8,6 +8,8 @@ import {
 import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
 import domiflixLogo from "@/assets/domiflix-logo-horizontal.png";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 interface DomiflixHeroProps {
   title: DomiflixTitle | null;
@@ -18,6 +20,8 @@ interface DomiflixHeroProps {
 
 export function DomiflixHero({ title, continueWatchingTitle, watchlist, progress = [] }: DomiflixHeroProps) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
   const toggleWatchlist = useToggleWatchlist();
   const { data: allEpisodesData } = useDomiflixAllEpisodes();
   const [visible, setVisible] = useState(false);
@@ -116,10 +120,10 @@ export function DomiflixHero({ title, continueWatchingTitle, watchlist, progress
       >
         <div className="flex items-center gap-3 mb-2 sm:mb-3">
           {isContinuing && (
-            <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.15em] uppercase text-white/60">Continuar Assistindo</span>
+            <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.15em] uppercase text-white/60">{t.hero.continueWatching}</span>
           )}
           <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.2em] uppercase text-[#e50914]">
-            {displayTitle.type === "movie" ? "Live" : "Série"}
+            {displayTitle.type === "movie" ? t.hero.typeLive : t.hero.typeSeries}
           </span>
         </div>
 
@@ -144,7 +148,7 @@ export function DomiflixHero({ title, continueWatchingTitle, watchlist, progress
           <button onClick={handlePlayClick}
             className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-7 py-2 sm:py-2.5 rounded-sm font-bold text-black bg-white hover:bg-white/85 transition-all text-xs sm:text-sm md:text-base">
             <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-black" />
-            {isContinuing ? "Continuar" : "Assistir"}
+            {isContinuing ? t.hero.resume : t.hero.watch}
           </button>
 
           <button
@@ -157,14 +161,14 @@ export function DomiflixHero({ title, continueWatchingTitle, watchlist, progress
             )}
           >
             {isInWatchlist
-              ? <><Check className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} /> Na lista</>
-              : <><Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Minha lista</>}
+              ? <><Check className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} /> {t.hero.inMyList}</>
+              : <><Plus className="w-4 h-4 sm:w-5 sm:h-5" /> {t.hero.myList}</>}
           </button>
 
           <button onClick={() => navigate(`/domiflix/${titleSlug}`)}
             className="hidden sm:flex items-center gap-2 px-6 py-2.5 rounded-sm font-semibold text-white hover:bg-white/10 transition-all text-sm md:text-base">
             <Info className="w-5 h-5" />
-            Mais informações
+            {t.hero.moreInfo}
           </button>
         </div>
 

@@ -14,6 +14,8 @@ import { playDomiflixIntro } from "@/lib/domiflixIntroSound";
 import { DomiflixMobileBottomNav } from "./DomiflixMobileBottomNav";
 import { DomiflixMoreMenuDrawer } from "./DomiflixMoreMenuDrawer";
 import { captureDomiflixOrigin } from "./domiflixReturn";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 const introPlayedKeys = new Set<string>();
 
@@ -39,6 +41,8 @@ export function DomiflixLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
 
   const { data: titles = [] } = useDomiflixTitles();
   const { data: allEpisodesData } = useDomiflixAllEpisodes();
@@ -252,16 +256,16 @@ export function DomiflixLayout() {
               ) : (
                 <>
                   <NavLink to="/domiflix" end className={tipoLinkClass(null)}>
-                    Início
+                    {t.nav.home}
                   </NavLink>
                   <NavLink to="/domiflix?tipo=modulos" className={tipoLinkClass("modulos")}>
-                    Módulos
+                    {t.nav.modules}
                   </NavLink>
                   <NavLink to="/domiflix?tipo=lives" className={tipoLinkClass("lives")}>
-                    Lives
+                    {t.nav.lives}
                   </NavLink>
                   <NavLink to="/domiflix/minha-lista" className={navLinkClass}>
-                    Minha Lista
+                    {t.nav.myList}
                   </NavLink>
                 </>
               )}
@@ -308,7 +312,7 @@ export function DomiflixLayout() {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Buscar títulos..."
+                  placeholder={t.nav.searchPlaceholder}
                   value={navSearchQuery}
                   onChange={(e) => setNavSearchQuery(e.target.value)}
                   className={cn(
@@ -331,7 +335,7 @@ export function DomiflixLayout() {
                 <div className="absolute top-full right-0 mt-1 w-[calc(100vw-2rem)] sm:w-[350px] md:w-[420px] bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden z-[60]">
                   {navSearchResults.length === 0 ? (
                     <div className="px-4 py-6 text-center text-white/40 text-sm">
-                      Nenhum resultado para "{navSearchQuery}"
+                      {t.menu.noResults.replace('{{query}}', navSearchQuery)}
                     </div>
                   ) : (
                     <div className="max-h-[480px] overflow-y-auto">
@@ -346,7 +350,7 @@ export function DomiflixLayout() {
                                 ep.description?.toLowerCase().includes(q),
                             )
                           : [];
-                        const epLabel = title.type === "series" ? "episódios" : "gravações";
+                        const epLabel = title.type === "series" ? t.browse.episodes : t.browse.recordings;
                         return (
                           <div key={title.id} className="border-b border-white/[0.04] last:border-b-0">
                             <div
@@ -436,7 +440,7 @@ export function DomiflixLayout() {
               className="hidden md:flex items-center gap-2 text-sm font-medium text-white/85 hover:text-white bg-white/5 hover:bg-[#e50914] border border-white/15 hover:border-[#e50914] transition-all duration-300 rounded px-4 py-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Voltar ao sistema
+              {t.nav.backToSystem}
             </button>
 
             {/* Avatar + primeiro nome à direita (clicável → /domiflix/perfil) */}
@@ -444,7 +448,7 @@ export function DomiflixLayout() {
               <button
                 onClick={() => navigate("/domiflix/perfil")}
                 className="flex items-center gap-2.5 ml-1 group"
-                title="Editar perfil Domiflix"
+                title={t.nav.editProfile}
               >
                 {domiflixAvatarUrl ? (
                   <img

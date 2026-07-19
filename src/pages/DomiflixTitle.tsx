@@ -31,10 +31,14 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 export default function DomiflixTitle() {
   const { titleSlug } = useParams<{ titleSlug: string }>();
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
 
   const { data: resolvedId, isLoading: slugLoading } = useDomiflixTitleBySlug(titleSlug);
   const { data: titleData, isLoading: titleLoading } = useDomiflixTitle(resolvedId ?? undefined);
@@ -166,12 +170,12 @@ export default function DomiflixTitle() {
     return (
       <div className="min-h-screen bg-[#141414] flex flex-col items-center justify-center text-white/40 pt-[68px]">
         <Tv className="w-20 h-20 mb-6 opacity-20" />
-        <p className="text-xl font-semibold text-white/30">Título não encontrado</p>
+        <p className="text-xl font-semibold text-white/30">{t.title.notFound}</p>
         <button
           onClick={() => navigate("/domiflix")}
           className="mt-6 flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Voltar ao início
+          <ArrowLeft className="w-4 h-4" /> {t.title.backToHome}
         </button>
       </div>
     );
@@ -207,7 +211,7 @@ export default function DomiflixTitle() {
           className="absolute top-20 left-6 sm:left-12 flex items-center gap-2 text-white/70 hover:text-white transition-colors bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full px-4 py-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Voltar</span>
+          <span className="text-sm">{t.title.back}</span>
         </button>
 
         {/* Conteúdo hero */}
@@ -221,7 +225,7 @@ export default function DomiflixTitle() {
           <div className="absolute bottom-[12%] left-8 sm:left-16 max-w-2xl">
             <div className="flex items-center gap-2 mb-3">
               <span className="font-bold text-[11px] tracking-[0.2em] uppercase" style={{ color: "#E50914" }}>
-                {titleData.type === "movie" ? "Live" : "Série"}
+                {titleData.type === "movie" ? t.title.typeLive : t.title.typeSeries}
               </span>
             </div>
 
@@ -256,7 +260,7 @@ export default function DomiflixTitle() {
                   onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#E50914")}
                 >
                   <ExternalLink className="w-5 h-5" />
-                  Entrar na Live
+                  {t.title.enterLive}
                 </button>
               ) : episodesToShow.length > 0 ? (
                 <button
@@ -264,7 +268,7 @@ export default function DomiflixTitle() {
                   className="flex items-center gap-2 px-7 py-2.5 rounded font-bold text-black bg-white hover:bg-white/85 transition-all text-sm md:text-base"
                 >
                   <Play className="w-5 h-5 fill-black" />
-                  {resumeInfo ? "Continuar" : "Assistir"}
+                  {resumeInfo ? t.title.resume : t.title.watch}
                 </button>
               ) : null}
 
@@ -276,12 +280,12 @@ export default function DomiflixTitle() {
                     ? "bg-[#E50914] hover:bg-[#C11118] text-white border-[#E50914] shadow-[0_0_18px_rgba(229,9,20,0.35)]"
                     : "bg-[#6d6d6eb3] hover:bg-[#6d6d6e] text-white border-white/20"
                 )}
-                title={isInWatchlist ? "Remover da minha lista" : "Adicionar à minha lista"}
+                title={isInWatchlist ? t.title.removeFromList : t.title.addToList}
               >
                 {isInWatchlist ? (
-                  <><Check className="w-5 h-5" strokeWidth={3} /> Na minha lista</>
+                  <><Check className="w-5 h-5" strokeWidth={3} /> {t.title.inMyList}</>
                 ) : (
-                  <><Plus className="w-5 h-5" /> Minha lista</>
+                  <><Plus className="w-5 h-5" /> {t.title.myList}</>
                 )}
               </button>
             </div>
@@ -296,7 +300,7 @@ export default function DomiflixTitle() {
               <div className="flex items-center gap-2 mt-4 text-white/50 text-sm">
                 <Calendar className="w-4 h-4" />
                 <span>
-                  Próxima live:{" "}
+                  {t.title.nextLive}{" "}
                   <span className="text-white font-medium">
                     {format(new Date(titleData.live_scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </span>
@@ -321,9 +325,9 @@ export default function DomiflixTitle() {
               <>
                 <div className="mb-6">
                   <div className="flex items-center justify-between gap-4 mb-3">
-                    <h2 className="text-white text-2xl font-bold">Episódios</h2>
+                    <h2 className="text-white text-2xl font-bold">{t.title.episodes}</h2>
                     <span className="text-white/60 text-sm font-medium shrink-0">
-                      {watchedEpisodes} de {totalEpisodes} assistidos
+                      {t.title.watchedOf.replace('{{watched}}', String(watchedEpisodes)).replace('{{total}}', String(totalEpisodes))}
                     </span>
                   </div>
                   <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
@@ -342,7 +346,7 @@ export default function DomiflixTitle() {
                       onValueChange={(v) => setSelectedSeasonId(v)}
                     >
                       <SelectTrigger className="w-full bg-[#1a1a1a] border-white/20 text-white h-11 font-semibold">
-                        <SelectValue placeholder="Selecionar temporada" />
+                        <SelectValue placeholder={t.title.selectSeason} />
                       </SelectTrigger>
                       <SelectContent className="bg-[#1a1a1a] border-white/20 text-white">
                         {titleData.seasons.map((s) => (
@@ -351,7 +355,7 @@ export default function DomiflixTitle() {
                             value={s.id}
                             className="text-white focus:bg-white/10 focus:text-white"
                           >
-                            Temporada {s.season_number}
+                            {t.title.season.replace('{{number}}', String(s.season_number))}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -375,7 +379,7 @@ export default function DomiflixTitle() {
                             )}
                           >
                             <div className="font-semibold text-sm">
-                              Temporada {s.season_number}
+                              {t.title.season.replace('{{number}}', String(s.season_number))}
                             </div>
                           </button>
                         );
@@ -401,7 +405,7 @@ export default function DomiflixTitle() {
               <>
                 {titleData.episodes.length > 0 ? (
                   <>
-                    <h2 className="text-white text-2xl font-bold mb-6">Gravações anteriores</h2>
+                    <h2 className="text-white text-2xl font-bold mb-6">{t.title.previousRecordings}</h2>
                     <EpisodeList
                       episodes={titleData.episodes}
                       isWatched={isWatched}
@@ -413,10 +417,10 @@ export default function DomiflixTitle() {
                 ) : (
                   <div className="text-center py-16 text-white/30">
                     <Film className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg text-white/40">Nenhuma gravação disponível ainda</p>
+                    <p className="text-lg text-white/40">{t.title.noRecordings}</p>
                     {titleData.live_scheduled_at && (
                       <p className="text-sm mt-2 text-white/25">
-                        A gravação será disponibilizada após a live
+                        {t.title.recordingAvailableAfterLive}
                       </p>
                     )}
                   </div>
@@ -427,7 +431,7 @@ export default function DomiflixTitle() {
             {titleData.type === "series" && episodesToShow.length === 0 && (
               <div className="text-center py-16 text-white/30">
                 <Tv className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p className="text-lg text-white/40">Nenhum episódio disponível nesta temporada</p>
+                <p className="text-lg text-white/40">{t.title.noEpisodesSeason}</p>
               </div>
             )}
           </>
@@ -454,6 +458,8 @@ interface EpisodeListProps {
 }
 
 function EpisodeList({ episodes, isWatched, onPlay, getProgress, titleFallbackUrl }: EpisodeListProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
   return (
     <div className="space-y-px w-full">
       {episodes.map((ep, idx) => (
@@ -519,7 +525,7 @@ function EpisodeList({ episodes, isWatched, onPlay, getProgress, titleFallbackUr
 
           {(isWatched(ep.id) || getProgress(ep.id) >= 90) && (
             <div className="shrink-0 mt-1 flex items-center justify-center w-6 h-6 rounded-full bg-[#E50914]/15 ring-1 ring-[#E50914]/40">
-              <Check className="w-3.5 h-3.5 text-[#E50914]" strokeWidth={3} aria-label="Assistido" />
+              <Check className="w-3.5 h-3.5 text-[#E50914]" strokeWidth={3} aria-label={t.title.watched} />
             </div>
           )}
         </div>

@@ -58,6 +58,8 @@ import { contracts } from './contracts';
 import { nfse } from './nfse';
 import { timeclock } from './timeclock';
 import { settings } from './settings';
+import { technicianTools } from './technicianTools';
+import { domiflix } from './domiflix';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
@@ -78,6 +80,8 @@ function sliceForLocale(locale: LocaleCode) {
     nfse: nfse[locale],
     timeclock: timeclock[locale],
     settings: settings[locale],
+    technicianTools: technicianTools[locale],
+    domiflix: domiflix[locale],
     // <dominio>: <dominio>[locale],
   };
 }

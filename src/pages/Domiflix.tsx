@@ -15,12 +15,16 @@ import { DomiflixHero } from "@/components/domiflix/DomiflixHero";
 import { DomiflixCarousel } from "@/components/domiflix/DomiflixCarousel";
 import { DomiflixSearchResults } from "@/components/domiflix/DomiflixSearchResults";
 import { DomiflixPageSkeleton, DomiflixFilteredPageSkeleton } from "@/components/domiflix/DomiflixSkeletons";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 export default function DomiflixHome() {
   const [searchParams] = useSearchParams();
   const filterType = searchParams.get("tipo");
   const navSearch = searchParams.get("busca") || "";
   const [searchQuery, setSearchQuery] = useState("");
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
 
   const effectiveSearch = searchQuery || navSearch;
 
@@ -127,11 +131,11 @@ export default function DomiflixHome() {
 
   const isEmpty = !titlesLoading && visibleTitles.length === 0;
 
-  const filterLabel = filterType === "modulos" ? "Módulos" : filterType === "lives" ? "Lives" : null;
+  const filterLabel = filterType === "modulos" ? t.browse.modulesTitle : filterType === "lives" ? t.browse.livesTitle : null;
   const filterSubtitle = filterType === "modulos"
-    ? "Séries completas para dominar cada funcionalidade do Dominex"
+    ? t.browse.modulesSubtitle
     : filterType === "lives"
-    ? "Gravações de lives e treinamentos ao vivo"
+    ? t.browse.livesSubtitle
     : null;
 
   if (titlesLoading || sectionsLoading) {
@@ -171,7 +175,7 @@ export default function DomiflixHome() {
 
                   <input
                     type="text"
-                    placeholder={`Buscar em ${filterLabel.toLowerCase()}...`}
+                    placeholder={t.browse.searchInPlaceholder.replace('{{filter}}', (filterLabel ?? '').toLowerCase())}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="bg-transparent text-white text-sm placeholder-white/30 outline-none h-10 w-full pr-3"
@@ -204,14 +208,14 @@ export default function DomiflixHome() {
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <Clapperboard className="w-20 h-20 opacity-20 text-white" />
-            <p className="text-xl font-semibold text-white/30">Nenhum conteúdo disponível ainda</p>
-            <p className="text-sm text-white/20">O conteúdo será adicionado pelo administrador</p>
+            <p className="text-xl font-semibold text-white/30">{t.browse.emptyContent}</p>
+            <p className="text-sm text-white/20">{t.browse.emptyContentAdmin}</p>
           </div>
         ) : (
           <>
             {continueWatching.length > 0 && (
               <DomiflixCarousel
-                label="Continuar Assistindo"
+                label={t.browse.continueWatching}
                 titles={continueWatching}
                 progress={progress}
                 watchlist={watchlist}
@@ -224,7 +228,7 @@ export default function DomiflixHome() {
 
             {myList.length > 0 && (
               <DomiflixCarousel
-                label="Minha Lista"
+                label={t.browse.myList}
                 titles={myList}
                 progress={progress}
                 watchlist={watchlist}

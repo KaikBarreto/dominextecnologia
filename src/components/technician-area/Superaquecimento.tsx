@@ -17,6 +17,8 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteOption } from '@/components/technician-area/RefrigeranteOption';
 import { cn } from '@/lib/utils';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   MODELOS_SUPERAQUECIMENTO,
   MODELO_PADRAO_ID,
@@ -48,11 +50,15 @@ function num(str: string, def = NaN): number {
   return Number.isFinite(parsed) ? parsed : def;
 }
 
-const ROTULO_FAIXA: Record<ClassificacaoFaixa, string> = {
-  baixo: 'Baixo',
-  ideal: 'Ideal',
-  alto: 'Alto',
-};
+/** Rótulos de faixa — localizados pelo hook em cada componente que os usa. */
+function rotuloFaixa(
+  c: ClassificacaoFaixa,
+  t: { rangeLow: string; rangeIdeal: string; rangeHigh: string },
+): string {
+  if (c === 'baixo') return t.rangeLow;
+  if (c === 'ideal') return t.rangeIdeal;
+  return t.rangeHigh;
+}
 
 /** Cores do selo de faixa por classificação. */
 function corSelo(c: ClassificacaoFaixa): string {
@@ -60,13 +66,16 @@ function corSelo(c: ClassificacaoFaixa): string {
   return 'bg-amber-500 text-white';
 }
 
-/** Rótulo curto da confiança da fonte do alvo (pra acompanhar a nota). */
-const ROTULO_CONFIANCA: Record<ConfiancaModelo, string | null> = {
-  alta: null, // fonte firme — não precisa ressalva
-  media: 'Fonte secundária',
-  baixa: 'Fonte limitada',
-  generico: 'Referência genérica',
-};
+/** Rótulo curto da confiança da fonte do alvo (localizado). null = sem ressalva. */
+function getRotuloConfianca(
+  c: ConfiancaModelo,
+  t: { sourceSecondary: string; sourceLimited: string; sourceGeneric: string },
+): string | null {
+  if (c === 'alta') return null;
+  if (c === 'media') return t.sourceSecondary;
+  if (c === 'baixa') return t.sourceLimited;
+  return t.sourceGeneric;
+}
 
 /**
  * Resolve a faixa-alvo efetiva de um cálculo a partir do alvo do modelo,
@@ -138,6 +147,8 @@ function CardCalculo({
   onTrocarUnidade,
   notaModelo,
 }: CardCalculoProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.superheat;
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
       <div>
@@ -186,13 +197,13 @@ function CardCalculo({
                   corSelo(classificacaoSelo),
                 )}
               >
-                {ROTULO_FAIXA[classificacaoSelo]}
+                {rotuloFaixa(classificacaoSelo, t)}
               </span>
               <span className="text-xs text-muted-foreground">{faixaTexto}</span>
             </div>
             {resultado.tempSat !== null && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Temperatura de saturação: {formatarTemp(resultado.tempSat)} °C
+                {t.saturationTemp} {formatarTemp(resultado.tempSat)} °C
               </p>
             )}
           </>
@@ -205,11 +216,11 @@ function CardCalculo({
           />
         ) : foraDaFaixa ? (
           <p className="text-sm text-amber-600 dark:text-amber-400">
-            Pressão fora da faixa da tabela para este refrigerante. Confira a leitura.
+            {t.outsideRange}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Informe a pressão e a temperatura para ver o resultado.
+            {t.enterPressureAndTemp}
           </p>
         )}
       </div>
@@ -230,7 +241,9 @@ interface NotaModeloProps {
 
 /** Bloco discreto com a nota de campo do modelo + ressalvas de fonte/alvo. */
 function NotaModelo({ nota, confianca, alvoGenerico }: NotaModeloProps) {
-  const rotuloConfianca = ROTULO_CONFIANCA[confianca];
+  const { locale } = useAppLocaleContext();
+  const tSH = MESSAGES[locale].app.technicianTools.superheat;
+  const confiancaLabel = getRotuloConfianca(confianca, tSH);
   return (
     <div className="flex gap-2.5 rounded-lg border border-border bg-muted p-3 text-muted-foreground">
       <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
@@ -239,12 +252,12 @@ function NotaModelo({ nota, confianca, alvoGenerico }: NotaModeloProps) {
         <div className="flex flex-wrap gap-1.5">
           {alvoGenerico && (
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-medium text-white">
-              Alvo não publicado — usando referência genérica
+              {tSH.genericTarget}
             </span>
           )}
-          {rotuloConfianca && (
+          {confiancaLabel && (
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {rotuloConfianca}
+              {confiancaLabel}
             </span>
           )}
         </div>
@@ -265,12 +278,16 @@ interface AvisoUnidadeProps {
  * na outra. Mostra a T_sat que daria e um atalho pra trocar e recalcular.
  */
 function AvisoUnidade({ pressaoBruta, unidade, sugestao, onTrocarUnidade }: AvisoUnidadeProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.superheat;
   return (
     <div className="space-y-3 text-left">
       <p className="text-sm text-amber-600 dark:text-amber-400">
-        <span className="font-semibold">{pressaoBruta.trim()}</span> está fora da faixa em{' '}
-        <span className="font-semibold">{unidade}</span>. Em{' '}
-        <span className="font-semibold">{sugestao.unidadeSugerida}</span> daria saturação ≈{' '}
+        <span className="font-semibold">{pressaoBruta.trim()}</span>{' '}
+        {t.outsideInUnit}{' '}
+        <span className="font-semibold">{unidade}</span>. {t.inOtherUnit}{' '}
+        <span className="font-semibold">{sugestao.unidadeSugerida}</span>{' '}
+        {t.satApprox}{' '}
         <span className="font-semibold">{formatarTemp(sugestao.tempSat)} °C</span>.
       </p>
       <button
@@ -278,7 +295,7 @@ function AvisoUnidade({ pressaoBruta, unidade, sugestao, onTrocarUnidade }: Avis
         onClick={() => onTrocarUnidade(sugestao.unidadeSugerida)}
         className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity active:opacity-80"
       >
-        Trocar para {sugestao.unidadeSugerida} e recalcular
+        {t.switchUnit.replace('{unit}', sugestao.unidadeSugerida)}
       </button>
     </div>
   );
@@ -320,13 +337,15 @@ function SelecoesCompartilhadas({
   modeloId,
   setModeloId,
 }: SelecoesCompartilhadasProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.superheat;
   // Fluidos agrupados nas seções da UI (Atuais / Legado / Blends), igual à Régua.
   const secoes = useMemo(() => agruparRefrigerantesEmSecoes(), []);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
       <div className="space-y-1.5">
-        <Label className="text-base text-muted-foreground md:text-lg">Modelo / fabricante</Label>
+        <Label className="text-base text-muted-foreground md:text-lg">{t.modelManufacturer}</Label>
         <Select
           value={modeloId}
           onValueChange={(v) => {
@@ -336,7 +355,7 @@ function SelecoesCompartilhadas({
           }}
         >
           <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-            <SelectValue placeholder="Selecione o modelo/fabricante" />
+            <SelectValue placeholder={t.modelPlaceholder} />
           </SelectTrigger>
           <SelectContent>
             {MODELOS_SEM_GRUPO.map((m) => (
@@ -357,17 +376,16 @@ function SelecoesCompartilhadas({
           </SelectContent>
         </Select>
         <p className="pt-1 text-xs text-muted-foreground">
-          O modelo define a faixa-alvo do selo Ideal/Baixo/Alto. O valor medido
-          continua sendo calculado pela física.
+          {t.modelNote}
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Fluido Refrigerante</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.refrigerant}</Label>
           <Select value={refrigId} onValueChange={setRefrigId}>
             <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-              <SelectValue placeholder="Fluido refrigerante" />
+              <SelectValue placeholder={t.refrigerantPlaceholder} />
             </SelectTrigger>
             <SelectContent>
               {secoes.map((sec) =>
@@ -388,7 +406,7 @@ function SelecoesCompartilhadas({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">Unidade de pressão</Label>
+          <Label className="text-base text-muted-foreground md:text-lg">{t.pressureUnit}</Label>
           <div className="flex h-14 items-center">
             <LabeledSwitch
               value={unidade}
@@ -405,10 +423,7 @@ function SelecoesCompartilhadas({
   );
 }
 
-const SUBABAS: { key: SubAba; label: string }[] = [
-  { key: 'sh', label: 'Superaquecimento (SH)' },
-  { key: 'sc', label: 'Subresfriamento (SC)' },
-];
+// As subabas têm labels traduzidos — SUBABAS é gerado dentro do componente via t.tabs.
 
 interface SuperaquecimentoProps {
   /** Navega pra aba "Ciclo de Refrigeração" (atalho discreto no topo). */
@@ -416,6 +431,14 @@ interface SuperaquecimentoProps {
 }
 
 export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.superheat;
+
+  const SUBABAS: { key: SubAba; label: string }[] = [
+    { key: 'sh', label: t.tabs.sh },
+    { key: 'sc', label: t.tabs.sc },
+  ];
+
   // Compartilhados: padrão R-410A, bar.
   const [refrigId, setRefrigId] = usePersistedState<string>(
     'tt:state:superaquecimento:refrigId',
@@ -493,10 +516,10 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
     <div className="space-y-4 pb-4">
       <div>
         <h2 className="text-base font-semibold tracking-tight md:text-xl">
-          Superaquecimento e Subresfriamento
+          {t.title}
         </h2>
         <p className="text-sm text-muted-foreground md:text-base">
-          Calcule SH e SC pela pressão e temperatura medidas em campo.
+          {t.subtitle}
         </p>
       </div>
 
@@ -508,7 +531,7 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-opacity hover:underline active:opacity-70"
         >
           <RefreshCcw className="h-4 w-4 shrink-0" />
-          Ver o ciclo de refrigeração
+          {t.viewCycle}
         </button>
       )}
 
@@ -543,10 +566,10 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
       {/* Superaquecimento */}
       {subAba === 'sh' && (
         <CardCalculo
-          titulo="Superaquecimento (SH)"
-          descricao="T. da sucção menos a temperatura de saturação da baixa."
-          labelPressao="Pressão de baixa (sucção)"
-          labelTemp="Temperatura da linha de sucção"
+          titulo={t.shTitle}
+          descricao={t.shSubtitle}
+          labelPressao={t.shPressureLabel}
+          labelTemp={t.shTempLabel}
           unidade={unidade}
           pressao={pBaixa}
           setPressao={setPBaixa}
@@ -572,10 +595,10 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
       {/* Subresfriamento */}
       {subAba === 'sc' && (
         <CardCalculo
-          titulo="Subresfriamento (SC)"
-          descricao="T. de saturação da alta menos a temperatura da linha de líquido."
-          labelPressao="Pressão de alta (líquido)"
-          labelTemp="Temperatura da linha de líquido"
+          titulo={t.scTitle}
+          descricao={t.scSubtitle}
+          labelPressao={t.scPressureLabel}
+          labelTemp={t.scTempLabel}
           unidade={unidade}
           pressao={pAlta}
           setPressao={setPAlta}
@@ -598,7 +621,7 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
         />
       )}
 
-      <ToolDisclaimer texto="Ferramenta de apoio. Os valores são estimativas de referência e não devem ser usados isoladamente — confira sempre o manual do fabricante antes de decidir carga ou diagnóstico. O superaquecimento usa a curva de vapor (dew) e o subresfriamento a de líquido (bubble); em refrigerantes com glide, como o R-404A, são curvas distintas." />
+      <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );
 }

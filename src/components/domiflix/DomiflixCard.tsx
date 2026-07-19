@@ -5,6 +5,8 @@ import { DomiflixTitle, DomiflixProgress, DomiflixWatchlistItem, DomiflixEpisode
 import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
 import domiflixLogo from "@/assets/domiflix-logo-horizontal-branco.png";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 interface DomiflixCardProps {
   title: DomiflixTitle;
@@ -29,6 +31,8 @@ export function DomiflixCard({
   episodeSeasonMap = {},
 }: DomiflixCardProps) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.domiflix;
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const isContinue = variant === "continue";
@@ -195,7 +199,7 @@ export function DomiflixCard({
               className="flex items-center justify-center gap-1.5 w-full py-1.5 sm:py-2 rounded-[4px] bg-white hover:bg-white/90 transition-colors text-black text-xs sm:text-sm font-bold"
             >
               <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black" />
-              Ver episódios
+              {t.browse.cardWatch}
             </button>
           )}
           {isContinue && (
@@ -204,7 +208,7 @@ export function DomiflixCard({
               className="flex items-center justify-center gap-1.5 w-full py-1.5 sm:py-2 rounded-[4px] bg-white hover:bg-white/90 transition-colors text-black text-xs sm:text-sm font-bold"
             >
               <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black" />
-              Continuar
+              {t.browse.cardContinue}
             </button>
           )}
         </div>

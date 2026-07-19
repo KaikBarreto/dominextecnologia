@@ -5,6 +5,8 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { getSegment } from '@/utils/companySegments';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface SegmentLockedScreenProps {
   /** Nicho escolhido que a empresa NÃO tem acesso. */
@@ -17,6 +19,9 @@ interface SegmentLockedScreenProps {
  * card mobile-first com a cor do nicho e CTA de WhatsApp pro comercial Dominex.
  */
 export function SegmentLockedScreen({ segment }: SegmentLockedScreenProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.technicianTools.segmentLocked;
+
   const seg = getSegment(segment);
   if (!seg) return null;
 
@@ -51,20 +56,20 @@ export function SegmentLockedScreen({ segment }: SegmentLockedScreenProps) {
             <span className="truncate">{seg.label}</span>
           </Badge>
           <h2 className="text-lg font-semibold tracking-tight">
-            Ferramentas de {seg.label}
+            {t.toolsOf} {seg.label}
           </h2>
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Sua empresa não tem acesso às ferramentas do segmento de{' '}
+          {t.noAccess}{' '}
           <span className="font-medium text-foreground">{seg.label}</span>.
           <br />
-          Converse com um representante para contratar.
+          {t.contactNote}
         </p>
 
         <Button onClick={handleContact} className="w-full gap-2 sm:w-auto">
           <WhatsAppIcon className="h-4 w-4" />
-          Falar com representante
+          {t.contactButton}
         </Button>
       </div>
     </div>
