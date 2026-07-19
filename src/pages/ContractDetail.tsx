@@ -83,14 +83,15 @@ const OS_STATUS_VARIANT: Record<OsStatus, 'success' | 'info' | 'warning' | 'dest
   cancelada: 'destructive',
 };
 
-const FREQUENCY_OPTIONS = [
-  { value: 'unica', label: 'Única', months: 0 },
-  { value: 'mensal', label: 'Mensal', months: 1 },
-  { value: 'bimestral', label: 'Bimestral', months: 2 },
-  { value: 'trimestral', label: 'Trimestral', months: 3 },
-  { value: 'semestral', label: 'Semestral', months: 6 },
-  { value: 'anual', label: 'Anual', months: 12 },
-];
+// Labels traduzidas dentro do componente (hook-driven). Ver uso abaixo.
+const FREQUENCY_MONTHS: Record<string, number> = {
+  unica: 0,
+  mensal: 1,
+  bimestral: 2,
+  trimestral: 3,
+  semestral: 6,
+  anual: 12,
+};
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
@@ -98,6 +99,15 @@ export default function ContractDetail() {
   const { locale } = useAppLocaleContext();
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
+
+  const FREQUENCY_OPTIONS = useMemo(
+    () => Object.entries(FREQUENCY_MONTHS).map(([value, months]) => ({
+      value,
+      months,
+      label: (td.financial.frequencyOptions as Record<string, string>)[value] ?? value,
+    })),
+    [td.financial.frequencyOptions],
+  );
 
   const STATUS_LABELS = {
     active: { label: tContracts.status.active, variant: STATUS_VARIANTS.active },
@@ -656,7 +666,7 @@ export default function ContractDetail() {
             size="icon"
             className="shrink-0 min-h-11 min-w-11 active:scale-95 transition-transform rounded-xl"
             onClick={() => navigate('/contratos')}
-            aria-label="Voltar"
+            aria-label={td.backAriaLabel}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -682,7 +692,7 @@ export default function ContractDetail() {
             <h1 className="text-lg sm:text-2xl font-bold truncate leading-tight">{contract.name}</h1>
             <Badge variant={statusCfg.variant} className="shrink-0">{statusCfg.label}</Badge>
           </div>
-          <p className="text-muted-foreground text-xs sm:text-sm truncate">{contract.customers?.name || 'Cliente'}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm truncate">{contract.customers?.name || td.customerFallback}</p>
         </div>
         {/* Ações do contrato. Desktop (lg+): botões inline visíveis (tem espaço,
             melhora descoberta). Mobile: kebab de 3 pontinhos (espaço curto).
@@ -1266,7 +1276,7 @@ export default function ContractDetail() {
                     </Button>
                   )}
                   <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => {
-                    setRecDescription(`Mensalidade - ${contract.name}`);
+                    setRecDescription(`${td.financial.defaultDescriptionPrefix} - ${contract.name}`);
                     setShowReceivableModal(true);
                   }}>
                     <Plus className="mr-1 h-4 w-4" /> {td.financial.newRevenueBtn}
@@ -1301,14 +1311,14 @@ export default function ContractDetail() {
                           <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
                           <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
                             {!t.is_paid && (
-                              <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-success active:scale-90 transition-transform rounded-xl" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
+                              <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-success active:scale-90 transition-transform rounded-xl" title={td.financial.tooltipMarkPaid} onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
                                 <Check className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-warning active:scale-90 transition-transform rounded-xl" title="Editar" onClick={() => handleOpenEditRec(t)}>
+                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-warning active:scale-90 transition-transform rounded-xl" title={td.financial.tooltipEdit} onClick={() => handleOpenEditRec(t)}>
                               <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-destructive active:scale-90 transition-transform rounded-xl" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
+                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-destructive active:scale-90 transition-transform rounded-xl" title={td.financial.tooltipDelete} onClick={() => setDeletingRecId(t.id)}>
                               <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                             </Button>
                           </div>
@@ -1374,7 +1384,7 @@ export default function ContractDetail() {
         <div className="space-y-4 p-1">
           <div>
             <Label>{td.financial.descLabel}</Label>
-            <Input value={recDescription} onChange={e => setRecDescription(e.target.value)} placeholder="Ex: Mensalidade Março" />
+            <Input value={recDescription} onChange={e => setRecDescription(e.target.value)} placeholder={td.financial.descPlaceholder} />
           </div>
           <div>
             <Label>{td.financial.amountLabel}</Label>

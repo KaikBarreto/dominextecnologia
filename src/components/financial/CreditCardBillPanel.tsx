@@ -19,12 +19,12 @@ import { type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
-import { formatBRL } from '@/utils/currency';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
@@ -57,8 +57,9 @@ interface CreditCardBillPanelProps {
  */
 export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: CreditCardBillPanelProps) {
   const isMobile = useIsMobile();
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
   const cc = MESSAGES[locale].app.finance.creditCard;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
 
   const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
     open: { label: cc.statusOpen, color: 'text-blue-600', icon: Clock },
@@ -219,7 +220,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor</span>
             <span className={cn('font-semibold text-sm whitespace-nowrap', bill.status === 'paid' ? 'text-muted-foreground' : 'text-destructive')}>
-              {formatBRL(bill.total_amount ?? 0)}
+              {fmt(bill.total_amount ?? 0)}
             </span>
           </div>
         }
@@ -238,7 +239,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
             ? <span>{cc.dueDay} <strong>{account.due_day}</strong>{account.due_day <= (account.closing_day ?? 10) ? ` ${cc.nextMonth}` : ''}</span>
             : <span>{cc.dueDay} <strong>{account.payment_due_days ?? 10}</strong> {cc.daysAfterClose}</span>
           }
-          {account.credit_limit && <span>{cc.creditLimit} <strong>{formatBRL(account.credit_limit)}</strong></span>}
+          {account.credit_limit && <span>{cc.creditLimit} <strong>{fmt(account.credit_limit)}</strong></span>}
         </div>
       )}
 
@@ -316,7 +317,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <p className="font-bold text-sm">{formatBRL(bill.total_amount ?? 0)}</p>
+                          <p className="font-bold text-sm">{fmt(bill.total_amount ?? 0)}</p>
                           <Badge variant="outline" className={cn('text-[10px] gap-1', statusCfg.color)}>
                             <StatusIcon className="h-3 w-3" />
                             {statusCfg.label}
@@ -340,7 +341,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
                       {bill.status === 'partial' && (
                         <p className="text-xs text-yellow-600 mt-1 text-right">
-                          {cc.alreadyPaid}: {formatBRL(Number(bill.amount_paid ?? 0))} · {cc.remaining}: {formatBRL(remaining)}
+                          {cc.alreadyPaid}: {fmt(Number(bill.amount_paid ?? 0))} · {cc.remaining}: {fmt(remaining)}
                         </p>
                       )}
                     </CardContent>
@@ -365,7 +366,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                                   {t.category && ` · ${t.category}`}
                                 </p>
                               </div>
-                              <p className="font-medium text-destructive">{formatBRL(Number(t.amount))}</p>
+                              <p className="font-medium text-destructive">{fmt(Number(t.amount))}</p>
                             </div>
                           ))}
                         </div>
@@ -407,17 +408,17 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                 </div>
                 <div className="flex justify-between pt-1">
                   <span className="text-muted-foreground">{cc.total}</span>
-                  <span className="font-medium">{formatBRL(billTotal)}</span>
+                  <span className="font-medium">{fmt(billTotal)}</span>
                 </div>
                 {alreadyPaid > 0 && (
                   <>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{cc.alreadyPaid}</span>
-                      <span className="text-success">− {formatBRL(alreadyPaid)}</span>
+                      <span className="text-success">− {fmt(alreadyPaid)}</span>
                     </div>
                     <div className="flex justify-between border-t pt-1 mt-1">
                       <span className="font-medium">{cc.remaining}</span>
-                      <span className="font-bold">{formatBRL(remaining)}</span>
+                      <span className="font-bold">{fmt(remaining)}</span>
                     </div>
                   </>
                 )}
@@ -449,7 +450,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                         }
                         trailing={
                           <span className="font-medium text-destructive text-sm whitespace-nowrap">
-                            {formatBRL(Number(t.amount))}
+                            {fmt(Number(t.amount))}
                           </span>
                         }
                       />
@@ -496,17 +497,17 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
               <p className="font-semibold capitalize mb-2">{formatMonth(payingBill.reference_month)}</p>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{cc.total}</span>
-                <span className="font-medium">{formatBRL(billTotal)}</span>
+                <span className="font-medium">{fmt(billTotal)}</span>
               </div>
               {alreadyPaid > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{cc.alreadyPaid}</span>
-                  <span className="text-success">− {formatBRL(alreadyPaid)}</span>
+                  <span className="text-success">− {fmt(alreadyPaid)}</span>
                 </div>
               )}
               <div className="flex justify-between border-t pt-1 mt-1">
                 <span className="font-medium">{cc.remainingToPay}</span>
-                <span className="font-bold">{formatBRL(remaining)}</span>
+                <span className="font-bold">{fmt(remaining)}</span>
               </div>
             </div>
 
@@ -550,7 +551,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                 </p>
               ) : afterPayment > 0.01 ? (
                 <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-1.5 rounded">
-                  {cc.payPartialHint.replace('{amount}', formatBRL(afterPayment))}
+                  {cc.payPartialHint.replace('{amount}', fmt(afterPayment))}
                 </p>
               ) : null}
             </div>

@@ -223,6 +223,22 @@ export const pmoc = {
         // ── Dialog Excluir Conta ──
         deleteAccountTitle: 'Excluir conta',
         deleteAccountDesc: 'Tem certeza que deseja excluir esta conta a receber?',
+        // ── Ações inline na listagem ──
+        tooltipMarkPaid: 'Marcar como pago',
+        tooltipEdit: 'Editar',
+        tooltipDelete: 'Excluir',
+        // ── Pré-preenchimento de nova receita ──
+        defaultDescriptionPrefix: 'Mensalidade',
+        descPlaceholder: 'Ex: Mensalidade Março',
+        // ── Opções de frequência ──
+        frequencyOptions: {
+          unica: 'Única',
+          mensal: 'Mensal',
+          bimestral: 'Bimestral',
+          trimestral: 'Trimestral',
+          semestral: 'Semestral',
+          anual: 'Anual',
+        },
       },
       // ── Dialog Renovar/Estender ──
       renew: {
@@ -281,6 +297,9 @@ export const pmoc = {
         sessionExpired: 'Sessão expirada. Faça login novamente.',
         envNotConfigured: 'Ambiente não configurado.',
       },
+      // ── Ações no header ──
+      backAriaLabel: 'Voltar',
+      customerFallback: 'Cliente',
     },
 
     // ── Configurações de Contrato (ContractSettings.tsx) ──
@@ -871,6 +890,19 @@ export const pmoc = {
         bulkEditAll: 'All pending',
         deleteAccountTitle: 'Delete account',
         deleteAccountDesc: 'Are you sure you want to delete this receivable?',
+        tooltipMarkPaid: 'Mark as paid',
+        tooltipEdit: 'Edit',
+        tooltipDelete: 'Delete',
+        defaultDescriptionPrefix: 'Monthly fee',
+        descPlaceholder: 'E.g.: Monthly fee March',
+        frequencyOptions: {
+          unica: 'One-time',
+          mensal: 'Monthly',
+          bimestral: 'Bimonthly',
+          trimestral: 'Quarterly',
+          semestral: 'Semi-annual',
+          anual: 'Annual',
+        },
       },
       renew: {
         title: 'Renew / Extend contract',
@@ -924,6 +956,8 @@ export const pmoc = {
         sessionExpired: 'Session expired. Please log in again.',
         envNotConfigured: 'Environment not configured.',
       },
+      backAriaLabel: 'Back',
+      customerFallback: 'Customer',
     },
 
     settingsPage: {
@@ -1462,6 +1496,19 @@ export const pmoc = {
         bulkEditAll: 'Todas pendientes',
         deleteAccountTitle: 'Eliminar cuenta',
         deleteAccountDesc: '¿Seguro que deseas eliminar esta cuenta por cobrar?',
+        tooltipMarkPaid: 'Marcar como pagado',
+        tooltipEdit: 'Editar',
+        tooltipDelete: 'Eliminar',
+        defaultDescriptionPrefix: 'Mensualidad',
+        descPlaceholder: 'Ej.: Mensualidad Marzo',
+        frequencyOptions: {
+          unica: 'Única',
+          mensal: 'Mensual',
+          bimestral: 'Bimestral',
+          trimestral: 'Trimestral',
+          semestral: 'Semestral',
+          anual: 'Anual',
+        },
       },
       renew: {
         title: 'Renovar / Extender contrato',
@@ -1515,6 +1562,8 @@ export const pmoc = {
         sessionExpired: 'Sesión expirada. Inicia sesión nuevamente.',
         envNotConfigured: 'Entorno no configurado.',
       },
+      backAriaLabel: 'Volver',
+      customerFallback: 'Cliente',
     },
 
     settingsPage: {
@@ -2053,6 +2102,19 @@ export const pmoc = {
         bulkEditAll: 'Tous en attente',
         deleteAccountTitle: 'Supprimer le compte',
         deleteAccountDesc: 'Voulez-vous vraiment supprimer cette créance ?',
+        tooltipMarkPaid: 'Marquer comme payé',
+        tooltipEdit: 'Modifier',
+        tooltipDelete: 'Supprimer',
+        defaultDescriptionPrefix: 'Mensualité',
+        descPlaceholder: 'Ex. : Mensualité Mars',
+        frequencyOptions: {
+          unica: 'Unique',
+          mensal: 'Mensuel',
+          bimestral: 'Bimestriel',
+          trimestral: 'Trimestriel',
+          semestral: 'Semestriel',
+          anual: 'Annuel',
+        },
       },
       renew: {
         title: 'Renouveler / Prolonger le contrat',
@@ -2106,6 +2168,8 @@ export const pmoc = {
         sessionExpired: 'Session expirée. Reconnectez-vous.',
         envNotConfigured: 'Environnement non configuré.',
       },
+      backAriaLabel: 'Retour',
+      customerFallback: 'Client',
     },
 
     settingsPage: {

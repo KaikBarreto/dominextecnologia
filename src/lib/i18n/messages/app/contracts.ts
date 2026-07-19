@@ -457,9 +457,12 @@ export const contracts = {
     // ── Abas do detalhe do contrato (Prioridade 2) ──
     environmentsTab: {
       unsavedBar: 'Alterações não salvas',
+      unsavedBarSchedule: 'Alterações não salvas. Salvar recalcula as visitas futuras (realizadas e em andamento são preservadas).',
+      unsavedBarData: 'Alterações não salvas nos dados dos ambientes.',
       discardButton: 'Descartar',
-      saveButton: 'Salvar',
+      saveButton: 'Salvar alterações',
       checklistToastTitle: 'Checklists atualizados',
+      checklistToastCount: '({n} item(ns))',
     },
 
     equipmentTab: {
@@ -909,9 +912,12 @@ export const contracts = {
 
     environmentsTab: {
       unsavedBar: 'Unsaved changes',
+      unsavedBarSchedule: 'Unsaved changes. Saving will recalculate future visits (completed and in-progress visits are preserved).',
+      unsavedBarData: 'Unsaved changes to environment data.',
       discardButton: 'Discard',
-      saveButton: 'Save',
+      saveButton: 'Save changes',
       checklistToastTitle: 'Checklists updated',
+      checklistToastCount: '({n} item(s))',
     },
 
     equipmentTab: {
@@ -1361,9 +1367,12 @@ export const contracts = {
 
     environmentsTab: {
       unsavedBar: 'Cambios no guardados',
+      unsavedBarSchedule: 'Cambios no guardados. Guardar recalculará las visitas futuras (las realizadas y en curso se conservan).',
+      unsavedBarData: 'Cambios no guardados en los datos de los ambientes.',
       discardButton: 'Descartar',
-      saveButton: 'Guardar',
+      saveButton: 'Guardar cambios',
       checklistToastTitle: 'Listas de verificación actualizadas',
+      checklistToastCount: '({n} elemento(s))',
     },
 
     equipmentTab: {
@@ -1813,9 +1822,12 @@ export const contracts = {
 
     environmentsTab: {
       unsavedBar: `Modifications non enregistrées`,
+      unsavedBarSchedule: `Modifications non enregistrées. Enregistrer recalculera les visites futures (les visites terminées et en cours sont préservées).`,
+      unsavedBarData: `Modifications non enregistrées dans les données des environnements.`,
       discardButton: 'Annuler',
-      saveButton: 'Enregistrer',
+      saveButton: 'Enregistrer les modifications',
       checklistToastTitle: `Listes de contrôle mises à jour`,
+      checklistToastCount: `({n} élément(s))`,
     },
 
     equipmentTab: {

@@ -29,6 +29,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectSectionLabel, Sel
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/components/contracts/questionFrequency';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Forma mínima de uma pergunta do checklist usada aqui (subset de form_questions).
 export interface ChecklistQuestion extends QuestionFrequency {
@@ -75,8 +77,11 @@ export function CommonChecklistEditor({
   excluded,
   onChangeExcluded,
   addOptionSections,
-  groupLabel = 'Checklists deste equipamento',
+  groupLabel,
 }: CommonChecklistEditorProps) {
+  const { locale } = useAppLocaleContext();
+  const tEditor = MESSAGES[locale].app.contracts.checklistEditor;
+  const resolvedGroupLabel = groupLabel ?? 'Checklists deste equipamento';
   // Checklists escolhidos, na ordem de adição, resolvidos pra opção completa.
   const selectedTemplates = useMemo(
     () =>
@@ -189,7 +194,7 @@ export function CommonChecklistEditor({
       <div className="flex flex-col gap-1.5">
         <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
           <ListChecks className="h-3.5 w-3.5 text-info" />
-          {groupLabel}
+          {resolvedGroupLabel}
         </span>
         {hasSectionedOptions ? (
           // P2 — select AGRUPADO por seção (família), estilo régua de gases.
@@ -234,14 +239,14 @@ export function CommonChecklistEditor({
             disabled={availableTemplates.length === 0}
           >
             <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder="Adicionar checklist">
+              <SelectValue placeholder={tEditor.addPlaceholder}>
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <Plus className="h-3.5 w-3.5" />
                   {availableTemplates.length === 0
                     ? selectedTemplateIds.length > 0
                       ? 'Todos os checklists adicionados'
                       : 'Nenhum checklist disponível'
-                    : 'Adicionar checklist'}
+                    : tEditor.addPlaceholder}
                 </span>
               </SelectValue>
             </SelectTrigger>
@@ -314,6 +319,9 @@ function ChecklistBlock({
   onToggleBucket,
   onRemove,
 }: ChecklistBlockProps) {
+  const { locale } = useAppLocaleContext();
+  const tEditor = MESSAGES[locale].app.contracts.checklistEditor;
+
   // Quantas perguntas deste checklist entram na 1ª OS (toda visita + não excluídas).
   const includedCount = useMemo(
     () => questions.filter(isIncluded).length,
@@ -366,8 +374,8 @@ function ChecklistBlock({
             }
           }}
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`Remover checklist ${template.name}`}
-          title="Remover checklist"
+          aria-label={`${tEditor.removeTooltip} ${template.name}`}
+          title={tEditor.removeTooltip}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </span>

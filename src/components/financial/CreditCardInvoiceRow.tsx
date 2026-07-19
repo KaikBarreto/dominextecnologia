@@ -20,12 +20,12 @@ import { cn } from '@/lib/utils';
 import { CreditCard, CheckCircle2, AlertCircle, Clock, Receipt, Lock } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { formatBRL } from '@/utils/currency';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 const BILL_STATUS_COLORS: Record<string, { color: string; icon: React.ElementType }> = {
   open: { color: 'text-blue-600', icon: Clock },
@@ -57,8 +57,9 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
 
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
   const cc = MESSAGES[locale].app.finance.creditCard;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
 
   const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
     open: { label: cc.statusOpen, ...BILL_STATUS_COLORS.open },
@@ -180,7 +181,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             trailing={
               <div className="flex flex-col items-end gap-1">
                 <span className={cn('font-semibold text-sm whitespace-nowrap', isPaid ? 'text-muted-foreground' : 'text-destructive')}>
-                  {formatBRL(billTotal)}
+                  {fmt(billTotal)}
                 </span>
                 <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', statusCfg.color)}>
                   <StatusIcon className="h-2.5 w-2.5" />
@@ -218,7 +219,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span className={cn('font-semibold whitespace-nowrap', isPaid ? 'text-muted-foreground' : 'text-destructive')}>
-              {formatBRL(billTotal)}
+              {fmt(billTotal)}
             </span>
             <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', statusCfg.color)}>
               <StatusIcon className="h-2.5 w-2.5" />
@@ -266,17 +267,17 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
           <div className="border rounded-lg p-3 text-sm space-y-1">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{cc.total}</span>
-              <span className="font-medium">{formatBRL(billTotal)}</span>
+              <span className="font-medium">{fmt(billTotal)}</span>
             </div>
             {alreadyPaid > 0 && (
               <>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{cc.alreadyPaid}</span>
-                  <span className="text-success">− {formatBRL(alreadyPaid)}</span>
+                  <span className="text-success">− {fmt(alreadyPaid)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 mt-1">
                   <span className="font-medium">{cc.remaining}</span>
-                  <span className="font-bold">{formatBRL(remaining)}</span>
+                  <span className="font-bold">{fmt(remaining)}</span>
                 </div>
               </>
             )}
@@ -303,7 +304,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
                       </p>
                     </div>
                     <span className="font-medium text-destructive text-sm whitespace-nowrap">
-                      {formatBRL(Number(t.amount))}
+                      {fmt(Number(t.amount))}
                     </span>
                   </div>
                 ))}
@@ -343,17 +344,17 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             </p>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{cc.total}</span>
-              <span className="font-medium">{formatBRL(billTotal)}</span>
+              <span className="font-medium">{fmt(billTotal)}</span>
             </div>
             {alreadyPaid > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{cc.alreadyPaid}</span>
-                <span className="text-success">− {formatBRL(alreadyPaid)}</span>
+                <span className="text-success">− {fmt(alreadyPaid)}</span>
               </div>
             )}
             <div className="flex justify-between border-t pt-1 mt-1">
               <span className="font-medium">{cc.remainingToPay}</span>
-              <span className="font-bold">{formatBRL(remaining)}</span>
+              <span className="font-bold">{fmt(remaining)}</span>
             </div>
           </div>
 
@@ -400,7 +401,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
               </p>
             ) : afterPayment > 0.01 ? (
               <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-1.5 rounded">
-                {cc.payPartialHint.replace('{amount}', formatBRL(afterPayment))}
+                {cc.payPartialHint.replace('{amount}', fmt(afterPayment))}
               </p>
             ) : null}
           </div>

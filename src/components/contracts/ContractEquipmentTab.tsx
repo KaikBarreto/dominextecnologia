@@ -23,6 +23,8 @@ import { useContracts, REGENERABLE_OS_STATUSES, type Contract, type ContractItem
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Item de trabalho da aba (espelha o shape enviado pro hook). Mantém o `id` do
 // contract_item original (quando existe) só pra key/UI; o hook faz o diff por
@@ -54,6 +56,8 @@ function itemKey(it: { equipment_id?: string | null; item_name: string }): strin
  */
 export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.contracts.equipmentTab;
   const { updateContractEquipment } = useContracts();
   // Equipamentos do cliente do contrato (escopo por customer_id). Mesma fonte
   // que o ContractFormDialog usa pra o picker de itens.
@@ -246,8 +250,8 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
             <EmptyState
               size="compact"
               icon={<Package className="h-10 w-10" />}
-              title="Nenhum equipamento no contrato"
-              action={{ label: 'Adicionar equipamento', onClick: openPicker }}
+              title={t.emptyTitle}
+              action={{ label: t.pickerTitle, onClick: openPicker }}
             />
           ) : (
             <div className="space-y-3 min-w-0">
@@ -255,7 +259,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar equipamento..."
+                  placeholder={t.searchPlaceholder}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-8"
@@ -305,7 +309,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
                           variant="ghost"
                           size="icon"
                           className="shrink-0 min-h-11 min-w-11 sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 text-destructive active:scale-90 transition-transform rounded-xl"
-                          title="Remover do contrato"
+                          title={t.removeTooltip}
                           onClick={() => setRemovingItem(item)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -322,7 +326,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
           {dirty && (
             <div className="mt-4 flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                Alterações não salvas. Salvar recalcula as visitas futuras (realizadas e em andamento são preservadas).
+                {MESSAGES[locale].app.contracts.environmentsTab.unsavedBarSchedule}
               </p>
               <div className="flex w-full gap-2 sm:w-auto">
                 <Button
@@ -332,7 +336,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
                   onClick={handleResetChanges}
                   disabled={saving}
                 >
-                  Descartar
+                  {MESSAGES[locale].app.contracts.environmentsTab.discardButton}
                 </Button>
                 <Button
                   size="sm"
@@ -341,7 +345,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
                   disabled={saving}
                 >
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                  Salvar alterações
+                  {MESSAGES[locale].app.contracts.environmentsTab.saveButton}
                 </Button>
               </div>
             </div>
@@ -353,7 +357,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
       <ResponsiveModal
         open={showPicker}
         onOpenChange={setShowPicker}
-        title="Adicionar equipamentos"
+        title={t.pickerTitle}
         footer={
           <Button
             className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
@@ -370,7 +374,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar equipamento do cliente..."
+              placeholder={MESSAGES[locale].app.contracts.contractForm.items.pickerSearchPlaceholder}
               value={pickerSearch}
               onChange={(e) => setPickerSearch(e.target.value)}
               className="pl-8"

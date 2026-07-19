@@ -76,6 +76,8 @@ import {
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface ContractEnvironmentsTabProps {
   contract: Contract;
@@ -188,6 +190,8 @@ function newEnvRow(): EnvRow {
  */
 export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabProps) {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.contracts.environmentsTab;
   const { updateContract } = useContracts();
   const { equipment, createEquipment } = useEquipment(contract.customer_id || undefined);
   const { categories } = useEquipmentCategories();
@@ -814,7 +818,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       if (!cur) return prev;
       return { ...prev, [eqId]: { ...cur, activities: selected, customized: true, customTemplateIds: templateIds, firstOsExcludedQuestions: excludedQuestions } };
     });
-    toast({ title: `Checklists da máquina atualizados (${selected.length + templateIds.length} item(ns))` });
+    const itemCount = selected.length + templateIds.length;
+    toast({ title: `${t.checklistToastTitle} ${t.checklistToastCount.replace('{n}', String(itemCount))}` });
     setShowCatalogPicker(false);
     setPickerMachineEqId(null);
   };
@@ -1083,9 +1088,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const dirtyBar = dirty && (
     <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-xs text-muted-foreground">
-        {scheduleChanged
-          ? 'Alterações não salvas. Salvar recalcula as visitas futuras (realizadas e em andamento são preservadas).'
-          : 'Alterações não salvas nos dados dos ambientes.'}
+        {scheduleChanged ? t.unsavedBarSchedule : t.unsavedBarData}
       </p>
       <div className="flex w-full gap-2 sm:w-auto">
         <Button
@@ -1095,7 +1098,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           onClick={handleReset}
           disabled={saving}
         >
-          Descartar
+          {t.discardButton}
         </Button>
         <Button
           size="sm"
@@ -1104,7 +1107,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           disabled={saving}
         >
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-          Salvar alterações
+          {t.saveButton}
         </Button>
       </div>
     </div>

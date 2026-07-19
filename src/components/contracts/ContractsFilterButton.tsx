@@ -13,6 +13,8 @@ import {
   FilterCheckboxGroup,
   type FilterCheckboxOption,
 } from '@/components/mobile/FilterCheckboxGroup';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Opções de Saúde e Tipo (multi-select). Vazio = mostra tudo.
 const HEALTH_OPTIONS: FilterCheckboxOption[] = [
@@ -66,6 +68,8 @@ export function ContractsFilterButton({
   onClear,
 }: ContractsFilterButtonProps) {
   const [open, setOpen] = useState(false);
+  const { locale } = useAppLocaleContext();
+  const tFilter = MESSAGES[locale].app.contracts.filterButton;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -93,7 +97,7 @@ export function ContractsFilterButton({
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           <FilterCheckboxGroup
-            label="Status"
+            label={tFilter.labelStatus}
             options={statusOptions}
             selected={statusFilter}
             onChange={onStatusChange}
@@ -101,7 +105,7 @@ export function ContractsFilterButton({
           />
 
           <FilterCheckboxGroup
-            label="Saúde"
+            label={tFilter.labelHealth}
             options={HEALTH_OPTIONS}
             selected={healthFilter}
             onChange={onHealthChange}
@@ -109,7 +113,7 @@ export function ContractsFilterButton({
           />
 
           <FilterCheckboxGroup
-            label="Tipo"
+            label={tFilter.labelType}
             options={TYPE_OPTIONS}
             selected={typeFilter}
             onChange={onTypeChange}

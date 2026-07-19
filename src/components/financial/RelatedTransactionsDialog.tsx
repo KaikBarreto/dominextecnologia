@@ -3,10 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, FileText, Receipt } from 'lucide-react';
 import type { FinancialTransaction } from '@/types/database';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface RelatedTransactionsDialogProps {
   open: boolean;
@@ -27,6 +26,10 @@ interface RelatedTransactionsDialogProps {
 export function RelatedTransactionsDialog({
   open, onOpenChange, transaction, related, linkedQuote, mode, onConfirm, isProcessing,
 }: RelatedTransactionsDialogProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const rt = MESSAGES[locale].app.finance.relatedTransactions;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
+
   if (!transaction) return null;
   const hasRelated = related.length > 0 || !!linkedQuote;
 
@@ -37,22 +40,20 @@ export function RelatedTransactionsDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {mode === 'delete' ? 'Excluir movimentação?' : 'Desmarcar como pago?'}
+              {mode === 'delete' ? rt.deleteTitle : rt.unmarkTitle}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {mode === 'delete'
-                ? 'Esta ação não pode ser desfeita.'
-                : 'A movimentação voltará ao status pendente.'}
+              {mode === 'delete' ? rt.deleteDescription : rt.unmarkDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>{rt.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => onConfirm(false)}
               disabled={isProcessing}
               className={mode === 'delete' ? 'bg-destructive hover:bg-destructive/90' : ''}
             >
-              {mode === 'delete' ? 'Excluir' : 'Desmarcar'}
+              {mode === 'delete' ? rt.confirmDelete : rt.confirmUnmark}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -60,7 +61,8 @@ export function RelatedTransactionsDialog({
     );
   }
 
-  const verb = mode === 'delete' ? 'excluir' : 'reverter';
+  const verb = mode === 'delete' ? rt.verbDelete : rt.verbRevert;
+  const totalCount = related.length + 1;
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -68,12 +70,12 @@ export function RelatedTransactionsDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-warning" />
-            Movimentação vinculada
+            {rt.linkedTitle}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Esta movimentação faz parte de um conjunto de lançamentos relacionados
-            {linkedQuote ? ` ao Orçamento #${linkedQuote.quote_number}` : ''}.
-            Encontramos {related.length} outro(s) lançamento(s) vinculado(s).
+            {rt.linkedDescriptionPrefix}
+            {linkedQuote ? ` ${rt.linkedDescriptionToQuote.replace('{number}', String(linkedQuote.quote_number))}` : ''}
+            {rt.linkedDescriptionSuffix.replace('{count}', String(related.length))}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {/* Conteúdo rico fora do Description: Radix/vaul Description vira <p>, e
@@ -89,7 +91,7 @@ export function RelatedTransactionsDialog({
                   {r.category && <Badge variant="outline" className="text-[9px] shrink-0">{r.category}</Badge>}
                 </div>
                 <span className={`font-medium shrink-0 ${r.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
-                  {r.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(r.amount)}
+                  {r.transaction_type === 'entrada' ? '+' : '-'} {fmt(r.amount)}
                 </span>
               </div>
             ))}
@@ -97,10 +99,14 @@ export function RelatedTransactionsDialog({
           {linkedQuote && mode === 'delete' && (
             <p className="text-xs text-warning bg-warning/10 rounded p-2 flex gap-2">
               <FileText className="h-4 w-4 shrink-0" />
-              Ao {verb} todos os lançamentos, o Orçamento #{linkedQuote.quote_number} ficará desvinculado e poderá ser aprovado novamente.
+              {rt.quoteUnlinkHint
+                .replace('{verb}', verb)
+                .replace('{number}', String(linkedQuote.quote_number))}
             </p>
           )}
-          <p className="text-sm font-medium pt-1">O que você quer {verb}?</p>
+          <p className="text-sm font-medium pt-1">
+            {mode === 'delete' ? rt.questionDelete : rt.questionRevert}
+          </p>
         </div>
         <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
           <Button
@@ -110,8 +116,8 @@ export function RelatedTransactionsDialog({
             className="w-full"
           >
             {mode === 'delete'
-              ? `Excluir todos os ${related.length + 1} lançamentos`
-              : `Reverter todos os ${related.length + 1} lançamentos`}
+              ? rt.deleteAllButton.replace('{count}', String(totalCount))
+              : rt.revertAllButton.replace('{count}', String(totalCount))}
           </Button>
           <Button
             variant="outline"
@@ -119,11 +125,9 @@ export function RelatedTransactionsDialog({
             disabled={isProcessing}
             className="w-full"
           >
-            {mode === 'delete'
-              ? 'Excluir somente este lançamento'
-              : 'Reverter somente este lançamento'}
+            {mode === 'delete' ? rt.deleteOneButton : rt.revertOneButton}
           </Button>
-          <AlertDialogCancel className="w-full mt-0" disabled={isProcessing}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel className="w-full mt-0" disabled={isProcessing}>{rt.cancel}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
