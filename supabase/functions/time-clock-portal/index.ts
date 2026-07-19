@@ -211,11 +211,12 @@ Deno.serve(async (req) => {
 
     // Branding white-label seguro: allowlist explícita de company_settings.
     // PROIBIDO to_jsonb(cs)/select('*') — só os campos de marca do header.
+    // Inclui language/currency/timezone pra i18n do portal público.
     async function loadBranding() {
       const { data: cs } = await supabase
         .from("company_settings")
         .select(
-          "name, logo_url, white_label_enabled, white_label_primary_color, white_label_logo_url, white_label_icon_url, report_header_bg_color, report_header_text_color, report_header_logo_size, report_header_logo_type, report_header_show_logo_bg, report_header_logo_bg_color, report_status_bar_color",
+          "name, logo_url, white_label_enabled, white_label_primary_color, white_label_logo_url, white_label_icon_url, report_header_bg_color, report_header_text_color, report_header_logo_size, report_header_logo_type, report_header_show_logo_bg, report_header_logo_bg_color, report_status_bar_color, language, currency, timezone",
         )
         .eq("company_id", companyId)
         .maybeSingle();
@@ -233,6 +234,11 @@ Deno.serve(async (req) => {
         report_header_show_logo_bg: cs?.report_header_show_logo_bg ?? null,
         report_header_logo_bg_color: cs?.report_header_logo_bg_color ?? null,
         report_status_bar_color: cs?.report_status_bar_color ?? null,
+        // i18n do portal público: idioma/moeda/fuso da empresa.
+        // COALESCE: fallback defensivo caso a coluna não exista ainda.
+        language: (cs?.language as string | null) ?? "pt-br",
+        currency: (cs?.currency as string | null) ?? "BRL",
+        timezone: (cs?.timezone as string | null) ?? "America/Sao_Paulo",
       };
     }
 

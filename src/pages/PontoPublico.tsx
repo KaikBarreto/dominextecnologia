@@ -63,26 +63,31 @@ import {
   type PontoTodayRecord,
   type PontoCompany,
 } from "@/hooks/usePontoPublico";
+import {
+  PublicAppLocaleProvider,
+  useAppLocaleContext,
+} from "@/contexts/AppLocaleContext";
+import { formatTime as fmtTime, toBcp47 } from "@/lib/format";
+import type { LocaleCode } from "@/lib/i18n/locales";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 // -----------------------------------------------------------------------------
-// Configuração de exibição
+// Configuração de exibição — classes CSS semânticas por ação (fixas)
+// Labels e labels de tipo vêm das traduções (timeclock.actions / typeLabels)
 // -----------------------------------------------------------------------------
 
-const ACTION_CONFIG: Record<
-  PunchType,
-  { label: string; className: string; icon: typeof LogIn }
-> = {
-  clock_in: { label: "Registrar Entrada", className: "bg-emerald-600 hover:bg-emerald-700 text-white", icon: LogIn },
-  break_start: { label: "Iniciar Intervalo", className: "bg-amber-500 hover:bg-amber-600 text-white", icon: Coffee },
-  break_end: { label: "Voltar do Intervalo", className: "bg-blue-600 hover:bg-blue-700 text-white", icon: RotateCcw },
-  clock_out: { label: "Registrar Saída", className: "bg-rose-600 hover:bg-rose-700 text-white", icon: LogOut },
+const ACTION_CLASSNAME: Record<PunchType, string> = {
+  clock_in: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  break_start: "bg-amber-500 hover:bg-amber-600 text-white",
+  break_end: "bg-blue-600 hover:bg-blue-700 text-white",
+  clock_out: "bg-rose-600 hover:bg-rose-700 text-white",
 };
 
-const TYPE_LABELS: Record<PunchType, string> = {
-  clock_in: "Entrada",
-  break_start: "Início do intervalo",
-  break_end: "Fim do intervalo",
-  clock_out: "Saída",
+const ACTION_ICON: Record<PunchType, typeof LogIn> = {
+  clock_in: LogIn,
+  break_start: Coffee,
+  break_end: RotateCcw,
+  clock_out: LogOut,
 };
 
 // Cor semântica do nó da timeline, coerente com as cores das ações/CTA:
@@ -94,34 +99,20 @@ const TYPE_DOT: Record<PunchType, string> = {
   clock_out: "bg-rose-500",
 };
 
-type StatusKey = "not_started" | "working" | "on_break" | "finished";
-
-const STATUS_CONFIG: Record<StatusKey, { label: string; color: string; dot: string }> = {
-  not_started: { label: "Você ainda não bateu o ponto hoje", color: "text-amber-600", dot: "bg-amber-500" },
-  working: { label: "Trabalhando", color: "text-emerald-600", dot: "bg-emerald-500" },
-  on_break: { label: "Em intervalo", color: "text-amber-600", dot: "bg-amber-500" },
-  finished: { label: "Jornada concluída", color: "text-emerald-600", dot: "bg-emerald-500" },
+const STATUS_DOT: Record<string, string> = {
+  not_started: "bg-amber-500",
+  working: "bg-emerald-500",
+  on_break: "bg-amber-500",
+  finished: "bg-emerald-500",
 };
+
+type StatusKey = "not_started" | "working" | "on_break" | "finished";
 
 function deriveStatus(nextAction: PunchType | null, today: PontoTodayRecord[]): StatusKey {
   if (nextAction === null) return "finished";
   if (nextAction === "clock_in" || today.length === 0) return "not_started";
   if (nextAction === "break_end") return "on_break";
   return "working"; // break_start ou clock_out pendentes = trabalhando
-}
-
-// -----------------------------------------------------------------------------
-// Formatação (America/Sao_Paulo — recorded_at vem em UTC)
-// -----------------------------------------------------------------------------
-
-const TZ = "America/Sao_Paulo";
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: TZ,
-  });
 }
 
 // -----------------------------------------------------------------------------
@@ -324,26 +315,37 @@ function BrandedHeader({
 // Telas de borda
 // -----------------------------------------------------------------------------
 
-function LinkBroken() {
+function LinkBroken({
+  title = "Link inválido ou desativado",
+  description = "Este link de ponto não está mais ativo. Fale com o responsável da sua empresa para receber o link correto.",
+}: {
+  title?: string;
+  description?: string;
+}) {
   return (
     <div className="dark min-h-[100dvh] flex flex-col items-center justify-center gap-4 p-6 text-center bg-zinc-950 text-foreground">
       <Link2Off className="h-14 w-14 text-muted-foreground" />
-      <h1 className="text-xl font-semibold">Link inválido ou desativado</h1>
+      <h1 className="text-xl font-semibold">{title}</h1>
       <p className="text-sm text-muted-foreground max-w-xs">
-        Este link de ponto não está mais ativo. Fale com o responsável da sua empresa para receber o link correto.
+        {description}
       </p>
     </div>
   );
 }
 
 // -----------------------------------------------------------------------------
-// Página
+// Página interna — consome locale/timezone do contexto (PublicAppLocaleProvider)
 // -----------------------------------------------------------------------------
 
-export default function PontoPublico() {
-  const { slug } = useParams<{ slug: string }>();
+function PontoPublicoInner({
+  slug,
+}: {
+  slug: string | undefined;
+}) {
   const { state, loading, notFound, refetch, registerPunch } = usePontoPublico(slug);
   const { toast } = useToast();
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale as LocaleCode]?.app?.timeclock ?? MESSAGES["pt-br"].app.timeclock;
 
   // TEMA ESCURO FORÇADO (independente do tema do usuário/empresa). É uma rota
   // standalone (fora do AppLayout), então aplicamos `dark` no <html> na montagem
@@ -418,7 +420,7 @@ export default function PontoPublico() {
 
     if (!navigator.geolocation) {
       setGeoLoading(false);
-      setGeoError("Geolocalização não suportada neste dispositivo.");
+      setGeoError(t.flow.geoUnsupported);
       if (!settings?.require_geolocation) advanceAfterGeo();
       return;
     }
@@ -427,7 +429,7 @@ export default function PontoPublico() {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         setCoords({ latitude, longitude });
-        setAddress("Obtendo endereço...");
+        setAddress("...");
         setGeoLoading(false);
         try {
           const addr = await reverseGeocode(latitude, longitude);
@@ -439,12 +441,12 @@ export default function PontoPublico() {
       },
       () => {
         setGeoLoading(false);
-        setGeoError("Não foi possível obter a localização. Verifique as permissões do navegador.");
+        setGeoError(t.flow.geoError);
         if (!settings?.require_geolocation) advanceAfterGeo();
       },
       { enableHighAccuracy: true, timeout: 15000 },
     );
-  }, [settings]);
+  }, [settings, t]);
 
   const startFlow = useCallback(
     (action: PunchType) => {
@@ -475,10 +477,10 @@ export default function PontoPublico() {
       await registerPunch({
         type: currentAction,
         coords,
-        address: address && address !== "Obtendo endereço..." ? address : null,
+        address: address && address !== "..." ? address : null,
         photoFile: photo,
       });
-      toast({ title: `✅ ${TYPE_LABELS[currentAction]} registrada` });
+      toast({ title: `✅ ${t.typeLabels[currentAction]} ${t.toasts.registered.replace("{type}", "")}`.trim() });
       if (navigator.vibrate) navigator.vibrate(200);
       setFlowOpen(false);
       await refetch();
@@ -486,7 +488,7 @@ export default function PontoPublico() {
       const err = e as { status?: number; message?: string };
       toast({
         variant: "destructive",
-        title: "Não foi possível registrar o ponto",
+        title: t.toasts.punchError,
         description: err?.message,
       });
       if (err?.status === 409) {
@@ -503,12 +505,12 @@ export default function PontoPublico() {
   // Render
   // ---------------------------------------------------------------------------
 
-  if (notFound) return <LinkBroken />;
+  if (notFound) return <LinkBroken title={t.linkInvalid.title} description={t.linkInvalid.description} />;
 
   if (loading && !state) {
     // Skeleton que ESPELHA o layout final (sem "pulo" ao carregar): header em
     // domo (muted), avatar circular, barra do nome; identidade da empresa
-    // (logo + nome + data); bloco central "PONTO ELETRÔNICO"; rodapé sticky no
+    // (logo + nome + data); bloco central do título; rodapé sticky no
     // degradê escuro com barra de status + barra da CTA. Tema escuro forçado.
     return (
       <div className="dark min-h-[100dvh] bg-zinc-950 text-foreground">
@@ -534,12 +536,11 @@ export default function PontoPublico() {
         <div className="max-w-md mx-auto px-4 pt-6 space-y-6">
           {/* Identidade da empresa: logo + nome + data */}
           <div className="flex flex-col items-center gap-3 pt-2">
-            {/* Logo da empresa em proporção natural → placeholder retangular. */}
             <Skeleton className="h-16 w-36 rounded-md" />
             <Skeleton className="h-6 w-40 rounded" />
             <Skeleton className="h-4 w-52 rounded" />
           </div>
-          {/* Bloco central "PONTO ELETRÔNICO" */}
+          {/* Bloco central do título */}
           <div className="flex flex-col items-center pt-6 gap-5">
             <Skeleton className="h-9 w-40 rounded" />
             <Skeleton className="h-9 w-52 rounded" />
@@ -572,9 +573,9 @@ export default function PontoPublico() {
     return (
       <div className="dark min-h-[100dvh] flex flex-col items-center justify-center gap-4 p-6 text-center bg-zinc-950 text-foreground">
         <AlertCircle className="h-12 w-12 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Não foi possível carregar. Verifique sua conexão.</p>
+        <p className="text-sm text-muted-foreground">{t.connectionError}</p>
         <Button variant="outline" onClick={() => void refetch()}>
-          Tentar novamente
+          {t.retryButton}
         </Button>
       </div>
     );
@@ -582,8 +583,9 @@ export default function PontoPublico() {
 
   const { employee, company, next_action, today } = state;
   const status = deriveStatus(next_action, today);
-  const statusCfg = STATUS_CONFIG[status];
-  const ActionIcon = next_action ? ACTION_CONFIG[next_action].icon : null;
+  const statusDot = STATUS_DOT[status];
+  const statusLabel = t.status[status];
+  const ActionIcon = next_action ? ACTION_ICON[next_action] : null;
   const { accentColor, resolvedLogo } = resolveBranding(company);
 
   // Logo da PLATAFORMA Dominex (Home + rodapé): só aparece quando a empresa NÃO
@@ -595,13 +597,18 @@ export default function PontoPublico() {
   // pós-batida → HISTÓRICO (cards das batidas no corpo + título migra pro rodapé).
   const temBatidaHoje = today.length > 0;
 
-  // Relógio ao vivo (HH:MM:SS) reusado no rodapé nos dois estados.
-  const clock = now.toLocaleTimeString("pt-BR", {
+  // Relógio ao vivo (HH:MM:SS) no fuso da empresa.
+  const clock = fmtTime(now, locale as LocaleCode, timezone, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    timeZone: TZ,
   });
+
+  // Data de hoje no fuso e idioma da empresa.
+  const todayLabel = new Intl.DateTimeFormat(
+    toBcp47(locale as LocaleCode),
+    { weekday: "long", day: "2-digit", month: "long", timeZone: timezone },
+  ).format(now);
 
   // Folga total abaixo do conteúdo = altura REAL do rodapé fixo (medida via
   // ResizeObserver border-box no footerRef, que envolve o rodapé inteiro,
@@ -641,7 +648,7 @@ export default function PontoPublico() {
       >
         {/* IDENTIDADE DA EMPRESA — logo (só se houver) + nome + data. Permanece
             nos dois estados, logo abaixo do header. No HOME a pegada é menor (logo
-            e gap reduzidos) pra o hero "PONTO ELETRÔNICO" caber acima do rodapé. */}
+            e gap reduzidos) pra o hero do título caber acima do rodapé. */}
         <section
           className={cn(
             "flex flex-col items-center text-center",
@@ -655,7 +662,7 @@ export default function PontoPublico() {
             // max-h-16 (compete com o hero); no HISTÓRICO max-h-24 (destaque).
             <img
               src={resolvedLogo}
-              alt={company.name || "Empresa"}
+              alt={company.name || ""}
               className={cn(
                 "w-auto object-contain",
                 temBatidaHoje ? "max-h-24" : "max-h-16",
@@ -663,33 +670,27 @@ export default function PontoPublico() {
             />
           )}
           <h1 className="text-xl font-bold text-foreground leading-tight">
-            {company.name || "Empresa"}
+            {company.name || ""}
           </h1>
           <p className="text-sm text-muted-foreground capitalize -mt-1">
-            {now.toLocaleDateString("pt-BR", {
-              weekday: "long",
-              day: "2-digit",
-              month: "long",
-              timeZone: TZ,
-            })}
+            {todayLabel}
           </p>
         </section>
 
         {!temBatidaHoje ? (
           /* ESTADO HOME (pré-batida) — sem histórico, sem empty state. Título
-             "PONTO ELETRÔNICO" central em 2 linhas, linha accent, logo Dominex.
+             central em 2 linhas (traduzido), linha accent, logo Dominex.
 
              A pegada vertical do HOME já foi enxugada (header compacto + logo da
              empresa menor) pra caber no espaço útil = viewport − rodapé fixo, em
              telas de 740px e 667px. O `<main>` carrega padding-bottom = altura
              MEDIDA do rodapé + 24px de folga, então o hero NUNCA fica atrás nem
-             bissectado pela borda do rodapé. Aqui só um respiro de topo + gap
-             enxutos; em flow normal, nada cobre o hero. */
+             bissectado pela borda do rodapé. */
           <section className="flex flex-col items-center text-center pt-2 gap-4">
             <h2 className="font-extrabold tracking-tight text-foreground text-4xl leading-[1.05]">
-              PONTO
+              {t.title}
               <br />
-              ELETRÔNICO
+              {t.titleLine2}
             </h2>
             {/* Linha accent curta (teal / cor white-label) */}
             <span
@@ -708,12 +709,13 @@ export default function PontoPublico() {
           </section>
         ) : (
           /* ESTADO HISTÓRICO (pós-batida) — LINHA DO TEMPO vertical das batidas
-             do dia (não mais um card por batida). Uma linha contínua liga os
-             nós; cada nó é um dot com cor semântica (entrada=verde, início do
-             intervalo=âmbar, fim=azul, saída=vermelho) + rótulo e horário. O
-             título "PONTO ELETRÔNICO" NÃO aparece aqui (migrou pro rodapé). */
+             do dia. Uma linha contínua liga os nós; cada nó é um dot com cor
+             semântica (entrada=verde, início do intervalo=âmbar, fim=azul,
+             saída=vermelho) + rótulo traduzido e horário no fuso da empresa. */
           <div className="space-y-3">
-            <h2 className="font-semibold text-sm text-muted-foreground px-1">Registros de hoje</h2>
+            <h2 className="font-semibold text-sm text-muted-foreground px-1">
+              {t.history.todayTitle}
+            </h2>
             <ol className="relative pl-2">
               {today.map((rec, i) => {
                 const isLast = i === today.length - 1;
@@ -750,11 +752,11 @@ export default function PontoPublico() {
                           isLast ? "font-semibold text-foreground" : "font-medium text-foreground/90",
                         )}
                       >
-                        {TYPE_LABELS[rec.type]}
+                        {t.typeLabels[rec.type]}
                       </p>
                       <div className="flex items-center gap-1 text-sm font-semibold tabular-nums shrink-0 text-foreground">
                         <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        {formatTime(rec.recorded_at)}
+                        {fmtTime(rec.recorded_at, locale as LocaleCode, timezone)}
                       </div>
                     </div>
                   </li>
@@ -781,11 +783,11 @@ export default function PontoPublico() {
         <div className="max-w-md mx-auto px-4 pt-7 pb-3 space-y-4">
           {!temBatidaHoje ? (
             /* PRÉ-BATIDA — linha de status: bolinha + rótulo (esq) · relógio (dir).
-               O título "PONTO ELETRÔNICO" NÃO está aqui (vive no centro/HOME). */
+               O título NÃO está aqui (vive no centro/HOME). */
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", statusCfg.dot)} />
-                <p className="text-sm font-medium truncate">{statusCfg.label}</p>
+                <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", statusDot)} />
+                <p className="text-sm font-medium truncate">{statusLabel}</p>
               </div>
               <p className="text-base font-bold tabular-nums shrink-0">{clock}</p>
             </div>
@@ -794,12 +796,12 @@ export default function PontoPublico() {
                alinhados ao centro: [título + status/relógio empilhados] |
                [linha vertical accent] | [logo Dominex]. */
             <div className="flex items-stretch justify-between gap-3">
-              {/* Esquerda: título "PONTO ELETRÔNICO" + status/relógio empilhados */}
+              {/* Esquerda: título traduzido + status/relógio empilhados */}
               <div className="flex flex-col justify-center gap-0.5 min-w-0">
-                <p className="text-sm font-bold leading-tight">PONTO ELETRÔNICO</p>
+                <p className="text-sm font-bold leading-tight">{t.titleShort}</p>
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className={cn("h-2 w-2 rounded-full shrink-0", statusCfg.dot)} />
-                  <p className="text-xs text-white/80 truncate">{statusCfg.label}</p>
+                  <span className={cn("h-2 w-2 rounded-full shrink-0", statusDot)} />
+                  <p className="text-xs text-white/80 truncate">{statusLabel}</p>
                   <span className="text-xs font-semibold tabular-nums text-white/90 shrink-0">
                     {clock}
                   </span>
@@ -826,19 +828,19 @@ export default function PontoPublico() {
             <Button
               className={cn(
                 "w-full h-16 text-lg font-bold gap-2",
-                ACTION_CONFIG[next_action].className,
+                ACTION_CLASSNAME[next_action],
               )}
               onClick={() => startFlow(next_action)}
             >
               <ActionIcon className="h-5 w-5" />
-              {ACTION_CONFIG[next_action].label}
+              {t.actions[next_action]}
             </Button>
           ) : (
             // Selo de status CONCLUÍDO (régua Dominex: saturado + texto/ícone
             // brancos, MAIÚSCULO), mesmo tamanho de CTA (w-full h-16 text-lg).
             <div className="flex w-full h-16 items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white text-lg font-bold">
               <Check className="h-5 w-5 text-white" />
-              PONTO DO DIA CONCLUÍDO
+              {t.history.dayDone}
             </div>
           )}
 
@@ -855,7 +857,7 @@ export default function PontoPublico() {
       <ResponsiveModal
         open={flowOpen}
         onOpenChange={setFlowOpen}
-        title={currentAction ? ACTION_CONFIG[currentAction].label : "Registrar ponto"}
+        title={currentAction ? t.actions[currentAction] : t.titleShort}
       >
         <div className="space-y-4 py-2">
           {/* Step: Geo */}
@@ -864,7 +866,7 @@ export default function PontoPublico() {
               {geoLoading && (
                 <>
                   <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
-                  <p className="text-sm text-muted-foreground">Obtendo sua localização...</p>
+                  <p className="text-sm text-muted-foreground">{t.flow.geoLoading}</p>
                 </>
               )}
               {geoError && (
@@ -874,14 +876,14 @@ export default function PontoPublico() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <Button variant="outline" onClick={() => startGeo()}>
-                      Tentar novamente
+                      {t.flow.geoRetry}
                     </Button>
                     {!settings?.require_geolocation && (
                       <Button
                         variant="ghost"
                         onClick={() => setFlowStep(settings?.require_selfie ? "selfie" : "confirm")}
                       >
-                        Continuar sem localização
+                        {t.flow.geoContinueWithout}
                       </Button>
                     )}
                   </div>
@@ -894,7 +896,7 @@ export default function PontoPublico() {
           {flowStep === "selfie" && (
             <div className="text-center space-y-4 py-4">
               <Camera className="h-10 w-10 mx-auto text-muted-foreground" />
-              <p className="text-sm font-medium">Tire uma selfie para confirmar</p>
+              <p className="text-sm font-medium">{t.flow.selfiePrompt}</p>
               {photoPreview ? (
                 <div className="space-y-3">
                   <img
@@ -913,16 +915,16 @@ export default function PontoPublico() {
                         fileRef.current?.click();
                       }}
                     >
-                      Tirar novamente
+                      {t.flow.selfieRetake}
                     </Button>
                     <Button size="sm" onClick={() => setFlowStep("confirm")}>
-                      Usar esta foto
+                      {t.flow.selfieUse}
                     </Button>
                   </div>
                 </div>
               ) : (
                 <Button onClick={() => fileRef.current?.click()} className="gap-2">
-                  <Camera className="h-4 w-4" /> Abrir câmera
+                  <Camera className="h-4 w-4" /> {t.flow.selfieOpen}
                 </Button>
               )}
               <input
@@ -942,23 +944,22 @@ export default function PontoPublico() {
               <Card>
                 <CardContent className="p-4 space-y-2.5 text-sm">
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">Tipo</span>
-                    <strong>{TYPE_LABELS[currentAction]}</strong>
+                    <span className="text-muted-foreground">{t.flow.confirmType}</span>
+                    <strong>{t.typeLabels[currentAction]}</strong>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">Horário</span>
+                    <span className="text-muted-foreground">{t.flow.confirmTime}</span>
                     <strong className="tabular-nums">
-                      {now.toLocaleTimeString("pt-BR", {
+                      {fmtTime(now, locale as LocaleCode, timezone, {
                         hour: "2-digit",
                         minute: "2-digit",
                         second: "2-digit",
-                        timeZone: TZ,
                       })}
                     </strong>
                   </div>
                   {address && (
                     <div className="flex justify-between gap-3">
-                      <span className="text-muted-foreground shrink-0">Local</span>
+                      <span className="text-muted-foreground shrink-0">{t.flow.confirmLocation}</span>
                       <span className="text-right text-xs">{address}</span>
                     </div>
                   )}
@@ -975,7 +976,7 @@ export default function PontoPublico() {
                 ) : (
                   <Check className="h-5 w-5 mr-2" />
                 )}
-                Confirmar registro
+                {t.flow.confirmButton}
               </Button>
               <Button
                 variant="ghost"
@@ -983,12 +984,33 @@ export default function PontoPublico() {
                 onClick={() => setFlowOpen(false)}
                 disabled={submitting}
               >
-                Cancelar
+                {t.flow.cancelButton}
               </Button>
             </div>
           )}
         </div>
       </ResponsiveModal>
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Página — shell público com locale da empresa
+// -----------------------------------------------------------------------------
+
+export default function PontoPublico() {
+  const { slug } = useParams<{ slug: string }>();
+  const { state } = usePontoPublico(slug);
+
+  // Antes de o payload carregar: cai nos defaults pt-br/BRL/SP (defensivo).
+  // Quando o estado chega, o PublicAppLocaleProvider repinta com os valores reais.
+  const language = state?.company.language;
+  const currency = state?.company.currency;
+  const timezone = state?.company.timezone;
+
+  return (
+    <PublicAppLocaleProvider language={language} currency={currency} timezone={timezone}>
+      <PontoPublicoInner slug={slug} />
+    </PublicAppLocaleProvider>
   );
 }

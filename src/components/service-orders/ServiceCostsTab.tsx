@@ -16,13 +16,19 @@ import { useServiceMaterials } from '@/hooks/useServiceMaterials';
 import { ServiceMaterialsList } from '@/components/service-orders/ServiceMaterialsList';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
-import { formatBRL } from '@/utils/currency';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
 import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
 import { LinkedResourcesSection } from '@/components/service-orders/LinkedResourcesSection';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 export function ServiceCostsTab() {
+  const { locale, currency } = useAppLocaleContext();
+  const tsc = MESSAGES[locale].app.crm.serviceCosts;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
+
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
   const isMobile = useIsMobile();
@@ -146,43 +152,43 @@ export function ServiceCostsTab() {
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
-              <p className="text-lg font-semibold text-foreground">Custos por Tipo de Serviço</p>
-              <p className="text-sm text-muted-foreground">Defina mão de obra e materiais para precificação automática.</p>
+              <p className="text-lg font-semibold text-foreground">{tsc.title}</p>
+              <p className="text-sm text-muted-foreground">{tsc.subtitle}</p>
             </div>
             <div className="w-full sm:w-96">
-              <Label className="text-xs">Tipo de serviço</Label>
+              <Label className="text-xs">{tsc.serviceTypeLabel}</Label>
               <SearchableSelect
                 options={serviceOptions}
                 value={serviceId}
                 onValueChange={setServiceId}
-                placeholder="Selecione o tipo de serviço"
+                placeholder={tsc.serviceTypePlaceholder}
               />
             </div>
           </div>
 
           {!serviceId ? (
             <div className="rounded-lg border border-border p-8 text-center text-sm text-muted-foreground">
-              Selecione um tipo de serviço para configurar custos.
+              {tsc.noServiceSelected}
             </div>
           ) : (
             <Tabs value={costsTab} onValueChange={setCostsTab} className="w-full">
               {isMobile ? (
                 <MobilePillTabs
                   tabs={[
-                    { value: 'mao_de_obra', label: 'Mão de obra' },
-                    ...(hasPricing ? [{ value: 'recursos', label: 'Recursos' }] : []),
-                    { value: 'materiais', label: 'Materiais' },
-                    ...(hasPricing ? [{ value: 'resumo', label: 'Resumo' }] : []),
+                    { value: 'mao_de_obra', label: tsc.tabLabor },
+                    ...(hasPricing ? [{ value: 'recursos', label: tsc.tabResources }] : []),
+                    { value: 'materiais', label: tsc.tabMaterials },
+                    ...(hasPricing ? [{ value: 'resumo', label: tsc.tabSummary }] : []),
                   ]}
                   activeTab={costsTab}
                   onTabChange={setCostsTab}
                 />
               ) : (
                 <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
-                  <TabsTrigger value="mao_de_obra">Mão de obra</TabsTrigger>
-                  {hasPricing && <TabsTrigger value="recursos">Recursos</TabsTrigger>}
-                  <TabsTrigger value="materiais">Materiais</TabsTrigger>
-                  {hasPricing && <TabsTrigger value="resumo">Resumo</TabsTrigger>}
+                  <TabsTrigger value="mao_de_obra">{tsc.tabLabor}</TabsTrigger>
+                  {hasPricing && <TabsTrigger value="recursos">{tsc.tabResources}</TabsTrigger>}
+                  <TabsTrigger value="materiais">{tsc.tabMaterials}</TabsTrigger>
+                  {hasPricing && <TabsTrigger value="resumo">{tsc.tabSummary}</TabsTrigger>}
                 </TabsList>
               )}
 
@@ -191,24 +197,24 @@ export function ServiceCostsTab() {
                   <Card>
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-foreground">Mão de obra</p>
+                        <p className="text-sm font-semibold text-foreground">{tsc.laborTitle}</p>
                         <Button size="sm" variant="outline" onClick={() => setLaborCalcOpen(true)}>
-                          <Calculator className="h-3.5 w-3.5 mr-1" />Calcular
+                          <Calculator className="h-3.5 w-3.5 mr-1" />{tsc.laborCalculate}
                         </Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Custo / hora (R$)</Label>
+                          <Label className="text-xs">{tsc.laborHourlyCost}</Label>
                           <Input type="number" min={0} step="0.01" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value) || 0)} />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Horas</Label>
+                          <Label className="text-xs">{tsc.laborHours}</Label>
                           <NumericInput decimal value={String(hours ?? '')} onValueChange={(v) => setHours(Number(v.replace(',', '.')) || 0)} />
                         </div>
                       </div>
                       <div className="rounded-lg border border-border p-3 bg-muted/30">
-                        <p className="text-xs text-muted-foreground">Custo HH</p>
-                        <p className="text-sm font-semibold text-foreground">R$ {formatBRL(laborCost)}</p>
+                        <p className="text-xs text-muted-foreground">{tsc.laborHHCost}</p>
+                        <p className="text-sm font-semibold text-foreground">{fmt(laborCost)}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -216,26 +222,26 @@ export function ServiceCostsTab() {
                   <Card className="lg:col-span-2">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-foreground">Custos extras</p>
+                        <p className="text-sm font-semibold text-foreground">{tsc.extrasTitle}</p>
                         <Button size="sm" variant="outline" onClick={() => setExtraCostModalOpen(true)}>
-                          + Adicionar
+                          {tsc.extrasAdd}
                         </Button>
                       </div>
 
                       {extraCosts.length === 0 ? (
                         <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
-                          Nenhum custo extra.
+                          {tsc.extrasEmpty}
                         </div>
                       ) : (
                         <div className="space-y-2">
                           {extraCosts.map((l, idx) => (
                             <div key={idx} className="grid grid-cols-1 sm:grid-cols-6 gap-2 items-end">
                               <div className="sm:col-span-4 space-y-1">
-                                <Label className="text-xs">Descrição</Label>
+                                <Label className="text-xs">{tsc.extrasDescLabel}</Label>
                                 <Input value={l.label} onChange={(e) => updateExtraLine(idx, { label: e.target.value })} />
                               </div>
                               <div className="sm:col-span-2 space-y-1">
-                                <Label className="text-xs">Valor (R$)</Label>
+                                <Label className="text-xs">{tsc.extrasValueLabel}</Label>
                                 <div className="flex gap-2">
                                   <Input type="number" min={0} step="0.01" value={l.amount} onChange={(e) => updateExtraLine(idx, { amount: Number(e.target.value) || 0 })} />
                                   <Button variant="destructive-ghost" size="icon" onClick={() => removeExtraLine(idx)} className="h-10 w-10">
@@ -249,25 +255,25 @@ export function ServiceCostsTab() {
                       )}
 
                       <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30">
-                        <span className="text-xs text-muted-foreground">Total extras</span>
-                        <span className="text-sm font-semibold text-foreground">R$ {formatBRL(extrasTotal)}</span>
+                        <span className="text-xs text-muted-foreground">{tsc.extrasTotal}</span>
+                        <span className="text-sm font-semibold text-foreground">{fmt(extrasTotal)}</span>
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card className="lg:col-span-3">
                     <CardContent className="p-4 space-y-2">
-                      <Label className="text-xs">Observações</Label>
-                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Observações internas do custo" />
+                      <Label className="text-xs">{tsc.notesLabel}</Label>
+                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={tsc.notesPlaceholder} />
                       <div className="flex items-center justify-end gap-2">
                         {savedIndicator && (
                           <span className="text-xs text-success flex items-center gap-1">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Salvo automaticamente
+                            <CheckCircle2 className="h-3.5 w-3.5" /> {tsc.savedAuto}
                           </span>
                         )}
                         <Button onClick={handleSave} disabled={saveCost.isPending} variant="outline">
                           {saveCost.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                          Salvar
+                          {tsc.saveButton}
                         </Button>
                       </div>
                     </CardContent>
@@ -295,39 +301,41 @@ export function ServiceCostsTab() {
                     <CardContent className="p-4 space-y-4">
                       <div className="flex items-center gap-2">
                         <Calculator className="h-4 w-4 text-primary" />
-                        <p className="text-sm font-semibold text-foreground">Resumo e preço sugerido (BDI)</p>
+                        <p className="text-sm font-semibold text-foreground">{tsc.summaryTitle}</p>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="rounded-lg border border-border p-3">
-                          <p className="text-xs text-muted-foreground">Mão de obra</p>
-                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(laborCost)}</p>
+                          <p className="text-xs text-muted-foreground">{tsc.summaryLabor}</p>
+                          <p className="text-sm font-semibold text-foreground">{fmt(laborCost)}</p>
                         </div>
                         <div className="rounded-lg border border-border p-3">
-                          <p className="text-xs text-muted-foreground">Materiais</p>
-                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(materialsTotal || 0)}</p>
+                          <p className="text-xs text-muted-foreground">{tsc.summaryMaterials}</p>
+                          <p className="text-sm font-semibold text-foreground">{fmt(materialsTotal || 0)}</p>
                         </div>
                         <div className="rounded-lg border border-border p-3">
-                          <p className="text-xs text-muted-foreground">Recursos</p>
-                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(linkedResourcesTotal)}</p>
+                          <p className="text-xs text-muted-foreground">{tsc.summaryResources}</p>
+                          <p className="text-sm font-semibold text-foreground">{fmt(linkedResourcesTotal)}</p>
                         </div>
                         <div className="rounded-lg border border-border p-3">
-                          <p className="text-xs text-muted-foreground">Extras manuais</p>
-                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(extrasTotal)}</p>
+                          <p className="text-xs text-muted-foreground">{tsc.summaryExtras}</p>
+                          <p className="text-sm font-semibold text-foreground">{fmt(extrasTotal)}</p>
                         </div>
                       </div>
 
                       <div className="rounded-xl border border-border p-4 bg-muted/30">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-foreground">Custo total</p>
-                          <p className="text-lg font-bold text-foreground">R$ {formatBRL(totalServiceCost)}</p>
+                          <p className="text-sm font-semibold text-foreground">{tsc.summaryTotalCost}</p>
+                          <p className="text-lg font-bold text-foreground">{fmt(totalServiceCost)}</p>
                         </div>
                         <div className="mt-2 flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">Preço sugerido (BDI)</p>
-                          <p className="text-lg font-bold text-foreground">R$ {formatBRL(bdi.finalPrice)}</p>
+                          <p className="text-sm text-muted-foreground">{tsc.summarySuggestedPrice}</p>
+                          <p className="text-lg font-bold text-foreground">{fmt(bdi.finalPrice)}</p>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          BDI: {bdi.bdiFactor.toFixed(4)} | Lucro padrão: {profitRate.toFixed(2)}%
+                          {tsc.summaryBdiFactor
+                            .replace('{factor}', bdi.bdiFactor.toFixed(4))
+                            .replace('{profit}', profitRate.toFixed(2))}
                         </p>
                       </div>
                     </CardContent>

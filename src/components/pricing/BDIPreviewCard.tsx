@@ -8,9 +8,15 @@ import { Separator } from '@/components/ui/separator';
 import { DollarSign, Route } from 'lucide-react';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
-import { formatBRL } from '@/utils/currency';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 export function BDIPreviewCard() {
+  const { locale, currency } = useAppLocaleContext();
+  const tp = MESSAGES[locale].app.crm.pricing;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
+
   const { settings } = usePricingSettings();
 
   const [serviceCost, setServiceCost] = useState<number>(1000);
@@ -46,11 +52,11 @@ export function BDIPreviewCard() {
         {/* Header */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-sm font-semibold text-foreground">Simulador de Preço</p>
-            <Badge variant="secondary" className="text-[10px] px-2 py-0.5">Tempo real</Badge>
+            <p className="text-sm font-semibold text-foreground">{tp.simulatorTitle}</p>
+            <Badge variant="secondary" className="text-[10px] px-2 py-0.5">{tp.simulatorBadge}</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Teste qualquer custo para ver o preço final calculado pelo BDI.
+            {tp.simulatorDesc}
           </p>
         </div>
 
@@ -59,7 +65,7 @@ export function BDIPreviewCard() {
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center gap-1.5">
               <DollarSign size={12} className="text-muted-foreground" />
-              Custo do serviço (R$)
+              {tp.serviceCostLabel}
             </Label>
             <Input
               type="number"
@@ -72,7 +78,7 @@ export function BDIPreviewCard() {
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center gap-1.5">
               <Route size={12} className="text-muted-foreground" />
-              Distância (KM)
+              {tp.distanceLabel}
             </Label>
             <NumericInput
               decimal
@@ -85,24 +91,32 @@ export function BDIPreviewCard() {
         {/* Breakdown 4 cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-border p-3 space-y-1">
-            <p className="text-[11px] text-muted-foreground">Deslocamento</p>
-            <p className="text-lg font-bold text-foreground">R$ {formatBRL(result.displacementCost)}</p>
-            <p className="text-[10px] text-muted-foreground">{distanceKm} km × R$ {kmCost}/km</p>
+            <p className="text-[11px] text-muted-foreground">{tp.displacementCard}</p>
+            <p className="text-lg font-bold text-foreground">{fmt(result.displacementCost)}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {tp.displacementDesc
+                .replace('{km}', String(distanceKm))
+                .replace('{rate}', fmt(kmCost))}
+            </p>
           </div>
           <div className="rounded-lg border border-border p-3 space-y-1">
-            <p className="text-[11px] text-muted-foreground">Custo Total</p>
-            <p className="text-lg font-bold text-foreground">R$ {formatBRL(result.totalCost)}</p>
-            <p className="text-[10px] text-muted-foreground">Serviço + deslocamento</p>
+            <p className="text-[11px] text-muted-foreground">{tp.totalCostCard}</p>
+            <p className="text-lg font-bold text-foreground">{fmt(result.totalCost)}</p>
+            <p className="text-[10px] text-muted-foreground">{tp.totalCostDesc}</p>
           </div>
           <div className="rounded-lg border border-primary/30 p-3 space-y-1">
-            <p className="text-[11px] text-muted-foreground">BDI</p>
+            <p className="text-[11px] text-muted-foreground">{tp.bdiCard}</p>
             <p className="text-lg font-bold text-primary">{bdiPct.toFixed(2)}%</p>
-            <p className="text-[10px] text-muted-foreground">Coeficiente {result.bdiFactor.toFixed(4)}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {tp.bdiCoeff.replace('{factor}', result.bdiFactor.toFixed(4))}
+            </p>
           </div>
           <div className="rounded-lg border border-border p-3 space-y-1">
-            <p className="text-[11px] text-muted-foreground">Lucro Esperado</p>
+            <p className="text-[11px] text-muted-foreground">{tp.profitCard}</p>
             <p className="text-lg font-bold text-success">{profitRate}%</p>
-            <p className="text-[10px] text-muted-foreground">≈ R$ {formatBRL(estimatedProfit)}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {tp.profitApprox.replace('{amount}', fmt(estimatedProfit))}
+            </p>
           </div>
         </div>
 
@@ -110,9 +124,9 @@ export function BDIPreviewCard() {
         <div className="rounded-xl border border-primary/30 p-5 bg-card shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Preço Final (BDI)</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{tp.finalPriceLabel}</p>
               <p className="text-3xl sm:text-4xl font-extrabold text-foreground mt-1 tracking-tight">
-                R$ {formatBRL(result.finalPrice)}
+                {fmt(result.finalPrice)}
               </p>
             </div>
             <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
@@ -124,26 +138,27 @@ export function BDIPreviewCard() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-[11px] text-muted-foreground">À vista ({cardDiscountRate.toFixed(0)}% desc.)</p>
-              <p className="text-xl font-bold text-success mt-1">R$ {formatBRL(result.cashPrice)}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {tp.cashPriceLabel.replace('{pct}', cardDiscountRate.toFixed(0))}
+              </p>
+              <p className="text-xl font-bold text-success mt-1">{fmt(result.cashPrice)}</p>
             </div>
             <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-[11px] text-muted-foreground">Cartão ({cardInstallments}x sem juros)</p>
+              <p className="text-[11px] text-muted-foreground">
+                {tp.installmentLabel.replace('{n}', String(cardInstallments))}
+              </p>
               <p className="text-xl font-bold text-foreground mt-1">
-                {cardInstallments}× R$ {formatBRL(result.installmentValue)}
+                {cardInstallments}× {fmt(result.installmentValue)}
               </p>
             </div>
           </div>
 
           <div className="mt-4 pt-4 border-t border-border">
-            <div className="font-mono text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
-              <span className="text-primary">Preço</span>
-              <span>=</span>
-              <span>R$ {formatBRL(result.totalCost)}</span>
-              <span>÷</span>
-              <span className="text-primary">{result.bdiFactor.toFixed(4)}</span>
-              <span>=</span>
-              <span className="text-foreground font-semibold">R$ {formatBRL(result.finalPrice)}</span>
+            <div className="font-mono text-xs text-muted-foreground">
+              {tp.formulaLine
+                .replace('{cost}', fmt(result.totalCost))
+                .replace('{factor}', result.bdiFactor.toFixed(4))
+                .replace('{price}', fmt(result.finalPrice))}
             </div>
           </div>
         </div>

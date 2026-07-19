@@ -138,6 +138,14 @@ export interface PortalTenant {
    * Quando preenchido, cada campo `null` interno cai no default só pra ele.
    */
   report_header: PortalReportHeaderConfig | null;
+  /**
+   * 1.10.0 — idioma, moeda e fuso da empresa dona do contrato. O portal
+   * renderiza no idioma do TENANT (não da máquina do visitante). Ausentes em
+   * payloads antigos → tratar como defaults: 'pt-br', 'BRL', 'America/Sao_Paulo'.
+   */
+  language?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
 }
 
 export interface PortalOsPhoto {

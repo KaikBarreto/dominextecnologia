@@ -1,7 +1,6 @@
 import type { ProposalTemplateProps } from './types';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { formatBRL } from '@/utils/currency';
+import { formatDateTime } from '@/lib/format';
+import { useLocaleFormatters } from '@/lib/format/hooks';
 import {
   buildProposalData,
   colorAdjust,
@@ -39,13 +38,14 @@ const CREAM = '#f5f0e8';
 export function AuroraTemplate(props: ProposalTemplateProps) {
   const { quote, company, customization } = props;
   const d = buildProposalData(props);
+  const { money, locale, timezone } = useLocaleFormatters();
 
   const installments = d.installments;
   const showFolio = !!customization?.show_pagination;
 
   const showDisplacement = flagOn(customization?.show_displacement) && hasDisplacement(quote);
   const showGifts = flagOn(customization?.show_gifts) && hasGifts(quote);
-  const validUntil = formatValidUntil(quote);
+  const validUntil = formatValidUntil(quote, locale, timezone);
 
   // ── Paginação do Escopo ── (ver Vanguarda; total dinâmico).
   const scopePages = paginateScope(buildScopeRows(d), SCOPE_ITEMS_PER_PAGE, SCOPE_ITEMS_FIRST_PAGE);
@@ -87,11 +87,11 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
                 </span>
                 <div className="min-w-0">
                   <p className="font-semibold text-sm text-white/95 leading-snug">{item.description}</p>
-                  <p className="text-xs text-white/40 mt-1">{item.quantity} un × R$ {formatBRL(item.unit_price || 0)}</p>
+                  <p className="text-xs text-white/40 mt-1">{item.quantity} un × {money(item.unit_price || 0)}</p>
                 </div>
               </div>
               <p className="font-extrabold text-base tabular-nums whitespace-nowrap text-white">
-                R$ {formatBRL(item.total_price || 0)}
+                {money(item.total_price || 0)}
               </p>
             </div>
           ))}
@@ -100,7 +100,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
           <div className="flex justify-end mt-3">
             <div className="text-xs">
               <span className="uppercase tracking-wider text-white/40 font-bold mr-3">Subtotal</span>
-              <span className="font-bold tabular-nums text-white/80">R$ {formatBRL(g.groupSubtotal)}</span>
+              <span className="font-bold tabular-nums text-white/80">{money(g.groupSubtotal)}</span>
             </div>
           </div>
         )}
@@ -165,7 +165,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
           <div className="mt-5 inline-flex items-center gap-2 text-xs text-white/50">
             <span>Nº {quote.quote_number}</span>
             <span className="text-white/25">·</span>
-            <span>{format(new Date(quote.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+            <span>{formatDateTime(quote.created_at, locale, timezone, { year: 'numeric', month: 'long', day: '2-digit', hour: undefined, minute: undefined })}</span>
           </div>
         </div>
 
@@ -259,7 +259,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/55">Subtotal</span>
-                  <span className="text-white/80 tabular-nums">R$ {formatBRL(quote.subtotal ?? 0)}</span>
+                  <span className="text-white/80 tabular-nums">{money(quote.subtotal ?? 0)}</span>
                 </div>
               )}
               {showDisplacement && (
@@ -267,13 +267,13 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
                   <span className="text-white/55">
                     Deslocamento{(quote.distance_km ?? 0) > 0 ? ` (${quote.distance_km} km)` : ''}
                   </span>
-                  <span className="text-white/80 tabular-nums">R$ {formatBRL(quote.displacement_cost ?? 0)}</span>
+                  <span className="text-white/80 tabular-nums">{money(quote.displacement_cost ?? 0)}</span>
                 </div>
               )}
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/55">Desconto</span>
-                  <span className="tabular-nums font-semibold" style={{ color: PINK }}>− R$ {formatBRL(quote.discount_amount ?? 0)}</span>
+                  <span className="tabular-nums font-semibold" style={{ color: PINK }}>− {money(quote.discount_amount ?? 0)}</span>
                 </div>
               )}
             </div>
@@ -287,12 +287,12 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
                 <p className="text-[10px] uppercase tracking-[0.25em] text-white/75 font-bold">Valor total</p>
                 {!!installments && installments > 1 && (
                   <p className="text-xs text-white/85 mt-2">
-                    em até {installments}× de R$ {formatBRL((quote.total_value ?? 0) / installments)}
+                    em até {installments}× de {money((quote.total_value ?? 0) / installments)}
                   </p>
                 )}
               </div>
               <p className="font-black tabular-nums tracking-tight leading-none text-white" style={{ fontSize: 'clamp(34px, 8vw, 52px)' }}>
-                R$ {formatBRL(quote.total_value ?? 0)}
+                {money(quote.total_value ?? 0)}
               </p>
             </div>
           </div>

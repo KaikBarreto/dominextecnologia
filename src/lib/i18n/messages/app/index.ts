@@ -56,6 +56,7 @@ import { employees } from './employees';
 import { equipment } from './equipment';
 import { contracts } from './contracts';
 import { nfse } from './nfse';
+import { timeclock } from './timeclock';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
@@ -74,6 +75,7 @@ function sliceForLocale(locale: LocaleCode) {
     equipment: equipment[locale],
     contracts: contracts[locale],
     nfse: nfse[locale],
+    timeclock: timeclock[locale],
     // <dominio>: <dominio>[locale],
   };
 }

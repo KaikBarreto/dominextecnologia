@@ -38,6 +38,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { ToolDisclaimer } from './ToolDisclaimer';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -382,6 +384,17 @@ const CATALOG_TABS: ReadonlySet<string> = new Set<CatalogTab>([
 const DEFAULT_CATALOG_TAB: CatalogTab = 'ar_condicionado';
 
 /**
+ * Base ABSOLUTA do catálogo no idioma do usuário: `<raiz-traduzida>/catalogo`.
+ * A raiz `/area-tecnico` traduz (technician-area/espace-technicien/...); o
+ * sub-slug `catalogo` é IDENTIFICADOR TÉCNICO e fica intacto. Usado nas navegações
+ * absolutas (voltar/deep-link) pra não gerar redirect canônico a cada clique.
+ */
+function useCatalogBase(): string {
+  const { locale } = useAppLocaleContext();
+  return `${localizeAppPath('/area-tecnico', locale)}/catalogo`;
+}
+
+/**
  * Catálogo para consulta em campo.
  *
  * MODO DUPLO:
@@ -498,6 +511,7 @@ function CatalogTabScreen() {
 function CatalogBrandScreen() {
   const { catalogTab, brandSlug: slugParam } = useParams<{ catalogTab: string; brandSlug: string }>();
   const navigate = useNavigate();
+  const catalogBase = useCatalogBase();
 
   const tabValido =
     !!catalogTab && CATALOG_TABS.has(catalogTab) && catalogTab !== 'fluido_refrigerante';
@@ -516,11 +530,11 @@ function CatalogBrandScreen() {
   }, [brands, slugParam]);
 
   if (!tabValido) {
-    return <Navigate to={`/area-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
+    return <Navigate to={`${catalogBase}/${DEFAULT_CATALOG_TAB}`} replace />;
   }
 
   // Caminho-pai da lista da subaba (volta sempre pra cá).
-  const tabPath = `/area-tecnico/catalogo/${tab}`;
+  const tabPath = `${catalogBase}/${tab}`;
 
   if (isLoading) return <LoadingBlock />;
   if (!brand) {
@@ -540,13 +554,13 @@ function CatalogBrandScreen() {
       onBack={() => navigate(tabPath)}
       // Trocar de marca no carrossel: replace pra não inflar o history. URL por slug.
       onSelectBrand={(b) =>
-        navigate(`/area-tecnico/catalogo/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
+        navigate(`${catalogBase}/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
       }
       onSelectDetail={(model) =>
         // Ninhado sob a marca atual (modelo da lista não traz brand hidratado → passamos
         // o nome da marca conhecida). from=marca pra voltar pra esta tela de marca.
         navigate(
-          `/area-tecnico/catalogo/${tab}/${modelPath(tab, model, {
+          `${catalogBase}/${tab}/${modelPath(tab, model, {
             brandName: brand.name,
             from: 'marca',
           })}`,
@@ -598,6 +612,7 @@ function CatalogModelScreen() {
   }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const catalogBase = useCatalogBase();
 
   const tabValido = !!catalogTab && CATALOG_TABS.has(catalogTab);
   const tab = (tabValido ? catalogTab : DEFAULT_CATALOG_TAB) as CatalogTab;
@@ -627,19 +642,19 @@ function CatalogModelScreen() {
       : { ...found, brand: { id: brand.id, name: brand.name, logo_url: brand.logo_url } };
   }, [models, modelSlug, brand]);
 
-  const tabPath = `/area-tecnico/catalogo/${tab}`;
+  const tabPath = `${catalogBase}/${tab}`;
 
   if (!tabValido) {
-    return <Navigate to={`/area-tecnico/catalogo/${DEFAULT_CATALOG_TAB}`} replace />;
+    return <Navigate to={`${catalogBase}/${DEFAULT_CATALOG_TAB}`} replace />;
   }
 
   // Voltar: se veio de uma marca, volta pra ela; senão pra lista da subaba.
   // Sem navigate(-1) pra não quebrar link direto/colado.
   const fromMarca = searchParams.get('from') === 'marca';
   const brandPath = brand
-    ? `/area-tecnico/catalogo/${tab}/marca/${brandSlug(brand.name)}`
+    ? `${catalogBase}/${tab}/marca/${brandSlug(brand.name)}`
     : brandSlugParam
-      ? `/area-tecnico/catalogo/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
+      ? `${catalogBase}/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
       : tabPath;
   const backTo = fromMarca ? brandPath : tabPath;
   const onBack = () => navigate(backTo);
@@ -670,8 +685,9 @@ function CatalogModelScreen() {
 function CatalogRemoteModelScreen() {
   const { modelSlug } = useParams<{ modelSlug: string }>();
   const navigate = useNavigate();
+  const catalogBase = useCatalogBase();
   const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
-  const tabPath = '/area-tecnico/catalogo/controle_remoto';
+  const tabPath = `${catalogBase}/controle_remoto`;
 
   const model = useMemo<EquipmentModel | null>(() => {
     if (!modelSlug) return null;
@@ -697,8 +713,9 @@ function CatalogRemoteModelScreen() {
 function CatalogGasScreen() {
   const { gasCode } = useParams<{ gasCode: string }>();
   const navigate = useNavigate();
+  const catalogBase = useCatalogBase();
   const { data: gases = [], isLoading } = useRefrigerantGases();
-  const fluidoPath = '/area-tecnico/catalogo/fluido_refrigerante';
+  const fluidoPath = `${catalogBase}/fluido_refrigerante`;
 
   const gas = useMemo(() => {
     if (!gasCode) return null;

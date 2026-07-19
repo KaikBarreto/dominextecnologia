@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -76,15 +76,23 @@ function useOgMeta(company: CompanySettings | null) {
   }, [company]);
 }
 
+interface CompanyLocale {
+  language: string | null;
+  currency: string | null;
+  timezone: string | null;
+}
+
 // Inner component — consumes PublicAppLocaleProvider already set up by the outer.
 function ProposalPublicContent({
   token,
   isPreview,
   viewRecordedRef,
+  onLocaleReady,
 }: {
   token: string | null;
   isPreview: boolean;
   viewRecordedRef: React.MutableRefObject<boolean>;
+  onLocaleReady: (l: CompanyLocale) => void;
 }) {
   const { locale } = useAppLocaleContext();
   const tp = MESSAGES[locale].app.crm.proposals;
@@ -125,7 +133,15 @@ function ProposalPublicContent({
 
         // A empresa vem do tenant DONO do orçamento (company_id), não do tenant
         // logado (que no link anônimo nem existe). proposal_customization sai daqui.
-        if (payload?.company) setCompany(payload.company as unknown as CompanySettings);
+        if (payload?.company) {
+          setCompany(payload.company as unknown as CompanySettings);
+          // Repassa o idioma/moeda/fuso da empresa para o PublicAppLocaleProvider pai.
+          onLocaleReady({
+            language: payload.company.language ?? null,
+            currency: payload.company.currency ?? null,
+            timezone: payload.company.timezone ?? null,
+          });
+        }
 
         // Registra a visualização do cliente — 1x por carga, nunca no preview do dono.
         // Falha é silenciosa: tracking nunca quebra a proposta.
@@ -250,16 +266,6 @@ function ProposalPublicContent({
   );
 }
 
-// ── NOTE FOR FOLLOW-UP (dev-database) ──────────────────────────────────────
-// The RPC `get_quote_public_payload` currently does NOT return
-// `company_settings.language`, `company_settings.currency` or
-// `company_settings.timezone`. Until those 3 fields are added to the RPC
-// response (as `company.language`, `company.currency`, `company.timezone`),
-// the PublicAppLocaleProvider below falls back to pt-br / BRL / America/Sao_Paulo.
-// When the RPC is updated, pass: language={companyLocale} currency={companyCurrency}
-// timezone={companyTimezone} — all coming from the payload's company object.
-// ────────────────────────────────────────────────────────────────────────────
-
 export default function ProposalPublic() {
   const { token: tokenParam } = useParams<{ token: string }>();
   // O param pode vir como token puro (link antigo, 64 hex) OU como
@@ -271,15 +277,28 @@ export default function ProposalPublic() {
   // Garante 1 registro de view por carga (evita re-disparo em re-render).
   const viewRecordedRef = useRef(false);
 
-  // TODO: once get_quote_public_payload returns company.language/currency/timezone,
-  // load them here (before rendering) and pass to PublicAppLocaleProvider.
-  // For now, falls back to defaults (pt-br/BRL/America/Sao_Paulo) inside the provider.
+  // Locale da empresa dona do orçamento — preenchido quando o payload chega.
+  // O PublicAppLocaleProvider aceita null e cai em pt-br/BRL/São Paulo enquanto
+  // os dados não chegam. Ao chamar onLocaleReady o provider re-renderiza com os
+  // valores reais da empresa (idioma/moeda/fuso).
+  const [companyLocale, setCompanyLocale] = useState<CompanyLocale>({
+    language: null,
+    currency: null,
+    timezone: null,
+  });
+  const handleLocaleReady = useCallback((l: CompanyLocale) => setCompanyLocale(l), []);
+
   return (
-    <PublicAppLocaleProvider language={null} currency={null} timezone={null}>
+    <PublicAppLocaleProvider
+      language={companyLocale.language}
+      currency={companyLocale.currency}
+      timezone={companyLocale.timezone}
+    >
       <ProposalPublicContent
         token={token}
         isPreview={isPreview}
         viewRecordedRef={viewRecordedRef}
+        onLocaleReady={handleLocaleReady}
       />
     </PublicAppLocaleProvider>
   );

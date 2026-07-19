@@ -22,8 +22,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DarkVeil from '@/components/ui/DarkVeil';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { parseISO } from 'date-fns';
+import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { formatDate, formatDateTime } from '@/lib/format';
 
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { PmocExecutionHistoryView } from '@/components/pmoc/PmocExecutionHistoryView';
@@ -165,10 +166,19 @@ function parseLocal(date: string | null): Date | null {
   }
 }
 
-function formatLocal(date: string | null, fmt = 'dd/MM/yyyy'): string {
-  const d = parseLocal(date);
-  if (!d) return '—';
-  return format(d, fmt, { locale: ptBR });
+// `locale` e `timezone` são opcionais — passados por quem tem contexto (PortalContent).
+// Fallback: pt-br / America/Sao_Paulo (comportamento anterior idêntico).
+function formatLocal(
+  date: string | null,
+  locale: string = 'pt-br',
+  timezone: string = 'America/Sao_Paulo',
+): string {
+  if (!date) return '—';
+  try {
+    return formatDate(date, locale as any, timezone);
+  } catch {
+    return '—';
+  }
 }
 
 // ----- SEO --------------------------------------------------------------------
@@ -305,7 +315,15 @@ export default function PmocPublicPortal() {
 
   if (!data) return <PortalNotFound />;
 
-  return <PortalContent payload={data} token={token!} />;
+  return (
+    <PublicAppLocaleProvider
+      language={data.tenant.language}
+      currency={data.tenant.currency}
+      timezone={data.tenant.timezone}
+    >
+      <PortalContent payload={data} token={token!} />
+    </PublicAppLocaleProvider>
+  );
 }
 
 // ----- Conteúdo ---------------------------------------------------------------
@@ -325,6 +343,11 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     is_pmoc,
     viewer_can_fill,
   } = payload;
+
+  // Locale da empresa (injetado pelo PublicAppLocaleProvider no pai).
+  // Usado via `lastUpdate` (formatDateTime) e repassado implicitamente pelo
+  // contexto para os sub-componentes (TabOverview, HistoryItem, etc.).
+  const { locale, timezone } = useAppLocaleContext();
 
   // Compat: payloads antigos (sem `is_pmoc`) eram sempre PMOC.
   const isPmoc = is_pmoc !== false;
@@ -441,10 +464,13 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     return map;
   }, [schedule, history]);
 
-  const lastUpdate = useMemo(
-    () => format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }),
-    [],
-  );
+  const lastUpdate = useMemo(() => {
+    try {
+      return formatDateTime(new Date().toISOString(), locale, timezone);
+    } catch {
+      return new Date().toLocaleDateString('pt-BR', { timeZone: timezone });
+    }
+  }, [locale, timezone]);
 
   const portalUrl = buildPmocPortalUrl(token);
 
@@ -730,6 +756,8 @@ function TabOverview({
   /** PMOC mostra "Conformidade" (texto legal) + RT; contrato comum não. */
   isPmoc: boolean;
 }) {
+  const { locale, timezone } = useAppLocaleContext();
+  const fmt = (d: string | null) => formatLocal(d, locale, timezone);
   return (
     <div className="space-y-6">
       <Section title="Contrato" icon={CalendarClock}>
@@ -739,10 +767,10 @@ function TabOverview({
           <InfoCard
             label={isPmoc ? 'Próxima manutenção' : 'Próximo atendimento'}
             value={contract.next_pmoc_generation_date
-              ? formatLocal(contract.next_pmoc_generation_date)
+              ? fmt(contract.next_pmoc_generation_date)
               : 'A definir'}
           />
-          <InfoCard label="Início do contrato" value={formatLocal(contract.start_date)} />
+          <InfoCard label="Início do contrato" value={fmt(contract.start_date)} />
           {isPmoc && (
             <InfoCard
               label="Conformidade"
@@ -835,6 +863,8 @@ function TabOccurrences({
   canFill: boolean;
   onOsClick: (os: PortalOsEntry) => void;
 }) {
+  const { locale, timezone } = useAppLocaleContext();
+  const fmt = (d: string | null) => formatLocal(d, locale, timezone);
   if (occurrences.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
@@ -880,7 +910,7 @@ function TabOccurrences({
                     {entry.status_label || statusCfg.label}
                   </span>
                 </div>
-                <p className="mt-1 text-sm font-medium leading-relaxed">{formatLocal(displayDate)}</p>
+                <p className="mt-1 text-sm font-medium leading-relaxed">{fmt(displayDate)}</p>
                 {entry.service_type_label && (
                   <p className="text-xs leading-relaxed text-muted-foreground">{entry.service_type_label}</p>
                 )}
@@ -1099,9 +1129,11 @@ function InfoCard({
 }
 
 function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
+  const { locale, timezone } = useAppLocaleContext();
+  const fmt = (d: string | null) => formatLocal(d, locale, timezone);
   const available = doc.available && !!doc.pdf_url;
   const sub = available && doc.generated_at
-    ? `Atualizado em ${formatLocal(doc.generated_at)}${doc.version ? ` — v${doc.version}` : ''}`
+    ? `Atualizado em ${fmt(doc.generated_at)}${doc.version ? ` — v${doc.version}` : ''}`
     : 'Disponível em breve';
 
   const showPendingSignature = available && doc.signature_status === 'pending';
@@ -1141,7 +1173,7 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
           {showValidity && (
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-muted-foreground">
-                Válido até {formatLocal(validUntil)}
+                Válido até {fmt(validUntil)}
               </span>
               <span
                 className={cn(
@@ -1195,6 +1227,8 @@ function HistoryItem({
   entry: PortalOsEntry;
   onClick: () => void;
 }) {
+  const { locale, timezone } = useAppLocaleContext();
+  const fmt = (d: string | null) => formatLocal(d, locale, timezone);
   const statusCfg = OS_STATUS_CONFIG[entry.status] ?? OS_STATUS_CONFIG.agendada;
   const displayDate = entry.completed_at || entry.scheduled_date;
   const photos = entry.public_photos ?? [];
@@ -1231,7 +1265,7 @@ function HistoryItem({
                 </span>
               )}
             </div>
-            <p className="text-sm font-medium leading-relaxed">{formatLocal(displayDate)}</p>
+            <p className="text-sm font-medium leading-relaxed">{fmt(displayDate)}</p>
             {entry.service_type_label && (
               <p className="text-xs leading-relaxed text-muted-foreground">{entry.service_type_label}</p>
             )}

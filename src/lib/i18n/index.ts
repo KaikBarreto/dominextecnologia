@@ -21,3 +21,11 @@ export {
   allModuleKeys,
   switchLocalePath,
 } from './slugRegistry';
+// Rotas do APP LOGADO traduzidas por idioma (sem prefixo — o slug é traduzido).
+export {
+  appSlug,
+  localizedTemplatesFor,
+  resolveAppSlug,
+  canonicalAppPath,
+  localizeAppPath,
+} from './appRouteSlugs';

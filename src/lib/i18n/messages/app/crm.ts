@@ -464,6 +464,144 @@ export const crm = {
       logoTooBig: 'Arquivo muito grande (máx 5MB)',
       logoNotImage: 'Apenas imagens são permitidas',
     },
+
+    // ── Custos de Serviço (ServiceCostsTab) ──
+    serviceCosts: {
+      title: 'Custos por Tipo de Serviço',
+      subtitle: 'Defina mão de obra e materiais para precificação automática.',
+      serviceTypeLabel: 'Tipo de serviço',
+      serviceTypePlaceholder: 'Selecione o tipo de serviço',
+      noServiceSelected: 'Selecione um tipo de serviço para configurar custos.',
+
+      tabLabor: 'Mão de obra',
+      tabResources: 'Recursos',
+      tabMaterials: 'Materiais',
+      tabSummary: 'Resumo',
+
+      laborTitle: 'Mão de obra',
+      laborCalculate: 'Calcular',
+      laborHourlyCost: 'Custo / hora (R$)',
+      laborHours: 'Horas',
+      laborHHCost: 'Custo HH',
+
+      extrasTitle: 'Custos extras',
+      extrasAdd: '+ Adicionar',
+      extrasEmpty: 'Nenhum custo extra.',
+      extrasDescLabel: 'Descrição',
+      extrasValueLabel: 'Valor (R$)',
+      extrasTotal: 'Total extras',
+
+      notesLabel: 'Observações',
+      notesPlaceholder: 'Observações internas do custo',
+      savedAuto: 'Salvo automaticamente',
+      saveButton: 'Salvar',
+
+      summaryTitle: 'Resumo e preço sugerido (BDI)',
+      summaryLabor: 'Mão de obra',
+      summaryMaterials: 'Materiais',
+      summaryResources: 'Recursos',
+      summaryExtras: 'Extras manuais',
+      summaryTotalCost: 'Custo total',
+      summarySuggestedPrice: 'Preço sugerido (BDI)',
+      summaryBdiFactor: 'BDI: {factor} | Lucro padrão: {profit}%',
+    },
+
+    // ── Custos Globais (GlobalCostsTab) ──
+    globalCosts: {
+      title: 'Centro de Custos',
+      subtitle: 'Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente.',
+      newResource: 'Novo Recurso',
+
+      kpiVehicles: 'Veículos/h',
+      kpiTools: 'Ferramentas/h',
+      kpiEpi: 'EPIs/h',
+      kpiGift: 'Brinde',
+
+      kpiVehicleLabel: 'Custo/hora Veículos',
+      kpiToolLabel: 'Custo/hora Ferramentas',
+      kpiEpiLabel: 'Custo/hora EPIs',
+      kpiGiftLabel: 'Custo/Brinde',
+
+      categoryVehicles: 'Veículos',
+      categoryVehicle: 'veículo',
+      categoryTools: 'Ferramentas',
+      categoryTool: 'ferramenta',
+      categoryGifts: 'Brindes',
+      categoryGift: 'brinde',
+      categoryEpi: 'EPIs',
+      categoryEpiSingular: 'EPI',
+      categoryOther: 'Outros',
+      categoryOtherSingular: 'recurso',
+
+      badgeInactive: 'Inativo',
+      perHour: '/h',
+      perMonth: '/mês',
+      perUnit: '/un',
+
+      actionEdit: 'Editar',
+      actionDelete: 'Excluir',
+
+      emptyTitle: 'Nenhum {singular} cadastrado',
+      emptyDesc: 'Toque em "Novo {singular}" para começar.',
+      emptyDesktop: 'Nenhum {singular} cadastrado.',
+      registerSingular: 'Cadastrar {singular}',
+
+      deleteGiftTitle: 'Excluir brinde?',
+      deleteResourceTitle: 'Excluir recurso?',
+      deleteDescGift: 'Esta ação removerá "{name}" e todos os seus itens.',
+      deleteDescResource: 'Esta ação removerá "{name}" e todos os seus componentes de custo.',
+      deleteConfirm: 'Excluir',
+      deleteCancel: 'Cancelar',
+    },
+
+    // ── Precificação / BDI (PricingTab + PricingConfigForm + BDIPreviewCard) ──
+    pricing: {
+      tabTitle: 'Precificação',
+      tabSubtitle: 'Taxas padrão aplicadas em todos os orçamentos via método BDI',
+
+      bdiMethodTitle: 'Método BDI',
+      bdiMethodDesc: 'O preço final é calculado dividindo o custo real pelo BDI, garantindo que impostos e overhead nunca sejam subprecificados.',
+      bdiFormula: 'Preço = Custo Total ÷ BDI',
+
+      bdiRatesTitle: 'Taxas do BDI',
+      bdiCurrentLabel: 'BDI atual',
+      taxLabel: 'Imposto (%)',
+      adminLabel: 'Adm. Indireta (%)',
+      profitLabel: 'Lucro Padrão (%)',
+
+      legendTax: 'Imposto {pct}%',
+      legendAdmin: 'Adm. {pct}%',
+      legendProfit: 'Lucro {pct}%',
+      legendBdi: 'BDI {pct}%',
+
+      displacementTitle: 'Deslocamento e Pagamento',
+      kmCostLabel: 'Custo por KM (R$)',
+      cashDiscountLabel: 'Desconto à vista (%)',
+      installmentsLabel: 'Parcelas (cartão)',
+
+      saveButton: 'Salvar',
+      savingButton: 'Salvando...',
+
+      simulatorTitle: 'Simulador de Preço',
+      simulatorBadge: 'Tempo real',
+      simulatorDesc: 'Teste qualquer custo para ver o preço final calculado pelo BDI.',
+      serviceCostLabel: 'Custo do serviço',
+      distanceLabel: 'Distância (KM)',
+
+      displacementCard: 'Deslocamento',
+      displacementDesc: '{km} km × R$ {rate}/km',
+      totalCostCard: 'Custo Total',
+      totalCostDesc: 'Serviço + deslocamento',
+      bdiCard: 'BDI',
+      bdiCoeff: 'Coeficiente {factor}',
+      profitCard: 'Lucro Esperado',
+      profitApprox: '≈ R$ {amount}',
+
+      finalPriceLabel: 'Preço Final (BDI)',
+      cashPriceLabel: 'À vista ({pct}% desc.)',
+      installmentLabel: 'Cartão ({n}x sem juros)',
+      formulaLine: 'Preço = {cost} ÷ {factor} = {price}',
+    },
   },
 
   en: {
@@ -882,6 +1020,141 @@ export const crm = {
       logoErrorToast: 'Error uploading logo',
       logoTooBig: 'File too large (max 5MB)',
       logoNotImage: 'Only images are allowed',
+    },
+
+    serviceCosts: {
+      title: 'Costs by Service Type',
+      subtitle: 'Set labor and materials for automatic pricing.',
+      serviceTypeLabel: 'Service type',
+      serviceTypePlaceholder: 'Select service type',
+      noServiceSelected: 'Select a service type to configure costs.',
+
+      tabLabor: 'Labor',
+      tabResources: 'Resources',
+      tabMaterials: 'Materials',
+      tabSummary: 'Summary',
+
+      laborTitle: 'Labor',
+      laborCalculate: 'Calculate',
+      laborHourlyCost: 'Cost / hour',
+      laborHours: 'Hours',
+      laborHHCost: 'Labor cost',
+
+      extrasTitle: 'Extra costs',
+      extrasAdd: '+ Add',
+      extrasEmpty: 'No extra costs.',
+      extrasDescLabel: 'Description',
+      extrasValueLabel: 'Amount',
+      extrasTotal: 'Total extras',
+
+      notesLabel: 'Notes',
+      notesPlaceholder: 'Internal cost notes',
+      savedAuto: 'Auto-saved',
+      saveButton: 'Save',
+
+      summaryTitle: 'Summary & suggested price (BDI)',
+      summaryLabor: 'Labor',
+      summaryMaterials: 'Materials',
+      summaryResources: 'Resources',
+      summaryExtras: 'Manual extras',
+      summaryTotalCost: 'Total cost',
+      summarySuggestedPrice: 'Suggested price (BDI)',
+      summaryBdiFactor: 'BDI: {factor} | Default profit: {profit}%',
+    },
+
+    globalCosts: {
+      title: 'Cost Center',
+      subtitle: 'Register vehicles, tools and resources. The hourly cost is automatically allocated.',
+      newResource: 'New Resource',
+
+      kpiVehicles: 'Vehicles/h',
+      kpiTools: 'Tools/h',
+      kpiEpi: 'PPE/h',
+      kpiGift: 'Freebie',
+
+      kpiVehicleLabel: 'Vehicle hourly cost',
+      kpiToolLabel: 'Tool hourly cost',
+      kpiEpiLabel: 'PPE hourly cost',
+      kpiGiftLabel: 'Cost/Freebie',
+
+      categoryVehicles: 'Vehicles',
+      categoryVehicle: 'vehicle',
+      categoryTools: 'Tools',
+      categoryTool: 'tool',
+      categoryGifts: 'Freebies',
+      categoryGift: 'freebie',
+      categoryEpi: 'PPE',
+      categoryEpiSingular: 'PPE',
+      categoryOther: 'Other',
+      categoryOtherSingular: 'resource',
+
+      badgeInactive: 'Inactive',
+      perHour: '/h',
+      perMonth: '/mo',
+      perUnit: '/unit',
+
+      actionEdit: 'Edit',
+      actionDelete: 'Delete',
+
+      emptyTitle: 'No {singular} registered',
+      emptyDesc: 'Tap "New {singular}" to get started.',
+      emptyDesktop: 'No {singular} registered.',
+      registerSingular: 'Add {singular}',
+
+      deleteGiftTitle: 'Delete freebie?',
+      deleteResourceTitle: 'Delete resource?',
+      deleteDescGift: 'This will permanently remove "{name}" and all its items.',
+      deleteDescResource: 'This will permanently remove "{name}" and all its cost components.',
+      deleteConfirm: 'Delete',
+      deleteCancel: 'Cancel',
+    },
+
+    pricing: {
+      tabTitle: 'Pricing',
+      tabSubtitle: 'Default rates applied to all quotes via the BDI method',
+
+      bdiMethodTitle: 'BDI Method',
+      bdiMethodDesc: 'The final price is calculated by dividing the actual cost by the BDI, ensuring taxes and overhead are never under-priced.',
+      bdiFormula: 'Price = Total Cost ÷ BDI',
+
+      bdiRatesTitle: 'BDI Rates',
+      bdiCurrentLabel: 'Current BDI',
+      taxLabel: 'Tax (%)',
+      adminLabel: 'Overhead (%)',
+      profitLabel: 'Default Profit (%)',
+
+      legendTax: 'Tax {pct}%',
+      legendAdmin: 'Overhead {pct}%',
+      legendProfit: 'Profit {pct}%',
+      legendBdi: 'BDI {pct}%',
+
+      displacementTitle: 'Travel & Payment',
+      kmCostLabel: 'Cost per KM',
+      cashDiscountLabel: 'Cash discount (%)',
+      installmentsLabel: 'Installments (card)',
+
+      saveButton: 'Save',
+      savingButton: 'Saving...',
+
+      simulatorTitle: 'Price Simulator',
+      simulatorBadge: 'Real-time',
+      simulatorDesc: 'Test any cost to see the final price calculated by BDI.',
+      serviceCostLabel: 'Service cost',
+      distanceLabel: 'Distance (KM)',
+
+      displacementCard: 'Travel',
+      displacementDesc: '{km} km × {rate}/km',
+      totalCostCard: 'Total Cost',
+      totalCostDesc: 'Service + travel',
+      bdiCard: 'BDI',
+      bdiCoeff: 'Factor {factor}',
+      profitCard: 'Expected Profit',
+      profitApprox: '≈ {amount}',
+
+      finalPriceLabel: 'Final Price (BDI)',
+      cashPriceLabel: 'Cash ({pct}% off)',
+      installmentLabel: 'Card ({n}x interest-free)',
+      formulaLine: 'Price = {cost} ÷ {factor} = {price}',
     },
   },
 
@@ -1302,6 +1575,141 @@ export const crm = {
       logoTooBig: 'Archivo demasiado grande (máx 5MB)',
       logoNotImage: 'Solo se permiten imágenes',
     },
+
+    serviceCosts: {
+      title: 'Costos por Tipo de Servicio',
+      subtitle: 'Define mano de obra y materiales para la tarificación automática.',
+      serviceTypeLabel: 'Tipo de servicio',
+      serviceTypePlaceholder: 'Selecciona el tipo de servicio',
+      noServiceSelected: 'Selecciona un tipo de servicio para configurar costos.',
+
+      tabLabor: 'Mano de obra',
+      tabResources: 'Recursos',
+      tabMaterials: 'Materiales',
+      tabSummary: 'Resumen',
+
+      laborTitle: 'Mano de obra',
+      laborCalculate: 'Calcular',
+      laborHourlyCost: 'Costo / hora',
+      laborHours: 'Horas',
+      laborHHCost: 'Costo MO',
+
+      extrasTitle: 'Costos extra',
+      extrasAdd: '+ Agregar',
+      extrasEmpty: 'Sin costos extra.',
+      extrasDescLabel: 'Descripción',
+      extrasValueLabel: 'Importe',
+      extrasTotal: 'Total extras',
+
+      notesLabel: 'Observaciones',
+      notesPlaceholder: 'Notas internas del costo',
+      savedAuto: 'Guardado automáticamente',
+      saveButton: 'Guardar',
+
+      summaryTitle: 'Resumen y precio sugerido (BDI)',
+      summaryLabor: 'Mano de obra',
+      summaryMaterials: 'Materiales',
+      summaryResources: 'Recursos',
+      summaryExtras: 'Extras manuales',
+      summaryTotalCost: 'Costo total',
+      summarySuggestedPrice: 'Precio sugerido (BDI)',
+      summaryBdiFactor: 'BDI: {factor} | Ganancia estándar: {profit}%',
+    },
+
+    globalCosts: {
+      title: 'Centro de Costos',
+      subtitle: 'Registra vehículos, herramientas y recursos. El costo/hora se distribuye automáticamente.',
+      newResource: 'Nuevo Recurso',
+
+      kpiVehicles: 'Vehículos/h',
+      kpiTools: 'Herramientas/h',
+      kpiEpi: 'EPP/h',
+      kpiGift: 'Obsequio',
+
+      kpiVehicleLabel: 'Costo/hora Vehículos',
+      kpiToolLabel: 'Costo/hora Herramientas',
+      kpiEpiLabel: 'Costo/hora EPP',
+      kpiGiftLabel: 'Costo/Obsequio',
+
+      categoryVehicles: 'Vehículos',
+      categoryVehicle: 'vehículo',
+      categoryTools: 'Herramientas',
+      categoryTool: 'herramienta',
+      categoryGifts: 'Obsequios',
+      categoryGift: 'obsequio',
+      categoryEpi: 'EPP',
+      categoryEpiSingular: 'EPP',
+      categoryOther: 'Otros',
+      categoryOtherSingular: 'recurso',
+
+      badgeInactive: 'Inactivo',
+      perHour: '/h',
+      perMonth: '/mes',
+      perUnit: '/un',
+
+      actionEdit: 'Editar',
+      actionDelete: 'Eliminar',
+
+      emptyTitle: 'Sin {singular} registrados',
+      emptyDesc: 'Toca "Nuevo {singular}" para comenzar.',
+      emptyDesktop: 'Sin {singular} registrados.',
+      registerSingular: 'Registrar {singular}',
+
+      deleteGiftTitle: '¿Eliminar obsequio?',
+      deleteResourceTitle: '¿Eliminar recurso?',
+      deleteDescGift: 'Se eliminará "{name}" y todos sus elementos.',
+      deleteDescResource: 'Se eliminará "{name}" y todos sus componentes de costo.',
+      deleteConfirm: 'Eliminar',
+      deleteCancel: 'Cancelar',
+    },
+
+    pricing: {
+      tabTitle: 'Precios',
+      tabSubtitle: 'Tasas estándar aplicadas a todos los presupuestos mediante el método BDI',
+
+      bdiMethodTitle: 'Método BDI',
+      bdiMethodDesc: 'El precio final se calcula dividiendo el costo real por el BDI, garantizando que los impuestos y gastos generales nunca estén subpreciados.',
+      bdiFormula: 'Precio = Costo Total ÷ BDI',
+
+      bdiRatesTitle: 'Tasas del BDI',
+      bdiCurrentLabel: 'BDI actual',
+      taxLabel: 'Impuesto (%)',
+      adminLabel: 'Adm. Indirecta (%)',
+      profitLabel: 'Ganancia Estándar (%)',
+
+      legendTax: 'Impuesto {pct}%',
+      legendAdmin: 'Adm. {pct}%',
+      legendProfit: 'Ganancia {pct}%',
+      legendBdi: 'BDI {pct}%',
+
+      displacementTitle: 'Desplazamiento y Pago',
+      kmCostLabel: 'Costo por KM',
+      cashDiscountLabel: 'Descuento al contado (%)',
+      installmentsLabel: 'Cuotas (tarjeta)',
+
+      saveButton: 'Guardar',
+      savingButton: 'Guardando...',
+
+      simulatorTitle: 'Simulador de Precio',
+      simulatorBadge: 'Tiempo real',
+      simulatorDesc: 'Prueba cualquier costo para ver el precio final calculado por BDI.',
+      serviceCostLabel: 'Costo del servicio',
+      distanceLabel: 'Distancia (KM)',
+
+      displacementCard: 'Desplazamiento',
+      displacementDesc: '{km} km × {rate}/km',
+      totalCostCard: 'Costo Total',
+      totalCostDesc: 'Servicio + desplazamiento',
+      bdiCard: 'BDI',
+      bdiCoeff: 'Coeficiente {factor}',
+      profitCard: 'Ganancia Esperada',
+      profitApprox: '≈ {amount}',
+
+      finalPriceLabel: 'Precio Final (BDI)',
+      cashPriceLabel: 'Al contado ({pct}% desc.)',
+      installmentLabel: 'Tarjeta ({n}x sin interés)',
+      formulaLine: 'Precio = {cost} ÷ {factor} = {price}',
+    },
   },
 
   fr: {
@@ -1720,6 +2128,141 @@ export const crm = {
       logoErrorToast: 'Erreur lors de l\'envoi du logo',
       logoTooBig: 'Fichier trop volumineux (max 5Mo)',
       logoNotImage: 'Seules les images sont autorisées',
+    },
+
+    serviceCosts: {
+      title: 'Coûts par Type de Service',
+      subtitle: 'Définissez la main-d\'œuvre et les matériaux pour la tarification automatique.',
+      serviceTypeLabel: 'Type de service',
+      serviceTypePlaceholder: 'Sélectionner le type de service',
+      noServiceSelected: 'Sélectionnez un type de service pour configurer les coûts.',
+
+      tabLabor: 'Main-d\'œuvre',
+      tabResources: 'Ressources',
+      tabMaterials: 'Matériaux',
+      tabSummary: 'Résumé',
+
+      laborTitle: 'Main-d\'œuvre',
+      laborCalculate: 'Calculer',
+      laborHourlyCost: 'Coût / heure',
+      laborHours: 'Heures',
+      laborHHCost: 'Coût MO',
+
+      extrasTitle: 'Frais supplémentaires',
+      extrasAdd: '+ Ajouter',
+      extrasEmpty: 'Aucun frais supplémentaire.',
+      extrasDescLabel: 'Description',
+      extrasValueLabel: 'Montant',
+      extrasTotal: 'Total extras',
+
+      notesLabel: 'Remarques',
+      notesPlaceholder: 'Notes internes du coût',
+      savedAuto: 'Enregistrement automatique',
+      saveButton: 'Enregistrer',
+
+      summaryTitle: 'Résumé et prix suggéré (BDI)',
+      summaryLabor: 'Main-d\'œuvre',
+      summaryMaterials: 'Matériaux',
+      summaryResources: 'Ressources',
+      summaryExtras: 'Extras manuels',
+      summaryTotalCost: 'Coût total',
+      summarySuggestedPrice: 'Prix suggéré (BDI)',
+      summaryBdiFactor: 'BDI : {factor} | Marge par défaut : {profit}%',
+    },
+
+    globalCosts: {
+      title: 'Centre de Coûts',
+      subtitle: 'Enregistrez véhicules, outils et ressources. Le coût/heure est réparti automatiquement.',
+      newResource: 'Nouvelle Ressource',
+
+      kpiVehicles: 'Véhicules/h',
+      kpiTools: 'Outils/h',
+      kpiEpi: 'EPI/h',
+      kpiGift: 'Cadeau',
+
+      kpiVehicleLabel: 'Coût/heure Véhicules',
+      kpiToolLabel: 'Coût/heure Outils',
+      kpiEpiLabel: 'Coût/heure EPI',
+      kpiGiftLabel: 'Coût/Cadeau',
+
+      categoryVehicles: 'Véhicules',
+      categoryVehicle: 'véhicule',
+      categoryTools: 'Outils',
+      categoryTool: 'outil',
+      categoryGifts: 'Cadeaux',
+      categoryGift: 'cadeau',
+      categoryEpi: 'EPI',
+      categoryEpiSingular: 'EPI',
+      categoryOther: 'Autres',
+      categoryOtherSingular: 'ressource',
+
+      badgeInactive: 'Inactif',
+      perHour: '/h',
+      perMonth: '/mois',
+      perUnit: '/unité',
+
+      actionEdit: 'Modifier',
+      actionDelete: 'Supprimer',
+
+      emptyTitle: 'Aucun {singular} enregistré',
+      emptyDesc: 'Touchez « Nouvelle {singular} » pour commencer.',
+      emptyDesktop: 'Aucun {singular} enregistré.',
+      registerSingular: 'Ajouter {singular}',
+
+      deleteGiftTitle: 'Supprimer le cadeau ?',
+      deleteResourceTitle: 'Supprimer la ressource ?',
+      deleteDescGift: 'Cela supprimera « {name} » et tous ses éléments.',
+      deleteDescResource: 'Cela supprimera « {name} » et tous ses composants de coût.',
+      deleteConfirm: 'Supprimer',
+      deleteCancel: 'Annuler',
+    },
+
+    pricing: {
+      tabTitle: 'Tarification',
+      tabSubtitle: 'Taux par défaut appliqués à tous les devis via la méthode BDI',
+
+      bdiMethodTitle: 'Méthode BDI',
+      bdiMethodDesc: 'Le prix final est calculé en divisant le coût réel par le BDI, garantissant que les taxes et frais généraux ne sont jamais sous-tarifés.',
+      bdiFormula: 'Prix = Coût Total ÷ BDI',
+
+      bdiRatesTitle: 'Taux BDI',
+      bdiCurrentLabel: 'BDI actuel',
+      taxLabel: 'Taxe (%)',
+      adminLabel: 'Frais généraux (%)',
+      profitLabel: 'Marge par défaut (%)',
+
+      legendTax: 'Taxe {pct}%',
+      legendAdmin: 'Frais {pct}%',
+      legendProfit: 'Marge {pct}%',
+      legendBdi: 'BDI {pct}%',
+
+      displacementTitle: 'Déplacement et Paiement',
+      kmCostLabel: 'Coût par KM',
+      cashDiscountLabel: 'Remise au comptant (%)',
+      installmentsLabel: 'Versements (carte)',
+
+      saveButton: 'Enregistrer',
+      savingButton: 'Enregistrement...',
+
+      simulatorTitle: 'Simulateur de Prix',
+      simulatorBadge: 'Temps réel',
+      simulatorDesc: 'Testez n\'importe quel coût pour voir le prix final calculé par BDI.',
+      serviceCostLabel: 'Coût du service',
+      distanceLabel: 'Distance (KM)',
+
+      displacementCard: 'Déplacement',
+      displacementDesc: '{km} km × {rate}/km',
+      totalCostCard: 'Coût Total',
+      totalCostDesc: 'Service + déplacement',
+      bdiCard: 'BDI',
+      bdiCoeff: 'Coefficient {factor}',
+      profitCard: 'Marge Attendue',
+      profitApprox: '≈ {amount}',
+
+      finalPriceLabel: 'Prix Final (BDI)',
+      cashPriceLabel: 'Au comptant ({pct}% remise)',
+      installmentLabel: 'Carte ({n}x sans intérêt)',
+      formulaLine: 'Prix = {cost} ÷ {factor} = {price}',
     },
   },
 };

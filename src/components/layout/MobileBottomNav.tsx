@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { MoreMenuDrawer } from './MoreMenuDrawer';
 
@@ -77,6 +78,8 @@ export function MobileBottomNav() {
   const { locale } = useAppLocaleContext();
   const shellT = MESSAGES[locale].app.shell;
   const [moreOpen, setMoreOpen] = useState(false);
+  // Localiza o path do item pro slug do idioma do usuário (admin fica intacto).
+  const L = (path: string) => localizeAppPath(path, locale);
 
   // Rótulo curto do tenant vem de `bottomNav`; o resto (admin) traduz pelo menu.
   const labelFor = (item: NavItem) =>
@@ -89,7 +92,8 @@ export function MobileBottomNav() {
 
   const isActive = (path?: string) => {
     if (!path) return false;
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    const lp = L(path);
+    return location.pathname === lp || location.pathname.startsWith(lp + '/');
   };
 
   // Monta a lista de itens conforme o contexto.
@@ -127,7 +131,7 @@ export function MobileBottomNav() {
                   type="button"
                   onClick={() => {
                     triggerHaptic();
-                    navigate(item.path!);
+                    navigate(L(item.path!));
                   }}
                   className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 active:scale-90 transition-transform -translate-y-4"
                   aria-label={labelFor(item)}
@@ -180,7 +184,7 @@ export function MobileBottomNav() {
             return (
               <NavLink
                 key={item.path}
-                to={item.path!}
+                to={L(item.path!)}
                 onClick={triggerHaptic}
                 className="flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl transition-all duration-200 active:scale-90"
               >

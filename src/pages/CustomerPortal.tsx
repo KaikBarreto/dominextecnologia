@@ -4,7 +4,6 @@ import { Package, ClipboardList, Plus, Clock, CheckCircle, AlertCircle, Loader2,
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -14,8 +13,6 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -24,11 +21,14 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import PortalUnavailable from '@/components/portal/PortalUnavailable';
+import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatDate } from '@/lib/format';
 
 /**
  * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
- * Mesma função do PmocPublicPortal: tinge os `bg-primary`/`text-primary` do portal
- * com a cor white-label do tenant, de forma escopada (sem tocar :root global).
+ * Tinge os `bg-primary`/`text-primary` do portal com a cor white-label do tenant,
+ * de forma escopada (sem tocar :root global).
  */
 function hexToHsl(hex: string | null | undefined): string | null {
   if (!hex) return null;
@@ -107,14 +107,19 @@ interface CompanySettings {
   white_label_primary_color?: string | null;
   white_label_logo_url?: string | null;
   white_label_icon_url?: string | null;
+  // Locale da empresa (1.10.0) — portal renderiza no idioma do tenant.
+  language?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
 }
 
-const OS_STATUS_LABELS: Record<string, { label: string; color: string; badgeClass: string }> = {
-  pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/30', badgeClass: 'bg-warning text-white border-transparent' },
-  em_andamento: { label: 'Em andamento', color: 'bg-primary/10 text-primary border-primary/30', badgeClass: 'bg-primary text-white border-transparent' },
-  a_caminho: { label: 'A caminho', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30', badgeClass: 'bg-indigo-500 text-white border-transparent' },
-  concluida: { label: 'Concluída', color: 'bg-success/10 text-success border-success/30', badgeClass: 'bg-success text-white border-transparent' },
-  cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive border-destructive/30', badgeClass: 'bg-destructive text-white border-transparent' },
+// Cores de badge por status (sem label — label vem do i18n dentro do componente).
+const OS_STATUS_STYLE: Record<string, { color: string; badgeClass: string }> = {
+  pendente: { color: 'bg-warning/10 text-warning border-warning/30', badgeClass: 'bg-warning text-white border-transparent' },
+  em_andamento: { color: 'bg-primary/10 text-primary border-primary/30', badgeClass: 'bg-primary text-white border-transparent' },
+  a_caminho: { color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30', badgeClass: 'bg-indigo-500 text-white border-transparent' },
+  concluida: { color: 'bg-success/10 text-success border-success/30', badgeClass: 'bg-success text-white border-transparent' },
+  cancelada: { color: 'bg-destructive/10 text-destructive border-destructive/30', badgeClass: 'bg-destructive text-white border-transparent' },
 };
 
 const ACTIVE_STATUSES = ['em_andamento', 'a_caminho', 'pendente'];
@@ -124,8 +129,6 @@ const TERMINAL_STATUSES = ['concluida', 'cancelada'];
 
 // Payload da RPC get_portal_data. `access`/`viewer_can_fill` são opcionais —
 // se a RPC ainda não os devolver, caímos no comportamento atual (fallback gracioso).
-// `access: 'module_unavailable'` → a empresa dona não tem o módulo "Portal do
-// Cliente" na assinatura; o payload NÃO traz dados (só `company_name`, opcional).
 interface PortalPayload {
   access?: 'granted' | 'denied' | 'module_unavailable';
   viewer_can_fill?: boolean;
@@ -134,14 +137,10 @@ interface PortalPayload {
   company_settings: CompanySettings | null;
   equipment: Equipment[];
   service_orders: ServiceOrder[];
-  // Campos visíveis configurados pela empresa (built-in + custom), ordenados por position.
-  // Opcional: payloads antigos em cache podem não trazer → fallback pros campos fixos.
   equipment_field_config?: FieldConfig[];
 }
 
 // field_key built-in → propriedade de topo do objeto Equipment do portal.
-// Espelha builtInFieldKeys/fieldKeyToName do EquipmentFormDialog, mas só os campos
-// que o payload do portal carrega (capacity/install_date não vêm no Equipment do portal).
 const BUILT_IN_FIELD_KEYS: Record<string, keyof Equipment> = {
   brand: 'brand',
   model: 'model',
@@ -149,11 +148,10 @@ const BUILT_IN_FIELD_KEYS: Record<string, keyof Equipment> = {
   location: 'location',
 };
 
+// ─── Outer shell: carrega dados, resolve locale, envolve no PublicAppLocaleProvider ───
+
 export default function CustomerPortal() {
   const { token } = useParams<{ token: string }>();
-  const [searchParams] = useSearchParams();
-  const eqParam = searchParams.get('eq');
-  const { toast } = useToast();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
@@ -162,52 +160,13 @@ export default function CustomerPortal() {
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Acesso negado pelo SERVIDOR (portal privado + visitante sem permissão).
   const [accessDenied, setAccessDenied] = useState(false);
-  // Módulo "Portal do Cliente" não está na assinatura da empresa dona. Tela
-  // neutra pro cliente final (sem dados, sem CTA de upgrade).
   const [moduleUnavailable, setModuleUnavailable] = useState(false);
   const [unavailableCompanyName, setUnavailableCompanyName] = useState<string | null>(null);
-  // Quem abre é um usuário logado da empresa dona (técnico/admin) → pode preencher OS.
   const [viewerCanFill, setViewerCanFill] = useState(false);
 
-  // Ticket form
-  const [showTicketForm, setShowTicketForm] = useState(false);
-  const [ticketDesc, setTicketDesc] = useState('');
-  const [ticketEquipmentId, setTicketEquipmentId] = useState('');
-  const [ticketSubmitting, setTicketSubmitting] = useState(false);
-
-  // Selected equipment detail
-  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(eqParam);
-  // Tab controlado: inicializa pelo param `eq` (deep-link pra um equipamento).
-  // Antes era `defaultValue` (não-controlado) — virou controlado pra permitir
-  // troca via MobilePillTabs no mobile.
-  const [activeTab, setActiveTab] = useState(eqParam ? 'equipamentos' : 'os');
-  const isMobile = useIsMobile();
-
-  const osPagination = useDataPagination(serviceOrders);
-  const eqPagination = useDataPagination(equipment);
-
-  useEffect(() => {
-    loadPortalData();
-  }, [token]);
-
-  // Realtime: quando uma OS do cliente muda, recarrega o portal inteiro pela RPC
-  // validada por token (não lemos service_orders direto — RLS sem token).
-  useEffect(() => {
-    if (!customer?.id) return;
-    const channel = supabase
-      .channel('portal-os')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders', filter: `customer_id=eq.${customer.id}` }, () => {
-        loadPortalData();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [customer?.id]);
-
   // Carrega TUDO que o portal precisa numa única RPC SECURITY DEFINER que valida
-  // o token internamente (customer + company_settings + equipment + OS). Sem
-  // leituras anon diretas de customers/company_settings/equipment/service_orders.
+  // o token internamente. Sem leituras anon diretas de tabelas do tenant.
   const loadPortalData = async () => {
     setLoading(true);
     setError(null);
@@ -223,10 +182,8 @@ export default function CustomerPortal() {
         return;
       }
 
-      const payload = data as PortalPayload;
+      const payload = data as unknown as PortalPayload;
 
-      // Módulo "Portal do Cliente" fora da assinatura da empresa dona. O payload
-      // NÃO traz dados — só renderizamos a tela neutra "portal indisponível".
       if (payload.access === 'module_unavailable') {
         setModuleUnavailable(true);
         setUnavailableCompanyName(payload.company_name ?? null);
@@ -234,8 +191,6 @@ export default function CustomerPortal() {
         return;
       }
 
-      // Acesso negado pelo servidor: portal privado e visitante sem permissão.
-      // O payload NÃO traz dados nesse caso — só renderizamos a tela "portal privado".
       if (payload.access === 'denied') {
         setAccessDenied(true);
         setViewerCanFill(false);
@@ -256,96 +211,22 @@ export default function CustomerPortal() {
     }
   };
 
-  const handleSubmitTicket = async () => {
-    if (!ticketDesc.trim() || !customer) return;
-    setTicketSubmitting(true);
-    try {
-      // Usa o company_id do cliente (portal pode estar sem autenticação).
-      const company_id = customer.company_id;
-      const payload = normalizeOptionalForeignKeys({
-        customer_id: customer.id,
-        equipment_id: ticketEquipmentId || null,
-        description: ticketDesc,
-        os_type: 'corretiva',
-        status: 'pendente',
-        origin: 'portal',
-        company_id,
-      } as any, ['customer_id', 'equipment_id']);
-      const { error } = await supabase.from('service_orders').insert(payload as any);
-      if (error) throw error;
-      toast({ title: 'Chamado aberto com sucesso!' });
-      setShowTicketForm(false);
-      setTicketDesc('');
-      setTicketEquipmentId('');
-      await loadPortalData();
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao abrir chamado', description: getErrorMessage(err) });
-    } finally {
-      setTicketSubmitting(false);
-    }
-  };
+  useEffect(() => {
+    loadPortalData();
+  }, [token]);
 
-  // White-label escopado: quando o tenant tem white-label ligado e cor válida,
-  // tinge `--primary`/`--primary-foreground` apenas no container do portal (sem
-  // tocar :root global, já que é página pública anon). Caso contrário, undefined
-  // mantém o tema padrão (verde).
-  const whiteLabelEnabled = !!companySettings?.white_label_enabled;
-  const themeOverride = useMemo<React.CSSProperties | undefined>(() => {
-    if (!whiteLabelEnabled) return undefined;
-    const hsl = hexToHsl(companySettings?.white_label_primary_color);
-    if (!hsl) return undefined;
-    return {
-      ['--primary' as any]: hsl,
-      ['--primary-foreground' as any]: '0 0% 100%',
-    };
-  }, [whiteLabelEnabled, companySettings?.white_label_primary_color]);
-
-  // Logo do header: prioriza o logo white-label quando ativo, senão o logo_url do tenant.
-  const headerLogo = whiteLabelEnabled
-    ? (companySettings?.white_label_logo_url || companySettings?.white_label_icon_url || companySettings?.logo_url)
-    : companySettings?.logo_url;
-
-  const selectedEq = equipment.find(e => e.id === selectedEquipment);
-  const equipmentOrders = selectedEquipment
-    ? serviceOrders.filter(os => (os as any).equipment_id === selectedEquipment)
-    : [];
-
-  // Formata o valor de um campo conforme o tipo configurado pela empresa.
-  // boolean: aceita true/false e strings 'sim'/'nao' (defensivo); date: BR (UTC-3).
-  const formatFieldValue = (value: any, fieldType: string): string => {
-    if (fieldType === 'boolean') {
-      const truthy = value === true || value === 'sim' || value === 'true' || value === 1;
-      return truthy ? 'Sim' : 'Não';
-    }
-    if (fieldType === 'date') {
-      const d = new Date(value);
-      if (isNaN(d.getTime())) return String(value);
-      return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    }
-    return String(value);
-  };
-
-  // Linhas a renderizar no detalhe do equipamento, derivadas da config da empresa
-  // (ordenada por position). Resolve built-in (propriedade de topo) vs custom
-  // (custom_fields[field_key]) e pula valores vazios.
-  const buildDetailRows = (eq: Equipment) => {
-    return [...equipmentFieldConfig]
-      .sort((a, b) => a.position - b.position)
-      .map((fc) => {
-        const builtInProp = BUILT_IN_FIELD_KEYS[fc.field_key];
-        const rawValue = builtInProp
-          ? eq[builtInProp]
-          : eq.custom_fields?.[fc.field_key];
-        return { fc, rawValue };
+  // Realtime: quando uma OS do cliente muda, recarrega o portal pela RPC validada
+  // por token (não lemos service_orders direto — RLS sem token).
+  useEffect(() => {
+    if (!customer?.id) return;
+    const channel = supabase
+      .channel('portal-os')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders', filter: `customer_id=eq.${customer.id}` }, () => {
+        loadPortalData();
       })
-      .filter(({ rawValue, fc }) => {
-        // boolean false ainda é um valor válido a exibir ("Não"); demais: pula vazio.
-        if (fc.field_type === 'boolean') {
-          return rawValue !== null && rawValue !== undefined && rawValue !== '';
-        }
-        return rawValue !== null && rawValue !== undefined && String(rawValue).trim() !== '';
-      });
-  };
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [customer?.id]);
 
   if (loading) {
     return (
@@ -355,16 +236,11 @@ export default function CustomerPortal() {
     );
   }
 
-  // Módulo "Portal do Cliente" fora da assinatura da empresa dona: tela neutra
-  // pro cliente final, sem dados nem CTA de upgrade. Tratado ANTES do erro
-  // genérico de token (que continua válido logo abaixo).
   if (moduleUnavailable) {
     return <PortalUnavailable companyName={unavailableCompanyName} />;
   }
 
-  // Portal privado: o servidor negou acesso a quem não está logado na empresa
-  // dona (ou está logado em outra empresa). A tela só REAGE — nenhum dado é
-  // exibido. Mandamos pro login preservando o retorno pro próprio portal.
+  // Portal privado: não temos company_settings ainda → tela em pt-br (visitante bloqueado).
   if (accessDenied) {
     const portalPath = `/portal/${token}`;
     return (
@@ -408,9 +284,166 @@ export default function CustomerPortal() {
     );
   }
 
+  // Dados carregados: envolve no locale provider da empresa dona do portal.
+  return (
+    <PublicAppLocaleProvider
+      language={companySettings?.language}
+      currency={companySettings?.currency}
+      timezone={companySettings?.timezone}
+    >
+      <CustomerPortalContent
+        token={token!}
+        customer={customer}
+        companySettings={companySettings}
+        equipment={equipment}
+        equipmentFieldConfig={equipmentFieldConfig}
+        serviceOrders={serviceOrders}
+        viewerCanFill={viewerCanFill}
+        onReload={loadPortalData}
+      />
+    </PublicAppLocaleProvider>
+  );
+}
+
+// ─── Inner content: consome useAppLocaleContext() para i18n ───
+
+interface ContentProps {
+  token: string;
+  customer: Customer;
+  companySettings: CompanySettings | null;
+  equipment: Equipment[];
+  equipmentFieldConfig: FieldConfig[];
+  serviceOrders: ServiceOrder[];
+  viewerCanFill: boolean;
+  onReload: () => Promise<void>;
+}
+
+function CustomerPortalContent({
+  token: _token,
+  customer,
+  companySettings,
+  equipment,
+  equipmentFieldConfig,
+  serviceOrders,
+  viewerCanFill,
+  onReload,
+}: ContentProps) {
+  const [searchParams] = useSearchParams();
+  const eqParam = searchParams.get('eq');
+  const { toast } = useToast();
+
+  const { locale, timezone } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.customers.portal;
+
+  // Labels de status vindos do i18n (não hardcoded em pt-br).
+  const OS_STATUS_LABEL: Record<string, string> = {
+    pendente: t.statusPendente,
+    em_andamento: t.statusEmAndamento,
+    a_caminho: t.statusACaminho,
+    concluida: t.statusConcluida,
+    cancelada: t.statusCancelada,
+  };
+
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketDesc, setTicketDesc] = useState('');
+  const [ticketEquipmentId, setTicketEquipmentId] = useState('');
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+
+  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(eqParam);
+  const [activeTab, setActiveTab] = useState(eqParam ? 'equipamentos' : 'os');
+  const isMobile = useIsMobile();
+
+  const osPagination = useDataPagination(serviceOrders);
+  const eqPagination = useDataPagination(equipment);
+
+  const handleSubmitTicket = async () => {
+    if (!ticketDesc.trim()) return;
+    setTicketSubmitting(true);
+    try {
+      const company_id = customer.company_id;
+      const insertPayload = normalizeOptionalForeignKeys({
+        customer_id: customer.id,
+        equipment_id: ticketEquipmentId || null,
+        description: ticketDesc,
+        os_type: 'corretiva',
+        status: 'pendente',
+        origin: 'portal',
+        company_id,
+      } as any, ['customer_id', 'equipment_id']);
+      const { error } = await supabase.from('service_orders').insert(insertPayload as any);
+      if (error) throw error;
+      toast({ title: t.ticketSuccess });
+      setShowTicketForm(false);
+      setTicketDesc('');
+      setTicketEquipmentId('');
+      await onReload();
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: t.ticketErrorTitle, description: getErrorMessage(err) });
+    } finally {
+      setTicketSubmitting(false);
+    }
+  };
+
+  // White-label escopado: tinge --primary/--primary-foreground só no container do portal.
+  const whiteLabelEnabled = !!companySettings?.white_label_enabled;
+  const themeOverride = useMemo<React.CSSProperties | undefined>(() => {
+    if (!whiteLabelEnabled) return undefined;
+    const hsl = hexToHsl(companySettings?.white_label_primary_color);
+    if (!hsl) return undefined;
+    return {
+      ['--primary' as any]: hsl,
+      ['--primary-foreground' as any]: '0 0% 100%',
+    };
+  }, [whiteLabelEnabled, companySettings?.white_label_primary_color]);
+
+  const headerLogo = whiteLabelEnabled
+    ? (companySettings?.white_label_logo_url || companySettings?.white_label_icon_url || companySettings?.logo_url)
+    : companySettings?.logo_url;
+
+  const selectedEq = equipment.find(e => e.id === selectedEquipment);
+  const equipmentOrders = selectedEquipment
+    ? serviceOrders.filter(os => (os as any).equipment_id === selectedEquipment)
+    : [];
+
+  // Formata valor de campo dinâmico usando locale/timezone da empresa.
+  const formatFieldValue = (value: any, fieldType: string): string => {
+    if (fieldType === 'boolean') {
+      // boolean semântico (Sim/Não) — mantém pt-br por convenção de dado estrutural.
+      const truthy = value === true || value === 'sim' || value === 'true' || value === 1;
+      return truthy ? 'Sim' : 'Não';
+    }
+    if (fieldType === 'date') {
+      if (!value) return '';
+      try {
+        return formatDate(String(value), locale, timezone);
+      } catch {
+        return String(value);
+      }
+    }
+    return String(value);
+  };
+
+  const buildDetailRows = (eq: Equipment) => {
+    return [...equipmentFieldConfig]
+      .sort((a, b) => a.position - b.position)
+      .map((fc) => {
+        const builtInProp = BUILT_IN_FIELD_KEYS[fc.field_key];
+        const rawValue = builtInProp
+          ? eq[builtInProp]
+          : eq.custom_fields?.[fc.field_key];
+        return { fc, rawValue };
+      })
+      .filter(({ rawValue, fc }) => {
+        if (fc.field_type === 'boolean') {
+          return rawValue !== null && rawValue !== undefined && rawValue !== '';
+        }
+        return rawValue !== null && rawValue !== undefined && String(rawValue).trim() !== '';
+      });
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground" style={themeOverride}>
-      {/* Header with company info */}
+      {/* Header com dados da empresa */}
       <header className="border-b bg-card px-4 py-4">
         <div className="mx-auto max-w-4xl flex items-center gap-3">
           {headerLogo ? (
@@ -421,7 +454,7 @@ export default function CustomerPortal() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg lg:text-2xl font-bold truncate">{companySettings?.name || 'Portal do Cliente'}</h1>
+            <h1 className="text-lg lg:text-2xl font-bold truncate">{companySettings?.name || t.defaultTitle}</h1>
             <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
               {companySettings?.phone && <span>{companySettings.phone}</span>}
               {companySettings?.email && <span>{companySettings.email}</span>}
@@ -431,22 +464,22 @@ export default function CustomerPortal() {
             </div>
           </div>
           <Button size="sm" onClick={() => setShowTicketForm(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Abrir Chamado
+            <Plus className="h-4 w-4 mr-1" /> {t.openTicket}
           </Button>
         </div>
       </header>
 
-      {/* Customer name bar */}
+      {/* Barra com nome do cliente */}
       <div className="border-b bg-muted/30 px-4 py-2">
         <div className="mx-auto max-w-4xl">
           <p className="text-sm text-muted-foreground">
-            Olá, <span className="font-medium text-foreground">{customer?.name}</span>
+            {t.greeting} <span className="font-medium text-foreground">{customer.name}</span>
           </p>
         </div>
       </div>
 
       <main className="mx-auto max-w-4xl p-4 space-y-6">
-        {/* Active OS highlight */}
+        {/* OS ativas em destaque */}
         {serviceOrders.filter(os => ACTIVE_STATUSES.includes(os.status)).length > 0 && (
           <div className="space-y-3">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -454,20 +487,21 @@ export default function CustomerPortal() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-              Ordens de Serviço Ativas
+              {t.activeOsTitle}
             </h2>
             {serviceOrders.filter(os => ACTIVE_STATUSES.includes(os.status)).map(os => {
-              const statusCfg = OS_STATUS_LABELS[os.status] || OS_STATUS_LABELS.pendente;
+              const style = OS_STATUS_STYLE[os.status] || OS_STATUS_STYLE.pendente;
+              const label = OS_STATUS_LABEL[os.status] || os.status;
               const isEnRoute = os.status === 'a_caminho' || os.status === 'em_andamento';
               return (
-              <Card key={os.id} className="bg-card border hover:shadow-md transition-shadow">
+                <Card key={os.id} className="bg-card border hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(6, '0')}</span>
-                          <Badge className={cn('text-xs', statusCfg.badgeClass)}>
-                            {statusCfg.label}
+                          <Badge className={cn('text-xs', style.badgeClass)}>
+                            {label}
                           </Badge>
                         </div>
                         {os.description && (
@@ -475,14 +509,14 @@ export default function CustomerPortal() {
                         )}
                         {os.scheduled_date && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Agendada: {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                            {t.scheduledPrefix} {formatDate(os.scheduled_date, locale, timezone)}
                           </p>
                         )}
                       </div>
                       {isEnRoute && (
                         <a href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`} target="_blank" rel="noopener noreferrer">
                           <Button size="sm" variant="default" className="gap-1 text-xs">
-                            📍 Acompanhar
+                            {t.trackBtn}
                           </Button>
                         </a>
                       )}
@@ -498,8 +532,8 @@ export default function CustomerPortal() {
           {isMobile ? (
             <MobilePillTabs
               tabs={[
-                { value: 'os', label: 'Minhas OS', icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
-                { value: 'equipamentos', label: 'Equipamentos', icon: <Package className="h-4 w-4 shrink-0" /> },
+                { value: 'os', label: t.tabOs, icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
+                { value: 'equipamentos', label: t.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> },
               ]}
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -507,28 +541,29 @@ export default function CustomerPortal() {
           ) : (
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="os">
-                <ClipboardList className="h-4 w-4 mr-2" /> Minhas OS
+                <ClipboardList className="h-4 w-4 mr-2" /> {t.tabOs}
               </TabsTrigger>
               <TabsTrigger value="equipamentos">
-                <Package className="h-4 w-4 mr-2" /> Equipamentos
+                <Package className="h-4 w-4 mr-2" /> {t.tabEquipment}
               </TabsTrigger>
             </TabsList>
           )}
 
-          {/* OS Tab */}
+          {/* Aba OS */}
           <TabsContent value="os" className="space-y-4 mt-4">
             {serviceOrders.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center py-12">
                   <ClipboardList className="h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">Nenhuma ordem de serviço encontrada</p>
+                  <p className="text-muted-foreground">{t.emptyOs}</p>
                 </CardContent>
               </Card>
             ) : (
               <>
                 <div className="space-y-3">
                   {osPagination.paginatedItems.map(os => {
-                    const statusCfg = OS_STATUS_LABELS[os.status] || OS_STATUS_LABELS.pendente;
+                    const style = OS_STATUS_STYLE[os.status] || OS_STATUS_STYLE.pendente;
+                    const label = OS_STATUS_LABEL[os.status] || os.status;
                     return (
                       <Card key={os.id}>
                         <CardContent className="p-4">
@@ -536,8 +571,8 @@ export default function CustomerPortal() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(6, '0')}</span>
-                              <Badge className={cn('text-xs', statusCfg.badgeClass)}>
-                                  {statusCfg.label}
+                                <Badge className={cn('text-xs', style.badgeClass)}>
+                                  {label}
                                 </Badge>
                               </div>
                               {os.description && (
@@ -545,8 +580,8 @@ export default function CustomerPortal() {
                               )}
                               <p className="text-xs text-muted-foreground mt-1">
                                 {os.scheduled_date
-                                  ? `Agendada: ${format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}`
-                                  : `Criada: ${format(new Date(os.created_at), 'dd/MM/yyyy', { locale: ptBR })}`
+                                  ? `${t.scheduledPrefix} ${formatDate(os.scheduled_date, locale, timezone)}`
+                                  : `${t.createdPrefix} ${formatDate(os.created_at, locale, timezone)}`
                                 }
                               </p>
                             </div>
@@ -556,18 +591,17 @@ export default function CustomerPortal() {
                                   href={`${window.location.origin}/os-tecnico/${os.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  title="Preencher OS"
+                                  title={t.fillOs}
                                 >
                                   <Button size="sm" variant="default" className="gap-1 text-xs">
-                                    Preencher OS
+                                    {t.fillOs}
                                   </Button>
                                 </a>
                               )}
                               <a
-                              href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
+                                href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title="Ver detalhes"
                               >
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
                                   <ExternalLink className="h-4 w-4" />
@@ -592,12 +626,12 @@ export default function CustomerPortal() {
             )}
           </TabsContent>
 
-          {/* Equipment Tab */}
+          {/* Aba Equipamentos */}
           <TabsContent value="equipamentos" className="space-y-4 mt-4">
             {selectedEquipment && selectedEq ? (
               <div className="space-y-4">
                 <Button variant="ghost" size="sm" onClick={() => setSelectedEquipment(null)}>
-                  ← Voltar para lista
+                  {t.backToList}
                 </Button>
                 <Card>
                   <CardHeader>
@@ -624,54 +658,53 @@ export default function CustomerPortal() {
                             </span>
                           </div>
                         ))}
-                        {/* Identificador é sempre fixo (não faz parte da config configurável). */}
                         {selectedEq.identifier && (
                           <div className="flex justify-between gap-3">
-                            <span className="text-muted-foreground">Identificador</span>
+                            <span className="text-muted-foreground">{t.fieldIdentifier}</span>
                             <span className="font-mono text-right break-words">{selectedEq.identifier}</span>
                           </div>
                         )}
                       </>
                     ) : (
                       <>
-                        {/* Fallback: sem config (ou payload antigo em cache) → campos fixos. */}
                         {selectedEq.serial_number && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Nº Série</span>
+                            <span className="text-muted-foreground">{t.fieldSerialNumber}</span>
                             <span className="font-mono">{selectedEq.serial_number}</span>
                           </div>
                         )}
                         {selectedEq.identifier && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Identificador</span>
+                            <span className="text-muted-foreground">{t.fieldIdentifier}</span>
                             <span className="font-mono">{selectedEq.identifier}</span>
                           </div>
                         )}
                         {selectedEq.location && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Local</span>
+                            <span className="text-muted-foreground">{t.fieldLocation}</span>
                             <span>{selectedEq.location}</span>
                           </div>
                         )}
                       </>
                     )}
                     <Badge variant={selectedEq.status === 'active' ? 'default' : 'secondary'}>
-                      {selectedEq.status === 'active' ? 'Ativo' : 'Inativo'}
+                      {selectedEq.status === 'active' ? t.equipStatusActive : t.equipStatusInactive}
                     </Badge>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Histórico de OS deste equipamento</CardTitle>
+                    <CardTitle className="text-base">{t.equipOsHistory}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {equipmentOrders.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">Nenhuma OS vinculada</p>
+                      <p className="text-sm text-muted-foreground text-center py-4">{t.emptyEquipOs}</p>
                     ) : (
                       <div className="space-y-2">
                         {equipmentOrders.map(os => {
-                          const statusCfg = OS_STATUS_LABELS[os.status] || OS_STATUS_LABELS.pendente;
+                          const style = OS_STATUS_STYLE[os.status] || OS_STATUS_STYLE.pendente;
+                          const label = OS_STATUS_LABEL[os.status] || os.status;
                           return (
                             <div key={os.id} className="flex items-center justify-between p-3 rounded-md border text-sm">
                               <div>
@@ -679,16 +712,16 @@ export default function CustomerPortal() {
                                 {os.description && <span className="text-muted-foreground ml-2">{os.description}</span>}
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>{statusCfg.label}</Badge>
+                                <Badge variant="outline" className={cn('text-xs', style.color)}>{label}</Badge>
                                 {viewerCanFill && !TERMINAL_STATUSES.includes(os.status) && (
                                   <a
                                     href={`${window.location.origin}/os-tecnico/${os.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    title="Preencher OS"
+                                    title={t.fillOs}
                                   >
                                     <Button size="sm" variant="default" className="h-7 gap-1 text-xs">
-                                      Preencher OS
+                                      {t.fillOs}
                                     </Button>
                                   </a>
                                 )}
@@ -712,7 +745,7 @@ export default function CustomerPortal() {
                   <Card>
                     <CardContent className="flex flex-col items-center py-12">
                       <Package className="h-10 w-10 text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground">Nenhum equipamento encontrado</p>
+                      <p className="text-muted-foreground">{t.emptyEquipment}</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -760,38 +793,38 @@ export default function CustomerPortal() {
         </Tabs>
       </main>
 
-      {/* Ticket Form */}
-      <ResponsiveModal open={showTicketForm} onOpenChange={setShowTicketForm} title="Abrir Chamado">
+      {/* Modal de chamado */}
+      <ResponsiveModal open={showTicketForm} onOpenChange={setShowTicketForm} title={t.openTicket}>
         <div className="space-y-4 p-1">
           <div>
-            <Label>Descreva o problema *</Label>
+            <Label>{t.ticketProblemLabel}</Label>
             <Textarea
               value={ticketDesc}
               onChange={e => setTicketDesc(e.target.value)}
-              placeholder="Descreva o problema que você está enfrentando..."
+              placeholder={t.ticketProblemPlaceholder}
               rows={4}
             />
           </div>
           {equipment.length > 0 && (
             <div>
-              <Label>Equipamento (opcional)</Label>
+              <Label>{t.ticketEquipmentLabel}</Label>
               <SearchableSelect
-                options={[{ value: 'none', label: 'Nenhum' }, ...equipment.map(eq => ({ value: eq.id, label: eq.name }))]}
+                options={[{ value: 'none', label: t.ticketEquipmentNone }, ...equipment.map(eq => ({ value: eq.id, label: eq.name }))]}
                 value={ticketEquipmentId || 'none'}
                 onValueChange={v => setTicketEquipmentId(v === 'none' ? '' : v)}
-                placeholder="Selecione..."
-                searchPlaceholder="Buscar equipamento..."
+                placeholder={t.ticketEquipmentPlaceholder}
+                searchPlaceholder={t.ticketEquipmentSearch}
               />
             </div>
           )}
           <Button className="w-full" onClick={handleSubmitTicket} disabled={ticketSubmitting || !ticketDesc.trim()}>
             {ticketSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-            Enviar Chamado
+            {t.ticketSubmit}
           </Button>
         </div>
       </ResponsiveModal>
 
-      {/* Rodapé Dominex — só aparece pra tenants NÃO white-label */}
+      {/* Rodapé Dominex — oculto em white-label */}
       {!whiteLabelEnabled && (
         <footer
           className="mx-auto flex max-w-4xl flex-col items-center gap-1 px-4 pt-8 pb-2"

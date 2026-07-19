@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
-import { MESSAGES } from '@/lib/i18n/messages';
+import { MESSAGES, type Messages } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
@@ -32,7 +32,8 @@ import { PricingTab } from '@/components/pricing/PricingTab';
 import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
 import { GlobalCostsTab } from '@/components/service-orders/GlobalCostsTab';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
@@ -58,6 +59,14 @@ const ALL_SIDEBAR_TAB_KEYS = [
   { value: 'pricing', labelKey: 'tabPricing' as const, icon: Settings2, module: 'pricing_advanced' as const },
 ];
 
+// Mapeia LocaleCode → locale do date-fns (sem dependência do contexto fora do render).
+const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es: esLocale,
+  fr: frLocale,
+};
+
 // Hex por status — usado no leading do MobileListItem.
 const STATUS_HEX: Record<string, string> = {
   rascunho: '#94a3b8',     // slate-400
@@ -79,33 +88,49 @@ const STATUS_ICONS: Record<string, typeof FileText> = {
 
 // Indicador discreto de visualizações da proposta pública.
 // view_count===0 => "Não visualizada" esmaecido. Senão: olho + nº + "visto há X"
-// (tempo relativo PT-BR). last_viewed_at vem em UTC; date-fns calcula o delta
-// contra o "agora" local (America/Sao_Paulo no aparelho), então o "há X" bate.
-function QuoteViewsIndicator({ quote, className }: { quote: Quote; className?: string }) {
+// (tempo relativo no locale do usuário). last_viewed_at vem em UTC; date-fns calcula
+// o delta contra o "agora" local, então o "há X" bate.
+type TQ = Messages['app']['crm']['quotes'];
+
+function QuoteViewsIndicator({
+  quote,
+  className,
+  locale,
+  tq,
+}: {
+  quote: Quote;
+  className?: string;
+  locale: LocaleCode;
+  tq: TQ;
+}) {
+  const dfLocale = DATE_FNS_LOCALES[locale];
   const count = quote.view_count ?? 0;
   if (count === 0) {
     return (
       <span className={cn('inline-flex items-center gap-1 text-[11px] text-muted-foreground/60', className)}>
         <Eye className="h-3 w-3" />
-        Não visualizada
+        {tq.notViewed}
       </span>
     );
   }
   const rel = quote.last_viewed_at
-    ? formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: ptBR })
+    ? formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: dfLocale })
     : null;
   return (
     <span
       className={cn('inline-flex items-center gap-1 text-[11px] text-muted-foreground', className)}
       title={
         quote.last_viewed_at
-          ? `Visualizada ${count}× · última vez ${format(new Date(quote.last_viewed_at), "dd/MM 'às' HH:mm", { locale: ptBR })}`
-          : `Visualizada ${count}×`
+          ? tq.viewViewedAt
+              .replace('{count}', String(count))
+              .replace('{date}', format(new Date(quote.last_viewed_at), 'dd/MM HH:mm', { locale: dfLocale }))
+              .replace('{rel}', formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: dfLocale }))
+          : tq.viewViewedCount.replace('{count}', String(count))
       }
     >
       <Eye className="h-3 w-3" />
       {count}
-      {rel && <span className="text-muted-foreground/70">· visto {rel}</span>}
+      {rel && <span className="text-muted-foreground/70">· {tq.viewedAgo.replace('{rel}', rel)}</span>}
     </span>
   );
 }
@@ -221,15 +246,26 @@ function QuotesList() {
     setStatusFilter([]);
   };
 
+  // Labels de status traduzidos pelo i18n do locale atual.
+  // As chaves do banco (rascunho, enviado, etc.) nunca mudam — só o display muda.
+  const localizedStatusLabels: Record<string, string> = useMemo(() => ({
+    rascunho: tq.statusDraft,
+    enviado: tq.statusSent,
+    aprovado: tq.statusApproved,
+    rejeitado: tq.statusRejected,
+    expirado: tq.statusExpired,
+    convertido: tq.statusConverted,
+  }), [tq]);
+
   // Opções pro FilterCheckboxGroup de status — usa STATUS_HEX como acento.
   const statusOptions: FilterCheckboxOption[] = useMemo(
     () =>
-      Object.entries(STATUS_LABELS).map(([k, v]) => ({
+      Object.entries(localizedStatusLabels).map(([k, v]) => ({
         value: k,
         label: v,
         color: STATUS_HEX[k],
       })),
-    []
+    [localizedStatusLabels]
   );
 
   // Conteúdo da Sheet de filtros (mobile only).
@@ -373,7 +409,7 @@ function QuotesList() {
               />
             </div>
             <FilterSheet
-              triggerLabel="Filtros"
+              triggerLabel={tq.filterStatus}
               activeCount={activeFilterCount}
               onClear={clearFilters}
             >
@@ -493,9 +529,9 @@ function QuotesList() {
                         {formatMoney(price, currency, locale)}
                       </span>
                       <span>•</span>
-                      <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}</span>
+                      <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: DATE_FNS_LOCALES[locale] })}</span>
                       <span>•</span>
-                      <QuoteViewsIndicator quote={q} />
+                      <QuoteViewsIndicator quote={q} locale={locale} tq={tq} />
                     </div>
                   }
                   trailing={
@@ -504,7 +540,7 @@ function QuotesList() {
                       className="text-[10px] px-2 py-0.5 whitespace-nowrap text-white border-0"
                       style={{ backgroundColor: statusHex }}
                     >
-                      {STATUS_LABELS[q.status] ?? q.status}
+                      {localizedStatusLabels[q.status] ?? q.status}
                     </Badge>
                   }
                 />
@@ -553,11 +589,11 @@ function QuotesList() {
                           <span className="ml-1.5 text-[10px] text-muted-foreground">{tq.prospectSuffix}</span>
                         )}
                       </span>
-                      <QuoteViewsIndicator quote={q} />
+                      <QuoteViewsIndicator quote={q} locale={locale} tq={tq} />
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
-                    {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
+                    {format(new Date(q.created_at), 'dd/MM/yy', { locale: DATE_FNS_LOCALES[locale] })}
                   </TableCell>
                   {hasPricing && (
                     <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
@@ -583,7 +619,7 @@ function QuotesList() {
                       className="text-[10px] px-2 py-0.5 whitespace-nowrap text-white border-0"
                       style={{ backgroundColor: STATUS_HEX[q.status] ?? '#64748b' }}
                     >
-                      {STATUS_LABELS[q.status] ?? q.status}
+                      {localizedStatusLabels[q.status] ?? q.status}
                     </Badge>
                   </TableCell>
                   <TableCell>

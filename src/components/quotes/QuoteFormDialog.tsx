@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES, type Messages } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -63,18 +66,9 @@ interface QuoteFormDialogProps {
   quote?: Quote | null;
 }
 
-// Etapas do wizard de orçamento (espelha o padrão do ContractFormDialog). A
-// chave dirige o conteúdo via key (nunca por índice cru) e a animação de troca.
-const STEPS = [
-  { key: 'recipient', label: 'Destinatário' },
-  { key: 'services', label: 'Serviços e mão de obra' },
-  { key: 'materials', label: 'Materiais e deslocamento' },
-  { key: 'discount', label: 'Desconto e condições' },
-  { key: 'review', label: 'Validade e revisão' },
-];
-
-const fmt = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// STEPS é construído dentro do componente (locale-aware) — ver buildSteps() abaixo.
+const STEP_KEYS = ['recipient', 'services', 'materials', 'discount', 'review'] as const;
+type StepKey = typeof STEP_KEYS[number];
 
 // ─── Service Items List with expandable cost details ─────────────────────────
 function ServiceItemsList({
@@ -83,12 +77,14 @@ function ServiceItemsList({
   onUpdatePrice,
   onRemove,
   fmt,
+  tq,
 }: {
   items: FormQuoteItem[];
   allItems: FormQuoteItem[];
   onUpdatePrice: (idx: number, price: number) => void;
   onRemove: (idx: number) => void;
   fmt: (v: number) => string;
+  tq: Messages['app']['crm']['quotes'];
 }) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
@@ -97,11 +93,11 @@ function ServiceItemsList({
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b bg-muted/30">
-            <th className="text-left p-2 font-medium text-muted-foreground">Serviço</th>
-            <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
-            <th className="text-right p-2 font-medium text-muted-foreground w-24 hidden sm:table-cell">Custo unit.</th>
-            <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
-            <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+            <th className="text-left p-2 font-medium text-muted-foreground">{tq.serviceColName}</th>
+            <th className="text-center p-2 font-medium text-muted-foreground w-12">{tq.serviceColQty}</th>
+            <th className="text-right p-2 font-medium text-muted-foreground w-24 hidden sm:table-cell">{tq.serviceColUnitCost}</th>
+            <th className="text-right p-2 font-medium text-muted-foreground w-28">{tq.serviceColUnitPrice}</th>
+            <th className="text-right p-2 font-medium text-muted-foreground w-24">{tq.serviceColTotal}</th>
             <th className="w-8 p-2" />
           </tr>
         </thead>
@@ -124,7 +120,7 @@ function ServiceItemsList({
                     </button>
                     {!hasCosts && (
                       <Badge variant="outline" className="ml-5 mt-0.5 text-[10px] text-amber-600 border-amber-300 bg-amber-50">
-                        Sem custos configurados
+                        {tq.serviceNoCosts}
                       </Badge>
                     )}
                   </td>
@@ -154,7 +150,7 @@ function ServiceItemsList({
                     <td colSpan={6} className="px-4 py-3">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                         <div className="space-y-0.5">
-                          <span className="text-muted-foreground">Mão de obra</span>
+                          <span className="text-muted-foreground">{tq.serviceLaborDetail}</span>
                           <p className="font-medium">
                             {item.unit_hourly_rate > 0
                               ? `${fmt(item.unit_hourly_rate)}/h × ${item.unit_hours}h = ${fmt(item.unit_labor_cost)}`
@@ -162,15 +158,15 @@ function ServiceItemsList({
                           </p>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-muted-foreground">Materiais</span>
+                          <span className="text-muted-foreground">{tq.serviceMatsDetail}</span>
                           <p className="font-medium">{item.unit_materials_cost > 0 ? fmt(item.unit_materials_cost) : '—'}</p>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-muted-foreground">Custos extras</span>
+                          <span className="text-muted-foreground">{tq.serviceExtrasDetail}</span>
                           <p className="font-medium">{item.unit_extras_cost > 0 ? fmt(item.unit_extras_cost) : '—'}</p>
                         </div>
                         <div className="space-y-0.5">
-                          <span className="text-muted-foreground font-semibold">Custo total unit.</span>
+                          <span className="text-muted-foreground font-semibold">{tq.serviceUnitCostDetail}</span>
                           <p className="font-bold text-foreground">{hasCosts ? fmt(item.unit_total_cost) : '—'}</p>
                         </div>
                       </div>
@@ -182,10 +178,10 @@ function ServiceItemsList({
           })}
           <tr className="bg-muted/30 border-t">
             <td colSpan={4} className="p-2 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
-              Subtotal Serviços
+              {tq.serviceSubtotal}
             </td>
             <td colSpan={2} className="p-2 text-right text-xs font-medium text-muted-foreground sm:hidden">
-              Subtotal
+              {tq.serviceSubtotal}
             </td>
             <td className="p-2 text-right font-bold">
               {fmt(serviceItems.reduce((s, i) => s + i.total_price, 0))}
@@ -200,6 +196,16 @@ function ServiceItemsList({
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const tq = MESSAGES[locale].app.crm.quotes;
+  const STEPS = [
+    { key: 'recipient' as StepKey, label: tq.stepRecipient },
+    { key: 'services' as StepKey, label: tq.stepServices },
+    { key: 'materials' as StepKey, label: tq.stepMaterials },
+    { key: 'discount' as StepKey, label: tq.stepDiscount },
+    { key: 'review' as StepKey, label: tq.stepReview },
+  ];
+  const fmt = (v: number) => formatMoney(Math.round(v * 100) / 100, currency, locale);
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
   const { customers } = useCustomers();
@@ -718,7 +724,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const bdiConfigBlock = hasPricing && (
     <section className="space-y-3">
       <div className="flex items-center gap-2">
-        <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title="Configurações BDI" />
+        <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title={tq.bdiHeader} />
         <Badge
           variant="outline"
           className={`text-xs font-mono ml-auto px-2.5 py-0.5 ${
@@ -735,12 +741,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
       <div className="rounded-xl border bg-muted/20 p-4 space-y-4">
         <div>
-          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Taxas e Margens</p>
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">{tq.bdiTax} &amp; {tq.bdiProfit}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <BdiField label="Imposto" suffix="%" value={taxRate} onChange={v => setTaxRate(v)} />
-            <BdiField label="Adm. Indireta" suffix="%" value={adminRate} onChange={v => setAdminRate(v)} />
-            <BdiField label="Lucro" suffix="%" value={profitRate} onChange={v => setProfitRate(v)} />
-            <BdiField label="Custo / km" prefix="R$" value={kmCostCfg} onChange={v => setKmCostCfg(v)} step={0.01} />
+            <BdiField label={tq.bdiTax} suffix="%" value={taxRate} onChange={v => setTaxRate(v)} />
+            <BdiField label={tq.bdiAdmin} suffix="%" value={adminRate} onChange={v => setAdminRate(v)} />
+            <BdiField label={tq.bdiProfit} suffix="%" value={profitRate} onChange={v => setProfitRate(v)} />
+            <BdiField label={tq.bdiKmCost} value={kmCostCfg} onChange={v => setKmCostCfg(v)} step={0.01} />
           </div>
         </div>
 
@@ -748,11 +754,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
         <div>
           <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-            <CreditCard className="h-3 w-3" /> Condições de Pagamento
+            <CreditCard className="h-3 w-3" /> {tq.bdiPaymentConditions}
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <BdiField label="Desconto à vista" suffix="%" value={cardDiscountRateCfg} onChange={v => setCardDiscountRateCfg(v)} />
-            <BdiField label="Parcelas (cartão)" value={cardInstallmentsCfg} onChange={v => setCardInstallmentsCfg(Math.max(1, v))} step={1} min={1} />
+            <BdiField label={tq.bdiCashDiscount} suffix="%" value={cardDiscountRateCfg} onChange={v => setCardDiscountRateCfg(v)} />
+            <BdiField label={tq.bdiInstallments} value={cardInstallmentsCfg} onChange={v => setCardInstallmentsCfg(Math.max(1, v))} step={1} min={1} />
           </div>
         </div>
       </div>
@@ -765,16 +771,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       {hasPricing && bdiDanger && (
         <Alert variant="destructive" className="border-destructive/50">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            O BDI está muito baixo ou negativo. O preço final não cobre os custos. Revise as taxas.
-          </AlertDescription>
+          <AlertDescription>{tq.bdiAlertDanger}</AlertDescription>
         </Alert>
       )}
       {hasPricing && bdiWarning && !bdiDanger && (
         <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-700 dark:text-amber-400">
-            BDI abaixo de 20% — margem de lucro muito apertada.
+            {tq.bdiAlertWarning}
           </AlertDescription>
         </Alert>
       )}
@@ -784,26 +788,26 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700">
           <CardContent className="p-4 space-y-3">
             <p className="text-sm font-medium text-white flex items-center gap-2">
-              <Calculator className="h-4 w-4 text-emerald-400" /> Resumo do Orçamento
+              <Calculator className="h-4 w-4 text-emerald-400" /> {tq.reviewSummaryTitle}
             </p>
             <Separator className="bg-slate-700" />
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-400">Subtotal Serviços</span>
+                <span className="text-sm text-slate-400">{tq.reviewSubtotalServices}</span>
                 <span className="text-sm text-white">{fmt(serviceItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-400">Subtotal Materiais</span>
+                <span className="text-sm text-slate-400">{tq.reviewSubtotalMaterials}</span>
                 <span className="text-sm text-white">{fmt(materialItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-400">Desconto</span>
+                  <span className="text-sm text-slate-400">{tq.reviewDiscount}</span>
                   <span className="text-sm text-destructive">− {fmt(discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-                <span className="text-sm font-medium text-white">Total</span>
+                <span className="text-sm font-medium text-white">{tq.reviewTotal}</span>
                 <span className="text-sm font-bold text-emerald-400">
                   {fmt(items.reduce((s, i) => s + (i.total_price || 0), 0) - discountAmount)}
                 </span>
@@ -867,37 +871,37 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           {/* ══ STEP 1: DESTINATÁRIO ══ */}
           {currentStepKey === 'recipient' && (
             <section className="space-y-3">
-              <SectionHeader icon={<User className="h-4 w-4 text-primary" />} title="Destinatário" />
+              <SectionHeader icon={<User className="h-4 w-4 text-primary" />} title={tq.recipientHeader} />
               <LabeledSwitch<'existing' | 'prospect'>
                 value={customerMode}
                 onChange={setCustomerMode}
                 size="default"
-                off={{ value: 'existing', label: <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Cliente cadastrado</span> }}
-                on={{ value: 'prospect', label: <span className="inline-flex items-center gap-1.5"><UserPlus className="h-3.5 w-3.5" />Novo prospecto</span> }}
-                aria-label="Tipo de destinatário"
+                off={{ value: 'existing', label: <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{tq.recipientExisting}</span> }}
+                on={{ value: 'prospect', label: <span className="inline-flex items-center gap-1.5"><UserPlus className="h-3.5 w-3.5" />{tq.recipientProspect}</span> }}
+                aria-label={tq.recipientHeader}
               />
               {customerMode === 'existing' ? (
                 <div className="space-y-1">
-                  <Label className="text-xs">Cliente *</Label>
+                  <Label className="text-xs">{tq.recipientCustomerLabel}</Label>
                   <SearchableSelect
                     options={customerOptions}
                     value={customerId}
                     onValueChange={setCustomerId}
-                    placeholder="Selecione o cliente"
+                    placeholder={tq.recipientCustomerPlaceholder}
                   />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Nome *</Label>
-                    <Input placeholder="Nome do prospecto" value={prospectName} onChange={e => setProspectName(e.target.value)} />
+                    <Label className="text-xs">{tq.recipientNameLabel}</Label>
+                    <Input placeholder={tq.recipientNamePlaceholder} value={prospectName} onChange={e => setProspectName(e.target.value)} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Telefone</Label>
+                    <Label className="text-xs">{tq.recipientPhoneLabel}</Label>
                     <Input placeholder="(00) 00000-0000" value={prospectPhone} onChange={e => setProspectPhone(e.target.value)} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">E-mail</Label>
+                    <Label className="text-xs">{tq.recipientEmailLabel}</Label>
                     <Input type="email" placeholder="email@exemplo.com" value={prospectEmail} onChange={e => setProspectEmail(e.target.value)} />
                   </div>
                 </div>
@@ -912,7 +916,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               {hasPricing && <Separator />}
 
               <section className="space-y-3">
-                <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title="Serviços e Mão de Obra" />
+                <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title={tq.servicesHeader} />
 
                 <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
                   <div className="flex-1 min-w-0">
@@ -920,24 +924,24 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                       options={serviceOptions}
                       value={addSvcId}
                       onValueChange={setAddSvcId}
-                      placeholder="Selecionar tipo de serviço..."
+                      placeholder={tq.serviceSelectPlaceholder}
                     />
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+                    <Label className="text-xs whitespace-nowrap">{tq.serviceQtyLabel}</Label>
                     <NumericInput value={String(addSvcQty ?? '')}
                       onValueChange={v => setAddSvcQty(Math.max(1, Number(v) || 1))}
                       className="h-9 w-16 text-sm" />
                     <Button size="sm" onClick={handleAddService} disabled={!addSvcId || isFetchingSvc} className="h-9 shrink-0">
-                      {isFetchingSvc ? '…' : <><Plus className="h-3.5 w-3.5 mr-1" />Adicionar</>}
+                      {isFetchingSvc ? '…' : <><Plus className="h-3.5 w-3.5 mr-1" />{tq.serviceAddButton}</>}
                     </Button>
                   </div>
                 </div>
 
                 {serviceItems.length > 0 ? (
-                  <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onRemove={removeItem} fmt={fmt} />
+                  <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onRemove={removeItem} fmt={fmt} tq={tq} />
                 ) : (
-                  <EmptyState>Nenhum serviço adicionado</EmptyState>
+                  <EmptyState>{tq.serviceEmpty}</EmptyState>
                 )}
               </section>
             </div>
@@ -947,7 +951,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           {currentStepKey === 'materials' && (
             <div className="space-y-5">
               <section className="space-y-3">
-                <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
+                <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title={tq.materialsHeader} />
 
                 <div className="flex flex-col gap-2 p-3 bg-muted/40 rounded-lg border">
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -956,7 +960,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                         options={inventoryOptions}
                         value={addMatId}
                         onValueChange={(v) => { setAddMatId(v); setAddMatManualName(''); }}
-                        placeholder="Selecionar do estoque..."
+                        placeholder={tq.materialSelectPlaceholder}
                       />
                     </div>
                     {!addMatId && (
@@ -964,7 +968,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                         <Input
                           value={addMatManualName}
                           onChange={e => setAddMatManualName(e.target.value)}
-                          placeholder="Ou digite o nome do material..."
+                          placeholder={tq.materialManualPlaceholder}
                           className="h-9 text-sm"
                         />
                       </div>
@@ -973,18 +977,18 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   <div className="flex items-center gap-2 flex-wrap">
                     {!addMatId && addMatManualName && (
                       <>
-                        <Label className="text-xs whitespace-nowrap">Preço unit.:</Label>
+                        <Label className="text-xs whitespace-nowrap">{tq.materialUnitPriceLabel}</Label>
                         <Input type="number" min={0} step="0.01" value={addMatManualPrice}
                           onChange={e => setAddMatManualPrice(Number(e.target.value) || 0)}
                           className="h-9 w-24 text-sm" />
                       </>
                     )}
-                    <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+                    <Label className="text-xs whitespace-nowrap">{tq.materialQtyLabel}</Label>
                     <NumericInput value={String(addMatQty ?? '')}
                       onValueChange={v => setAddMatQty(Math.max(1, Number(v) || 1))}
                       className="h-9 w-16 text-sm" />
                     <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId && !addMatManualName.trim()} className="h-9 shrink-0">
-                      <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
+                      <Plus className="h-3.5 w-3.5 mr-1" />{tq.materialAddButton}
                     </Button>
                   </div>
                 </div>
@@ -994,10 +998,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b bg-muted/30">
-                          <th className="text-left p-2 font-medium text-muted-foreground">Material</th>
-                          <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
-                          <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
-                          <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+                          <th className="text-left p-2 font-medium text-muted-foreground">{tq.materialColName}</th>
+                          <th className="text-center p-2 font-medium text-muted-foreground w-12">{tq.materialColQty}</th>
+                          <th className="text-right p-2 font-medium text-muted-foreground w-28">{tq.materialColUnitPrice}</th>
+                          <th className="text-right p-2 font-medium text-muted-foreground w-24">{tq.materialColTotal}</th>
                           <th className="w-8 p-2" />
                         </tr>
                       </thead>
@@ -1029,7 +1033,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                         })}
                         <tr className="bg-muted/30 border-t">
                           <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
-                            Subtotal Materiais
+                            {tq.materialSubtotal}
                           </td>
                           <td className="p-2 text-right font-bold">
                             {fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}
@@ -1040,7 +1044,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     </table>
                   </div>
                 ) : (
-                  <EmptyState>Nenhum material adicionado</EmptyState>
+                  <EmptyState>{tq.materialEmpty}</EmptyState>
                 )}
               </section>
 
@@ -1048,11 +1052,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 <>
                   <Separator />
                   <section className="space-y-2">
-                    <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
+                    <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title={tq.displacementHeader} />
                     <div className="flex items-center gap-2 flex-wrap">
                       <NumericInput value={distanceKm ? String(distanceKm) : ''}
                         onValueChange={v => setDistanceKm(Number(v) || 0)}
-                        className="h-9 w-28" placeholder="0 km" />
+                        className="h-9 w-28" placeholder={tq.displacementPlaceholder} />
                       {bdi.displacementCost > 0 && (
                         <span className="text-xs text-muted-foreground">
                           = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
@@ -1069,7 +1073,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           {currentStepKey === 'discount' && (
             <div className="space-y-5">
               <section className="space-y-2">
-                <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Desconto" />
+                <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title={tq.discountHeader} />
                 <div className="flex items-center gap-2">
                   <Select value={discountType} onValueChange={(v) => setDiscountType(v as any)}>
                     <SelectTrigger className="w-20 h-9">
@@ -1092,7 +1096,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               <Separator />
 
               <section className="space-y-2">
-                <SectionHeader icon={<Gift className="h-4 w-4 text-primary" />} title="Brindes" />
+                <SectionHeader icon={<Gift className="h-4 w-4 text-primary" />} title={tq.giftsHeader} />
                 <div className="flex items-center gap-2 px-1">
                   <Checkbox
                     id="include-gifts"
@@ -1100,7 +1104,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     onCheckedChange={(checked) => setIncludeGifts(!!checked)}
                   />
                   <Label htmlFor="include-gifts" className="text-xs text-muted-foreground cursor-pointer">
-                    Incluir brindes neste orçamento
+                    {tq.giftsInclude}
                   </Label>
                 </div>
               </section>
@@ -1109,12 +1113,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Observações</Label>
-                  <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observações internas" rows={2} />
+                  <Label>{tq.notesLabel}</Label>
+                  <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={tq.notesPlaceholder} rows={2} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Condições / Termos</Label>
-                  <Textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder="Condições de pagamento, garantia, etc." rows={2} />
+                  <Label>{tq.termsLabel}</Label>
+                  <Textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder={tq.termsPlaceholder} rows={2} />
                 </div>
               </div>
             </div>
@@ -1125,16 +1129,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             <div className="space-y-5">
               <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Válido até</Label>
+                  <Label>{tq.reviewValidUntil}</Label>
                   <Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
-                    <Palette className="h-3.5 w-3.5" />Template da Proposta
+                    <Palette className="h-3.5 w-3.5" />{tq.reviewTemplateLabel}
                   </Label>
                   <Select value={proposalTemplateId} onValueChange={setProposalTemplateId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o template" />
+                      <SelectValue placeholder={tq.reviewTemplatePlaceholder} />
                     </SelectTrigger>
                     <SelectContent>
                       {templates.map(t => (
@@ -1156,7 +1160,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   {summaryBlock}
                 </>
               ) : (
-                <EmptyState>Adicione ao menos um serviço ou material para finalizar.</EmptyState>
+                <EmptyState>{tq.reviewEmptyItems}</EmptyState>
               )}
             </div>
           )}
@@ -1175,7 +1179,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)}
           disabled={mutating || savingDraft}
         >
-          {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Voltar</>}
+          {step === 0 ? tq.cancel : <><ChevronLeft className="h-4 w-4 mr-1" /> {tq.back}</>}
         </Button>
 
         <div className="flex items-center gap-2">
@@ -1184,16 +1188,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             variant="outline"
             onClick={handleSaveDraft}
             disabled={mutating || savingDraft || !hasCustomer}
-            title={!hasCustomer ? 'Informe o destinatário para salvar' : undefined}
           >
             {savingDraft
-              ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Salvando…</>
-              : <><Save className="h-4 w-4 mr-1" /> Salvar rascunho</>}
+              ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> {tq.saving}</>
+              : <><Save className="h-4 w-4 mr-1" /> {tq.saveDraft}</>}
           </Button>
 
           {step < STEPS.length - 1 ? (
             <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
-              Próximo <ChevronRight className="h-4 w-4 ml-1" />
+              {tq.next} <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
             <Button
@@ -1202,8 +1205,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {mutating
-                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando…</>
-                : quote ? 'Salvar Alterações' : 'Criar Orçamento'}
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {tq.saving}</>
+                : quote ? tq.saveChanges : tq.createQuote}
             </Button>
           )}
         </div>
@@ -1212,8 +1215,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   );
 
   const title = quote
-    ? `Editar Orçamento #${quote.quote_number}`
-    : draftQuoteId ? 'Rascunho de Orçamento' : 'Novo Orçamento';
+    ? tq.formTitleEdit.replace('{number}', String(quote.quote_number))
+    : draftQuoteId ? tq.formTitleDraft : tq.formTitleNew;
 
   return (
     <>

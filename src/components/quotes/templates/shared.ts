@@ -1,5 +1,7 @@
 import type { ProposalTemplateProps } from './types';
 import type { Quote, QuoteItem } from '@/hooks/useQuotes';
+import { formatDate, parseDateOnly } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 /**
  * Helpers compartilhados pelos templates de proposta (vanguarda, aurora, prisma).
@@ -107,28 +109,24 @@ export const SCOPE_ITEMS_PER_PAGE = 9;
 export const flagOn = (v: boolean | undefined) => v !== false;
 
 /**
- * Validade do orçamento em `dd/MM/yyyy`, fuso America/Sao_Paulo.
- * `valid_until` costuma ser date-only (`YYYY-MM-DD`); nesse caso formata pelas
- * partes (sem deslocar dia por UTC). Se vier ISO com hora, usa o fuso BR.
- * Retorna `undefined` quando nulo/ inválido → o template omite a linha.
+ * Validade do orçamento formatada no locale/fuso da empresa.
+ * `valid_until` costuma ser date-only (`YYYY-MM-DD`); nesse caso usa
+ * `parseDateOnly` (meio-dia local, sem virada de dia por UTC).
+ * Retorna `undefined` quando nulo/inválido → o template omite a linha.
+ *
+ * `locale` e `timezone` vêm do AppLocaleContext (repassados pelo template).
+ * Quando omitidos, cai em pt-br/São Paulo (comportamento original).
  */
-export function formatValidUntil(quote: Pick<Quote, 'valid_until'>): string | undefined {
+export function formatValidUntil(
+  quote: Pick<Quote, 'valid_until'>,
+  locale: LocaleCode = 'pt-br',
+  timezone: string = 'America/Sao_Paulo',
+): string | undefined {
   const raw = quote.valid_until;
   if (!raw) return undefined;
-  // Date-only: "YYYY-MM-DD" → monta dd/MM/yyyy direto, sem timezone.
-  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
-  if (dateOnly) {
-    const [, y, m, dd] = dateOnly;
-    return `${dd}/${m}/${y}`;
-  }
-  const d = new Date(raw);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(raw.trim()) ? parseDateOnly(raw) : new Date(raw);
   if (isNaN(d.getTime())) return undefined;
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(d);
+  return formatDate(d, locale, timezone);
 }
 
 /** Há deslocamento a exibir? (custo ou distância informados) */

@@ -61,6 +61,7 @@ import { SwipeBackProvider } from "@/components/SwipeBack";
 import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
 // i18n do SITE PÚBLICO (Fase 1: só liga a máquina de roteamento por idioma).
 import { isLocaleCode } from "@/lib/i18n";
+import { localizedTemplatesFor } from "@/lib/i18n/appRouteSlugs";
 import { LocaleAutoRedirect } from "@/lib/i18n/LocaleAutoRedirect";
 import { HtmlLangManager } from "@/lib/i18n/HtmlLangManager";
 
@@ -534,6 +535,24 @@ function LocalizedMarketingLayout() {
   return <Outlet />;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ROTAS DO APP LOGADO traduzidas por idioma (sem prefixo — o slug é traduzido).
+//
+// `localizedAppRoutes(key, element)` registra o MESMO elemento sob TODOS os slugs
+// de idioma da tela (ex.: /configuracoes E /settings E /configuraciones E
+// /parametres). Assim a tela responde em qualquer idioma e bookmarks pt-br nunca
+// quebram. O redirect canônico (useCanonicalAppRoute no AppLayout) leva o usuário
+// pro slug do idioma dele. A KEY vem de `appRouteSlugs.ts` (fonte única).
+//
+// Uso em <Route> aninhado: espalha o array retornado ({...localizedAppRoutes(...)}
+// não funciona pra Route; retornamos fragmentos com key estável por template).
+// ─────────────────────────────────────────────────────────────────────────────
+function localizedAppRoutes(key: string, element: React.ReactNode): React.ReactElement[] {
+  return localizedTemplatesFor(key).map((tpl) => (
+    <Route key={`${key}:${tpl}`} path={tpl} element={element} />
+  ));
+}
+
 const AppRoutes = () => (
   <React.Suspense fallback={<LoadingSpinner />}>
   <Routes>
@@ -614,56 +633,61 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     >
-      <Route path="/dashboard" element={<PermissionRoute screenKey="screen:dashboard"><Dashboard /></PermissionRoute>} />
-      <Route path="/ordens-servico" element={<PermissionRoute screenKey="screen:service_orders"><ServiceOrders /></PermissionRoute>} />
-      <Route path="/servicos" element={<PermissionRoute screenKey="screen:services"><ServicesPage /></PermissionRoute>} />
+      {/* Telas do app — cada uma responde em TODOS os slugs de idioma (pt-br +
+         en/es/fr), gerados de `appRouteSlugs.ts`. Bookmark pt-br nunca quebra; o
+         redirect canônico (AppLayout) leva pro slug do idioma do usuário. */}
+      {localizedAppRoutes('dashboard', <PermissionRoute screenKey="screen:dashboard"><Dashboard /></PermissionRoute>)}
+      {localizedAppRoutes('serviceOrders', <PermissionRoute screenKey="screen:service_orders"><ServiceOrders /></PermissionRoute>)}
+      {localizedAppRoutes('services', <PermissionRoute screenKey="screen:services"><ServicesPage /></PermissionRoute>)}
       <Route path="/checklists" element={<Navigate to="/servicos" replace />} />
-      <Route path="/checklists/:id" element={<PermissionRoute screenKey="screen:services"><ChecklistDetail /></PermissionRoute>} />
+      {localizedAppRoutes('checklistDetail', <PermissionRoute screenKey="screen:services"><ChecklistDetail /></PermissionRoute>)}
       {/* Back-compat: rotas antigas /questionarios redirecionam para as novas /checklists */}
       <Route path="/questionarios" element={<Navigate to="/checklists" replace />} />
       <Route path="/questionarios/:id" element={<RedirectQuestionariosToChecklists />} />
-      <Route path="/agenda" element={<PermissionRoute screenKey="screen:schedule"><Schedule /></PermissionRoute>} />
-      <Route path="/clientes" element={<PermissionRoute screenKey="screen:customers"><Customers /></PermissionRoute>} />
-      <Route path="/clientes/:id" element={<PermissionRoute screenKey="screen:customers"><CustomerDetail /></PermissionRoute>} />
-      <Route path="/equipamentos" element={<PermissionRoute screenKey="screen:equipment"><EquipmentPage /></PermissionRoute>} />
-      <Route path="/equipamentos/:id" element={<PermissionRoute screenKey="screen:equipment"><EquipmentDetail /></PermissionRoute>} />
-      <Route path="/crm" element={<PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>} />
-      <Route path="/orcamentos" element={<PermissionRoute screenKey="screen:quotes"><Quotes /></PermissionRoute>} />
-      <Route path="/estoque" element={<PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>} />
+      {localizedAppRoutes('schedule', <PermissionRoute screenKey="screen:schedule"><Schedule /></PermissionRoute>)}
+      {localizedAppRoutes('customers', <PermissionRoute screenKey="screen:customers"><Customers /></PermissionRoute>)}
+      {localizedAppRoutes('customerDetail', <PermissionRoute screenKey="screen:customers"><CustomerDetail /></PermissionRoute>)}
+      {localizedAppRoutes('equipment', <PermissionRoute screenKey="screen:equipment"><EquipmentPage /></PermissionRoute>)}
+      {localizedAppRoutes('equipmentDetail', <PermissionRoute screenKey="screen:equipment"><EquipmentDetail /></PermissionRoute>)}
+      {localizedAppRoutes('crm', <PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('quotes', <PermissionRoute screenKey="screen:quotes"><Quotes /></PermissionRoute>)}
+      {localizedAppRoutes('inventory', <PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>)}
       {/* "Financeiro" virou GRUPO com 3 telas próprias (cada uma com no máx. 1
          nível de navegação). /financeiro entra na tela de Relatório. */}
-      <Route path="/financeiro" element={<Navigate to="/financeiro/relatorio" replace />} />
-      <Route path="/financeiro/relatorio" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
-      <Route path="/financeiro/movimentacoes" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
-      <Route path="/financeiro/contas" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
+      {localizedTemplatesFor('finance').map((tpl) => (
+        <Route key={`finance-redirect:${tpl}`} path={tpl} element={<Navigate to="/financeiro/relatorio" replace />} />
+      ))}
+      {localizedAppRoutes('financeReport', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
+      {localizedAppRoutes('financeMovements', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
+      {localizedAppRoutes('financeAccounts', <PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>)}
       {/* URLs antigas → redirecionam pra não dar 404. */}
       <Route path="/financeiro/dre" element={<Navigate to="/financeiro/relatorio?tab=dre" replace />} />
       <Route path="/financeiro/caixas-bancos" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       {/* Notas Fiscais (NFS-e via Fisqal) — gateada pelo módulo pago `nfe`. */}
-      <Route path="/notas-fiscais/configuracoes" element={<PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>} />
-      <Route path="/notas-fiscais" element={<PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>} />
-      <Route path="/pmoc" element={<PMOC />} />
-      <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><Contracts /></ModuleRoute></PermissionRoute>} />
-      <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractDetail /></ModuleRoute></PermissionRoute>} />
+      {localizedAppRoutes('fiscalSettings', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('fiscalNotes', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('pmoc', <PMOC />)}
+      {localizedAppRoutes('contracts', <PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><Contracts /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('contractDetail', <PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractDetail /></ModuleRoute></PermissionRoute>)}
       {/* Path estático (não /contratos/configuracoes) pra não colidir com /contratos/:id do ContractDetail. */}
-      <Route path="/configuracoes-contrato" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractSettings /></ModuleRoute></PermissionRoute>} />
+      {localizedAppRoutes('contractSettings', <PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractSettings /></ModuleRoute></PermissionRoute>)}
       {/* Rota antiga: redireciona direto pra aba RT da nova tela (mantém bookmarks/links). */}
       <Route path="/responsaveis-tecnicos" element={<Navigate to="/configuracoes-contrato?tab=rt" replace />} />
       <Route path="/usuarios" element={<Navigate to="/configuracoes?tab=usuarios" replace />} />
-      <Route path="/configuracoes" element={<PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>} />
-      <Route path="/perfil" element={<Profile />} />
+      {localizedAppRoutes('settings', <PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>)}
+      {localizedAppRoutes('profile', <Profile />)}
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
-      <Route path="/funcionarios" element={<PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>} />
+      {localizedAppRoutes('employees', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
-      <Route path="/mapa-ao-vivo" element={<LiveMap />} />
+      {localizedAppRoutes('liveMap', <LiveMap />)}
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas
          via <Routes> dentro da página, então registra com /* (wildcard). */}
-      <Route path="/area-tecnico/*" element={<PermissionRoute screenKey="screen:technician_tools"><TechnicianAreaRoute><TechnicianArea /></TechnicianAreaRoute></PermissionRoute>} />
+      {localizedAppRoutes('technicianArea', <PermissionRoute screenKey="screen:technician_tools"><TechnicianAreaRoute><TechnicianArea /></TechnicianAreaRoute></PermissionRoute>)}
       {/* Retrocompat da rota antiga → preserva subpath/query. */}
       <Route path="/ferramentas-tecnico/*" element={<LegacyTechnicianToolsRedirect />} />
-      <Route path="/assinatura" element={<Billing />} />
+      {localizedAppRoutes('billing', <Billing />)}
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />
       <Route path="/admin/blog" element={<AdminScreenRoute screenKey="admin_blog"><AdminBlog /></AdminScreenRoute>} />
@@ -678,7 +702,7 @@ const AppRoutes = () => (
       <Route path="/admin/vendedores/:id" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
       <Route path="/admin/configuracoes" element={<AdminScreenRoute screenKey="admin_configuracoes"><AdminSettings /></AdminScreenRoute>} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
-      <Route path="/changelog" element={<Changelog />} />
+      {localizedAppRoutes('changelog', <Changelog />)}
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />
       <Route path="/tutoriais/:titleId" element={<Navigate to="/domiflix" replace />} />
       <Route path="/tutorials" element={<Navigate to="/domiflix" replace />} />

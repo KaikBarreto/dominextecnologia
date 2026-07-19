@@ -45,6 +45,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -257,6 +258,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
   const shellT = MESSAGES[locale].app.shell;
   const accountT = shellT.account;
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
+  const L = (path: string) => localizeAppPath(path, locale);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -309,8 +311,8 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
   }> = isAdminUser
     ? []
     : [
-        { icon: UserCircle, label: accountT.profile, onClick: () => handleNavigate('/perfil') },
-        { icon: CreditCard, label: accountT.subscription, onClick: () => handleNavigate('/assinatura') },
+        { icon: UserCircle, label: accountT.profile, onClick: () => handleNavigate(L('/perfil')) },
+        { icon: CreditCard, label: accountT.subscription, onClick: () => handleNavigate(L('/assinatura')) },
         {
           icon: Video,
           label: accountT.tutorials,
@@ -358,9 +360,11 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
 
               const Icon = item.icon;
               const isOpen = openMenus.includes(item.title);
-              const hasActiveSubmenu = visibleSubmenu.some(
-                (s) => s.path && (location.pathname === s.path || location.pathname.startsWith(s.path + '/'))
-              );
+              const hasActiveSubmenu = visibleSubmenu.some((s) => {
+                if (!s.path) return false;
+                const lp = L(s.path);
+                return location.pathname === lp || location.pathname.startsWith(lp + '/');
+              });
 
               return (
                 <Collapsible key={item.title} open={isOpen} onOpenChange={() => toggleMenu(item.title)}>
@@ -384,7 +388,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
                       return (
                         <NavLink
                           key={sub.path}
-                          to={sub.path!}
+                          to={L(sub.path!)}
                           onClick={onClose}
                           className={({ isActive }) =>
                             cn(
@@ -410,7 +414,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
             return (
               <NavLink
                 key={item.path}
-                to={item.path!}
+                to={L(item.path!)}
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(
@@ -493,7 +497,7 @@ function MoreMenuFooter({ onClose }: { onClose: () => void }) {
 
   const handleSettings = () => {
     onClose();
-    navigate(isAdminUser ? '/admin/configuracoes' : '/configuracoes');
+    navigate(isAdminUser ? '/admin/configuracoes' : localizeAppPath('/configuracoes', locale));
   };
 
   const themeOptions: Array<{ value: 'light' | 'dark'; icon: React.ElementType; label: string }> = [

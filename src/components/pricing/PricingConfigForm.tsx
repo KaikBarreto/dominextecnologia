@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calculator, Save } from 'lucide-react';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Converte a string crua do input para number, com fallback se estiver vazia/inválida.
 const num = (s: string, fallback = 0) => {
@@ -15,6 +17,8 @@ const num = (s: string, fallback = 0) => {
 };
 
 export function PricingConfigForm() {
+  const { locale } = useAppLocaleContext();
+  const tp = MESSAGES[locale].app.crm.pricing;
   const { settings, isLoading, upsertSettings } = usePricingSettings();
 
   const [taxRate, setTaxRate] = useState('10');
@@ -63,12 +67,12 @@ export function PricingConfigForm() {
             <Calculator size={20} className="text-primary-foreground" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-primary-foreground">Método BDI</p>
+            <p className="text-sm font-semibold text-primary-foreground">{tp.bdiMethodTitle}</p>
             <p className="text-xs text-primary-foreground/80 mt-1 leading-relaxed">
-              O preço final é calculado dividindo o custo real pelo BDI, garantindo que impostos e overhead nunca sejam subprecificados.
+              {tp.bdiMethodDesc}
             </p>
             <div className="mt-3 font-mono text-sm bg-white/15 rounded-md px-3 py-2 text-primary-foreground border border-white/20 inline-block">
-              Preço = Custo Total ÷ BDI
+              {tp.bdiFormula}
             </div>
           </div>
         </div>
@@ -78,24 +82,24 @@ export function PricingConfigForm() {
       <Card>
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-foreground">Taxas do BDI</p>
+            <p className="text-sm font-semibold text-foreground">{tp.bdiRatesTitle}</p>
             <div className="flex flex-col items-end">
-              <span className="text-[11px] text-muted-foreground">BDI atual</span>
+              <span className="text-[11px] text-muted-foreground">{tp.bdiCurrentLabel}</span>
               <span className="text-2xl font-extrabold text-primary leading-tight">{bdiFactor.toFixed(4)}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Imposto (%)</Label>
+              <Label className="text-xs">{tp.taxLabel}</Label>
               <Input type="number" min={0} step="0.01" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Adm. Indireta (%)</Label>
+              <Label className="text-xs">{tp.adminLabel}</Label>
               <Input type="number" min={0} step="0.01" value={adminRate} onChange={(e) => setAdminRate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Lucro Padrão (%)</Label>
+              <Label className="text-xs">{tp.profitLabel}</Label>
               <Input type="number" min={0} step="0.01" value={profitRate} onChange={(e) => setProfitRate(e.target.value)} />
             </div>
           </div>
@@ -103,27 +107,27 @@ export function PricingConfigForm() {
           {/* Barra de composição */}
           <div>
             <div className="flex rounded-full overflow-hidden h-2.5">
-              <div style={{ width: `${taxNum}%` }} className="bg-destructive transition-all" title={`Imposto: ${taxNum}%`} />
-              <div style={{ width: `${adminNum}%` }} className="bg-warning transition-all" title={`Adm. Indireta: ${adminNum}%`} />
-              <div style={{ width: `${profitNum}%` }} className="bg-success transition-all" title={`Lucro: ${profitNum}%`} />
-              <div style={{ width: `${bdiRemainder}%` }} className="bg-primary transition-all" title={`BDI restante: ${bdiRemainder.toFixed(1)}%`} />
+              <div style={{ width: `${taxNum}%` }} className="bg-destructive transition-all" title={tp.legendTax.replace('{pct}', String(taxNum))} />
+              <div style={{ width: `${adminNum}%` }} className="bg-warning transition-all" title={tp.legendAdmin.replace('{pct}', String(adminNum))} />
+              <div style={{ width: `${profitNum}%` }} className="bg-success transition-all" title={tp.legendProfit.replace('{pct}', String(profitNum))} />
+              <div style={{ width: `${bdiRemainder}%` }} className="bg-primary transition-all" title={tp.legendBdi.replace('{pct}', bdiRemainder.toFixed(1))} />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
-                Imposto {taxNum}%
+                {tp.legendTax.replace('{pct}', String(taxNum))}
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-warning inline-block" />
-                Adm. {adminNum}%
+                {tp.legendAdmin.replace('{pct}', String(adminNum))}
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-success inline-block" />
-                Lucro {profitNum}%
+                {tp.legendProfit.replace('{pct}', String(profitNum))}
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-                BDI {bdiRemainder.toFixed(1)}%
+                {tp.legendBdi.replace('{pct}', bdiRemainder.toFixed(1))}
               </span>
             </div>
           </div>
@@ -141,7 +145,7 @@ export function PricingConfigForm() {
               disabled={upsertSettings.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
-              {upsertSettings.isPending ? 'Salvando...' : 'Salvar'}
+              {upsertSettings.isPending ? tp.savingButton : tp.saveButton}
             </Button>
           </div>
         </CardContent>
@@ -150,18 +154,18 @@ export function PricingConfigForm() {
       {/* Card Deslocamento e Pagamento */}
       <Card>
         <CardContent className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-foreground">Deslocamento e Pagamento</p>
+          <p className="text-sm font-semibold text-foreground">{tp.displacementTitle}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Custo por KM (R$)</Label>
+              <Label className="text-xs">{tp.kmCostLabel}</Label>
               <Input type="number" min={0} step="0.01" value={kmCost} onChange={(e) => setKmCost(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Desconto à vista (%)</Label>
+              <Label className="text-xs">{tp.cashDiscountLabel}</Label>
               <Input type="number" min={0} step="0.01" value={cardDiscountRate} onChange={(e) => setCardDiscountRate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Parcelas (cartão)</Label>
+              <Label className="text-xs">{tp.installmentsLabel}</Label>
               <NumericInput value={cardInstallments} onValueChange={(v) => setCardInstallments(v)} />
             </div>
           </div>
@@ -179,7 +183,7 @@ export function PricingConfigForm() {
               disabled={upsertSettings.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
-              {upsertSettings.isPending ? 'Salvando...' : 'Salvar'}
+              {upsertSettings.isPending ? tp.savingButton : tp.saveButton}
             </Button>
           </div>
         </CardContent>

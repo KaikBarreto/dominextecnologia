@@ -82,6 +82,9 @@ import { buildWazeUrl, buildGoogleMapsDirectionsUrl, buildCustomerAddress, haver
 import { osTypeLabels, getOsTypeLabel, getOsStatusLabel } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PublicAppLocaleProvider } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -383,7 +386,7 @@ function OsEquipmentAccordionItem({
   );
 }
 
-export default function TechnicianOS() {
+function TechnicianOSInner() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const forceReadOnly = searchParams.get('modo') === 'cliente';
@@ -450,6 +453,14 @@ export default function TechnicianOS() {
   // `activities`) no shape firme de ReportChecklistItem.
   const [publicActivities, setPublicActivities] = useState<ReportChecklistItem[]>([]);
   const [technicianProfile, setTechnicianProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
+  // Configurações de locale da EMPRESA QUE GEROU O LINK (só no modo público).
+  // language/currency/timezone vêm de company_settings via get_public_os (COALESCE
+  // pra pt-br/BRL/America/Sao_Paulo no servidor). Alimenta o PublicAppLocaleProvider.
+  const [publicLocale, setPublicLocale] = useState<{ language: string; currency: string; timezone: string }>({
+    language: 'pt-br',
+    currency: 'BRL',
+    timezone: 'America/Sao_Paulo',
+  });
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
@@ -1111,7 +1122,19 @@ export default function TechnicianOS() {
 
       // company white-label — só na carga inicial (o reset interno causaria
       // flicker do logo a cada poll; o branding não muda durante a OS).
-      if (!opts?.isPoll) applyCompany(payload.company_settings || null);
+      if (!opts?.isPoll) {
+        applyCompany(payload.company_settings || null);
+        // Locale da empresa (language/currency/timezone) — vem via COALESCE no
+        // servidor, sempre preenchido. Alimenta o PublicAppLocaleProvider.
+        const cs = payload.company_settings;
+        if (cs) {
+          setPublicLocale({
+            language: cs.language || 'pt-br',
+            currency: cs.currency || 'BRL',
+            timezone: cs.timezone || 'America/Sao_Paulo',
+          });
+        }
+      }
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -2075,6 +2098,15 @@ export default function TechnicianOS() {
     return groups;
   }, [equipmentItems]);
 
+  // Strings da VISTA PÚBLICA no locale da empresa que gerou o link.
+  // Função pura (não hook): lê MESSAGES com o locale capturado do payload.
+  // Fallback automático pro pt-br via MESSAGES (chave ausente já cai no pt-br
+  // pelo deepMerge do sistema de mensagens).
+  const tPublic = MESSAGES[publicLocale.language as keyof typeof MESSAGES]?.app?.os?.publicView
+    ?? MESSAGES['pt-br'].app.os.publicView;
+  const pubLocale = publicLocale.language as 'pt-br' | 'en' | 'es' | 'fr';
+  const pubTz = publicLocale.timezone;
+
   if (loading || isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-background p-4 space-y-4">
@@ -2095,17 +2127,30 @@ export default function TechnicianOS() {
   }
 
   if (!serviceOrder) {
-    return (
+    const notFoundJsx = (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">OS não encontrada</h2>
-            <p className="text-muted-foreground">Verifique o link e tente novamente.</p>
+            <h2 className="text-xl font-semibold mb-2">{tPublic.notFoundTitle}</h2>
+            <p className="text-muted-foreground">{tPublic.notFoundDescription}</p>
           </CardContent>
         </Card>
       </div>
     );
+    // Modo público: envolve no provider pra subcomponentes receberem locale certo.
+    if (!isAuthenticated) {
+      return (
+        <PublicAppLocaleProvider
+          language={publicLocale.language}
+          currency={publicLocale.currency}
+          timezone={publicLocale.timezone}
+        >
+          {notFoundJsx}
+        </PublicAppLocaleProvider>
+      );
+    }
+    return notFoundJsx;
   }
 
   const statusBadgeVariant: Record<OsStatus, 'warning' | 'info' | 'success' | 'destructive'> = {
@@ -2122,7 +2167,7 @@ export default function TechnicianOS() {
   // público (relatório parcial — só equipamentos 100% prontos, sem data de
   // conclusão). Técnico autenticado numa OS pausada continua no modo de execução.
   if (serviceOrder.status === 'concluida' || isPausedPublicReport) {
-    return (
+    const reportJsx = (
       <div className="min-h-screen bg-background lg:flex lg:flex-col">
         {/* Header sticky do RELATÓRIO — alinhado visualmente ao header do
             PREENCHIMENTO: cantos inferiores arredondados (rounded-b-2xl),
@@ -2173,7 +2218,7 @@ export default function TechnicianOS() {
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
                 OS <span className="opacity-95">#{String(serviceOrder.order_number).padStart(6, '0')}</span>
               </h1>
-              <p className="text-xs sm:text-sm font-medium opacity-85">Relatório de Serviço</p>
+              <p className="text-xs sm:text-sm font-medium opacity-85">{tPublic.serviceReport}</p>
             </div>
           </div>
         </div>
@@ -2275,11 +2320,24 @@ export default function TechnicianOS() {
         />
       </div>
     );
+    // Modo público (relatório compartilhado): envolve no provider de locale da empresa.
+    if (forceReadOnly) {
+      return (
+        <PublicAppLocaleProvider
+          language={publicLocale.language}
+          currency={publicLocale.currency}
+          timezone={publicLocale.timezone}
+        >
+          {reportJsx}
+        </PublicAppLocaleProvider>
+      );
+    }
+    return reportJsx;
   }
 
   // PUBLIC READ-ONLY MODE for non-authenticated users
   if (!isAuthenticated) {
-    return (
+    const publicJsx = (
       <div className="min-h-screen bg-background lg:flex lg:flex-col">
         {/* Header público (acompanhamento anônimo) — mesma pegada visual do
             header de preenchimento/relatório: cantos inferiores arredondados,
@@ -2322,7 +2380,7 @@ export default function TechnicianOS() {
                 <div className="mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85">
                   <Calendar className="h-3.5 w-3.5 shrink-0" />
                   <span>
-                    {format(new Date(serviceOrder.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                    {formatDate(serviceOrder.scheduled_date, pubLocale, pubTz)}
                     {serviceOrder.scheduled_time && ` ${String(serviceOrder.scheduled_time).slice(0, 5)}`}
                   </span>
                 </div>
@@ -2347,7 +2405,7 @@ export default function TechnicianOS() {
           {/* Realtime indicator */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
             <Eye className="h-4 w-4 text-primary shrink-0" />
-            <span>Acompanhamento em tempo real</span>
+            <span>{tPublic.realtimeTracking}</span>
             <span className="relative flex h-2 w-2 ml-auto">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -2370,7 +2428,7 @@ export default function TechnicianOS() {
                 </div>
               )}
               <div>
-                <p className="text-xs text-muted-foreground">Técnico responsável</p>
+                <p className="text-xs text-muted-foreground">{tPublic.technicianLabel}</p>
                 <p className="font-medium text-foreground">{technicianProfile.full_name}</p>
               </div>
             </div>
@@ -2382,7 +2440,7 @@ export default function TechnicianOS() {
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Clock className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Execução</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tPublic.sectionExecution}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {checkInTime && (
@@ -2400,12 +2458,12 @@ export default function TechnicianOS() {
                         </div>
                       )}
                       <div>
-                        <p className="text-xs text-muted-foreground font-semibold">CHECK-IN</p>
+                        <p className="text-xs text-muted-foreground font-semibold">{tPublic.labelCheckin}</p>
                         {technicianProfile && (
                           <p className="text-sm font-semibold text-foreground">{technicianProfile.full_name}</p>
                         )}
                         <p className="text-sm font-medium text-foreground">
-                          {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          {formatDateTime(checkInTime, pubLocale, pubTz)}
                         </p>
                         {checkInLocation && (
                           <div className="text-xs text-muted-foreground mt-0.5">
@@ -2439,12 +2497,12 @@ export default function TechnicianOS() {
                         </div>
                       )}
                       <div>
-                        <p className="text-xs text-muted-foreground font-semibold">CHECK-OUT</p>
+                        <p className="text-xs text-muted-foreground font-semibold">{tPublic.labelCheckout}</p>
                         {technicianProfile && (
                           <p className="text-sm font-semibold text-foreground">{technicianProfile.full_name}</p>
                         )}
                         <p className="text-sm font-medium text-foreground">
-                          {format(new Date(checkOutTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          {formatDateTime(checkOutTime, pubLocale, pubTz)}
                         </p>
                         {checkOutLocation && (
                           <div className="text-xs text-muted-foreground mt-0.5">
@@ -2467,12 +2525,12 @@ export default function TechnicianOS() {
                 {checkInTime && checkOutTime && (
                   <div className="mt-3 pt-3 border-t border-border">
                     <p className="text-xs text-muted-foreground">
-                      <strong>Duração:</strong>{' '}
+                      <strong>{tPublic.labelDuration}</strong>{' '}
                       {(() => {
                         const diff = new Date(checkOutTime).getTime() - new Date(checkInTime).getTime();
                         const hours = Math.floor(diff / 3600000);
                         const minutes = Math.floor((diff % 3600000) / 60000);
-                        return `${hours}h ${minutes}min`;
+                        return tPublic.durationFormat.replace('{h}', String(hours)).replace('{m}', String(minutes));
                       })()}
                     </p>
                   </div>
@@ -2486,7 +2544,7 @@ export default function TechnicianOS() {
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <User className="h-4 w-4 text-primary" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tPublic.sectionCustomer}</span>
               </div>
               <div className="flex items-start gap-3">
                 {serviceOrder.customer?.photo_url && (
@@ -2525,14 +2583,16 @@ export default function TechnicianOS() {
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Wrench className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equipamento{uniqueEquipmentItems.length > 1 ? 's' : ''}</span>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {uniqueEquipmentItems.length > 1 ? tPublic.sectionEquipments : tPublic.sectionEquipment}
+                    </span>
                     <span className="text-xs text-muted-foreground ml-auto">{uniqueEquipmentItems.length}</span>
                   </div>
                   {uniqueEquipmentItems.length > 3 ? (
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value="equipments" className="border-0">
                         <AccordionTrigger className="hover:no-underline py-2 text-sm text-primary">
-                          Ver {uniqueEquipmentItems.length} equipamentos
+                          {tPublic.seeEquipments.replace('{n}', String(uniqueEquipmentItems.length))}
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="space-y-3">
@@ -2614,10 +2674,10 @@ export default function TechnicianOS() {
                 {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
               </Badge>
               <p className="text-sm text-muted-foreground mt-2">
-                {serviceOrder.status === 'pendente' && 'Aguardando início do atendimento'}
-                {serviceOrder.status === 'a_caminho' && 'Técnico a caminho...'}
-                {serviceOrder.status === 'em_andamento' && 'Técnico em atendimento...'}
-                {serviceOrder.status === 'cancelada' && 'Esta OS foi cancelada'}
+                {serviceOrder.status === 'pendente' && tPublic.statusPending}
+                {serviceOrder.status === 'a_caminho' && tPublic.statusEnRoute}
+                {serviceOrder.status === 'em_andamento' && tPublic.statusInProgress}
+                {serviceOrder.status === 'cancelada' && tPublic.statusCanceled}
               </p>
             </CardContent>
           </Card>
@@ -2683,7 +2743,7 @@ export default function TechnicianOS() {
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <ClipboardCheck className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Checklists</span>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tPublic.sectionChecklists}</span>
                     </div>
                     <Accordion type="multiple" className="w-full space-y-3">
                       {groups.map(([groupKey, group]) => {
@@ -2742,7 +2802,7 @@ export default function TechnicianOS() {
                                             ) : val}
                                           </p>
                                         ) : (
-                                          <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                                          <p className="text-xs text-muted-foreground/60 mt-0.5 italic">{tPublic.awaitingAnswer}</p>
                                         )}
                                         {r.response_photo_url && (() => {
                                           const urls = r.response_photo_url!.split(',').filter(Boolean).map((u: string) => u.trim());
@@ -2782,7 +2842,7 @@ export default function TechnicianOS() {
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <ClipboardCheck className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Checklist</span>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tPublic.sectionChecklistResponses}</span>
                     {(() => {
                       const answered = publicFormResponses.filter(r => r.response_value || r.response_photo_url || r.response_video_url).length;
                       const total = publicFormResponses.length;
@@ -2845,7 +2905,7 @@ export default function TechnicianOS() {
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Camera className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fotos</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tPublic.sectionPhotos}</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {photos.map(photo => (
@@ -2874,7 +2934,7 @@ export default function TechnicianOS() {
         <OsActionFooter>
           <Button variant="outline" className="flex-1" onClick={handleCopyTrackingLink}>
             {trackingLinkCopied ? <Check className="h-4 w-4 mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-            {trackingLinkCopied ? 'Link copiado!' : 'Copiar link'}
+            {trackingLinkCopied ? tPublic.btnLinkCopied : tPublic.btnCopyLink}
           </Button>
         </OsActionFooter>
 
@@ -2889,6 +2949,15 @@ export default function TechnicianOS() {
           onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
         />
       </div>
+    );
+    return (
+      <PublicAppLocaleProvider
+        language={publicLocale.language}
+        currency={publicLocale.currency}
+        timezone={publicLocale.timezone}
+      >
+        {publicJsx}
+      </PublicAppLocaleProvider>
     );
   }
 
@@ -4429,3 +4498,9 @@ export default function TechnicianOS() {
     </div>
   );
 }
+
+// TechnicianOSInner aplica o PublicAppLocaleProvider em volta dos returns de
+// modo público (OS não encontrada / acompanhamento / relatório compartilhado),
+// passando o publicLocale capturado do payload da empresa. No modo autenticado
+// o AppLocaleProvider do app já existe na árvore — sem interferência.
+export default TechnicianOSInner;

@@ -209,6 +209,10 @@ function buildMockPayload(_token: string): PortalPayload {
       zip_code: '01310-100',
       // null = não white-label → o front cai no DEFAULT_HEADER_CONFIG.
       report_header: null,
+      // Mock usa pt-br/BRL/SP (padrão); flip pra 'en'/'USD' pra testar i18n.
+      language: 'pt-br',
+      currency: 'BRL',
+      timezone: 'America/Sao_Paulo',
     },
     // Onda redesign — OSs futuras (cronograma).
     schedule: [

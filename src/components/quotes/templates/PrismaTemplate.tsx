@@ -1,7 +1,6 @@
 import type { ProposalTemplateProps } from './types';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { formatBRL } from '@/utils/currency';
+import { formatDateTime } from '@/lib/format';
+import { useLocaleFormatters } from '@/lib/format/hooks';
 import {
   buildProposalData,
   colorAdjust,
@@ -35,12 +34,14 @@ const IRID = 'linear-gradient(120deg, #60a5fa, #c084fc, #f0abfc, #fbbf24)';
 export function PrismaTemplate(props: ProposalTemplateProps) {
   const { quote, company, customization } = props;
   const d = buildProposalData(props);
+  const { money, locale, timezone } = useLocaleFormatters();
+
   const installments = d.installments;
   const showFolio = !!customization?.show_pagination;
 
   const showDisplacement = flagOn(customization?.show_displacement) && hasDisplacement(quote);
   const showGifts = flagOn(customization?.show_gifts) && hasGifts(quote);
-  const validUntil = formatValidUntil(quote);
+  const validUntil = formatValidUntil(quote, locale, timezone);
 
   // ── Paginação do Escopo ── (ver Vanguarda; total dinâmico).
   const scopePages = paginateScope(buildScopeRows(d), SCOPE_ITEMS_PER_PAGE, SCOPE_ITEMS_FIRST_PAGE);
@@ -53,9 +54,9 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
   const Folio = ({ page }: { page: number }) =>
     showFolio ? <span style={pageFolioStyle(true)}>{folioLabel(page, totalPages)}</span> : null;
 
-  // Data exibida na capa: validade (se houver) senão emissão. Já em fuso BR.
+  // Data exibida na capa: validade (se houver) senão emissão, no locale da empresa.
   const validOrIssue =
-    validUntil ?? format(new Date(quote.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    validUntil ?? formatDateTime(quote.created_at, locale, timezone, { year: 'numeric', month: 'long', day: '2-digit', hour: undefined, minute: undefined });
 
   const renderGroup = (g: ScopeGroup) => (
     <div className="mb-9" key={`${g.key}-${g.rows[0]?.num}`}>
@@ -75,11 +76,11 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
               </span>
               <div className="min-w-0">
                 <p className="font-semibold text-sm text-white leading-snug">{item.description}</p>
-                <p className="text-xs text-white/35 mt-1">{item.quantity} un × R$ {formatBRL(item.unit_price || 0)}</p>
+                <p className="text-xs text-white/35 mt-1">{item.quantity} un × {money(item.unit_price || 0)}</p>
               </div>
             </div>
             <p className="font-bold text-base tabular-nums whitespace-nowrap text-white">
-              R$ {formatBRL(item.total_price || 0)}
+              {money(item.total_price || 0)}
             </p>
           </div>
         ))}
@@ -88,7 +89,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
         <div className="flex justify-end mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', ...colorAdjust }}>
           <div className="text-xs">
             <span className="uppercase tracking-wider text-white/40 font-bold mr-3">Subtotal</span>
-            <span className="font-bold tabular-nums text-white/85">R$ {formatBRL(g.groupSubtotal)}</span>
+            <span className="font-bold tabular-nums text-white/85">{money(g.groupSubtotal)}</span>
           </div>
         </div>
       )}
@@ -225,7 +226,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/55">Subtotal</span>
-                  <span className="text-white/80 tabular-nums">R$ {formatBRL(quote.subtotal ?? 0)}</span>
+                  <span className="text-white/80 tabular-nums">{money(quote.subtotal ?? 0)}</span>
                 </div>
               )}
               {showDisplacement && (
@@ -233,13 +234,13 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
                   <span className="text-white/55">
                     Deslocamento{(quote.distance_km ?? 0) > 0 ? ` (${quote.distance_km} km)` : ''}
                   </span>
-                  <span className="text-white/80 tabular-nums">R$ {formatBRL(quote.displacement_cost ?? 0)}</span>
+                  <span className="text-white/80 tabular-nums">{money(quote.displacement_cost ?? 0)}</span>
                 </div>
               )}
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/55">Desconto</span>
-                  <span className="tabular-nums font-semibold text-white">− R$ {formatBRL(quote.discount_amount ?? 0)}</span>
+                  <span className="tabular-nums font-semibold text-white">− {money(quote.discount_amount ?? 0)}</span>
                 </div>
               )}
             </div>
@@ -250,12 +251,12 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
                 <p className="text-[10px] uppercase tracking-[0.25em] text-white/50 font-bold">Valor total</p>
                 {!!installments && installments > 1 && (
                   <p className="text-xs text-white/65 mt-2">
-                    em até {installments}× de R$ {formatBRL((quote.total_value ?? 0) / installments)}
+                    em até {installments}× de {money((quote.total_value ?? 0) / installments)}
                   </p>
                 )}
               </div>
               <p className="font-black tabular-nums tracking-tight leading-none text-white" style={{ fontSize: 'clamp(36px, 9vw, 56px)' }}>
-                R$ {formatBRL(quote.total_value ?? 0)}
+                {money(quote.total_value ?? 0)}
               </p>
             </div>
             {/* Fio iridescente sutil (acento) */}

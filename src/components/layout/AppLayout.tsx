@@ -12,12 +12,14 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePullToRefresh } from '@/components/mobile/MobilePullToRefresh';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useCanonicalAppRoute } from '@/hooks/useCanonicalAppRoute';
 import { Sidebar } from './Sidebar';
 import { TopNavbar } from './TopNavbar';
 import { MobileSidebar } from './MobileSidebar';
@@ -66,6 +68,9 @@ export function AppLayout() {
   });
 
   useKeyboardShortcuts(true);
+  // Canoniza a URL da tela pro slug do idioma do usuário (bookmark de outro
+  // idioma redireciona; troca de idioma re-mapeia). Só age em rotas do registro.
+  useCanonicalAppRoute();
 
   // Tablet = 1024 ≤ w < 1280. Mobile já é coberto por `useIsMobile`.
   useEffect(() => {
@@ -184,7 +189,7 @@ function DesktopSidebarHeader() {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <HeaderClock uf={settings?.state} />
+          <HeaderClock />
           {/* Seletor de idioma pessoal — SÓ no header desktop (no mobile a troca
               fica em Configurações → Regional). */}
           <AppLanguageSwitcher />
@@ -299,9 +304,9 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
     setSheetOpen(false);
   }, [location.pathname]);
 
-  const adminTarget = isAdminUser ? '/admin/empresas' : '/dashboard';
+  const adminTarget = isAdminUser ? '/admin/empresas' : localizeAppPath('/dashboard', locale);
   // Esconde back na home (não tem pra onde voltar) e em rotas técnico (fluxo próprio).
-  const homePaths = ['/dashboard', '/admin/empresas'];
+  const homePaths = [localizeAppPath('/dashboard', locale), '/admin/empresas'];
   const showBackButton =
     !homePaths.includes(location.pathname) &&
     !location.pathname.startsWith('/os-tecnico/') &&
@@ -404,7 +409,7 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
               variant="ghost"
               size="icon"
               className="h-8 w-8 hidden lg:flex"
-              onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/perfil')}
+              onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : localizeAppPath('/perfil', locale))}
               title={isAdminUser ? accountT.adminSettings : accountT.myProfile}
             >
               <UserCircle className="h-4 w-4" />

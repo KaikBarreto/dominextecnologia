@@ -10,7 +10,9 @@ import { Plus, Car, Wrench, Gift, HardHat, Package, DollarSign, Pencil, Trash2 }
 import { useCostResources, type CostResource, type CostResourceCategory } from '@/hooks/useCostResources';
 import { CostResourceCard } from './CostResourceCard';
 import { CostResourceFormSheet } from './CostResourceFormSheet';
-import { formatBRL } from '@/utils/currency';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
@@ -28,21 +30,28 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const CATEGORY_CONFIG: Array<{
-  value: CostResourceCategory;
-  label: string;
-  labelSingular: string;
-  icon: React.ComponentType<{ className?: string }>;
-  hex: string;
-}> = [
-  { value: 'vehicle', label: 'Veículos', labelSingular: 'veículo', icon: Car, hex: '#0ea5e9' },
-  { value: 'tool', label: 'Ferramentas', labelSingular: 'ferramenta', icon: Wrench, hex: '#f59e0b' },
-  { value: 'gift', label: 'Brindes', labelSingular: 'brinde', icon: Gift, hex: '#ec4899' },
-  { value: 'epi', label: 'EPIs', labelSingular: 'EPI', icon: HardHat, hex: '#22c55e' },
-  { value: 'other', label: 'Outros', labelSingular: 'recurso', icon: Package, hex: '#64748b' },
-];
+const CATEGORY_ICONS: Record<CostResourceCategory, { icon: React.ComponentType<{ className?: string }>; hex: string }> = {
+  vehicle: { icon: Car, hex: '#0ea5e9' },
+  tool: { icon: Wrench, hex: '#f59e0b' },
+  gift: { icon: Gift, hex: '#ec4899' },
+  epi: { icon: HardHat, hex: '#22c55e' },
+  other: { icon: Package, hex: '#64748b' },
+};
 
 export function GlobalCostsTab() {
+  const { locale, currency } = useAppLocaleContext();
+  const tgc = MESSAGES[locale].app.crm.globalCosts;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
+
+  const CATEGORY_CONFIG = useMemo(() => [
+    { value: 'vehicle' as CostResourceCategory, label: tgc.categoryVehicles, labelSingular: tgc.categoryVehicle, ...CATEGORY_ICONS.vehicle },
+    { value: 'tool' as CostResourceCategory, label: tgc.categoryTools, labelSingular: tgc.categoryTool, ...CATEGORY_ICONS.tool },
+    { value: 'gift' as CostResourceCategory, label: tgc.categoryGifts, labelSingular: tgc.categoryGift, ...CATEGORY_ICONS.gift },
+    { value: 'epi' as CostResourceCategory, label: tgc.categoryEpi, labelSingular: tgc.categoryEpiSingular, ...CATEGORY_ICONS.epi },
+    { value: 'other' as CostResourceCategory, label: tgc.categoryOther, labelSingular: tgc.categoryOtherSingular, ...CATEGORY_ICONS.other },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [locale]);
+
   const {
     byCategory,
     kpis,
@@ -121,48 +130,49 @@ export function GlobalCostsTab() {
     () => [
       {
         key: 'vehicle',
-        label: 'Veículos/h',
-        count: `R$ ${formatBRL(kpis.vehicleHourlyCost)}` as unknown as number,
+        label: tgc.kpiVehicles,
+        count: fmt(kpis.vehicleHourlyCost) as unknown as number,
         icon: <Car className="h-4 w-4" />,
         accentColor: '#0ea5e9',
       },
       {
         key: 'tool',
-        label: 'Ferramentas/h',
-        count: `R$ ${formatBRL(kpis.toolHourlyCost)}` as unknown as number,
+        label: tgc.kpiTools,
+        count: fmt(kpis.toolHourlyCost) as unknown as number,
         icon: <Wrench className="h-4 w-4" />,
         accentColor: '#f59e0b',
       },
       {
         key: 'epi',
-        label: 'EPIs/h',
-        count: `R$ ${formatBRL(kpis.epiHourlyCost)}` as unknown as number,
+        label: tgc.kpiEpi,
+        count: fmt(kpis.epiHourlyCost) as unknown as number,
         icon: <HardHat className="h-4 w-4" />,
         accentColor: '#22c55e',
       },
       {
         key: 'gift',
-        label: 'Brinde',
-        count: `R$ ${formatBRL(kpis.giftCostPerUnit)}` as unknown as number,
+        label: tgc.kpiGift,
+        count: fmt(kpis.giftCostPerUnit) as unknown as number,
         icon: <Gift className="h-4 w-4" />,
         accentColor: '#ec4899',
       },
     ],
-    [kpis],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [kpis, locale],
   );
 
   // Ações por recurso (mobile dropdown + swipe).
   const buildItemActions = (resource: CostResource): ItemAction[] => [
     {
       key: 'edit',
-      label: 'Editar',
+      label: tgc.actionEdit,
       icon: <Pencil className="h-4 w-4" />,
       variant: 'edit',
       onClick: () => handleOpenEdit(resource),
     },
     {
       key: 'delete',
-      label: 'Excluir',
+      label: tgc.actionDelete,
       icon: <Trash2 className="h-4 w-4" />,
       variant: 'destructive',
       onClick: () => setPendingDelete(resource),
@@ -174,9 +184,9 @@ export function GlobalCostsTab() {
       {/* Header — mantém Card no desktop. No mobile, only subtitle (sem botão, vira FAB). */}
       {isMobile ? (
         <div className="px-1">
-          <p className="text-base font-semibold text-foreground">Centro de Custos</p>
+          <p className="text-base font-semibold text-foreground">{tgc.title}</p>
           <p className="text-xs text-muted-foreground">
-            Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente.
+            {tgc.subtitle}
           </p>
         </div>
       ) : (
@@ -184,14 +194,14 @@ export function GlobalCostsTab() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <p className="text-lg font-semibold text-foreground">Centro de Custos</p>
+                <p className="text-lg font-semibold text-foreground">{tgc.title}</p>
                 <p className="text-sm text-muted-foreground">
-                  Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente.
+                  {tgc.subtitle}
                 </p>
               </div>
               <Button onClick={handleOpenCreate}>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Recurso
+                {tgc.newResource}
               </Button>
             </div>
           </CardContent>
@@ -207,13 +217,13 @@ export function GlobalCostsTab() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Car className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Custo/hora Veículos</p>
+                <p className="text-xs text-muted-foreground">{tgc.kpiVehicleLabel}</p>
               </div>
               {isLoading ? (
                 <Skeleton className="h-6 w-24 mt-1" />
               ) : (
                 <p className="text-xl font-bold text-foreground mt-1">
-                  R$ {formatBRL(kpis.vehicleHourlyCost)}/h
+                  {fmt(kpis.vehicleHourlyCost)}{tgc.perHour}
                 </p>
               )}
             </CardContent>
@@ -223,13 +233,13 @@ export function GlobalCostsTab() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Custo/hora Ferramentas</p>
+                <p className="text-xs text-muted-foreground">{tgc.kpiToolLabel}</p>
               </div>
               {isLoading ? (
                 <Skeleton className="h-6 w-24 mt-1" />
               ) : (
                 <p className="text-xl font-bold text-foreground mt-1">
-                  R$ {formatBRL(kpis.toolHourlyCost)}/h
+                  {fmt(kpis.toolHourlyCost)}{tgc.perHour}
                 </p>
               )}
             </CardContent>
@@ -239,13 +249,13 @@ export function GlobalCostsTab() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <HardHat className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Custo/hora EPIs</p>
+                <p className="text-xs text-muted-foreground">{tgc.kpiEpiLabel}</p>
               </div>
               {isLoading ? (
                 <Skeleton className="h-6 w-24 mt-1" />
               ) : (
                 <p className="text-xl font-bold text-foreground mt-1">
-                  R$ {formatBRL(kpis.epiHourlyCost)}/h
+                  {fmt(kpis.epiHourlyCost)}{tgc.perHour}
                 </p>
               )}
             </CardContent>
@@ -255,13 +265,13 @@ export function GlobalCostsTab() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Gift className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Custo/Brinde</p>
+                <p className="text-xs text-muted-foreground">{tgc.kpiGiftLabel}</p>
               </div>
               {isLoading ? (
                 <Skeleton className="h-6 w-24 mt-1" />
               ) : (
                 <p className="text-xl font-bold text-foreground mt-1">
-                  R$ {formatBRL(kpis.giftCostPerUnit)}
+                  {fmt(kpis.giftCostPerUnit)}
                 </p>
               )}
             </CardContent>
@@ -337,10 +347,10 @@ export function GlobalCostsTab() {
               isMobile ? (
                 <EmptyState
                   icon={<DollarSign className="h-12 w-12" />}
-                  title={`Nenhum ${cat.labelSingular} cadastrado`}
-                  description={`Toque em "Novo ${cat.labelSingular}" para começar.`}
+                  title={tgc.emptyTitle.replace('{singular}', cat.labelSingular)}
+                  description={tgc.emptyDesc.replace('{singular}', cat.labelSingular)}
                   action={{
-                    label: `Cadastrar ${cat.labelSingular}`,
+                    label: tgc.registerSingular.replace('{singular}', cat.labelSingular),
                     onClick: handleOpenCreate,
                   }}
                 />
@@ -349,11 +359,11 @@ export function GlobalCostsTab() {
                   <CardContent className="p-8 text-center">
                     <DollarSign className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                     <p className="text-muted-foreground">
-                      Nenhum {cat.labelSingular} cadastrado.
+                      {tgc.emptyDesktop.replace('{singular}', cat.labelSingular)}
                     </p>
                     <Button variant="outline" className="mt-4" onClick={handleOpenCreate}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Cadastrar {cat.labelSingular}
+                      {tgc.registerSingular.replace('{singular}', cat.labelSingular)}
                     </Button>
                   </CardContent>
                 </Card>
@@ -397,7 +407,7 @@ export function GlobalCostsTab() {
                           <span className="truncate">{resource.name}</span>
                           {!resource.is_active && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                              Inativo
+                              {tgc.badgeInactive}
                             </Badge>
                           )}
                         </div>
@@ -406,15 +416,15 @@ export function GlobalCostsTab() {
                         <div className="flex items-center gap-2 flex-wrap">
                           {isGift ? (
                             <span className="font-semibold text-foreground">
-                              R$ {formatBRL(totalMonthly)}/un
+                              {fmt(totalMonthly)}{tgc.perUnit}
                             </span>
                           ) : (
                             <>
                               <span className="font-semibold text-foreground">
-                                R$ {formatBRL(hourlyRate)}/h
+                                {fmt(hourlyRate)}{tgc.perHour}
                               </span>
                               <span>•</span>
-                              <span>R$ {formatBRL(totalMonthly)}/mês</span>
+                              <span>{fmt(totalMonthly)}{tgc.perMonth}</span>
                             </>
                           )}
                         </div>
@@ -443,7 +453,7 @@ export function GlobalCostsTab() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label={activeCfg.labelSingular}
+          label={tgc.registerSingular.replace('{singular}', activeCfg.labelSingular)}
           onClick={handleOpenCreate}
         />
       )}
@@ -466,19 +476,18 @@ export function GlobalCostsTab() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Excluir {pendingDelete?.category === 'gift' ? 'brinde' : 'recurso'}?
+              {pendingDelete?.category === 'gift' ? tgc.deleteGiftTitle : tgc.deleteResourceTitle}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDelete && (
-                <>
-                  Esta ação removerá "{pendingDelete.name}" e todos os seus{' '}
-                  {pendingDelete.category === 'gift' ? 'itens' : 'componentes de custo'}.
-                </>
+                pendingDelete.category === 'gift'
+                  ? tgc.deleteDescGift.replace('{name}', pendingDelete.name)
+                  : tgc.deleteDescResource.replace('{name}', pendingDelete.name)
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tgc.deleteCancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -486,7 +495,7 @@ export function GlobalCostsTab() {
                 setPendingDelete(null);
               }}
             >
-              Excluir
+              {tgc.deleteConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

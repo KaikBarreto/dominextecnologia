@@ -14,6 +14,8 @@ import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { SegmentToolsSwitcher } from '@/components/technician-area/SegmentToolsSwitcher';
 import { SegmentLockedScreen } from '@/components/technician-area/SegmentLockedScreen';
 import { getTechToolsForSegment, getTeaserToolsForSegment } from '@/config/technicianArea';
@@ -32,6 +34,10 @@ import { CicloRefrigeracao } from '@/components/technician-area/CicloRefrigeraca
 import { DiluicaoProduto } from '@/components/technician-area/DiluicaoProduto';
 import type { ConversaoCategoria } from '@/lib/conversoes';
 
+// Raiz pt-br canônica das Ferramentas. No modo ROTA, a navegação interna usa a
+// raiz TRADUZIDA pro idioma do usuário (`localizeAppPath`) pra não gerar redirect
+// canônico em cada clique. As sub-rotas (catalogo, carga-termica, ...) são
+// IDENTIFICADORES TÉCNICOS de ferramenta — NÃO se traduzem (nomes universais).
 const TOOLS_BASE = '/area-tecnico';
 
 /** Ferramentas cuja sub-tela tem voltar PRÓPRIO (lista ↔ detalhe). O "Voltar" do
@@ -315,11 +321,17 @@ function ToolsShell({
 function RouteTools() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { locale } = useAppLocaleContext();
   const nicho = searchParams.get('nicho');
   const selectedSegment = nicho;
 
   const { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems } =
     useSegmentNav(selectedSegment);
+
+  // Raiz TRADUZIDA pro idioma do usuário (só o 1º segmento; sub-slugs de
+  // ferramenta são técnicos e ficam intactos). Navegar já pra raiz certa evita o
+  // bounce do redirect canônico a cada clique.
+  const base = localizeAppPath(TOOLS_BASE, locale);
 
   // Preserva ?nicho quando travado (vitrine de upsell navega entre teasers).
   const withNicho = (path: string) =>
@@ -328,19 +340,19 @@ function RouteTools() {
   const goTab = (tab: string, payload?: ToolNavPayload) => {
     // Deep-link de modelo (Recentes/Favoritos) → abre direto o detalhe no catálogo.
     if (payload?.tab === 'catalogo' && tab === 'catalogo') {
-      navigate(`${TOOLS_BASE}/catalogo/ar_condicionado/modelo/${payload.modeloInicialId}`);
+      navigate(`${base}/catalogo/ar_condicionado/modelo/${payload.modeloInicialId}`);
       return;
     }
     if (tab === 'inicio') {
-      navigate(withNicho(TOOLS_BASE));
+      navigate(withNicho(base));
     } else {
-      navigate(withNicho(`${TOOLS_BASE}/${tab}`));
+      navigate(withNicho(`${base}/${tab}`));
     }
   };
 
   const handleSelectSegment = (value: string) => {
-    if (value === companySegment) navigate(TOOLS_BASE);
-    else navigate(`${TOOLS_BASE}?nicho=${encodeURIComponent(value)}`);
+    if (value === companySegment) navigate(base);
+    else navigate(`${base}?nicho=${encodeURIComponent(value)}`);
   };
 
   return (
@@ -427,11 +439,15 @@ function RouteToolFrame(props: {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const { locale } = useAppLocaleContext();
+
+  // Raiz traduzida pro idioma do usuário (sub-slugs de ferramenta são técnicos).
+  const base = localizeAppPath(TOOLS_BASE, locale);
 
   // Slug desconhecido → volta ao hub (preserva ?nicho se travado).
   if (!toolId || !TOOL_SLUGS.has(toolId)) {
     const nicho = searchParams.get('nicho');
-    const dest = props.isLocked && nicho ? `${TOOLS_BASE}?nicho=${encodeURIComponent(nicho)}` : TOOLS_BASE;
+    const dest = props.isLocked && nicho ? `${base}?nicho=${encodeURIComponent(nicho)}` : base;
     return <Navigate to={dest} replace />;
   }
 
@@ -482,7 +498,7 @@ function RouteToolFrame(props: {
       break;
     case 'superaquecimento':
       content = (
-        <Superaquecimento onIrParaCiclo={() => navigate(`${TOOLS_BASE}/ciclo-refrigeracao`)} />
+        <Superaquecimento onIrParaCiclo={() => navigate(`${base}/ciclo-refrigeracao`)} />
       );
       break;
     case 'regua-gases':
@@ -509,7 +525,7 @@ function RouteToolFrame(props: {
       activeTab={activeTab}
       isFullWidthTool={isFullWidthTool}
       showBack={showBack}
-      onBack={() => navigate(TOOLS_BASE)}
+      onBack={() => navigate(base)}
       onSwitchTab={props.onSwitchTab}
       onSelectSegment={props.onSelectSegment}
       content={content}

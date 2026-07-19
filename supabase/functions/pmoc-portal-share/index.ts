@@ -433,6 +433,9 @@ Deno.serve(async (req) => {
             "report_header_logo_bg_color",
             "report_status_bar_color",
             "report_header_logo_type",
+            "language",
+            "currency",
+            "timezone",
           ].join(", "),
         )
         .eq("company_id", contract.company_id)
@@ -1024,7 +1027,7 @@ Deno.serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.9.0", // 1.9.0 — Histórico de execução PMOC tarefa-a-tarefa (Frente F), gateado por documents_released
+      payload_version: "1.10.0", // 1.10.0 — locale da empresa (language/currency/timezone) no tenant
       // Espelha get_portal_data: acesso liberado (já passamos pelo gate de
       // privacidade) + se o viewer logado pode preencher OS + se é PMOC.
       access: "granted",
@@ -1081,6 +1084,11 @@ Deno.serve(async (req) => {
         email: (companySettings as any)?.email ?? null,
         zip_code: (companySettings as any)?.zip_code ?? null,
         report_header: reportHeader,
+        // Locale da empresa: idioma, moeda e fuso. O portal renderiza no idioma
+        // do TENANT (nao da maquina do visitante). COALESCE garante fallback seguro.
+        language: (companySettings as any)?.language ?? "pt-br",
+        currency: (companySettings as any)?.currency ?? "BRL",
+        timezone: (companySettings as any)?.timezone ?? "America/Sao_Paulo",
       },
       schedule,
       history,

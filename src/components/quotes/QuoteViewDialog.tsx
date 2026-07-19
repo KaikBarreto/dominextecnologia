@@ -7,7 +7,15 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { Quote } from '@/hooks/useQuotes';
 import { Download, Share2, Eye } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es as esLocale, fr as frLocale, type Locale } from 'date-fns/locale';
+import type { LocaleCode } from '@/lib/i18n/locales';
+
+const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es: esLocale,
+  fr: frLocale,
+};
 import { ProposalRenderer } from './ProposalRenderer';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
@@ -48,14 +56,15 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const dfLocale = DATE_FNS_LOCALES[locale];
   const viewCount = quote.view_count ?? 0;
   const viewsLine = viewCount === 0
     ? tq.viewNotViewed
     : quote.last_viewed_at
       ? tq.viewViewedAt
           .replace('{count}', String(viewCount))
-          .replace('{date}', format(new Date(quote.last_viewed_at), "dd/MM 'às' HH:mm", { locale: ptBR }))
-          .replace('{rel}', formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: ptBR }))
+          .replace('{date}', format(new Date(quote.last_viewed_at), 'dd/MM HH:mm', { locale: dfLocale }))
+          .replace('{rel}', formatDistanceToNow(new Date(quote.last_viewed_at), { addSuffix: true, locale: dfLocale }))
       : tq.viewViewedCount.replace('{count}', String(viewCount));
 
   const content = (

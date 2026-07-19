@@ -39,6 +39,10 @@ export interface PontoCompany {
   report_header_show_logo_bg: boolean | null;
   report_header_logo_bg_color: string | null;
   report_status_bar_color: string | null;
+  /** i18n do portal público: vêm de company_settings com fallback pt-br/BRL/SP. */
+  language: string;
+  currency: string;
+  timezone: string;
 }
 
 export interface PontoState {

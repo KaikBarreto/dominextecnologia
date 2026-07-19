@@ -54,6 +54,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -135,6 +136,7 @@ export const TopNavbar = memo(() => {
   const shellT = MESSAGES[locale].app.shell;
   const accountT = shellT.account;
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
+  const L = (path: string) => localizeAppPath(path, locale);
   const { logoUrl, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
   const location = useLocation();
   const navigate = useNavigate();
@@ -182,7 +184,11 @@ export const TopNavbar = memo(() => {
     .toUpperCase() || '?';
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
-    children?.some((c) => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))) ?? false;
+    children?.some((c) => {
+      if (!c.path) return false;
+      const lp = localizeAppPath(c.path, locale);
+      return location.pathname === lp || location.pathname.startsWith(lp + '/');
+    }) ?? false;
 
   // Home do painel admin = Empresas (alinhado ao destino pós-login); cai no
   // primeiro item acessível se o usuário não tiver acesso a Empresas.
@@ -190,7 +196,7 @@ export const TopNavbar = memo(() => {
     filteredAdminMenu.find((m) => m.path === '/admin/empresas')?.path ??
     filteredAdminMenu[0]?.path ??
     '/admin/empresas';
-  const logoTarget = isAdminUser ? adminHomePath : '/dashboard';
+  const logoTarget = isAdminUser ? adminHomePath : L('/dashboard');
 
   return (
     <>
@@ -251,11 +257,11 @@ export const TopNavbar = memo(() => {
                         {visibleSubmenu.map((child) => (
                           <DropdownMenuItem
                             key={child.path}
-                            onClick={() => navigate(child.path)}
+                            onClick={() => navigate(L(child.path))}
                             className={cn(
                               'cursor-pointer flex items-center gap-2.5 px-3 py-2 text-[13px]',
                               'hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
-                              location.pathname === child.path && 'bg-primary/10 font-medium'
+                              location.pathname === L(child.path) && 'bg-primary/10 font-medium'
                             )}
                           >
                             <child.icon className="h-4 w-4 shrink-0" />
@@ -270,7 +276,7 @@ export const TopNavbar = memo(() => {
                 return (
                   <NavLink
                     key={item.path}
-                    to={item.path!}
+                    to={L(item.path!)}
                     className={({ isActive }) =>
                       cn(
                         'inline-flex items-center justify-center h-10 px-3 text-[13px] font-semibold rounded-md transition-colors gap-1.5',
@@ -368,7 +374,7 @@ export const TopNavbar = memo(() => {
                 {!isAdminUser && (
                   <>
                     <DropdownMenuItem
-                      onClick={() => navigate('/perfil')}
+                      onClick={() => navigate(L('/perfil'))}
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <User className="h-5 w-5 mr-3 shrink-0" />
@@ -376,7 +382,7 @@ export const TopNavbar = memo(() => {
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      onClick={() => navigate('/assinatura')}
+                      onClick={() => navigate(L('/assinatura'))}
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <CreditCard className="h-5 w-5 mr-3 shrink-0" />
@@ -411,7 +417,7 @@ export const TopNavbar = memo(() => {
                 )}
 
                 <DropdownMenuItem
-                  onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/configuracoes')}
+                  onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : L('/configuracoes'))}
                   className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                 >
                   <SettingsIcon className="h-5 w-5 mr-3 shrink-0" />

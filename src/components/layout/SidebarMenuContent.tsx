@@ -56,6 +56,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -176,6 +177,9 @@ export function SidebarMenuContent() {
   const shellT = MESSAGES[locale].app.shell;
   const accountT = shellT.account;
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
+  // Localiza um path do app pro slug do idioma do usuário (raiz traduzida, resto
+  // preservado). Paths fora do registro (admin, domiflix) voltam intactos.
+  const L = (path: string) => localizeAppPath(path, locale);
   const { hasModule } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
@@ -193,7 +197,11 @@ export function SidebarMenuContent() {
 
   const [openMenus, setOpenMenus] = useState<string[]>(() => {
     return tenantMenuItems
-      .filter(item => item.children?.some(c => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))))
+      .filter(item => item.children?.some(c => {
+        if (!c.path) return false;
+        const lp = localizeAppPath(c.path, locale);
+        return location.pathname === lp || location.pathname.startsWith(lp + '/');
+      }))
       .map(item => item.title);
   });
   const menuScrollRef = useRef<HTMLDivElement>(null);
@@ -271,7 +279,11 @@ export function SidebarMenuContent() {
         .filter(item => !item.children || item.children.length > 0);
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
-    children?.some((c) => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))) ?? false;
+    children?.some((c) => {
+      if (!c.path) return false;
+      const lp = localizeAppPath(c.path, locale);
+      return location.pathname === lp || location.pathname.startsWith(lp + '/');
+    }) ?? false;
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) => (prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]));
@@ -290,7 +302,7 @@ export function SidebarMenuContent() {
       <TooltipProvider delayDuration={200}>
         {/* Logo */}
         <NavLink
-          to={isAdminUser ? adminHomePath : '/dashboard'}
+          to={isAdminUser ? adminHomePath : L('/dashboard')}
           className="relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
         >
           {showLogoLoading ? (
@@ -394,7 +406,7 @@ export function SidebarMenuContent() {
                       {visibleChildren.map((child) => (
                         <NavLink
                           key={child.path}
-                          to={child.path}
+                          to={L(child.path)}
                           className={({ isActive }) =>
                             cn(
                               'flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-200',
@@ -418,7 +430,7 @@ export function SidebarMenuContent() {
                   <Tooltip key={item.path}>
                     <TooltipTrigger asChild>
                       <NavLink
-                        to={item.path!}
+                        to={L(item.path!)}
                         title={tMenu(item.title)}
                         className={({ isActive }) =>
                           cn(
@@ -440,7 +452,7 @@ export function SidebarMenuContent() {
               return (
                 <NavLink
                   key={item.path}
-                  to={item.path!}
+                  to={L(item.path!)}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg py-2.5 px-3 text-[13px] font-semibold tracking-[0.01em] transition-colors',
@@ -526,7 +538,7 @@ export function SidebarMenuContent() {
                 {!isAdminUser && (
                   <>
                     <DropdownMenuItem
-                      onClick={() => navigate('/perfil')}
+                      onClick={() => navigate(L('/perfil'))}
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <User className="h-5 w-5 mr-3 shrink-0" />
@@ -534,7 +546,7 @@ export function SidebarMenuContent() {
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      onClick={() => navigate('/assinatura')}
+                      onClick={() => navigate(L('/assinatura'))}
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
                       <CreditCard className="h-5 w-5 mr-3 shrink-0" />
@@ -647,7 +659,7 @@ export function SidebarMenuContent() {
               <div className="flex gap-2 w-full">
                 <button
                   type="button"
-                  onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/configuracoes')}
+                  onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : L('/configuracoes'))}
                   aria-label={accountT.settings}
                   className="flex-[3] h-9 flex items-center justify-center gap-2 rounded-md text-[13px] font-semibold text-sidebar-foreground hover:bg-gradient-to-r hover:from-gray-800 hover:to-gray-900 hover:text-white transition-colors duration-300"
                 >
