@@ -7,12 +7,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useServiceTypes, type ServiceTypeInput } from '@/hooks/useServiceTypes';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface ServiceTypeManagerDialogProps {
   children: React.ReactNode;
 }
 
 export function ServiceTypeManagerDialog({ children }: ServiceTypeManagerDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.serviceTypeManager;
   const [open, setOpen] = useState(false);
   const [editingType, setEditingType] = useState<{ id: string } & ServiceTypeInput | null>(null);
   const [formData, setFormData] = useState<ServiceTypeInput>({ name: '', color: '#3b82f6', description: '' });
@@ -43,21 +47,21 @@ export function ServiceTypeManagerDialog({ children }: ServiceTypeManagerDialogP
   return (
     <>
       <div onClick={() => setOpen(true)}>{children}</div>
-      <ResponsiveModal open={open} onOpenChange={setOpen} title="Tipos de Serviço">
+      <ResponsiveModal open={open} onOpenChange={setOpen} title={t.modalTitle}>
         <div className="space-y-4">
           {/* Form */}
           <div className="space-y-3 rounded-lg border p-4">
             <div className="flex items-center gap-3">
               <div className="flex-1">
-                <Label className="text-xs">Nome</Label>
+                <Label className="text-xs">{t.labelName}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: Manutenção Preventiva"
+                  placeholder={t.placeholderName}
                 />
               </div>
               <div>
-                <Label className="text-xs">Cor</Label>
+                <Label className="text-xs">{t.labelColor}</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -69,22 +73,22 @@ export function ServiceTypeManagerDialog({ children }: ServiceTypeManagerDialogP
               </div>
             </div>
             <div>
-              <Label className="text-xs">Descrição</Label>
+              <Label className="text-xs">{t.labelDescription}</Label>
               <Textarea
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Descrição opcional"
+                placeholder={t.placeholderDescription}
                 rows={2}
               />
             </div>
             <div className="flex gap-2">
               <Button onClick={handleSave} size="sm" disabled={!formData.name.trim()}>
                 <Plus className="h-4 w-4 mr-1" />
-                {editingType ? 'Salvar' : 'Adicionar'}
+                {editingType ? t.btnSave : t.btnAdd}
               </Button>
               {editingType && (
                 <Button onClick={handleCancel} variant="outline" size="sm">
-                  Cancelar
+                  {t.btnCancel}
                 </Button>
               )}
             </div>
@@ -121,7 +125,7 @@ export function ServiceTypeManagerDialog({ children }: ServiceTypeManagerDialogP
             ))}
             {serviceTypes.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                Nenhum tipo de serviço cadastrado
+                {t.emptyState}
               </p>
             )}
           </div>

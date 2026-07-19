@@ -17,12 +17,16 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useInventory } from '@/hooks/useInventory';
 import { useServiceMaterials } from '@/hooks/useServiceMaterials';
 import { formatBRL } from '@/utils/currency';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface Props {
   serviceId: string;
 }
 
 export function ServiceMaterialsList({ serviceId }: Props) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.serviceMaterials;
   const { items } = useInventory();
   const { materials, createMaterial, updateMaterial, deleteMaterial, totalCost } = useServiceMaterials(serviceId);
 
@@ -74,37 +78,37 @@ export function ServiceMaterialsList({ serviceId }: Props) {
       <CardContent className="p-4 space-y-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-foreground">Materiais do serviço</p>
-            <p className="text-xs text-muted-foreground">Vincule materiais do estoque ou cadastre manualmente.</p>
+            <p className="text-sm font-semibold text-foreground">{t.sectionTitle}</p>
+            <p className="text-xs text-muted-foreground">{t.sectionSubtitle}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-xs text-muted-foreground">{t.totalLabel}</p>
             <p className="text-sm font-semibold text-foreground">R$ {formatBRL(totalCost)}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
           <div className="lg:col-span-2 space-y-1.5">
-            <Label className="text-xs">Item do estoque (opcional)</Label>
+            <Label className="text-xs">{t.labelStockItem}</Label>
             <SearchableSelect
               options={inventoryOptions}
               value={stockItemId}
               onValueChange={setStockItemId}
-              placeholder="Selecione do estoque"
+              placeholder={t.placeholderStockItem}
             />
             {!stockItemId && (
               <div className="pt-2">
-                <Label className="text-xs">Nome manual</Label>
-                <Input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="Ex: Tubo de cobre" />
+                <Label className="text-xs">{t.labelManualName}</Label>
+                <Input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder={t.placeholderManualName} />
               </div>
             )}
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Quantidade</Label>
+            <Label className="text-xs">{t.labelQuantity}</Label>
             <NumericInput decimal value={String(quantity ?? '')} onValueChange={(v) => setQuantity(Number(v.replace(',', '.')) || 0)} />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Custo unit. (R$)</Label>
+            <Label className="text-xs">{t.labelUnitCost}</Label>
             <Input
               type="number"
               min={0}
@@ -119,23 +123,23 @@ export function ServiceMaterialsList({ serviceId }: Props) {
         <div className="flex justify-end">
           <Button size="sm" onClick={addMaterial} disabled={createMaterial.isPending}>
             <Plus className="h-4 w-4 mr-2" />
-            Adicionar
+            {t.btnAdd}
           </Button>
         </div>
 
         {materials.length === 0 ? (
           <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
-            Nenhum material vinculado.
+            {t.emptyState}
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Material</TableHead>
-                  <TableHead className="w-[110px]">Qtd.</TableHead>
-                  <TableHead className="w-[140px]">Custo unit.</TableHead>
-                  <TableHead className="w-[140px]">Subtotal</TableHead>
+                  <TableHead>{t.colMaterial}</TableHead>
+                  <TableHead className="w-[110px]">{t.colQty}</TableHead>
+                  <TableHead className="w-[140px]">{t.colUnitCost}</TableHead>
+                  <TableHead className="w-[140px]">{t.colSubtotal}</TableHead>
                   <TableHead className="w-[70px]"></TableHead>
                 </TableRow>
               </TableHeader>

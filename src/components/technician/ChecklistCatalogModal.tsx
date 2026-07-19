@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   useFormTemplates,
   QUESTION_TYPES,
@@ -114,6 +116,8 @@ export function ChecklistCatalogModal({
   open, onOpenChange, mode = 'import', templateId, existingCount = 0,
   existingQuestions = [], onCreated,
 }: ChecklistCatalogModalProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.checklistCatalog;
   const { toast } = useToast();
   const { settings } = useCompanySettings();
   const segment = settings?.segment ?? null;
@@ -273,15 +277,15 @@ export function ChecklistCatalogModal({
     const { inserts, skipped } = buildInserts(questions);
     if (inserts.length === 0) {
       toast({
-        title: 'Nada a importar',
-        description: skipped > 0 ? 'Essas perguntas já estão no checklist.' : 'Nenhuma pergunta selecionada.',
+        title: t.toastNothingToImport,
+        description: skipped > 0 ? t.toastAlreadyExists : t.toastNoneSelected,
       });
       return;
     }
     createQuestionsBatch.mutate(inserts, {
       onSuccess: () => {
         if (skipped > 0) {
-          toast({ title: 'Importação concluída', description: `${skipped} pergunta(s) já existiam e foram ignoradas.` });
+          toast({ title: t.toastImportDone, description: t.toastImportSkipped.replace('{n}', String(skipped)) });
         }
         handleOpenChange(false);
       },
@@ -300,7 +304,7 @@ export function ChecklistCatalogModal({
       unique.push(cq);
     }
     if (unique.length === 0) {
-      toast({ title: 'Nada selecionado', description: 'Escolha ao menos uma pergunta ou modelo.' });
+      toast({ title: t.toastNothingSelected, description: t.toastSelectAtLeast });
       return;
     }
     setPendingQuestions(unique);
@@ -394,9 +398,9 @@ export function ChecklistCatalogModal({
           <p className="leading-tight">{a.description}</p>
           <div className="mt-1 flex items-center gap-1.5 flex-wrap">
             <Badge className={cn('text-[10px] font-medium', tb.className)}>
-              {a.is_measurement ? `Número${a.unit ? ` (${a.unit})` : ''}` : 'Conformidade'}
+              {a.is_measurement ? `${t.badgeNumber}${a.unit ? ` (${a.unit})` : ''}` : t.badgeConformidade}
             </Badge>
-            {already && <span className="text-[10px] text-muted-foreground">já no checklist</span>}
+            {already && <span className="text-[10px] text-muted-foreground">{t.alreadyInChecklist}</span>}
           </div>
         </div>
       </label>
@@ -427,7 +431,7 @@ export function ChecklistCatalogModal({
             onClick={() => handlePmocSection(sub.activities, sub.label)}
             disabled={busy}
           >
-            {isCreate ? 'Selecionar' : 'Importar'}
+            {isCreate ? t.btnSelect : t.btnImport}
           </Button>
         </div>
         {isOpen && (
@@ -437,7 +441,7 @@ export function ChecklistCatalogModal({
                 checked={allOn}
                 onCheckedChange={(c) => togglePmocSection(sub.activities, !!c)}
               />
-              {allOn ? 'Desmarcar todas' : 'Marcar todas'}
+              {allOn ? t.uncheckAllLabel : t.checkAllLabel}
             </label>
             {sub.activities.map(renderPmocActivity)}
           </div>
@@ -479,7 +483,7 @@ export function ChecklistCatalogModal({
             onClick={() => handlePmocSection(fam.familyActivities, fam.title)}
             disabled={busy}
           >
-            {isCreate ? 'Selecionar tudo' : 'Importar tudo'}
+            {isCreate ? t.btnSelectAll : t.btnImportAll}
           </Button>
         </header>
         <div className="divide-y">{fam.subgroups.map(renderPmocSubGroup)}</div>
@@ -495,18 +499,18 @@ export function ChecklistCatalogModal({
       <ResponsiveModal
         open={open}
         onOpenChange={handleOpenChange}
-        title="Nome do novo checklist"
+        title={t.modalTitleNameStep}
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setNameStep(false)} disabled={busy}>
-              Voltar
+              {t.btnBack}
             </Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCreate}
               disabled={!newName.trim() || busy}
             >
-              Criar checklist
+              {t.btnCreate}
             </Button>
           </div>
         }
@@ -518,23 +522,24 @@ export function ChecklistCatalogModal({
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Voltar ao catálogo
+            {t.btnBackToCatalog}
           </button>
 
           <div className="rounded-lg border bg-muted/30 p-3">
             <p className="text-sm">
-              <span className="font-semibold">{pendingQuestions.length}</span> pergunta
-              {pendingQuestions.length > 1 ? 's' : ''} selecionada{pendingQuestions.length > 1 ? 's' : ''} para o novo checklist.
+              {pendingQuestions.length > 1
+                ? t.nameStepSummaryPlural.replace('{n}', String(pendingQuestions.length))
+                : t.nameStepSummary.replace('{n}', String(pendingQuestions.length))}
             </p>
           </div>
 
           <div>
-            <Label>Nome do checklist</Label>
+            <Label>{t.labelChecklistName}</Label>
             <Input
               autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Ex: Checklist PMOC mensal"
+              placeholder={t.placeholderChecklistName}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } }}
               className="mt-1"
             />
@@ -547,13 +552,13 @@ export function ChecklistCatalogModal({
   // -------------------------------------------------------------------------
   // CATÁLOGO
   // -------------------------------------------------------------------------
-  const primaryActionLabel = isCreate ? 'Selecionar' : 'Importar';
+  const primaryActionLabel = isCreate ? t.btnSelect : t.btnImport;
 
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={handleOpenChange}
-      title="Catálogo de Checklists"
+      title={t.modalTitle}
     >
       <div className="space-y-4">
         {/* Cabeçalho contextual */}
@@ -563,12 +568,10 @@ export function ChecklistCatalogModal({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold leading-tight">
-              {isCreate ? 'Criar checklist a partir de modelos' : 'Adicionar perguntas de modelos'}
+              {isCreate ? t.headerCreate : t.headerImport}
             </p>
             <p className="text-xs text-muted-foreground leading-snug mt-0.5">
-              {isCreate
-                ? 'Escolha modelos ou atividades; depois você dá um nome e o checklist é criado já preenchido.'
-                : 'As perguntas escolhidas entram no checklist atual.'}
+              {isCreate ? t.headerCreateSub : t.headerImportSub}
             </p>
           </div>
         </div>
@@ -577,9 +580,7 @@ export function ChecklistCatalogModal({
         <div className="flex items-start gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 p-3">
           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
           <p className="text-xs text-amber-800 dark:text-amber-200 leading-snug">
-            Estes são apenas <strong>modelos sugeridos</strong>. Cada empresa deve
-            adequá-los aos seus próprios processos. As perguntas ficam
-            totalmente editáveis depois.
+            <strong>{t.warningTitle}</strong> {t.warningBody}
           </p>
         </div>
 
@@ -589,7 +590,7 @@ export function ChecklistCatalogModal({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar modelo ou pergunta..."
+            placeholder={t.searchPlaceholder}
             className="pl-9"
           />
         </div>
@@ -598,11 +599,11 @@ export function ChecklistCatalogModal({
         <section className="space-y-2">
           <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground/70">
             <ClipboardList className="h-4 w-4 text-primary shrink-0" />
-            Modelos de checklist
+            {t.sectionTemplates}
           </h3>
           {filteredServiceTemplates.length === 0 ? (
             <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
-              Nenhum modelo encontrado.
+              {t.emptyTemplates}
             </p>
           ) : (
             <div className="rounded-lg border bg-card divide-y overflow-hidden">
@@ -650,8 +651,8 @@ export function ChecklistCatalogModal({
                                   <Badge className={cn('text-[10px] font-medium', tb.className)}>
                                     {tb.label}{cq.unit ? ` (${cq.unit})` : ''}
                                   </Badge>
-                                  {cq.is_required && <Badge variant="destructive" className="text-[10px]">Obrigatória</Badge>}
-                                  {already && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5"><Check className="h-3 w-3" />já no checklist</span>}
+                                  {cq.is_required && <Badge variant="destructive" className="text-[10px]">{MESSAGES[locale].app.os.formTemplates.editLabelRequired}</Badge>}
+                                  {already && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5"><Check className="h-3 w-3" />{t.alreadyInChecklist}</span>}
                                 </div>
                               </div>
                             </div>
@@ -672,7 +673,7 @@ export function ChecklistCatalogModal({
             <div className="flex items-center justify-between gap-2">
               <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground/70">
                 <Snowflake className="h-4 w-4 text-cyan-500 shrink-0" />
-                Catálogo PMOC
+                {t.sectionPmoc}
               </h3>
               {selectedPmocCount > 0 && (
                 <Button
@@ -687,14 +688,14 @@ export function ChecklistCatalogModal({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Atividades da norma. Marque as que quiser ou {isCreate ? 'selecione' : 'importe'} uma seção inteira.
+              {t.pmocDescription.replace('{action}', isCreate ? t.pmocActionSelect : t.pmocActionImport)}
             </p>
 
             {pmocLoading ? (
-              <p className="text-sm text-muted-foreground py-2">Carregando catálogo PMOC...</p>
+              <p className="text-sm text-muted-foreground py-2">{t.loadingPmoc}</p>
             ) : acActivitiesFlat.length === 0 && otherActivitiesFlat.length === 0 ? (
               <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
-                Nenhuma atividade encontrada.
+                {t.emptyPmoc}
               </p>
             ) : (
               <div className="space-y-3">

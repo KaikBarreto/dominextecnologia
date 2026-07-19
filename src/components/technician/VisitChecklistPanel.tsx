@@ -10,6 +10,8 @@ import { ListChecks, Check, X, MinusCircle, AlertTriangle, Lock, Camera, Clipboa
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
 import { sectionLabel } from '@/utils/sectionLabel';
 import { SignaturePad } from '@/components/SignaturePad';
@@ -191,7 +193,7 @@ function parseNumber(raw: string): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-const CONFORMITY_OPTIONS: {
+type ConformityOption = {
   value: ActivityConformity;
   label: string;
   icon: typeof Check;
@@ -208,32 +210,36 @@ const CONFORMITY_OPTIONS: {
    * Strings LITERAIS (não geradas em runtime) pro Tailwind JIT compilar.
    */
   hover: string;
-}[] = [
-  {
-    value: 'conforme',
-    label: 'Conforme',
-    icon: Check,
-    idleIcon: '[&_svg]:text-success',
-    active: 'bg-success text-success-foreground border-success [&_svg]:!text-success-foreground',
-    hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:!text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:!text-success-foreground',
-  },
-  {
-    value: 'nao_conforme',
-    label: 'Não-conforme',
-    icon: X,
-    idleIcon: '[&_svg]:text-destructive',
-    active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:!text-destructive-foreground',
-    hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:!text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:!text-destructive-foreground',
-  },
-  {
-    value: 'na',
-    label: 'N/A',
-    icon: MinusCircle,
-    idleIcon: '[&_svg]:text-orange-600',
-    active: 'bg-orange-600 text-white border-orange-600 [&_svg]:!text-white',
-    hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:!text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:!text-white',
-  },
-];
+};
+
+function getConformityOptions(labels: { conforme: string; naoConforme: string; na: string }): ConformityOption[] {
+  return [
+    {
+      value: 'conforme',
+      label: labels.conforme,
+      icon: Check,
+      idleIcon: '[&_svg]:text-success',
+      active: 'bg-success text-success-foreground border-success [&_svg]:!text-success-foreground',
+      hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:!text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:!text-success-foreground',
+    },
+    {
+      value: 'nao_conforme',
+      label: labels.naoConforme,
+      icon: X,
+      idleIcon: '[&_svg]:text-destructive',
+      active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:!text-destructive-foreground',
+      hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:!text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:!text-destructive-foreground',
+    },
+    {
+      value: 'na',
+      label: labels.na,
+      icon: MinusCircle,
+      idleIcon: '[&_svg]:text-orange-600',
+      active: 'bg-orange-600 text-white border-orange-600 [&_svg]:!text-white',
+      hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:!text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:!text-white',
+    },
+  ];
+}
 
 function ActivityRow({
   serviceOrderId,
@@ -249,12 +255,19 @@ function ActivityRow({
   readOnly?: boolean;
   onSave: Props['onSave'];
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.visitChecklist;
   const { toast } = useToast();
   // Estado local do input (string) pra permitir digitar vírgula sem perder foco.
   const [measureText, setMeasureText] = useState<string>(
     activity.measured_value !== null ? String(activity.measured_value).replace('.', ',') : ''
   );
   const [savingStatus, setSavingStatus] = useState(false);
+  const CONFORMITY_OPTIONS = getConformityOptions({
+    conforme: t.conformityConforme,
+    naoConforme: t.conformityNaoConforme,
+    na: t.conformityNa,
+  });
 
   const photoUrls = (activity.activity_photos || '').split(',').filter(Boolean);
   const isNaoConforme = activity.conformity_status === 'nao_conforme';
@@ -285,7 +298,7 @@ function ActivityRow({
     try {
       await onSave(activity.id, { conformity_status: next });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível salvar', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: t.toastSaveError, description: getErrorMessage(error) });
     } finally {
       setSavingStatus(false);
     }
@@ -298,7 +311,7 @@ function ActivityRow({
     try {
       await onSave(activity.id, { measured_value: value });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível salvar a medição', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: t.toastSaveMeasureError, description: getErrorMessage(error) });
     }
   };
 
@@ -308,7 +321,7 @@ function ActivityRow({
     try {
       await onSave(activity.id, { activity_photos: csv });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Não foi possível salvar a foto', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: t.toastSavePhotoError, description: getErrorMessage(error) });
     }
   };
 
@@ -380,7 +393,7 @@ function ActivityRow({
             <Input
               type="text"
               inputMode="decimal"
-              placeholder="Valor medido"
+              placeholder={t.placeholderMeasuredValue}
               value={measureText}
               disabled={readOnly}
               onChange={(e) => setMeasureText(e.target.value)}
@@ -396,7 +409,7 @@ function ActivityRow({
             {outOfRange && (
               <span className="flex items-center gap-1 text-[11px] font-medium text-destructive ml-auto">
                 <AlertTriangle className="h-3 w-3 shrink-0" />
-                Fora da faixa esperada
+                {t.outOfRangeWarning}
               </span>
             )}
           </div>
@@ -410,7 +423,7 @@ function ActivityRow({
           {isNaoConforme && (
             <p className="flex items-center gap-1 text-[11px] font-medium text-destructive">
               <Camera className="h-3 w-3 shrink-0" />
-              Recomendado anexar evidência da não-conformidade
+              {t.photoEvidenceHint}
             </p>
           )}
           <OsPhotoField
@@ -437,7 +450,7 @@ function ActivityRow({
             )}
           >
             <Camera className="h-3.5 w-3.5 shrink-0" />
-            {isNaoConforme ? 'Anexar evidência (recomendado)' : 'Anexar foto'}
+            {isNaoConforme ? t.btnAttachEvidence : t.btnAttachPhoto}
           </Button>
         )
       )}
@@ -472,6 +485,8 @@ function TemplateQuestionRow({
   readOnly?: boolean;
   onSaveResponse: NonNullable<Props['onSaveFormResponse']>;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.visitChecklist;
   const { toast } = useToast();
   const value = response?.response_value ?? '';
   const photoCsv = response?.response_photo_url ?? null;
@@ -479,6 +494,11 @@ function TemplateQuestionRow({
   // Texto/medição: estado local pra digitar livre (vírgula) sem perder foco.
   const [text, setText] = useState<string>(value);
   const [saving, setSaving] = useState(false);
+  const conformityOpts = getConformityOptions({
+    conforme: t.conformityConforme,
+    naoConforme: t.conformityNaoConforme,
+    na: t.conformityNa,
+  });
 
   const save = async (patch: {
     response_value?: string | null;
@@ -491,7 +511,7 @@ function TemplateQuestionRow({
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Não foi possível salvar a resposta',
+        title: t.toastSaveResponseError,
         description: getErrorMessage(error),
       });
     } finally {
@@ -508,32 +528,10 @@ function TemplateQuestionRow({
         // visual da CONFORMITY_OPTIONS: idle (ícone colorido), hover (saturado
         // + branco) e selecionado (saturado fixo + branco). N/A usa o laranja
         // avermelhado (orange-600), o mesmo do "Finalizar Parcial".
-        const opts: { v: string; label: string; icon: typeof Check; idleIcon: string; active: string; hover: string }[] = [
-          {
-            v: 'true',
-            label: 'Conforme',
-            icon: Check,
-            idleIcon: '[&_svg]:text-success',
-            active: 'bg-success text-success-foreground border-success [&_svg]:!text-success-foreground',
-            hover: 'hover:bg-success hover:text-success-foreground hover:border-success hover:[&_svg]:!text-success-foreground focus-visible:bg-success focus-visible:text-success-foreground focus-visible:border-success focus-visible:[&_svg]:!text-success-foreground',
-          },
-          {
-            v: 'false',
-            label: 'Não-conforme',
-            icon: X,
-            idleIcon: '[&_svg]:text-destructive',
-            active: 'bg-destructive text-destructive-foreground border-destructive [&_svg]:!text-destructive-foreground',
-            hover: 'hover:bg-destructive hover:text-destructive-foreground hover:border-destructive hover:[&_svg]:!text-destructive-foreground focus-visible:bg-destructive focus-visible:text-destructive-foreground focus-visible:border-destructive focus-visible:[&_svg]:!text-destructive-foreground',
-          },
-          {
-            v: 'na',
-            label: 'N/A',
-            icon: MinusCircle,
-            idleIcon: '[&_svg]:text-orange-600',
-            active: 'bg-orange-600 text-white border-orange-600 [&_svg]:!text-white',
-            hover: 'hover:bg-orange-600 hover:text-white hover:border-orange-600 hover:[&_svg]:!text-white focus-visible:bg-orange-600 focus-visible:text-white focus-visible:border-orange-600 focus-visible:[&_svg]:!text-white',
-          },
-        ];
+        // Reutiliza conformityOpts (já traduzido) com mapeamento 'conforme'→'true',
+        // 'nao_conforme'→'false', 'na'→'na'.
+        const boolValueMap: Record<string, string> = { conforme: 'true', nao_conforme: 'false', na: 'na' };
+        const opts = conformityOpts.map(o => ({ ...o, v: boolValueMap[o.value] }));
         return (
           // <button> PURO (mesmo motivo do ActivityRow): <Button variant="outline">
           // injetava hover:bg-accent/[&_svg]:size-4 que venciam as classes
@@ -595,7 +593,7 @@ function TemplateQuestionRow({
               <Input
                 type="text"
                 inputMode="decimal"
-                placeholder="Valor medido"
+                placeholder={t.placeholderMeasuredValue}
                 value={text}
                 disabled={readOnly || saving}
                 onChange={(e) => setText(e.target.value)}
@@ -614,7 +612,7 @@ function TemplateQuestionRow({
               {outOfRange && (
                 <span className="flex items-center gap-1 text-[11px] font-medium text-destructive ml-auto">
                   <AlertTriangle className="h-3 w-3 shrink-0" />
-                  Fora da faixa esperada
+                  {t.outOfRangeWarning}
                 </span>
               )}
             </div>
@@ -625,7 +623,7 @@ function TemplateQuestionRow({
       case 'text':
         return (
           <Textarea
-            placeholder="Digite sua resposta..."
+            placeholder={t.placeholderTextAnswer}
             value={text}
             rows={2}
             disabled={readOnly || saving}
@@ -666,7 +664,9 @@ function TemplateQuestionRow({
             ))}
             {selected.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                {selected.length} selecionada{selected.length > 1 ? 's' : ''}
+                {selected.length > 1
+                  ? t.selectedCountPlural.replace('{n}', String(selected.length))
+                  : t.selectedCountSingular.replace('{n}', String(selected.length))}
               </p>
             )}
           </div>
@@ -706,7 +706,7 @@ function TemplateQuestionRow({
         );
 
       default:
-        return <p className="text-sm text-muted-foreground">Tipo não suportado</p>;
+        return <p className="text-sm text-muted-foreground">{t.unsupportedType}</p>;
     }
   };
 
@@ -750,6 +750,8 @@ function TemplateActivityBlock({
   readOnly?: boolean;
   onSaveResponse: NonNullable<Props['onSaveFormResponse']>;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.visitChecklist;
   const complete = isTemplateActivityComplete(questions, (qid) =>
     getFormResponse(equipmentId, qid)
   );
@@ -763,12 +765,12 @@ function TemplateActivityBlock({
       <div className="flex items-center gap-2">
         <ClipboardList className="h-4 w-4 text-primary shrink-0" />
         <p className="text-sm font-semibold text-foreground flex-1 min-w-0 break-words">
-          {activity.description || 'Checklist personalizado'}
+          {activity.description || t.customChecklistFallback}
         </p>
         {questions.length > 0 &&
           (complete ? (
             <Badge variant="success" className="gap-1 shrink-0 text-[10px]">
-              <Check className="h-3 w-3" /> Concluído
+              <Check className="h-3 w-3" /> {t.customChecklistDone}
             </Badge>
           ) : requiredCount > 0 ? (
             <Badge variant="outline" className="shrink-0 text-[10px]">
@@ -778,7 +780,7 @@ function TemplateActivityBlock({
       </div>
       {questions.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          Nenhuma pergunta configurada para este checklist.
+          {t.customChecklistNoQuestions}
         </p>
       ) : (
         <div className="space-y-3">
@@ -849,6 +851,8 @@ function VisitChecklistItem({
   };
   children: ReactNode;
 }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.visitChecklist;
   // SÓ o equipamento ABERTO fica sticky. Fechado → desativa o observer (passa
   // undefined) pra não medir/atualizar à toa. Elimina o empilhamento de vários
   // cabeçalhos sticky sobrepostos (e a invasão do header do topo).
@@ -912,15 +916,19 @@ function VisitChecklistItem({
             naoConforme > 0 ? (
               <Badge variant="destructive" className="gap-1 text-xs shrink-0">
                 <X className="h-3 w-3" />
-                {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
+                {naoConforme > 1
+                  ? t.naoConformePlural.replace('{n}', String(naoConforme))
+                  : t.naoConformeSingular.replace('{n}', String(naoConforme))}
               </Badge>
             ) : pending === 0 ? (
-              <span title="Concluído" aria-label="Concluído" className="shrink-0">
+              <span title={t.customChecklistDone} aria-label={t.customChecklistDone} className="shrink-0">
                 <CheckCircle2 className="h-6 w-6 text-emerald-600" />
               </span>
             ) : (
               <Badge variant="outline" className="text-xs shrink-0">
-                {pending} pendente{pending > 1 ? 's' : ''}
+                {pending > 1
+                  ? t.pendingPlural.replace('{n}', String(pending))
+                  : t.pendingSingular.replace('{n}', String(pending))}
               </Badge>
             )
           }
@@ -952,6 +960,9 @@ export function VisitChecklistPanel({
   onSaveFormResponse,
   visibilityForEquipment,
 }: Props) {
+  const { locale } = useAppLocaleContext();
+  const tPanel = MESSAGES[locale].app.os.visitChecklist;
+
   if (groups.length === 0) return null;
 
   const questionsByTemplate = formQuestionsByTemplate ?? {};
@@ -1003,7 +1014,7 @@ export function VisitChecklistPanel({
       <CardHeader className="pb-2 px-3 sm:px-6">
         <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold">
           <ListChecks className="h-5 w-5 text-primary shrink-0" />
-          Checklist da visita
+          {tPanel.panelTitle}
         </CardTitle>
       </CardHeader>
       <CardContent className="px-3 sm:px-6 pb-3 space-y-4">
@@ -1011,7 +1022,7 @@ export function VisitChecklistPanel({
           <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-warning">
             <Lock className="h-4 w-4 mt-0.5 shrink-0" />
             <p className="text-sm font-medium">
-              OS pausada — retome o atendimento para preencher o checklist.
+              {tPanel.pausedWarning}
             </p>
           </div>
         )}
