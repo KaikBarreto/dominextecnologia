@@ -12,6 +12,8 @@ import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/ge
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useLiveTechnicianLocations, type LiveTechMarker, type LiveTrackingPoint } from '@/hooks/useLiveTechnicianLocations';
 import type { OSRMRoute } from '@/utils/geolocation';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import 'leaflet/dist/leaflet.css';
 
 type TechMarker = LiveTechMarker;
@@ -30,12 +32,6 @@ const eventColors: Record<string, string> = {
   check_out: '#ef4444',
 };
 
-const eventLabels: Record<string, { emoji: string; label: string }> = {
-  check_in: { emoji: '🟢', label: 'Executando OS' },
-  en_route: { emoji: '🔵', label: 'A Caminho' },
-  tracking: { emoji: '🔵', label: 'A Caminho' },
-  check_out: { emoji: '🔴', label: 'Check-out' },
-};
 
 const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
 const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
@@ -46,11 +42,21 @@ const TILE_LABELS_DARK = 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}
 // via classe `dark` no <html>. Lemos o tema direto do DOM (igual ao DashboardLiveMap).
 const isDarkMode = () => document.documentElement.classList.contains('dark');
 
-function buildTooltipHtml(tech: TechMarker, routeInfo?: RouteInfo) {
+interface LiveMapLabels {
+  eventLabels: Record<string, { emoji: string; label: string }>;
+  lessThan1: string;
+  tooltipLastUpdate: (n: number | string) => string;
+  popupLastUpdate: (n: number | string) => string;
+  popupOsLinked: string;
+  popupEta: (n: number) => string;
+}
+
+function buildTooltipHtml(tech: TechMarker, labels: LiveMapLabels, routeInfo?: RouteInfo) {
   const lastUpdate = new Date(tech.updated_at);
   const timeAgo = Math.round((Date.now() - lastUpdate.getTime()) / 60000);
-  const ev = eventLabels[tech.event_type] || eventLabels.tracking;
+  const ev = labels.eventLabels[tech.event_type] || labels.eventLabels.tracking;
   const color = eventColors[tech.event_type] || '#3b82f6';
+  const timeStr = timeAgo < 1 ? labels.lessThan1 : String(timeAgo);
 
   return `
     <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
@@ -59,20 +65,21 @@ function buildTooltipHtml(tech: TechMarker, routeInfo?: RouteInfo) {
         <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block"></span>
         <span style="font-size:11px;color:#555">${ev.emoji} ${ev.label}</span>
       </div>
-      <div style="font-size:10px;color:#aaa;margin-top:1px">Há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
+      <div style="font-size:10px;color:#aaa;margin-top:1px">${labels.tooltipLastUpdate(timeStr)}</div>
     </div>
   `;
 }
 
-function buildPopupHtml(tech: TechMarker, routeInfo?: RouteInfo) {
+function buildPopupHtml(tech: TechMarker, labels: LiveMapLabels, routeInfo?: RouteInfo) {
   const lastUpdate = new Date(tech.updated_at);
   const timeAgo = Math.round((Date.now() - lastUpdate.getTime()) / 60000);
-  const ev = eventLabels[tech.event_type] || eventLabels.tracking;
+  const ev = labels.eventLabels[tech.event_type] || labels.eventLabels.tracking;
   const color = eventColors[tech.event_type] || '#3b82f6';
+  const timeStr = timeAgo < 1 ? labels.lessThan1 : String(timeAgo);
 
   const etaHtml = routeInfo
     ? `<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb">
-        <span style="font-size:13px;font-weight:600;color:#6366f1">🕐 Chegada em ~${routeInfo.route.durationMinutes} min</span>
+        <span style="font-size:13px;font-weight:600;color:#6366f1">🕐 ${labels.popupEta(routeInfo.route.durationMinutes)}</span>
         <span style="font-size:12px;color:#888">(${routeInfo.route.distanceKm} km)</span>
       </div>`
     : '';
@@ -84,14 +91,31 @@ function buildPopupHtml(tech: TechMarker, routeInfo?: RouteInfo) {
         <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block"></span>
         <span style="font-size:14px;color:#555">${ev.emoji} ${ev.label}</span>
       </div>
-      ${tech.service_order_id ? `<div style="font-size:12px;color:#888">OS vinculada</div>` : ''}
-      <div style="font-size:12px;color:#aaa;margin-top:4px">Última atualização: há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
+      ${tech.service_order_id ? `<div style="font-size:12px;color:#888">${labels.popupOsLinked}</div>` : ''}
+      <div style="font-size:12px;color:#aaa;margin-top:4px">${labels.popupLastUpdate(timeStr)}</div>
       ${etaHtml}
     </div>
   `;
 }
 
 export default function LiveMap() {
+  const { locale } = useAppLocaleContext();
+  const tLiveMap = MESSAGES[locale].app.os.liveMap;
+
+  const liveMapLabels: LiveMapLabels = {
+    eventLabels: {
+      check_in: { emoji: '🟢', label: tLiveMap.eventRunning },
+      en_route: { emoji: '🔵', label: tLiveMap.eventEnRoute },
+      tracking: { emoji: '🔵', label: tLiveMap.eventEnRoute },
+      check_out: { emoji: '🔴', label: tLiveMap.eventCheckout },
+    },
+    lessThan1: tLiveMap.popupLessThan1,
+    tooltipLastUpdate: (n) => tLiveMap.tooltipLastUpdate.replace('{n}', String(n)),
+    popupLastUpdate: (n) => tLiveMap.popupLastUpdate.replace('{n}', String(n)),
+    popupOsLinked: tLiveMap.popupOsLinked,
+    popupEta: (n) => tLiveMap.popupEta.replace('{n}', String(n)),
+  };
+
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
@@ -317,15 +341,15 @@ export default function LiveMap() {
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         });
-        const baseName = companySettings?.name || 'Empresa';
+        const baseName = companySettings?.name || tLiveMap.companyBase;
         baseMarkerRef.current = L.marker([companyCoords.lat, companyCoords.lng], { icon: baseIcon }).addTo(map);
-        baseMarkerRef.current.bindTooltip(`<div style="font-family:system-ui;font-size:12px;font-weight:600">🏢 Base: ${baseName}</div>`, {
+        baseMarkerRef.current.bindTooltip(`<div style="font-family:system-ui;font-size:12px;font-weight:600">🏢 ${tLiveMap.companyBase}: ${baseName}</div>`, {
           direction: 'top', offset: [0, -16], className: 'leaflet-tooltip-custom',
         });
         baseMarkerRef.current.bindPopup(`
           <div style="min-width:200px;font-family:system-ui,sans-serif;padding:4px">
             <div style="font-weight:700;font-size:14px;margin-bottom:4px">🏢 ${baseName}</div>
-            <div style="font-size:12px;color:#666">Base da empresa</div>
+            <div style="font-size:12px;color:#666">${tLiveMap.popupBase}</div>
             ${companySettings?.address ? `<div style="font-size:11px;color:#888;margin-top:4px">${companySettings.address}${companySettings.address_number ? ', ' + companySettings.address_number : ''}</div>` : ''}
             ${companySettings?.city ? `<div style="font-size:11px;color:#888">${companySettings.city} - ${companySettings.state}</div>` : ''}
           </div>
@@ -352,14 +376,14 @@ export default function LiveMap() {
 
         const marker = L.marker([tech.lat, tech.lng], { icon }).addTo(map);
         // Tooltip for hover (small preview)
-        marker.bindTooltip(buildTooltipHtml(tech, routeInfo), {
+        marker.bindTooltip(buildTooltipHtml(tech, liveMapLabels, routeInfo), {
           direction: 'top',
           offset: [0, -12],
           opacity: 1,
           className: 'leaflet-tooltip-custom',
         });
         // Popup for click (larger, stays open until X)
-        marker.bindPopup(buildPopupHtml(tech, routeInfo), {
+        marker.bindPopup(buildPopupHtml(tech, liveMapLabels, routeInfo), {
           minWidth: 280,
           maxWidth: 360,
           className: 'leaflet-popup-custom',
@@ -398,7 +422,7 @@ export default function LiveMap() {
             iconAnchor: [10, 10],
           });
           const destMarker = L.marker([routeInfo.destLat, routeInfo.destLng], { icon: destIcon }).addTo(map);
-          destMarker.bindTooltip(`<div style="font-family:system-ui;font-size:12px;font-weight:600">📍 Destino do cliente</div>`, {
+          destMarker.bindTooltip(`<div style="font-family:system-ui;font-size:12px;font-weight:600">📍 ${tLiveMap.destTooltip}</div>`, {
             direction: 'top', offset: [0, -14], className: 'leaflet-tooltip-custom',
           });
           destMarkersRef.current.set(tech.user_id, destMarker);
@@ -445,8 +469,8 @@ export default function LiveMap() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Mapa e Rastreamento</h1>
-          <p className="text-muted-foreground text-sm">Posição em tempo real e histórico de deslocamentos</p>
+          <h1 className="text-2xl font-bold tracking-tight">{tLiveMap.pageTitle}</h1>
+          <p className="text-muted-foreground text-sm">{tLiveMap.pageSubtitle}</p>
         </div>
       </div>
 
@@ -455,8 +479,8 @@ export default function LiveMap() {
           <div className="space-y-2">
             <MobilePillTabs
               tabs={[
-                { value: 'mapa', label: 'Mapa ao Vivo', icon: <MapIcon className="h-4 w-4" /> },
-                { value: 'historico', label: 'Histórico', icon: <Clock className="h-4 w-4" /> },
+                { value: 'mapa', label: tLiveMap.tabLive, icon: <MapIcon className="h-4 w-4" /> },
+                { value: 'historico', label: tLiveMap.tabHistory, icon: <Clock className="h-4 w-4" /> },
               ]}
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -472,7 +496,7 @@ export default function LiveMap() {
                   size="icon"
                   className="h-9 w-9 shrink-0"
                   onClick={() => fetchLatestLocations()}
-                  aria-label="Atualizar"
+                  aria-label={tLiveMap.ariaRefresh}
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
@@ -483,10 +507,10 @@ export default function LiveMap() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <TabsList>
               <TabsTrigger value="mapa" className="gap-1.5">
-                <MapIcon className="h-4 w-4" /> Mapa ao Vivo
+                <MapIcon className="h-4 w-4" /> {tLiveMap.tabLive}
               </TabsTrigger>
               <TabsTrigger value="historico" className="gap-1.5">
-                <Clock className="h-4 w-4" /> Histórico
+                <Clock className="h-4 w-4" /> {tLiveMap.tabHistory}
               </TabsTrigger>
             </TabsList>
 
@@ -494,7 +518,7 @@ export default function LiveMap() {
               <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
                   <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  <span className="hidden sm:inline">Atualizar</span>
+                  <span className="hidden sm:inline">{tLiveMap.btnRefresh}</span>
                 </Button>
                 <Badge variant="secondary" className="gap-1">
                   <MapPin className="h-3 w-3" />
@@ -508,11 +532,11 @@ export default function LiveMap() {
         <TabsContent value="mapa" className="mt-4 space-y-3">
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }}></span> Executando OS</div>
-            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#6366f1' }}></span> A Caminho</div>
-            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }}></span> Check-out</div>
-            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', border: '2px solid white', boxShadow: '0 0 0 1px #ef4444' }}></span> Destino cliente</div>
-            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#0d9488' }}></span> Base da empresa</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }}></span> {tLiveMap.legendRunning}</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#6366f1' }}></span> {tLiveMap.legendEnRoute}</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }}></span> {tLiveMap.legendCheckout}</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', border: '2px solid white', boxShadow: '0 0 0 1px #ef4444' }}></span> {tLiveMap.legendDestination}</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#0d9488' }}></span> {tLiveMap.legendBase}</div>
           </div>
 
           <Card className="overflow-hidden">

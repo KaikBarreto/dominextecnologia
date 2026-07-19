@@ -81,7 +81,7 @@ export function CommonChecklistEditor({
 }: CommonChecklistEditorProps) {
   const { locale } = useAppLocaleContext();
   const tEditor = MESSAGES[locale].app.contracts.checklistEditor;
-  const resolvedGroupLabel = groupLabel ?? 'Checklists deste equipamento';
+  const resolvedGroupLabel = groupLabel ?? tEditor.groupLabel;
   // Checklists escolhidos, na ordem de adição, resolvidos pra opção completa.
   const selectedTemplates = useMemo(
     () =>
@@ -206,14 +206,14 @@ export function CommonChecklistEditor({
             disabled={sectionedAvailableCount === 0}
           >
             <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder="Adicionar checklist">
+              <SelectValue placeholder={tEditor.addNormChecklist}>
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <Plus className="h-3.5 w-3.5" />
                   {sectionedAvailableCount === 0
                     ? selectedTemplateIds.length > 0
-                      ? 'Tudo da norma adicionado'
-                      : 'Nenhum checklist disponível'
-                    : 'Adicionar checklist da norma'}
+                      ? tEditor.allNormAdded
+                      : tEditor.noneAvailable
+                    : tEditor.addNormChecklist}
                 </span>
               </SelectValue>
             </SelectTrigger>
@@ -244,8 +244,8 @@ export function CommonChecklistEditor({
                   <Plus className="h-3.5 w-3.5" />
                   {availableTemplates.length === 0
                     ? selectedTemplateIds.length > 0
-                      ? 'Todos os checklists adicionados'
-                      : 'Nenhum checklist disponível'
+                      ? tEditor.allAdded
+                      : tEditor.noneAvailable
                     : tEditor.addPlaceholder}
                 </span>
               </SelectValue>
@@ -285,7 +285,7 @@ export function CommonChecklistEditor({
 
       {selectedTemplates.length === 0 && (
         <p className="text-[11px] text-muted-foreground">
-          Nenhum checklist neste equipamento. Adicione um acima.
+          {tEditor.noChecklists}
         </p>
       )}
     </div>
@@ -354,10 +354,10 @@ function ChecklistBlock({
       >
         <ListChecks className="h-3.5 w-3.5 shrink-0 text-info" />
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-          Perguntas do Checklist — {template.name}
+          {tEditor.blockTitle} {template.name}
         </span>
         <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
-          {includedCount} de {questions.length} na 1ª OS
+          {includedCount} {tEditor.firstOsCount.replace('{total}', String(questions.length))}
         </Badge>
         <span
           role="button"
@@ -391,7 +391,7 @@ function ChecklistBlock({
       <div className="border-t px-3 pb-3 pt-2.5">
         {questions.length === 0 ? (
           <p className="px-1.5 py-1 text-[11px] text-muted-foreground">
-            Este checklist ainda não tem perguntas.
+            {tEditor.noQuestions}
           </p>
         ) : (
           <>
@@ -399,7 +399,7 @@ function ChecklistBlock({
             {frequencyBuckets.length > 0 && (
               <div className="mb-2.5 rounded-md bg-muted/40 p-2">
                 <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">
-                  Marcar/desmarcar todas de uma frequência
+                  {tEditor.bulkLabel}
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {frequencyBuckets.map((b) => {
@@ -417,8 +417,8 @@ function ChecklistBlock({
                         )}
                         title={
                           allIncluded
-                            ? `Desmarcar todas as perguntas: ${b.label}`
-                            : `Marcar todas as perguntas: ${b.label}`
+                            ? `${tEditor.unmarkAllOfFreq} ${b.label}`
+                            : `${tEditor.markAllOfFreq} ${b.label}`
                         }
                       >
                         {allIncluded && <Check className="h-3 w-3" />}
@@ -434,13 +434,13 @@ function ChecklistBlock({
             {/* Cabeçalho das colunas. */}
             <div className="flex items-center gap-2.5 border-b px-1.5 pb-1.5">
               <span className="min-w-0 flex-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Pergunta
+                {tEditor.questionHeader}
               </span>
               <span className="w-[5.5rem] shrink-0 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Frequência
+                {tEditor.freqHeader}
               </span>
               <span className="w-12 shrink-0 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Na 1ª OS?
+                {tEditor.firstOsHeader}
               </span>
             </div>
 
@@ -468,19 +468,19 @@ function ChecklistBlock({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="inline-flex">
-                              <Checkbox checked disabled aria-label="Sempre na primeira OS" />
+                              <Checkbox checked disabled aria-label={tEditor.alwaysInFirstOs} />
                             </span>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[15rem] text-xs">
-                            Itens de toda visita sempre entram na primeira OS.
+                            {tEditor.alwaysInFirstOsTooltip}
                           </TooltipContent>
                         </Tooltip>
                       ) : (
                         <Checkbox
                           checked={included}
                           onCheckedChange={() => onToggleQuestion(q)}
-                          aria-label={`Adicionar na primeira OS: ${q.question}`}
-                          title="Adicionar na 1ª OS?"
+                          aria-label={`${tEditor.addToFirstOs} ${q.question}`}
+                          title={tEditor.addToFirstOsTitle}
                         />
                       )}
                     </div>

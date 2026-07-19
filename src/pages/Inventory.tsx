@@ -39,6 +39,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useDataPagination } from '@/hooks/useDataPagination';
@@ -69,6 +71,8 @@ import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory;
   const { items, isLoading, stats, deleteItem } = useInventory();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
@@ -103,7 +107,7 @@ export default function Inventory() {
   ).sort();
 
   const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', {
+    new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
@@ -153,7 +157,7 @@ export default function Inventory() {
       cost_price: i.cost_price ?? null,
       sale_price: i.sale_price ?? null,
     }));
-    const title = 'Relatório de Estoque';
+    const title = t.export.reportTitle;
     try {
       if (exportFormat === 'excel') {
         await generateInventoryExcel({ title, rows });
@@ -169,8 +173,8 @@ export default function Inventory() {
       console.error('Falha ao exportar estoque:', err);
       toast({
         variant: 'destructive',
-        title: 'Erro ao exportar',
-        description: 'Não foi possível gerar o arquivo. Tente novamente.',
+        title: t.export.errorTitle,
+        description: t.export.errorDescription,
       });
     }
   };
@@ -181,12 +185,12 @@ export default function Inventory() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {compact ? (
-          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-xl" aria-label="Exportar estoque">
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-xl" aria-label={t.ariaLabels.exportStock}>
             <FileDown className="h-4 w-4" />
           </Button>
         ) : (
           <Button variant="outline" size="sm" className="gap-1 min-h-11 rounded-xl">
-            <FileDown className="h-4 w-4" /> Exportar <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            <FileDown className="h-4 w-4" /> {t.actions.export} <ChevronDown className="h-3.5 w-3.5 opacity-60" />
           </Button>
         )}
       </DropdownMenuTrigger>
@@ -222,28 +226,28 @@ export default function Inventory() {
   const statItems = [
     {
       key: 'total',
-      label: 'Total de itens',
+      label: t.stats.totalItems,
       count: stats.totalItems,
       icon: <Boxes className="h-4 w-4" />,
       accentColor: 'hsl(var(--primary))',
     },
     {
       key: 'cost',
-      label: 'Valor investido (R$)',
+      label: t.stats.invested,
       count: Math.round(stats.totalValue),
       icon: <DollarSign className="h-4 w-4" />,
       accentColor: 'hsl(var(--info))',
     },
     {
       key: 'sale',
-      label: 'Projeção venda (R$)',
+      label: t.stats.saleProjection,
       count: Math.round(stats.totalSaleValue),
       icon: <TrendingUp className="h-4 w-4" />,
       accentColor: 'hsl(var(--success))',
     },
     {
       key: 'low',
-      label: 'Estoque baixo',
+      label: t.stats.lowStock,
       count: stats.lowStockItems,
       icon: <AlertTriangle className="h-4 w-4" />,
       accentColor: 'hsl(var(--warning))',
@@ -261,27 +265,27 @@ export default function Inventory() {
 
   const categoryFilterContent = (
     <FilterCheckboxGroup
-      label="Categoria"
+      label={t.filters.category}
       options={categories.map((cat) => ({ value: cat, label: cat }))}
       selected={categoryFilter}
       onChange={setCategoryFilter}
-      emptyLabel="Todas as categorias"
+      emptyLabel={t.filters.categoryEmpty}
     />
   );
 
   // Abas: desktop = sidebar vertical (SettingsSidebarLayout); mobile = pills em
   // carrossel (o próprio layout faz a adaptação). As 3 são chãs (sem group).
   const inventoryTabs: SettingsTab[] = [
-    { value: 'estoque', label: 'Estoque Atual', icon: Boxes },
-    { value: 'historico', label: 'Histórico de Materiais (Kardex)', icon: History },
-    { value: 'compras', label: 'Compras de Material', icon: ShoppingCart },
+    { value: 'estoque', label: t.tabs.current, icon: Boxes },
+    { value: 'historico', label: t.tabs.kardex, icon: History },
+    { value: 'compras', label: t.tabs.purchases, icon: ShoppingCart },
   ];
 
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Estoque"
-        subtitle="Controle de peças e materiais"
+        title={t.header.title}
+        subtitle={t.header.subtitle}
         icon={Package}
         actions={undefined}
       />
@@ -314,7 +318,7 @@ export default function Inventory() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar material..."
+              placeholder={t.search.placeholderShort}
               className="pl-10 h-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -322,7 +326,7 @@ export default function Inventory() {
           </div>
           {categories.length > 0 && (
             <FilterSheet
-              triggerLabel="Filtros"
+              triggerLabel={t.filters.button}
               activeCount={activeFilterCount}
               onClear={clearFilters}
             >
@@ -334,7 +338,7 @@ export default function Inventory() {
             variant="outline"
             size="icon"
             className="h-10 w-10 shrink-0 rounded-xl"
-            aria-label="Importar XML de NF-e"
+            aria-label={t.ariaLabels.importXml}
             onClick={() => setNfeImportOpen(true)}
           >
             <FileUp className="h-4 w-4" />
@@ -345,7 +349,7 @@ export default function Inventory() {
           <div className="relative flex-1 sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, código ou categoria..."
+              placeholder={t.search.placeholderFull}
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -367,14 +371,14 @@ export default function Inventory() {
               className="gap-1 min-h-11 rounded-xl"
               onClick={() => setNfeImportOpen(true)}
             >
-              <FileUp className="h-4 w-4" /> Importar XML (NF-e)
+              <FileUp className="h-4 w-4" /> {t.actions.importXml}
             </Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
               onClick={openNewItem}
             >
               <Plus className="h-4 w-4" />
-              Cadastrar Material
+              {t.actions.register}
             </Button>
           </div>
         </div>
@@ -397,13 +401,13 @@ export default function Inventory() {
               icon={<Package className="h-12 w-12" />}
               title={
                 searchQuery || categoryFilter.length > 0
-                  ? 'Nenhum item encontrado'
-                  : 'Estoque vazio'
+                  ? t.empty.noneFoundTitle
+                  : t.empty.noneTitle
               }
               description={
                 searchQuery || categoryFilter.length > 0
-                  ? 'Tente uma busca ou filtro diferente'
-                  : 'Toque em "Cadastrar Material" para adicionar peças ao estoque'
+                  ? t.empty.noneFoundDescription
+                  : t.empty.noneDescriptionMobile
               }
             />
           ) : (
@@ -413,20 +417,20 @@ export default function Inventory() {
                   const itemActions: ItemAction[] = [
                     {
                       key: 'view',
-                      label: 'Visualizar',
+                      label: t.rowActions.view,
                       icon: <Eye className="h-4 w-4" />,
                       onClick: () => handleEdit(item),
                     },
                     {
                       key: 'edit',
-                      label: 'Editar',
+                      label: t.rowActions.edit,
                       icon: <Edit className="h-4 w-4" />,
                       variant: 'edit' as const,
                       onClick: () => handleEdit(item),
                     },
                     {
                       key: 'delete',
-                      label: 'Excluir',
+                      label: t.rowActions.delete,
                       icon: <Trash2 className="h-4 w-4" />,
                       variant: 'destructive' as const,
                       onClick: () => handleDeleteClick(item),
@@ -468,7 +472,7 @@ export default function Inventory() {
                             className="text-[10px] px-2 py-0.5 whitespace-nowrap"
                           >
                             <AlertTriangle className="mr-1 h-3 w-3" />
-                            Baixo
+                            {t.badge.low}
                           </Badge>
                         ) : undefined
                       }
@@ -497,7 +501,7 @@ export default function Inventory() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Itens do Estoque
+              {t.cardTitle}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -512,13 +516,13 @@ export default function Inventory() {
                 <Package className="mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="text-lg font-medium">
                   {searchQuery || categoryFilter.length > 0
-                    ? 'Nenhum item encontrado'
-                    : 'Estoque vazio'}
+                    ? t.empty.noneFoundTitle
+                    : t.empty.noneTitle}
                 </h3>
                 <p className="text-muted-foreground">
                   {searchQuery || categoryFilter.length > 0
-                    ? 'Tente buscar por outro termo'
-                    : 'Clique em "Cadastrar Material" para adicionar peças ao estoque'}
+                    ? t.empty.noneFoundDescription
+                    : t.empty.noneDescriptionDesktop}
                 </p>
               </div>
             ) : (
@@ -527,13 +531,13 @@ export default function Inventory() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                        <SortableTableHead sortKey="sku" sortConfig={sortConfig} onSort={handleSort}>SKU</SortableTableHead>
-                        <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort}>Categoria</SortableTableHead>
-                        <SortableTableHead sortKey="quantity" sortConfig={sortConfig} onSort={handleSort} className="text-right">Quantidade</SortableTableHead>
-                        <SortableTableHead sortKey="cost_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">Custo Unit.</SortableTableHead>
-                        <SortableTableHead sortKey="sale_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">Venda Unit.</SortableTableHead>
-                        <TableHead className="w-[100px]">Ações</TableHead>
+                        <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.table.name}</SortableTableHead>
+                        <SortableTableHead sortKey="sku" sortConfig={sortConfig} onSort={handleSort}>{t.table.sku}</SortableTableHead>
+                        <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort}>{t.table.category}</SortableTableHead>
+                        <SortableTableHead sortKey="quantity" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.quantity}</SortableTableHead>
+                        <SortableTableHead sortKey="cost_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.costUnit}</SortableTableHead>
+                        <SortableTableHead sortKey="sale_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.saleUnit}</SortableTableHead>
+                        <TableHead className="w-[100px]">{t.table.actions}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -545,7 +549,7 @@ export default function Inventory() {
                               {isLowStock(item) && (
                                 <Badge variant="warning">
                                   <AlertTriangle className="mr-1 h-3 w-3" />
-                                  Baixo
+                                  {t.badge.low}
                                 </Badge>
                               )}
                             </div>
@@ -568,8 +572,8 @@ export default function Inventory() {
                           <TableCell>
                             <RowActionsMenu
                               actions={[
-                                { label: 'Editar', icon: Edit, variant: 'edit', onClick: () => handleEdit(item) },
-                                { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(item) },
+                                { label: t.rowActions.edit, icon: Edit, variant: 'edit', onClick: () => handleEdit(item) },
+                                { label: t.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(item) },
                               ]}
                             />
                           </TableCell>
@@ -607,7 +611,7 @@ export default function Inventory() {
       {isMobile && activeTab === 'estoque' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Material"
+          label={t.actions.fabLabel}
           onClick={openNewItem}
         />
       )}
@@ -635,18 +639,18 @@ export default function Inventory() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir material</AlertDialogTitle>
+            <AlertDialogTitle>{t.delete.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o material "{itemToDelete?.name}"? Esta ação não pode ser desfeita.
+              {t.delete.description.replace('{name}', itemToDelete?.name ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.delete.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {t.delete.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

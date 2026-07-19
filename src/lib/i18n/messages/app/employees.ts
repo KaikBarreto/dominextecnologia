@@ -113,6 +113,10 @@ export const employees = {
         absences: 'Faltas',
         balance: 'Saldo',
       },
+      fallbacks: {
+        bankAccount: 'Conta bancária',
+        notProvided: 'Não informado',
+      },
       movement: {
         balanceAfter: 'Saldo após',
         viaAccount: 'via',
@@ -437,6 +441,10 @@ export const employees = {
         absences: 'Absences',
         balance: 'Balance',
       },
+      fallbacks: {
+        bankAccount: 'Bank account',
+        notProvided: 'Not provided',
+      },
       movement: {
         balanceAfter: 'Balance after',
         viaAccount: 'via',
@@ -751,6 +759,10 @@ export const employees = {
         absences: 'Faltas',
         balance: 'Saldo',
       },
+      fallbacks: {
+        bankAccount: 'Cuenta bancaria',
+        notProvided: 'No informado',
+      },
       movement: {
         balanceAfter: 'Saldo tras',
         viaAccount: 'vía',
@@ -1064,6 +1076,10 @@ export const employees = {
         advances: 'Avances',
         absences: 'Absences',
         balance: 'Solde',
+      },
+      fallbacks: {
+        bankAccount: 'Compte bancaire',
+        notProvided: 'Non renseigné',
       },
       movement: {
         balanceAfter: 'Solde après',

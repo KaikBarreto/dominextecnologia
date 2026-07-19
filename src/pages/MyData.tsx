@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,6 +11,8 @@ import { Download, Trash2, Shield } from 'lucide-react';
 
 export default function MyData() {
   const { user, profile, signOut } = useAuth();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.myData;
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
@@ -40,9 +44,9 @@ export default function MyData() {
       a.click();
       URL.revokeObjectURL(url);
 
-      toast({ title: 'Dados exportados com sucesso!' });
+      toast({ title: t.toastExported });
     } catch {
-      toast({ variant: 'destructive', title: 'Erro ao exportar dados' });
+      toast({ variant: 'destructive', title: t.toastExportError });
     } finally {
       setIsExporting(false);
     }
@@ -59,11 +63,11 @@ export default function MyData() {
 
       setDeletionRequested(true);
       toast({
-        title: 'Solicitação de exclusão enviada',
-        description: 'Nossa equipe processará sua solicitação em até 15 dias úteis conforme o Art. 18 da LGPD.',
+        title: t.toastDeletionRequested,
+        description: t.toastDeletionRequestedDesc,
       });
     } catch {
-      toast({ variant: 'destructive', title: 'Erro ao registrar solicitação' });
+      toast({ variant: 'destructive', title: t.toastDeletionError });
     } finally {
       setIsRequesting(false);
     }
@@ -73,27 +77,27 @@ export default function MyData() {
     <div className="min-h-screen bg-background py-12">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Voltar ao painel</Link>
+          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">{t.backToDashboard}</Link>
         </div>
 
         <div className="flex items-center gap-3 mb-8">
           <Shield className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Central de Privacidade</h1>
-            <p className="text-sm text-muted-foreground">Gerencie seus dados pessoais (Art. 18 LGPD)</p>
+            <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
+            <p className="text-sm text-muted-foreground">{t.pageSubtitle}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Seus dados pessoais</CardTitle>
+              <CardTitle className="text-base">{t.cardPersonalTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p><strong>Nome:</strong> {profile?.full_name || '—'}</p>
-              <p><strong>E-mail:</strong> {user?.email || '—'}</p>
-              <p><strong>Telefone:</strong> {profile?.phone || '—'}</p>
-              <p><strong>Conta criada em:</strong> {user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '—'}</p>
+              <p><strong>{t.labelName}:</strong> {profile?.full_name || '—'}</p>
+              <p><strong>{t.labelEmail}:</strong> {user?.email || '—'}</p>
+              <p><strong>{t.labelPhone}:</strong> {profile?.phone || '—'}</p>
+              <p><strong>{t.labelCreatedAt}:</strong> {user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '—'}</p>
             </CardContent>
           </Card>
 
@@ -101,15 +105,15 @@ export default function MyData() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Download className="h-4 w-4" />
-                Exportar meus dados
+                {t.cardExportTitle}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Baixe uma cópia dos seus dados em formato JSON (portabilidade — Art. 18 V LGPD).
+                {t.cardExportDesc}
               </p>
               <Button onClick={handleExportData} disabled={isExporting} variant="outline">
-                {isExporting ? 'Exportando...' : 'Baixar meus dados'}
+                {isExporting ? t.btnExporting : t.btnExport}
               </Button>
             </CardContent>
           </Card>
@@ -118,18 +122,16 @@ export default function MyData() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2 text-destructive">
                 <Trash2 className="h-4 w-4" />
-                Solicitar exclusão da conta
+                {t.cardDeleteTitle}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Solicite a exclusão permanente da sua conta e dados pessoais (Art. 18 VI LGPD).
-                Dados fiscais e contábeis podem ser mantidos pelo prazo legal (5 anos).
-                O processamento ocorre em até 15 dias úteis.
+                {t.cardDeleteDesc}
               </p>
               {deletionRequested ? (
                 <p className="text-sm text-green-600 font-medium">
-                  ✓ Solicitação registrada. Nossa equipe entrará em contato.
+                  ✓ {t.deletionRequested}
                 </p>
               ) : (
                 <Button
@@ -137,7 +139,7 @@ export default function MyData() {
                   onClick={handleRequestDeletion}
                   disabled={isRequesting}
                 >
-                  {isRequesting ? 'Registrando...' : 'Solicitar exclusão'}
+                  {isRequesting ? t.btnRequesting : t.btnRequestDeletion}
                 </Button>
               )}
             </CardContent>
@@ -145,11 +147,11 @@ export default function MyData() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Contato com o DPO</CardTitle>
+              <CardTitle className="text-base">{t.cardDpoTitle}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                Para exercer outros direitos (correção, portabilidade, revogação de consentimento) ou tirar dúvidas sobre o tratamento dos seus dados:
+                {t.cardDpoDesc}
               </p>
               <a
                 href="mailto:privacidade@dominex.com.br"
@@ -161,9 +163,9 @@ export default function MyData() {
           </Card>
 
           <p className="text-xs text-muted-foreground text-center">
-            <Link to="/privacidade" className="underline">Política de Privacidade</Link>
+            <Link to="/privacidade" className="underline">{t.linkPrivacy}</Link>
             {' · '}
-            <Link to="/termos" className="underline">Termos de Uso</Link>
+            <Link to="/termos" className="underline">{t.linkTerms}</Link>
           </p>
         </div>
       </div>

@@ -26,9 +26,13 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export default function Teams() {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const tTeams = MESSAGES[locale].app.os.teams;
   const { teamsWithMembers, isLoading, createTeam, updateTeam, deleteTeam } = useTeams();
   const { data: profiles } = useTechnicians();
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +53,7 @@ export default function Teams() {
 
   const getMemberName = (userId: string) => {
     const p = profiles?.find((pr) => pr.user_id === userId);
-    return p?.full_name ?? 'Usuário';
+    return p?.full_name ?? tTeams.userFallback;
   };
 
   const getMemberAvatar = (userId: string) => {
@@ -82,18 +86,18 @@ export default function Teams() {
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Equipes"
+        title={tTeams.pageTitle}
         subtitle={
           teamsWithMembers.length === 1
-            ? '1 equipe cadastrada'
-            : `${teamsWithMembers.length} equipes cadastradas`
+            ? tTeams.pageSubtitleSingular
+            : tTeams.pageSubtitlePlural.replace('{n}', String(teamsWithMembers.length))
         }
         icon={UsersRound}
         actions={
           isMobile ? undefined : (
             <Button size="sm" onClick={openNewTeam}>
               <Plus className="h-4 w-4 mr-2" />
-              Nova Equipe
+              {tTeams.btnNew}
             </Button>
           )
         }
@@ -102,7 +106,7 @@ export default function Teams() {
       <div className="relative min-w-0 flex-1 sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder={isMobile ? 'Buscar equipes...' : 'Buscar equipe...'}
+          placeholder={isMobile ? tTeams.searchPlaceholderMobile : tTeams.searchPlaceholderDesktop}
           className="pl-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -123,10 +127,8 @@ export default function Teams() {
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={<UsersRound className="h-12 w-12" />}
-              title={searchQuery ? 'Nenhuma equipe encontrada' : 'Nenhuma equipe cadastrada'}
-              description={
-                searchQuery ? 'Tente uma busca diferente' : 'Toque em "Nova Equipe" para começar'
-              }
+              title={searchQuery ? tTeams.emptySearchTitle : tTeams.emptyTitle}
+              description={searchQuery ? tTeams.emptySearchDesc : tTeams.emptyDesc}
             />
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
@@ -137,20 +139,20 @@ export default function Teams() {
                 const actions: ItemAction[] = [
                   {
                     key: 'members',
-                    label: 'Gerenciar membros',
+                    label: tTeams.actionManageMembers,
                     icon: <UserCog className="h-4 w-4" />,
                     onClick: () => openEditTeam(team),
                   },
                   {
                     key: 'edit',
-                    label: 'Editar',
+                    label: tTeams.actionEdit,
                     icon: <Pencil className="h-4 w-4" />,
                     variant: 'edit',
                     onClick: () => openEditTeam(team),
                   },
                   {
                     key: 'delete',
-                    label: 'Excluir',
+                    label: tTeams.actionDelete,
                     icon: <Trash2 className="h-4 w-4" />,
                     variant: 'destructive',
                     onClick: () => handleDeleteClick(team),
@@ -176,10 +178,10 @@ export default function Teams() {
                 // Subtitle combina descrição (se houver) + contagem de membros.
                 const memberLabel =
                   memberCount === 0
-                    ? 'Sem membros'
+                    ? tTeams.memberCount0
                     : memberCount === 1
-                      ? '1 membro'
-                      : `${memberCount} membros`;
+                      ? tTeams.memberCountSingular
+                      : tTeams.memberCountPlural.replace('{n}', String(memberCount));
                 const subtitle = team.description
                   ? `${team.description} · ${memberLabel}`
                   : memberLabel;
@@ -212,7 +214,7 @@ export default function Teams() {
                     )}
                     {!team.is_active && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        Inativa
+                        {tTeams.badgeInactive}
                       </Badge>
                     )}
                   </div>
@@ -252,7 +254,7 @@ export default function Teams() {
             <Card>
               <CardContent className="py-12">
                 <p className="text-center text-muted-foreground">
-                  {searchQuery ? 'Nenhuma equipe encontrada' : 'Nenhuma equipe cadastrada'}
+                  {searchQuery ? tTeams.emptySearchTitle : tTeams.emptyTitle}
                 </p>
               </CardContent>
             </Card>
@@ -282,7 +284,7 @@ export default function Teams() {
                         variant={team.is_active ? 'default' : 'secondary'}
                         className="text-xs"
                       >
-                        {team.is_active ? 'Ativa' : 'Inativa'}
+                        {team.is_active ? tTeams.badgeActive : tTeams.badgeInactive}
                       </Badge>
                     </div>
 
@@ -301,7 +303,7 @@ export default function Teams() {
                         </span>
                       )}
                       {team.members.length === 0 && (
-                        <span className="text-xs text-muted-foreground">Sem membros</span>
+                        <span className="text-xs text-muted-foreground">{tTeams.memberCount0}</span>
                       )}
                     </div>
 
@@ -312,7 +314,7 @@ export default function Teams() {
                         className="flex-1"
                         onClick={() => openEditTeam(team)}
                       >
-                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                        <Pencil className="h-3 w-3 mr-1" /> {tTeams.actionEdit}
                       </Button>
                       <Button
                         variant="outline"
@@ -334,7 +336,7 @@ export default function Teams() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Equipe"
+          label={tTeams.fabLabel}
           onClick={openNewTeam}
         />
       )}
@@ -360,19 +362,20 @@ export default function Teams() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir equipe</AlertDialogTitle>
+            <AlertDialogTitle>{tTeams.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a equipe "{teamToDelete?.name}"? Esta ação não pode ser
-              desfeita.
+              {teamToDelete
+                ? tTeams.deleteDescription.replace('{name}', teamToDelete.name)
+                : tTeams.deleteDescription.replace(' "{name}"', '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tTeams.btnCancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {tTeams.btnDelete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -162,7 +162,7 @@ export default function EquipmentDetail() {
         setUploadProgress({ current: i + 1, total });
       }
       if (successCount > 0) {
-        toast({ title: `${successCount} anexo${successCount > 1 ? 's' : ''} enviado${successCount > 1 ? 's' : ''}!` });
+        toast({ title: `${successCount} ${successCount > 1 ? te.attachmentUploadedPlural : te.attachmentUploadedSingular}` });
       }
     } finally {
       setUploadingFiles(false);
@@ -185,14 +185,14 @@ export default function EquipmentDetail() {
     const svgEl = labelRef.current.querySelector('svg');
     const svgData = svgEl ? new XMLSerializer().serializeToString(svgEl) : '';
     printWindow.document.write(`
-      <!DOCTYPE html><html><head><title>Etiqueta - ${escapeHtml(equipment.name)}</title>
+      <!DOCTYPE html><html><head><title>${te.labelPrintTitle}${escapeHtml(equipment.name)}</title>
       <style>@page{size:${labelSize.width}px ${labelSize.height}px;margin:0}body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Arial,sans-serif}.label{width:${labelSize.width}px;height:${labelSize.height}px;border:1px solid #ccc;border-radius:8px;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}.company-name{font-size:11px;font-weight:bold}.company-info{font-size:8px;color:#666}.eq-label{font-size:8px;color:#888}.eq-name{font-size:12px;font-weight:bold}.eq-id{font-size:10px;font-weight:bold}@media print{body{margin:0}.label{border:none}}</style></head><body>
       <div class="label">
         ${selectedLabelSize === '5x8' && companySettings ? `<div class="company-name">${escapeHtml(companySettings.name) || 'Empresa'}</div>${companySettings.phone ? `<div class="company-info">${escapeHtml(companySettings.phone)}</div>` : ''}${companySettings.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}` : ''}
         ${svgData}
-        <div class="eq-label">Nome do equipamento</div>
+        <div class="eq-label">${te.labelEquipNameField}</div>
         <div class="eq-name">${escapeHtml(equipment.name)}</div>
-        <div class="eq-label">Identificador</div>
+        <div class="eq-label">${te.labelIdentifierField}</div>
         <div class="eq-id">${escapeHtml(equipment.identifier) || '-'}</div>
       </div>
       <script>setTimeout(()=>window.print(),300)</script></body></html>
@@ -233,7 +233,7 @@ export default function EquipmentDetail() {
                 <button
                   type="button"
                   className="group flex items-center gap-1.5 max-w-full text-left rounded-md -mx-1 px-1 hover:bg-accent/50 transition-colors"
-                  aria-label="Trocar equipamento"
+                  aria-label={te.ariaSwitchEquipment}
                 >
                   <h1 className="text-xl sm:text-2xl font-bold truncate">{equipment.name}</h1>
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -338,7 +338,7 @@ export default function EquipmentDetail() {
                     type="button"
                     onClick={() => setQrExpanded(true)}
                     className="shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                    aria-label="Ampliar QR Code"
+                    aria-label={te.ariaExpandQr}
                   >
                     <QRCodeSVG value={qrValue} size={100} />
                   </button>
@@ -820,7 +820,7 @@ export default function EquipmentDetail() {
           <button
             className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
             onClick={() => setQrExpanded(false)}
-            aria-label="Fechar"
+            aria-label={te.ariaCloseQr}
           >
             <X className="h-6 w-6" />
           </button>

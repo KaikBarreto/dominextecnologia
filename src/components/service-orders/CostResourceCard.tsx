@@ -17,6 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface CostResourceCardProps {
   resource: CostResource;
@@ -33,6 +35,8 @@ const categoryIcons = {
 };
 
 export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCardProps) {
+  const { locale } = useAppLocaleContext();
+  const tCR = MESSAGES[locale].app.os.costResources;
   const { data: items = [] } = useCostResourceItems(resource.id);
   const Icon = categoryIcons[resource.category] || Package;
   const isGift = resource.category === 'gift';
@@ -69,26 +73,26 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <Badge variant={resource.is_active ? 'default' : 'secondary'} className="text-xs">
-              {resource.is_active ? 'Ativo' : 'Inativo'}
+              {resource.is_active ? tCR.badgeActive : tCR.badgeInactive}
             </Badge>
             <RowActionsMenu
               actions={[
-                { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => onEdit(resource) },
-                { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setConfirmDeleteOpen(true) },
+                { label: tCR.actionEdit, icon: Pencil, variant: 'edit', onClick: () => onEdit(resource) },
+                { label: tCR.actionDelete, icon: Trash2, variant: 'delete', onClick: () => setConfirmDeleteOpen(true) },
               ]}
             />
             <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir {isGift ? 'brinde' : 'recurso'}?</AlertDialogTitle>
+                  <AlertDialogTitle>{isGift ? tCR.deleteGiftTitle : tCR.deleteResourceTitle}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta ação removerá "{resource.name}" e todos os seus {isGift ? 'itens' : 'componentes de custo'}.
+                    {(isGift ? tCR.deleteGiftDesc : tCR.deleteResourceDesc).replace('{name}', resource.name)}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogCancel>{tCR.btnCancel}</AlertDialogCancel>
                   <AlertDialogAction onClick={() => onDelete(resource.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Excluir
+                    {tCR.btnDelete}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -131,7 +135,7 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
 
         {items.length === 0 && (
           <div className="text-sm text-muted-foreground italic py-2">
-            {isGift ? 'Nenhum item cadastrado' : 'Nenhum componente de custo cadastrado'}
+            {isGift ? tCR.emptyGift : tCR.emptyResource}
           </div>
         )}
 
@@ -139,21 +143,21 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
         <div className="border-t border-border pt-3 space-y-1">
           {isGift ? (
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-primary">Custo/brinde:</span>
+              <span className="text-sm font-medium text-primary">{tCR.giftCostLabel}</span>
               <span className="text-lg font-bold text-primary">R$ {formatBRL(totalValue)}</span>
             </div>
           ) : (
             <>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total mensal:</span>
+                <span className="text-muted-foreground">{tCR.monthlyTotalLabel}</span>
                 <span className="font-semibold text-foreground">R$ {formatBRL(totalValue)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Horas mensais:</span>
+                <span className="text-muted-foreground">{tCR.monthlyHoursLabel}</span>
                 <span className="text-foreground">{resource.monthly_hours}h</span>
               </div>
               <div className="flex justify-between items-center pt-1 border-t border-dashed border-border">
-                <span className="text-sm font-medium text-primary">Custo/hora:</span>
+                <span className="text-sm font-medium text-primary">{tCR.hourlyCostLabel}</span>
                 <span className="text-lg font-bold text-primary">R$ {formatBRL(hourlyRate)}/h</span>
               </div>
             </>

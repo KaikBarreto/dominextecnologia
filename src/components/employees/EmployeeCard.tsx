@@ -43,9 +43,9 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
     const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
     try {
       await navigator.clipboard.writeText(link);
-      toast({ title: 'Link gerado e copiado!', description: link });
+      toast({ title: t.toasts.linkCopied, description: link });
     } catch {
-      toast({ variant: 'destructive', title: 'Não foi possível copiar', description: link });
+      toast({ variant: 'destructive', title: t.toasts.linkCopyFailed, description: link });
     }
   };
 
@@ -74,7 +74,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
               size="icon"
               className="h-7 w-7 hover:bg-warning hover:text-warning-foreground group"
               onClick={onEdit}
-              title="Editar"
+              title={t.actions.edit}
             >
               <Edit className="h-3.5 w-3.5 text-warning group-hover:text-warning-foreground" />
             </Button>
@@ -84,7 +84,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 hover:bg-destructive hover:text-destructive-foreground group"
-                  title="Excluir"
+                  title={t.actions.delete}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive group-hover:text-destructive-foreground" />
                 </Button>

@@ -308,7 +308,7 @@ export default function CustomerDetail() {
             type="button"
             onClick={() => setPreviewImage(customer.photo_url!)}
             className="shrink-0 rounded-full transition-opacity hover:opacity-90 cursor-pointer"
-            aria-label="Ver foto do cliente"
+            aria-label={t.ariaViewPhoto}
           >
             <img src={customer.photo_url} alt={customer.name} className="h-12 w-12 sm:h-14 sm:w-14 rounded-full object-cover border" />
           </button>
@@ -324,7 +324,7 @@ export default function CustomerDetail() {
                 <button
                   type="button"
                   className="group flex items-center gap-1.5 max-w-full text-left rounded-md -mx-1 px-1 hover:bg-accent/50 transition-colors"
-                  aria-label="Trocar de cliente"
+                  aria-label={t.ariaSwitchCustomer}
                 >
                   <h1 className="text-xl sm:text-2xl font-bold truncate">{customer.name}</h1>
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -380,7 +380,7 @@ export default function CustomerDetail() {
                       checked={portalIsPublic}
                       disabled={updatingPortalVisibility}
                       onCheckedChange={handleTogglePortalPublic}
-                      aria-label="Portal Público"
+                      aria-label={t.ariaPortal}
                     />
                   </label>
                 </TooltipTrigger>
@@ -498,7 +498,7 @@ export default function CustomerDetail() {
                       type="button"
                       onClick={() => window.open(whatsappUrl, '_blank', 'noopener,noreferrer')}
                       className="flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-accent active:scale-[0.98]"
-                      aria-label="Abrir WhatsApp do cliente"
+                      aria-label={t.ariaWhatsApp}
                       title="WhatsApp"
                     >
                       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#25D366" xmlns="http://www.w3.org/2000/svg">

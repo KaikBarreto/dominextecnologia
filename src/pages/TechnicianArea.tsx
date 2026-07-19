@@ -15,6 +15,7 @@ import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { SegmentToolsSwitcher } from '@/components/technician-area/SegmentToolsSwitcher';
 import { SegmentLockedScreen } from '@/components/technician-area/SegmentLockedScreen';
@@ -110,6 +111,8 @@ export default function TechnicianArea({ embedded = false }: TechnicianAreaProps
 // ---------------------------------------------------------------------------
 function useSegmentNav(selectedSegment: string | null) {
   const { settings } = useCompanySettings();
+  const { locale } = useAppLocaleContext();
+  const tArea = MESSAGES[locale].app.os.technicianArea;
   const companySegment = settings?.segment ?? null;
   const effectiveSegment = selectedSegment ?? companySegment ?? null;
   const isOwnSegment = !!companySegment && effectiveSegment === companySegment;
@@ -120,7 +123,7 @@ function useSegmentNav(selectedSegment: string | null) {
   const navItems = isLocked
     ? teaserTools.map((t) => ({ value: t.id, label: t.label, icon: t.icon, locked: true }))
     : [
-        { value: 'inicio', label: 'Início', icon: Home, locked: false },
+        { value: 'inicio', label: tArea.tabStart, icon: Home, locked: false },
         ...tools.map((t) => ({ value: t.id, label: t.label, icon: t.icon, locked: false })),
       ];
 
@@ -168,6 +171,8 @@ function ToolsShell({
   content,
   showSegmentVeil = false,
 }: ShellProps) {
+  const { locale } = useAppLocaleContext();
+  const tArea = MESSAGES[locale].app.os.technicianArea;
   // Cor do veil: segmento selecionado > segmento da empresa > verde Dominex.
   const veilColor =
     getSegment(effectiveSegment)?.color ??
@@ -191,7 +196,7 @@ function ToolsShell({
             withVeil && 'text-white',
           )}
         >
-          Área do Técnico™
+          {tArea.title}™
         </h1>
       </div>
       {companySegment && (
@@ -301,7 +306,7 @@ function ToolsShell({
                       className="-ml-2 h-9 gap-1 px-2 text-muted-foreground hover:text-foreground"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Voltar
+                      {tArea.btnBack}
                     </Button>
                   </div>
                 )}

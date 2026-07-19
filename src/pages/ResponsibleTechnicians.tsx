@@ -34,6 +34,8 @@ import {
 } from '@/hooks/useResponsibleTechnicians';
 import { ResponsibleTechnicianFormDialog } from '@/components/pmoc/ResponsibleTechnicianFormDialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Multi-select status: vazio = todos. Valores possíveis: 'active' | 'inactive'.
 type StatusKey = 'active' | 'inactive';
@@ -56,6 +58,8 @@ function getInitials(name?: string): string {
  */
 export function ResponsibleTechniciansContent({ embedded = false }: { embedded?: boolean }) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const tRT = MESSAGES[locale].app.pmoc.responsibleTechnicians;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusKey[]>([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -108,7 +112,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
   const statItems = [
     {
       key: 'total',
-      label: 'Total',
+      label: tRT.statTotal,
       count: stats.total,
       icon: <BadgeCheck className="h-4 w-4" />,
       accentColor: 'hsl(var(--primary))',
@@ -117,7 +121,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
     },
     {
       key: 'active',
-      label: 'Ativos',
+      label: tRT.statActive,
       count: stats.active,
       icon: <CheckCircle2 className="h-4 w-4" />,
       accentColor: '#22c55e',
@@ -126,7 +130,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
     },
     {
       key: 'inactive',
-      label: 'Inativos',
+      label: tRT.statInactive,
       count: stats.inactive,
       icon: <XCircle className="h-4 w-4" />,
       accentColor: '#64748b',
@@ -165,8 +169,8 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
       <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', !embedded && isMobile && 'pb-24')}>
         {!embedded && (
           <MobilePageHeader
-            title="Responsáveis Técnicos"
-            subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
+            title={tRT.pageTitle}
+            subtitle={tRT.pageSubtitle}
             icon={ShieldCheck}
           />
         )}
@@ -187,16 +191,16 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
       <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', !embedded && isMobile && 'pb-24')}>
         {!embedded && (
           <MobilePageHeader
-            title="Responsáveis Técnicos"
-            subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
+            title={tRT.pageTitle}
+            subtitle={tRT.pageSubtitle}
             icon={ShieldCheck}
           />
         )}
         <EmptyState
           icon={<XCircle className="h-12 w-12 text-destructive" />}
-          title="Erro ao carregar responsáveis técnicos"
-          description="Não foi possível conectar ao servidor. Tente novamente."
-          action={{ label: 'Tentar novamente', onClick: () => refetch() }}
+          title={tRT.loadError}
+          description={tRT.loadErrorDesc}
+          action={{ label: tRT.retry, onClick: () => refetch() }}
         />
       </div>
     );
@@ -206,8 +210,8 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', !embedded && isMobile && 'pb-24')}>
       {!embedded && (
         <MobilePageHeader
-          title="Responsáveis Técnicos"
-          subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
+          title={tRT.pageTitle}
+          subtitle={tRT.pageSubtitle}
           icon={ShieldCheck}
           actions={
             isMobile ? undefined : (
@@ -216,7 +220,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
                 onClick={openNew}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Novo Responsável
+                {tRT.newButton}
               </Button>
             )
           }
@@ -245,7 +249,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isMobile ? 'Buscar...' : 'Buscar por nome, CFT/CREA ou registro...'}
+            placeholder={tRT.searchPlaceholder}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -255,15 +259,15 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
         {/* Filtro mobile: bottom sheet com checkboxes multi-select. */}
         {isMobile && (
           <FilterSheet
-            triggerLabel="Filtros"
+            triggerLabel={tRT.filterStatus}
             activeCount={activeFilterCount}
             onClear={() => setStatusFilter([])}
           >
             <FilterCheckboxGroup
-              label="Status"
+              label={tRT.filterStatus}
               options={[
-                { value: 'active', label: 'Ativos' },
-                { value: 'inactive', label: 'Inativos' },
+                { value: 'active', label: tRT.filterActive },
+                { value: 'inactive', label: tRT.filterInactive },
               ]}
               selected={statusFilter}
               onChange={(next) => setStatusFilter(next as StatusKey[])}
@@ -280,13 +284,13 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
               icon={<ShieldCheck className="h-12 w-12" />}
               title={
                 searchTerm || statusFilter.length > 0
-                  ? 'Nenhum responsável encontrado'
-                  : 'Nenhum responsável cadastrado'
+                  ? tRT.emptyTitle
+                  : tRT.emptyTitle
               }
               description={
                 searchTerm || statusFilter.length > 0
-                  ? 'Tente outro filtro ou termo de busca'
-                  : 'Toque em "Novo Responsável" para cadastrar o primeiro RT da sua empresa'
+                  ? tRT.emptyDesc
+                  : tRT.emptyDesc
               }
             />
           ) : (
@@ -296,7 +300,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
                   const actions: ItemAction[] = [
                     {
                       key: 'edit',
-                      label: 'Editar',
+                      label: tRT.actionEdit,
                       icon: <Pencil className="h-4 w-4" />,
                       variant: 'edit' as const,
                       onClick: () => openEdit(rt),
@@ -304,14 +308,14 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
                     ...(rt.is_active
                       ? [{
                           key: 'deactivate',
-                          label: 'Inativar',
+                          label: tRT.actionDeactivate,
                           icon: <Trash2 className="h-4 w-4" />,
                           variant: 'destructive' as const,
                           onClick: () => setToDeactivate(rt),
                         }]
                       : [{
                           key: 'reactivate',
-                          label: 'Reativar',
+                          label: tRT.actionReactivate,
                           icon: <RotateCcw className="h-4 w-4" />,
                           onClick: () => handleReactivate(rt),
                         }]),
@@ -335,7 +339,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
                           variant={rt.is_active ? 'success' : 'outline'}
                           className="text-[10px] px-1.5 py-0"
                         >
-                          {rt.is_active ? 'Ativo' : 'Inativo'}
+                          {rt.is_active ? tRT.statusActive : tRT.statusInactive}
                         </Badge>
                       }
                     />
@@ -361,7 +365,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
         // -------------------------------------------------------------------
         <div>
           <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
-            Lista de Responsáveis Técnicos
+            {tRT.pageTitle}
           </h2>
           <Card className="w-full max-w-full overflow-hidden">
             <CardContent className="p-0">
@@ -370,14 +374,10 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <ShieldCheck className="mb-4 h-12 w-12 text-muted-foreground" />
                     <h3 className="text-lg font-medium">
-                      {searchTerm || statusFilter.length > 0
-                        ? 'Nenhum responsável encontrado'
-                        : 'Nenhum responsável cadastrado'}
+                      {tRT.emptyTitle}
                     </h3>
                     <p className="text-muted-foreground">
-                      {searchTerm || statusFilter.length > 0
-                        ? 'Tente outro filtro ou termo de busca'
-                        : 'Clique em "Novo Responsável" para começar'}
+                      {tRT.emptyDesc}
                     </p>
                   </div>
                 ) : (
@@ -387,22 +387,22 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
                         <TableHeader>
                           <TableRow>
                             <SortableTableHead sortKey="full_name" sortConfig={sortConfig} onSort={handleSort}>
-                              Nome
+                              {tRT.colName}
                             </SortableTableHead>
                             <SortableTableHead sortKey="cft_crea" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">
-                              CFT/CREA
+                              {tRT.colCftCrea}
                             </SortableTableHead>
                             <SortableTableHead sortKey="modality" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">
-                              Modalidade
+                              {tRT.colModality}
                             </SortableTableHead>
                             <SortableTableHead sortKey="registry_number" sortConfig={sortConfig} onSort={handleSort} className="hidden xl:table-cell">
-                              Registro
+                              {tRT.colRegistry}
                             </SortableTableHead>
-                            <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
+                            <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">{tRT.colContact}</TableHead>
                             <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>
-                              Status
+                              {tRT.colStatus}
                             </SortableTableHead>
-                            <TableHead className="w-[110px] text-xs uppercase tracking-wider">Ações</TableHead>
+                            <TableHead className="w-[110px] text-xs uppercase tracking-wider">{tRT.colActions}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -438,23 +438,23 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
                               </TableCell>
                               <TableCell>
                                 <Badge variant={rt.is_active ? 'success' : 'outline'}>
-                                  {rt.is_active ? 'Ativo' : 'Inativo'}
+                                  {rt.is_active ? tRT.statusActive : tRT.statusInactive}
                                 </Badge>
                               </TableCell>
                               <TableCell>
                                 <div onClick={(e) => e.stopPropagation()}>
                                   <RowActionsMenu
                                     actions={[
-                                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEdit(rt) },
+                                      { label: tRT.actionEdit, icon: Pencil, variant: 'edit', onClick: () => openEdit(rt) },
                                       {
-                                        label: 'Inativar',
+                                        label: tRT.actionDeactivate,
                                         icon: Trash2,
                                         variant: 'delete',
                                         onClick: () => setToDeactivate(rt),
                                         hidden: !rt.is_active,
                                       },
                                       {
-                                        label: 'Reativar',
+                                        label: tRT.actionReactivate,
                                         icon: RotateCcw,
                                         onClick: () => handleReactivate(rt),
                                         hidden: rt.is_active,
@@ -488,7 +488,7 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
 
       {/* FAB mobile-only */}
       {isMobile && (
-        <FABButton icon={<Plus className="h-5 w-5" />} label="Responsável" onClick={openNew} />
+        <FABButton icon={<Plus className="h-5 w-5" />} label={tRT.newButton} onClick={openNew} />
       )}
 
       <ResponsibleTechnicianFormDialog
@@ -500,20 +500,18 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
       <AlertDialog open={!!toDeactivate} onOpenChange={(open) => !open && setToDeactivate(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Inativar responsável técnico</AlertDialogTitle>
+            <AlertDialogTitle>{tRT.deactivateTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja inativar "{toDeactivate?.full_name}"? Contratos PMOC que
-              referenciam este RT continuarão funcionando, mas ele não poderá ser selecionado
-              em novos contratos. Você pode reativá-lo a qualquer momento.
+              {tRT.deactivateDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tRT.deactivateCancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeactivate}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Inativar
+              {tRT.deactivateConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

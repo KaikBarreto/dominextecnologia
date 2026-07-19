@@ -19,22 +19,20 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { fuzzyIncludes } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
 import { useCompras, type CompraListRow, type CompraStatus } from '@/hooks/useCompras';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { SuppliersDialog } from './SuppliersDialog';
 import { CompraEditorDialog } from './CompraEditorDialog';
 import { CompraDetailView } from './CompraDetailView';
 
-const STATUS_META: Record<string, { label: string; variant: 'info' | 'success' | 'destructive' }> = {
-  aberta: { label: 'Aberta', variant: 'info' },
-  concluida: { label: 'Concluída', variant: 'success' },
-  cancelada: { label: 'Cancelada', variant: 'destructive' },
+const STATUS_VARIANT: Record<string, 'info' | 'success' | 'destructive'> = {
+  aberta: 'info',
+  concluida: 'success',
+  cancelada: 'destructive',
 };
 
-// Opções do filtro de status (ordem fixa: Aberta → Concluída → Cancelada).
-const STATUS_FILTER_OPTIONS: { value: CompraStatus; label: string }[] = [
-  { value: 'aberta', label: 'Aberta' },
-  { value: 'concluida', label: 'Concluída' },
-  { value: 'cancelada', label: 'Cancelada' },
-];
+// Ordem fixa para o filtro de status.
+const STATUS_FILTER_KEYS: CompraStatus[] = ['aberta', 'concluida', 'cancelada'];
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
@@ -42,6 +40,8 @@ function formatDate(iso: string): string {
 
 export function MaterialPurchasesTab() {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.purchases;
   const { compras, isLoading, setStatus, deleteCompra } = useCompras();
 
   const [search, setSearch] = useState('');
@@ -66,6 +66,18 @@ export function MaterialPurchasesTab() {
     if (selectedCompraId && !isLoading && !selectedCompra) setSelectedCompraId(null);
   }, [selectedCompraId, isLoading, selectedCompra]);
 
+  // Mapeamento canônico (banco) → label traduzido.
+  const statusLabelMap: Record<string, string> = {
+    aberta: t.status.open,
+    concluida: t.status.completed,
+    cancelada: t.status.cancelled,
+  };
+
+  const statusFilterOptions = STATUS_FILTER_KEYS.map((k) => ({
+    value: k,
+    label: statusLabelMap[k] ?? k,
+  }));
+
   const filtered = useMemo(() => {
     const term = search.trim();
     return compras.filter((c) => {
@@ -81,20 +93,21 @@ export function MaterialPurchasesTab() {
         fuzzyIncludes(codeStr, term) ||
         fuzzyIncludes(String(c.numero), term) ||
         fuzzyIncludes(c.title, term) ||
-        fuzzyIncludes(STATUS_META[c.status]?.label ?? '', term) ||
+        fuzzyIncludes(statusLabelMap[c.status] ?? '', term) ||
         fuzzyIncludes(c.notes ?? '', term);
       return matchesSearch;
     });
-  }, [compras, search, statusFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compras, search, statusFilter, statusLabelMap.aberta]);
 
   // Conteúdo do filtro de status (compartilhado por FilterButton/FilterSheet).
   const statusFilterContent = (
     <FilterCheckboxGroup
-      label="Status"
-      options={STATUS_FILTER_OPTIONS}
+      label={t.filters.status}
+      options={statusFilterOptions}
       selected={statusFilter}
       onChange={setStatusFilter}
-      emptyLabel="Todos os status"
+      emptyLabel={t.filters.statusEmpty}
     />
   );
 
@@ -119,26 +132,26 @@ export function MaterialPurchasesTab() {
   }
 
   const rowActions = (c: CompraListRow): RowAction[] => [
-    { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEdit(c) },
+    { label: t.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => openEdit(c) },
     {
-      label: 'Concluir compra',
+      label: t.rowActions.complete,
       icon: CheckCheck,
       onClick: () => setStatus.mutate({ id: c.id, status: 'concluida' }),
       hidden: c.status !== 'aberta',
     },
     {
-      label: 'Reabrir compra',
+      label: t.rowActions.reopen,
       icon: RotateCcw,
       onClick: () => setStatus.mutate({ id: c.id, status: 'aberta' }),
       hidden: c.status === 'aberta',
     },
     {
-      label: 'Cancelar compra',
+      label: t.rowActions.cancel,
       icon: XCircle,
       onClick: () => setToCancel(c),
       hidden: c.status === 'cancelada',
     },
-    { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setToDelete(c) },
+    { label: t.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => setToDelete(c) },
   ];
 
   return (
@@ -146,7 +159,7 @@ export function MaterialPurchasesTab() {
       {/* Título da aba (só na lista; o detalhe usa o nome da compra). Mesmo
           estilo dos títulos das outras abas do Estoque. */}
       <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-        Compras de Material
+        {t.title}
       </h2>
 
       {/* Cabeçalho de ações */}
@@ -157,14 +170,14 @@ export function MaterialPurchasesTab() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Buscar por código ou título..."
+              placeholder={t.search.placeholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           {isMobile ? (
             <FilterSheet
-              triggerLabel="Filtros"
+              triggerLabel={MESSAGES[locale].app.inventory.filters.button}
               activeCount={statusFilter.length > 0 ? 1 : 0}
               onClear={() => setStatusFilter([])}
             >
@@ -181,29 +194,29 @@ export function MaterialPurchasesTab() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-1.5" onClick={() => setSuppliersOpen(true)}>
-            <Users className="h-4 w-4" /> Fornecedores
+            <Users className="h-4 w-4" /> {t.actions.suppliers}
           </Button>
           <Button className="gap-1.5" onClick={openNew}>
-            <Plus className="h-4 w-4" /> Nova compra
+            <Plus className="h-4 w-4" /> {t.actions.newPurchase}
           </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>
+        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">{t.loading}</CardContent></Card>
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="p-0">
             <EmptyState
               size="compact"
               icon={<ShoppingCart className="h-10 w-10" />}
-              title={hasActiveFilter ? 'Nenhuma compra encontrada' : 'Nenhuma compra'}
+              title={hasActiveFilter ? t.empty.noneFoundTitle : t.empty.noneTitle}
               description={
                 hasActiveFilter
-                  ? 'Tente outro termo de busca ou ajuste os filtros.'
-                  : 'Crie uma compra, liste os materiais e compare cotações de fornecedores.'
+                  ? t.empty.noneFoundDescription
+                  : t.empty.noneDescription
               }
-              action={hasActiveFilter ? undefined : { label: 'Nova compra', onClick: openNew }}
+              action={hasActiveFilter ? undefined : { label: t.empty.newPurchase, onClick: openNew }}
             />
           </CardContent>
         </Card>
@@ -212,7 +225,8 @@ export function MaterialPurchasesTab() {
         // empilhada) e grade a partir do desktop (2 em lg, 3 em xl).
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {filtered.map((c) => {
-            const meta = STATUS_META[c.status] ?? STATUS_META.aberta;
+            const variant = STATUS_VARIANT[c.status] ?? STATUS_VARIANT.aberta;
+            const statusLabel = statusLabelMap[c.status] ?? c.status;
             return (
               <Card
                 key={c.id}
@@ -230,17 +244,19 @@ export function MaterialPurchasesTab() {
                         <span className="mr-1.5 font-mono text-sm font-medium text-muted-foreground">#{c.numero}</span>
                         {c.title}
                       </span>
-                      <Badge variant={meta.variant} className="text-[10px]">{meta.label}</Badge>
+                      <Badge variant={variant} className="text-[10px]">{statusLabel}</Badge>
                     </div>
 
                     {/* Linha secundária: data + nº de cotações + fornecedor aceito */}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(c.created_at)} • {c.cotacao_count} {c.cotacao_count === 1 ? 'cotação' : 'cotações'}
+                        {formatDate(c.created_at)} • {c.cotacao_count === 1
+                          ? t.card.quotes.replace('{count}', String(c.cotacao_count))
+                          : t.card.quotesPlural.replace('{count}', String(c.cotacao_count))}
                       </p>
                       {c.accepted_supplier_name && (
                         <Badge variant="success" className="max-w-full truncate text-[10px]">
-                          Aceita: {c.accepted_supplier_name}
+                          {t.card.accepted.replace('{name}', c.accepted_supplier_name)}
                         </Badge>
                       )}
                     </div>
@@ -248,7 +264,7 @@ export function MaterialPurchasesTab() {
                     {/* Menor cotação em destaque, quando houver */}
                     {c.lowest_total != null && (
                       <p className="text-sm">
-                        <span className="text-muted-foreground">Menor cotação: </span>
+                        <span className="text-muted-foreground">{t.card.lowestQuote}</span>
                         <span className="font-semibold text-success">R$ {formatBRL(c.lowest_total)}</span>
                       </p>
                     )}
@@ -269,13 +285,13 @@ export function MaterialPurchasesTab() {
       <AlertDialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar compra?</AlertDialogTitle>
+            <AlertDialogTitle>{t.cancelDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              A compra ficará marcada como cancelada. Você pode reabri-la ou excluí-la depois.
+              {t.cancelDialog.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancelDialog.back}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
@@ -283,7 +299,7 @@ export function MaterialPurchasesTab() {
                 setToCancel(null);
               }}
             >
-              Cancelar compra
+              {t.cancelDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -293,14 +309,15 @@ export function MaterialPurchasesTab() {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir compra?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              {toDelete ? `"${toDelete.title}" e suas cotações serão removidas. ` : ''}
-              Esta ação não pode ser desfeita.
+              {toDelete
+                ? t.deleteDialog.description.replace('{title}', toDelete.title)
+                : t.deleteDialog.descriptionNoTitle}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t.deleteDialog.back}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
@@ -308,7 +325,7 @@ export function MaterialPurchasesTab() {
                 setToDelete(null);
               }}
             >
-              Excluir
+              {t.deleteDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

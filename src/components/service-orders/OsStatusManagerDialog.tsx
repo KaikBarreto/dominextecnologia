@@ -31,6 +31,7 @@ interface Props {
 // OS Config hook
 function useOsConfig() {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
   const queryClient = useQueryClient();
 
   const configQuery = useQuery({
@@ -49,7 +50,7 @@ function useOsConfig() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_config'] });
-      toast({ title: 'Configuração salva!' });
+      toast({ title: MESSAGES[locale].app.os.statusManager.toastConfigSaved });
     },
   });
 
@@ -59,6 +60,7 @@ function useOsConfig() {
 // SLA hook
 function useOsSla() {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
   const queryClient = useQueryClient();
 
   const slaQuery = useQuery({
@@ -77,7 +79,7 @@ function useOsSla() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_sla_config'] });
-      toast({ title: 'SLA salvo!' });
+      toast({ title: MESSAGES[locale].app.os.statusManager.toastSlaSaved });
     },
   });
 
@@ -88,7 +90,7 @@ function useOsSla() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_sla_config'] });
-      toast({ title: 'SLA removido!' });
+      toast({ title: MESSAGES[locale].app.os.statusManager.toastSlaRemoved });
     },
   });
 
@@ -98,6 +100,7 @@ function useOsSla() {
 // Required fields hook
 function useOsRequiredFields() {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -116,7 +119,7 @@ function useOsRequiredFields() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_required_fields'] });
-      toast({ title: 'Campo obrigatório adicionado!' });
+      toast({ title: MESSAGES[locale].app.os.statusManager.toastFieldAdded });
     },
   });
 

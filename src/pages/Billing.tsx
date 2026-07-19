@@ -1,4 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Clock, ArrowRight, Sparkles, Zap, Users, Package, Lock, Receipt } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,8 @@ export default function Billing() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.billing;
   const { modules, hasModule, allPlans } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [showCancel, setShowCancel] = useState(false);
@@ -105,9 +109,9 @@ export default function Billing() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
         <AlertTriangle className="h-12 w-12 text-muted-foreground" />
         <div>
-          <h2 className="text-lg font-semibold">Nenhuma empresa vinculada</h2>
+          <h2 className="text-lg font-semibold">{t.noCompanyTitle}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Sua conta ainda não está vinculada a uma empresa.
+            {t.noCompanyDesc}
           </p>
         </div>
       </div>
@@ -117,25 +121,29 @@ export default function Billing() {
   const isTesting = company.subscription_status === 'testing';
   const effectiveValue = company.subscription_value || 0;
 
+  const pluralDay = (n: number, tpl: string) =>
+    tpl.replace('{days}', String(n)).replace(/\{s\}/g, n === 1 ? '' : 's');
+
   const getStatusConfig = (days: number | null) => {
     if (days !== null && days < 0) {
+      const abs = Math.abs(days);
       return {
-        badge: <Badge className="bg-orange-500 text-white text-sm px-3 py-1">Vencida</Badge>,
+        badge: <Badge className="bg-orange-500 text-white text-sm px-3 py-1">{t.statusExpired}</Badge>,
         icon: AlertTriangle,
-        message: `Vencida há ${Math.abs(days)} ${Math.abs(days) === 1 ? 'dia' : 'dias'}`,
+        message: pluralDay(abs, t.statusMsgExpired),
       };
     }
     if (days !== null && days <= 7) {
       return {
-        badge: <Badge className="bg-orange-500 text-white text-sm px-3 py-1">Vence em breve</Badge>,
+        badge: <Badge className="bg-orange-500 text-white text-sm px-3 py-1">{t.statusExpiringSoon}</Badge>,
         icon: Clock,
-        message: `Vence em ${days} ${days === 1 ? 'dia' : 'dias'}`,
+        message: pluralDay(days, t.statusMsgExpiringSoon),
       };
     }
     return {
-      badge: <Badge className="bg-emerald-500 text-white text-sm px-3 py-1">Ativa</Badge>,
+      badge: <Badge className="bg-emerald-500 text-white text-sm px-3 py-1">{t.statusActive}</Badge>,
       icon: CheckCircle2,
-      message: days !== null ? `${days} dias restantes` : 'Ativa',
+      message: days !== null ? t.statusMsgActive.replace('{days}', String(days)) : t.statusMsgActiveNoDate,
     };
   };
 
@@ -163,14 +171,14 @@ export default function Billing() {
           <div className="absolute bottom-0 left-0 w-24 md:w-48 h-24 md:h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
           <div className="relative z-10 space-y-4 max-w-lg mx-auto">
             <Sparkles className="h-10 w-10 mx-auto" />
-            <h1 className="text-2xl md:text-3xl font-bold">Ative sua Assinatura</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">{t.heroTrialTitle}</h1>
             <p className="text-primary-foreground/80 text-sm md:text-base">
-              Você está no período de teste. Escolha o plano ideal e garanta acesso completo.
+              {t.heroTrialDesc}
             </p>
             {daysRemaining !== null && daysRemaining > 0 && (
               <p className="text-primary-foreground/60 text-xs">
                 <Clock className="h-3.5 w-3.5 inline mr-1" />
-                {daysRemaining} dia{daysRemaining !== 1 ? 's' : ''} restante{daysRemaining !== 1 ? 's' : ''} de teste
+                {pluralDay(daysRemaining, t.heroTrialDaysLeft)}
               </p>
             )}
             <Button
@@ -179,7 +187,7 @@ export default function Billing() {
               className="mt-4 font-semibold text-base px-8"
               onClick={() => navigate('/checkout')}
             >
-              Escolher Plano e Ativar
+              {t.btnChoosePlan}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -194,7 +202,7 @@ export default function Billing() {
                   <Sparkles className="h-5 w-5 md:h-6 md:w-6 shrink-0 mt-0.5" />
                   <h1 className="text-lg sm:text-xl md:text-3xl font-bold break-words">{company.name}</h1>
                 </div>
-                <p className="text-primary-foreground/80 text-sm md:text-lg">Plano {planDisplayName}</p>
+                <p className="text-primary-foreground/80 text-sm md:text-lg">{t.planLabel.replace('{name}', planDisplayName)}</p>
               </div>
               <div className="flex items-center justify-between md:flex-col md:items-end gap-2">
                 {statusConfig.badge}
@@ -212,7 +220,7 @@ export default function Billing() {
                     <CreditCard className="h-4 w-4 md:h-5 md:w-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs md:text-sm text-primary-foreground/70">Valor mensal</p>
+                    <p className="text-xs md:text-sm text-primary-foreground/70">{t.labelMonthlyValue}</p>
                     <PriceAmount
                       value={effectiveValue}
                       suffix="/mês"
@@ -227,7 +235,7 @@ export default function Billing() {
                     <Calendar className="h-4 w-4 md:h-5 md:w-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs md:text-sm text-primary-foreground/70">Vencimento</p>
+                    <p className="text-xs md:text-sm text-primary-foreground/70">{t.labelExpiration}</p>
                     <p className="text-sm md:text-lg font-semibold">
                       {company.subscription_expires_at
                         ? format(new Date(company.subscription_expires_at), 'dd/MM/yy')
@@ -261,7 +269,7 @@ export default function Billing() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
-          Módulos Ativos
+          {t.sectionActiveModules}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {modules.map((m) => {
@@ -289,7 +297,7 @@ export default function Billing() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-500" />
-            Módulos Disponíveis
+            {t.sectionAvailableModules}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {availableAddons.map((m: any) => {
@@ -315,7 +323,7 @@ export default function Billing() {
                       className="w-full"
                       onClick={() => navigate('/checkout')}
                     >
-                      Contratar
+                      {t.btnHireModule}
                     </Button>
                   </CardContent>
                 </Card>
@@ -335,13 +343,13 @@ export default function Billing() {
                   <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
                     <Zap className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
                   </div>
-                  <span>Pagamento</span>
+                  <span>{t.cardPaymentTitle}</span>
                 </CardTitle>
               </div>
               <CardDescription className="mt-2 text-xs md:text-sm">
                 {daysRemaining !== null && daysRemaining < 0
-                  ? 'Sua assinatura está vencida. Renove agora.'
-                  : 'Mantenha sua assinatura em dia.'}
+                  ? t.cardPaymentDescExpired
+                  : t.cardPaymentDescActive}
               </CardDescription>
             </CardHeader>
             <CardContent className="relative p-4 md:p-6 pt-0">
@@ -349,13 +357,13 @@ export default function Billing() {
                 <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-background to-muted/50 border p-4 md:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                     <div>
-                      <p className="text-xs md:text-sm text-muted-foreground font-medium">Valor a pagar</p>
+                      <p className="text-xs md:text-sm text-muted-foreground font-medium">{t.labelAmountDue}</p>
                       <p className="text-2xl md:text-4xl font-bold tracking-tight mt-1">
                         R$ {formatBRL(effectiveValue)}
                       </p>
                     </div>
                     <div className="text-left sm:text-right">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Vencimento</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.labelDueDate}</p>
                       <p className="font-semibold text-base md:text-lg">
                         {company.subscription_expires_at
                           ? format(new Date(company.subscription_expires_at), 'dd/MM/yyyy')
@@ -377,7 +385,7 @@ export default function Billing() {
                     }
                   }}
                 >
-                  Pagar Agora
+                  {t.btnPayNow}
                   <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5 -rotate-45" />
                 </Button>
               </div>
@@ -391,28 +399,28 @@ export default function Billing() {
                 <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
                   <Users className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
                 </div>
-                <span>Resumo do Plano</span>
+                <span>{t.cardSummaryTitle}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="relative p-4 md:p-6 pt-0 space-y-4">
               <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">Plano</span>
+                <span className="text-muted-foreground">{t.summaryPlan}</span>
                 <span className="font-semibold capitalize">{planDisplayName}</span>
               </div>
               <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">Módulos ativos</span>
+                <span className="text-muted-foreground">{t.summaryActiveModules}</span>
                 <span className="font-semibold">{modules.length}</span>
               </div>
               <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">Máx. Usuários</span>
+                <span className="text-muted-foreground">{t.summaryMaxUsers}</span>
                 <span className="font-semibold">{company.max_users || 5}</span>
               </div>
               <div className="flex justify-between text-sm py-2 border-b border-border">
-                <span className="text-muted-foreground">Ciclo</span>
-                <span className="font-semibold capitalize">{company.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}</span>
+                <span className="text-muted-foreground">{t.summaryCycle}</span>
+                <span className="font-semibold capitalize">{company.billing_cycle === 'yearly' ? t.cycleYearly : t.cycleMonthly}</span>
               </div>
               <div className="flex justify-between text-sm py-2">
-                <span className="text-muted-foreground">Status</span>
+                <span className="text-muted-foreground">{t.summaryStatus}</span>
                 {statusConfig.badge}
               </div>
             </CardContent>
@@ -427,10 +435,10 @@ export default function Billing() {
             <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
               <Receipt className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
             </div>
-            <span>Histórico de pagamentos</span>
+            <span>{t.cardPaymentHistoryTitle}</span>
           </CardTitle>
           <CardDescription className="mt-2 text-xs md:text-sm">
-            Cobranças e pagamentos da sua assinatura.
+            {t.cardPaymentHistoryDesc}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0">
@@ -446,10 +454,10 @@ export default function Billing() {
             onClick={() => setShowCancel(true)}
             className="text-sm text-muted-foreground hover:text-destructive underline-offset-4 hover:underline transition-colors"
           >
-            Cancelar assinatura
+            {t.btnCancelSubscription}
           </button>
           <p className="text-xs text-muted-foreground/70 text-center max-w-sm">
-            Ao cancelar, a renovação automática para e você mantém acesso até o vencimento.
+            {t.cancelSubscriptionNote}
           </p>
         </div>
       )}

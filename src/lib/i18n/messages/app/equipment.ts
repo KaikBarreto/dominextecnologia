@@ -195,6 +195,18 @@ export const equipment = {
       statusInactive: 'Inativo',
       booleanYes: 'Sim',
       booleanNo: 'Não',
+
+      // Aria-labels e strings do header / QR / etiqueta
+      ariaSwitchEquipment: 'Trocar equipamento',
+      ariaExpandQr: 'Ampliar QR Code',
+      ariaCloseQr: 'Fechar',
+      labelPrintTitle: 'Etiqueta - ',
+      labelEquipNameField: 'Nome do equipamento',
+      labelIdentifierField: 'Identificador',
+
+      // Toast de upload de anexo
+      attachmentUploadedSingular: 'anexo enviado!',
+      attachmentUploadedPlural: 'anexos enviados!',
     },
 
     // ── Configuração de campos (EquipmentFieldConfigDialog) ──
@@ -468,6 +480,15 @@ export const equipment = {
       statusInactive: 'Inactive',
       booleanYes: 'Yes',
       booleanNo: 'No',
+
+      ariaSwitchEquipment: 'Switch equipment',
+      ariaExpandQr: 'Expand QR Code',
+      ariaCloseQr: 'Close',
+      labelPrintTitle: 'Label - ',
+      labelEquipNameField: 'Equipment name',
+      labelIdentifierField: 'Identifier',
+      attachmentUploadedSingular: 'attachment uploaded!',
+      attachmentUploadedPlural: 'attachments uploaded!',
     },
 
     fieldConfig: {
@@ -736,6 +757,15 @@ export const equipment = {
       statusInactive: 'Inactivo',
       booleanYes: 'Sí',
       booleanNo: 'No',
+
+      ariaSwitchEquipment: 'Cambiar equipo',
+      ariaExpandQr: 'Ampliar código QR',
+      ariaCloseQr: 'Cerrar',
+      labelPrintTitle: 'Etiqueta - ',
+      labelEquipNameField: 'Nombre del equipo',
+      labelIdentifierField: 'Identificador',
+      attachmentUploadedSingular: 'archivo adjunto enviado!',
+      attachmentUploadedPlural: 'archivos adjuntos enviados!',
     },
 
     fieldConfig: {
@@ -1004,6 +1034,15 @@ export const equipment = {
       statusInactive: 'Inactif',
       booleanYes: 'Oui',
       booleanNo: 'Non',
+
+      ariaSwitchEquipment: `Changer d'équipement`,
+      ariaExpandQr: `Agrandir le code QR`,
+      ariaCloseQr: `Fermer`,
+      labelPrintTitle: `Étiquette - `,
+      labelEquipNameField: `Nom de l'équipement`,
+      labelIdentifierField: `Identifiant`,
+      attachmentUploadedSingular: `pièce jointe envoyée !`,
+      attachmentUploadedPlural: `pièces jointes envoyées !`,
     },
 
     fieldConfig: {

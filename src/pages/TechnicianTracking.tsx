@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { MapPin, Navigation, Clock, ExternalLink, User, LogIn, LogOut } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -80,6 +82,9 @@ function getInitials(name?: string) {
 }
 
 export default function TechnicianTracking() {
+  const { locale } = useAppLocaleContext();
+  const tTracking = MESSAGES[locale].app.os.tracking;
+
   const isMobile = useIsMobile();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   // Multi-select: vazio = nenhum técnico selecionado (não roda query).
@@ -116,7 +121,7 @@ export default function TechnicianTracking() {
         .lte('created_at', endOfDay)
         .order('created_at', { ascending: false });
 
-      setLocations((data as LocationRecord[]) || []);
+      setLocations((data as unknown as LocationRecord[]) || []);
       if (showSpinner) setLoading(false);
     },
     [selectedUserIds, selectedDate],
@@ -126,11 +131,13 @@ export default function TechnicianTracking() {
     fetchLocations(true);
   }, [fetchLocations]);
 
+  // Data de hoje para comparação de "dia atual" (realtime + filtro ativo).
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+
   // Realtime — quando o dia selecionado é hoje, novos pontos GPS dos técnicos
   // escolhidos atualizam a lista/timeline sozinhos (refresh silencioso). Para
   // datas passadas não há inserts novos, então nem assinamos. 1 canal por
   // instância, cleanup com removeChannel.
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
   useEffect(() => {
     if (!companyId || selectedUserIds.length === 0 || selectedDate !== todayStr) return;
 
@@ -192,9 +199,9 @@ export default function TechnicianTracking() {
   }, [sortedAsc]);
 
   const eventTypeLabel: Record<string, string> = {
-    check_in: 'Check-in',
-    check_out: 'Check-out',
-    tracking: 'Rastreamento',
+    check_in: tTracking.eventCheckin,
+    check_out: tTracking.eventCheckout,
+    tracking: tTracking.eventTracking,
   };
 
   const eventTypeBadgeVariant: Record<string, 'success' | 'destructive' | 'secondary'> = {
@@ -226,14 +233,14 @@ export default function TechnicianTracking() {
   const statItems = [
     {
       key: 'check_ins',
-      label: 'Check-ins',
+      label: tTracking.statCheckins,
       count: stats.checkIns,
       icon: <LogIn className="h-4 w-4" />,
       accentColor: 'hsl(142, 71%, 45%)', // verde
     },
     {
       key: 'check_outs',
-      label: 'Check-outs',
+      label: tTracking.statCheckouts,
       count: stats.checkOuts,
       icon: <LogOut className="h-4 w-4" />,
       accentColor: 'hsl(0, 72%, 51%)', // vermelho
@@ -241,7 +248,6 @@ export default function TechnicianTracking() {
   ];
 
   // Contagem de filtros ativos no mobile (técnico + data diferente de hoje).
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const activeFilterCount = (selectedUserIds.length > 0 ? 1 : 0) + (selectedDate !== todayStr ? 1 : 0);
 
   const clearFilters = () => {
@@ -254,20 +260,20 @@ export default function TechnicianTracking() {
     <div className={cn(isMobile ? 'space-y-4' : 'flex flex-col sm:flex-row gap-3 items-start')}>
       <div className={isMobile ? '' : 'sm:w-[320px]'}>
         <FilterCheckboxGroup
-          label="Técnico"
+          label={tTracking.filterTechnician}
           options={profiles.map((p) => ({ value: p.user_id, label: p.full_name }))}
           selected={selectedUserIds}
           onChange={setSelectedUserIds}
-          emptyLabel="Selecione ao menos um"
+          emptyLabel={tTracking.filterSelectAtLeastOne}
         />
       </div>
 
       <div className={isMobile ? '' : 'sm:w-[200px]'}>
         {isMobile && (
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Data</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{tTracking.filterDate}</label>
         )}
         {!isMobile && (
-          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 block">Data</label>
+          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 block">{tTracking.filterDate}</label>
         )}
         <Input
           type="date"
@@ -296,7 +302,7 @@ export default function TechnicianTracking() {
               <Navigation className="h-4 w-4" />
             </span>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate text-right mt-1">
-              Distância
+              {tTracking.statDistance}
             </span>
           </div>
           <span className="text-xl font-bold leading-none truncate">{formattedDistance}</span>
@@ -310,7 +316,7 @@ export default function TechnicianTracking() {
               <Clock className="h-4 w-4" />
             </span>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate text-right mt-1">
-              Tempo em campo
+              {tTracking.statTimeInField}
             </span>
           </div>
           <span className="text-xl font-bold leading-none truncate">{formattedTimeInField}</span>
@@ -322,8 +328,8 @@ export default function TechnicianTracking() {
   return (
     <div className={cn('space-y-6', isMobile && 'pb-8 space-y-4')}>
       <MobilePageHeader
-        title="Rastreamento de Técnicos"
-        subtitle="Histórico de deslocamentos por técnico e dia"
+        title={tTracking.pageTitle}
+        subtitle={tTracking.pageSubtitle}
         icon={Navigation}
       />
 
@@ -334,7 +340,7 @@ export default function TechnicianTracking() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <FilterSheet
-              triggerLabel="Filtros"
+              triggerLabel={tTracking.filterLabel}
               activeCount={activeFilterCount}
               onClear={clearFilters}
             >
@@ -342,7 +348,7 @@ export default function TechnicianTracking() {
             </FilterSheet>
             <div className="flex-1 min-w-0 flex items-center gap-2 text-xs text-muted-foreground truncate">
               {selectedUserIds.length === 0 ? (
-                <span className="truncate">Selecione um técnico</span>
+                <span className="truncate">{tTracking.summarySelectTechnician}</span>
               ) : selectedTechnician ? (
                 <>
                   <User className="h-3.5 w-3.5 shrink-0" />
@@ -353,7 +359,7 @@ export default function TechnicianTracking() {
               ) : (
                 <>
                   <User className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{selectedUserIds.length} técnicos</span>
+                  <span className="truncate">{tTracking.technicianCount.replace('{n}', String(selectedUserIds.length))}</span>
                   <span className="opacity-50">•</span>
                   <span className="shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
                 </>
@@ -371,15 +377,15 @@ export default function TechnicianTracking() {
             onClear={clearFilters}
           >
             <FilterCheckboxGroup
-              label="Técnico"
+              label={tTracking.filterTechnician}
               options={profiles.map((p) => ({ value: p.user_id, label: p.full_name }))}
               selected={selectedUserIds}
               onChange={setSelectedUserIds}
-              emptyLabel="Selecione ao menos um"
+              emptyLabel={tTracking.filterSelectAtLeastOne}
             />
             <div>
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 block">
-                Data
+                {tTracking.filterDate}
               </label>
               <Input
                 type="date"
@@ -391,7 +397,7 @@ export default function TechnicianTracking() {
           </FilterButton>
           <div className="flex items-center gap-2 text-sm text-muted-foreground truncate">
             {selectedUserIds.length === 0 ? (
-              <span className="truncate">Selecione um técnico</span>
+              <span className="truncate">{tTracking.summarySelectTechnician}</span>
             ) : selectedTechnician ? (
               <>
                 <User className="h-4 w-4 shrink-0" />
@@ -402,7 +408,7 @@ export default function TechnicianTracking() {
             ) : (
               <>
                 <User className="h-4 w-4 shrink-0" />
-                <span className="truncate">{selectedUserIds.length} técnicos</span>
+                <span className="truncate">{tTracking.technicianCount.replace('{n}', String(selectedUserIds.length))}</span>
                 <span className="opacity-50">•</span>
                 <span className="shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
               </>
@@ -426,19 +432,19 @@ export default function TechnicianTracking() {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-2xl font-bold">{stats.checkIns}</p>
-                  <p className="text-xs text-muted-foreground">Check-ins</p>
+                  <p className="text-xs text-muted-foreground">{tTracking.statCheckins}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-2xl font-bold">{stats.checkOuts}</p>
-                  <p className="text-xs text-muted-foreground">Check-outs</p>
+                  <p className="text-xs text-muted-foreground">{tTracking.statCheckouts}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-2xl font-bold">{formattedDistance}</p>
-                  <p className="text-xs text-muted-foreground">Distância total</p>
+                  <p className="text-xs text-muted-foreground">{tTracking.statTotalDistance}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -446,7 +452,7 @@ export default function TechnicianTracking() {
                   <p className="text-2xl font-bold">
                     {stats.timeInField > 0 ? formattedTimeInField : '-'}
                   </p>
-                  <p className="text-xs text-muted-foreground">Tempo em campo</p>
+                  <p className="text-xs text-muted-foreground">{tTracking.statTimeInField}</p>
                 </CardContent>
               </Card>
             </div>
@@ -465,17 +471,17 @@ export default function TechnicianTracking() {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground text-sm">Carregando...</p>
+          <p className="text-muted-foreground text-sm">{tTracking.loading}</p>
         )
       ) : locations.length === 0 ? (
         isMobile ? (
           <EmptyState
             icon={<MapPin className="h-12 w-12" />}
-            title={selectedUserIds.length > 0 ? 'Nenhum registro encontrado' : 'Selecione um técnico'}
+            title={selectedUserIds.length > 0 ? tTracking.emptyNoRecords : tTracking.emptyNoTech}
             description={
               selectedUserIds.length > 0
-                ? 'Nenhum deslocamento foi registrado nesta data.'
-                : 'Escolha um técnico e uma data para ver o histórico de deslocamentos.'
+                ? tTracking.emptyNoRecordsDesc
+                : tTracking.emptyNoTechDesc
             }
           />
         ) : (
@@ -484,8 +490,8 @@ export default function TechnicianTracking() {
               <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p>
                 {selectedUserIds.length > 0
-                  ? 'Nenhum registro encontrado para esta data.'
-                  : 'Selecione um técnico para ver o histórico.'}
+                  ? tTracking.emptyNoRecordsDesc
+                  : tTracking.emptyNoTechDesc}
               </p>
             </CardContent>
           </Card>
@@ -545,7 +551,7 @@ export default function TechnicianTracking() {
                     rel="noopener noreferrer"
                     className="text-xs text-primary hover:underline inline-flex items-center gap-0.5"
                   >
-                    <ExternalLink className="h-3 w-3" /> Ver no mapa
+                    <ExternalLink className="h-3 w-3" /> {tTracking.linkViewOnMap}
                   </a>
                 </div>
               </div>

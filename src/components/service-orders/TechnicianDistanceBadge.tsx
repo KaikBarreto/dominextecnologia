@@ -10,6 +10,8 @@ import {
   buildWazeUrl,
   buildCustomerAddress,
 } from '@/utils/geolocation';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface TechnicianDistanceBadgeProps {
   technicianId: string | null;
@@ -17,6 +19,8 @@ interface TechnicianDistanceBadgeProps {
 }
 
 export function TechnicianDistanceBadge({ technicianId, customer }: TechnicianDistanceBadgeProps) {
+  const { locale } = useAppLocaleContext();
+  const tTracking = MESSAGES[locale].app.os.tracking;
   const [techLocation, setTechLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -51,10 +55,10 @@ export function TechnicianDistanceBadge({ technicianId, customer }: TechnicianDi
     <div className="flex flex-col gap-2 p-3 rounded-lg bg-muted/50 border">
       <div className="flex items-center gap-2 text-sm">
         <Navigation className="h-4 w-4 text-primary shrink-0" />
-        <span className="font-medium">Localização do Técnico</span>
+        <span className="font-medium">{tTracking.techLocationTitle}</span>
       </div>
       <p className="text-xs text-muted-foreground pl-6">
-        Última posição: {techLocation.lat.toFixed(4)}, {techLocation.lng.toFixed(4)}
+        {tTracking.techLocationLastPos} {techLocation.lat.toFixed(4)}, {techLocation.lng.toFixed(4)}
       </p>
       <div className="flex gap-2 pl-6 flex-wrap">
         <Button asChild size="sm" variant="outline" className="h-7 text-xs gap-1">

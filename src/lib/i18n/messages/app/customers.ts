@@ -257,6 +257,12 @@ export const customers = {
       equipDeleteError: 'Erro ao excluir',
       taskDeleted: 'Tarefa excluída',
       taskDeleteError: 'Erro ao excluir tarefa',
+
+      // Aria-labels do header do CustomerDetail
+      ariaViewPhoto: 'Ver foto do cliente',
+      ariaSwitchCustomer: 'Trocar de cliente',
+      ariaPortal: 'Portal Público',
+      ariaWhatsApp: 'Abrir WhatsApp do cliente',
     },
 
     // ── Diálogo de contato (ContactFormDialog.tsx) ──
@@ -564,6 +570,11 @@ export const customers = {
       equipDeleteError: 'Error deleting',
       taskDeleted: 'Task deleted',
       taskDeleteError: 'Error deleting task',
+
+      ariaViewPhoto: 'View customer photo',
+      ariaSwitchCustomer: 'Switch customer',
+      ariaPortal: 'Public Portal',
+      ariaWhatsApp: 'Open customer WhatsApp',
     },
 
     contact: {
@@ -855,6 +866,11 @@ export const customers = {
       equipDeleteError: 'Error al eliminar',
       taskDeleted: 'Tarea eliminada',
       taskDeleteError: 'Error al eliminar tarea',
+
+      ariaViewPhoto: 'Ver foto del cliente',
+      ariaSwitchCustomer: 'Cambiar de cliente',
+      ariaPortal: 'Portal Público',
+      ariaWhatsApp: 'Abrir WhatsApp del cliente',
     },
 
     contact: {
@@ -1146,6 +1162,11 @@ export const customers = {
       equipDeleteError: 'Erreur lors de la suppression',
       taskDeleted: 'Tâche supprimée',
       taskDeleteError: 'Erreur lors de la suppression de la tâche',
+
+      ariaViewPhoto: `Voir la photo du client`,
+      ariaSwitchCustomer: `Changer de client`,
+      ariaPortal: `Portail Public`,
+      ariaWhatsApp: `Ouvrir WhatsApp du client`,
     },
 
     contact: {

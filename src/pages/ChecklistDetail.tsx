@@ -30,6 +30,8 @@ import { QuestionFrequencyBadge, FrequencyEditor, type QuestionFrequencyPayload 
 import { ServicesMultiSelect } from '@/components/technician/ServicesMultiSelect';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const getQTypeIcon = (type: string) => {
   const found = QUESTION_TYPES.find(t => t.value === type);
@@ -49,6 +51,8 @@ export default function ChecklistDetail() {
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { hasModule, isLoading: modulesLoading, maxVideoQuestions } = useCompanyModules();
+  const { locale } = useAppLocaleContext();
+  const tC = MESSAGES[locale].app.os.checklists;
   const canUseVideo = hasModule('video_questions');
   // Frequência por pergunta só aparece com o módulo Contratos ativo. Sem ele, a
   // tela fica idêntica ao padrão (zero poluição). Gate reusa useCompanyModules.
@@ -130,8 +134,8 @@ export default function ChecklistDetail() {
   if (!template) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/servicos?tab=checklists')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
-        <p className="text-muted-foreground">Checklist não encontrado.</p>
+        <Button variant="ghost" onClick={() => navigate('/servicos?tab=checklists')}><ArrowLeft className="mr-2 h-4 w-4" /> {tC.btnCancel}</Button>
+        <p className="text-muted-foreground">{tC.notFound}</p>
       </div>
     );
   }
@@ -360,7 +364,7 @@ export default function ChecklistDetail() {
               <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0" />
             </div>
           )}
-          <p className="text-sm text-muted-foreground">{sortedQuestions.length} perguntas</p>
+          <p className="text-sm text-muted-foreground">{sortedQuestions.length === 1 ? tC.questionsCount.replace('{n}', '1') : tC.questionsCountPlural.replace('{n}', String(sortedQuestions.length))}</p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-center">
           <div className="flex items-center gap-2">
@@ -368,7 +372,7 @@ export default function ChecklistDetail() {
               checked={template.is_active}
               onCheckedChange={(checked) => updateTemplate.mutate({ id: template.id, is_active: checked })}
             />
-            <Label className="text-sm">Ativo</Label>
+            <Label className="text-sm">{tC.labelActive}</Label>
           </div>
           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteTemplateOpen(true)}>
             <Trash2 className="h-4 w-4" />
@@ -378,7 +382,7 @@ export default function ChecklistDetail() {
 
       {/* Serviços habilitados — discreto, encostado à direita, sem card/borda */}
       <div className="flex items-center justify-end gap-2">
-        <Label className="text-sm text-muted-foreground">Serviços habilitados</Label>
+        <Label className="text-sm text-muted-foreground">{tC.detailSectionServices}</Label>
         <ServicesMultiSelect
           services={serviceTypes.filter(t => t.is_active).map(t => ({ id: t.id, name: t.name, color: t.color }))}
           selectedIds={serviceTypeIds}
@@ -389,23 +393,23 @@ export default function ChecklistDetail() {
 
       {/* Questions header with button (botão inline só no desktop; mobile usa FAB) */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Perguntas</h2>
+        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{tC.detailQuestionsHeader}</h2>
         {!isMobile && (
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setCatalogOpen(true)}>
               <BookOpen className="mr-2 h-4 w-4" />
-              Catálogo de Checklists
+              {tC.btnCatalogFull}
             </Button>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
               <Plus className="mr-2 h-4 w-4" />
-              Nova Pergunta
+              {tC.btnNewQuestion}
             </Button>
           </div>
         )}
         {isMobile && (
           <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
             <BookOpen className="mr-1.5 h-4 w-4" />
-            Catálogo
+            {tC.btnCatalog}
           </Button>
         )}
       </div>
@@ -414,8 +418,8 @@ export default function ChecklistDetail() {
       {sortedQuestions.length === 0 ? (
         <EmptyState
           icon={<ListChecks className="h-12 w-12" />}
-          title="Nenhuma pergunta criada"
-          description={isMobile ? 'Toque em "Pergunta" no canto inferior pra começar' : 'Clique em "Nova Pergunta" para começar'}
+          title={tC.detailEmptyQuestions}
+          description={isMobile ? tC.detailEmptyQuestionsDescMobile : tC.detailEmptyQuestionsDescDesktop}
         />
       ) : (
         <div className="rounded-lg border bg-card divide-y overflow-hidden">
@@ -497,13 +501,13 @@ export default function ChecklistDetail() {
                   })}
                   {effectiveTypes.length > 1 && (
                     <Badge variant="outline" className="text-[11px] font-normal px-1.5 py-0 text-muted-foreground">
-                      {(question as any).answer_mode === 'combined' ? 'Cumulativo' : 'Exclusivo'}
+                      {(question as any).answer_mode === 'combined' ? tC.answerModeCumulative : tC.answerModeExclusive}
                     </Badge>
                   )}
                   {effectiveTypes.includes('photo') && (question as any).require_camera && (
                     <Badge variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
                       <Camera className="h-3 w-3" />
-                      Câmera
+                      {tC.badgeCamera}
                     </Badge>
                   )}
                 </div>
@@ -515,7 +519,7 @@ export default function ChecklistDetail() {
                     return (
                       <Badge variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
                         <Icon className="h-3 w-3" />
-                        {effectiveTypes.length > 1 ? `${effectiveTypes.length} tipos` : getQTypeLabel(effectiveTypes[0])}
+                        {effectiveTypes.length > 1 ? tC.questionTypesCount.replace('{n}', String(effectiveTypes.length)) : getQTypeLabel(effectiveTypes[0])}
                       </Badge>
                     );
                   })()}
@@ -533,8 +537,8 @@ export default function ChecklistDetail() {
                 <div className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <RowActionsMenu
                     actions={[
-                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEditModal(question) },
-                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteQuestionId(question.id) },
+                      { label: tC.actionEdit, icon: Pencil, variant: 'edit', onClick: () => openEditModal(question) },
+                      { label: tC.actionDelete, icon: Trash2, variant: 'delete', onClick: () => setDeleteQuestionId(question.id) },
                     ]}
                   />
                 </div>
@@ -554,35 +558,35 @@ export default function ChecklistDetail() {
       />
 
       {/* Question modal (create or edit) */}
-      <ResponsiveModal open={questionModalOpen} onOpenChange={(o) => { setQuestionModalOpen(o); if (!o) resetQuestionForm(); }} title={editingQuestion ? 'Editar Pergunta' : 'Nova Pergunta'}>
+      <ResponsiveModal open={questionModalOpen} onOpenChange={(o) => { setQuestionModalOpen(o); if (!o) resetQuestionForm(); }} title={editingQuestion ? tC.questionModalEdit : tC.questionModalCreate}>
         <div className="space-y-4">
           <div>
-            <Label>Pergunta</Label>
+            <Label>{tC.questionLabelText}</Label>
             <Input
               value={qForm.question || ''}
               onChange={(e) => setQForm({ ...qForm, question: e.target.value })}
-              placeholder="Texto da pergunta..."
+              placeholder={tC.questionPlaceholderText}
               className="mt-1"
             />
           </div>
           <div>
-            <Label>Descrição interna (opcional)</Label>
+            <Label>{tC.questionLabelDesc}</Label>
             <Textarea
               value={qForm.description || ''}
               onChange={(e) => setQForm({ ...qForm, description: e.target.value })}
-              placeholder="Instrução interna para o técnico (não aparece no relatório)..."
+              placeholder={tC.questionPlaceholderDesc}
               className="mt-1"
               rows={2}
             />
-            <p className="text-xs text-muted-foreground mt-1">Visível apenas durante o preenchimento. Não aparece no relatório nem no portal do cliente.</p>
+            <p className="text-xs text-muted-foreground mt-1">{tC.questionDescNote}</p>
           </div>
 
           {/* Multi answer types — chips toggláveis (multi-seleção). Estado
               selecionado saturado na cor + check, pra deixar claro que NÃO é
               um radio: dá pra marcar vários. */}
           <div className="space-y-2">
-            <Label>Tipos de resposta</Label>
-            <p className="text-xs text-muted-foreground">Marque uma ou mais formas de responder. Pode combinar.</p>
+            <Label>{tC.questionTypesLabel}</Label>
+            <p className="text-xs text-muted-foreground">{tC.questionTypesNote}</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {QUESTION_TYPES
                 // Sem o módulo, "Vídeo" some do seletor — a menos que a pergunta
@@ -621,13 +625,13 @@ export default function ChecklistDetail() {
           {/* Answer mode toggle when 2+ types selected */}
           {selectedAnswerTypes.length >= 2 && (
             <div className="rounded-lg border p-3 space-y-2">
-              <Label className="text-sm font-medium">Modo de resposta múltipla</Label>
+              <Label className="text-sm font-medium">{tC.questionModeLabel}</Label>
               <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/30">
                 <span className={cn(
                   "text-sm font-medium transition-colors",
                   (qForm as any).answer_mode !== 'combined' ? 'text-foreground' : 'text-muted-foreground'
                 )}>
-                  Exclusivo
+                  {tC.questionModeExclusive}
                 </span>
                 <Switch
                   checked={(qForm as any).answer_mode === 'combined'}
@@ -637,13 +641,13 @@ export default function ChecklistDetail() {
                   "text-sm font-medium transition-colors",
                   (qForm as any).answer_mode === 'combined' ? 'text-foreground' : 'text-muted-foreground'
                 )}>
-                  Cumulativo
+                  {tC.questionModeCombined}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
                 {(qForm as any).answer_mode === 'combined'
-                  ? 'O técnico responde todos os tipos juntos nesta pergunta (ex.: marca a opção E anexa a foto).'
-                  : 'O técnico escolhe um único tipo para responder; os outros somem automaticamente.'}
+                  ? tC.questionModeDescCombined
+                  : tC.questionModeDescExclusive}
               </p>
             </div>
           )}
@@ -656,8 +660,8 @@ export default function ChecklistDetail() {
                 onCheckedChange={(checked) => setQForm({ ...qForm, require_camera: checked })}
               />
               <div>
-                <Label className="text-sm cursor-pointer">Exigir foto da câmera</Label>
-                <p className="text-xs text-muted-foreground">Bloqueia upload da galeria, exige foto tirada na hora</p>
+                <Label className="text-sm cursor-pointer">{tC.questionCameraLabel}</Label>
+                <p className="text-xs text-muted-foreground">{tC.questionCameraDesc}</p>
               </div>
             </div>
           )}
@@ -670,8 +674,8 @@ export default function ChecklistDetail() {
                 onCheckedChange={(checked) => setQForm({ ...qForm, allow_multiple_photos: checked } as any)}
               />
               <div>
-                <Label className="text-sm cursor-pointer">Permitir múltiplas fotos</Label>
-                <p className="text-xs text-muted-foreground">Se desativado, o técnico envia apenas uma foto</p>
+                <Label className="text-sm cursor-pointer">{tC.questionMultiPhotoLabel}</Label>
+                <p className="text-xs text-muted-foreground">{tC.questionMultiPhotoDesc}</p>
               </div>
             </div>
           )}
@@ -679,12 +683,12 @@ export default function ChecklistDetail() {
           {/* Select options config */}
           {selectedAnswerTypes.includes('select') && (
             <div className="space-y-2">
-              <Label>Opções de resposta</Label>
+              <Label>{tC.questionSelectLabel}</Label>
               <div className="flex gap-2">
                 <Input
                   value={newOption}
                   onChange={(e) => setNewOption(e.target.value)}
-                  placeholder="Adicionar opção..."
+                  placeholder={tC.questionSelectPlaceholder}
                   className="flex-1"
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddOption(); } }}
                 />
@@ -712,7 +716,7 @@ export default function ChecklistDetail() {
               checked={qForm.is_required ?? true}
               onCheckedChange={(checked) => setQForm({ ...qForm, is_required: checked })}
             />
-            <Label className="text-sm cursor-pointer">Campo obrigatório</Label>
+            <Label className="text-sm cursor-pointer">{tC.questionRequiredLabel}</Label>
           </div>
 
           {/* Frequência por pergunta — só com módulo Contratos. Reusa o MESMO
@@ -720,8 +724,8 @@ export default function ChecklistDetail() {
               estado local do formulário e é persistido junto no salvar. */}
           {showFrequency && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Frequência</Label>
-              <p className="text-xs text-muted-foreground">Em quais visitas esta pergunta deve aparecer.</p>
+              <Label className="text-sm font-medium">{tC.questionFreqLabel}</Label>
+              <p className="text-xs text-muted-foreground">{tC.questionFreqDesc}</p>
               <FrequencyEditor
                 variant="select"
                 value={qForm}
@@ -731,13 +735,13 @@ export default function ChecklistDetail() {
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => { setQuestionModalOpen(false); resetQuestionForm(); }}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setQuestionModalOpen(false); resetQuestionForm(); }}>{tC.btnCancel}</Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleSaveQuestion}
               disabled={!qForm.question?.trim() || selectedAnswerTypes.length === 0 || createQuestion.isPending || updateQuestion.isPending}
             >
-              {editingQuestion ? 'Salvar Alterações' : 'Criar Pergunta'}
+              {editingQuestion ? tC.btnSave : tC.btnNewQuestion}
             </Button>
           </div>
         </div>
@@ -747,15 +751,13 @@ export default function ChecklistDetail() {
       <AlertDialog open={deleteTemplateOpen} onOpenChange={setDeleteTemplateOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar checklist?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O checklist deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{tC.deleteTemplateTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tC.deleteTemplateDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tC.btnCancelDelete}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteTemplate} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Desativar
+              {tC.btnDeactivate}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -765,13 +767,13 @@ export default function ChecklistDetail() {
       <AlertDialog open={!!deleteQuestionId} onOpenChange={(o) => !o && setDeleteQuestionId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover pergunta?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle>{tC.deleteQuestionTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{tC.deleteQuestionDesc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tC.btnCancelDelete}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteQuestion} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Remover
+              {tC.btnRemove}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -780,7 +782,7 @@ export default function ChecklistDetail() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Pergunta"
+          label={tC.detailFabLabel}
           onClick={openCreateModal}
         />
       )}

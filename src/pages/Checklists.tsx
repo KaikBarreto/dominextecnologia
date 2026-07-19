@@ -29,6 +29,8 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type TemplateWithServiceIds = { service_type_ids?: string[] };
 
@@ -39,6 +41,8 @@ function getServiceIds(template: unknown): string[] | undefined {
 export default function ChecklistsPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.checklists;
   const [createOpen, setCreateOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -96,27 +100,27 @@ export default function ChecklistsPage() {
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Checklists"
-        subtitle="Gerencie modelos e perguntas por tipo de serviço"
+        title={t.title}
+        subtitle={t.subtitle}
         icon={FileText}
         actions={
           isMobile ? (
             <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
               <BookOpen className="mr-1.5 h-4 w-4" />
-              Catálogo
+              {t.btnCatalog}
             </Button>
           ) : (
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setCatalogOpen(true)}>
                 <BookOpen className="mr-2 h-4 w-4" />
-                Catálogo de Checklists
+                {t.btnCatalogFull}
               </Button>
               <Button
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Novo Checklist
+                {t.btnNew}
               </Button>
             </div>
           )
@@ -128,7 +132,7 @@ export default function ChecklistsPage() {
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isMobile ? 'Buscar checklists...' : 'Buscar por nome do checklist...'}
+            placeholder={isMobile ? t.searchPlaceholderMobile : t.searchPlaceholderDesktop}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -144,16 +148,8 @@ export default function ChecklistsPage() {
           {filteredTemplates.length === 0 ? (
             <EmptyState
               icon={<FileText className="h-12 w-12" />}
-              title={
-                searchTerm
-                  ? 'Nenhum checklist encontrado'
-                  : 'Nenhum checklist criado'
-              }
-              description={
-                searchTerm
-                  ? 'Tente uma busca diferente'
-                  : 'Toque em "Novo Checklist" para começar'
-              }
+              title={searchTerm ? t.emptySearchTitle : t.emptyTitle}
+              description={searchTerm ? t.emptySearchDesc : t.emptyDescriptionMobile}
             />
           ) : (
             <>
@@ -163,21 +159,25 @@ export default function ChecklistsPage() {
                   const appliesToAll = !serviceIds || serviceIds.length === 0;
                   const questionsCount = template.questions?.length || 0;
                   const scopeLabel = appliesToAll
-                    ? 'Todos os serviços'
-                    : `${serviceIds!.length} serviço${serviceIds!.length === 1 ? '' : 's'}`;
-                  const questionsLabel = `${questionsCount} pergunta${questionsCount === 1 ? '' : 's'}`;
+                    ? t.scopeAll
+                    : (serviceIds!.length === 1
+                        ? t.scopeServices.replace('{n}', '1')
+                        : t.scopeServicesPlural.replace('{n}', String(serviceIds!.length)));
+                  const questionsLabel = questionsCount === 1
+                    ? t.questionsCount.replace('{n}', '1')
+                    : t.questionsCountPlural.replace('{n}', String(questionsCount));
 
                   const itemActions: ItemAction[] = [
                     {
                       key: 'edit',
-                      label: 'Visualizar / Editar',
+                      label: t.actionEditView,
                       icon: <Pencil className="h-4 w-4" />,
                       variant: 'edit',
                       onClick: () => navigate(`/checklists/${template.id}`),
                     },
                     {
                       key: 'delete',
-                      label: 'Excluir',
+                      label: t.actionDelete,
                       icon: <Trash2 className="h-4 w-4" />,
                       variant: 'destructive',
                       onClick: () => setDeleteId(template.id),
@@ -223,15 +223,15 @@ export default function ChecklistsPage() {
               searchTerm ? (
                 <EmptyState
                   icon={<FileText className="h-12 w-12" />}
-                  title="Nenhum checklist encontrado"
-                  description="Tente uma busca diferente."
+                  title={t.emptySearchTitle}
+                  description={t.emptySearchDesc}
                 />
               ) : (
                 <EmptyState
                   icon={<FileText className="h-12 w-12" />}
-                  title="Nenhum checklist criado"
-                  description="Crie seu primeiro checklist para padronizar as inspeções em campo."
-                  action={{ label: 'Novo checklist', onClick: () => setCreateOpen(true) }}
+                  title={t.emptyTitle}
+                  description={t.emptyDescriptionDesktop}
+                  action={{ label: t.btnNew, onClick: () => setCreateOpen(true) }}
                 />
               )
             ) : (
@@ -240,11 +240,11 @@ export default function ChecklistsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden sm:table-cell">Perguntas</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden md:table-cell">Serviços</SortableTableHead>
-                        <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Ações</SortableTableHead>
+                        <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.colName}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden sm:table-cell">{t.colQuestions}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden md:table-cell">{t.colServices}</SortableTableHead>
+                        <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>{t.colStatus}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">{t.colActions}</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -272,7 +272,7 @@ export default function ChecklistsPage() {
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
                               {appliesToAll ? (
-                                <Badge variant="secondary" className="text-xs">Todos</Badge>
+                                <Badge variant="secondary" className="text-xs">{t.badgeAll}</Badge>
                               ) : (
                                 <div className="flex flex-wrap gap-1">
                                   {linkedServices.slice(0, 3).map(st => (
@@ -289,7 +289,7 @@ export default function ChecklistsPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
-                                {template.is_active ? 'Ativo' : 'Inativo'}
+                                {template.is_active ? t.badgeActive : t.badgeInactive}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -327,37 +327,37 @@ export default function ChecklistsPage() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Checklist"
+          label={t.fabLabel}
           onClick={() => setCreateOpen(true)}
         />
       )}
 
       {/* Create Modal */}
-      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Checklist">
+      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title={t.createTitle}>
         <div className="space-y-4">
           <div>
-            <Label>Nome do checklist</Label>
+            <Label>{t.labelName}</Label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Ex: Checklist de manutenção preventiva"
+              placeholder={t.placeholderName}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } }}
               className="mt-1"
             />
           </div>
 
           <div className="space-y-3">
-            <Label>Serviços habilitados</Label>
+            <Label>{t.labelServices}</Label>
             <div className="flex items-center gap-2">
               <Switch checked={allServices} onCheckedChange={(checked) => {
                 setAllServices(checked);
                 if (checked) setSelectedServiceIds([]);
               }} />
-              <Label className="text-sm cursor-pointer">Todos os serviços</Label>
+              <Label className="text-sm cursor-pointer">{t.switchAllServices}</Label>
             </div>
             {!allServices && (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {serviceTypes.filter(t => t.is_active).map((st) => (
+                {serviceTypes.filter(st => st.is_active).map((st) => (
                   <label key={st.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
                     <Checkbox
                       checked={selectedServiceIds.includes(st.id)}
@@ -372,13 +372,13 @@ export default function ChecklistsPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t.btnCancel}</Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCreate}
               disabled={!newName.trim() || createTemplate.isPending}
             >
-              Criar
+              {t.btnCreate}
             </Button>
           </div>
         </div>
@@ -396,20 +396,20 @@ export default function ChecklistsPage() {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar checklist?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deactivateTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {templateToDelete
-                ? `O checklist "${templateToDelete.name}" deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.`
-                : 'O checklist deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.'}
+                ? t.deactivateDescriptionWithName.replace('{name}', templateToDelete.name)
+                : t.deactivateDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.btnCancelDelete}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Desativar
+              {t.btnDeactivate}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

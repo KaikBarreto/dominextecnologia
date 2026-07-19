@@ -234,7 +234,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
         <CardHeader className="flex flex-col items-start justify-between gap-2 space-y-0 sm:flex-row sm:items-center">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
             <Wrench className="h-5 w-5 shrink-0" />
-            <span className="min-w-0 break-words">Equipamentos do Contrato ({workingItems.length})</span>
+            <span className="min-w-0 break-words">{t.cardTitle} ({workingItems.length})</span>
           </CardTitle>
           <Button
             size="sm"
@@ -242,7 +242,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
             className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl"
             onClick={openPicker}
           >
-            <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
+            <Plus className="mr-1 h-4 w-4" /> {t.addButton}
           </Button>
         </CardHeader>
         <CardContent className="min-w-0">
@@ -268,7 +268,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
 
               {displayedItems.length === 0 && search ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum equipamento encontrado para "{search}".
+                  {t.searchNoResult} &ldquo;{search}&rdquo;.
                 </p>
               ) : (
                 <div className="space-y-2 min-w-0">
@@ -301,9 +301,9 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
                           )}
                         </div>
                         {item.equipment_id ? (
-                          <Badge variant="secondary" className="shrink-0 self-start text-xs">Equipamento</Badge>
+                          <Badge variant="secondary" className="shrink-0 self-start text-xs">{t.badgeEquipment}</Badge>
                         ) : (
-                          <Badge variant="outline" className="shrink-0 self-start text-xs">Item manual</Badge>
+                          <Badge variant="outline" className="shrink-0 self-start text-xs">{t.badgeManual}</Badge>
                         )}
                         <Button
                           variant="ghost"
@@ -365,8 +365,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
             disabled={pickerSelection.size === 0}
           >
             <Plus className="mr-2 h-4 w-4" />
-            Adicionar {pickerSelection.size > 0 ? `${pickerSelection.size} ` : ''}
-            equipamento{pickerSelection.size !== 1 ? 's' : ''}
+            {t.pickerAddBtn}{pickerSelection.size > 0 ? ` (${pickerSelection.size})` : ''}
           </Button>
         }
       >
@@ -384,8 +383,8 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
           {pickerEquipment.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               {activeEquipment.length === 0
-                ? 'O cliente não tem equipamentos cadastrados.'
-                : 'Todos os equipamentos do cliente já estão no contrato.'}
+                ? t.pickerNoEquip
+                : t.pickerAllAssigned}
             </p>
           ) : (
             <div className="max-h-72 divide-y overflow-y-auto rounded-md border">
@@ -429,19 +428,18 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
       <AlertDialog open={!!removingItem} onOpenChange={(open) => { if (!open) setRemovingItem(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover equipamento?</AlertDialogTitle>
+            <AlertDialogTitle>{t.removeDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{removingItem?.item_name}</strong> sairá deste contrato. A mudança só é aplicada ao salvar — aí
-              as visitas futuras são recalculadas sem esse equipamento.
+              <strong>{removingItem?.item_name}</strong> {t.removeDialogDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.removeDialogCancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => { if (removingItem) removeItem(removingItem); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Remover
+              <Trash2 className="mr-2 h-4 w-4" /> {t.removeDialogConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -451,24 +449,23 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
       <AlertDialog open={showRegenConfirm} onOpenChange={setShowRegenConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Recalcular visitas futuras?</AlertDialogTitle>
+            <AlertDialogTitle>{t.regenDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  Mudar os equipamentos do contrato vai <strong>refazer {regenCount} visita(s) futura(s)</strong> ainda
-                  não realizadas, atualizando o checklist por equipamento.
+                  {t.regenDialogDesc1} <strong>{regenCount} {t.regenDialogDesc1b}</strong>
                 </p>
                 <p className="text-sm">
-                  Visitas <strong>concluídas, em andamento</strong> e <strong>passadas</strong> são preservadas intactas.
+                  {t.regenDialogDesc2}
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={saving}>{t.regenDialogCancel}</AlertDialogCancel>
             <AlertDialogAction onClick={applySave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-              Salvar e recalcular
+              {t.regenDialogConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

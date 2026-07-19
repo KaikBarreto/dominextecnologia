@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Item do checklist normalizado pro RELATÓRIO (read-only). Os dois modos da tela
@@ -63,21 +65,22 @@ interface Props {
   anchorIdForGroup?: (equipmentName: string | null) => string | undefined;
 }
 
-const CONFORMITY_META: Record<
-  'conforme' | 'nao_conforme' | 'na',
-  { label: string; icon: typeof Check; className: string }
-> = {
-  conforme: { label: 'Conforme', icon: Check, className: 'bg-success text-success-foreground border-success' },
-  nao_conforme: { label: 'Não-conforme', icon: X, className: 'bg-destructive text-destructive-foreground border-destructive' },
-  na: { label: 'N/A', icon: MinusCircle, className: 'bg-muted text-muted-foreground border-border' },
-};
-
 function ConformityBadge({ status }: { status: ReportChecklistItem['conformity_status'] }) {
+  const { locale } = useAppLocaleContext();
+  const tR = MESSAGES[locale].app.os.technicianReport;
+  const CONFORMITY_META: Record<
+    'conforme' | 'nao_conforme' | 'na',
+    { label: string; icon: typeof Check; className: string }
+  > = {
+    conforme: { label: tR.conformityConforme, icon: Check, className: 'bg-success text-success-foreground border-success' },
+    nao_conforme: { label: tR.conformityNaoConforme, icon: X, className: 'bg-destructive text-destructive-foreground border-destructive' },
+    na: { label: tR.conformityNa, icon: MinusCircle, className: 'bg-muted text-muted-foreground border-border' },
+  };
   if (!status) {
     return (
       <Badge variant="outline" className="gap-1 shrink-0 text-[11px] text-muted-foreground">
         <HelpCircle className="h-3 w-3 shrink-0" />
-        Não respondido
+        {tR.conformityUnanswered}
       </Badge>
     );
   }
@@ -128,6 +131,9 @@ function groupItems(items: ReportChecklistItem[]): ReportChecklistGroup[] {
  * renderiza nada quando não há atividades.
  */
 export function ReportChecklist({ items, onPreviewPhoto, anchorIdForGroup }: Props) {
+  const { locale } = useAppLocaleContext();
+  const tR = MESSAGES[locale].app.os.technicianReport;
+
   if (!items || items.length === 0) return null;
 
   const groups = groupItems(items);
@@ -139,7 +145,7 @@ export function ReportChecklist({ items, onPreviewPhoto, anchorIdForGroup }: Pro
         <div className="flex items-center gap-2 mb-3">
           <ListChecks className="h-4 w-4 text-primary" />
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Checklist da Visita
+            {tR.visitChecklistLabel}
           </span>
         </div>
         <Accordion type="multiple" defaultValue={[firstKey]} className="w-full">
@@ -163,24 +169,24 @@ export function ReportChecklist({ items, onPreviewPhoto, anchorIdForGroup }: Pro
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">
-                        {group.equipmentName ?? 'Geral / Local'}
+                        {group.equipmentName ?? tR.generalGroup}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {total} item{total > 1 ? 's' : ''}
+                        {total === 1 ? tR.itemCountSingular.replace('{n}', '1') : tR.itemCountPlural.replace('{n}', String(total))}
                       </p>
                     </div>
                     {naoConforme > 0 ? (
                       <Badge variant="destructive" className="gap-1 text-xs shrink-0">
                         <X className="h-3 w-3" />
-                        {naoConforme} não-conforme{naoConforme > 1 ? 's' : ''}
+                        {naoConforme === 1 ? tR.naoConformeBadge.replace('{n}', '1') : tR.naoConformeBadgePlural.replace('{n}', String(naoConforme))}
                       </Badge>
                     ) : pending === 0 ? (
                       <Badge variant="success" className="gap-1 shrink-0">
-                        <Check className="h-3 w-3" /> Concluído
+                        <Check className="h-3 w-3" /> {tR.conformeBadge}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-xs shrink-0 text-muted-foreground">
-                        {pending} sem resposta
+                        {tR.pendingBadge.replace('{n}', String(pending))}
                       </Badge>
                     )}
                   </div>
@@ -215,7 +221,7 @@ export function ReportChecklist({ items, onPreviewPhoto, anchorIdForGroup }: Pro
                                 {item.unit ? ` ${item.unit}` : ''}
                               </span>
                             ) : (
-                              <span className="text-muted-foreground italic">Sem medição</span>
+                              <span className="text-muted-foreground italic">{tR.noMeasurement}</span>
                             )}
                           </div>
                         )}

@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { InventoryItem } from '@/hooks/useInventory';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export type ExportFormat = 'pdf' | 'excel';
 
@@ -26,6 +28,8 @@ export function InventoryExportDialog({
   items,
   onConfirm,
 }: InventoryExportDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.exportDialog;
   // Conjunto de IDs marcados. Todos marcados por padrão ao abrir.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -55,7 +59,7 @@ export function InventoryExportDialog({
     [items, selectedIds],
   );
 
-  const confirmLabel = format === 'excel' ? 'Exportar Excel' : 'Exportar PDF';
+  const confirmLabel = format === 'excel' ? t.exportExcel : t.exportPdf;
   const ConfirmIcon = format === 'excel' ? FileSpreadsheet : FileText;
 
   const handleConfirm = () => {
@@ -68,11 +72,17 @@ export function InventoryExportDialog({
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Selecionar materiais"
+      title={t.title}
       footer={
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-muted-foreground">
-            {selectedCount} de {items.length} selecionado{selectedCount !== 1 ? 's' : ''}
+            {selectedCount !== 1
+              ? t.selectedCountPlural
+                  .replace('{selected}', String(selectedCount))
+                  .replace('{total}', String(items.length))
+              : t.selectedCount
+                  .replace('{selected}', String(selectedCount))
+                  .replace('{total}', String(items.length))}
           </span>
           <Button
             onClick={handleConfirm}
@@ -95,7 +105,7 @@ export function InventoryExportDialog({
             onClick={selectAll}
             disabled={allSelected}
           >
-            Selecionar todos
+            {t.selectAll}
           </Button>
           <Button
             variant="outline"
@@ -104,14 +114,14 @@ export function InventoryExportDialog({
             onClick={clearAll}
             disabled={selectedCount === 0}
           >
-            Limpar todos
+            {t.clearAll}
           </Button>
         </div>
 
         {/* Lista de materiais com checkbox */}
         {items.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Nenhum material cadastrado para exportar.
+            {t.noneToExport}
           </p>
         ) : (
           <div className="rounded-xl border bg-card divide-y">
@@ -131,7 +141,7 @@ export function InventoryExportDialog({
                   <Checkbox
                     checked={checked}
                     onCheckedChange={() => toggle(item.id)}
-                    aria-label={`Selecionar ${item.name}`}
+                    aria-label={`${t.selectAll.split(' ')[0]} ${item.name}`}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>

@@ -32,20 +32,23 @@ import {
   type MovementType,
 } from '@/hooks/useInventoryMovements';
 import { useInventory } from '@/hooks/useInventory';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // --------------------------------------------------------------------------
 // Config visual por tipo de movimento. Badge SATURADA com texto branco
-// (régua do projeto: nada de tint pastel /10).
+// (régua do projeto: nada de tint pastel /10). Label é resolvido via i18n
+// no componente — aqui ficam apenas ícone e classe de badge.
 // --------------------------------------------------------------------------
 const TYPE_CONFIG: Record<
   string,
-  { label: string; badgeClass: string; icon: typeof ArrowUpCircle }
+  { badgeClass: string; icon: typeof ArrowUpCircle }
 > = {
-  entrada: { label: 'Entrada', badgeClass: 'bg-emerald-600 hover:bg-emerald-600 text-white border-transparent', icon: ArrowUpCircle },
-  saida: { label: 'Saída', badgeClass: 'bg-blue-600 hover:bg-blue-600 text-white border-transparent', icon: ArrowDownCircle },
-  ajuste: { label: 'Ajuste', badgeClass: 'bg-purple-600 hover:bg-purple-600 text-white border-transparent', icon: SlidersHorizontal },
-  transferencia: { label: 'Transferência', badgeClass: 'bg-amber-600 hover:bg-amber-600 text-white border-transparent', icon: ArrowRightLeft },
-  estorno: { label: 'Estorno', badgeClass: 'bg-red-600 hover:bg-red-600 text-white border-transparent', icon: RotateCcw },
+  entrada: { badgeClass: 'bg-emerald-600 hover:bg-emerald-600 text-white border-transparent', icon: ArrowUpCircle },
+  saida: { badgeClass: 'bg-blue-600 hover:bg-blue-600 text-white border-transparent', icon: ArrowDownCircle },
+  ajuste: { badgeClass: 'bg-purple-600 hover:bg-purple-600 text-white border-transparent', icon: SlidersHorizontal },
+  transferencia: { badgeClass: 'bg-amber-600 hover:bg-amber-600 text-white border-transparent', icon: ArrowRightLeft },
+  estorno: { badgeClass: 'bg-red-600 hover:bg-red-600 text-white border-transparent', icon: RotateCcw },
 };
 
 const TYPE_ORDER: MovementType[] = ['entrada', 'saida', 'ajuste', 'transferencia', 'estorno'];
@@ -53,20 +56,19 @@ const TYPE_ORDER: MovementType[] = ['entrada', 'saida', 'ajuste', 'transferencia
 function getTypeConfig(type: string) {
   return (
     TYPE_CONFIG[type] ?? {
-      label: type,
       badgeClass: 'bg-muted text-foreground border-transparent',
       icon: History,
     }
   );
 }
 
-function TypeBadge({ type }: { type: string }) {
+function TypeBadge({ type, label }: { type: string; label: string }) {
   const cfg = getTypeConfig(type);
   const Icon = cfg.icon;
   return (
     <Badge className={cn('gap-1 whitespace-nowrap', cfg.badgeClass)}>
       <Icon className="h-3 w-3" />
-      {cfg.label}
+      {label}
     </Badge>
   );
 }
@@ -89,14 +91,17 @@ function formatDateTime(iso: string): string {
 }
 
 /** Texto curto de origem: OS > Fornecedor > notes. */
-function originLabel(m: InventoryMovementWithRelations): string {
+function originLabel(
+  m: InventoryMovementWithRelations,
+  tOrigin: { os: string; supplier: string },
+): string {
   if (m.service_order_id) {
     return m.orderNumber != null
-      ? `OS #${String(m.orderNumber).padStart(6, '0')}`
-      : 'OS';
+      ? `${tOrigin.os} #${String(m.orderNumber).padStart(6, '0')}`
+      : tOrigin.os;
   }
   if (m.supplier_id) {
-    return `Fornecedor: ${m.supplier?.name ?? '—'}`;
+    return tOrigin.supplier.replace('{name}', m.supplier?.name ?? '—');
   }
   return m.notes || '—';
 }
@@ -116,6 +121,9 @@ function initials(name: string | null, email: string | null): string {
 
 export function InventoryKardexTab() {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const tInv = MESSAGES[locale].app.inventory;
+  const t = tInv.kardex;
   const { movements, isLoading } = useInventoryMovements();
   const { items } = useInventory();
 
@@ -138,11 +146,11 @@ export function InventoryKardexTab() {
 
   const typeOptions = useMemo(() => {
     const present = new Set(movements.map((m) => m.movement_type));
-    return TYPE_ORDER.filter((t) => present.has(t)).map((t) => ({
-      value: t,
-      label: getTypeConfig(t).label,
+    return TYPE_ORDER.filter((type) => present.has(type)).map((type) => ({
+      value: type,
+      label: (t.movementTypes as Record<string, string>)[type] ?? type,
     }));
-  }, [movements]);
+  }, [movements, t.movementTypes]);
 
   const [materialFilter, setMaterialFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
@@ -172,7 +180,7 @@ export function InventoryKardexTab() {
   const filterControls = (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <p className="text-sm font-medium text-muted-foreground">Período</p>
+        <p className="text-sm font-medium text-muted-foreground">{t.filters.period}</p>
         <DateRangeFilter
           value={range}
           preset={preset}
@@ -182,20 +190,20 @@ export function InventoryKardexTab() {
       </div>
       {materialOptions.length > 0 && (
         <FilterCheckboxGroup
-          label="Material"
+          label={t.filters.material}
           options={materialOptions}
           selected={materialFilter}
           onChange={setMaterialFilter}
-          emptyLabel="Todos os materiais"
+          emptyLabel={t.filters.materialEmpty}
         />
       )}
       {typeOptions.length > 0 && (
         <FilterCheckboxGroup
-          label="Tipo de movimento"
+          label={t.filters.type}
           options={typeOptions}
           selected={typeFilter}
           onChange={setTypeFilter}
-          emptyLabel="Todos os tipos"
+          emptyLabel={t.filters.typeEmpty}
         />
       )}
     </div>
@@ -221,7 +229,7 @@ export function InventoryKardexTab() {
       <div className="flex items-center justify-end gap-2">
         {isMobile ? (
           <FilterSheet
-            triggerLabel="Filtros"
+            triggerLabel={tInv.filters.button}
             activeCount={activeFilterCount}
             onClear={clearFilters}
           >
@@ -238,15 +246,15 @@ export function InventoryKardexTab() {
         <EmptyState
           size="compact"
           icon={<History className="h-10 w-10" />}
-          title="Sem movimentações"
-          description="As entradas, saídas e ajustes de estoque aparecem aqui conforme acontecem."
+          title={t.empty.noneTitle}
+          description={t.empty.noneDescription}
         />
       ) : isFilteredEmpty ? (
         <EmptyState
           size="compact"
           icon={<History className="h-10 w-10" />}
-          title="Nenhuma movimentação encontrada"
-          description="Tente outro período ou filtro."
+          title={t.empty.noneFoundTitle}
+          description={t.empty.noneFoundDescription}
         />
       ) : isMobile ? (
         // -------------------- Mobile: cards --------------------
@@ -255,17 +263,20 @@ export function InventoryKardexTab() {
             {pagination.paginatedItems.map((m) => (
               <div key={m.id} className="rounded-xl border bg-card p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <TypeBadge type={m.movement_type} />
+                  <TypeBadge
+                    type={m.movement_type}
+                    label={(t.movementTypes as Record<string, string>)[m.movement_type] ?? m.movement_type}
+                  />
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDateTime(m.created_at)}
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{m.material?.name ?? 'Material removido'}</p>
+                  <p className="font-medium truncate">{m.material?.name ?? t.materialRemoved}</p>
                   {m.material?.sku && (
                     <p className="font-mono text-[11px] text-muted-foreground">{m.material.sku}</p>
                   )}
-                  <p className="text-xs text-muted-foreground truncate">{originLabel(m)}</p>
+                  <p className="text-xs text-muted-foreground truncate">{originLabel(m, t.origin)}</p>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm tabular-nums">
                   <span className="text-muted-foreground">{fmtQty(m.stock_before ?? 0)}</span>
@@ -287,7 +298,7 @@ export function InventoryKardexTab() {
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-xs text-muted-foreground truncate">
-                    {m.creator?.full_name || m.creator?.email || 'Sistema'}
+                    {m.creator?.full_name || m.creator?.email || t.system}
                   </span>
                 </div>
               </div>
@@ -310,7 +321,7 @@ export function InventoryKardexTab() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <History className="h-5 w-5" />
-              Histórico de Movimentações
+              {t.title}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -318,14 +329,14 @@ export function InventoryKardexTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Data e Hora</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Origem</TableHead>
-                    <TableHead>Material</TableHead>
-                    <TableHead className="text-right">Estoque inicial</TableHead>
-                    <TableHead className="text-right">Movimento</TableHead>
-                    <TableHead className="text-right">Estoque final</TableHead>
+                    <TableHead>{t.table.user}</TableHead>
+                    <TableHead>{t.table.dateTime}</TableHead>
+                    <TableHead>{t.table.type}</TableHead>
+                    <TableHead>{t.table.origin}</TableHead>
+                    <TableHead>{t.table.material}</TableHead>
+                    <TableHead className="text-right">{t.table.stockBefore}</TableHead>
+                    <TableHead className="text-right">{t.table.movement}</TableHead>
+                    <TableHead className="text-right">{t.table.stockAfter}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -340,7 +351,7 @@ export function InventoryKardexTab() {
                             </AvatarFallback>
                           </Avatar>
                           <span className="truncate max-w-[140px]">
-                            {m.creator?.full_name || m.creator?.email || 'Sistema'}
+                            {m.creator?.full_name || m.creator?.email || t.system}
                           </span>
                         </div>
                       </TableCell>
@@ -348,15 +359,18 @@ export function InventoryKardexTab() {
                         {formatDateTime(m.created_at)}
                       </TableCell>
                       <TableCell>
-                        <TypeBadge type={m.movement_type} />
+                        <TypeBadge
+                          type={m.movement_type}
+                          label={(t.movementTypes as Record<string, string>)[m.movement_type] ?? m.movement_type}
+                        />
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                        {originLabel(m)}
+                        {originLabel(m, t.origin)}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col min-w-0">
                           <span className="font-medium truncate">
-                            {m.material?.name ?? 'Material removido'}
+                            {m.material?.name ?? t.materialRemoved}
                           </span>
                           {m.material?.sku && (
                             <span className="font-mono text-[11px] text-muted-foreground">

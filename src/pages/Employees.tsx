@@ -701,9 +701,9 @@ export default function Employees() {
                           const link = `${window.location.origin}/ponto/${emp.ponto_slug}`;
                           try {
                             await navigator.clipboard.writeText(link);
-                            toast({ title: 'Link gerado e copiado!', description: link });
+                            toast({ title: t.toasts.linkCopied, description: link });
                           } catch {
-                            toast({ variant: 'destructive', title: 'Não foi possível copiar', description: link });
+                            toast({ variant: 'destructive', title: t.toasts.linkCopyFailed, description: link });
                           }
                         },
                       });

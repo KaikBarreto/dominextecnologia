@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { INVENTORY_UNITS as UNITS } from '@/lib/inventoryUnits';
 
 interface InventoryFormDialogProps {
@@ -19,6 +21,8 @@ interface InventoryFormDialogProps {
 
 const CATEGORIES = ['Peças', 'Filtros', 'Gases', 'Ferramentas', 'Materiais', 'Equipamentos', 'Outros'];
 export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.formDialog;
   const { createItem, updateItem } = useInventory();
   const isEditing = !!item;
 
@@ -84,13 +88,13 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? 'Editar Item' : 'Novo Item de Estoque'}
+      title={isEditing ? t.titleEdit : t.titleNew}
       className="sm:max-w-[600px]"
       footer={
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">{t.cancel}</Button>
           <Button onClick={handleSubmit as any} disabled={createItem.isPending || updateItem.isPending} className="flex-1">
-            {createItem.isPending || updateItem.isPending ? 'Salvando...' : 'Salvar'}
+            {createItem.isPending || updateItem.isPending ? t.saving : t.save}
           </Button>
         </div>
       }
@@ -98,47 +102,53 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Nome do Item *</Label>
-            <Input value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Nome do item" required />
+            <Label>{t.fields.name}</Label>
+            <Input value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder={t.fields.namePlaceholder} required />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <Label>Código/SKU</Label>
+              <Label>{t.fields.sku}</Label>
               <Button type="button" variant="outline" size="sm" className="h-8 px-2" onClick={applyAutoSku} disabled={isEditing || isSkuGenerating}>
-                <Wand2 className="h-4 w-4 mr-1" />{isSkuGenerating ? 'Gerando...' : 'Auto'}
+                <Wand2 className="h-4 w-4 mr-1" />{isSkuGenerating ? t.fields.skuGenerating : t.fields.skuAuto}
               </Button>
             </div>
-            <Input value={formData.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} placeholder="Ex: FLT-001" />
-            <p className="text-xs text-muted-foreground">Código sequencial sugerido automaticamente (você pode personalizar).</p>
+            <Input value={formData.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} placeholder={t.fields.skuPlaceholder} />
+            <p className="text-xs text-muted-foreground">{t.fields.skuHint}</p>
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Categoria</Label>
+            <Label>{t.fields.category}</Label>
             <Select value={formData.category || ''} onValueChange={(value) => handleChange('category', value)}>
-              <SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
-              <SelectContent>{CATEGORIES.map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent>
+              <SelectTrigger><SelectValue placeholder={t.fields.categoryPlaceholder} /></SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map(cat => (
+                  <SelectItem key={cat} value={cat}>
+                    {(t.categories as Record<string, string>)[cat] ?? cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Fornecedor</Label>
-            <Input value={formData.supplier || ''} onChange={(e) => handleChange('supplier', e.target.value)} placeholder="Nome do fornecedor" />
+            <Label>{t.fields.supplier}</Label>
+            <Input value={formData.supplier || ''} onChange={(e) => handleChange('supplier', e.target.value)} placeholder={t.fields.supplierPlaceholder} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Descrição</Label>
-          <Textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} placeholder="Descrição detalhada do item..." rows={2} />
+          <Label>{t.fields.description}</Label>
+          <Textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} placeholder={t.fields.descriptionPlaceholder} rows={2} />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Quantidade</Label>
+            <Label>{t.fields.quantity}</Label>
             <NumericInput decimal value={formData.quantity ? String(formData.quantity) : ''} onValueChange={(v) => handleChange('quantity', parseFloat(v.replace(',', '.')) || 0)} />
           </div>
           <div className="space-y-2">
-            <Label>Unidade</Label>
+            <Label>{t.fields.unit}</Label>
             <Select value={formData.unit || 'un'} onValueChange={(value) => handleChange('unit', value)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{UNITS.map(u => (<SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>))}</SelectContent>
@@ -148,14 +158,14 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Preço de Custo (R$)</Label>
+            <Label>{t.fields.costPrice}</Label>
             <Input type="number" min="0" step="0.01" value={formData.cost_price || 0} onChange={(e) => handleChange('cost_price', parseFloat(e.target.value) || 0)} />
-            <p className="text-xs text-muted-foreground">Valor por unidade.</p>
+            <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
           </div>
           <div className="space-y-2">
-            <Label>Preço de Venda (R$)</Label>
+            <Label>{t.fields.salePrice}</Label>
             <Input type="number" min="0" step="0.01" value={formData.sale_price || 0} onChange={(e) => handleChange('sale_price', parseFloat(e.target.value) || 0)} />
-            <p className="text-xs text-muted-foreground">Valor por unidade.</p>
+            <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
           </div>
         </div>
       </form>

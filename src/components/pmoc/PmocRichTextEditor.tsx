@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -138,6 +140,8 @@ function ToolbarButton({ onClick, active, disabled, label, icon }: ToolbarButton
  * categoria. Ao clicar, insere o nó `pmocVariable` no cursor atual.
  */
 function InsertVariableMenu({ editor }: { editor: Editor }) {
+  const { locale } = useAppLocaleContext();
+  const tRte = MESSAGES[locale].app.pmoc.richTextEditor;
   const categories: PmocVariableCategory[] = ['empresa', 'rt', 'cliente', 'contrato', 'data'];
 
   const handleInsert = (key: PmocVariableKey) => {
@@ -152,12 +156,12 @@ function InsertVariableMenu({ editor }: { editor: Editor }) {
           variant="ghost"
           size="sm"
           onMouseDown={(e) => e.preventDefault()}
-          aria-label="Inserir variável"
-          title="Inserir variável PMOC"
+          aria-label={tRte.insertVariable}
+          title={tRte.insertVariable}
           className="h-9 px-2 sm:h-8 sm:px-2 shrink-0 gap-1"
         >
           <Tag className="h-4 w-4" />
-          <span className="hidden text-xs sm:inline">Variável</span>
+          <span className="hidden text-xs sm:inline">{tRte.variableLabel}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -165,7 +169,7 @@ function InsertVariableMenu({ editor }: { editor: Editor }) {
         className="max-h-[70vh] w-64 overflow-y-auto"
       >
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          Inserir variável PMOC
+          {tRte.insertVariable}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {categories.map((cat, idx) => {
@@ -196,6 +200,8 @@ function InsertVariableMenu({ editor }: { editor: Editor }) {
 }
 
 function EditorToolbar({ editor }: { editor: Editor }) {
+  const { locale } = useAppLocaleContext();
+  const tRte = MESSAGES[locale].app.pmoc.richTextEditor;
   const promptLink = () => {
     const previous = editor.getAttributes('link').href as string | undefined;
     const url = window.prompt('URL do link (deixe vazio pra remover):', previous ?? '');
@@ -224,19 +230,19 @@ function EditorToolbar({ editor }: { editor: Editor }) {
       {/* Grupo: formatação inline */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
-          label="Negrito"
+          label={tRte.bold}
           icon={<Bold className="h-4 w-4" />}
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
         />
         <ToolbarButton
-          label="Itálico"
+          label={tRte.italic}
           icon={<Italic className="h-4 w-4" />}
           active={editor.isActive('italic')}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         />
         <ToolbarButton
-          label="Sublinhado"
+          label={tRte.underline}
           icon={<UnderlineIcon className="h-4 w-4" />}
           active={editor.isActive('underline')}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
@@ -248,13 +254,13 @@ function EditorToolbar({ editor }: { editor: Editor }) {
       {/* Grupo: títulos */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
-          label="Título grande"
+          label={tRte.heading1}
           icon={<Heading2 className="h-4 w-4" />}
           active={editor.isActive('heading', { level: 2 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         />
         <ToolbarButton
-          label="Subtítulo"
+          label={tRte.heading2}
           icon={<Heading3 className="h-4 w-4" />}
           active={editor.isActive('heading', { level: 3 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
@@ -266,13 +272,13 @@ function EditorToolbar({ editor }: { editor: Editor }) {
       {/* Grupo: listas */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
-          label="Lista com marcadores"
+          label={tRte.bulletList}
           icon={<List className="h-4 w-4" />}
           active={editor.isActive('bulletList')}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         />
         <ToolbarButton
-          label="Lista numerada"
+          label={tRte.orderedList}
           icon={<ListOrdered className="h-4 w-4" />}
           active={editor.isActive('orderedList')}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
@@ -284,13 +290,13 @@ function EditorToolbar({ editor }: { editor: Editor }) {
       {/* Grupo: link */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
-          label="Inserir/editar link"
+          label={tRte.insertLink}
           icon={<LinkIcon className="h-4 w-4" />}
           active={editor.isActive('link')}
           onClick={promptLink}
         />
         <ToolbarButton
-          label="Remover link"
+          label={tRte.removeLink}
           icon={<Link2Off className="h-4 w-4" />}
           disabled={!editor.isActive('link')}
           onClick={() => editor.chain().focus().unsetLink().run()}
@@ -309,13 +315,13 @@ function EditorToolbar({ editor }: { editor: Editor }) {
       {/* Grupo: histórico */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
-          label="Desfazer"
+          label={tRte.undo}
           icon={<Undo className="h-4 w-4" />}
           disabled={!editor.can().undo()}
           onClick={() => editor.chain().focus().undo().run()}
         />
         <ToolbarButton
-          label="Refazer"
+          label={tRte.redo}
           icon={<Redo className="h-4 w-4" />}
           disabled={!editor.can().redo()}
           onClick={() => editor.chain().focus().redo().run()}

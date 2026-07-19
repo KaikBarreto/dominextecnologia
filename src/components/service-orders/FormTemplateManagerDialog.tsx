@@ -43,6 +43,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface FormTemplateManagerDialogProps {
   children?: React.ReactNode;
@@ -52,8 +54,10 @@ interface FormTemplateManagerDialogProps {
 }
 
 export function FormTemplateManagerDialog({ children, initialTemplateId, open: controlledOpen, onOpenChange: controlledOnOpenChange }: FormTemplateManagerDialogProps) {
-  const { 
-    templates, 
+  const { locale } = useAppLocaleContext();
+  const tFT = MESSAGES[locale].app.os.formTemplates;
+  const {
+    templates,
     createTemplate, 
     updateTemplate, 
     deleteTemplate,
@@ -276,7 +280,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Texto da pergunta"
+            placeholder={tFT.editPlaceholderQuestion}
             rows={2}
           />
           <div className="flex items-center gap-3">
@@ -297,7 +301,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
             </Select>
             <div className="flex items-center gap-2">
               <Switch checked={required} onCheckedChange={setRequired} />
-              <Label className="text-xs">Obrigatória</Label>
+              <Label className="text-xs">{tFT.editLabelRequired}</Label>
             </div>
             <div className="ml-auto flex gap-1">
               <Button variant="ghost" size="icon" onClick={() => setEditingQuestionId(null)}>
@@ -334,15 +338,15 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
               {(() => { const QIcon = getQuestionTypeIcon(question.question_type); return typeof QIcon === 'string' ? QIcon : <QIcon className="h-3 w-3" />; })()} {getQuestionTypeLabel(question.question_type)}
             </Badge>
             {question.is_required && (
-              <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
+              <Badge variant="destructive" className="text-xs">{tFT.editLabelRequired}</Badge>
             )}
           </div>
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <RowActionsMenu
             actions={[
-              { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => setEditingQuestionId(question.id) },
-              { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => handleDeleteQuestion(question.id) },
+              { label: tFT.editBtnEdit, icon: Pencil, variant: 'edit', onClick: () => setEditingQuestionId(question.id) },
+              { label: tFT.editBtnDelete, icon: Trash2, variant: 'delete', onClick: () => handleDeleteQuestion(question.id) },
             ]}
           />
         </div>
@@ -357,30 +361,30 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
         <div className="p-4 border-b">
           <h3 className="font-semibold flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
-            Checklists
+            {tFT.panelTitle}
           </h3>
         </div>
-        
+
         {/* New Template */}
         <div className="p-3 border-b space-y-2">
           {!showCreateTemplate ? (
             <Button className="w-full" variant="outline" onClick={() => setShowCreateTemplate(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Novo checklist
+              {tFT.btnNew}
             </Button>
           ) : (
             <div className="flex gap-2">
               <Input
                 value={newTemplateName}
                 onChange={(e) => setNewTemplateName(e.target.value)}
-                placeholder="Nome do checklist"
+                placeholder={tFT.placeholderName}
                 className="flex-1"
               />
               <Button
                 onClick={handleCreateTemplate}
                 disabled={!newTemplateName.trim() || createTemplate.isPending}
-              >Criar</Button>
-              <Button variant="ghost" onClick={() => { setShowCreateTemplate(false); setNewTemplateName(''); }}>Cancelar</Button>
+              >{tFT.btnCreate}</Button>
+              <Button variant="ghost" onClick={() => { setShowCreateTemplate(false); setNewTemplateName(''); }}>{tFT.btnCancel}</Button>
             </div>
           )}
         </div>
@@ -403,18 +407,18 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{template.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {template.questions?.length || 0} perguntas
+                    {(() => { const n = template.questions?.length || 0; return n === 1 ? tFT.questionsCount.replace('{n}', '1') : (tFT.questionsCount.replace('{n}', String(n))); })()}
                   </p>
                 </div>
                 <Badge variant={template.is_active ? 'success' : 'muted'} className="text-xs">
-                  {template.is_active ? 'Ativo' : 'Inativo'}
+                  {template.is_active ? tFT.badgeActive : tFT.badgeInactive}
                 </Badge>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             ))}
             {templates.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-8">
-                Nenhum checklist criado
+                {tFT.emptyList}
               </p>
             )}
           </div>
@@ -429,7 +433,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
               <div>
                 <h3 className="font-semibold">{selectedTemplate.name}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {selectedTemplate.questions?.length || 0} perguntas
+                  {(() => { const n = selectedTemplate.questions?.length || 0; return n === 1 ? tFT.questionsCount.replace('{n}', '1') : tFT.questionsCount.replace('{n}', String(n)); })()}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -440,7 +444,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                       updateTemplate.mutate({ id: selectedTemplate.id, is_active: checked });
                     }}
                   />
-                  <Label className="text-sm">Ativo</Label>
+                  <Label className="text-sm">{tFT.labelActive}</Label>
                 </div>
                 <Button
                   variant="destructive-ghost"
@@ -455,7 +459,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
             {/* Service Types Link */}
             <div className="px-4 py-3 border-b space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Serviços habilitados</Label>
+                <Label className="text-xs text-muted-foreground">{tFT.labelServicesEnabled}</Label>
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={((selectedTemplate as any).service_type_ids?.length ?? 0) === 0}
@@ -470,7 +474,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                       }
                     }}
                   />
-                  <Label className="text-xs">Todos</Label>
+                  <Label className="text-xs">{tFT.labelAllServices}</Label>
                 </div>
               </div>
               {((selectedTemplate as any).service_type_ids?.length ?? 0) > 0 && (
@@ -519,12 +523,12 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
 
             {/* Add Question Form */}
             <div className="p-4 border-t space-y-3">
-              <Label className="text-sm font-medium">Nova Pergunta</Label>
+              <Label className="text-sm font-medium">{tFT.addQuestionTitle}</Label>
               <div className="flex gap-2">
                 <Input
                   value={newQuestion.question || ''}
                   onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
-                  placeholder="Texto da pergunta..."
+                  placeholder={tFT.placeholderQuestion}
                   className="flex-1"
                 />
                 <Select 
@@ -554,7 +558,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                     onCheckedChange={(checked) => setNewQuestion({ ...newQuestion, is_required: checked })}
                   />
                   <Label htmlFor="new-question-required" className="text-sm cursor-pointer">
-                    Campo obrigatório
+                    {tFT.labelRequired}
                   </Label>
                 </div>
                 <Button
@@ -562,7 +566,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                   disabled={!newQuestion.question?.trim() || createQuestion.isPending}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Adicionar
+                  {tFT.btnAdd}
                 </Button>
               </div>
             </div>
@@ -571,7 +575,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Selecione um checklist para editar</p>
+              <p>{tFT.selectToEdit}</p>
             </div>
           </div>
         )}
@@ -583,18 +587,18 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
     <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remover checklist?</AlertDialogTitle>
+          <AlertDialogTitle>{tFT.deleteTitle}</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta ação não pode ser desfeita. Todas as perguntas deste checklist serão removidas.
+            {tFT.deleteDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel>{tFT.btnCancelDelete}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDeleteTemplate}
             className="bg-destructive text-white hover:bg-destructive/90"
           >
-            Remover
+            {tFT.btnDelete}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

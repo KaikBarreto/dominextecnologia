@@ -203,6 +203,15 @@ export const inventory = {
       cancel: 'Cancelar',
       save: 'Salvar',
       saving: 'Salvando...',
+      categories: {
+        'Peças': 'Peças',
+        'Filtros': 'Filtros',
+        'Gases': 'Gases',
+        'Ferramentas': 'Ferramentas',
+        'Materiais': 'Materiais',
+        'Equipamentos': 'Equipamentos',
+        'Outros': 'Outros',
+      },
     },
     supplierForm: {
       titleNew: 'Novo Fornecedor',
@@ -429,6 +438,7 @@ export const inventory = {
         stockDestination: 'Destino no estoque',
         createNew: 'Criar novo item',
         warnQtyZero: 'Quantidade precisa ser maior que zero.',
+        warnUnitDiverge: 'Unidade da nota: {noteUnit} ≠ cadastro: {stockUnit}',
       },
       toastInvalidQty: {
         title: 'Quantidade inválida',
@@ -654,6 +664,15 @@ export const inventory = {
       cancel: 'Cancel',
       save: 'Save',
       saving: 'Saving...',
+      categories: {
+        'Peças': 'Parts',
+        'Filtros': 'Filters',
+        'Gases': 'Gases',
+        'Ferramentas': 'Tools',
+        'Materiais': 'Materials',
+        'Equipamentos': 'Equipment',
+        'Outros': 'Other',
+      },
     },
     supplierForm: {
       titleNew: 'New Supplier',
@@ -880,6 +899,7 @@ export const inventory = {
         stockDestination: 'Stock destination',
         createNew: 'Create new item',
         warnQtyZero: 'Quantity must be greater than zero.',
+        warnUnitDiverge: 'Invoice unit: {noteUnit} ≠ inventory: {stockUnit}',
       },
       toastInvalidQty: {
         title: 'Invalid quantity',
@@ -1105,6 +1125,15 @@ export const inventory = {
       cancel: 'Cancelar',
       save: 'Guardar',
       saving: 'Guardando...',
+      categories: {
+        'Peças': 'Piezas',
+        'Filtros': 'Filtros',
+        'Gases': 'Gases',
+        'Ferramentas': 'Herramientas',
+        'Materiais': 'Materiales',
+        'Equipamentos': 'Equipos',
+        'Outros': 'Otros',
+      },
     },
     supplierForm: {
       titleNew: 'Nuevo proveedor',
@@ -1331,6 +1360,7 @@ export const inventory = {
         stockDestination: 'Destino en inventario',
         createNew: 'Crear nuevo ítem',
         warnQtyZero: 'La cantidad debe ser mayor que cero.',
+        warnUnitDiverge: 'Unidad de la factura: {noteUnit} ≠ inventario: {stockUnit}',
       },
       toastInvalidQty: {
         title: 'Cantidad inválida',
@@ -1556,6 +1586,15 @@ export const inventory = {
       cancel: 'Annuler',
       save: 'Enregistrer',
       saving: 'Enregistrement...',
+      categories: {
+        'Peças': 'Pièces',
+        'Filtros': 'Filtres',
+        'Gases': 'Gaz',
+        'Ferramentas': 'Outils',
+        'Materiais': 'Matériaux',
+        'Equipamentos': 'Équipements',
+        'Outros': 'Autres',
+      },
     },
     supplierForm: {
       titleNew: 'Nouveau fournisseur',
@@ -1782,6 +1821,7 @@ export const inventory = {
         stockDestination: 'Destination en stock',
         createNew: 'Créer un nouvel article',
         warnQtyZero: 'La quantité doit être supérieure à zéro.',
+        warnUnitDiverge: 'Unité de la facture : {noteUnit} ≠ stock : {stockUnit}',
       },
       toastInvalidQty: {
         title: 'Quantité invalide',

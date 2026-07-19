@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { fuzzyIncludes, cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Plus, LayoutList, LayoutGrid, Users as UsersIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -32,6 +34,8 @@ import { getErrorMessage } from '@/utils/errorMessages';
 
 export default function Users() {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.users;
   const { users, isLoading, updateUserRole, canManageRoles, currentUserRole } = useUsers();
   const { userPermissions, upsertPermissions } = useUserPermissions();
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
@@ -146,14 +150,14 @@ export default function Users() {
         await supabase.from('employees').update(updateData).eq('id', data.employee_id);
       }
 
-      toast({ title: 'Usuário criado com sucesso!' });
+      toast({ title: t.toastCreated });
       window.location.reload();
     } catch (e: any) {
       const msg = (e.message || '').toLowerCase();
       const friendlyMsg = msg.includes('already') || msg.includes('duplicate') || msg.includes('already been registered')
-        ? 'Este e-mail já está cadastrado no sistema.'
+        ? t.toastCreateErrorDuplicate
         : getErrorMessage(e);
-      toast({ title: 'Erro ao criar usuário', description: friendlyMsg, variant: 'destructive' });
+      toast({ title: t.toastCreateError, description: friendlyMsg, variant: 'destructive' });
       throw e;
     }
   };
@@ -223,10 +227,10 @@ export default function Users() {
         if (emailResult?.error) throw new Error(emailResult.error);
       }
 
-      toast({ title: 'Usuário atualizado!' });
+      toast({ title: t.toastUpdated });
       window.location.reload();
     } catch (e: any) {
-      toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' });
+      toast({ title: t.toastUpdateError, description: getErrorMessage(e), variant: 'destructive' });
       throw e;
     }
   };
@@ -245,11 +249,11 @@ export default function Users() {
       });
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
-      toast({ title: 'Usuário desativado', description: 'O slot foi liberado. Você pode reativá-lo depois.' });
+      toast({ title: t.toastDeactivated, description: t.toastDeactivatedDesc });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
       await queryClient.invalidateQueries({ queryKey: ['company-user-count'] });
     } catch (e: any) {
-      toast({ title: 'Erro ao desativar', description: getErrorMessage(e), variant: 'destructive' });
+      toast({ title: t.toastDeactivateError, description: getErrorMessage(e), variant: 'destructive' });
     }
   };
 
@@ -261,11 +265,11 @@ export default function Users() {
       });
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
-      toast({ title: 'Usuário reativado!' });
+      toast({ title: t.toastReactivated });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
       await queryClient.invalidateQueries({ queryKey: ['company-user-count'] });
     } catch (e: any) {
-      toast({ title: 'Erro ao reativar', description: getErrorMessage(e), variant: 'destructive' });
+      toast({ title: t.toastReactivateError, description: getErrorMessage(e), variant: 'destructive' });
     }
   };
 
@@ -284,11 +288,11 @@ export default function Users() {
       });
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
-      toast({ title: 'Usuário excluído permanentemente!' });
+      toast({ title: t.toastDeleted });
       setDeletingUser(null);
       window.location.reload();
     } catch (e: any) {
-      toast({ title: 'Erro ao excluir', description: getErrorMessage(e), variant: 'destructive' });
+      toast({ title: t.toastDeleteError, description: getErrorMessage(e), variant: 'destructive' });
     } finally {
       setDeleteLoading(false);
     }
@@ -334,8 +338,8 @@ export default function Users() {
     target.role === 'admin' && target.is_active !== false && activeAdmins.length <= 1;
   const blockLastAdmin = () => {
     toast({
-      title: 'Ação bloqueada',
-      description: 'A empresa precisa de pelo menos um administrador ativo.',
+      title: t.blockLastAdminTitle,
+      description: t.blockLastAdminDesc,
       variant: 'destructive',
     });
   };
@@ -361,9 +365,9 @@ export default function Users() {
         description: preset.description || undefined,
         permissions: [...preset.permissions],
       });
-      toast({ title: 'Cargo duplicado!' });
+      toast({ title: t.toastPresetDuplicated });
     } catch (e) {
-      toast({ title: 'Erro ao duplicar', description: getErrorMessage(e, 'Erro inesperado'), variant: 'destructive' });
+      toast({ title: t.toastPresetDuplicateError, description: getErrorMessage(e, 'Erro inesperado'), variant: 'destructive' });
     }
   };
 
@@ -371,10 +375,10 @@ export default function Users() {
     if (!deletingPreset) return;
     try {
       await deletePreset.mutateAsync(deletingPreset.id);
-      toast({ title: 'Cargo excluído!' });
+      toast({ title: t.toastPresetDeleted });
       setDeletingPreset(null);
     } catch (e) {
-      toast({ title: 'Erro ao excluir', description: getErrorMessage(e, 'Erro inesperado'), variant: 'destructive' });
+      toast({ title: t.toastPresetDeleteError, description: getErrorMessage(e, 'Erro inesperado'), variant: 'destructive' });
     }
   };
 
@@ -385,16 +389,16 @@ export default function Users() {
     return (
       <div className={cn('space-y-4 min-w-0 w-full max-w-full overflow-x-hidden pb-24')}>
         <MobilePageHeader
-          title="Usuários"
-          subtitle={`${currentUserCount}/${maxUsers} usuários • ${activeCount} ativos`}
+          title={t.pageTitle}
+          subtitle={t.pageSubtitle.replace('{count}', String(currentUserCount)).replace('{max}', String(maxUsers)).replace('{active}', String(activeCount))}
           icon={ShieldCheck}
         />
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'users' | 'presets')} className="w-full">
           <MobilePillTabs
             tabs={[
-              { value: 'users', label: 'Usuários' },
-              { value: 'presets', label: 'Cargos' },
+              { value: 'users', label: t.tabs.users },
+              { value: 'presets', label: t.tabs.presets },
             ]}
             activeTab={activeTab}
             onTabChange={(v) => setActiveTab(v as 'users' | 'presets')}
@@ -404,7 +408,7 @@ export default function Users() {
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder={activeTab === 'users' ? 'Buscar usuários...' : 'Buscar cargos...'}
+              placeholder={activeTab === 'users' ? t.searchPlaceholderUsers : t.searchPlaceholderPresets}
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -444,14 +448,14 @@ export default function Users() {
         {canManageRoles && activeTab === 'users' && (
           <FABButton
             icon={<Plus className="h-5 w-5" />}
-            label="Usuário"
+            label={t.fabUser}
             onClick={startCreateUser}
           />
         )}
         {canManageRoles && activeTab === 'presets' && (
           <FABButton
             icon={<Plus className="h-5 w-5" />}
-            label="Cargo"
+            label={t.fabPreset}
             onClick={handleCreatePreset}
           />
         )}
@@ -477,19 +481,19 @@ export default function Users() {
         <AlertDialog open={!!deletingUser} onOpenChange={(open) => { if (!open) setDeletingUser(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+              <AlertDialogTitle>{t.deleteUserTitle}</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta ação é irreversível. O usuário <strong>{deletingUser?.full_name}</strong> será removido permanentemente do sistema, incluindo login, permissões e vínculos.
+                {t.deleteUserDesc.replace('{name}', deletingUser?.full_name ?? '')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleteLoading}>{t.cancel}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteUser}
                 disabled={deleteLoading}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {deleteLoading ? 'Excluindo...' : 'Excluir Permanentemente'}
+                {deleteLoading ? t.deleteLoading : t.deletePermanently}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -498,18 +502,18 @@ export default function Users() {
         <AlertDialog open={!!deletingPreset} onOpenChange={(open) => { if (!open) setDeletingPreset(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir cargo?</AlertDialogTitle>
+              <AlertDialogTitle>{t.deletePresetTitle}</AlertDialogTitle>
               <AlertDialogDescription>
-                O cargo <strong>{deletingPreset?.name}</strong> será removido. Usuários que estavam vinculados a ele mantêm as permissões individuais. Esta ação não pode ser desfeita.
+                {t.deletePresetDesc.replace('{name}', deletingPreset?.name ?? '')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeletePresetConfirm}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Excluir
+                {t.delete}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -542,25 +546,25 @@ export default function Users() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShieldCheck className="h-6 w-6" />
-            Usuários e Permissões
+            {t.pageTitle}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {currentUserCount}/{maxUsers} usuários • {activeCount} ativos
+            {t.pageSubtitle.replace('{count}', String(currentUserCount)).replace('{max}', String(maxUsers)).replace('{active}', String(activeCount))}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange}>
-            <ToggleGroupItem value="list" aria-label="Lista"><LayoutList className="h-4 w-4" /></ToggleGroupItem>
-            <ToggleGroupItem value="cards" aria-label="Cards"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label={t.viewList}><LayoutList className="h-4 w-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="cards" aria-label={t.viewCards}><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
           </ToggleGroup>
           <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
-            Configurações
+            {t.btnSettings}
           </Button>
           {canManageRoles && (
             <Button size="sm" onClick={startCreateUser}>
               <UserPlus className="h-4 w-4 mr-2" />
-              Criar Usuário
+              {t.btnCreateUser}
             </Button>
           )}
         </div>
@@ -576,16 +580,16 @@ export default function Users() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">
-                    Limite de usuários atingido ({currentUserCount}/{maxUsers})
+                    {t.limitTitle.replace('{count}', String(currentUserCount)).replace('{max}', String(maxUsers))}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Para cadastrar novos usuários, adicione usuários extras ao seu plano.
+                    {t.limitDesc}
                   </p>
                 </div>
               </div>
               <Button size="sm" className="shrink-0" onClick={() => setUserLimitOpen(true)}>
                 <UserPlus className="h-4 w-4 mr-2" />
-                Contratar mais usuários
+                {t.btnHireMore}
               </Button>
             </div>
           )}
@@ -594,7 +598,7 @@ export default function Users() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome ou telefone..."
+              placeholder={t.searchPlaceholderDesktop}
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -622,7 +626,7 @@ export default function Users() {
             <Card>
               <CardContent className="py-12">
                 <p className="text-center text-muted-foreground">
-                  {searchQuery ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
+                  {searchQuery ? t.emptyFiltered : t.emptyAll}
                 </p>
               </CardContent>
             </Card>
@@ -663,19 +667,19 @@ export default function Users() {
                             <div className="flex flex-wrap items-center gap-2 mb-1">
                               <h3 className="font-semibold text-base truncate">{userProfile.full_name}</h3>
                               {isCurrentUser(userProfile) && (
-                                <Badge variant="outline" className="text-xs">Você</Badge>
+                                <Badge variant="outline" className="text-xs">{t.badgeYou}</Badge>
                               )}
                               {isActive ? (
-                                <Badge className="bg-primary text-primary-foreground text-xs">Ativo</Badge>
+                                <Badge className="bg-primary text-primary-foreground text-xs">{t.badgeActive}</Badge>
                               ) : (
-                                <Badge className="bg-destructive hover:bg-destructive text-white text-xs">Inativo</Badge>
+                                <Badge className="bg-destructive hover:bg-destructive text-white text-xs">{t.badgeInactive}</Badge>
                               )}
                             </div>
                             <p className="text-sm text-muted-foreground truncate">{userProfile.phone || '—'}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-2">
                               <Badge className="bg-gradient-to-r from-gray-800 to-gray-900 text-white border-0 text-xs">
                                 <Shield className="h-3 w-3 mr-1.5" />
-                                {preset ? preset.name : isAllPerms ? 'Acesso Total' : `${permCount} permissões`}
+                                {preset ? preset.name : isAllPerms ? t.badgeAllPerms : t.badgePermCount.replace('{count}', String(permCount))}
                               </Badge>
                             </div>
                           </div>
@@ -691,10 +695,10 @@ export default function Users() {
                               variant="edit-ghost"
                               size="sm"
                               onClick={() => openEditUser(userProfile)}
-                              title="Editar usuário"
+                              title={t.btnEdit}
                             >
                               <Pencil className="h-4 w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Editar</span>
+                              <span className="hidden sm:inline">{t.btnEdit}</span>
                             </Button>
                             {!isCurrentUser(userProfile) && (
                               <>
@@ -703,11 +707,11 @@ export default function Users() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleDeactivateUser(userProfile)}
-                                    title="Desativar usuário (reversível)"
+                                    title={t.btnDeactivate}
                                     className="hover:bg-orange-500 hover:text-white hover:border-orange-500"
                                   >
                                     <UserX className="h-4 w-4 sm:mr-2" />
-                                    <span className="hidden sm:inline">Desativar</span>
+                                    <span className="hidden sm:inline">{t.btnDeactivate}</span>
                                   </Button>
                                 ) : (
                                   <Button
@@ -716,12 +720,12 @@ export default function Users() {
                                     onClick={() => handleReactivateUser(userProfile)}
                                     disabled={!canAddUser}
                                     title={canAddUser
-                                      ? 'Reativar usuário'
-                                      : 'Sem slot livre — faça upgrade ou desative outro'}
+                                      ? t.btnReactivate
+                                      : t.btnReactivateDisabledTitle}
                                     className="hover:bg-green-600 hover:text-white hover:border-green-600"
                                   >
                                     <UserCheck className="h-4 w-4 sm:mr-2" />
-                                    <span className="hidden sm:inline">Reativar</span>
+                                    <span className="hidden sm:inline">{t.btnReactivate}</span>
                                   </Button>
                                 )}
                                 <Button
@@ -768,19 +772,19 @@ export default function Users() {
       <AlertDialog open={!!deletingUser} onOpenChange={(open) => { if (!open) setDeletingUser(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteUserTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação é irreversível. O usuário <strong>{deletingUser?.full_name}</strong> será removido permanentemente do sistema, incluindo login, permissões e vínculos.
+              {t.deleteUserDesc.replace('{name}', deletingUser?.full_name ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteLoading}>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteUser}
               disabled={deleteLoading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteLoading ? 'Excluindo...' : 'Excluir Permanentemente'}
+              {deleteLoading ? t.deleteLoading : t.deletePermanently}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

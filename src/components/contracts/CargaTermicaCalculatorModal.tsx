@@ -1,5 +1,7 @@
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { CargaTermica } from '@/components/technician-area/CargaTermica';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface CargaTermicaCalculatorModalProps {
   open: boolean;
@@ -18,8 +20,10 @@ export function CargaTermicaCalculatorModal({
   onOpenChange,
   onApply,
 }: CargaTermicaCalculatorModalProps) {
+  const { locale } = useAppLocaleContext();
+  const tCarga = MESSAGES[locale].app.contracts.cargaTermica;
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Calcular carga térmica">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tCarga.title}>
       <CargaTermica
         onApply={(trBR) => {
           onApply(trBR);

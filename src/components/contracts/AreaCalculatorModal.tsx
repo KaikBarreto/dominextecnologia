@@ -4,6 +4,8 @@ import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Calculator, X } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface AreaCalculatorModalProps {
   open: boolean;
@@ -26,6 +28,8 @@ function parseBR(raw: string): number | null {
  * à parte, fora do escopo. Drawer no mobile, dialog no desktop (ResponsiveModal).
  */
 export function AreaCalculatorModal({ open, onOpenChange, onApply }: AreaCalculatorModalProps) {
+  const { locale } = useAppLocaleContext();
+  const tArea = MESSAGES[locale].app.contracts.areaCalculator;
   const [largura, setLargura] = useState('');
   const [comprimento, setComprimento] = useState('');
 
@@ -53,45 +57,45 @@ export function AreaCalculatorModal({ open, onOpenChange, onApply }: AreaCalcula
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Calcular área climatizada"
+      title={tArea.title}
       footer={
         <div className="flex w-full flex-row items-center justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            <X className="mr-1.5 h-4 w-4" /> Cancelar
+            <X className="mr-1.5 h-4 w-4" /> {tArea.cancelButton}
           </Button>
           <Button onClick={handleApply} disabled={!areaBR}>
-            <Calculator className="mr-1.5 h-4 w-4" /> Usar
+            <Calculator className="mr-1.5 h-4 w-4" /> {tArea.applyButton}
           </Button>
         </div>
       }
     >
       <div className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Informe as medidas do ambiente. A área é largura × comprimento, em metros quadrados (m²).
+          {tArea.description}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Largura (m)</Label>
+            <Label className="text-xs">{tArea.widthLabel}</Label>
             <NumericInput
               decimal
               value={largura}
               onValueChange={setLargura}
-              placeholder="Ex: 5,0"
+              placeholder={tArea.placeholder}
               autoFocus
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Comprimento (m)</Label>
+            <Label className="text-xs">{tArea.lengthLabel}</Label>
             <NumericInput
               decimal
               value={comprimento}
               onValueChange={setComprimento}
-              placeholder="Ex: 8,0"
+              placeholder={tArea.placeholder}
             />
           </div>
         </div>
         <div className="rounded-xl border bg-muted/30 p-3 text-center">
-          <p className="text-xs text-muted-foreground">Área climatizada</p>
+          <p className="text-xs text-muted-foreground">{tArea.resultLabel}</p>
           <p className="text-xl font-semibold tabular-nums">
             {area === null ? '—' : `${area.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m²`}
           </p>

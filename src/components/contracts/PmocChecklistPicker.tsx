@@ -21,6 +21,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { catalogFreqCode, isAcSection, partitionPickerSections, type PmocMachineScope } from '@/components/contracts/pmocMachineRoutine';
 import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/components/contracts/questionFrequency';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   groupActivitiesByType,
   isEssentialFor,
@@ -42,13 +44,7 @@ export const FAMILY_TOOLTIPS = {
 export const ESSENTIAL_COMPLIANCE_NOTE =
   'Conjunto essencial da norma para começar. Você pode adicionar a norma completa quando quiser, conforme o porte e o risco do equipamento.';
 
-const FREQ_LABELS: Record<string, string> = {
-  M: 'Mensal',
-  T: 'Trimestral',
-  S: 'Semestral',
-  A: 'Anual',
-  E: 'Eventual',
-};
+// FREQ_LABELS is now locale-derived inside the component (see tPicker.freq below).
 
 // Pergunta de um checklist personalizado (subset de form_questions) usada pra
 // expandir o template e gerir o "Adicionar na 1ª OS?" por pergunta.
@@ -111,6 +107,10 @@ export function PmocChecklistPicker({
   onToggleExcludedQuestion,
   onSetExcludedQuestions,
 }: PmocChecklistPickerProps) {
+  const { locale } = useAppLocaleContext();
+  const tPicker = MESSAGES[locale].app.contracts.pmocChecklistPicker;
+  const FREQ_LABELS: Record<string, string> = tPicker.freq;
+
   // Filtra os grupos pelo escopo: 'ac' só mostra seções de ar-condicionado.
   const visibleGroups = catalogGroups.filter((g) => (scope === 'ac' ? isAcSection(g.section) : true));
 
@@ -262,7 +262,7 @@ export function PmocChecklistPicker({
               <Badge variant="info" className="text-[10px] shrink-0">{selectedInGroup} ✓</Badge>
             )}
             {essentialNow && (
-              <Badge className="shrink-0 bg-emerald-600 text-white border-transparent text-[10px]">Essencial</Badge>
+              <Badge className="shrink-0 bg-emerald-600 text-white border-transparent text-[10px]">{tPicker.essentialLabel}</Badge>
             )}
             {/* Atalho do ESSENCIAL da seção: marca só o essencial da infra (não a
                 norma inteira). Aparece quando a seção tem essencial e ele ainda
@@ -275,7 +275,7 @@ export function PmocChecklistPicker({
                 onClick={(e) => { e.stopPropagation(); e.preventDefault(); setSectionToEssential(groupIds, sectionEssentialIds); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); setSectionToEssential(groupIds, sectionEssentialIds); } }}
               >
-                Marcar essencial
+                {tPicker.markEssential}
               </span>
             )}
             <span
@@ -285,7 +285,7 @@ export function PmocChecklistPicker({
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); } }}
             >
-              {groupAllChecked ? 'Desmarcar' : 'Marcar norma completa'}
+              {groupAllChecked ? tPicker.unmarkAll : tPicker.markFullNorm}
             </span>
           </span>
         </AccordionTrigger>
@@ -318,7 +318,7 @@ export function PmocChecklistPicker({
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggleGroup(groupIds, groupAllChecked); } }}
             >
-              {groupAllChecked ? 'Desmarcar' : 'Marcar todos'}
+              {groupAllChecked ? tPicker.unmarkAll : tPicker.markAll}
             </span>
           </span>
         </AccordionTrigger>
@@ -352,7 +352,7 @@ export function PmocChecklistPicker({
               role="button"
               tabIndex={0}
               className="inline-flex shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label={`Sobre ${title}`}
+              aria-label={`${tPicker.familyTooltipAriaLabel} ${title}`}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
               onPointerDown={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); } }}
@@ -363,7 +363,7 @@ export function PmocChecklistPicker({
           <TooltipContent className="max-w-xs text-xs">{tip}</TooltipContent>
         </Tooltip>
         {essentialNow && (
-          <Badge className="shrink-0 bg-emerald-600 text-white border-transparent text-[10px]">Essencial</Badge>
+          <Badge className="shrink-0 bg-emerald-600 text-white border-transparent text-[10px]">{tPicker.essentialLabel}</Badge>
         )}
         {!allOn && (
           <span
@@ -374,7 +374,7 @@ export function PmocChecklistPicker({
             onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); addFullNorm(familyIds); } }}
           >
-            Adicionar norma completa
+            {tPicker.addFullNorm}
           </span>
         )}
       </span>
@@ -392,22 +392,21 @@ export function PmocChecklistPicker({
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Atividades de manutenção conforme a norma (Lei 13.589/2018). Marque as que se aplicam a esta máquina.
-        A frequência vem da norma como ponto de partida.
+        {tPicker.activityNote}
       </p>
 
       {allIds.length > 0 && (
         <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
-          <span className="text-xs text-muted-foreground">Selecionar todas as seções da norma</span>
+          <span className="text-xs text-muted-foreground">{tPicker.selectAllSections}</span>
           <Button type="button" variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={toggleAll}>
-            {allChecked ? 'Desmarcar todos' : 'Marcar todos'}
+            {allChecked ? tPicker.unmarkAll : tPicker.markAll}
           </Button>
         </div>
       )}
 
       {allIds.length === 0 && (
         <p className="text-xs text-muted-foreground py-2 text-center">
-          {catalogLoading ? 'Carregando catálogo da norma…' : 'Nenhuma atividade da norma para este escopo.'}
+          {catalogLoading ? tPicker.catalogLoading : tPicker.catalogEmpty}
         </p>
       )}
 
@@ -422,7 +421,7 @@ export function PmocChecklistPicker({
       {allIds.length > 0 && (
         <section className="space-y-2">
           <header className="flex items-center gap-2 border-b border-border pb-1.5">
-            <h3 className="text-sm font-bold text-foreground">Catálogo PMOC</h3>
+            <h3 className="text-sm font-bold text-foreground">{tPicker.catalogSectionTitle}</h3>
             <Badge variant="outline" className="text-[10px] shrink-0">{allIds.length}</Badge>
             {selectedCatalogCount > 0 && (
               <Badge variant="info" className="text-[10px] shrink-0">{selectedCatalogCount} ✓</Badge>
@@ -431,7 +430,7 @@ export function PmocChecklistPicker({
 
           {/* Nota de conformidade: o default vem enxuto (essencial), a norma
               completa fica a um clique por família. */}
-          <p className="text-[11px] leading-snug text-muted-foreground">{ESSENTIAL_COMPLIANCE_NOTE}</p>
+          <p className="text-[11px] leading-snug text-muted-foreground">{tPicker.complianceNote}</p>
 
           {/* Famílias (single-open): Expansão Direta → Sistemas Centrais. Borda
               leve única na família; o conteúdo de tipo/seção fica achatado dentro
@@ -477,7 +476,7 @@ export function PmocChecklistPicker({
       {showCustomSection && (
         <section className="space-y-2">
           <header className="flex items-center gap-2 border-b border-border pb-1.5">
-            <h3 className="text-sm font-bold text-foreground">Checklists Personalizados</h3>
+            <h3 className="text-sm font-bold text-foreground">{tPicker.customSectionTitle}</h3>
             {customTemplates.length > 0 && (
               <Badge variant="outline" className="text-[10px] shrink-0">{customTemplates.length}</Badge>
             )}
@@ -490,15 +489,14 @@ export function PmocChecklistPicker({
                 className="ml-auto shrink-0 rounded-md border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 onClick={toggleAllTemplates}
               >
-                {allTemplatesChecked ? 'Desmarcar' : 'Marcar todos'}
+                {allTemplatesChecked ? tPicker.unmarkAll : tPicker.markAll}
               </button>
             )}
           </header>
 
           {customTemplates.length === 0 ? (
             <p className="text-xs text-muted-foreground py-1">
-              Nenhum checklist personalizado. Crie em <span className="font-medium">Checklists</span> e ele aparece aqui
-              para anexar a esta máquina.
+              {tPicker.customEmpty} <span className="font-medium">{tPicker.customEmptyLink}</span> {tPicker.customEmptyLinkSuffix}
             </p>
           ) : (
             <div className="space-y-1">
@@ -546,6 +544,9 @@ function CustomTemplateRow({
   onToggleExcludedQuestion,
   onSetExcludedQuestions,
 }: CustomTemplateRowProps) {
+  const { locale } = useAppLocaleContext();
+  const tPicker = MESSAGES[locale].app.contracts.pmocChecklistPicker;
+  const tEditor = MESSAGES[locale].app.contracts.checklistEditor;
   const [open, setOpen] = useState(false);
   const questions = [...(tpl.questions ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   // Expansível só quando selecionado, com perguntas E o pai gerencia a 1ª OS.
@@ -576,7 +577,7 @@ function CustomTemplateRow({
           className="mt-0.5 rounded border-border shrink-0 cursor-pointer"
           checked={checked}
           onChange={onToggle}
-          aria-label={`Selecionar checklist ${tpl.name}`}
+          aria-label={`${tPicker.machineSelectAriaLabel} ${tpl.name}`}
         />
         <button
           type="button"
@@ -588,12 +589,12 @@ function CustomTemplateRow({
             <p className="text-sm text-foreground">{tpl.name}</p>
             <p className="text-xs text-muted-foreground">
               {checked && questions.length > 0
-                ? `${includedCount} de ${questionCount} na 1ª OS`
-                : `${questionCount} pergunta${questionCount === 1 ? '' : 's'}`}
+                ? `${includedCount} ${tEditor.firstOsCount.replace('{total}', String(questionCount))}`
+                : `${questionCount} ${questionCount === 1 ? tEditor.questionsCount : tEditor.questionsCountPlural}`}
             </p>
           </div>
           {/* A frequência de um personalizado é POR PERGUNTA — selo informativo. */}
-          <Badge variant="outline" className="shrink-0 text-[10px]">Frequência por pergunta</Badge>
+          <Badge variant="outline" className="shrink-0 text-[10px]">{tEditor.freqPerQuestion}</Badge>
           {expandable && (
             <ChevronDown
               className={cn(
@@ -612,7 +613,7 @@ function CustomTemplateRow({
           {onSetExcludedQuestions && frequencyBuckets.length > 0 && (
             <div className="mb-2.5 rounded-md bg-muted/40 p-2">
               <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">
-                Marcar/desmarcar todas de uma frequência
+                {tEditor.bulkLabel}
               </p>
               <div className="flex flex-wrap items-center gap-1.5">
                 {frequencyBuckets.map((b) => {
@@ -630,8 +631,8 @@ function CustomTemplateRow({
                       )}
                       title={
                         allIncluded
-                          ? `Desmarcar todas as perguntas: ${b.label}`
-                          : `Marcar todas as perguntas: ${b.label}`
+                          ? `${tEditor.unmarkAllOfFreq} ${b.label}`
+                          : `${tEditor.markAllOfFreq} ${b.label}`
                       }
                     >
                       {allIncluded && <Check className="h-3 w-3" />}
@@ -645,13 +646,13 @@ function CustomTemplateRow({
           )}
           <div className="flex items-center gap-2.5 border-b px-1.5 pb-1.5">
             <span className="min-w-0 flex-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Pergunta
+              {tEditor.questionHeader}
             </span>
             <span className="w-[5.5rem] shrink-0 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Frequência
+              {tEditor.freqHeader}
             </span>
             <span className="w-12 shrink-0 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Na 1ª OS?
+              {tEditor.firstOsHeader}
             </span>
           </div>
           <div className="max-h-72 space-y-1.5 overflow-y-auto pt-1">
@@ -672,19 +673,19 @@ function CustomTemplateRow({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex">
-                            <Checkbox checked disabled aria-label="Sempre na primeira OS" />
+                            <Checkbox checked disabled aria-label={tEditor.alwaysInFirstOs} />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[15rem] text-xs">
-                          Itens de toda visita sempre entram na primeira OS.
+                          {tEditor.alwaysInFirstOsTooltip}
                         </TooltipContent>
                       </Tooltip>
                     ) : (
                       <Checkbox
                         checked={included}
                         onCheckedChange={() => onToggleExcludedQuestion?.(q.id)}
-                        aria-label={`Adicionar na primeira OS: ${q.question}`}
-                        title="Adicionar na 1ª OS?"
+                        aria-label={`${tEditor.addToFirstOs} ${q.question}`}
+                        title={tEditor.addToFirstOsTitle}
                       />
                     )}
                   </div>

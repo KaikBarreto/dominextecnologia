@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { phoneMask } from '@/utils/masks';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { Camera, Loader2, ArrowLeft, UserCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PasswordInput } from '@/components/PasswordInput';
@@ -21,6 +23,8 @@ import { getErrorMessage } from '@/utils/errorMessages';
 
 export default function Profile() {
   const { user, profile } = useAuth();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.profile;
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -54,10 +58,10 @@ export default function Profile() {
         .update({ full_name: fullName, phone: phone || null })
         .eq('id', profile.id);
       if (error) throw error;
-      toast({ title: 'Perfil atualizado com sucesso!' });
+      toast({ title: t.toastProfileUpdated });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastSaveError, description: getErrorMessage(err) });
     } finally {
       setSaving(false);
     }
@@ -78,10 +82,10 @@ export default function Profile() {
         .update({ avatar_url: publicUrl })
         .eq('id', profile.id);
       if (error) throw error;
-      toast({ title: 'Foto atualizada!' });
+      toast({ title: t.toastPhotoUpdated });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar foto', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.toastPhotoError, description: getErrorMessage(err) });
     } finally {
       setUploading(false);
     }
@@ -89,23 +93,23 @@ export default function Profile() {
 
   const handleChangePassword = async () => {
     if (!isPasswordStrong(newPassword)) {
-      toast({ variant: 'destructive', title: 'Senha fraca', description: 'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.' });
+      toast({ variant: 'destructive', title: t.toastPasswordWeak, description: t.toastPasswordWeakDesc });
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast({ variant: 'destructive', title: 'As senhas não coincidem' });
+      toast({ variant: 'destructive', title: t.toastPasswordMismatch });
       return;
     }
     setChangingPassword(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      toast({ title: 'Senha alterada com sucesso!' });
+      toast({ title: t.toastPasswordChanged });
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordForm(false);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao alterar senha', description: getFriendlyPasswordError(err) });
+      toast({ variant: 'destructive', title: t.toastPasswordError, description: getFriendlyPasswordError(err) });
     } finally {
       setChangingPassword(false);
     }
@@ -114,8 +118,8 @@ export default function Profile() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <PageHeader
-        title="Meu Perfil"
-        subtitle="Gerencie suas informações pessoais"
+        title={t.pageTitle}
+        subtitle={t.pageSubtitle}
         icon={UserCircle}
         actions={
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} title="Voltar">
@@ -145,25 +149,25 @@ export default function Profile() {
             <div className="flex-1 w-full space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Nome Completo</Label>
-                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Seu nome" />
+                  <Label htmlFor="fullName">{t.labelFullName}</Label>
+                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t.placeholderFullName} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t.labelEmail}</Label>
                   <Input id="email" value={user?.email || ''} disabled className="bg-muted" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" value={phone} onChange={(e) => setPhone(phoneMask(e.target.value))} placeholder="(00) 00000-0000" />
+                  <Label htmlFor="phone">{t.labelPhone}</Label>
+                  <Input id="phone" value={phone} onChange={(e) => setPhone(phoneMask(e.target.value))} placeholder={t.placeholderPhone} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Conta criada em</Label>
+                  <Label>{t.labelCreatedAt}</Label>
                   <Input value={user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : ''} disabled className="bg-muted" />
                 </div>
               </div>
               <Button onClick={handleSaveProfile} disabled={saving}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Alterações
+                {saving ? t.btnSaving : t.btnSave}
               </Button>
             </div>
           </div>
@@ -175,12 +179,12 @@ export default function Profile() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Senha</CardTitle>
-              <CardDescription>Altere a senha da sua conta</CardDescription>
+              <CardTitle className="text-base">{t.cardPasswordTitle}</CardTitle>
+              <CardDescription>{t.cardPasswordDesc}</CardDescription>
             </div>
             {!showPasswordForm && (
               <Button variant="outline" size="sm" onClick={() => setShowPasswordForm(true)}>
-                Alterar Senha
+                {t.btnChangePassword}
               </Button>
             )}
           </div>
@@ -189,32 +193,32 @@ export default function Profile() {
           <CardContent className="space-y-4">
             <Separator />
             <div className="space-y-2">
-              <Label htmlFor="new-password">Nova Senha</Label>
+              <Label htmlFor="new-password">{t.labelNewPassword}</Label>
               <PasswordInput
                 id="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Crie uma senha segura"
+                placeholder={t.placeholderNewPassword}
               />
               <PasswordStrengthIndicator password={newPassword} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
+              <Label htmlFor="confirm-password">{t.labelConfirmPassword}</Label>
               <PasswordInput
                 id="confirm-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repita a nova senha"
+                placeholder={t.placeholderConfirmPassword}
                 matchAgainst={newPassword}
               />
             </div>
             <div className="flex gap-2">
               <Button onClick={handleChangePassword} disabled={changingPassword}>
                 {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Nova Senha
+                {t.btnSavePassword}
               </Button>
               <Button variant="ghost" onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword(''); }}>
-                Cancelar
+                {t.btnCancel}
               </Button>
             </div>
           </CardContent>

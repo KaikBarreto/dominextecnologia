@@ -75,7 +75,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   const accountName = (accountId?: string | null) => {
     if (!accountId) return '';
     const acc = accounts?.find(a => a.id === accountId);
-    return acc?.name || 'Conta bancária';
+    return acc?.name || t.extract.fallbacks.bankAccount;
   };
 
   // O movimento de pagamento no banco NÃO carrega payment_details — eles vivem
@@ -122,7 +122,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
 
     if (kind === 'pagamento') {
       const b = buildBreakdown(movement);
-      const method = accountName(movement.payment_method) || 'Conta bancária';
+      const method = accountName(movement.payment_method) || t.extract.fallbacks.bankAccount;
       if (outputFormat === 'a4') {
         const payment: PaymentBreakdown = { ...b, paymentMethod: method };
         openHTMLInNewTab(generateReceiptHTML({
@@ -141,7 +141,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
 
     // kind === 'vale'
     const dateStr = formatDateTime(movement.created_at, locale, timezone);
-    const method = accountName(movement.payment_method) || (movement.payment_method ? 'Conta bancária' : 'Não informado');
+    const method = accountName(movement.payment_method) || (movement.payment_method ? t.extract.fallbacks.bankAccount : t.extract.fallbacks.notProvided);
     if (outputFormat === 'a4') {
       const vale: ValeBreakdown = { amount: Math.abs(movement.amount), paymentMethod: method, date: dateStr, description: movement.description || undefined };
       openHTMLInNewTab(generateReceiptHTML({

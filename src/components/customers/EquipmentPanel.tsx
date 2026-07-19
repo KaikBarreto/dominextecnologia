@@ -126,6 +126,7 @@ export function EquipmentPanel() {
   const canManageEquipment = isAdminOrGestor() || hasPermission('fn:manage_equipment');
   const { locale } = useAppLocaleContext();
   const tEq = MESSAGES[locale].app.equipment;
+  const tCustDetail = MESSAGES[locale].app.customers.detail;
 
   const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
@@ -167,11 +168,11 @@ export function EquipmentPanel() {
     if (editingEquipment) {
       const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
       if (error) {
-        toast({ variant: 'destructive', title: 'Erro ao atualizar', description: getErrorMessage(error) });
+        toast({ variant: 'destructive', title: tCustDetail.equipUpdateError, description: getErrorMessage(error) });
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      toast({ title: 'Equipamento atualizado!' });
+      toast({ title: tCustDetail.equipUpdated });
     } else {
       await createEquipment.mutateAsync(data);
     }
@@ -182,10 +183,10 @@ export function EquipmentPanel() {
     if (equipmentToDelete) {
       const { error } = await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
       if (error) {
-        toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(error) });
+        toast({ variant: 'destructive', title: tCustDetail.equipDeleteError, description: getErrorMessage(error) });
       } else {
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
-        toast({ title: 'Equipamento excluído!' });
+        toast({ title: tCustDetail.equipDeleted });
       }
       setEquipmentToDelete(null);
       setDeleteDialogOpen(false);

@@ -512,8 +512,9 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                             <p className="flex items-center gap-1 text-[11px] text-warning">
                               <AlertTriangle className="h-3 w-3 shrink-0" />
                               {/* Aviso técnico: mantém siglas da nota como vieram */}
-                              Unidade da nota: {line.unit.toUpperCase()} &ne; cadastro:{' '}
-                              {(matched?.unit ?? '').toUpperCase()}
+                              {t.productsSection.warnUnitDiverge
+                                .replace('{noteUnit}', line.unit.toUpperCase())
+                                .replace('{stockUnit}', (matched?.unit ?? '').toUpperCase())}
                             </p>
                           )}
                         </div>
