@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import FlagIcon from '@/components/i18n/FlagIcon';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { LOCALES, type LocaleCode } from '@/lib/i18n/locales';
+import { MESSAGES } from '@/lib/i18n';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Seletor de idioma PESSOAL do usuário no header do app logado. Independente do
@@ -30,6 +31,7 @@ interface AppLanguageSwitcherProps {
 
 export function AppLanguageSwitcher({ variant = 'icon', className }: AppLanguageSwitcherProps) {
   const { locale, setUserLanguage } = useAppLocaleContext();
+  const tLang = MESSAGES[locale].app.shell.languageSwitcher;
   const [open, setOpen] = useState(false);
 
   const handleSelect = (code: LocaleCode) => {
@@ -45,21 +47,21 @@ export function AppLanguageSwitcher({ variant = 'icon', className }: AppLanguage
         {variant === 'row' ? (
           <button
             type="button"
-            aria-label="Selecionar idioma"
+            aria-label={tLang.ariaLabel}
             className={cn(
               'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent',
               className,
             )}
           >
             <FlagIcon locale={locale} size={20} />
-            <span className="flex-1 text-left">Idioma</span>
+            <span className="flex-1 text-left">{tLang.languageLabel}</span>
             <ChevronDown className={cn('h-4 w-4 shrink-0 opacity-60 transition-transform', open && 'rotate-180')} />
           </button>
         ) : (
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Selecionar idioma"
+            aria-label={tLang.ariaLabel}
             className={cn('h-8 gap-1 px-1.5', className)}
           >
             <FlagIcon locale={locale} size={20} />

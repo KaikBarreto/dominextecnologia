@@ -16,6 +16,8 @@ import { useTeams } from '@/hooks/useTeams';
 import { useCustomers } from '@/hooks/useCustomers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export interface TaskFormData {
   task_title: string;
@@ -47,18 +49,9 @@ interface TaskFormDialogProps {
   task?: any | null;
 }
 
-const RECURRENCE_OPTIONS = [
-  { value: 'daily', label: 'Diária' },
-  { value: 'weekly', label: 'Semanal' },
-  { value: 'biweekly', label: 'Quinzenal' },
-  { value: 'monthly', label: 'Mensal' },
-  { value: 'yearly', label: 'Anual' },
-  { value: 'custom', label: 'Personalizado' },
-];
-
-const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-
 export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, task }: TaskFormDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.taskForm;
   const { data: profiles = [] } = useProfiles();
   const { taskTypes } = useTaskTypes();
   const { teamsWithMembers } = useTeams();
@@ -160,45 +153,45 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.btnCancel}</Button>
       <Button type="submit" form="task-form" disabled={isLoading || !title.trim()}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {isEditing ? 'Salvar' : 'Criar Tarefa'}
+        {isEditing ? t.btnSave : t.btnCreate}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? 'Editar Tarefa' : 'Nova Tarefa'} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? t.titleEdit : t.titleCreate} footer={footer}>
       <form id="task-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <div className="space-y-2">
-          <Label>Título da Tarefa *</Label>
+          <Label>{t.labelTitle}</Label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex: Comprar materiais, Reunião com cliente..."
+            placeholder={t.placeholderTitle}
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Cliente (opcional)</Label>
+          <Label>{t.labelCustomer}</Label>
           <SearchableSelect
-            options={[{ value: '_none', label: 'Nenhum' }, ...customers.map(c => ({ value: c.id, label: c.name }))]}
+            options={[{ value: '_none', label: t.optionNone }, ...customers.map(c => ({ value: c.id, label: c.name }))]}
             value={customerId || '_none'}
             onValueChange={(v) => setCustomerId(v === '_none' ? '' : v)}
-            placeholder="Selecione um cliente..."
-            emptyMessage="Nenhum cliente encontrado"
+            placeholder={t.placeholderSelectCustomer}
+            emptyMessage={t.emptyCustomer}
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Tipo de Tarefa</Label>
+          <Label>{t.labelTaskType}</Label>
           <Select value={taskTypeId || '_none'} onValueChange={(v) => setTaskTypeId(v === '_none' ? '' : v)}>
-            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t.placeholderTaskType} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none">Nenhum</SelectItem>
-              {taskTypes.filter(t => t.is_active).map(tt => (
+              <SelectItem value="_none">{t.optionNone}</SelectItem>
+              {taskTypes.filter(tt => tt.is_active).map(tt => (
                 <SelectItem key={tt.id} value={tt.id}>
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full" style={{ backgroundColor: tt.color }} />
@@ -217,30 +210,30 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           selectedTeamIds={selectedTeamIds}
           onChangeUsers={setSelectedUserIds}
           onChangeTeams={setSelectedTeamIds}
-          label="Responsáveis"
+          label={t.labelAssignees}
         />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
-            <Label>Data</Label>
+            <Label>{t.labelDate}</Label>
             <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Horário</Label>
+            <Label>{t.labelTime}</Label>
             <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Duração (min)</Label>
+            <Label>{t.labelDuration}</Label>
             <NumericInput value={String(duration ?? '')} onValueChange={(v) => setDuration(Number(v) || 0)} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Descrição</Label>
+          <Label>{t.labelDescription}</Label>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Detalhes da tarefa..."
+            placeholder={t.placeholderDescription}
             rows={2}
           />
         </div>
@@ -249,43 +242,41 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         <div className="rounded-lg border p-3 space-y-3">
           <div className="flex items-center gap-2">
             <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
-            <Label className="cursor-pointer">Recorrência</Label>
+            <Label className="cursor-pointer">{t.labelRecurrence}</Label>
           </div>
           {isEditing && (
             <p className="text-xs text-muted-foreground">
-              {isRecurringSeries
-                ? 'Alterar a recorrência atualiza esta tarefa e as próximas da série. As anteriores e as já concluídas permanecem como estão.'
-                : 'Ativar a recorrência transforma esta tarefa numa série, criando as próximas ocorrências.'}
+              {isRecurringSeries ? t.recurrenceSeriesNote : t.recurrenceActivateNote}
             </p>
           )}
           {recurrenceEnabled && (
             <div className="space-y-3 pt-1">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Frequência</Label>
+                  <Label className="text-xs">{t.labelFrequency}</Label>
                   <Select value={recurrenceType} onValueChange={setRecurrenceType}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {RECURRENCE_OPTIONS.map(o => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      {(['daily', 'weekly', 'biweekly', 'monthly', 'yearly', 'custom'] as const).map(key => (
+                        <SelectItem key={key} value={key}>{t.recurrenceOptions[key]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">A cada</Label>
+                  <Label className="text-xs">{t.labelEvery}</Label>
                   <div className="flex items-center gap-1.5">
                     <NumericInput value={String(recurrenceInterval ?? '')} onValueChange={(v) => setRecurrenceInterval(Number(v) || 0)} />
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {recurrenceType === 'daily' ? 'dia(s)' :
-                       recurrenceType === 'monthly' ? 'mês(es)' :
-                       recurrenceType === 'yearly' ? 'ano(s)' :
-                       'semana(s)'}
+                      {recurrenceType === 'daily' ? t.unitDays :
+                       recurrenceType === 'monthly' ? t.unitMonths :
+                       recurrenceType === 'yearly' ? t.unitYears :
+                       t.unitWeeks}
                     </span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Até</Label>
+                  <Label className="text-xs">{t.labelUntil}</Label>
                   <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
                 </div>
               </div>
@@ -293,9 +284,9 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
               {/* Weekday picker for custom / weekly */}
               {(recurrenceType === 'custom' || recurrenceType === 'weekly') && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Repetir em:</Label>
+                  <Label className="text-xs">{t.labelRepeatOn}</Label>
                   <div className="flex gap-1">
-                    {WEEKDAY_LABELS.map((label, idx) => (
+                    {t.weekdayLabels.map((label, idx) => (
                       <button
                         key={idx}
                         type="button"

@@ -7,6 +7,8 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OsStatus } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export type ViewMode = 'month' | 'week' | 'day';
 
@@ -32,14 +34,6 @@ interface ScheduleHeaderProps {
   onStatusFilterChange: (val: string[]) => void;
 }
 
-const statusOptions: { value: OsStatus; label: string }[] = [
-  { value: 'pendente', label: 'Pendente' },
-  { value: 'em_andamento', label: 'Em Andamento' },
-  { value: 'pausada', label: 'Pausada' },
-  { value: 'concluida', label: 'Concluída' },
-  { value: 'cancelada', label: 'Cancelada' },
-];
-
 export function ScheduleHeader({
   currentDate,
   viewMode,
@@ -60,6 +54,15 @@ export function ScheduleHeader({
   statusFilter,
   onStatusFilterChange,
 }: ScheduleHeaderProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.scheduleHeader;
+  const statusOptions: { value: OsStatus; label: string }[] = [
+    { value: 'pendente', label: t.statusPendente },
+    { value: 'em_andamento', label: t.statusEmAndamento },
+    { value: 'pausada', label: t.statusPausada },
+    { value: 'concluida', label: t.statusConcluida },
+    { value: 'cancelada', label: t.statusCancelada },
+  ];
   const activeFilterCount =
     (technicianFilter.length > 0 ? 1 : 0) +
     (customerFilter.length > 0 ? 1 : 0) +
@@ -87,14 +90,14 @@ export function ScheduleHeader({
 
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="secondary" size="sm" onClick={onToday} className="hover:bg-secondary hover:text-secondary-foreground">
-            Hoje
+            {t.btnToday}
           </Button>
 
           <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as ViewMode)}>
             <TabsList className="h-9">
-              <TabsTrigger value="month" className="text-xs px-3">Mês</TabsTrigger>
-              {!isMobile && <TabsTrigger value="week" className="text-xs px-3">Semana</TabsTrigger>}
-              <TabsTrigger value="day" className="text-xs px-3">Dia</TabsTrigger>
+              <TabsTrigger value="month" className="text-xs px-3">{t.viewMonth}</TabsTrigger>
+              {!isMobile && <TabsTrigger value="week" className="text-xs px-3">{t.viewWeek}</TabsTrigger>}
+              <TabsTrigger value="day" className="text-xs px-3">{t.viewDay}</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -104,8 +107,8 @@ export function ScheduleHeader({
               size="icon"
               onClick={onOpenSearch}
               className="h-9 w-9"
-              aria-label="Buscar OS ou tarefa"
-              title="Buscar OS ou tarefa"
+              aria-label={t.ariaSearchOs}
+              title={t.ariaSearchOs}
             >
               <SearchIcon className="h-4 w-4" />
             </Button>
@@ -116,19 +119,19 @@ export function ScheduleHeader({
             onClear={clearAllFilters}
           >
             <FilterCheckboxGroup
-              label="Técnico"
-              options={technicians.map((t) => ({ value: t.user_id, label: t.full_name }))}
+              label={t.filterTechnician}
+              options={technicians.map((tech) => ({ value: tech.user_id, label: tech.full_name }))}
               selected={technicianFilter}
               onChange={onTechnicianFilterChange}
             />
             <FilterCheckboxGroup
-              label="Cliente"
+              label={t.filterCustomer}
               options={customers.map((c) => ({ value: c.id, label: c.name }))}
               selected={customerFilter}
               onChange={onCustomerFilterChange}
             />
             <FilterCheckboxGroup
-              label="Status"
+              label={t.filterStatus}
               options={statusOptions.map((s) => ({ value: s.value, label: s.label }))}
               selected={statusFilter}
               onChange={onStatusFilterChange}
@@ -141,10 +144,10 @@ export function ScheduleHeader({
               size="sm"
               onClick={onOpenPaused}
               className={pausedCount > 0 ? 'border-amber-500/40 text-amber-600 hover:bg-amber-500 hover:text-white' : ''}
-              aria-label="Ver OS pausadas"
+              aria-label={t.btnPausedDesktop}
             >
               <PauseCircle className="h-4 w-4 mr-2" />
-              {isMobile ? 'Pausadas' : 'OS Pausadas'}
+              {isMobile ? t.btnPausedMobile : t.btnPausedDesktop}
               {pausedCount > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-semibold">
                   {pausedCount}
@@ -156,7 +159,7 @@ export function ScheduleHeader({
           {onNewOrder && (
             <Button size="sm" onClick={onNewOrder}>
               <Plus className="h-4 w-4 mr-2" />
-              Nova Tarefa/OS
+              {t.btnNew}
             </Button>
           )}
         </div>

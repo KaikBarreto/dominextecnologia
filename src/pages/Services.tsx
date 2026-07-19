@@ -8,14 +8,17 @@ import { Settings, FileText, CheckSquare, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
-
-const tabs = [
-  { value: 'types', label: 'Tipos de Serviços', icon: Settings },
-  { value: 'task-types', label: 'Tipos de Tarefas', icon: CheckSquare },
-  { value: 'checklists', label: 'Checklists', icon: FileText },
-];
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export default function ServicesPage() {
+  const { locale } = useAppLocaleContext();
+  const sp = MESSAGES[locale].app.os.servicePage;
+  const tabs = [
+    { value: 'types', label: sp.tabTypes, icon: Settings },
+    { value: 'task-types', label: sp.tabTaskTypes, icon: CheckSquare },
+    { value: 'checklists', label: sp.tabChecklists, icon: FileText },
+  ];
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
@@ -32,8 +35,8 @@ export default function ServicesPage() {
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Serviços"
-        subtitle="Configure os tipos de serviços, tarefas e checklists"
+        title={sp.pageTitle}
+        subtitle={sp.pageSubtitle}
         icon={Briefcase}
       />
 

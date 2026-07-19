@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
 import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionVisibility';
 import { frequencyLabel } from '@/components/contracts/questionFrequency';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface FormResponse {
   question_id: string;
@@ -124,6 +126,8 @@ interface DynamicFormQuestionsProps {
 
 export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false, visibility, registerAutoFill }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.dynamicForm;
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
   const [loading, setLoading] = useState(true);
@@ -424,7 +428,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao salvar resposta',
+        title: t.toastSaveError,
         description: getErrorMessage(error),
       });
     } finally {
@@ -474,7 +478,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   if (questions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
-        Nenhuma pergunta configurada para este checklist.
+        {t.emptyNoQuestions}
       </p>
     );
   }
@@ -484,7 +488,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   if (visibleQuestions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
-        Nenhuma pergunta prevista para esta visita.
+        {t.emptyNoVisit}
       </p>
     );
   }
@@ -508,14 +512,14 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               <span className="text-sm">
                 {value === 'true' ? (
                   <Badge variant="success" className="gap-1">
-                    <Check className="h-3 w-3" /> Sim
+                    <Check className="h-3 w-3" /> {t.answerYes}
                   </Badge>
                 ) : value === 'false' ? (
                   <Badge variant="destructive" className="gap-1">
-                    <X className="h-3 w-3" /> Não
+                    <X className="h-3 w-3" /> {t.answerNo}
                   </Badge>
                 ) : (
-                  <span className="text-muted-foreground">Não respondido</span>
+                  <span className="text-muted-foreground">{t.noAnswer}</span>
                 )}
               </span>
             </div>
@@ -539,7 +543,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         }[] = [
           {
             value: 'Conforme',
-            label: 'Conforme',
+            label: t.answerConforme,
             activeClass: 'bg-emerald-600 border-emerald-600 text-white [&_svg]:!text-white',
             idleIcon: '[&_svg]:text-emerald-600',
             hover: 'hover:bg-emerald-600 hover:border-emerald-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-emerald-600 focus-visible:border-emerald-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
@@ -547,7 +551,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           },
           {
             value: 'Não Conforme',
-            label: 'Não Conforme',
+            label: t.answerNaoConforme,
             activeClass: 'bg-red-600 border-red-600 text-white [&_svg]:!text-white',
             idleIcon: '[&_svg]:text-red-600',
             hover: 'hover:bg-red-600 hover:border-red-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-red-600 focus-visible:border-red-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
@@ -555,7 +559,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           },
           {
             value: 'N/A',
-            label: 'N/A',
+            label: t.answerNa,
             activeClass: 'bg-orange-600 border-orange-600 text-white [&_svg]:!text-white',
             idleIcon: '[&_svg]:text-orange-600',
             hover: 'hover:bg-orange-600 hover:border-orange-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-orange-600 focus-visible:border-orange-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
@@ -600,7 +604,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           // ao reabrir a edição — era metade do bug do lápis. ref = foco automático.
           <Textarea
             ref={setTextInputRef(question.id)}
-            placeholder="Digite sua resposta..."
+            placeholder={t.placeholderText}
             value={value}
             onChange={(e) => setResponses((prev) => ({
               ...prev,
@@ -617,7 +621,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           <NumericInput
             ref={setTextInputRef(question.id)}
             decimal
-            placeholder="Digite o valor..."
+            placeholder={t.placeholderNumber}
             value={value}
             onValueChange={(v) => setResponses((prev) => ({
               ...prev,
@@ -649,7 +653,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 type="number"
                 step="0.01"
                 inputMode="decimal"
-                placeholder="Digite a medida..."
+                placeholder={t.placeholderMeasure}
                 value={value}
                 onChange={(e) =>
                   setResponses((prev) => ({
@@ -678,13 +682,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             </div>
             {(min != null || max != null) && (
               <p className="text-xs text-muted-foreground">
-                Faixa esperada: {min ?? '—'} a {max ?? '—'}{unit ? ` ${unit}` : ''}
+                {t.rangeLabel
+                  .replace('{min}', String(min ?? '—'))
+                  .replace('{max}', `${max ?? '—'}${unit ? ` ${unit}` : ''}`)
+                }
               </p>
             )}
             {isOutOfRange && (
               <p className="text-xs text-warning flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3 shrink-0" />
-                Valor fora da faixa esperada — confira o equipamento ou registre observação.
+                {t.outOfRangeWarning}
               </p>
             )}
           </div>
@@ -723,7 +730,9 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               </label>
             ))}
             {selectedValues.length > 0 && (
-              <p className="text-xs text-muted-foreground">{selectedValues.length} selecionada{selectedValues.length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-muted-foreground">
+                {(selectedValues.length > 1 ? t.selectedCountPlural : t.selectedCount).replace('{n}', String(selectedValues.length))}
+              </p>
             )}
           </div>
         );
@@ -786,7 +795,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         );
 
       default:
-        return <p className="text-sm text-muted-foreground">Tipo não suportado</p>;
+        return <p className="text-sm text-muted-foreground">{t.unsupported}</p>;
     }
   };
 
@@ -800,6 +809,18 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       return renderSingleTypeInput(question, effectiveTypes[0]);
     }
 
+    // Helper: map type key to i18n label
+    const typeLabel = (type: string) =>
+      type === 'boolean' ? t.typeBoolean
+      : type === 'conformidade' ? t.typeConformidade
+      : type === 'text' ? t.typeText
+      : type === 'number' ? t.typeNumber
+      : type === 'photo' ? t.typePhoto
+      : type === 'select' ? t.typeSelect
+      : type === 'signature' ? t.typeSignature
+      : type === 'pmoc_measurement' ? t.typeMeasure
+      : type;
+
     // Combined mode - always show all types
     if (answerMode === 'combined') {
       return (
@@ -807,7 +828,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           {effectiveTypes.map((type) => (
             <div key={type} className="space-y-1">
               <Badge variant="outline" className="text-xs">
-                {type === 'boolean' ? 'Sim/Não' : type === 'conformidade' ? 'Conformidade' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
+                {typeLabel(type)}
               </Badge>
               {renderSingleTypeInput(question, type)}
             </div>
@@ -846,11 +867,11 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             <div key={type} className="space-y-1">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  {type === 'boolean' ? 'Sim/Não' : type === 'conformidade' ? 'Conformidade' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
+                  {typeLabel(type)}
                 </Badge>
                 {answeredType === type && (
                   <Badge variant="default" className="text-xs gap-1">
-                    <Check className="h-3 w-3" /> Respondido
+                    <Check className="h-3 w-3" /> {t.badgeAnswered}
                   </Badge>
                 )}
               </div>
@@ -865,7 +886,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             className="text-xs text-muted-foreground"
             onClick={() => saveResponse(question.id, null, null)}
           >
-            Limpar resposta e mostrar todas as opções
+            {t.btnClearAnswer}
           </Button>
         )}
       </div>
@@ -953,15 +974,15 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               {showReadOnly ? (
                 <div className="text-sm py-1">
                   {response.response_value === 'true' ? (
-                    <Badge variant="success" className="gap-1"><Check className="h-3 w-3" /> Sim</Badge>
+                    <Badge variant="success" className="gap-1"><Check className="h-3 w-3" /> {t.answerYes}</Badge>
                   ) : response.response_value === 'false' ? (
-                    <Badge variant="destructive" className="gap-1"><X className="h-3 w-3" /> Não</Badge>
+                    <Badge variant="destructive" className="gap-1"><X className="h-3 w-3" /> {t.answerNo}</Badge>
                   ) : response.response_value === 'Conforme' ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white"><Check className="h-3 w-3" /> Conforme</span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white"><Check className="h-3 w-3" /> {t.answerConforme}</span>
                   ) : response.response_value === 'Não Conforme' ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"><X className="h-3 w-3" /> Não Conforme</span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"><X className="h-3 w-3" /> {t.answerNaoConforme}</span>
                   ) : response.response_value === 'N/A' ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-500 px-2 py-0.5 text-xs font-semibold text-white"><Minus className="h-3 w-3" /> N/A</span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-500 px-2 py-0.5 text-xs font-semibold text-white"><Minus className="h-3 w-3" /> {t.answerNa}</span>
                   ) : response.response_value?.includes('|||') ? (
                     <div className="flex flex-wrap gap-1">
                       {response.response_value.split('|||').map((v, i) => (

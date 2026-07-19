@@ -732,7 +732,7 @@ export default function Users() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setDeletingUser(userProfile)}
-                                  title="Excluir usuário permanentemente"
+                                  title={t.btnDeleteTitle}
                                   className="hover:bg-destructive hover:text-white hover:border-destructive"
                                 >
                                   <Trash2 className="h-4 w-4" />

@@ -124,6 +124,14 @@ export const shell = {
       groupOlder: 'Anteriores',
     },
 
+    // ── Seletor de idioma (AppLanguageSwitcher + LanguageSelector do site) ──────
+    languageSwitcher: {
+      // aria-label do botão trigger (compacto/icon e row)
+      ariaLabel: 'Selecionar idioma',
+      // Rótulo visível na variante 'row' (menu mobile)
+      languageLabel: 'Idioma',
+    },
+
     // ── Primitivos mobile ─────────────────────────────────────────────────────
     mobilePrimitives: {
       // FilterCheckboxGroup
@@ -232,6 +240,11 @@ export const shell = {
       groupYesterday: 'Yesterday',
       groupWeek: 'This week',
       groupOlder: 'Earlier',
+    },
+
+    languageSwitcher: {
+      ariaLabel: 'Select language',
+      languageLabel: 'Language',
     },
 
     mobilePrimitives: {
@@ -358,6 +371,11 @@ export const shell = {
       fabOpenMenu: 'Abrir menú de herramientas',
       moreActions: 'Más acciones',
     },
+
+    languageSwitcher: {
+      ariaLabel: 'Seleccionar idioma',
+      languageLabel: 'Idioma',
+    },
   },
 
   fr: {
@@ -461,6 +479,11 @@ export const shell = {
       fabCloseMenu: 'Fermer le menu',
       fabOpenMenu: "Ouvrir le menu d'outils",
       moreActions: "Plus d'actions",
+    },
+
+    languageSwitcher: {
+      ariaLabel: 'Sélectionner la langue',
+      languageLabel: 'Langue',
     },
   },
 };

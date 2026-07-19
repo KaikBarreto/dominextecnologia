@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { OsVideoPlayer } from '@/components/technician/OsVideoPlayer';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Duração máxima do clipe (segundos). */
 const MAX_SECONDS = 15;
@@ -62,6 +64,8 @@ export function OsVideoField({
   readOnly = false,
 }: OsVideoFieldProps) {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.osVideo;
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [remaining, setRemaining] = useState(MAX_SECONDS);
@@ -113,11 +117,11 @@ export function OsVideoField({
         .getPublicUrl(fileName);
 
       await onChange(publicUrl);
-      toast({ title: 'Vídeo enviado!' });
+      toast({ title: t.toastUploaded });
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao enviar vídeo',
+        title: t.toastUploadError,
         description: getErrorMessage(error),
       });
     } finally {
@@ -177,8 +181,8 @@ export function OsVideoField({
       setRecording(false);
       toast({
         variant: 'destructive',
-        title: 'Não foi possível acessar a câmera',
-        description: 'Verifique a permissão da câmera e tente de novo.',
+        title: t.toastCameraError,
+        description: t.toastCameraErrorDesc,
       });
     }
   };
@@ -202,8 +206,8 @@ export function OsVideoField({
     if (file.size > MAX_FALLBACK_BYTES) {
       toast({
         variant: 'destructive',
-        title: 'Vídeo muito grande',
-        description: 'O vídeo precisa ter no máximo 15 segundos. Grave um clipe mais curto.',
+        title: t.toastFileTooLarge,
+        description: t.toastFileTooLargeDesc.replace('{n}', String(MAX_SECONDS)),
       });
       return;
     }
@@ -212,8 +216,8 @@ export function OsVideoField({
     if (durationOk === false) {
       toast({
         variant: 'destructive',
-        title: 'Vídeo muito longo',
-        description: 'O vídeo precisa ter no máximo 15 segundos.',
+        title: t.toastTooLong,
+        description: t.toastTooLongDesc.replace('{n}', String(MAX_SECONDS)),
       });
       return;
     }
@@ -242,7 +246,7 @@ export function OsVideoField({
               type="button"
               className="absolute top-1 right-1 z-[1] p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
               onClick={() => setPendingRemoval(true)}
-              title="Remover vídeo"
+              title={t.titleRemoveVideo}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -275,7 +279,7 @@ export function OsVideoField({
           onClick={stopRecording}
         >
           <Square className="h-3.5 w-3.5 mr-1.5" />
-          Parar gravação
+          {t.btnStop}
         </Button>
       ) : (
         <div className={cn('w-full', hasClip && 'grid grid-cols-1')}>
@@ -289,17 +293,17 @@ export function OsVideoField({
             {uploading ? (
               <>
                 <Upload className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
-                Enviando...
+                {t.btnUploading}
               </>
             ) : hasClip ? (
               <>
                 <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                Regravar vídeo
+                {t.btnReRecord}
               </>
             ) : (
               <>
                 <Video className="h-3.5 w-3.5 mr-1.5" />
-                Gravar vídeo (até {MAX_SECONDS}s)
+                {t.btnRecord.replace('{n}', String(MAX_SECONDS))}
               </>
             )}
           </Button>
@@ -319,7 +323,7 @@ export function OsVideoField({
 
       {!hasClip && !recording && (
         <p className="text-xs text-muted-foreground text-center">
-          Clipe curto de até {MAX_SECONDS} segundos. Precisa de conexão para enviar.
+          {t.hintClip.replace('{n}', String(MAX_SECONDS))}
         </p>
       )}
 
@@ -327,20 +331,20 @@ export function OsVideoField({
       <ResponsiveModal
         open={pendingRemoval}
         onOpenChange={(o) => { if (!o) setPendingRemoval(false); }}
-        title="Remover vídeo?"
+        title={t.modalRemoveTitle}
         footer={
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setPendingRemoval(false)}>
-              Cancelar
+              {t.btnCancel}
             </Button>
             <Button variant="destructive" className="flex-1" onClick={confirmRemove}>
-              Remover
+              {t.btnRemove}
             </Button>
           </div>
         }
       >
         <p className="text-sm text-muted-foreground">
-          Tem certeza que deseja remover este vídeo? Essa ação não pode ser desfeita.
+          {t.modalRemoveBody}
         </p>
       </ResponsiveModal>
     </div>

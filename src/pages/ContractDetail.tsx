@@ -683,7 +683,7 @@ export default function ContractDetail() {
           size="icon"
           className="shrink-0 min-h-11 min-w-11 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9 active:scale-95 transition-transform rounded-xl"
           onClick={() => navigate('/contratos')}
-          aria-label="Voltar"
+          aria-label={td.backAriaLabel}
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>

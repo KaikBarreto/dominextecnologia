@@ -28,6 +28,7 @@ import { LOCALES, type LocaleCode } from '@/lib/i18n';
 import { useLocale } from '@/lib/i18n';
 import { writeLangCookie } from '@/lib/i18n';
 import { switchLocalePath } from '@/lib/i18n';
+import { MESSAGES } from '@/lib/i18n';
 import FlagIcon from './FlagIcon';
 
 /** Verde FIXO da marca Dominex — o seletor nunca usa cor de tenant. */
@@ -101,13 +102,14 @@ function DefaultSelector({
   const { locale, handleSelect } = useLanguageSwitch();
   const current = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
   const isDark = surface === 'dark';
+  const ariaLabel = MESSAGES[locale].app.shell.languageSwitcher.ariaLabel;
 
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          aria-label="Selecionar idioma"
+          aria-label={ariaLabel}
           className={cn(
             'inline-flex items-center gap-1.5 rounded border px-2.5 py-2 text-sm font-medium transition-colors',
             fullWidth && 'w-full justify-between',
@@ -194,6 +196,7 @@ function CompactTrigger({
   const [open, setOpen] = useState(false);
   const { locale, handleSelect } = useLanguageSwitch();
   const current = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
+  const ariaLabel = MESSAGES[locale].app.shell.languageSwitcher.ariaLabel;
 
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
@@ -208,7 +211,7 @@ function CompactTrigger({
               proporções ligeiramente diferentes (br=160x112, us=160x84 etc.) */}
         <button
           type="button"
-          aria-label="Selecionar idioma"
+          aria-label={ariaLabel}
           className={cn(
             'inline-flex items-stretch p-0 overflow-hidden border border-white/15',
             'bg-white/5 backdrop-blur-sm',

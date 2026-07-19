@@ -403,7 +403,7 @@ export function ServiceTypesPanel() {
                         item_lc116: item?.itemLc116 ? String(item.itemLc116) : f.item_lc116,
                       }))
                     }
-                    placeholder="Buscar por código ou descrição..."
+                    placeholder={t.placeholderTaxSearch}
                   />
                   <p className="text-[11px] text-muted-foreground">
                     {t.helperCTribNac}
@@ -427,7 +427,7 @@ export function ServiceTypesPanel() {
                   type="nbs"
                   value={form.codigo_nbs}
                   onSelect={(codigo) => setForm((f) => ({ ...f, codigo_nbs: codigo }))}
-                  placeholder="Buscar por código ou descrição..."
+                  placeholder={t.placeholderTaxSearch}
                 />
                 <p className="text-[11px] text-muted-foreground">
                   {t.helperNBS}

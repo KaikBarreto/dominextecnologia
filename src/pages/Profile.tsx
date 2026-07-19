@@ -122,7 +122,7 @@ export default function Profile() {
         subtitle={t.pageSubtitle}
         icon={UserCircle}
         actions={
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} title="Voltar">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} title={t.btnBack}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
         }

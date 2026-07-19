@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { getStatusBadgeClass } from '@/components/schedule/EventCard';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Modal de busca paginada de OS / tarefas dentro da Agenda.
@@ -71,8 +73,8 @@ function matchesQuery(order: AgendaSearchOrder, query: string): boolean {
   return haystack.some((field) => normalize(field).includes(q));
 }
 
-function formatScheduledDate(date: string | null | undefined): string {
-  if (!date) return 'Sem data';
+function formatScheduledDate(date: string | null | undefined, noDateLabel: string): string {
+  if (!date) return noDateLabel;
   try {
     return format(parseISO(date), "dd 'de' MMM yyyy", { locale: ptBR });
   } catch {
@@ -81,6 +83,8 @@ function formatScheduledDate(date: string | null | undefined): string {
 }
 
 export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearchDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.osSearch;
   const [query, setQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -139,7 +143,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Buscar OS / Tarefa"
+      title={t.modalTitle}
       className="max-w-2xl"
     >
       <div className="space-y-3">
@@ -150,7 +154,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Número da OS, cliente, descrição, técnico..."
+            placeholder={t.inputPlaceholder}
             className="pl-10 h-10"
             autoFocus
           />
@@ -159,8 +163,8 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
         {/* Contador */}
         <div className="text-xs text-muted-foreground">
           {query.trim()
-            ? `${results.length} resultado${results.length === 1 ? '' : 's'}`
-            : `${orders.length} OS / tarefa${orders.length === 1 ? '' : 's'} no total`}
+            ? (results.length === 1 ? t.counterResults : t.counterResultsPlural).replace('{n}', String(results.length))
+            : (orders.length === 1 ? t.counterTotal : t.counterTotalPlural).replace('{n}', String(orders.length))}
         </div>
 
         {/* Lista de resultados */}
@@ -168,9 +172,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
           {visibleResults.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 text-center text-sm text-muted-foreground">
               <SearchIcon className="h-6 w-6 mb-2 opacity-60" />
-              {query.trim()
-                ? 'Nenhuma OS encontrada para essa busca.'
-                : 'Comece a digitar para buscar.'}
+              {query.trim() ? t.emptyNoResults : t.emptyTyping}
             </div>
           )}
 
@@ -178,7 +180,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
             const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
             const taskTitle = (order as unknown as { task_title?: string }).task_title;
             const isTask = (order as unknown as { entry_type?: string }).entry_type === 'tarefa';
-            const customerName = order.customer?.name || 'Sem cliente';
+            const customerName = order.customer?.name || t.noCustomer;
             const assigneesText =
               order._assignees && order._assignees.length > 0
                 ? order._assignees.map((a) => a.name).join(', ')
@@ -198,7 +200,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="font-mono font-semibold text-foreground">
-                        {isTask ? 'Tarefa' : `OS #${order.order_number ?? '—'}`}
+                        {isTask ? t.labelTask : `OS #${order.order_number ?? '—'}`}
                       </span>
                       {order.service_type?.name && (
                         <span
@@ -210,7 +212,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
                       )}
                     </div>
                     <div className="mt-1 text-sm font-medium truncate">
-                      {isTask ? (taskTitle || 'Tarefa') : customerName}
+                      {isTask ? (taskTitle || t.labelTask) : customerName}
                     </div>
                     {!isTask && order.description && (
                       <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
@@ -220,7 +222,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <CalendarIcon className="h-3 w-3" />
-                        {formatScheduledDate(order.scheduled_date)}
+                        {formatScheduledDate(order.scheduled_date, t.noDate)}
                       </span>
                       {assigneesText && (
                         <span className="inline-flex items-center gap-1 truncate">
@@ -246,7 +248,7 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
                 size="sm"
                 onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
               >
-                Carregar mais ({results.length - visibleCount} restantes)
+                {t.btnLoadMore.replace('{n}', String(results.length - visibleCount))}
               </Button>
             </div>
           )}

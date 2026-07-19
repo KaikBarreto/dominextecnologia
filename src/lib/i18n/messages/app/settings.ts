@@ -479,6 +479,7 @@ export const settings = {
       toastPresetDeleteError: 'Erro ao excluir',
       blockLastAdminTitle: 'Ação bloqueada',
       blockLastAdminDesc: 'A empresa precisa de pelo menos um administrador ativo.',
+      btnDeleteTitle: 'Excluir usuário permanentemente',
 
       // ── Dialog de formulário de usuário ──────────────────────────────────────
       form: {
@@ -589,6 +590,7 @@ export const settings = {
       toastPasswordMismatch: 'As senhas não coincidem',
       toastPasswordChanged: 'Senha alterada com sucesso!',
       toastPasswordError: 'Erro ao alterar senha',
+      btnBack: 'Voltar',
     },
 
     // ── Tela Assinatura/Cobrança (Billing) ───────────────────────────────────
@@ -1170,6 +1172,7 @@ export const settings = {
       toastPresetDeleteError: 'Error deleting',
       blockLastAdminTitle: 'Action blocked',
       blockLastAdminDesc: 'The company must have at least one active administrator.',
+      btnDeleteTitle: 'Permanently delete user',
 
       form: {
         titleCreate: 'Create User',
@@ -1276,6 +1279,7 @@ export const settings = {
       toastPasswordMismatch: 'Passwords do not match',
       toastPasswordChanged: 'Password changed successfully!',
       toastPasswordError: 'Error changing password',
+      btnBack: 'Back',
     },
 
     billing: {
@@ -1837,6 +1841,7 @@ export const settings = {
       toastPresetDeleteError: 'Error al eliminar',
       blockLastAdminTitle: 'Acción bloqueada',
       blockLastAdminDesc: 'La empresa debe tener al menos un administrador activo.',
+      btnDeleteTitle: 'Eliminar usuario permanentemente',
 
       form: {
         titleCreate: 'Crear Usuario',
@@ -1943,6 +1948,7 @@ export const settings = {
       toastPasswordMismatch: 'Las contraseñas no coinciden',
       toastPasswordChanged: '¡Contraseña cambiada con éxito!',
       toastPasswordError: 'Error al cambiar contraseña',
+      btnBack: 'Volver',
     },
 
     billing: {
@@ -2504,6 +2510,7 @@ export const settings = {
       toastPresetDeleteError: 'Erreur lors de la suppression',
       blockLastAdminTitle: 'Action bloquée',
       blockLastAdminDesc: "L'entreprise doit avoir au moins un administrateur actif.",
+      btnDeleteTitle: "Supprimer l'utilisateur définitivement",
 
       form: {
         titleCreate: 'Créer un utilisateur',
@@ -2610,6 +2617,7 @@ export const settings = {
       toastPasswordMismatch: 'Les mots de passe ne correspondent pas',
       toastPasswordChanged: 'Mot de passe modifié avec succès !',
       toastPasswordError: 'Erreur lors du changement de mot de passe',
+      btnBack: 'Retour',
     },
 
     billing: {
