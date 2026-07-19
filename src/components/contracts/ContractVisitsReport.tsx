@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es, fr } from 'date-fns/locale';
+import type { Locale } from 'date-fns';
 import {
   Printer,
   X,
@@ -17,6 +18,17 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useContractVisitsReport, type VisitEnrichment } from '@/hooks/useContractVisitsReport';
 import { getFrequencyLabel, type Contract } from '@/hooks/useContracts';
 import { osStatusLabels, type OsStatus } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import type { LocaleCode } from '@/lib/i18n/locales';
+
+/** Mapa LocaleCode → date-fns Locale (para formatação de datas por idioma). */
+const DATE_FNS_LOCALE: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es,
+  fr,
+};
 
 /**
  * Documento "Relatório de Visitas" de um contrato COMUM (não-PMOC). É o
@@ -42,19 +54,22 @@ function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
 }
 
-/** Estilo do selo de status (claro hardcoded — saturado + texto branco). */
-const STATUS_PILL: Record<OsStatus, { bg: string; label: string }> = {
-  concluida: { bg: 'bg-emerald-600', label: 'Concluída' },
-  a_caminho: { bg: 'bg-sky-600', label: 'A caminho' },
-  em_andamento: { bg: 'bg-sky-600', label: 'Em andamento' },
-  pausada: { bg: 'bg-amber-500', label: 'Pausada' },
-  agendada: { bg: 'bg-slate-500', label: 'Agendada' },
-  pendente: { bg: 'bg-slate-500', label: 'Pendente' },
-  cancelada: { bg: 'bg-rose-600', label: 'Cancelada' },
+/** Cores do selo de status (invariante — saturado + texto branco). */
+const STATUS_PILL_BG: Record<OsStatus, string> = {
+  concluida: 'bg-emerald-600',
+  a_caminho: 'bg-sky-600',
+  em_andamento: 'bg-sky-600',
+  pausada: 'bg-amber-500',
+  agendada: 'bg-slate-500',
+  pendente: 'bg-slate-500',
+  cancelada: 'bg-rose-600',
 };
 
 export function ContractVisitsReport({ contract, onClose }: ContractVisitsReportProps) {
   const { settings } = useCompanySettings();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.contracts.contractDocs;
+  const dateFnsLocale = DATE_FNS_LOCALE[locale];
 
   // Identidade da empresa: mesma regra dos demais documentos (white-label quando
   // ligado; padrão quando off).
@@ -104,16 +119,16 @@ export function ContractVisitsReport({ contract, onClose }: ContractVisitsReport
   }, [visits]);
 
   const frequencyText = getFrequencyLabel(contract.frequency_type, contract.frequency_value);
-  const startText = format(parseLocalDate(contract.start_date), 'dd/MM/yyyy');
-  const todayText = format(new Date(), 'dd/MM/yyyy');
-  const generatedAt = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  const startText = format(parseLocalDate(contract.start_date), 'P', { locale: dateFnsLocale });
+  const todayText = format(new Date(), 'P', { locale: dateFnsLocale });
+  const generatedAt = format(new Date(), 'PPP', { locale: dateFnsLocale });
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#525659]">
       {/* Barra de ações (some na impressão). */}
       <div className="print:hidden sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-black/10 bg-white px-4 py-3 shadow-sm">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">Relatório de Visitas</p>
+          <p className="truncate text-sm font-semibold text-gray-900">{t.reportTitle}</p>
           <p className="truncate text-xs text-gray-500">{contract.name}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -123,13 +138,13 @@ export function ContractVisitsReport({ contract, onClose }: ContractVisitsReport
             onClick={() => window.print()}
             className="active:scale-95 transition-transform"
           >
-            <Printer className="mr-1.5 h-4 w-4" /> Imprimir / PDF
+            <Printer className="mr-1.5 h-4 w-4" /> {t.printButton}
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            aria-label="Fechar"
+            aria-label={t.closeAriaLabel}
             className="text-gray-700 hover:bg-gray-100"
           >
             <X className="h-5 w-5" />
@@ -158,53 +173,53 @@ export function ContractVisitsReport({ contract, onClose }: ContractVisitsReport
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                Documento
+                {t.reportEyebrow}
               </p>
-              <p className="text-base font-black leading-tight text-gray-900">Relatório de Visitas</p>
+              <p className="text-base font-black leading-tight text-gray-900">{t.reportTitle}</p>
             </div>
           </div>
 
           {/* Dados do contrato + período */}
           <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-            <Field label="Contrato" value={contract.name} />
-            <Field label="Cliente" value={contract.customers?.name || '-'} />
-            <Field label="Frequência das visitas" value={frequencyText} />
-            <Field label="Período" value={`${startText} a ${todayText}`} />
-            <Field label="Emitido em" value={generatedAt} />
+            <Field label={t.fieldContract} value={contract.name} />
+            <Field label={t.fieldCustomer} value={contract.customers?.name || '-'} />
+            <Field label={t.fieldVisitFrequency} value={frequencyText} />
+            <Field label={t.fieldPeriod} value={`${startText} ${t.periodSeparator} ${todayText}`} />
+            <Field label={t.fieldIssuedAt} value={generatedAt} />
           </div>
         </header>
 
         {/* ── Resumo do período ── */}
         <section className="mb-7">
-          <SectionTitle>Resumo do Período</SectionTitle>
+          <SectionTitle>{t.sectionSummary}</SectionTitle>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <SummaryCard label="Visitas no período" value={String(summary.total)} />
-            <SummaryCard label="Concluídas" value={String(summary.concluidas)} accent="emerald" />
+            <SummaryCard label={t.summaryVisitsTotal} value={String(summary.total)} />
+            <SummaryCard label={t.summaryConcluded} value={String(summary.concluidas)} accent="emerald" />
             <SummaryCard
-              label="Agendadas / Pendentes"
+              label={t.summaryScheduledPending}
               value={String(summary.agendadas + summary.emAndamento)}
             />
-            <SummaryCard label="Conclusão" value={`${summary.pct}%`} accent="emerald" />
+            <SummaryCard label={t.summaryConclusion} value={`${summary.pct}%`} accent="emerald" />
           </div>
           {summary.canceladas > 0 && (
             <p className="mt-2 text-[11px] text-gray-400">
-              {summary.canceladas} visita(s) cancelada(s) não entram na base de conclusão.
+              {summary.canceladas} {t.summaryCancelledNote}
             </p>
           )}
         </section>
 
         {/* ── Lista de visitas ── */}
         <section className="mb-2">
-          <SectionTitle>Visitas</SectionTitle>
+          <SectionTitle>{t.sectionVisits}</SectionTitle>
           {visits.length === 0 ? (
             <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 text-sm text-gray-500">
-              Nenhuma visita registrada para este contrato.
+              {t.noVisitsRegistered}
             </p>
           ) : (
             <>
               {isLoading && (
                 <p className="mb-3 flex items-center gap-2 text-xs text-gray-400">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando detalhes das visitas…
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.loadingVisitDetails}
                 </p>
               )}
               <div className="space-y-3">
@@ -216,6 +231,8 @@ export function ContractVisitsReport({ contract, onClose }: ContractVisitsReport
                     status={v.status as OsStatus}
                     scheduledDate={v.scheduled_date}
                     enrichment={byOsId.get(v.id)}
+                    dateFnsLocale={dateFnsLocale}
+                    t={t}
                   />
                 ))}
               </div>
@@ -224,8 +241,7 @@ export function ContractVisitsReport({ contract, onClose }: ContractVisitsReport
         </section>
 
         <p className="mt-6 border-t border-gray-200 pt-4 text-[11px] text-gray-400">
-          Documento gerado por {companyName} como comprovante das manutenções realizadas no
-          período. As visitas concluídas representam os serviços efetivamente executados.
+          {t.reportFooter.replace('{companyName}', companyName)}
         </p>
       </div>
     </div>
@@ -239,14 +255,31 @@ function VisitBlock({
   status,
   scheduledDate,
   enrichment,
+  dateFnsLocale,
+  t,
 }: {
   visitNumber: number;
   orderNumber: number;
   status: OsStatus;
   scheduledDate: string | null;
   enrichment: VisitEnrichment | undefined;
+  dateFnsLocale: Locale;
+  t: {
+    visitLabel: string;
+    osLabel: string;
+    lateBadge: string;
+    scheduledLabel: string;
+    noDate: string;
+    executedLabel: string;
+    executedAtSuffix: string;
+    equipAttended: string;
+    itemsAnswered: string;
+    itemsCompliant: string;
+    itemsNonCompliant: string;
+  };
 }) {
-  const pill = STATUS_PILL[status] ?? { bg: 'bg-slate-500', label: osStatusLabels[status] ?? status };
+  const pillBg = STATUS_PILL_BG[status] ?? 'bg-slate-500';
+  const pillLabel = osStatusLabels[status] ?? status;
   const isDone = status === 'concluida';
   const isCancelled = status === 'cancelada';
 
@@ -281,22 +314,22 @@ function VisitBlock({
       {/* Cabeçalho da visita */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="font-mono text-xs text-gray-400">Visita #{visitNumber}</span>
+          <span className="font-mono text-xs text-gray-400">{t.visitLabel}{visitNumber}</span>
           <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
-            OS #{orderNumber}
+            {t.osLabel}{orderNumber}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {isLate && (
             <span className="inline-flex items-center rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-semibold text-white">
-              Atrasada
+              {t.lateBadge}
             </span>
           )}
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${pill.bg}`}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${pillBg}`}
           >
             <StatusIcon className="h-3 w-3" />
-            {pill.label}
+            {pillLabel}
           </span>
         </div>
       </div>
@@ -304,13 +337,13 @@ function VisitBlock({
       {/* Datas + técnico */}
       <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-600">
         <span>
-          <span className="text-gray-400">Agendada: </span>
-          {occDate ? format(occDate, 'dd/MM/yyyy') : 'Sem data'}
+          <span className="text-gray-400">{t.scheduledLabel} </span>
+          {occDate ? format(occDate, 'P', { locale: dateFnsLocale }) : t.noDate}
         </span>
         {executedAt && (
           <span>
-            <span className="text-gray-400">Executada: </span>
-            {format(executedAt, "dd/MM/yyyy 'às' HH:mm")}
+            <span className="text-gray-400">{t.executedLabel} </span>
+            {format(executedAt, `P '${t.executedAtSuffix}' HH:mm`, { locale: dateFnsLocale })}
           </span>
         )}
         {technician && (
@@ -326,7 +359,7 @@ function VisitBlock({
         <div className="mt-2.5 border-t border-gray-100 pt-2">
           <p className="mb-1.5 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
             <Wrench className="h-3 w-3" />
-            {equipments.length} equipamento(s) atendido(s)
+            {equipments.length} {t.equipAttended}
           </p>
           <ul className="space-y-1">
             {equipments.map((eq) => (
@@ -342,16 +375,16 @@ function VisitBlock({
       {isDone && conformity && conformity.total > 0 && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
           <span className="inline-flex items-center rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-medium text-white">
-            {conformity.answered}/{conformity.total} itens respondidos
+            {conformity.answered}/{conformity.total} {t.itemsAnswered}
           </span>
           {conformity.conforme > 0 && (
             <span className="inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-medium text-white">
-              {conformity.conforme} conforme(s)
+              {conformity.conforme} {t.itemsCompliant}
             </span>
           )}
           {conformity.naoConforme > 0 && (
             <span className="inline-flex items-center rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-medium text-white">
-              {conformity.naoConforme} não-conforme(s)
+              {conformity.naoConforme} {t.itemsNonCompliant}
             </span>
           )}
           {conformity.na > 0 && (

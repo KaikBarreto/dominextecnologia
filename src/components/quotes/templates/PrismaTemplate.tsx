@@ -1,6 +1,7 @@
 import type { ProposalTemplateProps } from './types';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
+import { MESSAGES } from '@/lib/i18n';
 import {
   buildProposalData,
   colorAdjust,
@@ -33,8 +34,13 @@ const IRID = 'linear-gradient(120deg, #60a5fa, #c084fc, #f0abfc, #fbbf24)';
 
 export function PrismaTemplate(props: ProposalTemplateProps) {
   const { quote, company, customization } = props;
-  const d = buildProposalData(props);
   const { money, locale, timezone } = useLocaleFormatters();
+  const t = MESSAGES[locale].app.crm.proposalPdf;
+
+  const d = buildProposalData(props, {
+    companyFallback: t.companyFallback,
+    subjectFallback: t.subjectFallback,
+  });
 
   const installments = d.installments;
   const showFolio = !!customization?.show_pagination;
@@ -44,7 +50,12 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
   const validUntil = formatValidUntil(quote, locale, timezone);
 
   // ── Paginação do Escopo ── (ver Vanguarda; total dinâmico).
-  const scopePages = paginateScope(buildScopeRows(d), SCOPE_ITEMS_PER_PAGE, SCOPE_ITEMS_FIRST_PAGE);
+  const scopeRows = buildScopeRows(d, {
+    services: t.groupServices,
+    materials: t.groupMaterials,
+    items: t.groupItems,
+  });
+  const scopePages = paginateScope(scopeRows, SCOPE_ITEMS_PER_PAGE, SCOPE_ITEMS_FIRST_PAGE);
   const totalPages = 2 + scopePages.length + 2;
   const SCOPE_FIRST_PAGE = 3;
   const investPage = SCOPE_FIRST_PAGE + scopePages.length;
@@ -52,7 +63,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
 
   // Todas as folhas do Prisma têm fundo escuro → paginação sempre clara.
   const Folio = ({ page }: { page: number }) =>
-    showFolio ? <span style={pageFolioStyle(true)}>{folioLabel(page, totalPages)}</span> : null;
+    showFolio ? <span style={pageFolioStyle(true)}>{folioLabel(page, totalPages, t.folioPage)}</span> : null;
 
   // Data exibida na capa: validade (se houver) senão emissão, no locale da empresa.
   const validOrIssue =
@@ -61,7 +72,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
   const renderGroup = (g: ScopeGroup) => (
     <div className="mb-9" key={`${g.key}-${g.rows[0]?.num}`}>
       <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/45 mb-4">
-        {g.label}{g.continued ? ' (continuação)' : ''}
+        {g.label}{g.continued ? t.continuedShort : ''}
       </p>
       <div>
         {g.rows.map(({ item, num }) => (
@@ -88,7 +99,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
       {g.isGroupEnd && (
         <div className="flex justify-end mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', ...colorAdjust }}>
           <div className="text-xs">
-            <span className="uppercase tracking-wider text-white/40 font-bold mr-3">Subtotal</span>
+            <span className="uppercase tracking-wider text-white/40 font-bold mr-3">{t.rowSubtotal}</span>
             <span className="font-bold tabular-nums text-white/85">{money(g.groupSubtotal)}</span>
           </div>
         </div>
@@ -126,9 +137,9 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
         {/* Topo: data (esq) + logo (dir) */}
         <div className="relative z-10 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/45">Data</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/45">{t.dateLabel}</p>
             <p className="text-sm font-semibold text-white/85 mt-1">{validOrIssue}</p>
-            <p className="text-[11px] text-white/40 mt-0.5">Proposta Nº {quote.quote_number}</p>
+            <p className="text-[11px] text-white/40 mt-0.5">{t.proposalFooter} {quote.quote_number}</p>
           </div>
           {d.logoUrl ? (
             <img src={d.logoUrl} alt={d.companyName} className="h-11 w-auto object-contain shrink-0" crossOrigin="anonymous" />
@@ -143,7 +154,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
             className="font-black uppercase text-white"
             style={{ fontSize: 'clamp(52px, 14vw, 104px)', lineHeight: 0.9, letterSpacing: '-0.02em' }}
           >
-            Proposta<br />Comercial
+            {t.proposalLabel}<br />{t.proposalTitle}
           </h1>
           <p className="mt-7 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.34em] text-white/50 max-w-[460px] mx-auto leading-relaxed">
             {d.subjectLine}
@@ -153,12 +164,12 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
         {/* Rodapé: apresentado para / por */}
         <div className="relative z-10 mt-auto grid grid-cols-2 gap-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Apresentado para:</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t.presentedTo}</p>
             <p className="font-bold text-base mt-1.5 text-white leading-tight">{d.clientName}</p>
             {d.clientDoc && <p className="text-[11px] text-white/40 mt-0.5">{d.clientDoc}</p>}
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Apresentado por:</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t.presentedByColon}</p>
             <p className="font-bold text-base mt-1.5 text-white leading-tight">{d.companyName}</p>
             {company?.phone && <p className="text-[11px] text-white/40 mt-0.5">{company.phone}</p>}
           </div>
@@ -168,20 +179,19 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
 
       {/* ====================== APRESENTAÇÃO ====================== */}
       <section className="pr-page">
-        <PrKicker label="Apresentação" />
-        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-3 text-white uppercase">Quem somos</h2>
+        <PrKicker label={t.kickerAbout} />
+        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-3 text-white uppercase">{t.headingAbout}</h2>
         <p className="text-[15px] text-white/65 leading-[1.9] mt-6 max-w-[620px]">
-          A <span className="font-semibold text-white">{d.companyName}</span> entrega soluções com excelência técnica,
-          transparência e prazos cumpridos. Esta proposta foi preparada especialmente para{' '}
-          <span className="font-semibold text-white">{d.clientName}</span>, reunindo escopo, materiais e valores
-          necessários para executar o serviço com qualidade.
+          {t.aboutText1}{t.aboutText1 ? ' ' : ''}<span className="font-semibold text-white">{d.companyName}</span>{' '}
+          {t.aboutText2}{' '}
+          <span className="font-semibold text-white">{d.clientName}</span>{t.aboutText3}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-px mt-12" style={{ background: 'rgba(255,255,255,0.1)', ...colorAdjust }}>
           {[
-            { t: 'Qualidade', d: 'Padrão técnico em cada etapa.' },
-            { t: 'Transparência', d: 'Escopo e valores claros.' },
-            { t: 'Compromisso', d: 'Prazos cumpridos.' },
+            { t: t.valueQuality, d: t.valueQualityDesc },
+            { t: t.valueTransparency, d: t.valueTransparencyDescShort },
+            { t: t.valueCommitment, d: t.valueCommitmentDescShort },
           ].map((c) => (
             <div key={c.t} className="p-6" style={{ background: '#060606', ...colorAdjust }}>
               <p className="font-bold text-sm text-white uppercase tracking-wide">{c.t}</p>
@@ -191,7 +201,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
         </div>
 
         <div className="mt-12 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.12)', ...colorAdjust }}>
-          <p className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-bold mb-3">Fale conosco</p>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-bold mb-3">{t.contactLabel}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-6 text-sm text-white/80">
             {company?.phone && <p>{company.phone}</p>}
             {company?.email && <p>{company.email}</p>}
@@ -204,9 +214,9 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
       {/* ====================== ESCOPO (1..N folhas) ====================== */}
       {scopePages.map((sp) => (
         <section className="pr-page" key={`scope-${sp.index}`}>
-          <PrKicker label="O que está incluído" />
+          <PrKicker label={t.kickerScope} />
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-3 text-white uppercase">
-            Escopo{sp.index > 0 ? ' (cont.)' : ''}
+            {t.headingScopeShort}{sp.index > 0 ? t.continuedShort : ''}
           </h2>
           <div className="mt-10">
             {sp.groups.map(renderGroup)}
@@ -217,29 +227,29 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
 
       {/* ====================== INVESTIMENTO ====================== */}
       <section className="pr-page flex flex-col">
-        <PrKicker label="Resumo financeiro" />
-        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-3 text-white uppercase">Investimento</h2>
+        <PrKicker label={t.kickerInvestment} />
+        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-3 text-white uppercase">{t.headingInvestment}</h2>
 
         <div className="mt-10">
           {((quote.discount_amount ?? 0) > 0 || showDisplacement) && (
             <div className="space-y-2 pb-5 mb-1">
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/55">Subtotal</span>
+                  <span className="text-white/55">{t.rowSubtotal}</span>
                   <span className="text-white/80 tabular-nums">{money(quote.subtotal ?? 0)}</span>
                 </div>
               )}
               {showDisplacement && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/55">
-                    Deslocamento{(quote.distance_km ?? 0) > 0 ? ` (${quote.distance_km} km)` : ''}
+                    {t.rowDisplacement}{(quote.distance_km ?? 0) > 0 ? ` (${quote.distance_km} km)` : ''}
                   </span>
                   <span className="text-white/80 tabular-nums">{money(quote.displacement_cost ?? 0)}</span>
                 </div>
               )}
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/55">Desconto</span>
+                  <span className="text-white/55">{t.rowDiscount}</span>
                   <span className="tabular-nums font-semibold text-white">− {money(quote.discount_amount ?? 0)}</span>
                 </div>
               )}
@@ -248,10 +258,12 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
           <div className="pt-7" style={{ borderTop: '2px solid #fff', ...colorAdjust }}>
             <div className="flex items-end justify-between flex-wrap gap-2">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-white/50 font-bold">Valor total</p>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/50 font-bold">{t.totalLabel}</p>
                 {!!installments && installments > 1 && (
                   <p className="text-xs text-white/65 mt-2">
-                    em até {installments}× de {money((quote.total_value ?? 0) / installments)}
+                    {t.installmentsText
+                      .replace('{n}', String(installments))
+                      .replace('{value}', money((quote.total_value ?? 0) / installments))}
                   </p>
                 )}
               </div>
@@ -266,28 +278,28 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
 
         {validUntil && (
           <p className="mt-5 text-xs text-white/50">
-            Proposta válida até <span className="font-semibold text-white/80">{validUntil}</span>.
+            {t.validUntil} <span className="font-semibold text-white/80">{validUntil}</span>.
           </p>
         )}
 
         {showGifts && (
           <div className="mt-7 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.12)', ...colorAdjust }}>
-            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">Brindes inclusos</p>
+            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">{t.giftsLabel}</p>
             <p className="text-sm text-white/70 leading-relaxed">
-              Esta proposta acompanha brindes de cortesia, sem custo adicional.
+              {t.giftsBody}
             </p>
           </div>
         )}
 
         {quote.terms && (
           <div className="mt-9 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.12)', ...colorAdjust }}>
-            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">Condições e termos</p>
+            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">{t.termsLabel}</p>
             <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{quote.terms}</p>
           </div>
         )}
         {quote.notes && (
           <div className="mt-6 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.12)', ...colorAdjust }}>
-            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">Observações</p>
+            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">{t.notesLabel}</p>
             <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{quote.notes}</p>
           </div>
         )}
@@ -297,9 +309,9 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
       {/* ====================== ENCERRAMENTO ====================== */}
       <section className="pr-page flex flex-col items-center justify-center text-center">
         <div className="h-1 w-20 rounded-full mb-9" style={{ background: IRID, ...colorAdjust }} />
-        <h2 className="font-black uppercase tracking-tight text-white" style={{ fontSize: 'clamp(44px, 10vw, 64px)' }}>Obrigado</h2>
+        <h2 className="font-black uppercase tracking-tight text-white" style={{ fontSize: 'clamp(44px, 10vw, 64px)' }}>{t.thankYouNoPunct}</h2>
         <p className="text-white/55 text-lg mt-5 max-w-md leading-relaxed">
-          Estamos à disposição para esclarecer dúvidas e seguir com a execução assim que a proposta for aprovada.
+          {t.closingBody}
         </p>
 
         <div className="mt-12 pt-6 px-2" style={{ borderTop: '1px solid rgba(255,255,255,0.12)', ...colorAdjust }}>
@@ -315,7 +327,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
         </div>
 
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
-          Proposta Nº {quote.quote_number} · {d.companyName}
+          {t.proposalFooter} {quote.quote_number} · {d.companyName}
         </p>
         <Folio page={closingPage} />
       </section>

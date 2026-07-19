@@ -1,6 +1,7 @@
 import type { ProposalTemplateProps } from './types';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
+import { MESSAGES } from '@/lib/i18n';
 import {
   buildProposalData,
   colorAdjust,
@@ -37,8 +38,13 @@ const CREAM = '#f5f0e8';
 
 export function AuroraTemplate(props: ProposalTemplateProps) {
   const { quote, company, customization } = props;
-  const d = buildProposalData(props);
   const { money, locale, timezone } = useLocaleFormatters();
+  const t = MESSAGES[locale].app.crm.proposalPdf;
+
+  const d = buildProposalData(props, {
+    companyFallback: t.companyFallback,
+    subjectFallback: t.subjectFallback,
+  });
 
   const installments = d.installments;
   const showFolio = !!customization?.show_pagination;
@@ -48,7 +54,12 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
   const validUntil = formatValidUntil(quote, locale, timezone);
 
   // ── Paginação do Escopo ── (ver Vanguarda; total dinâmico).
-  const scopePages = paginateScope(buildScopeRows(d), SCOPE_ITEMS_PER_PAGE, SCOPE_ITEMS_FIRST_PAGE);
+  const scopeRows = buildScopeRows(d, {
+    services: t.groupServices,
+    materials: t.groupMaterials,
+    items: t.groupItems,
+  });
+  const scopePages = paginateScope(scopeRows, SCOPE_ITEMS_PER_PAGE, SCOPE_ITEMS_FIRST_PAGE);
   const totalPages = 2 + scopePages.length + 2;
   const SCOPE_FIRST_PAGE = 3;
   const investPage = SCOPE_FIRST_PAGE + scopePages.length;
@@ -56,7 +67,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
 
   // Todas as folhas do Aurora têm fundo escuro → paginação sempre clara.
   const Folio = ({ page }: { page: number }) =>
-    showFolio ? <span style={pageFolioStyle(true)}>{folioLabel(page, totalPages)}</span> : null;
+    showFolio ? <span style={pageFolioStyle(true)}>{folioLabel(page, totalPages, t.folioPage)}</span> : null;
 
   // Cor do grupo: Materiais → rosa; Serviços/Itens → violeta.
   const groupDot = (key: string) => (key === 'materiais' ? PINK : VIOLET);
@@ -68,7 +79,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
         <div className="flex items-center gap-2.5 mb-4">
           <span className="h-4 w-1 rounded-full" style={{ background: dot, ...colorAdjust }} />
           <p className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: dot }}>
-            {g.label}{g.continued ? ' (continuação)' : ''}
+            {g.label}{g.continued ? t.continued : ''}
           </p>
         </div>
         <div className="space-y-2.5">
@@ -99,7 +110,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
         {g.isGroupEnd && (
           <div className="flex justify-end mt-3">
             <div className="text-xs">
-              <span className="uppercase tracking-wider text-white/40 font-bold mr-3">Subtotal</span>
+              <span className="uppercase tracking-wider text-white/40 font-bold mr-3">{t.rowSubtotal}</span>
               <span className="font-bold tabular-nums text-white/80">{money(g.groupSubtotal)}</span>
             </div>
           </div>
@@ -157,13 +168,13 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
             className="font-black tracking-tight"
             style={{ color: CREAM, fontSize: 'clamp(56px, 13vw, 96px)', lineHeight: 0.92 }}
           >
-            Proposta<br />Comercial
+            {t.proposalLabel}<br />{t.proposalTitle}
           </h1>
           <p className="mt-6 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.32em] text-white/55 max-w-[440px] leading-relaxed">
             {d.subjectLine}
           </p>
           <div className="mt-5 inline-flex items-center gap-2 text-xs text-white/50">
-            <span>Nº {quote.quote_number}</span>
+            <span>{t.quotationNumber} {quote.quote_number}</span>
             <span className="text-white/25">·</span>
             <span>{formatDateTime(quote.created_at, locale, timezone, { year: 'numeric', month: 'long', day: '2-digit', hour: undefined, minute: undefined })}</span>
           </div>
@@ -172,12 +183,12 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
         {/* Rodapé: preparado para / apresentado por */}
         <div className="relative z-10 mt-auto pt-12 grid grid-cols-2 gap-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: PINK }}>Preparado para</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: PINK }}>{t.preparedFor}</p>
             <p className="font-bold text-base mt-1.5 text-white leading-tight">{d.clientName}</p>
             {d.clientDoc && <p className="text-[11px] text-white/40 mt-0.5">{d.clientDoc}</p>}
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: PINK }}>Apresentado por</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: PINK }}>{t.presentedBy}</p>
             <p className="font-bold text-base mt-1.5 text-white leading-tight">{d.companyName}</p>
             {company?.phone && <p className="text-[11px] text-white/40 mt-0.5">{company.phone}</p>}
           </div>
@@ -187,20 +198,19 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
 
       {/* ====================== APRESENTAÇÃO ====================== */}
       <section className="au-page">
-        <Kicker label="Apresentação" />
-        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-2 text-white">Quem somos</h2>
+        <Kicker label={t.kickerAbout} />
+        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-2 text-white">{t.headingAbout}</h2>
         <p className="text-[15px] text-white/65 leading-[1.9] mt-5 max-w-[620px]">
-          A <span className="font-semibold text-white">{d.companyName}</span> entrega soluções com excelência técnica,
-          transparência e prazos cumpridos. Esta proposta foi preparada especialmente para{' '}
-          <span className="font-semibold text-white">{d.clientName}</span>, reunindo escopo, materiais e valores
-          necessários para executar o serviço com qualidade.
+          {t.aboutText1}{t.aboutText1 ? ' ' : ''}<span className="font-semibold text-white">{d.companyName}</span>{' '}
+          {t.aboutText2}{' '}
+          <span className="font-semibold text-white">{d.clientName}</span>{t.aboutText3}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10">
           {[
-            { t: 'Qualidade', d: 'Padrão técnico em cada etapa.' },
-            { t: 'Transparência', d: 'Escopo e valores claros, sem surpresas.' },
-            { t: 'Compromisso', d: 'Prazos e combinados cumpridos.' },
+            { t: t.valueQuality, d: t.valueQualityDesc },
+            { t: t.valueTransparency, d: t.valueTransparencyDesc },
+            { t: t.valueCommitment, d: t.valueCommitmentDesc },
           ].map((c, idx) => (
             <div
               key={c.t}
@@ -221,7 +231,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
           className="mt-12 rounded-2xl p-6"
           style={{ background: `linear-gradient(120deg, ${BLUE}22 0%, ${VIOLET}22 50%, ${PINK}22 100%)`, border: '1px solid rgba(255,255,255,0.08)', ...colorAdjust }}
         >
-          <p className="text-[10px] uppercase tracking-[0.22em] text-white/55 font-bold mb-3">Fale conosco</p>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-white/55 font-bold mb-3">{t.contactLabel}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-6 text-sm text-white/85">
             {company?.phone && <p>{company.phone}</p>}
             {company?.email && <p>{company.email}</p>}
@@ -234,9 +244,9 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
       {/* ====================== ESCOPO (1..N folhas) ====================== */}
       {scopePages.map((sp) => (
         <section className="au-page" key={`scope-${sp.index}`}>
-          <Kicker label="O que está incluído" />
+          <Kicker label={t.kickerScope} />
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-2 text-white">
-            Escopo do serviço{sp.index > 0 ? ' (continuação)' : ''}
+            {t.headingScope}{sp.index > 0 ? t.continued : ''}
           </h2>
           <div className="mt-8">
             {sp.groups.map(renderGroup)}
@@ -247,8 +257,8 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
 
       {/* ====================== INVESTIMENTO ====================== */}
       <section className="au-page flex flex-col">
-        <Kicker label="Resumo financeiro" />
-        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-2 text-white">Investimento</h2>
+        <Kicker label={t.kickerInvestment} />
+        <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-2 text-white">{t.headingInvestment}</h2>
 
         <div
           className="mt-8 rounded-3xl overflow-hidden"
@@ -258,21 +268,21 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
             <div className="px-7 py-5 space-y-2" style={{ background: 'rgba(255,255,255,0.03)', ...colorAdjust }}>
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/55">Subtotal</span>
+                  <span className="text-white/55">{t.rowSubtotal}</span>
                   <span className="text-white/80 tabular-nums">{money(quote.subtotal ?? 0)}</span>
                 </div>
               )}
               {showDisplacement && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/55">
-                    Deslocamento{(quote.distance_km ?? 0) > 0 ? ` (${quote.distance_km} km)` : ''}
+                    {t.rowDisplacement}{(quote.distance_km ?? 0) > 0 ? ` (${quote.distance_km} km)` : ''}
                   </span>
                   <span className="text-white/80 tabular-nums">{money(quote.displacement_cost ?? 0)}</span>
                 </div>
               )}
               {(quote.discount_amount ?? 0) > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/55">Desconto</span>
+                  <span className="text-white/55">{t.rowDiscount}</span>
                   <span className="tabular-nums font-semibold" style={{ color: PINK }}>− {money(quote.discount_amount ?? 0)}</span>
                 </div>
               )}
@@ -284,10 +294,12 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
           >
             <div className="relative z-10 flex items-end justify-between flex-wrap gap-2">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-white/75 font-bold">Valor total</p>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/75 font-bold">{t.totalLabel}</p>
                 {!!installments && installments > 1 && (
                   <p className="text-xs text-white/85 mt-2">
-                    em até {installments}× de {money((quote.total_value ?? 0) / installments)}
+                    {t.installmentsText
+                      .replace('{n}', String(installments))
+                      .replace('{value}', money((quote.total_value ?? 0) / installments))}
                   </p>
                 )}
               </div>
@@ -300,28 +312,28 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
 
         {validUntil && (
           <p className="mt-4 text-xs text-white/55">
-            Proposta válida até <span className="font-semibold text-white/80">{validUntil}</span>.
+            {t.validUntil} <span className="font-semibold text-white/80">{validUntil}</span>.
           </p>
         )}
 
         {showGifts && (
           <div className="mt-6 rounded-2xl p-6" style={{ border: `1px solid ${PINK}55`, background: `${PINK}12`, ...colorAdjust }}>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-2" style={{ color: PINK }}>Brindes inclusos</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-2" style={{ color: PINK }}>{t.giftsLabel}</p>
             <p className="text-sm text-white/75 leading-relaxed">
-              Esta proposta acompanha brindes de cortesia, sem custo adicional.
+              {t.giftsBody}
             </p>
           </div>
         )}
 
         {quote.terms && (
           <div className="mt-7 rounded-2xl p-6" style={{ borderLeft: `4px solid ${PINK}`, background: 'rgba(255,255,255,0.03)', ...colorAdjust }}>
-            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">Condições e termos</p>
+            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">{t.termsLabel}</p>
             <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{quote.terms}</p>
           </div>
         )}
         {quote.notes && (
           <div className="mt-4 rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', ...colorAdjust }}>
-            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">Observações</p>
+            <p className="text-[10px] font-bold uppercase text-white/45 tracking-[0.18em] mb-2">{t.notesLabel}</p>
             <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{quote.notes}</p>
           </div>
         )}
@@ -334,9 +346,9 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
           className="h-1.5 w-20 rounded-full mb-8"
           style={{ background: `linear-gradient(90deg, ${BLUE}, ${VIOLET}, ${PINK})`, ...colorAdjust }}
         />
-        <h2 className="font-black tracking-tight" style={{ color: CREAM, fontSize: 'clamp(40px, 9vw, 60px)' }}>Obrigado!</h2>
+        <h2 className="font-black tracking-tight" style={{ color: CREAM, fontSize: 'clamp(40px, 9vw, 60px)' }}>{t.thankYou}</h2>
         <p className="text-white/55 text-lg mt-4 max-w-md leading-relaxed">
-          Estamos à disposição para esclarecer dúvidas e seguir com a execução assim que a proposta for aprovada.
+          {t.closingBody}
         </p>
 
         <div
@@ -355,7 +367,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
         </div>
 
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
-          Proposta Nº {quote.quote_number} · {d.companyName}
+          {t.proposalFooter} {quote.quote_number} · {d.companyName}
         </p>
         <Folio page={closingPage} />
       </section>

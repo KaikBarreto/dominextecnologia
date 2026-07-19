@@ -1,6 +1,7 @@
 import { Fragment, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es, fr } from 'date-fns/locale';
+import type { Locale } from 'date-fns';
 import { Printer, X, CalendarClock, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChecklistQuestionsByTemplates } from '@/hooks/useContractChecklistQuestions';
@@ -20,6 +21,17 @@ import {
 import { toActivitySpec } from './visitQuestionVisibility';
 import { frequencyLabel } from './questionFrequency';
 import type { FormQuestion } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import type { LocaleCode } from '@/lib/i18n/locales';
+
+/** Mapa LocaleCode → date-fns Locale (para formatação de datas por idioma). */
+const DATE_FNS_LOCALE: Record<LocaleCode, Locale> = {
+  'pt-br': ptBR,
+  en: enUS,
+  es,
+  fr,
+};
 
 /**
  * Documento "Plano de Manutenção" de um contrato COMUM (não-PMOC). Fase C.
@@ -54,12 +66,6 @@ interface ContractMaintenancePlanDocumentProps {
   /** Fecha o overlay do documento (volta pro detalhe). */
   onClose: () => void;
 }
-
-/** Título e eyebrow do documento. PMOC ganha a cara da norma; comum mantém o título antigo. */
-const DOC_EYEBROW = 'Documento';
-const COMMON_TITLE = 'Plano de Manutenção';
-const PMOC_TITLE = 'PMOC — Plano de Manutenção, Operação e Controle';
-const PMOC_EYEBROW = 'Documento · Lei Federal 13.589/2018';
 
 /** Formata um número opcional (área, ocupantes etc.), com sufixo opcional. '-' quando vazio. */
 function formatOptionalNumber(value: number | null | undefined, suffix = ''): string {
@@ -104,13 +110,16 @@ export function ContractMaintenancePlanDocument({
   onClose,
 }: ContractMaintenancePlanDocumentProps) {
   const { settings } = useCompanySettings();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.contracts.contractDocs;
+  const dateFnsLocale = DATE_FNS_LOCALE[locale];
 
   // PMOC ganha a cara da norma: título/eyebrow próprios e os campos de
   // identificação de cada ambiente (área climatizada, carga térmica, ocupantes,
   // tipo/uso). No contrato comum nada disso aparece — segue exatamente como antes.
   const isPmoc = (contract as { is_pmoc?: boolean }).is_pmoc === true;
-  const docTitle = isPmoc ? PMOC_TITLE : COMMON_TITLE;
-  const docEyebrow = isPmoc ? PMOC_EYEBROW : DOC_EYEBROW;
+  const docTitle = isPmoc ? t.pmocTitle : t.docTitle;
+  const docEyebrow = isPmoc ? t.pmocEyebrow : t.docEyebrow;
 
   // Nomes dos checklists (templates) pra rotular os sub-cabeçalhos quando um
   // equipamento tem mais de um checklist. Query já cacheada do app.
@@ -311,9 +320,9 @@ export function ContractMaintenancePlanDocument({
 
   const hasChecklist = equipmentChecklists.length > 0;
   const frequencyText = getFrequencyLabel(contract.frequency_type, contract.frequency_value);
-  const startText = format(parseLocalDate(contract.start_date), 'dd/MM/yyyy');
-  const horizonText = `${contract.horizon_months} meses`;
-  const generatedAt = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  const startText = format(parseLocalDate(contract.start_date), 'P', { locale: dateFnsLocale });
+  const horizonText = `${contract.horizon_months} ${t.horizonMonths}`;
+  const generatedAt = format(new Date(), 'PPP', { locale: dateFnsLocale });
 
   return (
     // Overlay claro fixo cobrindo a tela. NÃO usa tokens (relatório é sempre
@@ -333,13 +342,13 @@ export function ContractMaintenancePlanDocument({
             onClick={() => window.print()}
             className="active:scale-95 transition-transform"
           >
-            <Printer className="mr-1.5 h-4 w-4" /> Imprimir / PDF
+            <Printer className="mr-1.5 h-4 w-4" /> {t.printButton}
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            aria-label="Fechar"
+            aria-label={t.closeAriaLabel}
             className="text-gray-700 hover:bg-gray-100"
           >
             <X className="h-5 w-5" />
@@ -380,20 +389,20 @@ export function ContractMaintenancePlanDocument({
 
           {/* Dados do contrato */}
           <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-            <Field label="Contrato" value={contract.name} />
-            <Field label="Cliente" value={contract.customers?.name || '-'} />
-            <Field label="Frequência das visitas" value={frequencyText} />
-            <Field label="Início" value={startText} />
-            <Field label="Horizonte" value={horizonText} />
-            <Field label="Emitido em" value={generatedAt} />
+            <Field label={t.fieldContract} value={contract.name} />
+            <Field label={t.fieldCustomer} value={contract.customers?.name || '-'} />
+            <Field label={t.fieldVisitFrequency} value={frequencyText} />
+            <Field label={t.fieldStart} value={startText} />
+            <Field label={t.fieldHorizon} value={horizonText} />
+            <Field label={t.fieldIssuedAt} value={generatedAt} />
           </div>
         </header>
 
         {/* ── Ambientes e equipamentos ── */}
         <section className="mb-7">
-          <SectionTitle>Ambientes e Equipamentos</SectionTitle>
+          <SectionTitle>{t.sectionEnvironments}</SectionTitle>
           {environments.length === 0 && itemsByEnvironment.noEnv.length === 0 ? (
-            <p className="text-sm text-gray-500">Nenhum ambiente ou equipamento cadastrado.</p>
+            <p className="text-sm text-gray-500">{t.noEnvironmentOrEquip}</p>
           ) : (
             <div className="space-y-4">
               {environments.map((env) => (
@@ -404,15 +413,17 @@ export function ContractMaintenancePlanDocument({
                   photoUrl={(env as { photo_url?: string | null }).photo_url}
                   items={itemsByEnvironment.map.get(env.id) || []}
                   norma={isPmoc ? env : null}
+                  t={t}
                 />
               ))}
               {itemsByEnvironment.noEnv.length > 0 && (
                 <EnvironmentBlock
-                  identificacao="Sem ambiente"
+                  identificacao={t.noEnvironmentLabel}
                   tipo={null}
                   photoUrl={null}
                   items={itemsByEnvironment.noEnv}
                   norma={null}
+                  t={t}
                 />
               )}
             </div>
@@ -421,14 +432,14 @@ export function ContractMaintenancePlanDocument({
 
         {/* ── Checklist e planejamento POR EQUIPAMENTO ── */}
         <section className="mb-2">
-          <SectionTitle>Checklist por Equipamento</SectionTitle>
+          <SectionTitle>{t.sectionChecklist}</SectionTitle>
           {isLoadingQuestions ? (
             <p className="flex items-center gap-2 text-sm text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Carregando serviços…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t.loadingServices}
             </p>
           ) : !hasChecklist ? (
             <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 text-sm text-gray-500">
-              Nenhum checklist vinculado a este contrato.
+              {t.noChecklist}
             </p>
           ) : (
             <div className="space-y-6">
@@ -443,6 +454,7 @@ export function ContractMaintenancePlanDocument({
                   dueByQuestion={ec.dueByQuestion}
                   visitDates={visitDates}
                   templateNameById={templateNameById}
+                  t={t}
                 />
               ))}
             </div>
@@ -469,6 +481,7 @@ function EquipmentChecklistBlock({
   dueByQuestion,
   visitDates,
   templateNameById,
+  t,
 }: {
   title: string;
   meta: string | null;
@@ -478,6 +491,7 @@ function EquipmentChecklistBlock({
   dueByQuestion: Map<string, Set<number>>;
   visitDates: Date[];
   templateNameById: Map<string, string>;
+  t: { tableServiceHeader: string; tableFootnote: string };
 }) {
   const checklistLabel = (templateId: string, idx: number) =>
     templateNameById.get(templateId) || `Checklist ${idx + 1}`;
@@ -522,7 +536,7 @@ function EquipmentChecklistBlock({
               <thead>
                 <tr>
                   <th className="sticky left-0 z-10 border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-semibold text-gray-700">
-                    Serviço
+                    {t.tableServiceHeader}
                   </th>
                   {visitDates.map((d, i) => (
                     <th
@@ -575,7 +589,7 @@ function EquipmentChecklistBlock({
             </table>
           </div>
           <p className="mt-2 text-[11px] text-gray-400">
-            ✓ indica em qual visita cada serviço é executado, conforme a frequência configurada.
+            {t.tableFootnote}
           </p>
         </div>
       )}
@@ -604,6 +618,7 @@ function EnvironmentBlock({
   photoUrl,
   items,
   norma,
+  t,
 }: {
   identificacao: string;
   tipo: string | null;
@@ -611,15 +626,23 @@ function EnvironmentBlock({
   items: ContractItem[];
   /** Identificações da norma PMOC do ambiente. `null` no contrato comum. */
   norma: ContractEnvironment | null;
+  t: {
+    normaTypeUso: string;
+    normaAreaClimatizada: string;
+    normaCargaTermica: string;
+    normaOcupantesFixos: string;
+    normaOcupantesFlut: string;
+    noEquipInEnvironment: string;
+  };
 }) {
   // Identificações da norma (só PMOC). Renderiza apenas os campos preenchidos.
   const normaFields = norma
     ? ([
-        { label: 'Tipo / uso', value: norma.tipo_atividade?.trim() || null },
-        { label: 'Área climatizada', value: norma.area_climatizada_m2 != null ? formatOptionalNumber(norma.area_climatizada_m2, 'm²') : null },
-        { label: 'Carga térmica', value: norma.carga_termica_tr != null ? formatOptionalNumber(norma.carga_termica_tr, 'TR') : null },
-        { label: 'Ocupantes fixos', value: norma.ocupantes_fixos != null ? formatOptionalNumber(norma.ocupantes_fixos) : null },
-        { label: 'Ocupantes flutuantes', value: norma.ocupantes_flutuantes != null ? formatOptionalNumber(norma.ocupantes_flutuantes) : null },
+        { label: t.normaTypeUso, value: norma.tipo_atividade?.trim() || null },
+        { label: t.normaAreaClimatizada, value: norma.area_climatizada_m2 != null ? formatOptionalNumber(norma.area_climatizada_m2, 'm²') : null },
+        { label: t.normaCargaTermica, value: norma.carga_termica_tr != null ? formatOptionalNumber(norma.carga_termica_tr, 'TR') : null },
+        { label: t.normaOcupantesFixos, value: norma.ocupantes_fixos != null ? formatOptionalNumber(norma.ocupantes_fixos) : null },
+        { label: t.normaOcupantesFlut, value: norma.ocupantes_flutuantes != null ? formatOptionalNumber(norma.ocupantes_flutuantes) : null },
       ].filter((f) => f.value !== null) as { label: string; value: string }[])
     : [];
 
@@ -663,7 +686,7 @@ function EnvironmentBlock({
           })}
         </ul>
       ) : (
-        <p className="mt-2 text-xs text-gray-400">Sem equipamentos neste ambiente.</p>
+        <p className="mt-2 text-xs text-gray-400">{t.noEquipInEnvironment}</p>
       )}
     </div>
   );

@@ -800,6 +800,79 @@ export const crm = {
         other: 'Outro',
       },
     },
+
+    // ── PDF de Proposta (VanguardaTemplate / AuroraTemplate / PrismaTemplate) ──
+    // Apenas rótulos FIXOS dos templates. Conteúdo personalizado pelo tenant não
+    // entra aqui (textos de proposal_customization, nomes de serviços, etc.).
+    proposalPdf: {
+      // Capa
+      proposalLabel: 'Proposta',
+      proposalTitle: 'Comercial',
+      quotationNumber: 'Nº',
+      preparedFor: 'Preparado para',
+      presentedBy: 'Apresentado por',
+      dateLabel: 'Data',
+      presentedTo: 'Apresentado para:',
+      presentedByColon: 'Apresentado por:',
+
+      // Apresentação
+      kickerAbout: 'Apresentação',
+      headingAbout: 'Quem somos',
+      // Partes do parágrafo que intercala {companyName} e {clientName} em negrito.
+      // Uso: <>{t.aboutText1}<b>{company}</b>{t.aboutText2}<b>{client}</b>{t.aboutText3}</>
+      aboutText1: 'A',
+      aboutText2: 'entrega soluções com excelência técnica, transparência e prazos cumpridos. Esta proposta foi preparada especialmente para',
+      aboutText3: ', reunindo escopo, materiais e valores necessários para executar o serviço com qualidade.',
+      valueQuality: 'Qualidade',
+      valueQualityDesc: 'Padrão técnico em cada etapa.',
+      valueTransparency: 'Transparência',
+      valueTransparencyDesc: 'Escopo e valores claros, sem surpresas.',
+      valueTransparencyDescShort: 'Escopo e valores claros.',
+      valueCommitment: 'Compromisso',
+      valueCommitmentDesc: 'Prazos e combinados cumpridos.',
+      valueCommitmentDescShort: 'Prazos cumpridos.',
+      contactLabel: 'Fale conosco',
+
+      // Escopo
+      kickerScope: 'O que está incluído',
+      headingScope: 'Escopo do serviço',
+      headingScopeShort: 'Escopo',
+      continued: ' (continuação)',
+      continuedShort: ' (cont.)',
+
+      // Grupos do escopo (labels dos blocos de itens)
+      groupServices: 'Serviços',
+      groupMaterials: 'Materiais',
+      groupItems: 'Itens',
+
+      // Investimento
+      kickerInvestment: 'Resumo financeiro',
+      headingInvestment: 'Investimento',
+      rowSubtotal: 'Subtotal',
+      rowDisplacement: 'Deslocamento',
+      rowDiscount: 'Desconto',
+      totalLabel: 'Valor total',
+      // {n} = nº de parcelas, {value} = valor formatado
+      installmentsText: 'em até {n}× de {value}',
+      validUntil: 'Proposta válida até',
+      giftsLabel: 'Brindes inclusos',
+      giftsBody: 'Esta proposta acompanha brindes de cortesia, sem custo adicional.',
+      termsLabel: 'Condições e termos',
+      notesLabel: 'Observações',
+
+      // Encerramento
+      thankYou: 'Obrigado!',
+      thankYouNoPunct: 'Obrigado',
+      closingBody: 'Estamos à disposição para esclarecer dúvidas e seguir com a execução assim que a proposta for aprovada.',
+
+      // Rodapé / folio
+      proposalFooter: 'Proposta Nº',
+      folioPage: 'Página',
+
+      // Fallbacks (shared.ts buildProposalData)
+      companyFallback: 'Empresa',
+      subjectFallback: 'Serviços técnicos especializados',
+    },
   },
 
   en: {
@@ -1536,6 +1609,65 @@ export const crm = {
         equipment: 'Equipment',
         other: 'Other',
       },
+    },
+
+    proposalPdf: {
+      proposalLabel: 'Proposal',
+      proposalTitle: 'Commercial',
+      quotationNumber: 'No.',
+      preparedFor: 'Prepared for',
+      presentedBy: 'Presented by',
+      dateLabel: 'Date',
+      presentedTo: 'Presented to:',
+      presentedByColon: 'Presented by:',
+
+      kickerAbout: 'About us',
+      headingAbout: 'About us',
+      aboutText1: '',
+      aboutText2: 'delivers solutions with technical excellence, transparency, and on-time delivery. This proposal was specially prepared for',
+      aboutText3: ', bringing together the scope, materials and pricing required to carry out the service with quality.',
+      valueQuality: 'Quality',
+      valueQualityDesc: 'Technical standard at every step.',
+      valueTransparency: 'Transparency',
+      valueTransparencyDesc: 'Clear scope and pricing, no surprises.',
+      valueTransparencyDescShort: 'Clear scope and pricing.',
+      valueCommitment: 'Commitment',
+      valueCommitmentDesc: 'Deadlines and agreements kept.',
+      valueCommitmentDescShort: 'Deadlines kept.',
+      contactLabel: 'Contact us',
+
+      kickerScope: "What's included",
+      headingScope: 'Service scope',
+      headingScopeShort: 'Scope',
+      continued: ' (continued)',
+      continuedShort: ' (cont.)',
+
+      groupServices: 'Services',
+      groupMaterials: 'Materials',
+      groupItems: 'Items',
+
+      kickerInvestment: 'Financial summary',
+      headingInvestment: 'Investment',
+      rowSubtotal: 'Subtotal',
+      rowDisplacement: 'Travel',
+      rowDiscount: 'Discount',
+      totalLabel: 'Total amount',
+      installmentsText: 'up to {n}× of {value}',
+      validUntil: 'Proposal valid until',
+      giftsLabel: 'Freebies included',
+      giftsBody: 'This proposal includes complimentary freebies at no additional cost.',
+      termsLabel: 'Terms & conditions',
+      notesLabel: 'Notes',
+
+      thankYou: 'Thank you!',
+      thankYouNoPunct: 'Thank you',
+      closingBody: 'We are available to answer any questions and move forward with execution once the proposal is approved.',
+
+      proposalFooter: 'Proposal No.',
+      folioPage: 'Page',
+
+      companyFallback: 'Company',
+      subjectFallback: 'Specialized technical services',
     },
   },
 
@@ -2274,6 +2406,65 @@ export const crm = {
         other: 'Otro',
       },
     },
+
+    proposalPdf: {
+      proposalLabel: 'Propuesta',
+      proposalTitle: 'Comercial',
+      quotationNumber: 'N°',
+      preparedFor: 'Preparado para',
+      presentedBy: 'Presentado por',
+      dateLabel: 'Fecha',
+      presentedTo: 'Presentado para:',
+      presentedByColon: 'Presentado por:',
+
+      kickerAbout: 'Presentación',
+      headingAbout: 'Quiénes somos',
+      aboutText1: '',
+      aboutText2: 'ofrece soluciones con excelencia técnica, transparencia y cumplimiento de plazos. Esta propuesta fue preparada especialmente para',
+      aboutText3: ', reuniendo el alcance, los materiales y los valores necesarios para ejecutar el servicio con calidad.',
+      valueQuality: 'Calidad',
+      valueQualityDesc: 'Estándar técnico en cada etapa.',
+      valueTransparency: 'Transparencia',
+      valueTransparencyDesc: 'Alcance y precios claros, sin sorpresas.',
+      valueTransparencyDescShort: 'Alcance y precios claros.',
+      valueCommitment: 'Compromiso',
+      valueCommitmentDesc: 'Plazos y compromisos cumplidos.',
+      valueCommitmentDescShort: 'Plazos cumplidos.',
+      contactLabel: 'Contáctenos',
+
+      kickerScope: 'Lo que incluye',
+      headingScope: 'Alcance del servicio',
+      headingScopeShort: 'Alcance',
+      continued: ' (continuación)',
+      continuedShort: ' (cont.)',
+
+      groupServices: 'Servicios',
+      groupMaterials: 'Materiales',
+      groupItems: 'Ítems',
+
+      kickerInvestment: 'Resumen financiero',
+      headingInvestment: 'Inversión',
+      rowSubtotal: 'Subtotal',
+      rowDisplacement: 'Desplazamiento',
+      rowDiscount: 'Descuento',
+      totalLabel: 'Valor total',
+      installmentsText: 'hasta {n}× de {value}',
+      validUntil: 'Propuesta válida hasta',
+      giftsLabel: 'Obsequios incluidos',
+      giftsBody: 'Esta propuesta incluye obsequios de cortesía, sin costo adicional.',
+      termsLabel: 'Términos y condiciones',
+      notesLabel: 'Observaciones',
+
+      thankYou: '¡Gracias!',
+      thankYouNoPunct: 'Gracias',
+      closingBody: 'Estamos disponibles para aclarar dudas y continuar con la ejecución una vez aprobada la propuesta.',
+
+      proposalFooter: 'Propuesta N°',
+      folioPage: 'Página',
+
+      companyFallback: 'Empresa',
+      subjectFallback: 'Servicios técnicos especializados',
+    },
   },
 
   fr: {
@@ -3010,6 +3201,65 @@ export const crm = {
         equipment: 'Équipements',
         other: 'Autre',
       },
+    },
+
+    proposalPdf: {
+      proposalLabel: 'Proposition',
+      proposalTitle: 'Commerciale',
+      quotationNumber: 'N°',
+      preparedFor: 'Préparé pour',
+      presentedBy: 'Présenté par',
+      dateLabel: 'Date',
+      presentedTo: 'Présenté à :',
+      presentedByColon: 'Présenté par :',
+
+      kickerAbout: 'Présentation',
+      headingAbout: 'Qui sommes-nous',
+      aboutText1: '',
+      aboutText2: 'apporte des solutions avec excellence technique, transparence et respect des délais. Cette proposition a été préparée spécialement pour',
+      aboutText3: ', regroupant le périmètre, les matériaux et les tarifs nécessaires à la réalisation du service avec qualité.',
+      valueQuality: 'Qualité',
+      valueQualityDesc: 'Standard technique à chaque étape.',
+      valueTransparency: 'Transparence',
+      valueTransparencyDesc: 'Périmètre et tarifs clairs, sans surprises.',
+      valueTransparencyDescShort: 'Périmètre et tarifs clairs.',
+      valueCommitment: 'Engagement',
+      valueCommitmentDesc: 'Délais et engagements tenus.',
+      valueCommitmentDescShort: 'Délais tenus.',
+      contactLabel: 'Contactez-nous',
+
+      kickerScope: 'Ce qui est inclus',
+      headingScope: 'Périmètre du service',
+      headingScopeShort: 'Périmètre',
+      continued: ' (suite)',
+      continuedShort: ' (suite)',
+
+      groupServices: 'Services',
+      groupMaterials: 'Matériaux',
+      groupItems: 'Éléments',
+
+      kickerInvestment: 'Résumé financier',
+      headingInvestment: 'Investissement',
+      rowSubtotal: 'Sous-total',
+      rowDisplacement: 'Déplacement',
+      rowDiscount: 'Remise',
+      totalLabel: 'Montant total',
+      installmentsText: 'jusqu\'à {n}× de {value}',
+      validUntil: 'Proposition valable jusqu\'au',
+      giftsLabel: 'Cadeaux inclus',
+      giftsBody: 'Cette proposition inclut des cadeaux de courtoisie, sans frais supplémentaires.',
+      termsLabel: 'Termes et conditions',
+      notesLabel: 'Remarques',
+
+      thankYou: 'Merci !',
+      thankYouNoPunct: 'Merci',
+      closingBody: 'Nous sommes disponibles pour répondre à vos questions et avancer dans la réalisation dès approbation de la proposition.',
+
+      proposalFooter: 'Proposition N°',
+      folioPage: 'Page',
+
+      companyFallback: 'Entreprise',
+      subjectFallback: 'Services techniques spécialisés',
     },
   },
 };

@@ -40,8 +40,20 @@ export interface ProposalData {
   subjectLine: string;
 }
 
-export function buildProposalData({ quote, company, items, customization }: ProposalTemplateProps): ProposalData {
-  const companyName = company?.name || 'Empresa';
+/** Strings de fallback usadas pelo buildProposalData (localizadas pelo template). */
+export interface ProposalDataFallbacks {
+  companyFallback: string;
+  subjectFallback: string;
+}
+
+export function buildProposalData(
+  { quote, company, items, customization }: ProposalTemplateProps,
+  fallbacks: ProposalDataFallbacks = {
+    companyFallback: 'Empresa',
+    subjectFallback: 'Serviços técnicos especializados',
+  },
+): ProposalData {
+  const companyName = company?.name || fallbacks.companyFallback;
   const logoUrl = customization?.logo_url || company?.logo_url || undefined;
 
   const clientName = quote.customers?.name ?? quote.prospect_name ?? '—';
@@ -68,7 +80,7 @@ export function buildProposalData({ quote, company, items, customization }: Prop
   const addressLine = addressParts.length ? addressParts.join(' · ') : undefined;
 
   // Subtítulo da capa: primeiro item de serviço como "assunto", senão genérico.
-  const subjectRaw = serviceItems[0]?.description || allItems[0]?.description || 'Serviços técnicos especializados';
+  const subjectRaw = serviceItems[0]?.description || allItems[0]?.description || fallbacks.subjectFallback;
   const subjectLine = subjectRaw.toUpperCase();
 
   return {
@@ -168,22 +180,35 @@ export interface ScopePage {
   groups: ScopeGroup[];
 }
 
+/** Rótulos dos grupos do escopo (localizados pelo template via proposalPdf). */
+export interface ScopeGroupLabels {
+  services: string;
+  materials: string;
+  items: string;
+}
+
 /**
  * Achata o Escopo numa sequência única de linhas numeradas globalmente.
  * Quando há grupos (serviços E materiais), preserva a ordem: serviços, depois
  * materiais. Senão, um único grupo "Itens".
+ *
+ * `labels` contém os rótulos já traduzidos para o locale da empresa.
+ * Quando omitido, cai nos rótulos pt-br (compatibilidade retroativa).
  */
-export function buildScopeRows(d: ProposalData): ScopeRow[] {
+export function buildScopeRows(
+  d: ProposalData,
+  labels: ScopeGroupLabels = { services: 'Serviços', materials: 'Materiais', items: 'Itens' },
+): ScopeRow[] {
   const rows: ScopeRow[] = [];
   let n = 1;
   const push = (items: QuoteItem[], groupKey: string, groupLabel: string) => {
     for (const item of items) rows.push({ item, groupKey, groupLabel, num: n++ });
   };
   if (d.hasGroups) {
-    push(d.serviceItems, 'servicos', 'Serviços');
-    push(d.materialItems, 'materiais', 'Materiais');
+    push(d.serviceItems, 'servicos', labels.services);
+    push(d.materialItems, 'materiais', labels.materials);
   } else {
-    push(d.allItems, 'itens', 'Itens');
+    push(d.allItems, 'itens', labels.items);
   }
   return rows;
 }
@@ -278,6 +303,9 @@ export function pageFolioStyle(onDark: boolean): React.CSSProperties {
   };
 }
 
-/** "Página 01/05" — zero à esquerda, consistente nos 3 templates. */
-export const folioLabel = (page: number, total: number) =>
-  `Página ${String(page).padStart(2, '0')}/${String(total).padStart(2, '0')}`;
+/**
+ * "Página 01/05" — zero à esquerda, consistente nos 3 templates.
+ * `pageWord` é o rótulo localizado para "Página" (default pt-br).
+ */
+export const folioLabel = (page: number, total: number, pageWord = 'Página') =>
+  `${pageWord} ${String(page).padStart(2, '0')}/${String(total).padStart(2, '0')}`;

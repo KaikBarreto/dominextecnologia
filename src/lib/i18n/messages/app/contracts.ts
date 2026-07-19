@@ -483,6 +483,97 @@ export const contracts = {
       labelHealth: 'Saúde',
       labelType: 'Tipo',
     },
+
+    // ── Sub-namespace dos DOCUMENTOS PDF (plano de manutenção + relatório de visitas) ──
+    // Regras:
+    //   • Traduzir SOMENTE rótulos fixos de chrome — NUNCA dado de tenant
+    //     (nome do contrato, cliente, ambiente, empresa).
+    //   • Termos regulatórios (Lei 13.589/2018, PMOC como título legal) mantidos
+    //     com referência à norma BRASILEIRA; rótulos ao redor são traduzidos.
+    //   • Datas/horas formatadas via date-fns com o locale certo (ver componente).
+    contractDocs: {
+      // ── Barra de ações (topo do overlay) ──
+      printButton: 'Imprimir / PDF',
+      closeAriaLabel: 'Fechar',
+
+      // ── Eyebrow e título do documento ──
+      docEyebrow: 'Documento',
+      docTitle: 'Plano de Manutenção',
+      pmocEyebrow: 'Documento · Lei Federal 13.589/2018',
+      pmocTitle: 'PMOC — Plano de Manutenção, Operação e Controle',
+
+      // ── Cabeçalho: campos do contrato (rótulos) ──
+      fieldContract: 'Contrato',
+      fieldCustomer: 'Cliente',
+      fieldVisitFrequency: 'Frequência das visitas',
+      fieldStart: 'Início',
+      fieldHorizon: 'Horizonte',
+      fieldIssuedAt: 'Emitido em',
+
+      // ── Horizonte ──
+      horizonMonths: 'meses',
+
+      // ── Seção ambientes ──
+      sectionEnvironments: 'Ambientes e Equipamentos',
+      noEnvironmentOrEquip: 'Nenhum ambiente ou equipamento cadastrado.',
+      noEnvironmentLabel: 'Sem ambiente',
+      noEquipInEnvironment: 'Sem equipamentos neste ambiente.',
+
+      // ── Norma PMOC (campos do ambiente) ──
+      normaTypeUso: 'Tipo / uso',
+      normaAreaClimatizada: 'Área climatizada',
+      normaCargaTermica: 'Carga térmica',
+      normaOcupantesFixos: 'Ocupantes fixos',
+      normaOcupantesFlut: 'Ocupantes flutuantes',
+
+      // ── Seção checklist ──
+      sectionChecklist: 'Checklist por Equipamento',
+      loadingServices: 'Carregando serviços…',
+      noChecklist: 'Nenhum checklist vinculado a este contrato.',
+
+      // ── Grade visitas × serviços ──
+      tableServiceHeader: 'Serviço',
+      tableFootnote: '✓ indica em qual visita cada serviço é executado, conforme a frequência configurada.',
+
+      // ─────────────────────────────────────────────────────────────────────────
+      // Relatório de Visitas
+      // ─────────────────────────────────────────────────────────────────────────
+      reportTitle: 'Relatório de Visitas',
+      reportEyebrow: 'Documento',
+
+      // ── Cabeçalho relatório ──
+      fieldPeriod: 'Período',
+      periodSeparator: 'a',
+
+      // ── Resumo do período ──
+      sectionSummary: 'Resumo do Período',
+      summaryVisitsTotal: 'Visitas no período',
+      summaryConcluded: 'Concluídas',
+      summaryScheduledPending: 'Agendadas / Pendentes',
+      summaryConclusion: 'Conclusão',
+      summaryCancelledNote: 'visita(s) cancelada(s) não entram na base de conclusão.',
+
+      // ── Lista de visitas ──
+      sectionVisits: 'Visitas',
+      noVisitsRegistered: 'Nenhuma visita registrada para este contrato.',
+      loadingVisitDetails: 'Carregando detalhes das visitas…',
+
+      // ── Bloco de visita ──
+      visitLabel: 'Visita #',
+      osLabel: 'OS #',
+      lateBadge: 'Atrasada',
+      scheduledLabel: 'Agendada:',
+      noDate: 'Sem data',
+      executedLabel: 'Executada:',
+      executedAtSuffix: 'às',
+      equipAttended: 'equipamento(s) atendido(s)',
+      itemsAnswered: 'itens respondidos',
+      itemsCompliant: 'conforme(s)',
+      itemsNonCompliant: 'não-conforme(s)',
+
+      // ── Rodapé do relatório ──
+      reportFooter: 'Documento gerado por {companyName} como comprovante das manutenções realizadas no período. As visitas concluídas representam os serviços efetivamente executados.',
+    },
   },
 
   en: {
@@ -937,6 +1028,74 @@ export const contracts = {
       labelStatus: 'Status',
       labelHealth: 'Health',
       labelType: 'Type',
+    },
+
+    contractDocs: {
+      printButton: 'Print / PDF',
+      closeAriaLabel: 'Close',
+
+      docEyebrow: 'Document',
+      docTitle: 'Maintenance Plan',
+      pmocEyebrow: 'Document · Federal Law 13.589/2018',
+      pmocTitle: 'PMOC — Preventive Maintenance, Operation and Control Plan',
+
+      fieldContract: 'Contract',
+      fieldCustomer: 'Customer',
+      fieldVisitFrequency: 'Visit frequency',
+      fieldStart: 'Start',
+      fieldHorizon: 'Horizon',
+      fieldIssuedAt: 'Issued on',
+
+      horizonMonths: 'months',
+
+      sectionEnvironments: 'Environments & Equipment',
+      noEnvironmentOrEquip: 'No environments or equipment registered.',
+      noEnvironmentLabel: 'No environment',
+      noEquipInEnvironment: 'No equipment in this environment.',
+
+      normaTypeUso: 'Type / use',
+      normaAreaClimatizada: 'Air-conditioned area',
+      normaCargaTermica: 'Thermal load',
+      normaOcupantesFixos: 'Permanent occupants',
+      normaOcupantesFlut: 'Transient occupants',
+
+      sectionChecklist: 'Checklist per Equipment',
+      loadingServices: 'Loading services…',
+      noChecklist: 'No checklist linked to this contract.',
+
+      tableServiceHeader: 'Service',
+      tableFootnote: '✓ indicates which visit each service is performed on, according to the configured frequency.',
+
+      reportTitle: 'Visits Report',
+      reportEyebrow: 'Document',
+
+      fieldPeriod: 'Period',
+      periodSeparator: 'to',
+
+      sectionSummary: 'Period Summary',
+      summaryVisitsTotal: 'Visits in period',
+      summaryConcluded: 'Completed',
+      summaryScheduledPending: 'Scheduled / Pending',
+      summaryConclusion: 'Completion',
+      summaryCancelledNote: 'cancelled visit(s) are not included in the completion base.',
+
+      sectionVisits: 'Visits',
+      noVisitsRegistered: 'No visits registered for this contract.',
+      loadingVisitDetails: 'Loading visit details…',
+
+      visitLabel: 'Visit #',
+      osLabel: 'SO #',
+      lateBadge: 'Overdue',
+      scheduledLabel: 'Scheduled:',
+      noDate: 'No date',
+      executedLabel: 'Executed:',
+      executedAtSuffix: 'at',
+      equipAttended: 'equipment item(s) serviced',
+      itemsAnswered: 'items answered',
+      itemsCompliant: 'compliant',
+      itemsNonCompliant: 'non-compliant',
+
+      reportFooter: 'Document generated by {companyName} as proof of maintenance performed during the period. Completed visits represent services effectively carried out.',
     },
   },
 
@@ -1393,6 +1552,74 @@ export const contracts = {
       labelHealth: 'Salud',
       labelType: 'Tipo',
     },
+
+    contractDocs: {
+      printButton: 'Imprimir / PDF',
+      closeAriaLabel: 'Cerrar',
+
+      docEyebrow: 'Documento',
+      docTitle: 'Plan de Mantenimiento',
+      pmocEyebrow: 'Documento · Ley Federal 13.589/2018',
+      pmocTitle: 'PMOC — Plan de Mantenimiento Preventivo, Operación y Control',
+
+      fieldContract: 'Contrato',
+      fieldCustomer: 'Cliente',
+      fieldVisitFrequency: 'Frecuencia de visitas',
+      fieldStart: 'Inicio',
+      fieldHorizon: 'Horizonte',
+      fieldIssuedAt: 'Emitido el',
+
+      horizonMonths: 'meses',
+
+      sectionEnvironments: 'Ambientes y Equipos',
+      noEnvironmentOrEquip: 'Ningún ambiente o equipo registrado.',
+      noEnvironmentLabel: 'Sin ambiente',
+      noEquipInEnvironment: 'Sin equipos en este ambiente.',
+
+      normaTypeUso: 'Tipo / uso',
+      normaAreaClimatizada: 'Área climatizada',
+      normaCargaTermica: 'Carga térmica',
+      normaOcupantesFixos: 'Ocupantes permanentes',
+      normaOcupantesFlut: 'Ocupantes transitorios',
+
+      sectionChecklist: 'Lista de Verificación por Equipo',
+      loadingServices: 'Cargando servicios…',
+      noChecklist: 'Ninguna lista de verificación vinculada a este contrato.',
+
+      tableServiceHeader: 'Servicio',
+      tableFootnote: '✓ indica en qué visita se ejecuta cada servicio, según la frecuencia configurada.',
+
+      reportTitle: 'Informe de Visitas',
+      reportEyebrow: 'Documento',
+
+      fieldPeriod: 'Período',
+      periodSeparator: 'al',
+
+      sectionSummary: 'Resumen del Período',
+      summaryVisitsTotal: 'Visitas en el período',
+      summaryConcluded: 'Completadas',
+      summaryScheduledPending: 'Programadas / Pendientes',
+      summaryConclusion: 'Conclusión',
+      summaryCancelledNote: 'visita(s) cancelada(s) no entran en la base de conclusión.',
+
+      sectionVisits: 'Visitas',
+      noVisitsRegistered: 'Ninguna visita registrada para este contrato.',
+      loadingVisitDetails: 'Cargando detalles de las visitas…',
+
+      visitLabel: 'Visita #',
+      osLabel: 'OS #',
+      lateBadge: 'Atrasada',
+      scheduledLabel: 'Programada:',
+      noDate: 'Sin fecha',
+      executedLabel: 'Ejecutada:',
+      executedAtSuffix: 'a las',
+      equipAttended: 'equipo(s) atendido(s)',
+      itemsAnswered: 'ítems respondidos',
+      itemsCompliant: 'conforme(s)',
+      itemsNonCompliant: 'no conforme(s)',
+
+      reportFooter: 'Documento generado por {companyName} como comprobante de los mantenimientos realizados en el período. Las visitas completadas representan los servicios efectivamente ejecutados.',
+    },
   },
 
   fr: {
@@ -1847,6 +2074,74 @@ export const contracts = {
       labelStatus: `Statut`,
       labelHealth: `Santé`,
       labelType: 'Type',
+    },
+
+    contractDocs: {
+      printButton: `Imprimer / PDF`,
+      closeAriaLabel: 'Fermer',
+
+      docEyebrow: 'Document',
+      docTitle: `Plan de Maintenance`,
+      pmocEyebrow: `Document · Loi Fédérale 13.589/2018`,
+      pmocTitle: `PMOC — Plan de Maintenance Préventive, Opération et Contrôle`,
+
+      fieldContract: 'Contrat',
+      fieldCustomer: 'Client',
+      fieldVisitFrequency: `Fréquence des visites`,
+      fieldStart: `Début`,
+      fieldHorizon: 'Horizon',
+      fieldIssuedAt: `Émis le`,
+
+      horizonMonths: 'mois',
+
+      sectionEnvironments: `Environnements et Équipements`,
+      noEnvironmentOrEquip: `Aucun environnement ou équipement enregistré.`,
+      noEnvironmentLabel: `Sans environnement`,
+      noEquipInEnvironment: `Aucun équipement dans cet environnement.`,
+
+      normaTypeUso: `Type / usage`,
+      normaAreaClimatizada: `Surface climatisée`,
+      normaCargaTermica: `Charge thermique`,
+      normaOcupantesFixos: `Occupants permanents`,
+      normaOcupantesFlut: `Occupants transitoires`,
+
+      sectionChecklist: `Liste de Contrôle par Équipement`,
+      loadingServices: `Chargement des services…`,
+      noChecklist: `Aucune liste de contrôle associée à ce contrat.`,
+
+      tableServiceHeader: 'Service',
+      tableFootnote: `✓ indique lors de quelle visite chaque service est exécuté, selon la fréquence configurée.`,
+
+      reportTitle: `Rapport de Visites`,
+      reportEyebrow: 'Document',
+
+      fieldPeriod: `Période`,
+      periodSeparator: `au`,
+
+      sectionSummary: `Résumé de la Période`,
+      summaryVisitsTotal: `Visites sur la période`,
+      summaryConcluded: `Terminées`,
+      summaryScheduledPending: `Planifiées / En attente`,
+      summaryConclusion: `Taux de réalisation`,
+      summaryCancelledNote: `visite(s) annulée(s) non incluse(s) dans la base de calcul.`,
+
+      sectionVisits: 'Visites',
+      noVisitsRegistered: `Aucune visite enregistrée pour ce contrat.`,
+      loadingVisitDetails: `Chargement des détails des visites…`,
+
+      visitLabel: 'Visite #',
+      osLabel: 'OS #',
+      lateBadge: 'En retard',
+      scheduledLabel: `Planifiée :`,
+      noDate: `Sans date`,
+      executedLabel: `Exécutée :`,
+      executedAtSuffix: `à`,
+      equipAttended: `équipement(s) traité(s)`,
+      itemsAnswered: `éléments répondus`,
+      itemsCompliant: `conforme(s)`,
+      itemsNonCompliant: `non conforme(s)`,
+
+      reportFooter: `Document généré par {companyName} comme preuve des maintenances effectuées au cours de la période. Les visites terminées représentent les services effectivement réalisés.`,
     },
   },
 };
