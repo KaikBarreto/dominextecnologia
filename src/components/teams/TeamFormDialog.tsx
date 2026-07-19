@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildStorageFilePath } from '@/utils/storagePath';
 import { SignedImg } from '@/components/ui/SignedImg';
 import type { TeamWithMembers, TeamInput } from '@/hooks/useTeams';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const ICON_OPTIONS = [
   { name: 'UsersRound', icon: UsersRound },
@@ -48,6 +50,8 @@ interface TeamFormDialogProps {
 }
 
 export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, profiles }: TeamFormDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.teamForm;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('#3b82f6');
@@ -127,30 +131,30 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button variant="outline" onClick={() => onOpenChange(false)}>{t.btnCancel}</Button>
       <Button onClick={handleSubmit} disabled={isLoading || uploading || !name.trim()}>
         {(isLoading || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {team ? 'Salvar' : 'Criar Equipe'}
+        {team ? t.btnSave : t.btnCreate}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={team ? 'Editar Equipe' : 'Nova Equipe'} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={team ? t.titleEdit : t.titleCreate} footer={footer}>
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label>Nome *</Label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nome da equipe" />
+          <Label>{t.labelName}</Label>
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.placeholderName} />
         </div>
 
         <div className="space-y-2">
-          <Label>Descrição</Label>
-          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Descrição" />
+          <Label>{t.labelDescription}</Label>
+          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t.placeholderDescription} />
         </div>
 
         {/* Visual: Photo or Color + Icon */}
         <div className="space-y-2">
-          <Label>Visual da Equipe</Label>
+          <Label>{t.labelVisual}</Label>
           <div className="flex items-center gap-4">
             {/* Preview */}
             <div
@@ -181,12 +185,12 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="h-3 w-3 mr-1" />
-                  Foto
+                  {t.btnPhoto}
                 </Button>
                 {currentPhotoSrc && (
                   <Button type="button" variant="ghost" size="sm" onClick={removePhoto}>
                     <X className="h-3 w-3 mr-1" />
-                    Remover
+                    {t.btnRemovePhoto}
                   </Button>
                 )}
               </div>
@@ -202,7 +206,7 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
         {/* Icon selector */}
         {!currentPhotoSrc && (
           <div className="space-y-2">
-            <Label>Ícone</Label>
+            <Label>{t.labelIcon}</Label>
             <div className="grid grid-cols-9 gap-1.5">
               {ICON_OPTIONS.map(({ name: iName, icon: Icon }) => (
                 <button
@@ -224,7 +228,7 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
         )}
 
         <div className="space-y-2">
-          <Label>Membros</Label>
+          <Label>{t.labelMembers}</Label>
           <div className="max-h-[200px] overflow-y-auto space-y-1 border rounded-lg p-2">
             {profiles.map(p => (
               <label
@@ -243,7 +247,7 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
               </label>
             ))}
             {profiles.length === 0 && (
-              <p className="text-sm text-muted-foreground p-2">Nenhum usuário disponível</p>
+              <p className="text-sm text-muted-foreground p-2">{t.emptyMembers}</p>
             )}
           </div>
         </div>

@@ -63,9 +63,9 @@ export default function ChecklistDetail() {
   const template = templates.find(t => t.id === id) as (FormTemplate & { questions: FormQuestion[] }) | undefined;
   const serviceTypeIds = ((template as any)?.service_type_ids ?? []) as string[];
 
-  // Mensagem PT-BR do limite de perguntas de vídeo do plano (pluralizada).
+  // Mensagem do limite de perguntas de vídeo do plano (pluralizada, traduzida).
   const videoLimitMessage = () =>
-    `Seu plano permite até ${maxVideoQuestions} ${maxVideoQuestions === 1 ? 'pergunta' : 'perguntas'} de vídeo por checklist.`;
+    (maxVideoQuestions === 1 ? tC.videoLimitSingular : tC.videoLimitPlural).replace('{n}', String(maxVideoQuestions));
 
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
   const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);

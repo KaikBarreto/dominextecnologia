@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, ChevronsUpDown, Search, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface TechnicianOption {
   user_id: string;
@@ -49,6 +51,8 @@ export function AssigneeMultiSelect({
   label = 'Responsáveis',
   usersLabel = 'Técnicos',
 }: AssigneeMultiSelectProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.assigneeSelect;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -105,7 +109,7 @@ export function AssigneeMultiSelect({
   const totalSelected = selectedUserIds.length + selectedTeamIds.length;
 
   const summaryText = useMemo(() => {
-    if (totalSelected === 0) return 'Selecione...';
+    if (totalSelected === 0) return t.placeholder;
     const parts: string[] = [];
     selectedTeamIds.forEach(tid => {
       const team = activeTeams.find(t => t.id === tid);
@@ -124,7 +128,8 @@ export function AssigneeMultiSelect({
     });
     if (parts.length <= 2) return parts.join(', ');
     return `${parts.slice(0, 2).join(', ')} +${parts.length - 2}`;
-  }, [totalSelected, selectedUserIds, selectedTeamIds, technicians, activeTeams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalSelected, selectedUserIds, selectedTeamIds, technicians, activeTeams, t.placeholder]);
 
   return (
     <div className="space-y-1.5">
@@ -154,10 +159,10 @@ export function AssigneeMultiSelect({
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 border-b">
             <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAll}>
-              Marcar todos
+              {t.btnSelectAll}
             </Button>
             <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={deselectAll}>
-              Desmarcar todos
+              {t.btnDeselectAll}
             </Button>
           </div>
           <ScrollArea className="max-h-[40vh]">
@@ -165,7 +170,7 @@ export function AssigneeMultiSelect({
               {/* Teams */}
               {filteredTeams.length > 0 && (
                 <div className="mb-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-1">Equipes</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-1">{t.sectionTeams}</p>
                   {filteredTeams.map(team => (
                     <label
                       key={`team-${team.id}`}
@@ -212,7 +217,7 @@ export function AssigneeMultiSelect({
                 </div>
               )}
               {filteredTeams.length === 0 && filteredTechnicians.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum resultado</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t.emptyResults}</p>
               )}
             </div>
           </ScrollArea>

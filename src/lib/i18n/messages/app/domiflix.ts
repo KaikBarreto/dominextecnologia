@@ -15,6 +15,7 @@
 //   domiflix.player    — controles do player, overlays
 //   domiflix.watchlist — Minha Lista
 //   domiflix.menu      — drawer "Mais" / menu hambúrguer
+//   domiflix.avatar    — seletor de avatar/perfil Domiflix
 export const domiflix = {
   'pt-br': {
     // ── Navegação ────────────────────────────────────────────────────────────
@@ -177,6 +178,35 @@ export const domiflix = {
       developedBy: 'Desenvolvido por',
       copyright: 'Copyright © {{year}} | Todos os Direitos Reservados',
     },
+
+    // ── Seletor de avatar / perfil Domiflix ──────────────────────────────
+    avatar: {
+      back: 'Voltar',
+      pageTitle: 'Editar Perfil',
+      pageSubtitle: 'Personalize seu perfil dentro do Domiflix.',
+      // Seção nome de exibição
+      displayNameSection: 'Nome de exibição',
+      displayNameHint: 'Esta alteração é exclusiva do Domiflix e não afetará o nome usado no sistema.',
+      displayNamePlaceholder: 'Como você quer ser chamado',
+      save: 'Salvar',
+      cancel: 'Cancelar',
+      // Aviso sobre o ícone
+      avatarHint: 'O ícone escolhido é exclusivo do Domiflix e não substituirá sua foto no sistema.',
+      // Seção "Minha conta"
+      myAccountSection: 'Minha conta',
+      myPhotoLabel: 'Minha foto',
+      myPhotoTitle: 'Minha foto',
+      myPhotoDesc: 'Use a mesma foto da sua conta no Domiflix. Ao selecionar, removemos o ícone exclusivo e voltamos a exibir a foto do seu perfil no sistema',
+      myPhotoDescNoPhoto: ' (ou suas iniciais, caso não tenha foto)',
+      myPhotoAlt: 'Minha foto',
+      currentAvatarAlt: 'Avatar atual',
+      // Seções do catálogo de avatares
+      sectionClassics: 'Os Clássicos',
+      sectionChars1: 'Personagens, Parte 1',
+      sectionChars2: 'Personagens, Parte 2',
+      sectionChars3: 'Personagens, Parte 3',
+      characterName: 'Personagem {{number}}',
+    },
   },
 
   // ── English ───────────────────────────────────────────────────────────────
@@ -320,6 +350,30 @@ export const domiflix = {
       backToSystem: 'Back to system',
       developedBy: 'Developed by',
       copyright: 'Copyright © {{year}} | All Rights Reserved',
+    },
+
+    avatar: {
+      back: 'Back',
+      pageTitle: 'Edit Profile',
+      pageSubtitle: 'Customize your Domiflix profile.',
+      displayNameSection: 'Display name',
+      displayNameHint: 'This change is exclusive to Domiflix and will not affect your name in the system.',
+      displayNamePlaceholder: 'What should we call you',
+      save: 'Save',
+      cancel: 'Cancel',
+      avatarHint: 'The icon you choose is exclusive to Domiflix and will not replace your photo in the system.',
+      myAccountSection: 'My account',
+      myPhotoLabel: 'My photo',
+      myPhotoTitle: 'My photo',
+      myPhotoDesc: 'Use the same photo as your account on Domiflix. When selected, we remove the exclusive icon and go back to showing your system profile photo',
+      myPhotoDescNoPhoto: ' (or your initials, if you have no photo)',
+      myPhotoAlt: 'My photo',
+      currentAvatarAlt: 'Current avatar',
+      sectionClassics: 'The Classics',
+      sectionChars1: 'Characters, Part 1',
+      sectionChars2: 'Characters, Part 2',
+      sectionChars3: 'Characters, Part 3',
+      characterName: 'Character {{number}}',
     },
   },
 
@@ -465,6 +519,30 @@ export const domiflix = {
       developedBy: 'Desarrollado por',
       copyright: 'Copyright © {{year}} | Todos los derechos reservados',
     },
+
+    avatar: {
+      back: 'Volver',
+      pageTitle: 'Editar perfil',
+      pageSubtitle: 'Personaliza tu perfil dentro de Domiflix.',
+      displayNameSection: 'Nombre de visualización',
+      displayNameHint: 'Este cambio es exclusivo de Domiflix y no afectará el nombre que usas en el sistema.',
+      displayNamePlaceholder: 'Como quieres que te llamen',
+      save: 'Guardar',
+      cancel: 'Cancelar',
+      avatarHint: 'El icono elegido es exclusivo de Domiflix y no reemplazará tu foto en el sistema.',
+      myAccountSection: 'Mi cuenta',
+      myPhotoLabel: 'Mi foto',
+      myPhotoTitle: 'Mi foto',
+      myPhotoDesc: 'Usa la misma foto de tu cuenta en Domiflix. Al seleccionar, eliminamos el icono exclusivo y volvemos a mostrar la foto de tu perfil en el sistema',
+      myPhotoDescNoPhoto: ' (o tus iniciales, si no tienes foto)',
+      myPhotoAlt: 'Mi foto',
+      currentAvatarAlt: 'Avatar actual',
+      sectionClassics: 'Los Clásicos',
+      sectionChars1: 'Personajes, Parte 1',
+      sectionChars2: 'Personajes, Parte 2',
+      sectionChars3: 'Personajes, Parte 3',
+      characterName: 'Personaje {{number}}',
+    },
   },
 
   // ── Français ──────────────────────────────────────────────────────────────
@@ -608,6 +686,30 @@ export const domiflix = {
       backToSystem: 'Retour au système',
       developedBy: 'Développé par',
       copyright: 'Copyright © {{year}} | Tous droits réservés',
+    },
+
+    avatar: {
+      back: 'Retour',
+      pageTitle: 'Modifier le profil',
+      pageSubtitle: 'Personnalisez votre profil Domiflix.',
+      displayNameSection: 'Nom affiché',
+      displayNameHint: 'Cette modification est exclusive à Domiflix et ne changera pas votre nom dans le système.',
+      displayNamePlaceholder: 'Comment voulez-vous être appelé',
+      save: 'Enregistrer',
+      cancel: 'Annuler',
+      avatarHint: "L'icône choisi est exclusif à Domiflix et ne remplacera pas votre photo dans le système.",
+      myAccountSection: 'Mon compte',
+      myPhotoLabel: 'Ma photo',
+      myPhotoTitle: 'Ma photo',
+      myPhotoDesc: 'Utilisez la même photo que votre compte sur Domiflix. En sélectionnant, nous supprimons l\'icône exclusif et revenons à afficher la photo de votre profil dans le système',
+      myPhotoDescNoPhoto: ' (ou vos initiales, si vous n\'avez pas de photo)',
+      myPhotoAlt: 'Ma photo',
+      currentAvatarAlt: 'Avatar actuel',
+      sectionClassics: 'Les Classiques',
+      sectionChars1: 'Personnages, Partie 1',
+      sectionChars2: 'Personnages, Partie 2',
+      sectionChars3: 'Personnages, Partie 3',
+      characterName: 'Personnage {{number}}',
     },
   },
 };

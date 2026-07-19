@@ -933,7 +933,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                     e.stopPropagation();
                     setEditingQuestion(question.id);
                   }}
-                  title="Editar resposta"
+                  title={t.btnEditAnswer}
                 >
                   <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
@@ -946,7 +946,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                     e.stopPropagation();
                     setEditingQuestion(null);
                   }}
-                  title="Fechar edição"
+                  title={t.btnCloseEdit}
                 >
                   <Check className="h-3.5 w-3.5 text-primary" />
                 </button>

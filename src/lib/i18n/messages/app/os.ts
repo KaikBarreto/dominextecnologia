@@ -414,6 +414,8 @@ export const os = {
       badgeCamera: 'Câmera',
       questionTypesCount: '{n} tipos',
       btnNewQuestion: 'Nova Pergunta',
+      videoLimitSingular: 'Seu plano permite até {n} pergunta de vídeo por checklist.',
+      videoLimitPlural: 'Seu plano permite até {n} perguntas de vídeo por checklist.',
     },
 
     // ── Painel de Tipos de Serviço ────────────────────────────────────────
@@ -758,6 +760,9 @@ export const os = {
 
       // Sidebar (relatório/público) — rótulo geral
       sidebarGeneralLabel: 'Geral / Local',
+      // Contagem de checklists no cabeçalho do equipamento (quando há mais de 1)
+      checklistsCountSingular: '1 checklist',
+      checklistsCountPlural: '{n} checklists',
     },
 
     // ── Mapa ao Vivo / Rastreamento ──────────────────────────────────────
@@ -1230,6 +1235,8 @@ export const os = {
       typeMeasure: 'Medida PMOC',
       badgeAnswered: 'Respondido',
       btnClearAnswer: 'Limpar resposta e mostrar todas as opções',
+      btnEditAnswer: 'Editar resposta',
+      btnCloseEdit: 'Fechar edição',
       toastSaveError: 'Erro ao salvar resposta',
       emptyNoQuestions: 'Nenhuma pergunta configurada para este checklist.',
       emptyNoVisit: 'Nenhuma pergunta prevista para esta visita.',
@@ -1243,6 +1250,46 @@ export const os = {
       tabTypes: 'Tipos de Serviços',
       tabTaskTypes: 'Tipos de Tarefas',
       tabChecklists: 'Checklists',
+    },
+
+    // ── Tutoriais ─────────────────────────────────────────────────────────
+    tutorials: {
+      pageTitle: 'Tutoriais',
+      pageSubtitle: 'Aprenda a usar todos os recursos do Dominex',
+      modulesCount: '{n} módulos',
+      lessonsCount: '{n} aulas',
+      searchPlaceholder: 'Buscar tutoriais...',
+      btnClose: 'Fechar',
+      emptyTitle: 'Nenhum tutorial encontrado',
+      emptyDesc: 'Tente buscar com outro termo ou categoria',
+    },
+
+    // ── Formulário de equipe (TeamFormDialog) ─────────────────────────────
+    teamForm: {
+      titleCreate: 'Nova Equipe',
+      titleEdit: 'Editar Equipe',
+      labelName: 'Nome *',
+      placeholderName: 'Nome da equipe',
+      labelDescription: 'Descrição',
+      placeholderDescription: 'Descrição',
+      labelVisual: 'Visual da Equipe',
+      btnPhoto: 'Foto',
+      btnRemovePhoto: 'Remover',
+      labelIcon: 'Ícone',
+      labelMembers: 'Membros',
+      emptyMembers: 'Nenhum usuário disponível',
+      btnCancel: 'Cancelar',
+      btnSave: 'Salvar',
+      btnCreate: 'Criar Equipe',
+    },
+
+    // ── Seletor de responsáveis (AssigneeMultiSelect) ─────────────────────
+    assigneeSelect: {
+      placeholder: 'Selecione...',
+      btnSelectAll: 'Marcar todos',
+      btnDeselectAll: 'Desmarcar todos',
+      sectionTeams: 'Equipes',
+      emptyResults: 'Nenhum resultado',
     },
   },
 
@@ -1602,6 +1649,8 @@ export const os = {
       badgeCamera: 'Camera',
       questionTypesCount: '{n} types',
       btnNewQuestion: 'New Question',
+      videoLimitSingular: 'Your plan allows up to {n} video question per checklist.',
+      videoLimitPlural: 'Your plan allows up to {n} video questions per checklist.',
     },
 
     serviceTypes: {
@@ -1897,6 +1946,8 @@ export const os = {
       geoTimeoutFallback: 'Location took too long to respond, even trying GPS and nearby networks. Try moving to a more open area and finish the work order in a few seconds.',
       geoUnknown: 'Could not get your location. Check permissions and GPS, and try again.',
       sidebarGeneralLabel: 'General / Site',
+      checklistsCountSingular: '1 checklist',
+      checklistsCountPlural: '{n} checklists',
     },
 
     // ── Live Map / Tracking ───────────────────────────────────────────────
@@ -2369,6 +2420,8 @@ export const os = {
       typeMeasure: 'PMOC measurement',
       badgeAnswered: 'Answered',
       btnClearAnswer: 'Clear answer and show all options',
+      btnEditAnswer: 'Edit answer',
+      btnCloseEdit: 'Close editing',
       toastSaveError: 'Error saving response',
       emptyNoQuestions: 'No questions configured for this checklist.',
       emptyNoVisit: 'No questions expected for this visit.',
@@ -2382,6 +2435,46 @@ export const os = {
       tabTypes: 'Service types',
       tabTaskTypes: 'Task types',
       tabChecklists: 'Checklists',
+    },
+
+    // ── Tutorials ─────────────────────────────────────────────────────────
+    tutorials: {
+      pageTitle: 'Tutorials',
+      pageSubtitle: 'Learn how to use all Dominex features',
+      modulesCount: '{n} modules',
+      lessonsCount: '{n} lessons',
+      searchPlaceholder: 'Search tutorials...',
+      btnClose: 'Close',
+      emptyTitle: 'No tutorials found',
+      emptyDesc: 'Try searching with a different term or category',
+    },
+
+    // ── Team form (TeamFormDialog) ────────────────────────────────────────
+    teamForm: {
+      titleCreate: 'New Team',
+      titleEdit: 'Edit Team',
+      labelName: 'Name *',
+      placeholderName: 'Team name',
+      labelDescription: 'Description',
+      placeholderDescription: 'Description',
+      labelVisual: 'Team visual',
+      btnPhoto: 'Photo',
+      btnRemovePhoto: 'Remove',
+      labelIcon: 'Icon',
+      labelMembers: 'Members',
+      emptyMembers: 'No users available',
+      btnCancel: 'Cancel',
+      btnSave: 'Save',
+      btnCreate: 'Create Team',
+    },
+
+    // ── Assignee multi-select (AssigneeMultiSelect) ───────────────────────
+    assigneeSelect: {
+      placeholder: 'Select...',
+      btnSelectAll: 'Select all',
+      btnDeselectAll: 'Deselect all',
+      sectionTeams: 'Teams',
+      emptyResults: 'No results',
     },
   },
 
@@ -2741,6 +2834,8 @@ export const os = {
       badgeCamera: 'Cámara',
       questionTypesCount: '{n} tipos',
       btnNewQuestion: 'Nueva pregunta',
+      videoLimitSingular: 'Tu plan permite hasta {n} pregunta de video por lista.',
+      videoLimitPlural: 'Tu plan permite hasta {n} preguntas de video por lista.',
     },
 
     serviceTypes: {
@@ -3036,6 +3131,8 @@ export const os = {
       geoTimeoutFallback: 'La ubicación tardó demasiado, incluso intentando GPS y redes cercanas. Ve a un lugar más abierto y finaliza la orden en unos segundos.',
       geoUnknown: 'No se pudo obtener tu ubicación. Verifica permisos y GPS, e inténtalo de nuevo.',
       sidebarGeneralLabel: 'General / Local',
+      checklistsCountSingular: '1 lista',
+      checklistsCountPlural: '{n} listas',
     },
 
     // ── Mapa en vivo / Rastreo ────────────────────────────────────────────
@@ -3508,6 +3605,8 @@ export const os = {
       typeMeasure: 'Medida PMOC',
       badgeAnswered: 'Respondido',
       btnClearAnswer: 'Borrar respuesta y mostrar todas las opciones',
+      btnEditAnswer: 'Editar respuesta',
+      btnCloseEdit: 'Cerrar edición',
       toastSaveError: 'Error al guardar la respuesta',
       emptyNoQuestions: 'No hay preguntas configuradas para esta lista.',
       emptyNoVisit: 'No hay preguntas previstas para esta visita.',
@@ -3521,6 +3620,46 @@ export const os = {
       tabTypes: 'Tipos de servicio',
       tabTaskTypes: 'Tipos de tarea',
       tabChecklists: 'Listas de verificación',
+    },
+
+    // ── Tutoriales ────────────────────────────────────────────────────────
+    tutorials: {
+      pageTitle: 'Tutoriales',
+      pageSubtitle: 'Aprende a usar todos los recursos de Dominex',
+      modulesCount: '{n} módulos',
+      lessonsCount: '{n} clases',
+      searchPlaceholder: 'Buscar tutoriales...',
+      btnClose: 'Cerrar',
+      emptyTitle: 'No se encontraron tutoriales',
+      emptyDesc: 'Prueba con otro término o categoría',
+    },
+
+    // ── Formulario de equipo (TeamFormDialog) ─────────────────────────────
+    teamForm: {
+      titleCreate: 'Nuevo equipo',
+      titleEdit: 'Editar equipo',
+      labelName: 'Nombre *',
+      placeholderName: 'Nombre del equipo',
+      labelDescription: 'Descripción',
+      placeholderDescription: 'Descripción',
+      labelVisual: 'Visual del equipo',
+      btnPhoto: 'Foto',
+      btnRemovePhoto: 'Eliminar',
+      labelIcon: 'Icono',
+      labelMembers: 'Miembros',
+      emptyMembers: 'No hay usuarios disponibles',
+      btnCancel: 'Cancelar',
+      btnSave: 'Guardar',
+      btnCreate: 'Crear equipo',
+    },
+
+    // ── Selector de responsables (AssigneeMultiSelect) ────────────────────
+    assigneeSelect: {
+      placeholder: 'Seleccionar...',
+      btnSelectAll: 'Marcar todos',
+      btnDeselectAll: 'Desmarcar todos',
+      sectionTeams: 'Equipos',
+      emptyResults: 'Sin resultados',
     },
   },
 
@@ -3880,6 +4019,8 @@ export const os = {
       badgeCamera: `Caméra`,
       questionTypesCount: '{n} types',
       btnNewQuestion: 'Nouvelle question',
+      videoLimitSingular: 'Votre plan permet jusqu\'à {n} question vidéo par liste.',
+      videoLimitPlural: 'Votre plan permet jusqu\'à {n} questions vidéo par liste.',
     },
 
     serviceTypes: {
@@ -4175,6 +4316,8 @@ export const os = {
       geoTimeoutFallback: 'La localisation a mis trop de temps, même via GPS et réseaux proches. Déplacez-vous dans un endroit plus ouvert et terminez le bon dans quelques secondes.',
       geoUnknown: `Impossible d'obtenir votre localisation. Vérifiez les permissions et le GPS, puis réessayez.`,
       sidebarGeneralLabel: 'Général / Site',
+      checklistsCountSingular: '1 liste',
+      checklistsCountPlural: '{n} listes',
     },
 
     // ── Carte en direct / Suivi ───────────────────────────────────────────
@@ -4647,6 +4790,8 @@ export const os = {
       typeMeasure: 'Mesure PMOC',
       badgeAnswered: 'Répondu',
       btnClearAnswer: 'Effacer la réponse et afficher toutes les options',
+      btnEditAnswer: 'Modifier la réponse',
+      btnCloseEdit: 'Fermer la modification',
       toastSaveError: `Erreur lors de l'enregistrement`,
       emptyNoQuestions: `Aucune question configurée pour cette liste.`,
       emptyNoVisit: `Aucune question prévue pour cette visite.`,
@@ -4660,6 +4805,46 @@ export const os = {
       tabTypes: 'Types de service',
       tabTaskTypes: 'Types de tâche',
       tabChecklists: 'Listes de contrôle',
+    },
+
+    // ── Tutoriels ─────────────────────────────────────────────────────────
+    tutorials: {
+      pageTitle: 'Tutoriels',
+      pageSubtitle: 'Apprenez à utiliser toutes les fonctionnalités de Dominex',
+      modulesCount: '{n} modules',
+      lessonsCount: '{n} leçons',
+      searchPlaceholder: 'Rechercher des tutoriels...',
+      btnClose: 'Fermer',
+      emptyTitle: 'Aucun tutoriel trouvé',
+      emptyDesc: `Essayez un autre terme ou une autre catégorie`,
+    },
+
+    // ── Formulaire d'équipe (TeamFormDialog) ──────────────────────────────
+    teamForm: {
+      titleCreate: `Nouvelle équipe`,
+      titleEdit: `Modifier l'équipe`,
+      labelName: 'Nom *',
+      placeholderName: `Nom de l'équipe`,
+      labelDescription: 'Description',
+      placeholderDescription: 'Description',
+      labelVisual: `Visuel de l'équipe`,
+      btnPhoto: 'Photo',
+      btnRemovePhoto: 'Supprimer',
+      labelIcon: 'Icône',
+      labelMembers: 'Membres',
+      emptyMembers: `Aucun utilisateur disponible`,
+      btnCancel: 'Annuler',
+      btnSave: 'Enregistrer',
+      btnCreate: `Créer l'équipe`,
+    },
+
+    // ── Sélecteur de responsables (AssigneeMultiSelect) ───────────────────
+    assigneeSelect: {
+      placeholder: 'Sélectionner...',
+      btnSelectAll: 'Tout sélectionner',
+      btnDeselectAll: 'Tout désélectionner',
+      sectionTeams: 'Équipes',
+      emptyResults: 'Aucun résultat',
     },
   },
 };

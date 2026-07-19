@@ -272,7 +272,7 @@ function OsEquipmentAccordionItem({
           category={equipment?.category ?? null}
           // Contagem de checklists só quando há mais de um (evita ruído no caso
           // comum de 1 checklist por equipamento).
-          itemsLabel={hasMultiple ? `${checklists.length} checklists` : undefined}
+          itemsLabel={hasMultiple ? (checklists.length === 1 ? tFlow.checklistsCountSingular : tFlow.checklistsCountPlural.replace('{n}', String(checklists.length))) : undefined}
           brandModel={brandModel}
           environmentName={environmentName}
           onPreviewPhoto={onPreviewPhoto}

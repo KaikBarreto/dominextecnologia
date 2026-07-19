@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface Lesson {
   id: string;
@@ -122,6 +124,8 @@ const modules: Module[] = [
 ];
 
 export default function Tutorials() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.tutorials;
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [activeLesson, setActiveLesson] = useState<{ moduleId: string; lesson: Lesson } | null>(null);
@@ -144,9 +148,9 @@ export default function Tutorials() {
     <div className="space-y-6 min-w-0 overflow-hidden">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Tutoriais</h1>
+        <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
         <p className="text-muted-foreground">
-          Aprenda a usar todos os recursos do Dominex • {modules.length} módulos • {totalLessons} aulas
+          {t.pageSubtitle} • {t.modulesCount.replace('{n}', String(modules.length))} • {t.lessonsCount.replace('{n}', String(totalLessons))}
         </p>
       </div>
 
@@ -155,7 +159,7 @@ export default function Tutorials() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar tutoriais..."
+            placeholder={t.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -203,7 +207,7 @@ export default function Tutorials() {
                 </p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setActiveLesson(null)}>
-                Fechar
+                {t.btnClose}
               </Button>
             </div>
           </CardContent>
@@ -227,7 +231,7 @@ export default function Tutorials() {
                         {mod.category}
                       </Badge>
                       <span className="text-[11px] text-muted-foreground">
-                        {mod.lessons.length} aulas
+                        {t.lessonsCount.replace('{n}', String(mod.lessons.length))}
                       </span>
                     </div>
                   </div>
@@ -266,8 +270,8 @@ export default function Tutorials() {
       {filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <BookOpen className="h-12 w-12 text-muted-foreground mb-3" />
-          <p className="text-lg font-medium">Nenhum tutorial encontrado</p>
-          <p className="text-sm text-muted-foreground">Tente buscar com outro termo ou categoria</p>
+          <p className="text-lg font-medium">{t.emptyTitle}</p>
+          <p className="text-sm text-muted-foreground">{t.emptyDesc}</p>
         </div>
       )}
     </div>
