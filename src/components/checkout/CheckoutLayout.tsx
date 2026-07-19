@@ -14,6 +14,8 @@ import { CardPaymentForm } from "./CardPaymentForm";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useWhiteLabel } from "@/hooks/useWhiteLabel";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -135,6 +137,8 @@ export function CheckoutLayout({
   currentSubscriptionValue,
 }: CheckoutLayoutProps) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.common.checkout;
   // O logo Dominex deste layout vive no painel esquerdo de fundo fixo escuro
   // (`bg-gray-950`), que não muda com o tema — por isso usa sempre o logo
   // branco (proposital), sem depender de useIsDark.
@@ -146,14 +150,14 @@ export function CheckoutLayout({
   const { enabled: whiteLabelEnabled, logoUrl: whiteLabelLogoUrl, isLoading: whiteLabelLoading } = useWhiteLabel();
   const hideDominexLogo = !whiteLabelLoading && whiteLabelEnabled;
   const cpfCnpjClean = cpfCnpj.replace(/\D/g, "");
-  const isCpfCnpjValid = cpfCnpjClean.length === 11 
-    ? validateCPF(cpfCnpjClean) 
-    : cpfCnpjClean.length === 14 
-      ? validateCNPJ(cpfCnpjClean) 
+  const isCpfCnpjValid = cpfCnpjClean.length === 11
+    ? validateCPF(cpfCnpjClean)
+    : cpfCnpjClean.length === 14
+      ? validateCNPJ(cpfCnpjClean)
       : false;
 
-  const cpfCnpjError = cpfCnpjClean.length >= 11 && !isCpfCnpjValid 
-    ? (cpfCnpjClean.length <= 11 ? "CPF inválido" : "CNPJ inválido")
+  const cpfCnpjError = cpfCnpjClean.length >= 11 && !isCpfCnpjValid
+    ? (cpfCnpjClean.length <= 11 ? t.cpfInvalid : t.cnpjInvalid)
     : null;
 
   if (isLoading) {
@@ -220,7 +224,7 @@ export function CheckoutLayout({
               className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm -mt-4"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Voltar ao sistema</span>
+              <span>{t.backToSystem}</span>
             </button>
 
             <div className="space-y-6">
@@ -228,7 +232,7 @@ export function CheckoutLayout({
                 <p className="text-lg font-bold text-white">{companyName}</p>
               )}
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-widest">Resumo da assinatura</p>
+                <p className="text-xs text-gray-400 uppercase tracking-widest">{t.subscriptionSummaryLabel}</p>
                 <h2 className="text-2xl font-bold mt-1">{planName}</h2>
               </div>
 
@@ -244,20 +248,20 @@ export function CheckoutLayout({
                   </span>
                   {/* Cartão = sempre cobrança mensal recorrente, independente do
                       toggle anual (B9 revisado). PIX/boleto seguem o ciclo. */}
-                  <span className="text-gray-400">/{paymentMethod === "card" ? "mês" : billingCycle === "yearly" ? "ano" : "mês"}</span>
+                  <span className="text-gray-400">{paymentMethod === "card" ? t.billingMonthly : billingCycle === "yearly" ? t.billingYearly : t.billingMonthly}</span>
                 </div>
                 {paymentMethod === "card" ? (
                   <p className="text-sm text-emerald-400">
-                    Cobrança mensal recorrente. Cancele quando quiser.
+                    {t.recurringMonthly}
                   </p>
                 ) : billingCycle === "yearly" ? (
                   <p className="text-sm text-emerald-400">
-                    Equivale a R$ {(finalPrice / 12).toFixed(2).replace(".", ",")}/mês · 20% de desconto
+                    {t.yearlyEquivalent.replace('{monthly}', (finalPrice / 12).toFixed(2).replace(".", ","))}
                   </p>
                 ) : null}
                 {billingCycle === "yearly" && paymentMethod === "card" && (
                   <p className="text-sm text-gray-400">
-                    O desconto anual de 20% vale apenas para Pix ou Boleto à vista.
+                    {t.annualDiscountCardNote}
                   </p>
                 )}
               </div>
@@ -266,7 +270,7 @@ export function CheckoutLayout({
                 {nextDueDate && (
                   <div className="flex items-center gap-2.5 text-sm bg-white/5 rounded-lg px-3 py-2.5">
                     <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
-                    <span>Próximo vencimento após este pagamento: <span className="font-semibold">{format(new Date(nextDueDate), "dd/MM/yyyy")}</span></span>
+                    <span>{t.nextDueDate} <span className="font-semibold">{format(new Date(nextDueDate), "dd/MM/yyyy")}</span></span>
                   </div>
                 )}
 
@@ -292,10 +296,10 @@ export function CheckoutLayout({
               <div className="border-t border-white/10" />
 
               <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-widest">O que está incluso</p>
+                <p className="text-xs text-gray-400 uppercase tracking-widest">{t.includedLabel}</p>
                 <div className="flex items-center gap-3 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>{maxUsers} usuário{maxUsers > 1 ? "s" : ""}</span>
+                  <span>{maxUsers === 1 ? t.usersCount_one.replace('{count}', '1') : t.usersCount_other.replace('{count}', String(maxUsers))}</span>
                 </div>
                 {features.map((feature, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">
@@ -322,39 +326,39 @@ export function CheckoutLayout({
                   <Check className="h-10 w-10 text-white" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-bold">Pagamento Confirmado!</h3>
-                  <p className="text-muted-foreground">Sua assinatura foi ativada com sucesso.</p>
+                  <h3 className="text-2xl font-bold">{t.successTitle}</h3>
+                  <p className="text-muted-foreground">{t.successDesc}</p>
                 </div>
-                <p className="text-sm text-muted-foreground">Redirecionando para o sistema...</p>
+                <p className="text-sm text-muted-foreground">{t.successRedirecting}</p>
                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
               </div>
             ) : (
               <>
                 <div>
-                  <h2 className="text-xl font-semibold">Pagamento</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">Preencha seus dados para finalizar</p>
+                  <h2 className="text-xl font-semibold">{t.paymentTitle}</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">{t.paymentSubtitle}</p>
                 </div>
 
                 {!paymentMethod && (
                   <div className="space-y-5">
                     <div>
-                      <Label className="text-sm font-semibold text-foreground">CPF ou CNPJ *</Label>
+                      <Label className="text-sm font-semibold text-foreground">{t.labelCpfCnpj}</Label>
                       <Input
                         value={cpfCnpj}
                         onChange={(e) => onCpfCnpjChange(cpfCnpjMask(e.target.value))}
-                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                        placeholder={t.placeholderCpfCnpj}
                         maxLength={18}
                         className={cn("mt-1", cpfCnpjError && "border-destructive")}
                       />
                       {cpfCnpjError ? (
                         <p className="text-xs text-destructive mt-1">{cpfCnpjError}</p>
                       ) : (
-                        <p className="text-xs text-muted-foreground mt-1">Necessário para emissão da cobrança</p>
+                        <p className="text-xs text-muted-foreground mt-1">{t.cpfCnpjHint}</p>
                       )}
                     </div>
 
                     <div className="space-y-3">
-                      <Label className="text-base font-semibold text-foreground">Forma de pagamento</Label>
+                      <Label className="text-base font-semibold text-foreground">{t.paymentMethodLabel}</Label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <Button
                           variant="outline"
@@ -368,11 +372,11 @@ export function CheckoutLayout({
                         >
                           <CreditCardIcon className="h-6 w-6" />
                           <div className="flex flex-col items-start sm:items-center">
-                            <span className="text-sm font-bold">Cartão de Crédito</span>
-                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">Cobrança mensal</span>
+                            <span className="text-sm font-bold">{t.methodCardTitle}</span>
+                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">{t.methodCardSubtitle}</span>
                           </div>
                           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none hidden sm:inline-flex">
-                            RECOMENDADO
+                            {t.methodCardBadge}
                           </span>
                         </Button>
 
@@ -388,8 +392,8 @@ export function CheckoutLayout({
                         >
                           {isCreatingPayment && paymentMethod === "pix" ? <Loader2 className="h-6 w-6 animate-spin" /> : <QrCode className="h-6 w-6" />}
                           <div className="flex flex-col items-start sm:items-center">
-                            <span className="text-sm font-bold">PIX</span>
-                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">Instantâneo</span>
+                            <span className="text-sm font-bold">{t.methodPixTitle}</span>
+                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">{t.methodPixSubtitle}</span>
                           </div>
                         </Button>
 
@@ -405,13 +409,13 @@ export function CheckoutLayout({
                         >
                           {isCreatingPayment && paymentMethod === "boleto" ? <Loader2 className="h-6 w-6 animate-spin" /> : <FileText className="h-6 w-6" />}
                           <div className="flex flex-col items-start sm:items-center">
-                            <span className="text-sm font-bold">Boleto</span>
-                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">1-2 dias úteis</span>
+                            <span className="text-sm font-bold">{t.methodBoletoTitle}</span>
+                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">{t.methodBoletoSubtitle}</span>
                           </div>
                         </Button>
                       </div>
                       {!isCpfCnpjValid && cpfCnpj.length > 0 && !cpfCnpjError && (
-                        <p className="text-xs text-muted-foreground">Preencha o CPF ou CNPJ completo para continuar</p>
+                        <p className="text-xs text-muted-foreground">{t.cpfCnpjRequired}</p>
                       )}
                     </div>
                   </div>
@@ -420,7 +424,7 @@ export function CheckoutLayout({
                 {paymentMethod === "pix" && !paymentData && isCreatingPayment && (
                   <div className="flex flex-col items-center justify-center py-12 gap-4">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Gerando QR Code PIX...</p>
+                    <p className="text-muted-foreground">{t.generatingPix}</p>
                   </div>
                 )}
 
@@ -440,7 +444,7 @@ export function CheckoutLayout({
                 {paymentMethod === "boleto" && !paymentData && isCreatingPayment && (
                   <div className="flex flex-col items-center justify-center py-12 gap-4">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Gerando boleto...</p>
+                    <p className="text-muted-foreground">{t.generatingBoleto}</p>
                   </div>
                 )}
 
@@ -484,8 +488,8 @@ export function CheckoutLayout({
                     <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center">
                       <Check className="h-8 w-8 text-emerald-500" />
                     </div>
-                    <h3 className="text-xl font-semibold">Pagamento Processado!</h3>
-                    <p className="text-muted-foreground">Aguarde, você será redirecionado...</p>
+                    <h3 className="text-xl font-semibold">{t.cardSuccessTitle}</h3>
+                    <p className="text-muted-foreground">{t.cardSuccessDesc}</p>
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                   </div>
                 )}
@@ -501,23 +505,23 @@ export function CheckoutLayout({
           <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
             <div className="flex items-center gap-2 text-xs">
               <Shield className="h-4 w-4 text-emerald-400" />
-              <span>Pagamento Seguro</span>
+              <span>{t.footerSecurePayment}</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <Lock className="h-4 w-4 text-emerald-400" />
-              <span>Criptografia SSL</span>
+              <span>{t.footerSslEncryption}</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <Shield className="h-4 w-4 text-emerald-400" />
-              <span>Dados Protegidos</span>
+              <span>{t.footerDataProtected}</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <XCircle className="h-4 w-4 text-emerald-400" />
-              <span>Cancele Quando Quiser</span>
+              <span>{t.footerCancelAnytime}</span>
             </div>
           </div>
           <div className="text-center text-[10px] text-gray-500">
-            © {new Date().getFullYear()} Dominex · Todos os direitos reservados
+            {t.footerCopyright.replace('{year}', String(new Date().getFullYear()))}
           </div>
         </div>
       </footer>

@@ -1,5 +1,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { LogOut, Plus, UserPlus, X, Crown } from "lucide-react";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -76,6 +78,9 @@ export const AccountSwitcherDropdown = ({
   children,
   className,
 }: AccountSwitcherDropdownProps) => {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.shell.accountSwitcher;
+
   const {
     activeSession,
     otherSessions,
@@ -194,7 +199,7 @@ export const AccountSwitcherDropdown = ({
             type="button"
             onClick={() => setOpen(true)}
             className="w-full text-left"
-            aria-label="Trocar de conta"
+            aria-label={t.triggerAria}
             aria-expanded={false}
           >
             {children}
@@ -267,8 +272,8 @@ export const AccountSwitcherDropdown = ({
                       <button
                         type="button"
                         onClick={handleSignOutActive}
-                        aria-label="Sair desta conta"
-                        title="Sair desta conta"
+                        aria-label={t.signOutThisAccount}
+                        title={t.signOutThisAccount}
                         className="ml-auto h-7 w-7 p-0 flex items-center justify-center rounded-md text-foreground hover:bg-red-600 hover:text-white transition-colors shrink-0 self-start"
                       >
                         <LogOut className="h-4 w-4" />
@@ -333,7 +338,7 @@ export const AccountSwitcherDropdown = ({
                                 <button
                                   type="button"
                                   onClick={(e) => handleRemove(e, session)}
-                                  aria-label="Remover conta salva"
+                                  aria-label={t.removeAccountTooltip}
                                   // Mobile (touch): sempre visível (opacity-100).
                                   // Desktop (lg+): esconde por padrão e mostra no hover do grupo.
                                   className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all"
@@ -341,7 +346,7 @@ export const AccountSwitcherDropdown = ({
                                   <X className="h-3.5 w-3.5" />
                                 </button>
                               </TooltipTrigger>
-                              <TooltipContent side="left">Remover conta salva</TooltipContent>
+                              <TooltipContent side="left">{t.removeAccountTooltip}</TooltipContent>
                             </Tooltip>
                           </div>
                         ))}
@@ -349,7 +354,7 @@ export const AccountSwitcherDropdown = ({
                     ) : (
                       <div className="px-4 py-3 text-center">
                         <p className="text-[11px] text-muted-foreground leading-snug">
-                          Apenas essa conta está salva. Use "+ Adicionar conta" pra incluir outra.
+                          {t.onlyAccountSaved}
                         </p>
                       </div>
                     )}
@@ -368,7 +373,7 @@ export const AccountSwitcherDropdown = ({
                         <span className="h-8 w-8 shrink-0 rounded-full border border-dashed border-border flex items-center justify-center">
                           <Plus className="h-4 w-4 text-muted-foreground" />
                         </span>
-                        <span>Adicionar conta</span>
+                        <span>{t.addAccount}</span>
                       </button>
                     ) : (
                       <Tooltip>
@@ -381,11 +386,11 @@ export const AccountSwitcherDropdown = ({
                             <span className="h-8 w-8 shrink-0 rounded-full border border-dashed border-border/60 flex items-center justify-center">
                               <UserPlus className="h-4 w-4" />
                             </span>
-                            <span>Adicionar conta</span>
+                            <span>{t.addAccount}</span>
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top">
-                          Limite de 5 contas atingido — remova uma antes
+                          {t.addAccountLimitTooltip}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -404,7 +409,7 @@ export const AccountSwitcherDropdown = ({
                       className="w-full justify-center gap-2 h-9 px-3 text-[12px] font-medium text-muted-foreground hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white"
                     >
                       <LogOut className="h-3.5 w-3.5 shrink-0" />
-                      <span>Sair de todas as contas</span>
+                      <span>{t.signOutAll}</span>
                     </Button>
                   </div>
                 </div>
@@ -432,19 +437,18 @@ export const AccountSwitcherDropdown = ({
       <AlertDialog open={confirmClearAll} onOpenChange={setConfirmClearAll}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sair de todas as contas?</AlertDialogTitle>
+            <AlertDialogTitle>{t.confirmSignOutAllTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Vai sair de TODAS as contas salvas neste dispositivo. Você
-              precisará entrar com email e senha de novo pra cada conta.
+              {t.confirmSignOutAllDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.confirmSignOutAllCancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleClearAll}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Sair de todas
+              {t.confirmSignOutAllConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

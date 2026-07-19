@@ -1,6 +1,6 @@
 import { Monitor, Smartphone, Clock } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { type Locale, ptBR, enUS, es, fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,6 +16,10 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
+
+const DATE_LOCALES: Record<string, Locale> = { 'pt-br': ptBR, en: enUS, es, fr };
 
 interface SessionConfirmDialogProps {
   open: boolean;
@@ -39,12 +43,19 @@ function SessionContent({
   onCancel,
   isLoading,
 }: Omit<SessionConfirmDialogProps, "open" | "onOpenChange">) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.shell.sessionConfirm;
+  const dateLocale = DATE_LOCALES[locale] ?? ptBR;
+
+  const description =
+    existingSessions.length === 1
+      ? t.description_one
+      : t.description_other.replace('{count}', String(existingSessions.length));
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Sua conta já está conectada em {existingSessions.length === 1 ? "outro dispositivo" : `${existingSessions.length} outros dispositivos`}. Você pode continuar e usar ambos ao mesmo tempo.
-      </p>
-      
+      <p className="text-sm text-muted-foreground">{description}</p>
+
       <div className="space-y-2">
         {existingSessions.map((session, idx) => {
           const isMobileDevice = session.device_info?.toLowerCase().includes("mobile");
@@ -57,13 +68,13 @@ function SessionContent({
                   <Monitor className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span className="font-medium text-foreground">
-                  {session.device_info || "Dispositivo desconhecido"}
+                  {session.device_info || t.deviceUnknown}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 <span>
-                  Último acesso: {format(new Date(session.last_activity), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  {t.lastAccessPrefix} {format(new Date(session.last_activity), "dd/MM/yyyy 'às' HH:mm", { locale: dateLocale })}
                 </span>
               </div>
             </div>
@@ -81,16 +92,16 @@ function SessionContent({
           htmlFor="disconnect-others"
           className="text-sm text-muted-foreground cursor-pointer select-none"
         >
-          Desconectar outros acessos ao entrar
+          {t.disconnectOthersLabel}
         </label>
       </div>
 
       <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-2">
         <Button variant="outline" onClick={onCancel} disabled={isLoading} className="w-full sm:w-auto">
-          Cancelar
+          {t.btnCancel}
         </Button>
         <Button onClick={onConfirm} disabled={isLoading} className="w-full sm:w-auto" autoFocus>
-          {isLoading ? "Entrando..." : "Continuar"}
+          {isLoading ? t.btnLoading : t.btnContinue}
         </Button>
       </div>
     </div>
@@ -108,13 +119,15 @@ export function SessionConfirmDialog({
   isLoading,
 }: SessionConfirmDialogProps) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.shell.sessionConfirm;
 
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="max-w-md">
           <DrawerHeader className="text-left">
-            <DrawerTitle>Sessão ativa detectada</DrawerTitle>
+            <DrawerTitle>{t.title}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-4">
             <SessionContent
@@ -135,7 +148,7 @@ export function SessionConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Sessão ativa detectada</DialogTitle>
+          <DialogTitle>{t.title}</DialogTitle>
         </DialogHeader>
         <SessionContent
           existingSessions={existingSessions}

@@ -158,6 +158,42 @@ export const shell = {
       // MobileListItem
       moreActions: 'Mais ações',
     },
+
+    // ── Switcher de contas (AccountSwitcherDropdown) ──────────────────────────
+    accountSwitcher: {
+      // aria-label do trigger (botão fechado)
+      triggerAria: 'Trocar de conta',
+      // Tooltip do botão de remover conta
+      removeAccountTooltip: 'Remover conta salva',
+      // Botão "sair desta conta" (aria-label + title)
+      signOutThisAccount: 'Sair desta conta',
+      // Mensagem quando só há 1 conta salva
+      onlyAccountSaved: 'Apenas essa conta está salva. Use "+ Adicionar conta" pra incluir outra.',
+      // Botão de adicionar conta
+      addAccount: 'Adicionar conta',
+      // Tooltip quando limite atingido
+      addAccountLimitTooltip: 'Limite de 5 contas atingido — remova uma antes',
+      // Botão "sair de todas"
+      signOutAll: 'Sair de todas as contas',
+      // Confirmação de "sair de todas"
+      confirmSignOutAllTitle: 'Sair de todas as contas?',
+      confirmSignOutAllDesc: 'Vai sair de TODAS as contas salvas neste dispositivo. Você precisará entrar com email e senha de novo pra cada conta.',
+      confirmSignOutAllCancel: 'Cancelar',
+      confirmSignOutAllConfirm: 'Sair de todas',
+    },
+
+    // ── Diálogo de confirmação de sessão (SessionConfirmDialog) ───────────────
+    sessionConfirm: {
+      title: 'Sessão ativa detectada',
+      description_one: 'Sua conta já está conectada em outro dispositivo. Você pode continuar e usar ambos ao mesmo tempo.',
+      description_other: 'Sua conta já está conectada em {count} outros dispositivos. Você pode continuar e usar ambos ao mesmo tempo.',
+      deviceUnknown: 'Dispositivo desconhecido',
+      lastAccessPrefix: 'Último acesso:',
+      disconnectOthersLabel: 'Desconectar outros acessos ao entrar',
+      btnCancel: 'Cancelar',
+      btnContinue: 'Continuar',
+      btnLoading: 'Entrando...',
+    },
   },
 
   en: {
@@ -267,6 +303,32 @@ export const shell = {
       fabOpenMenu: 'Open tools menu',
       moreActions: 'More actions',
     },
+
+    accountSwitcher: {
+      triggerAria: 'Switch account',
+      removeAccountTooltip: 'Remove saved account',
+      signOutThisAccount: 'Sign out of this account',
+      onlyAccountSaved: 'Only this account is saved. Use "+ Add account" to include another.',
+      addAccount: 'Add account',
+      addAccountLimitTooltip: '5-account limit reached, remove one first',
+      signOutAll: 'Sign out of all accounts',
+      confirmSignOutAllTitle: 'Sign out of all accounts?',
+      confirmSignOutAllDesc: 'You will be signed out of ALL saved accounts on this device. You will need to sign in again with email and password for each account.',
+      confirmSignOutAllCancel: 'Cancel',
+      confirmSignOutAllConfirm: 'Sign out of all',
+    },
+
+    sessionConfirm: {
+      title: 'Active session detected',
+      description_one: 'Your account is already connected on another device. You can continue and use both at the same time.',
+      description_other: 'Your account is already connected on {count} other devices. You can continue and use all of them at the same time.',
+      deviceUnknown: 'Unknown device',
+      lastAccessPrefix: 'Last access:',
+      disconnectOthersLabel: 'Disconnect other sessions when signing in',
+      btnCancel: 'Cancel',
+      btnContinue: 'Continue',
+      btnLoading: 'Signing in...',
+    },
   },
 
   es: {
@@ -370,6 +432,32 @@ export const shell = {
       fabCloseMenu: 'Cerrar menú',
       fabOpenMenu: 'Abrir menú de herramientas',
       moreActions: 'Más acciones',
+    },
+
+    accountSwitcher: {
+      triggerAria: 'Cambiar de cuenta',
+      removeAccountTooltip: 'Eliminar cuenta guardada',
+      signOutThisAccount: 'Salir de esta cuenta',
+      onlyAccountSaved: 'Solo esta cuenta está guardada. Usa "+ Añadir cuenta" para incluir otra.',
+      addAccount: 'Añadir cuenta',
+      addAccountLimitTooltip: 'Límite de 5 cuentas alcanzado, elimina una primero',
+      signOutAll: 'Salir de todas las cuentas',
+      confirmSignOutAllTitle: '¿Salir de todas las cuentas?',
+      confirmSignOutAllDesc: 'Saldrás de TODAS las cuentas guardadas en este dispositivo. Deberás iniciar sesión de nuevo con email y contraseña en cada cuenta.',
+      confirmSignOutAllCancel: 'Cancelar',
+      confirmSignOutAllConfirm: 'Salir de todas',
+    },
+
+    sessionConfirm: {
+      title: 'Sesión activa detectada',
+      description_one: 'Tu cuenta ya está conectada en otro dispositivo. Puedes continuar y usar ambos al mismo tiempo.',
+      description_other: 'Tu cuenta ya está conectada en {count} otros dispositivos. Puedes continuar y usarlos todos al mismo tiempo.',
+      deviceUnknown: 'Dispositivo desconocido',
+      lastAccessPrefix: 'Último acceso:',
+      disconnectOthersLabel: 'Desconectar otras sesiones al entrar',
+      btnCancel: 'Cancelar',
+      btnContinue: 'Continuar',
+      btnLoading: 'Entrando...',
     },
 
     languageSwitcher: {
@@ -479,6 +567,32 @@ export const shell = {
       fabCloseMenu: 'Fermer le menu',
       fabOpenMenu: "Ouvrir le menu d'outils",
       moreActions: "Plus d'actions",
+    },
+
+    accountSwitcher: {
+      triggerAria: 'Changer de compte',
+      removeAccountTooltip: 'Supprimer le compte enregistré',
+      signOutThisAccount: 'Se déconnecter de ce compte',
+      onlyAccountSaved: "Seul ce compte est enregistré. Utilisez \"+ Ajouter un compte\" pour en inclure un autre.",
+      addAccount: 'Ajouter un compte',
+      addAccountLimitTooltip: 'Limite de 5 comptes atteinte, supprimez-en un d\'abord',
+      signOutAll: 'Se déconnecter de tous les comptes',
+      confirmSignOutAllTitle: 'Se déconnecter de tous les comptes ?',
+      confirmSignOutAllDesc: "Vous serez déconnecté de TOUS les comptes enregistrés sur cet appareil. Vous devrez vous reconnecter avec l'e-mail et le mot de passe de chaque compte.",
+      confirmSignOutAllCancel: 'Annuler',
+      confirmSignOutAllConfirm: 'Se déconnecter de tous',
+    },
+
+    sessionConfirm: {
+      title: 'Session active détectée',
+      description_one: "Votre compte est déjà connecté sur un autre appareil. Vous pouvez continuer et utiliser les deux en même temps.",
+      description_other: "Votre compte est déjà connecté sur {count} autres appareils. Vous pouvez continuer et les utiliser tous en même temps.",
+      deviceUnknown: 'Appareil inconnu',
+      lastAccessPrefix: 'Dernier accès :',
+      disconnectOthersLabel: "Déconnecter les autres sessions à la connexion",
+      btnCancel: 'Annuler',
+      btnContinue: 'Continuer',
+      btnLoading: 'Connexion...',
     },
 
     languageSwitcher: {

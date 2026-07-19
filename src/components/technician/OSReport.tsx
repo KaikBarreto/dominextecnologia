@@ -21,7 +21,6 @@ import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import type { ServiceOrder, FormQuestion } from '@/types/database';
 import { osTypeLabels, getOsTypeLabel } from '@/types/database';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG, REPORT_HEADER_DARK_GRADIENT } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
@@ -31,6 +30,9 @@ import { ContractInfoCard } from './ContractInfoCard';
 import type { ReportChecklistItem } from './ReportChecklist';
 import { OsActionFooter } from './OsDesktopShell';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatDateTime } from '@/lib/format';
 
 interface OSPhoto {
   id: string;
@@ -143,7 +145,7 @@ const GENERAL_KEY = '__geral__';
 // Helper to safely extract joined object (Supabase may return array for some joins)
 const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
 
-function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: string; alt: string; className?: string; onClick?: () => void; wrapperClassName?: string }) {
+function ReportImage({ src, alt, className, onClick, wrapperClassName, errorLabel }: { src: string; alt: string; className?: string; onClick?: () => void; wrapperClassName?: string; errorLabel?: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   return (
@@ -161,7 +163,7 @@ function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: 
       />
       {error && (
         <div className={cn('bg-slate-100 rounded-md flex items-center justify-center text-xs text-slate-400', className?.replace(/cursor-pointer|hover:opacity-80|transition-opacity/g, '') || 'w-20 h-20')}>
-          Erro
+          {errorLabel ?? 'Err.'}
         </div>
       )}
     </div>
@@ -172,6 +174,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
   // (e nao como o usuario logado de outra empresa).
   const db = forceReadOnly ? supabaseAnon : supabase;
+  const { locale, timezone } = useAppLocaleContext();
+  const tR = MESSAGES[locale].app.os.osDocumentReport;
   // Apply snapshot fallback for deleted entities
   const snapshot = (rawServiceOrder as any).snapshot_data;
   const serviceOrder = {
@@ -787,9 +791,9 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       osId: serviceOrder.id,
     });
     navigator.clipboard.writeText(url).then(() => {
-      toast({ title: 'Link copiado!' });
+      toast({ title: tR.toastLinkCopied });
     }).catch(() => {
-      toast({ variant: 'destructive', title: 'Erro ao copiar link' });
+      toast({ variant: 'destructive', title: tR.toastLinkCopyError });
     });
   };
 
@@ -823,7 +827,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       await generateReportPDF(reportRef.current, `OS-${orderNum}${companyName}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
-      toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
+      toast({ variant: 'destructive', title: tR.toastPdfError, description: tR.toastPdfErrorDesc });
     } finally {
       setForcedAllOpen(false);
       setOpenReportKey(prevOpen);
@@ -846,7 +850,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             {response.question?.question_type === 'boolean' ? (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                 {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                {response.response_value === 'true' ? 'Sim' : 'Não'}
+                {response.response_value === 'true' ? tR.answerYes : tR.answerNo}
               </span>
             ) : response.question?.question_type === 'conformidade' ? (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -855,7 +859,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   : 'bg-slate-500 text-white'
               }`}>
                 {response.response_value === 'Conforme' ? <Check className="h-3 w-3" /> : response.response_value === 'Não Conforme' ? <X className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-                {response.response_value || 'N/A'}
+                {response.response_value === 'Conforme' ? tR.conformityConforme : response.response_value === 'Não Conforme' ? tR.conformityNaoConforme : (tR.answerNA)}
               </span>
             ) : (response.question?.question_type === 'number' || response.question?.question_type === 'pmoc_measurement') && hasTextValue ? (() => {
               // Numérico/medição: valor + unidade, faixa esperada e aviso visual
@@ -875,11 +879,14 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   </span>
                   {(min != null || max != null) && (
                     <p className="text-xs text-slate-400">
-                      Faixa esperada: {min ?? '—'} a {max ?? '—'}{unit ? ` ${unit}` : ''}
+                      {tR.expectedRange
+                        .replace('{min}', String(min ?? '—'))
+                        .replace('{max}', String(max ?? '—'))
+                        .replace('{unit}', unit ?? '')}
                     </p>
                   )}
                   {isOutOfRange && (
-                    <p className="text-xs text-amber-700">Valor fora da faixa esperada.</p>
+                    <p className="text-xs text-amber-700">{tR.outOfRangeWarning}</p>
                   )}
                 </div>
               );
@@ -911,14 +918,14 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                           urls={urls}
                           onOpen={openFullscreen}
                           renderImage={(url, alt, imgClassName) => (
-                            <ReportImage src={url} alt={alt} className={imgClassName} wrapperClassName="block w-full h-full" />
+                            <ReportImage src={url} alt={alt} className={imgClassName} wrapperClassName="block w-full h-full" errorLabel={tR.imgError} />
                           )}
                         />
                       </div>
                       {/* Desktop-tela + SEMPRE no print: grid com TODAS as fotos visíveis (como antes). */}
                       <div className="hidden md:flex print:flex flex-wrap gap-2">
                         {urls.map((url, i) => (
-                          <ReportImage key={i} src={url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openFullscreen(i)} />
+                          <ReportImage key={i} src={url} alt="photo" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openFullscreen(i)} errorLabel={tR.imgError} />
                         ))}
                       </div>
                     </>
@@ -954,7 +961,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             } : null}
             orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
             osType={getOsTypeLabel(serviceOrder)}
-            checkOutTime={!partialReport && serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
+            checkOutTime={!partialReport && serviceOrder.check_out_time ? formatDateTime(serviceOrder.check_out_time, locale, timezone) : null}
             config={headerConfig}
           />
         </div>
@@ -964,7 +971,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           <div className="grid grid-cols-1 gap-4 max-w-full overflow-hidden">
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5" /> Cliente
+                <User className="h-3.5 w-3.5" /> {tR.sectionClient}
               </h3>
               <div className="flex gap-3">
                 {serviceOrder.customer?.photo_url && (
@@ -1029,7 +1036,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               return uniqueEquipmentItems.length > 0 ? (
                 <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
+                    <Wrench className="h-3.5 w-3.5" /> {tR.sectionEquipments}
                     <span className="ml-auto text-slate-400 font-normal">{uniqueEquipmentItems.length}</span>
                   </h3>
                   {(() => {
@@ -1067,7 +1074,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                         <Accordion type="single" collapsible className="w-full">
                           <AccordionItem value="equipments" className="border-0">
                             <AccordionTrigger className="hover:no-underline py-2 text-sm text-slate-600">
-                              Ver {uniqueEquipmentItems.length} equipamentos
+                              {tR.btnSeeEquipments.replace('{n}', String(uniqueEquipmentItems.length))}
                             </AccordionTrigger>
                             <AccordionContent>
                               <div className="space-y-3">
@@ -1088,17 +1095,17 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               ) : !partialReport && serviceOrder.equipment && (
               <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
+                  <Wrench className="h-3.5 w-3.5" /> {tR.sectionEquipments}
                 </h3>
                 <p className="font-semibold text-slate-900">{serviceOrder.equipment.name}</p>
                 <p className="text-sm text-slate-600">
                   {serviceOrder.equipment.brand} {serviceOrder.equipment.model}
                 </p>
                 {serviceOrder.equipment.serial_number && (
-                  <p className="text-xs text-slate-400 mt-1">S/N: {serviceOrder.equipment.serial_number}</p>
+                  <p className="text-xs text-slate-400 mt-1">{tR.labelSerialNumber} {serviceOrder.equipment.serial_number}</p>
                 )}
                 {serviceOrder.equipment.location && (
-                  <p className="text-xs text-slate-400">Local: {serviceOrder.equipment.location}</p>
+                  <p className="text-xs text-slate-400">{tR.labelLocalEquipment} {serviceOrder.equipment.location}</p>
                 )}
               </div>
             );
@@ -1108,7 +1115,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           {/* Description */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.description || (serviceOrder as any).service_type) && (
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição do Chamado</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{tR.sectionCallDescription}</h3>
               {(serviceOrder as any).service_type && (
                 <p className="text-sm font-semibold text-slate-800 mb-1">{(serviceOrder as any).service_type.name}</p>
               )}
@@ -1122,7 +1129,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           {(serviceOrder.check_in_time || serviceOrder.check_out_time) && (
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" /> Execução
+                <Clock className="h-3.5 w-3.5" /> {tR.sectionExecution}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {serviceOrder.check_in_time && (
@@ -1141,12 +1148,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                       </button>
                     )}
                     <div>
-                      <p className="text-xs text-slate-400 font-semibold">CHECK-IN</p>
+                      <p className="text-xs text-slate-400 font-semibold">{tR.labelCheckin}</p>
                       {technicianInfo && (
                         <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
                       )}
                       <p className="text-sm font-medium text-slate-800">
-                        {format(new Date(serviceOrder.check_in_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {formatDateTime(serviceOrder.check_in_time!, locale, timezone)}
                       </p>
                       {checkInLoc && (
                         <div className="text-xs text-slate-400 mt-0.5">
@@ -1181,12 +1188,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                       </button>
                     )}
                     <div>
-                      <p className="text-xs text-slate-400 font-semibold">CHECK-OUT</p>
+                      <p className="text-xs text-slate-400 font-semibold">{tR.labelCheckout}</p>
                       {technicianInfo && (
                         <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
                       )}
                       <p className="text-sm font-medium text-slate-800">
-                        {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {formatDateTime(serviceOrder.check_out_time!, locale, timezone)}
                       </p>
                       {checkOutLoc && (
                         <div className="text-xs text-slate-400 mt-0.5">
@@ -1209,12 +1216,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               {!partialReport && serviceOrder.check_in_time && serviceOrder.check_out_time && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <p className="text-xs text-slate-500">
-                    <strong>Duração:</strong>{' '}
+                    <strong>{tR.labelDuration}</strong>{' '}
                     {(() => {
-                      const diff = new Date(serviceOrder.check_out_time).getTime() - new Date(serviceOrder.check_in_time).getTime();
+                      const diff = new Date(serviceOrder.check_out_time!).getTime() - new Date(serviceOrder.check_in_time!).getTime();
                       const hours = Math.floor(diff / 3600000);
                       const minutes = Math.floor((diff % 3600000) / 60000);
-                      return `${hours}h ${minutes}min`;
+                      return tR.durationFormat.replace('{h}', String(hours)).replace('{m}', String(minutes));
                     })()}
                   </p>
                 </div>
@@ -1226,12 +1233,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           {photos.length > 0 && (
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Camera className="h-3.5 w-3.5" /> Registro Fotográfico ({photos.length} fotos)
+                <Camera className="h-3.5 w-3.5" /> {tR.sectionPhotos.replace('{n}', String(photos.length))}
               </h3>
               {[
-                { label: 'Antes', items: beforePhotos },
-                { label: 'Durante', items: duringPhotos },
-                { label: 'Depois', items: afterPhotos },
+                { label: tR.photoLabelBefore, items: beforePhotos },
+                { label: tR.photoLabelDuring, items: duringPhotos },
+                { label: tR.photoLabelAfter, items: afterPhotos },
               ].filter(g => g.items.length > 0).map(group => (
                 <div key={group.label} className="mb-3 last:mb-0">
                   <p className="text-xs font-semibold text-slate-600 mb-2 uppercase">{group.label}</p>
@@ -1295,24 +1302,24 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <FileSignature className="h-3.5 w-3.5" /> Detalhes do Serviço
+                <FileSignature className="h-3.5 w-3.5" /> {tR.sectionServiceDetails}
               </h3>
               <div className="space-y-3">
                 {serviceOrder.diagnosis && (
                   <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase">Diagnóstico</p>
+                    <p className="text-xs font-semibold text-slate-500 uppercase">{tR.labelDiagnosis}</p>
                     <p className="text-sm text-slate-700 mt-0.5 break-words">{serviceOrder.diagnosis}</p>
                   </div>
                 )}
                 {serviceOrder.solution && (
                   <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase">Solução Aplicada</p>
+                    <p className="text-xs font-semibold text-slate-500 uppercase">{tR.labelSolution}</p>
                     <p className="text-sm text-slate-700 mt-0.5 break-words">{serviceOrder.solution}</p>
                   </div>
                 )}
                 {serviceOrder.notes && (
                   <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase">Observações</p>
+                    <p className="text-xs font-semibold text-slate-500 uppercase">{tR.labelNotes}</p>
                     <p className="text-sm text-slate-700 mt-0.5 break-words">{serviceOrder.notes}</p>
                   </div>
                 )}
@@ -1323,25 +1330,25 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           {/* Financial Summary */}
           {(serviceOrder.labor_value || serviceOrder.parts_value || serviceOrder.total_value) && (
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Resumo Financeiro</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{tR.sectionFinancial}</h3>
               <div className="space-y-1 text-sm">
                 {serviceOrder.labor_hours && (
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Horas Trabalhadas</span>
+                    <span className="text-slate-600">{tR.labelLaborHours}</span>
                     <span className="font-medium text-slate-800">{serviceOrder.labor_hours}h</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Mão de Obra</span>
+                  <span className="text-slate-600">{tR.labelLabor}</span>
                   <span className="font-medium text-slate-800">{formatCurrency(serviceOrder.labor_value)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Peças / Materiais</span>
+                  <span className="text-slate-600">{tR.labelParts}</span>
                   <span className="font-medium text-slate-800">{formatCurrency(serviceOrder.parts_value)}</span>
                 </div>
                 <Separator className="my-2 bg-slate-300" />
                 <div className="flex justify-between text-base">
-                  <span className="font-bold text-slate-900">Total</span>
+                  <span className="font-bold text-slate-900">{tR.labelTotal}</span>
                   <span className="font-bold text-slate-900">{formatCurrency(serviceOrder.total_value)}</span>
                 </div>
               </div>
@@ -1353,7 +1360,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               {/* Seção de assinaturas é centralizada de propósito (título + conteúdo) — decisão CEO. */}
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center justify-center text-center gap-1.5">
-                <PenTool className="h-3.5 w-3.5" /> Assinaturas
+                <PenTool className="h-3.5 w-3.5" /> {tR.sectionSignatures}
               </h3>
               <div className="flex flex-wrap justify-center gap-4">
                 {(serviceOrder as any).tech_signature && (() => {
@@ -1371,8 +1378,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   });
                   return (
                     <div className="flex flex-col items-center text-center">
-                      <img src={(serviceOrder as any).tech_signature} alt="Assinatura Técnico" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
-                      <p className="text-xs text-slate-500 font-semibold">Assinatura do Técnico</p>
+                      <img src={(serviceOrder as any).tech_signature} alt={tR.signatureTech} className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
+                      <p className="text-xs text-slate-500 font-semibold">{tR.signatureTech}</p>
                       {stamp && <p className="text-[10px] leading-snug text-slate-500 break-words mt-0.5 max-w-[16rem]">{stamp}</p>}
                     </div>
                   );
@@ -1390,8 +1397,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   });
                   return (
                     <div className="flex flex-col items-center text-center">
-                      <img src={(serviceOrder as any).client_signature} alt="Assinatura Cliente" className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
-                      <p className="text-xs text-slate-500 font-semibold">Assinatura do Cliente</p>
+                      <img src={(serviceOrder as any).client_signature} alt={tR.signatureClient} className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
+                      <p className="text-xs text-slate-500 font-semibold">{tR.signatureClient}</p>
                       {stamp && <p className="text-[10px] leading-snug text-slate-500 break-words mt-0.5 max-w-[16rem]">{stamp}</p>}
                     </div>
                   );
@@ -1414,7 +1421,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                     <div key={response.id} className="flex flex-col items-center text-center">
                       <p className="text-sm font-medium text-slate-700 break-words mb-1.5">{response.question?.question}</p>
                       <img src={response.response_value} alt={response.question?.question} className="h-20 mx-auto border-b-2 border-slate-300 mb-1" />
-                      <p className="text-xs text-slate-500 font-semibold">Assinatura</p>
+                      <p className="text-xs text-slate-500 font-semibold">{tR.signatureFallback}</p>
                       {stamp && <p className="text-[10px] leading-snug text-slate-500 break-words mt-0.5 max-w-[16rem]">{stamp}</p>}
                     </div>
                   );
@@ -1427,12 +1434,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           {ratingData && ratingData.rated_at && (
             <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Star className="h-3.5 w-3.5" /> Avaliação do Cliente
+                <Star className="h-3.5 w-3.5" /> {tR.sectionRating}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div>
                   <p className="text-2xl font-bold text-slate-800">{ratingData.nps_score}</p>
-                  <p className="text-xs text-slate-500">NPS (0-10)</p>
+                  <p className="text-xs text-slate-500">{tR.ratingNpsLabel}</p>
                 </div>
                 <div>
                   <div className="flex justify-center gap-0.5">
@@ -1440,7 +1447,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                       <Star key={s} className={`h-4 w-4 ${s <= (ratingData.quality_rating || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Qualidade</p>
+                  <p className="text-xs text-slate-500 mt-1">{tR.ratingQuality}</p>
                 </div>
                 <div>
                   <div className="flex justify-center gap-0.5">
@@ -1448,7 +1455,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                       <Star key={s} className={`h-4 w-4 ${s <= (ratingData.punctuality_rating || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Pontualidade</p>
+                  <p className="text-xs text-slate-500 mt-1">{tR.ratingPunctuality}</p>
                 </div>
                 <div>
                   <div className="flex justify-center gap-0.5">
@@ -1456,7 +1463,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                       <Star key={s} className={`h-4 w-4 ${s <= (ratingData.professionalism_rating || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Profissionalismo</p>
+                  <p className="text-xs text-slate-500 mt-1">{tR.ratingProfessionalism}</p>
                 </div>
               </div>
               {ratingData.comment && (
@@ -1470,7 +1477,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
           {/* Footer */}
           <div data-pdf-section className="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
-            <p>Relatório gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+            <p>{tR.footerGeneratedAt.replace('{datetime}', formatDateTime(new Date(), locale, timezone))}</p>
             {company?.name && <p className="mt-0.5">{company.name}</p>}
           </div>
 
@@ -1485,15 +1492,15 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         <div className="flex flex-col sm:flex-row gap-2 print:hidden">
           <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
             <Download className="h-4 w-4 mr-2" />
-            {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+            {generating ? tR.btnGeneratingPdf : tR.btnDownloadPdf}
           </Button>
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
-            Imprimir
+            {tR.btnPrint}
           </Button>
           <Button variant="outline" onClick={handleCopyLink}>
             <Link2 className="h-4 w-4 mr-2" />
-            Copiar Link
+            {tR.btnCopyLink}
           </Button>
         </div>
       )}
@@ -1516,7 +1523,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               disabled={generating}
             >
               <Download className="h-4 w-4 mr-2" />
-              {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+              {generating ? tR.btnGeneratingPdf : tR.btnDownloadPdf}
             </Button>
             {/* modal={false}: não trava o scroll do body (consistente com o rodapé
                 de execução; evita qualquer salto de layout ao abrir). */}
@@ -1526,7 +1533,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   variant="ghost"
                   size="icon"
                   className="shrink-0 h-11 w-11 text-white hover:bg-white/10 [&_svg]:size-6"
-                  aria-label="Mais ações"
+                  aria-label={tR.ariaMoreActions}
                 >
                   <Menu className="h-6 w-6" />
                 </Button>
@@ -1534,11 +1541,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
                 <DropdownMenuItem onClick={handleCopyLink}>
                   <Link2 className="h-4 w-4 mr-2" />
-                  Copiar Link
+                  {tR.btnCopyLink}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handlePrint}>
                   <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
+                  {tR.btnPrint}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1552,15 +1559,15 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         <OsActionFooter>
           <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
             <Download className="h-4 w-4 mr-2" />
-            {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+            {generating ? tR.btnGeneratingPdf : tR.btnDownloadPdf}
           </Button>
           <Button variant="outline" onClick={handlePrint} className="flex-1">
             <Printer className="h-4 w-4 mr-2" />
-            Imprimir
+            {tR.btnPrint}
           </Button>
           <Button variant="outline" onClick={handleCopyLink} className="flex-1">
             <Link2 className="h-4 w-4 mr-2" />
-            Copiar Link
+            {tR.btnCopyLink}
           </Button>
         </OsActionFooter>
       )}

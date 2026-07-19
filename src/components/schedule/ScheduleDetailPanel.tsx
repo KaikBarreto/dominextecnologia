@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,7 +10,6 @@ import { EventCard, getStatusBadgeClass } from './EventCard';
 import { OrderTimeline } from './OrderTimeline';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { getOsTypeLabel } from '@/types/database';
 import { buildCustomerAddress } from '@/utils/geolocation';
@@ -20,14 +18,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-
-
-const osTypeLabels: Record<OsType, string> = {
-  manutencao_preventiva: 'Manutenção Preventiva',
-  manutencao_corretiva: 'Manutenção Corretiva',
-  instalacao: 'Instalação',
-  visita_tecnica: 'Visita Técnica',
-};
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { getDateFnsLocale } from '@/lib/format';
 
 interface AssigneeInfo {
   id: string;
@@ -79,6 +72,17 @@ function OrderDetail({
   onResume?: (id: string) => void;
 }) {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.scheduleDetail;
+  const tTypeFallback = MESSAGES[locale].app.os.typeFallback;
+
+  const osTypeLabels: Record<OsType, string> = {
+    manutencao_preventiva: tTypeFallback.manutencao_preventiva,
+    manutencao_corretiva: tTypeFallback.manutencao_corretiva,
+    instalacao: tTypeFallback.instalacao,
+    visita_tecnica: tTypeFallback.visita_tecnica,
+  };
+
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date, (order as any).partial_finish);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -107,11 +111,9 @@ function OrderDetail({
 
   const handleDeleteClick = () => {
     if (isFinancialEvent && hasFinancialGroup) {
-      // Financial event with contract/installment group - show "only this" or "all" options
       setDeleteMode(null);
       setShowDeleteConfirm(true);
     } else if (isFinancialEvent) {
-      // Single financial event
       setDeleteMode('single');
       setShowDeleteConfirm(true);
     } else if (hasRecurrenceGroup) {
@@ -148,19 +150,19 @@ function OrderDetail({
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h3 className="text-sm font-semibold">{isTask ? 'Resumo da Tarefa' : 'Resumo da OS'}</h3>
+        <h3 className="text-sm font-semibold">{isTask ? t.summaryTask : t.summaryOs}</h3>
       </div>
       <ScrollArea className="h-[calc(100%-3rem)]">
         <div className="space-y-4 pr-3 overflow-hidden">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <Badge className={cn('text-xs shrink-0', statusBadge.className)}>{statusBadge.label}</Badge>
             {isTask ? (
-              <Badge variant="outline" className="text-xs truncate max-w-[140px] border-violet-500/50 text-violet-400">Tarefa</Badge>
+              <Badge variant="outline" className="text-xs truncate max-w-[140px] border-violet-500/50 text-violet-400">{t.badgeTask}</Badge>
             ) : (
               <Badge variant="outline" className="text-xs truncate max-w-[140px]">{getOsTypeLabel(order, osTypeLabels)}</Badge>
             )}
             {order.order_number > 0 && (
-              <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : 'OS #'}{order.order_number}</Badge>
+              <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : t.osPrefix}{order.order_number}</Badge>
             )}
             {!isTask && (order as any).contract?.is_pmoc === true && (
               <Badge className="text-xs shrink-0 bg-blue-600 text-white hover:bg-blue-600">PMOC</Badge>
@@ -173,8 +175,8 @@ function OrderDetail({
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span>
               {order.scheduled_date
-                ? format(new Date(order.scheduled_date + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR })
-                : 'Sem data'}{' '}
+                ? format(new Date(order.scheduled_date + 'T12:00:00'), "dd 'de' MMMM", { locale: getDateFnsLocale(locale) })
+                : t.noDate}{' '}
               às {order.scheduled_time?.slice(0, 5) || '--:--'}
             </span>
           </div>
@@ -196,7 +198,7 @@ function OrderDetail({
           <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
             <div className="flex items-center gap-2 text-sm font-medium">
               <User className="h-4 w-4 text-primary" />
-              {order.customer?.name || 'Cliente não informado'}
+              {order.customer?.name || t.noCustomer}
             </div>
             {order.customer?.phone && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -225,7 +227,7 @@ function OrderDetail({
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
                 >
                   <img src="/icons/google-maps.png" alt="Maps" className="h-3.5 w-3.5" />
-                  Abrir com Maps
+                  {t.openWithMaps}
                 </a>
                 <a
                   href={`https://waze.com/ul?q=${encodeURIComponent(buildCustomerAddress(order.customer))}&navigate=yes`}
@@ -234,7 +236,7 @@ function OrderDetail({
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
                 >
                   <img src="/icons/waze.png" alt="Waze" className="h-3.5 w-3.5" />
-                  Abrir com Waze
+                  {t.openWithWaze}
                 </a>
               </div>
             )}
@@ -246,7 +248,7 @@ function OrderDetail({
             <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <UsersRound className="h-4 w-4 text-primary" />
-                Responsáveis
+                {t.sectionAssignees}
               </div>
               <div className="pl-6 space-y-1.5">
                 {teamInfo && (() => {
@@ -317,7 +319,7 @@ function OrderDetail({
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <FileText className="h-4 w-4 text-muted-foreground" />
-                Descrição
+                {t.sectionDescription}
               </div>
               <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
             </div>
@@ -336,7 +338,7 @@ function OrderDetail({
               className="w-full mt-4"
             >
               <ClipboardList className="h-4 w-4 mr-2" />
-              {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
+              {order.status === 'concluida' ? t.btnServiceReport : t.btnFillOs}
             </Button>
           )}
           {isTask && onFinalize && order.status !== 'concluida' && (
@@ -345,7 +347,7 @@ function OrderDetail({
               onClick={() => setShowFinalizeConfirm(true)}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              {isFinancialEvent ? 'Concluir Cobrança' : 'Finalizar Tarefa'}
+              {isFinancialEvent ? t.btnFinalizeBilling : t.btnFinalizeTask}
             </Button>
           )}
           {isTask && onReopen && order.status === 'concluida' && (
@@ -355,7 +357,7 @@ function OrderDetail({
               onClick={() => setShowReopenConfirm(true)}
             >
               <RotateCcw className="h-4 w-4 mr-2" />
-              {isFinancialEvent ? 'Reabrir Cobrança' : 'Reabrir Tarefa'}
+              {isFinancialEvent ? t.btnReopenBilling : t.btnReopenTask}
             </Button>
           )}
           {!isTask && onFinalize && order.status !== 'concluida' && (
@@ -364,7 +366,7 @@ function OrderDetail({
               onClick={() => setShowFinalizeConfirm(true)}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Finalizar OS
+              {t.btnFinalizeOs}
             </Button>
           )}
           {!isTask && onReopen && order.status === 'concluida' && (
@@ -374,7 +376,7 @@ function OrderDetail({
               onClick={() => setShowReopenConfirm(true)}
             >
               <RotateCcw className="h-4 w-4 mr-2" />
-              Reabrir OS
+              {t.btnReopenOs}
             </Button>
           )}
           {!isTask && onPause && (order.status === 'em_andamento' || order.status === 'a_caminho') && (
@@ -384,7 +386,7 @@ function OrderDetail({
               onClick={() => onPause(order.id)}
             >
               <Pause className="h-4 w-4 mr-2" />
-              Pausar OS
+              {t.btnPauseOs}
             </Button>
           )}
           {!isTask && onResume && order.status === 'pausada' && (
@@ -394,7 +396,7 @@ function OrderDetail({
               onClick={() => onResume(order.id)}
             >
               <Play className="h-4 w-4 mr-2" />
-              Retomar OS
+              {t.btnResumeOs}
             </Button>
           )}
           <div className="grid grid-cols-2 gap-2 mt-2">
@@ -405,7 +407,7 @@ function OrderDetail({
                 className="border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
               >
                 <Pencil className="h-4 w-4 mr-2" />
-                Editar
+                {t.btnEdit}
               </Button>
             )}
             {onDelete && (
@@ -415,7 +417,7 @@ function OrderDetail({
                 onClick={handleDeleteClick}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
+                {t.btnDelete}
               </Button>
             )}
           </div>
@@ -427,7 +429,7 @@ function OrderDetail({
               onClick={handleCopyTrackingLink}
             >
               {linkCopied ? <Check className="h-3.5 w-3.5 mr-1.5 shrink-0" /> : <Link2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />}
-              <span className="truncate">{linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento'}</span>
+              <span className="truncate">{linkCopied ? t.linkCopied : t.btnCopyLink}</span>
             </Button>
           )}
 
@@ -437,15 +439,17 @@ function OrderDetail({
               <AlertDialogHeader>
                 <AlertDialogTitle>
                   {isFinancialEvent
-                    ? 'Excluir cobrança?'
-                    : `Excluir ${isTask ? 'Tarefa' : 'OS'} #${order.order_number}?`}
+                    ? t.deleteBillingTitle
+                    : isTask
+                    ? t.deleteTaskTitle
+                    : t.deleteOsTitle.replace('{number}', String(order.order_number))}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {isFinancialEvent && hasFinancialGroup && !deleteMode
-                    ? 'Esta cobrança faz parte de um contrato. O que deseja fazer?'
+                    ? t.deleteBillingGroupQuestion
                     : hasRecurrenceGroup && !deleteMode
-                    ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
-                    : 'Esta ação não pode ser desfeita. O item será excluído permanentemente.'}
+                    ? t.deleteRecurrenceQuestion
+                    : t.deleteConfirm}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className={(isFinancialEvent && hasFinancialGroup && !deleteMode) || (hasRecurrenceGroup && !deleteMode) ? 'flex-col gap-2 sm:flex-col' : ''}>
@@ -456,16 +460,16 @@ function OrderDetail({
                       onClick={() => { setDeleteMode('single'); }}
                       className="w-full"
                     >
-                      Excluir somente esta
+                      {t.btnDeleteOnlyThis}
                     </Button>
                     <Button
                       variant="destructive"
                       onClick={() => { setDeleteMode('group'); }}
                       className="w-full"
                     >
-                      Excluir todas deste contrato
+                      {t.btnDeleteAllContract}
                     </Button>
-                    <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                    <AlertDialogCancel className="w-full">{t.btnCancel}</AlertDialogCancel>
                   </>
                 ) : hasRecurrenceGroup && !deleteMode ? (
                   <>
@@ -474,25 +478,25 @@ function OrderDetail({
                       onClick={() => { setDeleteMode('single'); }}
                       className="w-full"
                     >
-                      Excluir apenas esta
+                      {t.btnDeleteOnlyThisRecurrence}
                     </Button>
                     <Button
                       variant="destructive"
                       onClick={() => { setDeleteMode('group'); }}
                       className="w-full"
                     >
-                      Excluir todas da recorrência
+                      {t.btnDeleteAllRecurrence}
                     </Button>
-                    <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                    <AlertDialogCancel className="w-full">{t.btnCancel}</AlertDialogCancel>
                   </>
                 ) : (
                   <>
-                    <AlertDialogCancel onClick={() => setDeleteMode(null)}>Cancelar</AlertDialogCancel>
+                    <AlertDialogCancel onClick={() => setDeleteMode(null)}>{t.btnCancel}</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={handleConfirmDelete}
                     >
-                      Excluir
+                      {t.btnDeleteConfirm}
                     </AlertDialogAction>
                   </>
                 )}
@@ -504,17 +508,23 @@ function OrderDetail({
           <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>{isFinancialEvent ? 'Concluir cobrança?' : isTask ? 'Finalizar Tarefa?' : `Finalizar OS #${order.order_number}?`}</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isFinancialEvent
+                    ? t.finalizeBillingTitle
+                    : isTask
+                    ? t.finalizeTaskTitle
+                    : t.finalizeOsTitle.replace('{number}', String(order.order_number))}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
                   {isFinancialEvent
-                    ? 'O lembrete sairá da agenda como concluído. A parcela continua em Contas a Receber — não dá baixa no financeiro.'
+                    ? t.finalizeBillingBody
                     : isTask
-                    ? 'A tarefa será marcada como concluída.'
-                    : 'A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.'}
+                    ? t.finalizeTaskBody
+                    : t.finalizeOsBody}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => {
@@ -522,7 +532,7 @@ function OrderDetail({
                     setShowFinalizeConfirm(false);
                   }}
                 >
-                  Finalizar
+                  {t.btnFinalize}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -532,17 +542,23 @@ function OrderDetail({
           <AlertDialog open={showReopenConfirm} onOpenChange={setShowReopenConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>{isFinancialEvent ? 'Reabrir cobrança?' : isTask ? 'Reabrir Tarefa?' : `Reabrir OS #${order.order_number}?`}</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isFinancialEvent
+                    ? t.reopenBillingTitle
+                    : isTask
+                    ? t.reopenTaskTitle
+                    : t.reopenOsTitle.replace('{number}', String(order.order_number))}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
                   {isFinancialEvent
-                    ? 'O lembrete voltará a aparecer como pendente na agenda. O financeiro não é alterado.'
+                    ? t.reopenBillingBody
                     : isTask
-                    ? 'A tarefa será reaberta e voltará ao status pendente.'
-                    : 'A ordem de serviço será reaberta e voltará ao status "Em andamento", permitindo edição dos campos preenchidos.'}
+                    ? t.reopenTaskBody
+                    : t.reopenOsBody}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-amber-500 hover:bg-amber-600 text-white"
                   onClick={() => {
@@ -550,7 +566,7 @@ function OrderDetail({
                     setShowReopenConfirm(false);
                   }}
                 >
-                  Reabrir
+                  {t.btnReopen}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -576,6 +592,8 @@ export function ScheduleDetailPanel({
   onPause,
   onResume,
 }: ScheduleDetailPanelProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.scheduleDetail;
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
   const dayOrders = useMemo(() => {
@@ -592,17 +610,17 @@ export function ScheduleDetailPanel({
         <>
           <div className="mb-4">
             <h3 className="text-base font-semibold capitalize">
-              {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
+              {format(selectedDate, "dd 'de' MMMM", { locale: getDateFnsLocale(locale) })}
             </h3>
             <p className="text-xs text-muted-foreground capitalize">
-              {format(selectedDate, 'EEEE', { locale: ptBR })}
+              {format(selectedDate, 'EEEE', { locale: getDateFnsLocale(locale) })}
             </p>
           </div>
           <ScrollArea className="h-[calc(100%-4rem)] w-full">
             {dayOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Clock className="mb-3 h-10 w-10 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">Nenhum agendamento</p>
+                <p className="text-sm text-muted-foreground">{t.emptyNoSchedule}</p>
               </div>
             ) : (
               <div className="space-y-2 pr-2 min-w-0">

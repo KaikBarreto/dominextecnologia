@@ -7,6 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { APP_VERSION } from '@/config/version';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 type ChangeCategory = 'recurso' | 'melhoria' | 'correcao' | 'seguranca';
 
@@ -23,20 +25,20 @@ interface ChangelogEntry {
   changes: Change[];
 }
 
-const categoryConfig: Record<ChangeCategory, { label: string; icon: any; className: string }> = {
-  recurso: { label: 'Nova Funcionalidade', icon: Sparkles, className: 'bg-success text-white hover:bg-success' },
-  melhoria: { label: 'Melhoria', icon: Wrench, className: 'bg-info text-white hover:bg-info' },
-  correcao: { label: 'Correção', icon: Bug, className: 'bg-destructive text-white hover:bg-destructive' },
-  seguranca: { label: 'Segurança', icon: Shield, className: 'bg-secondary text-secondary-foreground hover:bg-secondary' },
+const CATEGORY_ICONS: Record<ChangeCategory, any> = {
+  recurso: Sparkles,
+  melhoria: Wrench,
+  correcao: Bug,
+  seguranca: Shield,
 };
 
-const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[] = [
-  { value: 'all', label: 'Todas', icon: null },
-  { value: 'recurso', label: 'Recursos', icon: Sparkles },
-  { value: 'melhoria', label: 'Melhorias', icon: Wrench },
-  { value: 'correcao', label: 'Correções', icon: Bug },
-  { value: 'seguranca', label: 'Segurança', icon: Shield },
-];
+const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
+  recurso: 'bg-success text-white hover:bg-success',
+  melhoria: 'bg-info text-white hover:bg-info',
+  correcao: 'bg-destructive text-white hover:bg-destructive',
+  seguranca: 'bg-secondary text-secondary-foreground hover:bg-secondary',
+};
+
 
 const changelog: ChangelogEntry[] = [
   {
@@ -6368,6 +6370,24 @@ const changelog: ChangelogEntry[] = [
 ];
 
 export default function Changelog() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.changelog;
+
+  const categoryConfig: Record<ChangeCategory, { label: string; icon: any; className: string }> = {
+    recurso: { label: t.categoryRecurso, icon: CATEGORY_ICONS.recurso, className: CATEGORY_CLASSNAMES.recurso },
+    melhoria: { label: t.categoryMelhoria, icon: CATEGORY_ICONS.melhoria, className: CATEGORY_CLASSNAMES.melhoria },
+    correcao: { label: t.categoryCorrecao, icon: CATEGORY_ICONS.correcao, className: CATEGORY_CLASSNAMES.correcao },
+    seguranca: { label: t.categorySeguranca, icon: CATEGORY_ICONS.seguranca, className: CATEGORY_CLASSNAMES.seguranca },
+  };
+
+  const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[] = [
+    { value: 'all', label: t.filterAll, icon: null },
+    { value: 'recurso', label: t.filterRecurso, icon: Sparkles },
+    { value: 'melhoria', label: t.filterMelhoria, icon: Wrench },
+    { value: 'correcao', label: t.filterCorrecao, icon: Bug },
+    { value: 'seguranca', label: t.filterSeguranca, icon: Shield },
+  ];
+
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChangeCategory | 'all'>('all');
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.2.10']));
@@ -6408,15 +6428,12 @@ export default function Changelog() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="space-y-1">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest">Histórico de Versões</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">{t.pageTitle}</p>
         <div className="flex items-center gap-2">
           <History className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Histórico de Versões</h1>
+          <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
         </div>
-        <p className="text-muted-foreground">
-          Veja todas as mudanças e melhorias que fizemos no sistema
-        </p>
-        <Badge className="bg-success text-white hover:bg-success">Versão Atual: {APP_VERSION}</Badge>
+        <Badge className="bg-success text-white hover:bg-success">{t.currentVersionBadge}: {APP_VERSION}</Badge>
       </div>
 
       {/* Search & Filters */}
@@ -6425,7 +6442,7 @@ export default function Changelog() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar mudanças..."
+              placeholder={t.searchPlaceholder}
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -6461,7 +6478,9 @@ export default function Changelog() {
           </div>
           {(searchTerm || activeFilter !== 'all') && (
             <p className="text-xs text-muted-foreground">
-              {totalResults} resultado{totalResults !== 1 ? 's' : ''} encontrado{totalResults !== 1 ? 's' : ''}
+              {totalResults === 1
+                ? t.changesCount_one.replace('{count}', String(totalResults))
+                : t.changesCount_other.replace('{count}', String(totalResults))}
             </p>
           )}
         </CardContent>
@@ -6481,7 +6500,7 @@ export default function Changelog() {
                     <div className="flex items-center gap-3 flex-wrap">
                       <h2 className="text-lg font-bold text-foreground">Versão {entry.version}</h2>
                       <Badge className="bg-success text-white hover:bg-success">{typeLabel[entry.type]}</Badge>
-                      {isCurrent && <Badge className="bg-primary text-primary-foreground hover:bg-primary">Atual</Badge>}
+                      {isCurrent && <Badge className="bg-primary text-primary-foreground hover:bg-primary">{t.currentVersionBadge}</Badge>}
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-muted-foreground hidden sm:inline">{entry.date}</span>
@@ -6519,8 +6538,8 @@ export default function Changelog() {
         {filteredChangelog.length === 0 && (
           <div className="text-center py-12">
             <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium">Nenhum resultado encontrado</h3>
-            <p className="text-muted-foreground">Tente outros filtros ou termos de busca</p>
+            <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
+            <p className="text-muted-foreground">{t.emptyDesc}</p>
           </div>
         )}
       </div>

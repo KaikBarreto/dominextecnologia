@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/select';
 import { formatBRL } from '@/utils/currency';
 import type { SubscriptionPaymentHistoryItem } from '@/hooks/useSubscriptionPaymentHistory';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface PaymentHistoryListProps {
   payments: SubscriptionPaymentHistoryItem[];
@@ -36,28 +38,33 @@ function formatDateTimeBR(iso: string): string {
   return `${datePart} ${timePart}`;
 }
 
-function getMethodLabel(billingType: string | null): string {
+function getMethodLabel(billingType: string | null, t: ReturnType<typeof usePaymentHistoryT>): string {
   switch ((billingType || '').toUpperCase()) {
     case 'PIX':
-      return 'PIX';
+      return t.methodPix;
     case 'BOLETO':
-      return 'Boleto';
+      return t.methodBoleto;
     case 'CREDIT_CARD':
-      return 'Cartão';
+      return t.methodCard;
     default:
-      return billingType || 'Cobrança';
+      return billingType || t.methodDefault;
   }
 }
 
-function getTypeLabel(type: string | null): string {
+function getTypeLabel(type: string | null, t: ReturnType<typeof usePaymentHistoryT>): string {
   switch (type) {
     case 'primeira_venda':
-      return 'Venda';
+      return t.typeSale;
     case 'renovacao':
-      return 'Renovação';
+      return t.typeRenewal;
     default:
       return '';
   }
+}
+
+function usePaymentHistoryT() {
+  const { locale } = useAppLocaleContext();
+  return MESSAGES[locale].app.settings.billing.paymentHistory;
 }
 
 function isPaidStatus(status: string): boolean {
@@ -69,17 +76,17 @@ function isPendingStatus(status: string): boolean {
   return (status || '').toUpperCase() === 'PENDING';
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof usePaymentHistoryT> }) {
   switch ((status || '').toUpperCase()) {
     case 'RECEIVED':
     case 'CONFIRMED':
-      return <Badge className="bg-emerald-600 text-white border-0 hover:bg-emerald-600">Pago</Badge>;
+      return <Badge className="bg-emerald-600 text-white border-0 hover:bg-emerald-600">{t.statusPaid}</Badge>;
     case 'PENDING':
-      return <Badge className="bg-orange-500 text-white border-0 hover:bg-orange-500">Pendente</Badge>;
+      return <Badge className="bg-orange-500 text-white border-0 hover:bg-orange-500">{t.statusPending}</Badge>;
     case 'OVERDUE':
-      return <Badge className="bg-destructive text-destructive-foreground border-0 hover:bg-destructive">Vencido</Badge>;
+      return <Badge className="bg-destructive text-destructive-foreground border-0 hover:bg-destructive">{t.statusOverdue}</Badge>;
     case 'CANCELLED':
-      return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">Cancelado</Badge>;
+      return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">{t.statusCancelled}</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -88,6 +95,7 @@ function StatusBadge({ status }: { status: string }) {
 const PER_PAGE_OPTIONS = [5, 10, 20];
 
 export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListProps) {
+  const t = usePaymentHistoryT();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
@@ -111,7 +119,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
     return (
       <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-10 text-center">
         <Receipt className="h-8 w-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Nenhum pagamento registrado ainda.</p>
+        <p className="text-sm text-muted-foreground">{t.empty}</p>
       </div>
     );
   }
@@ -121,7 +129,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
       <div className="space-y-2 md:space-y-3">
         {pageItems.map((p) => {
           const paid = isPaidStatus(p.status);
-          const typeLabel = getTypeLabel(p.type);
+          const typeLabel = getTypeLabel(p.type, t);
           const showInvoiceLink = !!p.invoiceUrl && (isPendingStatus(p.status) || !paid);
           return (
             <div
@@ -146,13 +154,13 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
                       </Badge>
                     )}
                     <span className="sm:hidden">
-                      <StatusBadge status={p.status} />
+                      <StatusBadge status={p.status} t={t} />
                     </span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                     <p className="text-xs text-muted-foreground">{formatDateTimeBR(p.date)}</p>
                     <span className="text-xs text-muted-foreground">•</span>
-                    <p className="text-xs text-muted-foreground">{getMethodLabel(p.billingType)}</p>
+                    <p className="text-xs text-muted-foreground">{getMethodLabel(p.billingType, t)}</p>
                   </div>
                   {showInvoiceLink && (
                     <a
@@ -162,7 +170,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
                       className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Ver cobrança
+                      {t.viewCharge}
                     </a>
                   )}
                 </div>
@@ -170,7 +178,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
 
               {/* Direita: status (desktop) */}
               <div className="hidden shrink-0 items-center sm:flex">
-                <StatusBadge status={p.status} />
+                <StatusBadge status={p.status} t={t} />
               </div>
             </div>
           );
@@ -181,7 +189,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
       {payments.length > PER_PAGE_OPTIONS[0] && (
         <div className="flex flex-col items-center justify-between gap-3 pt-1 sm:flex-row">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Por página</span>
+            <span>{t.perPage}</span>
             <Select
               value={String(perPage)}
               onValueChange={(v) => {
@@ -204,7 +212,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              Página {currentPage} de {totalPages}
+              {t.pageSummary.replace('{current}', String(currentPage)).replace('{total}', String(totalPages))}
             </span>
             <Button
               variant="outline"
@@ -212,7 +220,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
               className="h-8 w-8"
               disabled={currentPage <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              aria-label="Página anterior"
+              aria-label={t.prevPage}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -222,7 +230,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
               className="h-8 w-8"
               disabled={currentPage >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              aria-label="Próxima página"
+              aria-label={t.nextPage}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>

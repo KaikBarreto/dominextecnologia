@@ -10,18 +10,24 @@ import { StepTransition } from '@/components/ui/step-transition';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { type Locale, ptBR, enUS, es, fr } from 'date-fns/locale';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
-const CANCELLATION_REASONS = [
-  { value: 'preco_alto', label: 'Preço muito alto' },
-  { value: 'nao_uso', label: 'Não estou usando o suficiente' },
-  { value: 'funcionalidades', label: 'Faltam funcionalidades que preciso' },
-  { value: 'dificuldade_uso', label: 'Dificuldade em usar o sistema' },
-  { value: 'concorrente', label: 'Encontrei outra solução' },
-  { value: 'fechando_empresa', label: 'Estou fechando a empresa' },
-  { value: 'temporario', label: 'Pausa temporária' },
-  { value: 'outro', label: 'Outro motivo' },
-];
+const DATE_LOCALES: Record<string, Locale> = { 'pt-br': ptBR, en: enUS, es, fr };
+
+const REASON_VALUES = [
+  'preco_alto',
+  'nao_uso',
+  'funcionalidades',
+  'dificuldade_uso',
+  'concorrente',
+  'fechando_empresa',
+  'temporario',
+  'outro',
+] as const;
+
+type ReasonValue = (typeof REASON_VALUES)[number];
 
 interface CancelSubscriptionModalProps {
   open: boolean;
@@ -42,6 +48,15 @@ export function CancelSubscriptionModal({
   companyId,
   subscriptionExpiresAt,
 }: CancelSubscriptionModalProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.billing.cancelSubscription;
+  const dateLocale = DATE_LOCALES[locale] ?? ptBR;
+
+  const CANCELLATION_REASONS = REASON_VALUES.map((value) => ({
+    value,
+    label: t.reasons[value as ReasonValue],
+  }));
+
   const [step, setStep] = useState<'reason' | 'confirm' | 'done'>('reason');
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
@@ -58,7 +73,7 @@ export function CancelSubscriptionModal({
 
   const handleSubmit = () => {
     if (!reason) {
-      toast.error('Selecione um motivo');
+      toast.error(t.toastSelectReason);
       return;
     }
     const reasonLabel = CANCELLATION_REASONS.find((r) => r.value === reason)?.label || reason;
@@ -72,7 +87,7 @@ export function CancelSubscriptionModal({
         onSuccess: () => setStep('done'),
         onError: (error: unknown) => {
           console.error('Erro ao cancelar assinatura:', error);
-          toast.error('Não foi possível cancelar agora. Tente novamente ou fale com o suporte.');
+          toast.error(t.toastError);
         },
       },
     );
@@ -80,62 +95,45 @@ export function CancelSubscriptionModal({
 
   const selectedReasonData = CANCELLATION_REASONS.find((r) => r.value === reason);
 
+  type RetentionKey = keyof typeof t.retention;
+  const RETENTION_ICONS: Record<string, typeof Gift> = {
+    preco_alto: Gift,
+    nao_uso: Heart,
+    funcionalidades: MessageCircle,
+    dificuldade_uso: Heart,
+  };
+  const RETENTION_BG: Record<string, string> = {
+    preco_alto: 'bg-emerald-600',
+    nao_uso: 'bg-blue-600',
+    funcionalidades: 'bg-purple-600',
+    dificuldade_uso: 'bg-blue-600',
+  };
+
   const getRetentionMessage = () => {
-    switch (reason) {
-      case 'preco_alto':
-        return {
-          icon: Gift,
-          title: 'Que tal um desconto?',
-          message:
-            'Fale com a gente pelo WhatsApp — conseguimos negociar um valor especial pra você continuar no Dominex.',
-          bg: 'bg-emerald-600',
-          waText: 'Olá! Penso em cancelar minha assinatura do Dominex por causa do preço. Tem alguma condição especial?',
-        };
-      case 'nao_uso':
-        return {
-          icon: Heart,
-          title: 'Podemos te ajudar!',
-          message:
-            'Nossa equipe faz um treinamento personalizado gratuito pra você aproveitar o sistema ao máximo.',
-          bg: 'bg-blue-600',
-          waText: 'Olá! Quero agendar um treinamento do Dominex antes de decidir sobre minha assinatura.',
-        };
-      case 'funcionalidades':
-        return {
-          icon: MessageCircle,
-          title: 'Sua opinião é valiosa!',
-          message:
-            'Conte quais funcionalidades você precisa. Estamos sempre evoluindo e sua sugestão pode entrar em breve!',
-          bg: 'bg-purple-600',
-          waText: 'Olá! Sinto falta de algumas funcionalidades no Dominex e gostaria de sugerir antes de cancelar.',
-        };
-      case 'dificuldade_uso':
-        return {
-          icon: Heart,
-          title: 'Suporte dedicado',
-          message:
-            'Podemos agendar uma sessão de suporte dedicada pra resolver suas dúvidas e facilitar o uso.',
-          bg: 'bg-blue-600',
-          waText: 'Olá! Tenho dificuldade em usar o Dominex e gostaria de uma sessão de suporte antes de cancelar.',
-        };
-      default:
-        return null;
-    }
+    if (!(reason in RETENTION_ICONS)) return null;
+    const retData = t.retention[reason as RetentionKey];
+    return {
+      icon: RETENTION_ICONS[reason],
+      title: retData.title,
+      message: retData.message,
+      bg: RETENTION_BG[reason],
+      waText: retData.waText,
+    };
   };
 
   const retention = getRetentionMessage();
 
   const getTitle = () => {
-    if (step === 'confirm') return 'Confirmar cancelamento';
-    if (step === 'done') return 'Cancelamento concluído';
-    return 'Cancelar assinatura';
+    if (step === 'confirm') return t.titleConfirm;
+    if (step === 'done') return t.titleDone;
+    return t.titleReason;
   };
 
   const footerContent =
     step === 'reason' ? (
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={handleClose}>
-          Voltar
+          {t.btnBack}
         </Button>
         <Button
           variant="destructive"
@@ -143,7 +141,7 @@ export function CancelSubscriptionModal({
           onClick={() => setStep('confirm')}
           disabled={!reason || (reason === 'outro' && !details.trim())}
         >
-          Continuar
+          {t.btnContinue}
         </Button>
       </div>
     ) : step === 'confirm' ? (
@@ -154,7 +152,7 @@ export function CancelSubscriptionModal({
           onClick={() => setStep('reason')}
           disabled={cancelMutation.isPending}
         >
-          Voltar
+          {t.btnBack}
         </Button>
         <Button
           variant="destructive"
@@ -162,12 +160,12 @@ export function CancelSubscriptionModal({
           onClick={handleSubmit}
           disabled={cancelMutation.isPending}
         >
-          {cancelMutation.isPending ? 'Cancelando...' : 'Confirmar cancelamento'}
+          {cancelMutation.isPending ? t.btnCanceling : t.btnConfirm}
         </Button>
       </div>
     ) : (
       <Button className="w-full" onClick={handleClose}>
-        Entendido
+        {t.btnUnderstood}
       </Button>
     );
 
@@ -187,16 +185,16 @@ export function CancelSubscriptionModal({
               <AlertTriangle className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="font-semibold">Cancelar assinatura</p>
-              <p className="text-sm text-muted-foreground">Nos ajude a entender o motivo</p>
+              <p className="font-semibold">{t.titleReason}</p>
+              <p className="text-sm text-muted-foreground">{t.headerSubtitle}</p>
             </div>
           </div>
 
           <div>
-            <Label>Motivo do cancelamento</Label>
+            <Label>{t.labelReason}</Label>
             <Select value={reason} onValueChange={setReason}>
               <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Selecione o motivo" />
+                <SelectValue placeholder={t.placeholderReason} />
               </SelectTrigger>
               <SelectContent>
                 {CANCELLATION_REASONS.map((r) => (
@@ -211,15 +209,15 @@ export function CancelSubscriptionModal({
           {reason && (
             <div>
               <Label>
-                {reason === 'outro' ? 'Explique seu motivo *' : 'Quer nos contar mais? (opcional)'}
+                {reason === 'outro' ? t.labelDetailsRequired : t.labelDetailsOptional}
               </Label>
               <Textarea
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
                 placeholder={
                   reason === 'outro'
-                    ? 'Descreva o motivo do cancelamento...'
-                    : 'Alguma sugestão ou comentário...'
+                    ? t.placeholderDetailsRequired
+                    : t.placeholderDetailsOther
                 }
                 className="mt-1.5 min-h-[80px]"
                 required={reason === 'outro'}
@@ -251,7 +249,7 @@ export function CancelSubscriptionModal({
                 className="mt-3 flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] transition-colors text-white text-sm font-medium"
               >
                 <WhatsAppIcon className="h-4 w-4" />
-                Falar com o suporte
+                {t.retentionTalkSupport}
               </button>
             </div>
           )}
@@ -261,26 +259,26 @@ export function CancelSubscriptionModal({
         {step === 'confirm' && (
           <div className="space-y-4">
           <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 space-y-2">
-            <p className="text-sm font-medium">Ao confirmar:</p>
+            <p className="text-sm font-medium">{t.confirmOnConfirm}</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-              <li>A renovação automática será cancelada</li>
+              <li>{t.confirmBullet1}</li>
               <li>
-                Você continua com acesso até{' '}
+                {t.confirmBullet2Until}{' '}
                 {subscriptionExpiresAt
-                  ? format(new Date(subscriptionExpiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-                  : 'o fim do período já pago'}
+                  ? format(new Date(subscriptionExpiresAt), "dd 'de' MMMM 'de' yyyy", { locale: dateLocale })
+                  : t.confirmBullet2NoDate}
               </li>
-              <li>Cobranças futuras em aberto serão canceladas automaticamente</li>
-              <li>Você pode reativar quando quiser</li>
+              <li>{t.confirmBullet3}</li>
+              <li>{t.confirmBullet4}</li>
             </ul>
           </div>
 
           <div className="bg-muted/50 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">
-              Motivo: <span className="font-medium text-foreground">{selectedReasonData?.label}</span>
+              {t.confirmReasonPrefix} <span className="font-medium text-foreground">{selectedReasonData?.label}</span>
             </p>
             {details.trim() && (
-              <p className="text-xs text-muted-foreground mt-1">Detalhes: {details}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.confirmDetailsPrefix} {details}</p>
             )}
           </div>
         </div>
@@ -292,13 +290,13 @@ export function CancelSubscriptionModal({
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
           </div>
           <div>
-            <p className="font-medium">Assinatura cancelada</p>
+            <p className="font-medium">{t.doneTitle}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              A renovação automática foi cancelada. Você continua com acesso
+              {t.doneDesc}
               {subscriptionExpiresAt
-                ? ` até ${format(new Date(subscriptionExpiresAt), 'dd/MM/yyyy', { locale: ptBR })}`
-                : ' até o fim do período já pago'}
-              . Se mudar de ideia, é só reativar a qualquer momento.
+                ? ` ${t.doneDescUntil.replace('{date}', format(new Date(subscriptionExpiresAt), 'dd/MM/yyyy', { locale: dateLocale }))}`
+                : ` ${t.doneDescNoDate}`}
+              {t.doneDescSuffix}
             </p>
           </div>
         </div>
