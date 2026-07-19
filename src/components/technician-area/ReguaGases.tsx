@@ -94,6 +94,7 @@ function ReguaDupla({
   curva,
   unidade,
   dragHint,
+  ariaSlider,
 }: {
   tempClamped: number;
   setTemp: (t: number) => void;
@@ -101,6 +102,7 @@ function ReguaDupla({
   curva: Curva;
   unidade: UnidadePressao;
   dragHint: string;
+  ariaSlider: string;
 }) {
   const trilhoRef = useRef<HTMLDivElement>(null);
   const arrastando = useRef(false);
@@ -162,7 +164,7 @@ function ReguaDupla({
         <div
           ref={trilhoRef}
           role="slider"
-          aria-label="Selecionar ponto da régua"
+          aria-label={ariaSlider}
           aria-valuemin={TEMP_MIN}
           aria-valuemax={TEMP_MAX}
           aria-valuenow={tempClamped}
@@ -353,6 +355,7 @@ function ReguaUnificada({
         curva={curva}
         unidade={unidade}
         dragHint={t.dragHint}
+        ariaSlider={t.ariaSlider}
       />
 
       <div className="flex w-40 flex-col items-stretch gap-3 lg:w-56 lg:gap-4">

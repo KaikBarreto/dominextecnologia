@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface StateCitySelectorProps {
   selectedState: string;
@@ -61,6 +63,9 @@ export const StateCitySelector = ({
   disabled,
   showLabels = false,
 }: StateCitySelectorProps) => {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.common.stateCity;
+
   const [cities, setCities] = useState<{ name: string; id: string }[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [citySearch, setCitySearch] = useState('');
@@ -111,7 +116,7 @@ export const StateCitySelector = ({
     <div className="flex gap-2">
       {/* UF - compact popover */}
       <div className="w-[80px] shrink-0 space-y-2">
-        {showLabels && <Label>UF</Label>}
+        {showLabels && <Label>{t.stateLabel}</Label>}
         <Popover open={stateOpen} onOpenChange={setStateOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -120,7 +125,7 @@ export const StateCitySelector = ({
               disabled={disabled}
               className="w-full justify-between font-normal h-10 px-3"
             >
-              {selectedState || 'UF'}
+              {selectedState || t.statePlaceholder}
               <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -145,7 +150,7 @@ export const StateCitySelector = ({
 
       {/* City - searchable popover */}
       <div className="flex-1 min-w-0 space-y-2">
-        {showLabels && <Label>Cidade</Label>}
+        {showLabels && <Label>{t.cityLabel}</Label>}
         <Popover open={cityOpen} onOpenChange={(o) => { setCityOpen(o); if (!o) setCitySearch(''); }}>
           <PopoverTrigger asChild>
             <Button
@@ -157,9 +162,9 @@ export const StateCitySelector = ({
               <span className="truncate">
                 {loadingCities ? (
                   <span className="flex items-center gap-1.5">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Carregando...
+                    <Loader2 className="h-3 w-3 animate-spin" /> {t.cityLoading}
                   </span>
-                ) : selectedCity || (!selectedState ? 'Selecione UF' : 'Selecione a cidade')}
+                ) : selectedCity || (!selectedState ? t.cityPlaceholderNoState : t.cityPlaceholder)}
               </span>
               <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
             </Button>
@@ -168,7 +173,7 @@ export const StateCitySelector = ({
             <div className="p-2 border-b">
               <Input
                 ref={citySearchRef}
-                placeholder="Buscar cidade..."
+                placeholder={t.citySearch}
                 value={citySearch}
                 onChange={(e) => setCitySearch(e.target.value)}
                 className="h-8"
@@ -191,7 +196,7 @@ export const StateCitySelector = ({
               ))}
               {filteredCities.length === 0 && !loadingCities && (
                 <div className="py-4 text-center text-sm text-muted-foreground">
-                  Nenhuma cidade encontrada
+                  {t.cityNotFound}
                 </div>
               )}
             </div>

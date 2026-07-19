@@ -1,5 +1,7 @@
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ClipboardList, CheckSquare } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface EntryTypeSelectorProps {
   open: boolean;
@@ -9,8 +11,12 @@ interface EntryTypeSelectorProps {
 }
 
 export function EntryTypeSelectorDialog({ open, onOpenChange, onSelectOS, onSelectTask }: EntryTypeSelectorProps) {
+  const { locale } = useAppLocaleContext();
+  const tSched = (MESSAGES[locale as keyof typeof MESSAGES]?.app?.os?.scheduleHeader
+    ?? MESSAGES['pt-br'].app.os.scheduleHeader) as typeof MESSAGES['pt-br']['app']['os']['scheduleHeader'];
+
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="O que deseja criar?">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tSched.entryTypeDialogTitle}>
       <div className="grid grid-cols-2 gap-4 p-2">
         <button
           onClick={() => { onOpenChange(false); onSelectOS(); }}
@@ -20,8 +26,8 @@ export function EntryTypeSelectorDialog({ open, onOpenChange, onSelectOS, onSele
             <ClipboardList className="h-7 w-7 text-primary group-hover:text-white" />
           </div>
           <div className="text-center">
-            <p className="font-semibold">Ordem de Serviço</p>
-            <p className="text-xs text-muted-foreground group-hover:text-white/80 mt-1">Atendimento técnico com cliente e equipamento</p>
+            <p className="font-semibold">{tSched.entryTypeOs}</p>
+            <p className="text-xs text-muted-foreground group-hover:text-white/80 mt-1">{tSched.entryTypeOsDesc}</p>
           </div>
         </button>
         <button
@@ -32,8 +38,8 @@ export function EntryTypeSelectorDialog({ open, onOpenChange, onSelectOS, onSele
             <CheckSquare className="h-7 w-7 text-violet-500 group-hover:text-white" />
           </div>
           <div className="text-center">
-            <p className="font-semibold">Tarefa</p>
-            <p className="text-xs text-muted-foreground group-hover:text-white/80 mt-1">Atividade interna, reunião ou compromisso</p>
+            <p className="font-semibold">{tSched.entryTypeTask}</p>
+            <p className="text-xs text-muted-foreground group-hover:text-white/80 mt-1">{tSched.entryTypeTaskDesc}</p>
           </div>
         </button>
       </div>

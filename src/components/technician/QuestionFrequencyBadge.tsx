@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 // Lógica PURA do rótulo de frequência vive num util compartilhado (reusada pelo
 // documento "Plano de Manutenção" sem arrastar React/Radix). FONTE ÚNICA.
 import {
@@ -118,10 +120,10 @@ export function QuestionFrequencyBadge({ value, onChange, disabled, className }:
 
 type EditorMode = 'months' | 'days' | 'visits';
 
-const MODE_OPTIONS: { value: EditorMode; label: string }[] = [
-  { value: 'months', label: 'Meses' },
-  { value: 'days', label: 'Dias' },
-  { value: 'visits', label: 'Visitas' },
+const MODE_OPTIONS: { value: EditorMode }[] = [
+  { value: 'months' },
+  { value: 'days' },
+  { value: 'visits' },
 ];
 
 /** Modo inicial do editor a partir do valor salvo (round-trip). */
@@ -154,17 +156,54 @@ function selectChoiceFromValue(value: QuestionFrequency): SelectChoice {
   return 'custom';
 }
 
-const SELECT_OPTIONS: { value: SelectChoice; label: string }[] = [
-  { value: 'every', label: 'Toda visita' },
-  { value: '1', label: 'Mensal' },
-  { value: '2', label: 'Bimestral' },
-  { value: '3', label: 'Trimestral' },
-  { value: '6', label: 'Semestral' },
-  { value: '12', label: 'Anual' },
-  { value: 'custom', label: 'Personalizado' },
+const SELECT_OPTIONS: { value: SelectChoice }[] = [
+  { value: 'every' },
+  { value: '1' },
+  { value: '2' },
+  { value: '3' },
+  { value: '6' },
+  { value: '12' },
+  { value: 'custom' },
 ];
 
+type TFreqChecklists = typeof MESSAGES['pt-br']['app']['os']['checklists'];
+
+function selectOptionLabel(v: SelectChoice, t: TFreqChecklists): string {
+  switch (v) {
+    case 'every': return t.freqEveryVisit;
+    case '1': return t.freqMonthly;
+    case '2': return t.freqBimonthly;
+    case '3': return t.freqQuarterly;
+    case '6': return t.freqSemestral;
+    case '12': return t.freqYearly;
+    case 'custom': return t.freqCustom;
+  }
+}
+
+function modeOptionLabel(v: EditorMode, t: TFreqChecklists): string {
+  switch (v) {
+    case 'months': return t.freqModeMonths;
+    case 'days': return t.freqModeDays;
+    case 'visits': return t.freqModeVisits;
+  }
+}
+
+function presetMonthLabel(months: number, t: TFreqChecklists): string {
+  switch (months) {
+    case 1: return t.freqMonthly;
+    case 2: return t.freqBimonthly;
+    case 3: return t.freqQuarterly;
+    case 6: return t.freqSemestral;
+    case 12: return t.freqYearly;
+    default: return String(months);
+  }
+}
+
 export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: QuestionFrequency; onApply: (p: QuestionFrequencyPayload) => void | Promise<void>; variant?: 'list' | 'select' }) {
+  const { locale } = useAppLocaleContext();
+  const tFreq = (MESSAGES[locale as keyof typeof MESSAGES]?.app?.os?.checklists
+    ?? MESSAGES['pt-br'].app.os.checklists) as typeof MESSAGES['pt-br']['app']['os']['checklists'];
+
   // Estado local: começa refletindo o valor atual (round-trip months/days/visits).
   const [custom, setCustom] = useState(isCustomValue(value));
   const [mode, setMode] = useState<EditorMode>(initialMode(value));
@@ -277,11 +316,11 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
       <div className="text-sm space-y-3">
         <Select value={selectValue} onValueChange={(v) => handleSelect(v as SelectChoice)}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Toda visita" />
+            <SelectValue placeholder={tFreq.freqEveryVisit} />
           </SelectTrigger>
           <SelectContent>
             {SELECT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              <SelectItem key={opt.value} value={opt.value}>{selectOptionLabel(opt.value, tFreq)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -305,7 +344,7 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
                     )}
                     aria-pressed={active}
                   >
-                    {opt.label}
+                    {modeOptionLabel(opt.value, tFreq)}
                   </button>
                 );
               })}
@@ -313,28 +352,28 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
 
             {mode === 'months' && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+                <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqEvery}</span>
                 <NumericInput value={months} onValueChange={setMonths} placeholder="3" className="h-9 text-center" inputMode="numeric" />
-                <span className="text-xs text-muted-foreground shrink-0">meses</span>
+                <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqMonthsSuffix}</span>
               </div>
             )}
             {mode === 'days' && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+                <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqEvery}</span>
                 <NumericInput value={days} onValueChange={setDays} placeholder="17" className="h-9 text-center" inputMode="numeric" />
-                <span className="text-xs text-muted-foreground shrink-0">dias</span>
+                <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqDaysSuffix}</span>
               </div>
             )}
             {mode === 'visits' && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+                <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqEvery}</span>
                 <NumericInput value={visits} onValueChange={setVisits} placeholder="2" className="h-9 text-center" inputMode="numeric" />
-                <span className="text-xs text-muted-foreground shrink-0">visitas</span>
+                <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqVisitsSuffix}</span>
               </div>
             )}
 
             <Button type="button" className="w-full h-9" onClick={applyCustom} disabled={applyDisabled}>
-              <Check className="mr-1.5 h-4 w-4" /> Aplicar
+              <Check className="mr-1.5 h-4 w-4" /> {tFreq.freqApply}
             </Button>
           </div>
         )}
@@ -345,15 +384,15 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
   return (
     <div className="text-sm">
       <div className="px-3 py-2.5 border-b">
-        <p className="font-semibold leading-none">Frequência da pergunta</p>
-        <p className="text-xs text-muted-foreground mt-1">Em quais visitas ela deve aparecer.</p>
+        <p className="font-semibold leading-none">{tFreq.freqTitle}</p>
+        <p className="text-xs text-muted-foreground mt-1">{tFreq.freqDesc}</p>
       </div>
 
       {/* Opções rápidas */}
       <div className="p-2 space-y-1">
-        <FreqOption label="Toda visita" active={isEveryVisit(value)} onClick={applyEveryVisit} muted />
+        <FreqOption label={tFreq.freqEveryVisit} active={isEveryVisit(value)} onClick={applyEveryVisit} muted />
         {MONTH_PRESETS.map((p) => (
-          <FreqOption key={p.months} label={p.label} active={currentIsPreset(p.months)} onClick={() => applyPreset(p.months)} />
+          <FreqOption key={p.months} label={presetMonthLabel(p.months, tFreq)} active={currentIsPreset(p.months)} onClick={() => applyPreset(p.months)} />
         ))}
         <button
           type="button"
@@ -363,7 +402,7 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
             custom && 'bg-muted/50',
           )}
         >
-          <span>Personalizado…</span>
+          <span>{tFreq.freqCustomOption}</span>
         </button>
       </div>
 
@@ -388,7 +427,7 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
                   )}
                   aria-pressed={active}
                 >
-                  {opt.label}
+                  {modeOptionLabel(opt.value, tFreq)}
                 </button>
               );
             })}
@@ -396,28 +435,28 @@ export function FrequencyEditor({ value, onApply, variant = 'list' }: { value: Q
 
           {mode === 'months' && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+              <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqEvery}</span>
               <NumericInput value={months} onValueChange={setMonths} placeholder="3" className="h-9 text-center" inputMode="numeric" />
-              <span className="text-xs text-muted-foreground shrink-0">meses</span>
+              <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqMonthsSuffix}</span>
             </div>
           )}
           {mode === 'days' && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+              <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqEvery}</span>
               <NumericInput value={days} onValueChange={setDays} placeholder="17" className="h-9 text-center" inputMode="numeric" />
-              <span className="text-xs text-muted-foreground shrink-0">dias</span>
+              <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqDaysSuffix}</span>
             </div>
           )}
           {mode === 'visits' && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground shrink-0">A cada</span>
+              <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqEvery}</span>
               <NumericInput value={visits} onValueChange={setVisits} placeholder="2" className="h-9 text-center" inputMode="numeric" />
-              <span className="text-xs text-muted-foreground shrink-0">visitas</span>
+              <span className="text-xs text-muted-foreground shrink-0">{tFreq.freqVisitsSuffix}</span>
             </div>
           )}
 
           <Button type="button" className="w-full h-9" onClick={applyCustom} disabled={applyDisabled}>
-            <Check className="mr-1.5 h-4 w-4" /> Aplicar
+            <Check className="mr-1.5 h-4 w-4" /> {tFreq.freqApply}
           </Button>
         </div>
       )}

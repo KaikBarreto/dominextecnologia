@@ -17,6 +17,8 @@ import {
 import { ArrowLeft, Loader2, CreditCard, User, MapPin, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { MESSAGES } from "@/lib/i18n/messages";
 
 interface CardPaymentFormProps {
   amount: number;
@@ -83,6 +85,9 @@ export function CardPaymentForm({
   allowInstallments = false,
   initialData,
 }: CardPaymentFormProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.common.cardForm;
+
   const [formData, setFormData] = useState({
     holderName: "",
     holderEmail: "",
@@ -187,16 +192,16 @@ export function CardPaymentForm({
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    if (formData.number.replace(/\s/g, "").length < 13) errors.number = "Número do cartão inválido";
-    if (formData.holderName.length < 2) errors.holderName = "Nome no cartão é obrigatório";
-    if (!formData.expiryMonth) errors.expiryMonth = "Selecione o mês";
-    if (!formData.expiryYear) errors.expiryYear = "Selecione o ano";
-    if (formData.ccv.length < 3) errors.ccv = "CVV inválido";
-    if (formData.holderCpf.replace(/\D/g, "").length !== 11) errors.holderCpf = "CPF inválido";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(formData.holderEmail)) errors.holderEmail = "E-mail inválido";
-    if (formData.holderPhone.replace(/\D/g, "").length < 10) errors.holderPhone = "Telefone inválido";
-    if (formData.holderPostalCode.replace(/\D/g, "").length !== 8) errors.holderPostalCode = "CEP inválido";
-    if (!formData.holderAddressNumber.trim()) errors.holderAddressNumber = "Número é obrigatório";
+    if (formData.number.replace(/\s/g, "").length < 13) errors.number = t.errorCardNumber;
+    if (formData.holderName.length < 2) errors.holderName = t.errorCardName;
+    if (!formData.expiryMonth) errors.expiryMonth = t.errorExpiryMonth;
+    if (!formData.expiryYear) errors.expiryYear = t.errorExpiryYear;
+    if (formData.ccv.length < 3) errors.ccv = t.errorCvv;
+    if (formData.holderCpf.replace(/\D/g, "").length !== 11) errors.holderCpf = t.errorCpf;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(formData.holderEmail)) errors.holderEmail = t.errorEmail;
+    if (formData.holderPhone.replace(/\D/g, "").length < 10) errors.holderPhone = t.errorPhone;
+    if (formData.holderPostalCode.replace(/\D/g, "").length !== 8) errors.holderPostalCode = t.errorPostalCode;
+    if (!formData.holderAddressNumber.trim()) errors.holderAddressNumber = t.errorAddressNumber;
 
     setValidationErrors(errors);
 
@@ -209,7 +214,7 @@ export function CardPaymentForm({
       } else {
         setOpenSections(new Set(["address"]));
       }
-      toast.error("Preencha todos os campos corretamente");
+      toast.error(t.errorFillFields);
       return false;
     }
     return true;
@@ -233,10 +238,11 @@ export function CardPaymentForm({
     ? Array.from({ length: 12 }, (_, i) => {
         const count = i + 1;
         const perInstallment = amount / count;
-        return {
-          value: count,
-          label: `${count}x de R$ ${perInstallment.toFixed(2).replace(".", ",")}${count === 1 ? " (à vista)" : " sem juros"}`,
-        };
+        const value = perInstallment.toFixed(2).replace(".", ",");
+        const label = count === 1
+          ? t.installmentCash.replace("{count}", String(count)).replace("{value}", value)
+          : t.installmentCredit.replace("{count}", String(count)).replace("{value}", value);
+        return { value: count, label };
       })
     : [];
 
@@ -244,7 +250,7 @@ export function CardPaymentForm({
     <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-4" autoComplete="on">
       <Button type="button" variant="outline" size="sm" onClick={onBack} className="mb-2">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Voltar
+        {t.back}
       </Button>
 
       {/* Banner de erro */}
@@ -255,9 +261,9 @@ export function CardPaymentForm({
             <span className="font-medium">{errorMessage}</span>
             {errorSection && (
               <span className="text-white/80 text-xs">
-                {errorSection === "card" && "Verifique os dados do cartão acima."}
-                {errorSection === "holder" && "Verifique os dados do titular acima."}
-                {errorSection === "address" && "Verifique o endereço de cobrança acima."}
+                {errorSection === "card" && t.errorSectionCard}
+                {errorSection === "holder" && t.errorSectionHolder}
+                {errorSection === "address" && t.errorSectionAddress}
               </span>
             )}
           </div>
@@ -277,7 +283,7 @@ export function CardPaymentForm({
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
               )}
               <span className={cn("text-sm font-semibold uppercase tracking-wider", cardComplete ? "text-primary" : "text-foreground")}>
-                Dados do cartão
+                {t.sectionCard}
               </span>
             </div>
             <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", openSections.has("card") && "rotate-180")} />
@@ -290,7 +296,7 @@ export function CardPaymentForm({
             name="cc-number"
             autoComplete="cc-number"
             inputMode="numeric"
-            placeholder="Número do cartão"
+            placeholder={t.cardNumber}
             value={formData.number}
             onChange={(e) => { handleChange("number", e.target.value); setValidationErrors((p) => ({ ...p, number: "" })); }}
             className={cn(validationErrors.number && "border-destructive")}
@@ -299,7 +305,7 @@ export function CardPaymentForm({
           <div className="grid grid-cols-[1fr_1fr_80px] gap-2">
             <Select value={formData.expiryMonth} onValueChange={(v) => handleChange("expiryMonth", v)}>
               <SelectTrigger className={cn(validationErrors.expiryMonth && "border-destructive")}>
-                <SelectValue placeholder="MM" />
+                <SelectValue placeholder={t.expiryMonth} />
               </SelectTrigger>
               <SelectContent>
                 {months.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
@@ -307,7 +313,7 @@ export function CardPaymentForm({
             </Select>
             <Select value={formData.expiryYear} onValueChange={(v) => handleChange("expiryYear", v)}>
               <SelectTrigger className={cn(validationErrors.expiryYear && "border-destructive")}>
-                <SelectValue placeholder="AA" />
+                <SelectValue placeholder={t.expiryYear} />
               </SelectTrigger>
               <SelectContent>
                 {years.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
@@ -318,7 +324,7 @@ export function CardPaymentForm({
               name="cc-csc"
               autoComplete="cc-csc"
               inputMode="numeric"
-              placeholder="CVV"
+              placeholder={t.cvv}
               maxLength={4}
               value={formData.ccv}
               onChange={(e) => { handleChange("ccv", e.target.value); setValidationErrors((p) => ({ ...p, ccv: "" })); }}
@@ -330,7 +336,7 @@ export function CardPaymentForm({
             id="cc-name"
             name="cc-name"
             autoComplete="cc-name"
-            placeholder="Nome no cartão"
+            placeholder={t.cardName}
             value={formData.holderName}
             onChange={(e) => { handleChange("holderName", e.target.value.toUpperCase()); setValidationErrors((p) => ({ ...p, holderName: "" })); }}
             className={cn(validationErrors.holderName && "border-destructive")}
@@ -342,7 +348,7 @@ export function CardPaymentForm({
               onValueChange={(v) => setFormData((prev) => ({ ...prev, installmentCount: Number(v) }))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Parcelas" />
+                <SelectValue placeholder={t.installments} />
               </SelectTrigger>
               <SelectContent>
                 {installmentOptions.map((opt) => (
@@ -367,7 +373,7 @@ export function CardPaymentForm({
                 <User className="h-4 w-4 text-muted-foreground" />
               )}
               <span className={cn("text-sm font-semibold uppercase tracking-wider", holderComplete ? "text-primary" : "text-foreground")}>
-                Dados do titular
+                {t.sectionHolder}
               </span>
             </div>
             <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", openSections.has("holder") && "rotate-180")} />
@@ -379,7 +385,7 @@ export function CardPaymentForm({
             id="cpf"
             name="cpf"
             inputMode="numeric"
-            placeholder="CPF do titular"
+            placeholder={t.cpf}
             value={formData.holderCpf}
             onChange={(e) => { handleChange("holderCpf", e.target.value); setValidationErrors((p) => ({ ...p, holderCpf: "" })); }}
             className={cn(validationErrors.holderCpf && "border-destructive")}
@@ -390,7 +396,7 @@ export function CardPaymentForm({
               name="email"
               type="email"
               autoComplete="email"
-              placeholder="Email"
+              placeholder={t.email}
               value={formData.holderEmail}
               onChange={(e) => { handleChange("holderEmail", e.target.value); setValidationErrors((p) => ({ ...p, holderEmail: "" })); }}
               className={cn(validationErrors.holderEmail && "border-destructive")}
@@ -401,7 +407,7 @@ export function CardPaymentForm({
               type="tel"
               autoComplete="tel"
               inputMode="tel"
-              placeholder="Telefone"
+              placeholder={t.phone}
               value={formData.holderPhone}
               onChange={(e) => { handleChange("holderPhone", e.target.value); setValidationErrors((p) => ({ ...p, holderPhone: "" })); }}
               className={cn(validationErrors.holderPhone && "border-destructive")}
@@ -423,7 +429,7 @@ export function CardPaymentForm({
                 <MapPin className="h-4 w-4 text-muted-foreground" />
               )}
               <span className={cn("text-sm font-semibold uppercase tracking-wider", addressComplete ? "text-primary" : "text-foreground")}>
-                Endereço de cobrança
+                {t.sectionAddress}
               </span>
             </div>
             <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", openSections.has("address") && "rotate-180")} />
@@ -437,7 +443,7 @@ export function CardPaymentForm({
               name="postal-code"
               autoComplete="postal-code"
               inputMode="numeric"
-              placeholder="CEP"
+              placeholder={t.postalCode}
               maxLength={9}
               value={formData.holderPostalCode}
               onChange={(e) => { handleChange("holderPostalCode", e.target.value); setValidationErrors((p) => ({ ...p, holderPostalCode: "" })); }}
@@ -447,7 +453,7 @@ export function CardPaymentForm({
               id="address-number"
               name="address-line2"
               autoComplete="address-line2"
-              placeholder="Número"
+              placeholder={t.addressNumber}
               value={formData.holderAddressNumber}
               onChange={(e) => { handleChange("holderAddressNumber", e.target.value); setValidationErrors((p) => ({ ...p, holderAddressNumber: "" })); }}
               className={cn(validationErrors.holderAddressNumber && "border-destructive")}
@@ -457,17 +463,17 @@ export function CardPaymentForm({
       </Collapsible>
 
       <p className="text-xs text-muted-foreground/70 text-center">
-        Ao confirmar, seu cartão será cobrado automaticamente todo {allowInstallments ? "ano" : "mês"} no valor da assinatura. Você pode cancelar a qualquer momento na tela de Assinatura.
+        {t.billingNotice.replace("{period}", allowInstallments ? t.billingPeriodYear : t.billingPeriodMonth)}
       </p>
 
       <Button type="submit" className="w-full h-14 text-base font-bold" disabled={isLoading}>
         {isLoading ? (
           <>
             <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-            Processando...
+            {t.processing}
           </>
         ) : (
-          `Pagar R$ ${amount.toFixed(2).replace(".", ",")} e ativar recorrência`
+          t.pay.replace("{amount}", amount.toFixed(2).replace(".", ","))
         )}
       </Button>
     </form>

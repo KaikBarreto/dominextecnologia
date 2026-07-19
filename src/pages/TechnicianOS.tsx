@@ -3362,7 +3362,7 @@ function TechnicianOSInner() {
               onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-5 w-5" />
-              <span className="text-sm font-medium">Voltar</span>
+              <span className="text-sm font-medium">{tFlow.btnBack}</span>
             </Button>
             <Badge
               variant={statusBadgeVariant[serviceOrder.status]}

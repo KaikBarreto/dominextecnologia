@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { haversineDistance, formatDistance } from '@/utils/geolocation';
 import { batchReverseGeocode } from '@/utils/reverseGeocode';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface LocationRecord {
   id: string;
@@ -38,6 +40,10 @@ const eventConfig: Record<string, { label: string; color: string; icon: string }
 };
 
 export function TrackingHistoryTab() {
+  const { locale } = useAppLocaleContext();
+  const tTracking = (MESSAGES[locale as keyof typeof MESSAGES]?.app?.os?.tracking
+    ?? MESSAGES['pt-br'].app.os.tracking) as typeof MESSAGES['pt-br']['app']['os']['tracking'];
+
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>(ALL_TECHNICIANS);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -144,10 +150,10 @@ export function TrackingHistoryTab() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Select value={selectedUserId} onValueChange={setSelectedUserId}>
           <SelectTrigger className="sm:w-[280px]">
-            <SelectValue placeholder="Todos os técnicos" />
+            <SelectValue placeholder={tTracking.placeholderAllTechnicians} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_TECHNICIANS}>Todos os técnicos</SelectItem>
+            <SelectItem value={ALL_TECHNICIANS}>{tTracking.placeholderAllTechnicians}</SelectItem>
             {profiles.map((p) => (
               <SelectItem key={p.user_id} value={p.user_id}>
                 {p.full_name}
@@ -168,14 +174,14 @@ export function TrackingHistoryTab() {
       {locations.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { value: stats.checkIns, label: 'Check-ins', icon: '🟢' },
-            { value: stats.checkOuts, label: 'Check-outs', icon: '🔴' },
-            { value: formatDistance(stats.totalDistance), label: 'Distância total', icon: '📍' },
+            { value: stats.checkIns, label: tTracking.statCheckins, icon: '🟢' },
+            { value: stats.checkOuts, label: tTracking.statCheckouts, icon: '🔴' },
+            { value: formatDistance(stats.totalDistance), label: tTracking.statTotalDistance, icon: '📍' },
             {
               value: stats.timeInField > 0
                 ? `${Math.floor(stats.timeInField / 60)}h${Math.round(stats.timeInField % 60).toString().padStart(2, '0')}`
                 : '-',
-              label: 'Tempo em campo',
+              label: tTracking.statTimeInField,
               icon: '⏱️',
             },
           ].map((stat, i) => (
@@ -201,7 +207,7 @@ export function TrackingHistoryTab() {
         <Card>
           <CardContent className="p-10 text-center text-muted-foreground">
             <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p>Nenhum registro encontrado para esta data.</p>
+            <p>{tTracking.emptyNoRecordsDesc}</p>
           </CardContent>
         </Card>
       ) : (
@@ -262,7 +268,7 @@ export function TrackingHistoryTab() {
                                   rel="noopener noreferrer"
                                   className="text-[11px] text-primary hover:underline inline-flex items-center gap-0.5 shrink-0"
                                 >
-                                  <ExternalLink className="h-3 w-3" /> Mapa
+                                  <ExternalLink className="h-3 w-3" /> {tTracking.linkViewOnMap}
                                 </a>
                               </div>
                               {hasAddress && (
