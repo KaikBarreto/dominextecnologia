@@ -4,6 +4,9 @@ import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { openPdfInTab } from '@/utils/openPdfInTab';
+import type { LocaleCode } from '@/lib/i18n/locales';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney, formatNumber, toBcp47 } from '@/lib/format';
 
 /**
  * Relatório PDF A4 paginado (real) do Estoque/Inventário.
@@ -15,7 +18,7 @@ import { openPdfInTab } from '@/utils/openPdfInTab';
  * Mesmas regras-lei:
  *  - Cabeçalho: logo + dados da empresa respeitando os toggles `show_*_in_documents`.
  *  - Rodapé Dominex SÓ quando o tenant NÃO é white-label (regra-lei #2).
- *  - BRL e números no padrão BR.
+ *  - Moeda e números formatados pelo locale do usuário via src/lib/format.
  */
 
 export interface InventoryReportRow {
@@ -34,16 +37,21 @@ interface InventoryPdfData {
   whiteLabel: boolean;
   title: string;
   rows: InventoryReportRow[];
+  /** Locale do usuário (de useAppLocaleContext). */
+  locale: LocaleCode;
+  /** Código ISO 4217 da moeda da empresa (ex.: 'BRL', 'USD'). */
+  currency: string;
 }
 
-const formatCurrencyBR = (value: number): string =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+function buildFormatters(locale: LocaleCode, currency: string) {
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
+  const formatNum = (value: number) =>
+    formatNumber(value, locale, { maximumFractionDigits: 2 });
+  return { formatCurrency, formatNum };
+}
 
-const formatNumberBR = (value: number): string =>
-  new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value);
-
-function formatGeneratedAt(): string {
-  return new Date().toLocaleString('pt-BR', {
+function formatGeneratedAt(locale: LocaleCode): string {
+  return new Date().toLocaleString(toBcp47(locale), {
     timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
@@ -105,7 +113,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const MARGIN = 14; // mm
 
 export async function generateInventoryReportPdf(data: InventoryPdfData): Promise<void> {
-  const { company, whiteLabel, title, rows } = data;
+  const { company, whiteLabel, title, rows, locale, currency } = data;
+  const tr = MESSAGES[locale].app.inventory.report;
+  const { formatCurrency, formatNum } = buildFormatters(locale, currency);
 
   // Abre a janela ANTES do await (gesto do usuário → driblar popup-blocker).
   const targetWindow = window.open('', '_blank');
@@ -193,8 +203,16 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(136, 136, 136);
-  const registros = `${rows.length} item${rows.length !== 1 ? 's' : ''}`;
-  doc.text(`${registros}  |  Gerado em: ${formatGeneratedAt()}`, pageWidth / 2, y, { align: 'center' });
+  const count = rows.length;
+  const registros = count !== 1
+    ? tr.itemCountPlural.replace('{count}', String(count))
+    : tr.itemCount.replace('{count}', String(count));
+  doc.text(
+    `${registros}  |  ${tr.generatedAt} ${formatGeneratedAt(locale)}`,
+    pageWidth / 2,
+    y,
+    { align: 'center' },
+  );
   y += 8;
 
   // ===== Card de total geral (Valor em estoque) =====
@@ -206,11 +224,11 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(107, 114, 128);
-  doc.text('VALOR TOTAL EM ESTOQUE (CUSTO)', MARGIN + 4, y + 5.5);
+  doc.text(tr.totalStockCard, MARGIN + 4, y + 5.5);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(31, 41, 55);
-  doc.text(formatCurrencyBR(totalEstoque), MARGIN + 4, y + 12);
+  doc.text(formatCurrency(totalEstoque), MARGIN + 4, y + 12);
   y += cardHeight + 6;
 
   // ===== Tabela paginada (autoTable repete o head em cada página A4) =====
@@ -221,21 +239,30 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
       r.name || '—',
       r.sku || '—',
       r.category || '—',
-      formatNumberBR(qty),
+      formatNum(qty),
       r.unit || '—',
-      r.cost_price != null ? formatCurrencyBR(r.cost_price) : '—',
-      r.sale_price != null ? formatCurrencyBR(r.sale_price) : '—',
-      formatCurrencyBR(valorTotal),
+      r.cost_price != null ? formatCurrency(r.cost_price) : '—',
+      r.sale_price != null ? formatCurrency(r.sale_price) : '—',
+      formatCurrency(valorTotal),
     ];
   });
 
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN, bottom: 18 },
-    head: [['Nome', 'SKU', 'Categoria', 'Qtd.', 'Un.', 'Custo unit.', 'Venda unit.', 'Valor total']],
-    body: body.length > 0 ? body : [['', '', '', '', '', '', '', 'Nenhum item selecionado.']],
+    head: [[
+      tr.colName,
+      tr.colSku,
+      tr.colCategory,
+      tr.colQty,
+      tr.colUnit,
+      tr.colCostUnit,
+      tr.colSaleUnit,
+      tr.colTotal,
+    ]],
+    body: body.length > 0 ? body : [['', '', '', '', '', '', '', tr.noItems]],
     foot: body.length > 0
-      ? [['', '', '', '', '', '', 'Total geral', formatCurrencyBR(totalEstoque)]]
+      ? [['', '', '', '', '', '', tr.footerGrandTotal, formatCurrency(totalEstoque)]]
       : undefined,
     theme: 'striped',
     styles: { fontSize: 8, cellPadding: 2, valign: 'middle', overflow: 'linebreak' },

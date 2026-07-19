@@ -1,4 +1,6 @@
 import type { MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
+import { MESSAGES } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 /**
  * Gera um `.xlsx` das Movimentações financeiras com as mesmas colunas do PDF.
@@ -37,9 +39,13 @@ function todayStamp(): string {
 interface GenerateMovimentacoesExcelParams {
   title: string;
   rows: MovimentacaoReportRow[];
+  /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
+  locale?: LocaleCode;
 }
 
-export async function generateMovimentacoesExcel({ title, rows }: GenerateMovimentacoesExcelParams): Promise<void> {
+export async function generateMovimentacoesExcel({ title, rows, locale: rawLocale }: GenerateMovimentacoesExcelParams): Promise<void> {
+  const locale = rawLocale ?? 'pt-br';
+  const t = MESSAGES[locale].app.finance.movimentacoesGenerator;
   const XLSX = await import('xlsx');
 
   let totalEntradas = 0;
@@ -55,25 +61,25 @@ export async function generateMovimentacoesExcel({ title, rows }: GenerateMovime
   // Cabeçalho do arquivo
   aoa.push([title]);
   aoa.push([
-    'Entradas', formatCurrencyBR(totalEntradas),
-    'Saídas', formatCurrencyBR(totalSaidas),
-    'Saldo', formatCurrencyBR(saldo),
+    t.labelEntradas, formatCurrencyBR(totalEntradas),
+    t.labelSaidas, formatCurrencyBR(totalSaidas),
+    t.labelSaldo, formatCurrencyBR(saldo),
   ]);
   aoa.push([]);
 
   // Cabeçalho da tabela (mesmas colunas do PDF)
-  aoa.push(['Data', 'Tipo', 'Descrição', 'Categoria', 'Conta', 'Valor', 'Status']);
+  aoa.push([t.colDate, t.colType, t.colDescription, t.colCategory, t.colAccount, t.colAmount, t.colStatus]);
 
   for (const r of rows) {
     aoa.push([
       formatDateBR(r.date),
-      r.type === 'entrada' ? 'Receita' : 'Despesa',
+      r.type === 'entrada' ? t.labelRevenue : t.labelExpense,
       r.description || '',
       r.category || '',
       r.account || '',
       // Valor com sinal: saída fica negativa pra somar corretamente na planilha.
       r.type === 'entrada' ? r.amount : -r.amount,
-      r.isPaid ? 'Pago' : 'Pendente',
+      r.isPaid ? t.labelPaid : t.labelPending,
     ]);
   }
 

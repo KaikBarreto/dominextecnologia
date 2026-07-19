@@ -883,6 +883,7 @@ export default function Employees() {
                   companySettings,
                   whiteLabel: wlEnabled,
                   generatedByName: profile?.full_name || undefined,
+                  locale,
                 });
                 const blob = new Blob([html], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);

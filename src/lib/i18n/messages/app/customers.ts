@@ -341,6 +341,9 @@ export const customers = {
       // Valores booleanos (campo dinâmico de equipamento)
       booleanYes: 'Sim',
       booleanNo: 'Não',
+      // Tela PortalUnavailable (módulo fora da assinatura)
+      unavailableTitle: 'Portal ainda não disponível',
+      unavailableDesc: 'Este portal ainda não está disponível. Em caso de dúvida, fale com a empresa responsável.',
     },
   },
 
@@ -637,6 +640,8 @@ export const customers = {
       statusCancelada: 'Cancelled',
       booleanYes: 'Yes',
       booleanNo: 'No',
+      unavailableTitle: 'Portal not yet available',
+      unavailableDesc: 'This portal is not yet available. If you have any questions, please contact the responsible company.',
     },
   },
 
@@ -933,6 +938,8 @@ export const customers = {
       statusCancelada: 'Cancelada',
       booleanYes: 'Sí',
       booleanNo: 'No',
+      unavailableTitle: 'Portal aún no disponible',
+      unavailableDesc: 'Este portal aún no está disponible. Si tienes alguna duda, comunícate con la empresa responsable.',
     },
   },
 
@@ -1229,6 +1236,8 @@ export const customers = {
       statusCancelada: 'Annulé',
       booleanYes: 'Oui',
       booleanNo: 'Non',
+      unavailableTitle: 'Portail pas encore disponible',
+      unavailableDesc: 'Ce portail n\'est pas encore disponible. En cas de doute, contactez l\'entreprise responsable.',
     },
   },
 };

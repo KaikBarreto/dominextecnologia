@@ -158,7 +158,7 @@ export function TimeHistory() {
             variant="outline"
             size="sm"
             className="gap-2 h-9"
-            onClick={() => exportToCSV(sheets, employees)}
+            onClick={() => exportToCSV(sheets, employees, locale)}
             disabled={sheets.length === 0}
           >
             <Download className="h-4 w-4" /> CSV
@@ -177,7 +177,7 @@ export function TimeHistory() {
               variant="outline"
               size="sm"
               className="gap-2 h-9"
-              onClick={() => exportToCSV(sheets, employees)}
+              onClick={() => exportToCSV(sheets, employees, locale)}
               disabled={sheets.length === 0}
             >
               <Download className="h-4 w-4" /> CSV

@@ -464,6 +464,18 @@ export const pmoc = {
       networkErrorTitle: 'Não foi possível carregar',
       networkErrorDesc: 'Verifique sua conexão e tente novamente.',
       networkErrorBtn: 'Tentar novamente',
+      // SEO — title/description dinâmicos (locale da empresa)
+      seoTitle: 'Plano de Manutenção Preventiva (PMOC)',
+      seoTitleContract: 'Portal do Contrato',
+      seoDesc: 'Plano de Manutenção, Operação e Controle conforme a Lei Federal 13.589/2018. Histórico, documentos e status sanitário da unidade.',
+      seoDescContract: 'Portal do contrato: cronograma, ocorrências e histórico de atendimentos.',
+      // Rótulos de validade de documento (getValidityLabel)
+      validityLabel: {
+        vigente: 'Vigente',
+        vence_em_breve: 'Vence em breve',
+        vencido: 'Vencido',
+        sem_validade: 'Sem validade',
+      },
     },
 
     // ── Aba Documentos PMOC (PmocContractDocsTab.tsx) ──
@@ -1148,6 +1160,16 @@ export const pmoc = {
       networkErrorTitle: 'Could not load',
       networkErrorDesc: 'Check your connection and try again.',
       networkErrorBtn: 'Try again',
+      seoTitle: 'Preventive Maintenance Plan (PMOC)',
+      seoTitleContract: 'Contract Portal',
+      seoDesc: 'HVAC preventive maintenance plan compliant with Brazilian Federal Law 13.589/2018. History, documents and health status of the unit.',
+      seoDescContract: 'Contract portal: schedule, occurrences and service history.',
+      validityLabel: {
+        vigente: 'Valid',
+        vence_em_breve: 'Expiring soon',
+        vencido: 'Expired',
+        sem_validade: 'No expiry',
+      },
     },
 
     docs: {
@@ -1807,6 +1829,16 @@ export const pmoc = {
       networkErrorTitle: 'No se pudo cargar',
       networkErrorDesc: 'Verifica tu conexión e inténtalo de nuevo.',
       networkErrorBtn: 'Intentar de nuevo',
+      seoTitle: 'Plan de Mantenimiento Preventivo (PMOC)',
+      seoTitleContract: 'Portal del Contrato',
+      seoDesc: 'Plan de mantenimiento preventivo de climatización conforme a la Ley Federal Brasileña 13.589/2018. Historial, documentos y estado sanitario de la unidad.',
+      seoDescContract: 'Portal del contrato: cronograma, ocurrencias e historial de atenciones.',
+      validityLabel: {
+        vigente: 'Vigente',
+        vence_em_breve: 'Próximo a vencer',
+        vencido: 'Vencido',
+        sem_validade: 'Sin vencimiento',
+      },
     },
 
     docs: {
@@ -2466,6 +2498,16 @@ export const pmoc = {
       networkErrorTitle: 'Impossible de charger',
       networkErrorDesc: 'Vérifiez votre connexion et réessayez.',
       networkErrorBtn: 'Réessayer',
+      seoTitle: 'Plan de Maintenance Préventive CVC (PMOC)',
+      seoTitleContract: 'Portail du Contrat',
+      seoDesc: 'Plan de maintenance préventive CVC conforme a la loi federale bresilienne 13.589/2018. Historique, documents et etat sanitaire de l\'unite.',
+      seoDescContract: 'Portail du contrat : planning, occurrences et historique des interventions.',
+      validityLabel: {
+        vigente: 'Valide',
+        vence_em_breve: 'Expire bientot',
+        vencido: 'Expire',
+        sem_validade: 'Sans date limite',
+      },
     },
 
     docs: {

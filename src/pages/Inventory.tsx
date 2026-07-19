@@ -71,7 +71,7 @@ import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
   const { items, isLoading, stats, deleteItem } = useInventory();
   const { settings: companySettings } = useCompanySettings();
@@ -160,13 +160,15 @@ export default function Inventory() {
     const title = t.export.reportTitle;
     try {
       if (exportFormat === 'excel') {
-        await generateInventoryExcel({ title, rows });
+        await generateInventoryExcel({ title, rows, locale, currency });
       } else {
         await generateInventoryReportPdf({
           company: companySettings,
           whiteLabel: whiteLabelEnabled,
           title,
           rows,
+          locale,
+          currency,
         });
       }
     } catch (err) {

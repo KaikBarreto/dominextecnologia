@@ -1,5 +1,5 @@
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { MESSAGES } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import { escapeHtml, safeImageUrl } from "./escapeHtml";
 
 const formatCurrencyBR = (value: number): string => {
@@ -40,10 +40,18 @@ interface DreReportData {
   opexCategories: ExpenseCategory[];
   resultadoLiquido: number;
   margem: number;
+  /** Locale do usuário que está gerando o documento. Padrão: 'pt-br'. */
+  locale?: LocaleCode;
 }
 
 export const generateDreHtml = (data: DreReportData) => {
-  const generatedDate = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  const locale = data.locale ?? 'pt-br';
+  const t = MESSAGES[locale].app.finance.dreGenerator;
+
+  const generatedDate = new Date().toLocaleString(
+    locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR',
+    { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+  );
 
   const grossProfitColor = data.lucroBruto > 0 ? '#16a34a' : data.lucroBruto < 0 ? '#dc2626' : '#374151';
   const resultColor = data.resultadoLiquido > 0 ? '#16a34a' : data.resultadoLiquido < 0 ? '#dc2626' : '#1f2937';
@@ -62,11 +70,11 @@ export const generateDreHtml = (data: DreReportData) => {
 
   const html = `
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${locale === 'pt-br' ? 'pt-BR' : locale}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DRE - ${escapeHtml(data.company.name)}</title>
+  <title>${escapeHtml(t.title)} - ${escapeHtml(data.company.name)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page { size: A4 portrait; margin: 10mm; }
@@ -119,80 +127,80 @@ export const generateDreHtml = (data: DreReportData) => {
         </div>
       </div>
     </div>
-    
+
     <div class="title-section">
-      <h1 class="title">Demonstrativo de Resultado (DRE)</h1>
-      <p class="subtitle">Período: ${data.period} | Gerado em: ${generatedDate}</p>
+      <h1 class="title">${escapeHtml(t.title)}</h1>
+      <p class="subtitle">${escapeHtml(t.period)}: ${data.period} | ${escapeHtml(t.generatedAt)}: ${generatedDate}</p>
     </div>
-    
+
     <div class="dre-container">
-      <div class="section-header">Receita Bruta</div>
+      <div class="section-header">${escapeHtml(t.sectionGrossRevenue)}</div>
       <div class="row">
-        <span class="row-label">Total de Receitas</span>
+        <span class="row-label">${escapeHtml(t.rowTotalRevenue)}</span>
         <span class="positive">${formatCurrencyBR(data.receitaBruta)}</span>
       </div>
-      
+
       ${data.impostosCategories.length > 0 ? `
-        <div class="section-header">Impostos e Deduções</div>
+        <div class="section-header">${escapeHtml(t.sectionTaxes)}</div>
         ${renderCategories(data.impostosCategories)}
         <div class="row subtotal">
-          <span>Total Impostos</span>
+          <span>${escapeHtml(t.rowTotalTaxes)}</span>
           <span class="negative">-${formatCurrencyBR(data.impostos)}</span>
         </div>
       ` : ''}
-      
+
       <div class="row highlight" style="background: ${data.receitaLiquida >= 0 ? '#16a34a' : '#dc2626'}">
-        <span>= Receita Líquida</span>
+        <span>${escapeHtml(t.rowNetRevenue)}</span>
         <span>${formatCurrencyBR(data.receitaLiquida)}</span>
       </div>
-      
+
       ${data.cpvCategories.length > 0 ? `
-        <div class="section-header">Custo do Serviço (CPV)</div>
+        <div class="section-header">${escapeHtml(t.sectionCogs)}</div>
         ${renderCategories(data.cpvCategories)}
         <div class="row subtotal">
-          <span>Total CPV</span>
+          <span>${escapeHtml(t.rowTotalCogs)}</span>
           <span class="negative">-${formatCurrencyBR(data.cpv)}</span>
         </div>
       ` : ''}
-      
+
       <div class="row highlight" style="background: ${grossProfitColor}">
         <div class="result-label">
-          <span>= Lucro Bruto</span>
-          <span class="margin-text">Margem: ${data.margem.toFixed(1)}%</span>
+          <span>${escapeHtml(t.rowGrossProfit)}</span>
+          <span class="margin-text">${escapeHtml(t.labelMargin)}: ${data.margem.toFixed(1)}%</span>
         </div>
         <span>${formatCurrencyBR(data.lucroBruto)}</span>
       </div>
-      
+
       ${data.opexCategories.length > 0 ? `
-        <div class="section-header">Despesas Operacionais (OPEX)</div>
+        <div class="section-header">${escapeHtml(t.sectionOpex)}</div>
         ${renderCategories(data.opexCategories)}
         <div class="row subtotal">
-          <span>Total OPEX</span>
+          <span>${escapeHtml(t.rowTotalOpex)}</span>
           <span class="negative">-${formatCurrencyBR(data.opex)}</span>
         </div>
       ` : ''}
-      
+
       <div class="row result" style="background: ${resultColor}">
         <div class="result-label">
-          <span>= Resultado Líquido (EBITDA)</span>
-          <span class="result-sublabel">${data.resultadoLiquido > 0 ? 'Superávit' : data.resultadoLiquido < 0 ? 'Déficit' : 'Equilibrado'}</span>
+          <span>${escapeHtml(t.rowNetResult)}</span>
+          <span class="result-sublabel">${data.resultadoLiquido > 0 ? escapeHtml(t.labelSurplus) : data.resultadoLiquido < 0 ? escapeHtml(t.labelDeficit) : escapeHtml(t.labelBalanced)}</span>
         </div>
         <span>${data.resultadoLiquido < 0 ? '-' : ''}${formatCurrencyBR(Math.abs(data.resultadoLiquido))}</span>
       </div>
     </div>
-    
+
     <div class="footer">
-      <div class="footer-text">Gerado automaticamente pelo sistema</div>
+      <div class="footer-text">${escapeHtml(t.generatedBySystem)}</div>
     </div>
   </div>
-  
+
   <button class="print-btn no-print" onclick="window.print()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <polyline points="6 9 6 2 18 2 18 9"></polyline>
       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
       <rect x="6" y="14" width="12" height="8"></rect>
     </svg>
-    Imprimir / Salvar PDF
+    ${escapeHtml(t.printSavePdf)}
   </button>
 </body>
 </html>`;

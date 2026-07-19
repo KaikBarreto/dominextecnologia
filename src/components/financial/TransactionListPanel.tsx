@@ -227,6 +227,7 @@ export function TransactionListPanel({
         whiteLabel: whiteLabelEnabled,
         title,
         rows: buildExportRows(),
+        locale,
       });
     } catch (e: any) {
       toast({ variant: 'destructive', title: fin.transactionList.toastPdfError, description: getErrorMessage(e) });
@@ -235,7 +236,7 @@ export function TransactionListPanel({
 
   const handleExportExcel = async () => {
     try {
-      await generateMovimentacoesExcel({ title, rows: buildExportRows() });
+      await generateMovimentacoesExcel({ title, rows: buildExportRows(), locale });
     } catch (e: any) {
       toast({ variant: 'destructive', title: fin.transactionList.toastExcelError, description: getErrorMessage(e) });
     }

@@ -1,4 +1,7 @@
 import type { InventoryReportRow } from '@/utils/inventoryPdfGenerator';
+import type { LocaleCode } from '@/lib/i18n/locales';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 /**
  * Gera um `.xlsx` do Estoque com as mesmas colunas do PDF.
@@ -6,9 +9,6 @@ import type { InventoryReportRow } from '@/utils/inventoryPdfGenerator';
  * O `xlsx` (SheetJS) é importado de forma lazy (`await import`) pra não pesar o
  * bundle inicial — só carrega quando o usuário confirma "Exportar Excel".
  */
-
-const formatCurrencyBR = (value: number): string =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 function todayStamp(): string {
   // YYYY-MM-DD em horário de Brasília para nomear o arquivo.
@@ -23,10 +23,22 @@ function todayStamp(): string {
 interface GenerateInventoryExcelParams {
   title: string;
   rows: InventoryReportRow[];
+  /** Locale do usuário (de useAppLocaleContext). */
+  locale: LocaleCode;
+  /** Código ISO 4217 da moeda da empresa (ex.: 'BRL', 'USD'). */
+  currency: string;
 }
 
-export async function generateInventoryExcel({ title, rows }: GenerateInventoryExcelParams): Promise<void> {
+export async function generateInventoryExcel({
+  title,
+  rows,
+  locale,
+  currency,
+}: GenerateInventoryExcelParams): Promise<void> {
   const XLSX = await import('xlsx');
+  const tr = MESSAGES[locale].app.inventory.report;
+
+  const fmtCurrency = (v: number) => formatMoney(v, currency, locale);
 
   let totalEstoque = 0;
   for (const r of rows) {
@@ -37,11 +49,20 @@ export async function generateInventoryExcel({ title, rows }: GenerateInventoryE
 
   // Cabeçalho do arquivo
   aoa.push([title]);
-  aoa.push(['Valor total em estoque (custo)', formatCurrencyBR(totalEstoque)]);
+  aoa.push([tr.excelTotalLabel, fmtCurrency(totalEstoque)]);
   aoa.push([]);
 
   // Cabeçalho da tabela (mesmas colunas do PDF)
-  aoa.push(['Nome', 'SKU', 'Categoria', 'Quantidade', 'Unidade', 'Custo unit.', 'Venda unit.', 'Valor total']);
+  aoa.push([
+    tr.colName,
+    tr.colSku,
+    tr.colCategory,
+    tr.colQty,
+    tr.colUnit,
+    tr.colCostUnit,
+    tr.colSaleUnit,
+    tr.colTotal,
+  ]);
 
   for (const r of rows) {
     const qty = r.quantity || 0;
@@ -59,7 +80,7 @@ export async function generateInventoryExcel({ title, rows }: GenerateInventoryE
 
   // Linha de TOTAL geral
   aoa.push([]);
-  aoa.push(['', '', '', '', '', '', 'Total geral', totalEstoque]);
+  aoa.push(['', '', '', '', '', '', tr.footerGrandTotal, totalEstoque]);
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [
@@ -75,7 +96,7 @@ export async function generateInventoryExcel({ title, rows }: GenerateInventoryE
   ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Estoque');
+  XLSX.utils.book_append_sheet(wb, ws, tr.excelSheetName);
 
   const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-');
   XLSX.writeFile(wb, `${slug}-${todayStamp()}.xlsx`);

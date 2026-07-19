@@ -180,6 +180,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
         opexCategories,
         resultadoLiquido: dre.resultadoLiquido,
         margem: dre.margem,
+        locale,
       });
     } finally {
       setIsExporting(false);

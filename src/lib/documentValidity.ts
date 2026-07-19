@@ -81,8 +81,31 @@ export function getDocumentValidityStatus(
   return 'vigente';
 }
 
-/** Rótulo PT-BR do status, pra exibir no selo. */
-export function getValidityLabel(status: DocumentValidityStatus): string {
+/**
+ * Rótulo do status de validade, no locale informado (default pt-br).
+ *
+ * Aceita `locale` opcional para que telas públicas (portal do contrato) e
+ * telas logadas (aba Documentos) possam passar o idioma correto em vez de
+ * ficarem presos ao pt-br.
+ *
+ * Chaves: `pmoc.publicPortal.validityLabel.*` — definidas nos 4 locales em
+ * `src/lib/i18n/messages/app/pmoc.ts`.
+ */
+export function getValidityLabel(status: DocumentValidityStatus, locale?: string): string {
+  // Importação lazy (evita ciclo — documentValidity não depende de MESSAGES
+  // em runtime porque MESSAGES depende de vários módulos pesados).
+  // Se o import falhar por qualquer razão, cai no fallback pt-br inline.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { MESSAGES } = require('@/lib/i18n/messages') as { MESSAGES: Record<string, { app: { pmoc: { publicPortal: { validityLabel: Record<string, string> } } } }> };
+    const resolvedLocale = (locale && locale in MESSAGES) ? locale : 'pt-br';
+    const labels = MESSAGES[resolvedLocale]?.app?.pmoc?.publicPortal?.validityLabel;
+    if (labels) {
+      return labels[status] ?? labels['sem_validade'] ?? 'Sem validade';
+    }
+  } catch {
+    // fallback inline abaixo
+  }
   switch (status) {
     case 'vigente':
       return 'Vigente';

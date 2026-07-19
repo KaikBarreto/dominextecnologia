@@ -219,22 +219,34 @@ function setThemeColor(color: string) {
   if (el) el.setAttribute('content', color);
 }
 
+/** Mapeia locale do app → og:locale BCP-47 (Open Graph exige underline). */
+function toOgLocale(locale: string): string {
+  switch (locale) {
+    case 'en': return 'en_US';
+    case 'es': return 'es_ES';
+    case 'fr': return 'fr_FR';
+    default:   return 'pt_BR';
+  }
+}
+
 function usePortalSeo(
   payload: PortalPayload | undefined,
   token: string | undefined,
   themeColor: string,
+  locale: string,
 ) {
   useEffect(() => {
     if (!payload || !token) return;
 
     const isPmoc = payload.is_pmoc !== false;
     const unitName = payload.unit.name ?? 'Unidade';
-    const title = isPmoc
-      ? `PMOC — ${unitName} | ${payload.tenant.name}`
-      : `Portal do Contrato — ${unitName} | ${payload.tenant.name}`;
+    const tSeo = MESSAGES[locale as keyof typeof MESSAGES]?.app?.pmoc?.publicPortal ?? MESSAGES['pt-br'].app.pmoc.publicPortal;
+    const seoBase = isPmoc ? tSeo.seoTitle : tSeo.seoTitleContract;
+    const seoDescBase = isPmoc ? tSeo.seoDesc : tSeo.seoDescContract;
+    const title = `${seoBase} — ${unitName} | ${payload.tenant.name}`;
     const description = isPmoc
-      ? `Plano de Manutenção, Operação e Controle conforme Lei Federal 13.589/2018. Histórico, documentos e status sanitário da unidade ${unitName}.`
-      : `Portal do contrato de ${unitName}: cronograma, ocorrências e histórico de atendimentos.`;
+      ? `${seoDescBase} ${unitName}.`
+      : `${seoDescBase.replace('{unit}', unitName)}`;
     const url = buildPmocPortalUrl(token);
 
     document.title = title;
@@ -245,7 +257,7 @@ function usePortalSeo(
     setMeta('property', 'og:title', title);
     setMeta('property', 'og:description', description);
     setMeta('property', 'og:url', url);
-    setMeta('property', 'og:locale', 'pt_BR');
+    setMeta('property', 'og:locale', toOgLocale(locale));
     if (payload.tenant.logo_url) {
       setMeta('property', 'og:image', payload.tenant.logo_url);
       setMeta('name', 'twitter:image', payload.tenant.logo_url);
@@ -261,7 +273,7 @@ function usePortalSeo(
     setJsonLd('pmoc-portal', {
       '@context': 'https://schema.org',
       '@type': 'Service',
-      name: isPmoc ? `PMOC — ${unitName}` : `Portal do Contrato — ${unitName}`,
+      name: `${seoBase} — ${unitName}`,
       description,
       provider: { '@type': 'Organization', name: payload.tenant.name },
       areaServed: payload.unit.address ?? undefined,
@@ -279,7 +291,7 @@ function usePortalSeo(
       document.title = 'Dominex — Gestão de Equipes de Campo e Ordens de Serviço';
       setThemeColor(DEFAULT_THEME_COLOR);
     };
-  }, [payload, token, themeColor]);
+  }, [payload, token, themeColor, locale]);
 }
 
 // ----- Página -----------------------------------------------------------------
@@ -433,7 +445,8 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   }, [headerConfig.logoType, tenant.logo_url, tenant.report_header]);
 
   // SEO + theme-color (cor do header) — precisa ser depois de headerConfig.
-  usePortalSeo(payload, token, headerConfig.bgColor);
+  // Passa `locale` da empresa pra que título/descrição e og:locale reflitam o idioma do tenant.
+  usePortalSeo(payload, token, headerConfig.bgColor, locale);
 
   // Sticky bar com blur no mobile: aparece quando o hero "saiu" do viewport.
   // Mantém o nome da unidade visível no topo, sensação de navigation bar nativa.
@@ -1173,6 +1186,7 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
   const showPendingSignature = available && doc.signature_status === 'pending';
 
   // Validade do documento (só docs regulatórios trazem `valid_until`).
+  // Passa `locale` para que o rótulo reflita o idioma da empresa (portal público).
   const validUntil = doc.valid_until ?? null;
   const validityStatus = getDocumentValidityStatus(validUntil);
   const showValidity = available && validityStatus !== 'sem_validade';
@@ -1216,7 +1230,7 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
                   validityPillClass,
                 )}
               >
-                {getValidityLabel(validityStatus)}
+                {getValidityLabel(validityStatus, locale)}
               </span>
             </div>
           )}

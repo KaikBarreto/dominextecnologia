@@ -2,6 +2,8 @@ import jsPDF from 'jspdf';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
+import { MESSAGES } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 // ---------------------------------------------------------------------------
 // Recibo térmico (80mm) de funcionário — pagamento ou vale.
@@ -102,6 +104,8 @@ export interface GenerateEmployeeThermalReceiptParams {
   vale?: ThermalValeData;
   /** Obrigatório quando kind='pagamento'. */
   payment?: ThermalPaymentBreakdown;
+  /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
+  locale?: LocaleCode;
 }
 
 const composeAddress = (c: CompanySettings): string => {
@@ -119,7 +123,12 @@ const composeAddress = (c: CompanySettings): string => {
 // ---------------------------------------------------------------------------
 // Cabeçalho da empresa (logo + dados) respeitando show_*_in_documents.
 // ---------------------------------------------------------------------------
-const renderCompanyHeader = async (doc: jsPDF, company: CompanySettings, startY: number): Promise<number> => {
+const renderCompanyHeader = async (
+  doc: jsPDF,
+  company: CompanySettings,
+  startY: number,
+  _tLabels: { address: string; phone: string; email: string },
+): Promise<number> => {
   let y = startY;
 
   const logoUrl = company.white_label_enabled
@@ -186,7 +195,7 @@ const renderCompanyHeader = async (doc: jsPDF, company: CompanySettings, startY:
     const addr = composeAddress(company);
     if (addr) {
       doc.setFont('helvetica', 'bold');
-      const addrLabel = 'Endereço: ';
+      const addrLabel = `${_tLabels.address}: `;
       const addrLabelWidth = doc.getTextWidth(addrLabel);
       doc.text(addrLabel, infoStartX, infoY);
       doc.setFont('helvetica', 'normal');
@@ -202,7 +211,7 @@ const renderCompanyHeader = async (doc: jsPDF, company: CompanySettings, startY:
 
   if (company.show_phone_in_documents && company.phone) {
     doc.setFont('helvetica', 'bold');
-    const phoneLabel = 'Telefone: ';
+    const phoneLabel = `${_tLabels.phone}: `;
     const phoneLabelWidth = doc.getTextWidth(phoneLabel);
     doc.text(phoneLabel, infoStartX, infoY);
     doc.setFont('helvetica', 'normal');
@@ -212,7 +221,7 @@ const renderCompanyHeader = async (doc: jsPDF, company: CompanySettings, startY:
 
   if (company.show_email_in_documents && company.email) {
     doc.setFont('helvetica', 'bold');
-    const emailLabel = 'E-mail: ';
+    const emailLabel = `${_tLabels.email}: `;
     const emailLabelWidth = doc.getTextWidth(emailLabel);
     doc.text(emailLabel, infoStartX, infoY);
     doc.setFont('helvetica', 'normal');
@@ -264,18 +273,21 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
   const company = params.company;
   const whiteLabel = params.whiteLabel ?? company?.white_label_enabled ?? false;
   const { employee, responsibleName, kind } = params;
+  const locale = params.locale ?? 'pt-br';
+  const t = MESSAGES[locale].app.employees.thermalGenerator;
   const isVale = kind === 'vale';
+  const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
 
   let y = 8;
 
   // Cabeçalho da empresa (se houver)
   if (company) {
-    y = await renderCompanyHeader(doc, company, y);
+    y = await renderCompanyHeader(doc, company, y, { address: t.address, phone: t.phone, email: t.email });
   }
 
   // Faixa de título
-  const docTitle = isVale ? 'Recibo de Vale' : 'Recibo de Pagamento';
-  const generatedDate = new Date().toLocaleString('pt-BR', {
+  const docTitle = isVale ? t.titleAdvance : t.titlePayment;
+  const generatedDate = new Date().toLocaleString(bcp47, {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     timeZone: 'America/Sao_Paulo',
   });
@@ -291,21 +303,21 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text(`Emitido em ${generatedDate}`, 40, y, { align: 'center' });
+  doc.text(`${t.issuedAt} ${generatedDate}`, 40, y, { align: 'center' });
   y += 6;
 
   // Funcionário
-  y = drawSectionTitle(doc, 'Funcionário', y);
-  y = drawInfoRow(doc, 'Nome', employee.name, y);
-  if (employee.position) y = drawInfoRow(doc, 'Cargo', employee.position, y);
-  if (employee.cpf) y = drawInfoRow(doc, 'CPF', cpfCnpjMask(employee.cpf), y);
+  y = drawSectionTitle(doc, t.sectionEmployee, y);
+  y = drawInfoRow(doc, t.fieldName, employee.name, y);
+  if (employee.position) y = drawInfoRow(doc, t.fieldPosition, employee.position, y);
+  if (employee.cpf) y = drawInfoRow(doc, t.fieldCpf, cpfCnpjMask(employee.cpf), y);
   y += 2;
 
   if (isVale) {
     const vale = params.vale;
-    y = drawSectionTitle(doc, 'Dados do Vale', y);
-    if (vale?.date) y = drawInfoRow(doc, 'Data/Hora', vale.date, y);
-    y = drawInfoRow(doc, 'Forma de Pagamento', vale?.paymentMethod || 'Não informado', y);
+    y = drawSectionTitle(doc, t.sectionAdvance, y);
+    if (vale?.date) y = drawInfoRow(doc, t.fieldDate, vale.date, y);
+    y = drawInfoRow(doc, t.fieldPaymentMethod, vale?.paymentMethod || t.notProvided, y);
     if (vale?.description) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
@@ -325,7 +337,7 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(`Valor do Vale: ${formatReceiptCurrency(vale?.amount ?? 0)}`, 40, y + 6, { align: 'center' });
+    doc.text(`${t.totalAdvance}: ${formatReceiptCurrency(vale?.amount ?? 0)}`, 40, y + 6, { align: 'center' });
     doc.setTextColor(0, 0, 0);
     y += 13;
   } else {
@@ -339,16 +351,16 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
     const valorPago = p?.valorPago ?? 0;
     const subtotal = salary + totalBonus - totalFaltas;
 
-    y = drawSectionTitle(doc, 'Detalhamento', y);
-    y = drawInfoRow(doc, 'Salário Base', formatReceiptCurrency(salary), y);
-    if (totalBonus > 0) y = drawInfoRow(doc, '+ Bônus', `+ ${formatReceiptCurrency(totalBonus)}`, y);
-    if (totalFaltas > 0) y = drawInfoRow(doc, '- Faltas', `- ${formatReceiptCurrency(totalFaltas)}`, y);
-    y = drawInfoRow(doc, 'Subtotal', formatReceiptCurrency(subtotal), y);
+    y = drawSectionTitle(doc, t.sectionDetail, y);
+    y = drawInfoRow(doc, t.fieldSalary, formatReceiptCurrency(salary), y);
+    if (totalBonus > 0) y = drawInfoRow(doc, t.fieldBonus, `+ ${formatReceiptCurrency(totalBonus)}`, y);
+    if (totalFaltas > 0) y = drawInfoRow(doc, t.fieldAbsences, `- ${formatReceiptCurrency(totalFaltas)}`, y);
+    y = drawInfoRow(doc, t.fieldSubtotal, formatReceiptCurrency(subtotal), y);
     if (totalVales > 0) {
-      y = drawInfoRow(doc, 'Vales acumulados', formatReceiptCurrency(totalVales), y);
-      y = drawInfoRow(doc, 'Vales descontados', `- ${formatReceiptCurrency(valesDescontados)}`, y);
+      y = drawInfoRow(doc, t.fieldTotalAdvances, formatReceiptCurrency(totalVales), y);
+      y = drawInfoRow(doc, t.fieldDiscountedAdvances, `- ${formatReceiptCurrency(valesDescontados)}`, y);
     }
-    y = drawInfoRow(doc, 'Forma de Pagamento', p?.paymentMethod || 'Não informado', y);
+    y = drawInfoRow(doc, t.fieldPaymentMethod, p?.paymentMethod || t.notProvided, y);
     if (p?.description) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
@@ -368,14 +380,14 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(`Total Pago: ${formatReceiptCurrency(valorPago)}`, 40, y + 6, { align: 'center' });
+    doc.text(`${t.totalPaid}: ${formatReceiptCurrency(valorPago)}`, 40, y + 6, { align: 'center' });
     doc.setTextColor(0, 0, 0);
     y += 12;
 
     if (valesRestantes > 0) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
-      doc.text(`Vales restantes (não descontados): ${formatReceiptCurrency(valesRestantes)}`, 40, y, { align: 'center' });
+      doc.text(`${t.remainingAdvances}: ${formatReceiptCurrency(valesRestantes)}`, 40, y, { align: 'center' });
       y += 5;
     }
   }
@@ -385,7 +397,7 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Gerado por: ${responsibleName}`, 5, y);
+    doc.text(`${t.generatedBy}: ${responsibleName}`, 5, y);
     y += 6;
   }
 
@@ -401,7 +413,7 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
   y += 3.5;
   doc.setFontSize(6.5);
   doc.setTextColor(120, 120, 120);
-  doc.text('Assinatura do Funcionário', 40, y, { align: 'center' });
+  doc.text(t.signatureEmployee, 40, y, { align: 'center' });
   doc.setTextColor(0, 0, 0);
   y += 6;
 
@@ -432,13 +444,15 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
 // API pública — gera o PDF (2-pass) e abre em nova janela.
 // ---------------------------------------------------------------------------
 export async function generateEmployeeThermalReceipt(params: GenerateEmployeeThermalReceiptParams): Promise<void> {
+  const locale = params.locale ?? 'pt-br';
+  const t = MESSAGES[locale].app.employees.thermalGenerator;
   // Abre a janela no clique (gesture) pra evitar bloqueio de popup.
   const loadingWindow = window.open('', '_blank');
   if (loadingWindow) {
     loadingWindow.document.write(
-      '<html><head><meta charset="utf-8"><title>Gerando recibo…</title></head>' +
+      `<html><head><meta charset="utf-8"><title>${t.generatingReceipt}</title></head>` +
       '<body style="font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#475569">' +
-      '<p>Gerando recibo…</p></body></html>'
+      `<p>${t.generatingReceipt}</p></body></html>`
     );
   }
 
@@ -449,7 +463,7 @@ export async function generateEmployeeThermalReceipt(params: GenerateEmployeeThe
     const contentHeight = Math.max(120, Math.ceil(finalY) + 6);
 
     const doc = new jsPDF({ unit: 'mm', format: [80, contentHeight] });
-    const docTitle = params.kind === 'vale' ? 'Recibo de Vale' : 'Recibo de Pagamento';
+    const docTitle = params.kind === 'vale' ? t.titleAdvance : t.titlePayment;
     doc.setProperties({ title: `${docTitle} - ${params.employee.name}`, subject: docTitle, creator: 'Dominex' });
 
     await renderReceipt(doc, params);

@@ -10,6 +10,7 @@ import type { Quote } from '@/hooks/useQuotes';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
 
 // Fingerprint estável por navegador, guardado em localStorage. Serve só pro
 // dedupe de refresh (a RPC ignora visitas do mesmo fingerprint em 30min). Não é
@@ -30,15 +31,20 @@ function getViewerFingerprint(): string {
   }
 }
 
-function useOgMeta(company: CompanySettings | null) {
+function useOgMeta(company: CompanySettings | null, locale: LocaleCode) {
   useEffect(() => {
     if (!company) return;
     const cs = company as any;
     const isWhiteLabel = cs.white_label_enabled;
     const companyName = cs.name || 'Proposta';
 
+    const tp = MESSAGES[locale].app.crm.proposals;
+    const pageTitle = tp.publicTitle;
+    const pageDesc = tp.publicDesc.replace('{company}', companyName);
+    const ogLocale = getLocaleDef(locale).ogLocale;
+
     // Update title
-    document.title = `${companyName} — Proposta Comercial`;
+    document.title = `${companyName} — ${pageTitle}`;
 
     // Set OG meta tags
     const setMeta = (property: string, content: string) => {
@@ -56,10 +62,11 @@ function useOgMeta(company: CompanySettings | null) {
       el.setAttribute('content', content);
     };
 
-    setMeta('og:title', `${companyName} — Proposta Comercial`);
-    setMeta('twitter:title', `${companyName} — Proposta Comercial`);
-    setMeta('og:description', `Proposta comercial de ${companyName}`);
-    setMeta('twitter:description', `Proposta comercial de ${companyName}`);
+    setMeta('og:title', `${companyName} — ${pageTitle}`);
+    setMeta('twitter:title', `${companyName} — ${pageTitle}`);
+    setMeta('og:description', pageDesc);
+    setMeta('twitter:description', pageDesc);
+    setMeta('og:locale', ogLocale);
 
     if (isWhiteLabel) {
       const logoUrl = cs.white_label_logo_url || cs.logo_url;
@@ -73,7 +80,7 @@ function useOgMeta(company: CompanySettings | null) {
     return () => {
       document.title = 'Dominex — Gestão de Equipes de Campo e Ordens de Serviço';
     };
-  }, [company]);
+  }, [company, locale]);
 }
 
 interface CompanyLocale {
@@ -104,7 +111,7 @@ function ProposalPublicContent({
   const [responding, setResponding] = useState(false);
   const [done, setDone] = useState(false);
 
-  useOgMeta(company);
+  useOgMeta(company, locale);
 
   useEffect(() => {
     if (!token) return;

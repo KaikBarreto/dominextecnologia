@@ -1,5 +1,8 @@
 import { Clock } from 'lucide-react';
 import DarkVeil from '@/components/ui/DarkVeil';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { detectMachineLocale } from '@/lib/i18n/detectLocale';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 /**
  * Tela sóbria (estilo 404/DarkVeil) exibida ao CLIENTE FINAL quando o portal
@@ -13,8 +16,21 @@ import DarkVeil from '@/components/ui/DarkVeil';
  * Usada por:
  *  - CustomerPortal — quando `get_portal_data` devolve `access: 'module_unavailable'`.
  *  - PmocPublicPortal — quando `pmoc-portal-share` devolve `error: 'module_unavailable'`.
+ *
+ * `locale` é opcional. Quando não fornecido, usa `detectMachineLocale()` (idioma
+ * do navegador do visitante) com fallback pt-br — ambas renderizam ANTES do
+ * PublicAppLocaleProvider (sem dados do tenant ainda).
  */
-export default function PortalUnavailable({ companyName }: { companyName?: string | null }) {
+export default function PortalUnavailable({
+  companyName,
+  locale,
+}: {
+  companyName?: string | null;
+  locale?: LocaleCode | null;
+}) {
+  const resolvedLocale: LocaleCode = locale ?? detectMachineLocale() ?? 'pt-br';
+  const t = MESSAGES[resolvedLocale].app.customers.portal;
+
   return (
     <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden p-4">
       <div className="absolute inset-0 z-0">
@@ -40,11 +56,10 @@ export default function PortalUnavailable({ companyName }: { companyName?: strin
 
         <div className="space-y-3">
           <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
-            Portal ainda não disponível
+            {t.unavailableTitle}
           </h1>
           <p className="mx-auto max-w-sm text-sm leading-relaxed text-white/60">
-            Este portal ainda não está disponível. Em caso de dúvida, fale com a
-            empresa responsável.
+            {t.unavailableDesc}
           </p>
         </div>
       </div>

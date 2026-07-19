@@ -215,12 +215,17 @@ function formatValidUntil(dateOnly?: string | null): string {
  * Selo de validade de um documento regulatório (TRT / Certificado). Cores via
  * tokens semânticos (verde/amarelo/vermelho). Retorna `null` quando não há
  * validade a exibir.
+ *
+ * Usa o `locale` do `useAppLocaleContext` para que o rótulo ("Vigente" /
+ * "Valid" / "Vigente" / "Valide") reflita o idioma do usuário logado — e não
+ * fique preso em pt-br independente do idioma configurado.
  */
 function ValidityBadge({ status }: { status: DocumentValidityStatus }) {
+  const { locale } = useAppLocaleContext();
   if (status === 'sem_validade') return null;
   return (
     <Badge variant={getValidityBadgeVariant(status)} className="text-[10px]">
-      {getValidityLabel(status)}
+      {getValidityLabel(status, locale)}
     </Badge>
   );
 }

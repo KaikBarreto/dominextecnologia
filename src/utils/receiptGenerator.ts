@@ -1,8 +1,9 @@
-import { format } from 'date-fns';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
 import type { EmployeeMovement, BalanceSummary } from '@/utils/employeeCalculations';
 import { formatMovementType } from '@/utils/employeeCalculations';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
+import { MESSAGES } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 export interface PaymentBreakdown {
   salary: number;
@@ -36,6 +37,8 @@ interface ReceiptData {
   payment?: PaymentBreakdown;
   /** Dados do vale (quando kind='vale'). */
   vale?: ValeBreakdown;
+  /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
+  locale?: LocaleCode;
 }
 
 function buildWhiteLabelHeader(s: CompanySettings): string {
@@ -134,15 +137,21 @@ const escapeHtml = (v: string): string =>
 
 export function generateReceiptHTML(data: ReceiptData): string {
   const { employeeName, salary, movement, companySettings, whiteLabel, generatedByName, payment, vale } = data;
+  const locale = data.locale ?? 'pt-br';
+  const t = MESSAGES[locale].app.employees.receiptGenerator;
   const kind = data.kind ?? 'pagamento';
   const isVale = kind === 'vale';
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
-  const dateStr = format(new Date(movement.created_at), "dd/MM/yyyy 'às' HH:mm");
+  const dateStr = new Date(movement.created_at).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 
-  const docTitle = isVale ? 'RECIBO DE VALE' : 'RECIBO DE PAGAMENTO';
+  const docTitle = isVale ? t.titleAdvance : t.titlePayment;
 
   // ---- Corpo (detalhamento) ----
   let bodyHTML = '';
@@ -153,24 +162,24 @@ export function generateReceiptHTML(data: ReceiptData): string {
   if (isVale) {
     const v = vale ?? {
       amount: Math.abs(movement.amount),
-      paymentMethod: movement.payment_method || 'Não informado',
+      paymentMethod: movement.payment_method || t.notProvided,
       date: dateStr,
       description: movement.description || undefined,
     };
     bodyHTML = `
 <div class="row">
-  <span class="label">Data/Hora</span>
+  <span class="label">${t.fieldDate}</span>
   <span class="value">${escapeHtml(v.date || dateStr)}</span>
 </div>
 <div class="row">
-  <span class="label">Forma de Pagamento</span>
-  <span class="value">${escapeHtml(v.paymentMethod || 'Não informado')}</span>
+  <span class="label">${t.fieldPaymentMethod}</span>
+  <span class="value">${escapeHtml(v.paymentMethod || t.notProvided)}</span>
 </div>
 ${v.description ? `<div class="row">
-  <span class="label">Observações</span>
+  <span class="label">${t.fieldNotes}</span>
   <span class="value">${escapeHtml(v.description)}</span>
 </div>` : ''}`;
-    totalLabel = 'Valor do Vale';
+    totalLabel = t.totalAdvanceLabel;
     totalValue = v.amount;
   } else {
     // Breakdown explícito tem prioridade; fallback lê payment_details do movimento.
@@ -183,55 +192,56 @@ ${v.description ? `<div class="row">
       valesDescontados: Number(details.valeDiscount) || 0,
       valesRestantes: Number(details.remainingVales) || 0,
       valorPago: Number(details.amountPaid) || Math.abs(movement.amount),
-      paymentMethod: movement.payment_method || details.paymentMethod || 'Não informado',
+      paymentMethod: movement.payment_method || details.paymentMethod || t.notProvided,
     };
     const subtotal = p.salary + p.totalBonus - p.totalFaltas;
 
     bodyHTML = `
 <div class="row">
-  <span class="label">Salário Base</span>
+  <span class="label">${t.fieldSalary}</span>
   <span class="value">${fmt(p.salary)}</span>
 </div>
 ${p.totalBonus > 0 ? `<div class="row indent">
-  <span class="label">+ Bônus</span>
+  <span class="label">${t.fieldBonus}</span>
   <span class="value green">+ ${fmt(p.totalBonus)}</span>
 </div>` : ''}
 ${p.totalFaltas > 0 ? `<div class="row indent">
-  <span class="label">- Faltas</span>
+  <span class="label">${t.fieldAbsences}</span>
   <span class="value red">- ${fmt(p.totalFaltas)}</span>
 </div>` : ''}
 <div class="row">
-  <span class="label">Subtotal</span>
+  <span class="label">${t.fieldSubtotal}</span>
   <span class="value">${fmt(subtotal)}</span>
 </div>
 ${p.totalVales > 0 ? `<div class="row">
-  <span class="label">Total de vales acumulados</span>
+  <span class="label">${t.fieldTotalAdvances}</span>
   <span class="value red">${fmt(p.totalVales)}</span>
 </div>
 <div class="row">
-  <span class="label">Vales descontados neste pagamento</span>
+  <span class="label">${t.fieldDiscountedAdvances}</span>
   <span class="value red">- ${fmt(p.valesDescontados)}</span>
 </div>` : ''}
 <div class="row">
-  <span class="label">Forma de Pagamento</span>
+  <span class="label">${t.fieldPaymentMethod}</span>
   <span class="value">${escapeHtml(p.paymentMethod)}</span>
 </div>
 ${movement.description ? `<div class="row">
-  <span class="label">Observações</span>
+  <span class="label">${t.fieldNotes}</span>
   <span class="value">${escapeHtml(movement.description)}</span>
 </div>` : ''}`;
-    totalLabel = 'Valor Líquido Pago';
+    totalLabel = t.totalPaymentLabel;
     totalValue = p.valorPago;
     if (p.valesRestantes > 0) {
-      extraAfterTotal = `<p style="text-align:center;color:#b45309;font-size:12px;font-weight:600;margin-top:-12px;margin-bottom:24px">Vales restantes (não descontados): ${fmt(p.valesRestantes)}</p>`;
+      extraAfterTotal = `<p style="text-align:center;color:#b45309;font-size:12px;font-weight:600;margin-top:-12px;margin-bottom:24px">${t.remainingAdvances}: ${fmt(p.valesRestantes)}</p>`;
     }
   }
 
+  const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
   return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${bcp47}">
 <head>
 <meta charset="UTF-8">
-<title>${isVale ? 'Recibo de Vale' : 'Recibo de Pagamento'} — ${escapeHtml(employeeName)}</title>
+<title>${escapeHtml(docTitle)} — ${escapeHtml(employeeName)}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding:40px; color:#1a1a1a; font-size:13px; max-width:800px; margin:0 auto; }
@@ -260,21 +270,21 @@ ${movement.description ? `<div class="row">
 </style>
 </head>
 <body>
-<button class="btn-print" onclick="window.print()">Salvar em PDF</button>
+<button class="btn-print" onclick="window.print()">${t.savePdf}</button>
 
 ${headerHTML}
 
 <h1>${docTitle}</h1>
-<p class="date-sub">Emitido em ${dateStr}</p>
+<p class="date-sub">${t.issuedAt} ${dateStr}</p>
 
-<p class="section-title">DADOS DO FUNCIONÁRIO</p>
+<p class="section-title">${t.sectionEmployee}</p>
 <div class="row">
-  <span class="label">Nome</span>
+  <span class="label">${t.fieldName}</span>
   <span class="value">${escapeHtml(employeeName)}</span>
 </div>
 
 <br/>
-<p class="section-title">${isVale ? 'DADOS DO VALE' : 'DETALHAMENTO'}</p>
+<p class="section-title">${isVale ? t.sectionAdvance : t.sectionDetail}</p>
 ${bodyHTML}
 
 <div class="total-box">
@@ -287,16 +297,16 @@ ${extraAfterTotal}
   <div class="sig-block">
     <div class="sig-line"></div>
     <p class="sig-name">${escapeHtml(generatedByName || (companySettings?.name || 'Empresa'))}</p>
-    <p class="sig-role">Responsável / Empresa</p>
+    <p class="sig-role">${t.signatureResponsible}</p>
   </div>
   <div class="sig-block">
     <div class="sig-line"></div>
     <p class="sig-name">${escapeHtml(employeeName)}</p>
-    <p class="sig-role">Funcionário</p>
+    <p class="sig-role">${t.signatureEmployee}</p>
   </div>
 </div>
 
-${generatedByName ? `<p style="text-align:center;color:#999;font-size:11px;margin-top:24px">Gerado por: ${escapeHtml(generatedByName)}</p>` : ''}
+${generatedByName ? `<p style="text-align:center;color:#999;font-size:11px;margin-top:24px">${t.generatedBy}: ${escapeHtml(generatedByName)}</p>` : ''}
 
 ${dominexFooter}
 </body></html>`;
@@ -307,18 +317,32 @@ export function generateExtractHTMLWithHeader(
   movements: EmployeeMovement[],
   balance: BalanceSummary,
   companySettings?: CompanySettings | null,
-  whiteLabel?: boolean
+  whiteLabel?: boolean,
+  locale: LocaleCode = 'pt-br',
 ): string {
+  const t = MESSAGES[locale].app.employees.receiptGenerator;
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
   const sorted = [...movements].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
+  const generatedAt = new Date().toLocaleString(bcp47, {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+  const formatMovDate = (iso: string) =>
+    new Date(iso).toLocaleString(bcp47, {
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
 
   return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${bcp47}">
 <head>
 <meta charset="UTF-8">
-<title>Extrato — ${employeeName}</title>
+<title>${t.extractTitle} — ${employeeName}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding:32px; color:#1a1a1a; font-size:13px; max-width:900px; margin:0 auto; }
@@ -348,28 +372,28 @@ export function generateExtractHTMLWithHeader(
 </style>
 </head>
 <body>
-<button class="btn-print" onclick="window.print()">Salvar em PDF</button>
+<button class="btn-print" onclick="window.print()">${t.savePdf}</button>
 
 ${headerHTML}
 
-<h1>Extrato — ${employeeName}</h1>
-<p class="subtitle">Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+<h1>${t.extractTitle} — ${employeeName}</h1>
+<p class="subtitle">${t.extractGeneratedAt} ${generatedAt}</p>
 
 <div class="summary">
-  <div class="summary-card"><div class="label">Bônus</div><div class="value green">${fmt(balance.totalBonus)}</div></div>
-  <div class="summary-card"><div class="label">Vales</div><div class="value red">${fmt(balance.totalVales)}</div></div>
-  <div class="summary-card"><div class="label">Faltas</div><div class="value red">${fmt(balance.totalFaltas)}</div></div>
-  <div class="summary-card"><div class="label">Saldo</div><div class="value ${balance.currentBalance >= 0 ? 'green' : 'red'}">${fmt(balance.currentBalance)}</div></div>
+  <div class="summary-card"><div class="label">${t.fieldBonus.replace('+ ', '')}</div><div class="value green">${fmt(balance.totalBonus)}</div></div>
+  <div class="summary-card"><div class="label">${t.totalAdvanceLabel}</div><div class="value red">${fmt(balance.totalVales)}</div></div>
+  <div class="summary-card"><div class="label">${t.fieldAbsences.replace('- ', '')}</div><div class="value red">${fmt(balance.totalFaltas)}</div></div>
+  <div class="summary-card"><div class="label">${t.extractColBalance}</div><div class="value ${balance.currentBalance >= 0 ? 'green' : 'red'}">${fmt(balance.currentBalance)}</div></div>
 </div>
 
 <table>
-<thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th class="right">Valor</th><th class="right">Saldo</th></tr></thead>
+<thead><tr><th>${t.extractColDate}</th><th>${t.extractColType}</th><th>${t.extractColDescription}</th><th class="right">${t.extractColAmount}</th><th class="right">${t.extractColBalance}</th></tr></thead>
 <tbody>
 ${sorted.map(m => {
   const isDebit = ['vale', 'falta'].includes(m.type);
   const badgeClass = `badge badge-${m.type}`;
   return `<tr>
-    <td>${format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</td>
+    <td>${formatMovDate(m.created_at)}</td>
     <td><span class="${badgeClass}">${formatMovementType(m.type)}</span></td>
     <td>${m.description || '—'}</td>
     <td class="right ${isDebit ? 'red' : 'green'}">${isDebit ? '-' : '+'}${fmt(Math.abs(m.amount))}</td>

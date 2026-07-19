@@ -427,6 +427,10 @@ export const crm = {
 
     // ── Propostas (ProposalPublic + ProposalConfigDialog) ──
     proposals: {
+      // Página pública — OG/title
+      publicTitle: 'Proposta Comercial',
+      publicDesc: 'Proposta comercial de {company}',
+
       // Página pública
       loading: 'Carregando...',
       notFound: 'Proposta não encontrada.',
@@ -1271,6 +1275,9 @@ export const crm = {
     },
 
     proposals: {
+      publicTitle: 'Commercial Proposal',
+      publicDesc: 'Commercial proposal from {company}',
+
       loading: 'Loading...',
       notFound: 'Proposal not found.',
       downloadPDF: 'Download PDF',
@@ -2081,6 +2088,9 @@ export const crm = {
     },
 
     proposals: {
+      publicTitle: 'Propuesta Comercial',
+      publicDesc: 'Propuesta comercial de {company}',
+
       loading: 'Cargando...',
       notFound: 'Propuesta no encontrada.',
       downloadPDF: 'Descargar PDF',
@@ -2891,6 +2901,9 @@ export const crm = {
     },
 
     proposals: {
+      publicTitle: 'Proposition Commerciale',
+      publicDesc: 'Proposition commerciale de {company}',
+
       loading: 'Chargement...',
       notFound: 'Proposition introuvable.',
       downloadPDF: 'Télécharger PDF',

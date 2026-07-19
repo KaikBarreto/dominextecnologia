@@ -2,6 +2,8 @@ import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { escapeHtml } from '@/utils/escapeHtml';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
+import { MESSAGES } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 /**
  * Relatório HTML printável das Movimentações financeiras.
@@ -33,6 +35,8 @@ interface MovimentacoesReportData {
   whiteLabel: boolean;
   title: string;
   rows: MovimentacaoReportRow[];
+  /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
+  locale?: LocaleCode;
 }
 
 const formatCurrencyBR = (value: number): string =>
@@ -51,8 +55,14 @@ function formatDateBR(dateStr: string): string {
   }
 }
 
-function formatGeneratedAt(): string {
-  return new Date().toLocaleString('pt-BR', {
+function formatGeneratedAt(locale?: LocaleCode): string {
+  const bcp47 =
+    locale === 'pt-br' ? 'pt-BR'
+    : locale === 'en' ? 'en-US'
+    : locale === 'es' ? 'es-ES'
+    : locale === 'fr' ? 'fr-FR'
+    : 'pt-BR';
+  return new Date().toLocaleString(bcp47, {
     timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
@@ -122,6 +132,8 @@ function buildDominexFooter(whiteLabel: boolean): string {
 
 export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): void {
   const { company, whiteLabel, title, rows } = data;
+  const locale = data.locale ?? 'pt-br';
+  const t = MESSAGES[locale].app.finance.movimentacoesGenerator;
 
   let totalEntradas = 0;
   let totalSaidas = 0;
@@ -132,11 +144,11 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
   const saldo = totalEntradas - totalSaidas;
   const saldoColor = saldo > 0 ? '#16a34a' : saldo < 0 ? '#dc2626' : '#1f2937';
 
-  const generatedAt = formatGeneratedAt();
+  const generatedAt = formatGeneratedAt(locale);
   const companyName = company?.show_name_in_documents !== false && company?.name ? company.name : 'Relatório';
 
   const bodyRows = rows.map((r) => {
-    const tipoLabel = r.type === 'entrada' ? 'Receita' : 'Despesa';
+    const tipoLabel = r.type === 'entrada' ? t.labelRevenue : t.labelExpense;
     const tipoClass = r.type === 'entrada' ? 'tipo-entrada' : 'tipo-saida';
     const valorClass = r.type === 'entrada' ? 'positive' : 'negative';
     const sinal = r.type === 'entrada' ? '+ ' : '- ';
@@ -148,7 +160,7 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
         <td>${escapeHtml(r.category) || '—'}</td>
         <td>${escapeHtml(r.account) || '—'}</td>
         <td class="right ${valorClass}">${sinal}${formatCurrencyBR(r.amount)}</td>
-        <td class="center"><span class="status-badge ${r.isPaid ? 'status-paid' : 'status-unpaid'}">${r.isPaid ? 'Pago' : 'Pendente'}</span></td>
+        <td class="center"><span class="status-badge ${r.isPaid ? 'status-paid' : 'status-unpaid'}">${r.isPaid ? t.labelPaid : t.labelPending}</span></td>
       </tr>`;
   }).join('');
 
@@ -214,20 +226,20 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
 
     <div class="title-section">
       <h1 class="title">${escapeHtml(title)}</h1>
-      <p class="subtitle">${rows.length} registro${rows.length !== 1 ? 's' : ''} | Gerado em: ${generatedAt}</p>
+      <p class="subtitle">${rows.length} ${rows.length !== 1 ? t.recordsPlural : t.records} | ${t.generatedAt}: ${generatedAt}</p>
     </div>
 
     <div class="totals">
       <div class="total-card">
-        <div class="total-label">Entradas</div>
+        <div class="total-label">${t.cardLabelEntradas}</div>
         <div class="total-value positive">${formatCurrencyBR(totalEntradas)}</div>
       </div>
       <div class="total-card">
-        <div class="total-label">Saídas</div>
+        <div class="total-label">${t.cardLabelSaidas}</div>
         <div class="total-value negative">${formatCurrencyBR(totalSaidas)}</div>
       </div>
       <div class="total-card">
-        <div class="total-label">Saldo</div>
+        <div class="total-label">${t.cardLabelSaldo}</div>
         <div class="total-value" style="color: ${saldoColor}">${formatCurrencyBR(saldo)}</div>
       </div>
     </div>
@@ -236,17 +248,17 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
       <table>
         <thead>
           <tr>
-            <th>Data</th>
-            <th>Tipo</th>
-            <th>Descrição</th>
-            <th>Categoria</th>
-            <th>Conta</th>
-            <th class="right">Valor</th>
-            <th class="center">Status</th>
+            <th>${t.colDate}</th>
+            <th>${t.colType}</th>
+            <th>${t.colDescription}</th>
+            <th>${t.colCategory}</th>
+            <th>${t.colAccount}</th>
+            <th class="right">${t.colAmount}</th>
+            <th class="center">${t.colStatus}</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.length > 0 ? bodyRows : '<tr><td colspan="7" class="center" style="padding:24px;color:#9ca3af">Nenhuma movimentação no período.</td></tr>'}
+          ${rows.length > 0 ? bodyRows : `<tr><td colspan="7" class="center" style="padding:24px;color:#9ca3af">${t.emptyPeriod}</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -260,7 +272,7 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
       <rect x="6" y="14" width="12" height="8"></rect>
     </svg>
-    Imprimir / Salvar PDF
+    ${t.printSavePdf}
   </button>
 </body>
 </html>`;

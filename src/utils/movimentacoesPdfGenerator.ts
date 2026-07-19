@@ -5,6 +5,8 @@ import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { openPdfInTab } from '@/utils/openPdfInTab';
 import type { MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
+import { MESSAGES } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
 
 /**
  * Relatório PDF A4 paginado (real) das Movimentações financeiras.
@@ -27,6 +29,8 @@ interface MovimentacoesPdfData {
   whiteLabel: boolean;
   title: string;
   rows: MovimentacaoReportRow[];
+  /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
+  locale?: LocaleCode;
 }
 
 const formatCurrencyBR = (value: number): string =>
@@ -45,8 +49,14 @@ function formatDateBR(dateStr: string): string {
   }
 }
 
-function formatGeneratedAt(): string {
-  return new Date().toLocaleString('pt-BR', {
+function formatGeneratedAt(locale?: LocaleCode): string {
+  const bcp47 =
+    locale === 'pt-br' ? 'pt-BR'
+    : locale === 'en' ? 'en-US'
+    : locale === 'es' ? 'es-ES'
+    : locale === 'fr' ? 'fr-FR'
+    : 'pt-BR';
+  return new Date().toLocaleString(bcp47, {
     timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
@@ -109,6 +119,8 @@ const MARGIN = 14; // mm
 
 export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData): Promise<void> {
   const { company, whiteLabel, title, rows } = data;
+  const locale = data.locale ?? 'pt-br';
+  const t = MESSAGES[locale].app.finance.movimentacoesGenerator;
 
   // Abre a janela ANTES do await (gesto do usuário → driblar popup-blocker).
   const targetWindow = window.open('', '_blank');
@@ -198,8 +210,8 @@ export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(136, 136, 136);
-  const registros = `${rows.length} registro${rows.length !== 1 ? 's' : ''}`;
-  doc.text(`${registros}  |  Gerado em: ${formatGeneratedAt()}`, pageWidth / 2, y, { align: 'center' });
+  const registros = `${rows.length} ${rows.length !== 1 ? t.recordsPlural : t.records}`;
+  doc.text(`${registros}  |  ${t.generatedAt}: ${formatGeneratedAt(locale)}`, pageWidth / 2, y, { align: 'center' });
   y += 8;
 
   // ===== Cards de totais (Entradas / Saídas / Saldo) =====
@@ -207,10 +219,10 @@ export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData)
   const cardWidth = (contentWidth - cardGap * 2) / 3;
   const cardHeight = 16;
   const cards: { label: string; value: string; color: [number, number, number] }[] = [
-    { label: 'ENTRADAS', value: formatCurrencyBR(totalEntradas), color: [22, 163, 74] },
-    { label: 'SAÍDAS', value: formatCurrencyBR(totalSaidas), color: [220, 38, 38] },
+    { label: t.cardLabelEntradas, value: formatCurrencyBR(totalEntradas), color: [22, 163, 74] },
+    { label: t.cardLabelSaidas, value: formatCurrencyBR(totalSaidas), color: [220, 38, 38] },
     {
-      label: 'SALDO',
+      label: t.cardLabelSaldo,
       value: formatCurrencyBR(saldo),
       color: saldo > 0 ? [22, 163, 74] : saldo < 0 ? [220, 38, 38] : [31, 41, 55],
     },
@@ -237,20 +249,20 @@ export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData)
     const sinal = r.type === 'entrada' ? '+ ' : '- ';
     return [
       formatDateBR(r.date),
-      r.type === 'entrada' ? 'Receita' : 'Despesa',
+      r.type === 'entrada' ? t.labelRevenue : t.labelExpense,
       r.description || '—',
       r.category || '—',
       r.account || '—',
       `${sinal}${formatCurrencyBR(r.amount)}`,
-      r.isPaid ? 'Pago' : 'Pendente',
+      r.isPaid ? t.labelPaid : t.labelPending,
     ];
   });
 
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN, bottom: 18 },
-    head: [['Data', 'Tipo', 'Descrição', 'Categoria', 'Conta', 'Valor', 'Status']],
-    body: body.length > 0 ? body : [['', '', 'Nenhuma movimentação no período.', '', '', '', '']],
+    head: [[t.colDate, t.colType, t.colDescription, t.colCategory, t.colAccount, t.colAmount, t.colStatus]],
+    body: body.length > 0 ? body : [['', '', t.emptyPeriod, '', '', '', '']],
     theme: 'striped',
     styles: { fontSize: 8, cellPadding: 2, valign: 'middle', overflow: 'linebreak' },
     headStyles: { fillColor: [31, 41, 55], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },

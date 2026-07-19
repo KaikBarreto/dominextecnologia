@@ -112,7 +112,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   };
 
   const handleExport = () => {
-    openHTMLInNewTab(generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled));
+    openHTMLInNewTab(generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled, locale));
   };
 
   const generateReceipt = (target: ReceiptTarget, outputFormat: 'a4' | 'thermal') => {
@@ -127,13 +127,13 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
         const payment: PaymentBreakdown = { ...b, paymentMethod: method };
         openHTMLInNewTab(generateReceiptHTML({
           employeeName, kind: 'pagamento', salary: employeeSalary, movement,
-          companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, payment,
+          companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, payment, locale,
         }));
       } else {
         const payment: ThermalPaymentBreakdown = { ...b, paymentMethod: method, description: movement.description || undefined };
         void generateEmployeeThermalReceipt({
           company: companySettings, whiteLabel: wlEnabled, employee,
-          responsibleName, kind: 'pagamento', payment,
+          responsibleName, kind: 'pagamento', payment, locale,
         });
       }
       return;
@@ -146,13 +146,13 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
       const vale: ValeBreakdown = { amount: Math.abs(movement.amount), paymentMethod: method, date: dateStr, description: movement.description || undefined };
       openHTMLInNewTab(generateReceiptHTML({
         employeeName, kind: 'vale', salary: employeeSalary, movement,
-        companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, vale,
+        companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, vale, locale,
       }));
     } else {
       const vale: ThermalValeData = { amount: Math.abs(movement.amount), paymentMethod: method, date: dateStr, description: movement.description || undefined };
       void generateEmployeeThermalReceipt({
         company: companySettings, whiteLabel: wlEnabled, employee,
-        responsibleName, kind: 'vale', vale,
+        responsibleName, kind: 'vale', vale, locale,
       });
     }
   };
