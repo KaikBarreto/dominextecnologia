@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { uploadResponsibleTechnicianMedia } from '@/hooks/useResponsibleTechnicians';
 import { supabase } from '@/integrations/supabase/client';
 import { PmocSignatureCanvas, dataUrlToFile } from '@/components/pmoc/PmocSignatureCanvas';
@@ -47,6 +49,8 @@ export function RtSignatureQuickDialog({
 }: RtSignatureQuickDialogProps) {
   const { toast } = useToast();
   const { companyId } = useUserCompany();
+  const { locale } = useAppLocaleContext();
+  const trt = MESSAGES[locale].app.pmoc.rt;
   const queryClient = useQueryClient();
 
   const [mode, setMode] = useState<'upload' | 'draw'>('upload');
@@ -64,10 +68,10 @@ export function RtSignatureQuickDialog({
 
   const validateImage = (f: File): string | null => {
     if (!ACCEPTED_IMAGE_TYPES.includes(f.type)) {
-      return 'Formato inválido. Use PNG ou JPG.';
+      return trt.imageInvalidFormat;
     }
     if (f.size > MAX_IMAGE_SIZE) {
-      return 'Imagem muito grande. Máximo 2MB.';
+      return trt.imageTooBig;
     }
     return null;
   };
@@ -77,7 +81,7 @@ export function RtSignatureQuickDialog({
     if (!f) return;
     const err = validateImage(f);
     if (err) {
-      toast({ variant: 'destructive', title: 'Imagem rejeitada', description: err });
+      toast({ variant: 'destructive', title: trt.imageRejected, description: err });
       return;
     }
     setFile(f);
@@ -104,24 +108,24 @@ export function RtSignatureQuickDialog({
     if (!file) {
       toast({
         variant: 'destructive',
-        title: 'Selecione uma imagem',
-        description: 'Envie uma foto da assinatura ou desenhe no quadro e clique em "Salvar imagem".',
+        title: trt.sigNoFile,
+        description: trt.sigNoFileDesc,
       });
       return;
     }
     if (!responsibleTechnicianId) {
       toast({
         variant: 'destructive',
-        title: 'Responsável Técnico não vinculado',
-        description: 'Vincule um RT ao contrato antes de cadastrar a assinatura.',
+        title: trt.sigNoRt,
+        description: trt.sigNoRtDesc,
       });
       return;
     }
     if (!companyId) {
       toast({
         variant: 'destructive',
-        title: 'Empresa não identificada',
-        description: 'Recarregue a página e tente novamente.',
+        title: trt.companyNotFound,
+        description: trt.companyNotFoundDesc,
       });
       return;
     }
@@ -150,15 +154,15 @@ export function RtSignatureQuickDialog({
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
 
       toast({
-        title: 'Assinatura cadastrada!',
-        description: 'Gere o TRT novamente pra ver o resultado.',
+        title: trt.sigSaved,
+        description: trt.sigSavedDesc,
       });
       onOpenChange(false);
     } catch (err) {
       console.error('[RtSignatureQuickDialog] erro ao salvar', err);
       toast({
         variant: 'destructive',
-        title: 'Erro ao salvar assinatura',
+        title: trt.sigError,
         description: getErrorMessage(err, 'Tente novamente.'),
       });
     } finally {
@@ -170,11 +174,11 @@ export function RtSignatureQuickDialog({
     <ResponsiveModal
       open={open}
       onOpenChange={(o) => !saving && onOpenChange(o)}
-      title="Adicionar assinatura do Responsável Técnico"
+      title={trt.sigQuickTitle}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
+            {trt.cancel}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -182,35 +186,34 @@ export function RtSignatureQuickDialog({
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar assinatura
+            {trt.sigSaveBtn}
           </Button>
         </div>
       }
     >
       <div className="space-y-4 py-2">
         <p className="text-xs text-muted-foreground">
-          A imagem será associada ao Responsável Técnico deste contrato. Todos os documentos
-          (TRT, Dossiê, Cronograma) que dependem da assinatura serão atualizados na próxima geração.
+          {trt.sigDesc}
         </p>
 
         <div className="space-y-2">
-          <Label>Como você quer cadastrar a assinatura?</Label>
+          <Label>{trt.sigModeLabel}</Label>
           <Tabs value={mode} onValueChange={(v) => setMode(v as 'upload' | 'draw')}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="upload" className="gap-1.5">
                 <Camera className="h-3.5 w-3.5" />
-                Enviar imagem
+                {trt.tabUpload}
               </TabsTrigger>
               <TabsTrigger value="draw" className="gap-1.5">
                 <Pen className="h-3.5 w-3.5" />
-                Desenhar
+                {trt.tabDraw}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-2">
-              <UploadField preview={preview} onChange={handleFileChange} onClear={handleClear} />
+              <UploadField preview={preview} onChange={handleFileChange} onClear={handleClear} removeLabel={trt.removeImage} formatHint={trt.imageFormatHint} selectLabel={trt.selectImage} altText={trt.sigAltText} />
               <p className="text-xs text-muted-foreground">
-                Fotografe a assinatura no papel e envie. Mais aceito juridicamente.
+                {trt.sigUploadHint}
               </p>
             </TabsContent>
 
@@ -223,8 +226,7 @@ export function RtSignatureQuickDialog({
         <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-2.5 py-2 text-xs">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
           <span>
-            A próxima geração do TRT/Dossiê detecta a nova assinatura automaticamente
-            (versão nova) e o portal público é atualizado junto.
+            {trt.sigWarning}
           </span>
         </div>
       </div>
@@ -236,10 +238,18 @@ function UploadField({
   preview,
   onChange,
   onClear,
+  removeLabel = 'Remover imagem',
+  formatHint = 'PNG ou JPG (máx. 2MB)',
+  selectLabel = 'Selecionar',
+  altText = 'Assinatura',
 }: {
   preview: string | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void;
+  removeLabel?: string;
+  formatHint?: string;
+  selectLabel?: string;
+  altText?: string;
 }) {
   const inputId = 'rt-signature-quick-upload';
   return (
@@ -251,11 +261,11 @@ function UploadField({
     >
       {preview ? (
         <>
-          <img src={preview} alt="Assinatura" className="h-full w-full object-contain" />
+          <img src={preview} alt={altText} className="h-full w-full object-contain" />
           <button
             type="button"
             onClick={onClear}
-            aria-label="Remover imagem"
+            aria-label={removeLabel}
             className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
           >
             <X className="h-4 w-4" />
@@ -267,10 +277,10 @@ function UploadField({
           className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50"
         >
           <ImageIcon className="h-6 w-6" />
-          <span className="text-xs">PNG ou JPG (máx. 2MB)</span>
+          <span className="text-xs">{formatHint}</span>
           <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
             <Upload className="h-3 w-3" />
-            Selecionar
+            {selectLabel}
           </span>
         </label>
       )}

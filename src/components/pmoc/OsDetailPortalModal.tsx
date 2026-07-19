@@ -7,6 +7,8 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { cn } from '@/lib/utils';
 import type { PortalOsEntry, PortalOsStatus } from '@/types/pmocPortal';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Modal de detalhe de uma OS no portal público PMOC.
@@ -58,6 +60,8 @@ interface OsDetailPortalModalProps {
 
 export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalModalProps) {
   const [photoPreview, setPhotoPreview] = useState<{ images: string[]; index: number } | null>(null);
+  const { locale } = useAppLocaleContext();
+  const osd = MESSAGES[locale].app.pmoc.osDetail;
 
   if (!os) return null;
 
@@ -71,7 +75,7 @@ export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalMo
       <ResponsiveModal
         open={open}
         onOpenChange={onOpenChange}
-        title={os.number != null ? `OS #${os.number}` : 'Detalhes da manutenção'}
+        title={os.number != null ? `OS #${os.number}` : osd.titleFallback}
       >
         <div className="space-y-5 py-1">
           {/* Status */}
@@ -87,23 +91,23 @@ export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalMo
           </div>
 
           {/* Datas */}
-          <Block icon={Calendar} title="Datas">
-            <Row label="Agendada" value={formatLocal(os.scheduled_date)} />
+          <Block icon={Calendar} title={osd.blockDates}>
+            <Row label={osd.rowScheduled} value={formatLocal(os.scheduled_date)} />
             {os.completed_at && (
-              <Row label="Realizada" value={formatLocal(os.completed_at)} />
+              <Row label={osd.rowCompleted} value={formatLocal(os.completed_at)} />
             )}
           </Block>
 
           {/* Tipo de serviço */}
           {os.service_type_label && (
-            <Block icon={Wrench} title="Serviço">
+            <Block icon={Wrench} title={osd.blockService}>
               <p className="text-sm text-foreground">{os.service_type_label}</p>
             </Block>
           )}
 
           {/* Descrição */}
           {os.public_description && (
-            <Block icon={FileText} title="Descrição">
+            <Block icon={FileText} title={osd.blockDescription}>
               <p className="break-words text-sm text-foreground/90">
                 {os.public_description}
               </p>
@@ -112,7 +116,7 @@ export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalMo
 
           {/* Fotos */}
           {photos.length > 0 && (
-            <Block icon={FileText} title={`Fotos (${photos.length})`}>
+            <Block icon={FileText} title={osd.blockPhotos.replace('{n}', String(photos.length))}>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {photos.map((photo, i) => (
                   <button
@@ -140,7 +144,7 @@ export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalMo
 
           {/* Avaliação (só faz sentido em OS concluída e avaliada) */}
           {hasRating && (
-            <Block icon={Star} title="Avaliação">
+            <Block icon={Star} title={osd.blockRating}>
               <div className="flex items-center gap-1.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
@@ -166,9 +170,9 @@ export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalMo
 
           {/* Técnico — só primeiro nome (LGPD) */}
           {os.technician_first_name && (
-            <Block icon={User} title="Técnico responsável">
+            <Block icon={User} title={osd.blockTechnician}>
               <p className="text-sm">
-                {os.status === 'concluida' ? 'Atendido por' : 'Atribuída a'}{' '}
+                {os.status === 'concluida' ? osd.techAttended : osd.techAssigned}{' '}
                 <span className="font-medium">{os.technician_first_name}</span>
               </p>
             </Block>
@@ -179,8 +183,8 @@ export function OsDetailPortalModal({ os, open, onOpenChange }: OsDetailPortalMo
             <div className="flex items-start gap-2 rounded-xl border border-success/20 bg-success/5 p-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
               <p className="text-xs leading-relaxed text-foreground/80">
-                Manutenção registrada conforme exigido pela{' '}
-                <span className="font-medium">Lei Federal 13.589/2018 (PMOC)</span>.
+                {osd.legalNote}{' '}
+                <span className="font-medium">{osd.legalHighlight}</span>.
               </p>
             </div>
           )}

@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   useResponsibleTechnicians,
   type ResponsibleTechnician,
@@ -55,6 +57,8 @@ export function PmocQuickCreateRTDialog({
   onCreated,
 }: PmocQuickCreateRTDialogProps) {
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const trt = MESSAGES[locale].app.pmoc.rt;
   const { createTechnician } = useResponsibleTechnicians();
   const [form, setForm] = useState<QuickFormState>(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -72,8 +76,8 @@ export function PmocQuickCreateRTDialog({
     if (!form.full_name.trim()) {
       toast({
         variant: 'destructive',
-        title: 'Nome obrigatório',
-        description: 'Informe o nome completo do Responsável Técnico.',
+        title: trt.quickNameRequired,
+        description: trt.quickNameRequiredDesc,
       });
       return;
     }
@@ -101,11 +105,11 @@ export function PmocQuickCreateRTDialog({
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Novo Responsável Técnico"
+      title={trt.quickTitle}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
+            {trt.cancel}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -113,7 +117,7 @@ export function PmocQuickCreateRTDialog({
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Cadastrar e selecionar
+            {trt.quickRegisterBtn}
           </Button>
         </div>
       }
@@ -122,53 +126,52 @@ export function PmocQuickCreateRTDialog({
         <Alert className="border-info/40 bg-info/5">
           <ShieldCheck className="h-4 w-4 text-info" />
           <AlertDescription className="text-xs">
-            Cadastro rápido só com os dados essenciais para o contrato. Assinatura,
-            carimbo e demais informações podem ser preenchidos depois em
-            <strong> Responsáveis Técnicos</strong>.
+            {trt.quickHint}
+            <strong>{trt.quickHintLink}</strong>.
           </AlertDescription>
         </Alert>
 
         <div className="space-y-1.5">
           <Label htmlFor="quick-rt-name">
-            Nome completo <span className="text-destructive">*</span>
+            {trt.fieldFullName} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="quick-rt-name"
             value={form.full_name}
             onChange={(e) => setField('full_name', e.target.value)}
-            placeholder="Ex: João da Silva"
+            placeholder={trt.placeholderName}
             autoFocus
           />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="quick-rt-cftcrea">CFT/CREA</Label>
+            <Label htmlFor="quick-rt-cftcrea">{trt.fieldCftCrea}</Label>
             <Input
               id="quick-rt-cftcrea"
               value={form.cft_crea}
               onChange={(e) => setField('cft_crea', e.target.value)}
-              placeholder="Ex: CREA-SP 1234567"
+              placeholder={trt.placeholderCftCrea}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="quick-rt-modality">Modalidade</Label>
+            <Label htmlFor="quick-rt-modality">{trt.fieldModality}</Label>
             <Input
               id="quick-rt-modality"
               value={form.modality}
               onChange={(e) => setField('modality', e.target.value)}
-              placeholder="Ex: Engenheiro Mecânico"
+              placeholder={trt.placeholderModality}
             />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="quick-rt-registry">Número de registro (ART/TRT)</Label>
+          <Label htmlFor="quick-rt-registry">{trt.fieldRegistry}</Label>
           <Input
             id="quick-rt-registry"
             value={form.registry_number}
             onChange={(e) => setField('registry_number', e.target.value)}
-            placeholder="Ex: ART 1234567/2026"
+            placeholder={trt.placeholderRegistry}
           />
         </div>
       </div>

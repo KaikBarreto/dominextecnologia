@@ -23,6 +23,8 @@ import { formatBRL } from '@/utils/currency';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
@@ -32,11 +34,11 @@ function formatMonth(dateStr: string) {
   return format(parseISO(dateStr + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
 }
 
-const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  open: { label: 'Aberta', color: 'text-blue-600', icon: Clock },
-  closed: { label: 'Fechada', color: 'text-orange-600', icon: AlertCircle },
-  partial: { label: 'Parcial', color: 'text-yellow-600', icon: AlertCircle },
-  paid: { label: 'Paga', color: 'text-green-600', icon: CheckCircle2 },
+const BILL_STATUS_COLORS: Record<string, { color: string; icon: React.ElementType }> = {
+  open: { color: 'text-blue-600', icon: Clock },
+  closed: { color: 'text-orange-600', icon: AlertCircle },
+  partial: { color: 'text-yellow-600', icon: AlertCircle },
+  paid: { color: 'text-green-600', icon: CheckCircle2 },
 };
 
 interface CreditCardBillPanelProps {
@@ -55,6 +57,16 @@ interface CreditCardBillPanelProps {
  */
 export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: CreditCardBillPanelProps) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const cc = MESSAGES[locale].app.finance.creditCard;
+
+  const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+    open: { label: cc.statusOpen, color: 'text-blue-600', icon: Clock },
+    closed: { label: cc.statusClosed, color: 'text-orange-600', icon: AlertCircle },
+    partial: { label: cc.statusPartial, color: 'text-yellow-600', icon: AlertCircle },
+    paid: { label: cc.statusPaid, color: 'text-green-600', icon: CheckCircle2 },
+  };
+
   const { bills, isLoading, payBill } = useCreditCardBills(account.id);
   const [expandedBill, setExpandedBill] = useState<string | null>(null);
   const [detailBill, setDetailBill] = useState<CreditCardBillWithTransactions | null>(null);
@@ -112,7 +124,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
           size="icon"
           className="h-9 w-9 shrink-0"
           onClick={onClose}
-          aria-label="Voltar"
+          aria-label={cc.backAriaLabel}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -146,7 +158,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
           )}
         </div>
       </div>
-      {onClose && <Button variant="ghost" size="sm" onClick={onClose}>Fechar</Button>}
+      {onClose && <Button variant="ghost" size="sm" onClick={onClose}>{cc.closeButton}</Button>}
     </div>
   );
 
@@ -157,15 +169,15 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
   const filterContent = (
     <FilterCheckboxGroup
-      label="Status da fatura"
+      label={cc.filterLabel}
       selected={draftStatusFilter}
       onChange={setDraftStatusFilter}
-      emptyLabel="Todas"
+      emptyLabel={cc.filterAll}
       options={[
-        { value: 'open', label: 'Aberta' },
-        { value: 'closed', label: 'Fechada' },
-        { value: 'partial', label: 'Parcial' },
-        { value: 'paid', label: 'Paga' },
+        { value: 'open', label: cc.filterStatusOpen },
+        { value: 'closed', label: cc.filterStatusClosed },
+        { value: 'partial', label: cc.filterStatusPartial },
+        { value: 'paid', label: cc.filterStatusPaid },
       ]}
     />
   );
@@ -200,7 +212,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
               <StatusIcon className="h-2.5 w-2.5" />
               {statusCfg.label}
             </Badge>
-            <span>Vence {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
+            <span>{cc.due} {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
           </div>
         }
         trailing={
@@ -221,12 +233,12 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
       {account.closing_day && (
         <div className="flex gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30 flex-wrap">
-          <span>Fecha dia <strong>{account.closing_day}</strong></span>
+          <span>{cc.closesDay} <strong>{account.closing_day}</strong></span>
           {account.due_day
-            ? <span>Vence dia <strong>{account.due_day}</strong>{account.due_day <= (account.closing_day ?? 10) ? ' (mês seguinte)' : ''}</span>
-            : <span>Vencimento <strong>{account.payment_due_days ?? 10} dias</strong> após fechamento</span>
+            ? <span>{cc.dueDay} <strong>{account.due_day}</strong>{account.due_day <= (account.closing_day ?? 10) ? ` ${cc.nextMonth}` : ''}</span>
+            : <span>{cc.dueDay} <strong>{account.payment_due_days ?? 10}</strong> {cc.daysAfterClose}</span>
           }
-          {account.credit_limit && <span>Limite <strong>{formatBRL(account.credit_limit)}</strong></span>}
+          {account.credit_limit && <span>{cc.creditLimit} <strong>{formatBRL(account.credit_limit)}</strong></span>}
         </div>
       )}
 
@@ -234,10 +246,13 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
       {isMobile && showFilter && !isLoading && bills.length > 0 && (
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
-            {filteredBills.length} de {bills.length} {bills.length === 1 ? 'fatura' : 'faturas'}
+            {cc.countBills
+              .replace('{count}', String(filteredBills.length))
+              .replace('{total}', String(bills.length))
+              .replace('{noun}', bills.length === 1 ? cc.billNounSingular : cc.billNounPlural)}
           </p>
           <FilterSheet
-            triggerLabel="Filtros"
+            triggerLabel={cc.filtersLabel}
             activeCount={activeFilterCount}
             onClear={() => {
               setDraftStatusFilter([]);
@@ -251,21 +266,21 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
       )}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">Carregando faturas...</p>
+        <p className="text-sm text-muted-foreground py-4 text-center">{cc.loading}</p>
       ) : bills.length === 0 ? (
         <EmptyState
           size="compact"
           icon={<CreditCard className="h-10 w-10" />}
-          title="Nenhuma fatura registrada"
-          description="As faturas aparecem automaticamente quando você lança despesas neste cartão."
+          title={cc.emptyTitle}
+          description={cc.emptyDescription}
         />
       ) : isMobile ? (
         filteredBills.length === 0 ? (
           <EmptyState
             size="compact"
             icon={<CreditCard className="h-10 w-10" />}
-            title="Nenhuma fatura encontrada"
-            description="Ajuste o filtro para ver outras faturas."
+            title={cc.emptyFilterTitle}
+            description={cc.emptyFilterDescription}
           />
         ) : (
           <div className="rounded-xl border bg-card overflow-hidden">
@@ -296,7 +311,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                           <div className="text-left">
                             <p className="font-medium capitalize text-sm">{formatMonth(bill.reference_month)}</p>
                             <p className="text-xs text-muted-foreground">
-                              Fecha {format(parseISO(bill.closing_date + 'T12:00:00'), 'dd/MM')} · Vence {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                              {cc.closes} {format(parseISO(bill.closing_date + 'T12:00:00'), 'dd/MM')} · {cc.due} {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
                             </p>
                           </div>
                         </div>
@@ -318,14 +333,14 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                             onClick={(e) => { e.stopPropagation(); openPayModal(bill); }}
                           >
                             <CheckCircle2 className="h-3 w-3" />
-                            Pagar Fatura
+                            {cc.payBillButton}
                           </Button>
                         </div>
                       )}
 
                       {bill.status === 'partial' && (
                         <p className="text-xs text-yellow-600 mt-1 text-right">
-                          Pago: {formatBRL(Number(bill.amount_paid ?? 0))} · Restante: {formatBRL(remaining)}
+                          {cc.alreadyPaid}: {formatBRL(Number(bill.amount_paid ?? 0))} · {cc.remaining}: {formatBRL(remaining)}
                         </p>
                       )}
                     </CardContent>
@@ -337,7 +352,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                         <EmptyState
                           size="compact"
                           icon={<CreditCard className="h-10 w-10" />}
-                          title="Sem lançamentos nesta fatura"
+                          title={cc.noEntriesTitle}
                         />
                       ) : (
                         <div className="space-y-1 pt-3">
@@ -368,7 +383,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
       <ResponsiveModal
         open={!!detailBill}
         onOpenChange={(v) => { if (!v) setDetailBill(null); }}
-        title={detailBill ? formatMonth(detailBill.reference_month).replace(/^./, c => c.toUpperCase()) : 'Detalhes da fatura'}
+        title={detailBill ? formatMonth(detailBill.reference_month).replace(/^./, c => c.toUpperCase()) : cc.detailTitle}
         className="sm:max-w-[480px]"
       >
         {detailBill && (() => {
@@ -387,21 +402,21 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                     {statusCfg.label}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    Fecha {format(parseISO(detailBill.closing_date + 'T12:00:00'), 'dd/MM')} · Vence {format(parseISO(detailBill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                    {cc.closes} {format(parseISO(detailBill.closing_date + 'T12:00:00'), 'dd/MM')} · {cc.due} {format(parseISO(detailBill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
                   </span>
                 </div>
                 <div className="flex justify-between pt-1">
-                  <span className="text-muted-foreground">Total da fatura</span>
+                  <span className="text-muted-foreground">{cc.total}</span>
                   <span className="font-medium">{formatBRL(billTotal)}</span>
                 </div>
                 {alreadyPaid > 0 && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Já pago</span>
+                      <span className="text-muted-foreground">{cc.alreadyPaid}</span>
                       <span className="text-success">− {formatBRL(alreadyPaid)}</span>
                     </div>
                     <div className="flex justify-between border-t pt-1 mt-1">
-                      <span className="font-medium">Restante</span>
+                      <span className="font-medium">{cc.remaining}</span>
                       <span className="font-bold">{formatBRL(remaining)}</span>
                     </div>
                   </>
@@ -410,14 +425,14 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Lançamentos ({transactions.length})
+                  {cc.entriesLabel} ({transactions.length})
                 </p>
                 {transactions.length === 0 ? (
                   <div className="border rounded-lg">
                     <EmptyState
                       size="compact"
                       icon={<CreditCard className="h-10 w-10" />}
-                      title="Sem lançamentos nesta fatura"
+                      title={cc.noEntriesTitle}
                     />
                   </div>
                 ) : (
@@ -453,7 +468,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
                   }}
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Pagar fatura
+                  {cc.payBillButtonShort}
                 </Button>
               )}
             </div>
@@ -466,7 +481,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
       <ResponsiveModal
         open={!!payingBill}
         onOpenChange={(v) => { if (!v) setPayingBill(null); }}
-        title="Pagar Fatura"
+        title={cc.payModalTitle}
         className="sm:max-w-[440px]"
       >
         {payingBill && (() => {
@@ -480,25 +495,25 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
             <div className="border rounded-lg p-3 bg-muted/30 text-sm space-y-1">
               <p className="font-semibold capitalize mb-2">{formatMonth(payingBill.reference_month)}</p>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total da fatura</span>
+                <span className="text-muted-foreground">{cc.total}</span>
                 <span className="font-medium">{formatBRL(billTotal)}</span>
               </div>
               {alreadyPaid > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Já pago</span>
+                  <span className="text-muted-foreground">{cc.alreadyPaid}</span>
                   <span className="text-success">− {formatBRL(alreadyPaid)}</span>
                 </div>
               )}
               <div className="flex justify-between border-t pt-1 mt-1">
-                <span className="font-medium">Restante a pagar</span>
+                <span className="font-medium">{cc.remainingToPay}</span>
                 <span className="font-bold">{formatBRL(remaining)}</span>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Pagar com *</Label>
+              <Label>{cc.payWith}</Label>
               <Select value={payAccountId} onValueChange={setPayAccountId}>
-                <SelectTrigger><SelectValue placeholder="Selecione conta/caixa" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={cc.payWithPlaceholder} /></SelectTrigger>
                 <SelectContent>
                   {cashBankAccounts.map(a => (
                     <SelectItem key={a.id} value={a.id}>
@@ -516,12 +531,12 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
             </div>
 
             <div className="space-y-1.5">
-              <Label>Data do pagamento *</Label>
+              <Label>{cc.payDate}</Label>
               <Input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} />
             </div>
 
             <div className="space-y-1.5">
-              <Label>Valor a pagar (R$)</Label>
+              <Label>{cc.payAmount}</Label>
               <Input
                 placeholder="0,00"
                 value={payAmount > 0 ? payAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
@@ -531,33 +546,33 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
               {isFullPayment ? (
                 <p className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1.5 rounded flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  Fatura será completamente quitada
+                  {cc.payFullHint}
                 </p>
               ) : afterPayment > 0.01 ? (
                 <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-1.5 rounded">
-                  Pagamento parcial — ficará <strong>{formatBRL(afterPayment)}</strong> em aberto
+                  {cc.payPartialHint.replace('{amount}', formatBRL(afterPayment))}
                 </p>
               ) : null}
             </div>
 
             <div className="space-y-1.5">
-              <Label>Observações</Label>
+              <Label>{cc.payNotes}</Label>
               <Textarea
                 value={payNotes}
                 onChange={e => setPayNotes(e.target.value)}
-                placeholder="Opcional"
+                placeholder={cc.payNotesPlaceholder}
                 rows={2}
                 className="resize-none"
               />
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={() => setPayingBill(null)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setPayingBill(null)}>{cc.cancelLabel}</Button>
               <Button
                 onClick={handlePay}
                 disabled={!payAccountId || payAmount <= 0 || payBill.isPending}
               >
-                {payBill.isPending ? 'Registrando...' : 'Confirmar Pagamento'}
+                {payBill.isPending ? cc.confirmingPay : cc.confirmPay}
               </Button>
             </div>
           </div>

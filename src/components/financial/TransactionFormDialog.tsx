@@ -36,6 +36,9 @@ import {
 import { format, parseISO, addMonths, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 
 // Billing months: 1 month back to 4 months ahead (covers all realistic card use cases)
@@ -44,18 +47,28 @@ const CARD_BILL_MONTHS = Array.from({ length: 6 }, (_, i) => {
   return { value: format(d, 'yyyy-MM-dd'), label: format(d, 'MMMM yyyy', { locale: ptBR }) };
 });
 
-const transactionSchema = z.object({
-  transaction_type: z.enum(['entrada', 'saida']),
-  category: z.string().optional(),
-  description: z.string().min(1, 'Descrição é obrigatória'),
-  amount: z.coerce.number().positive('Valor deve ser positivo'),
-  transaction_date: z.string().min(1, 'Data é obrigatória'),
-  is_paid: z.boolean().default(true),
-  notes: z.string().optional(),
-  payment_method: z.string().optional(),
-  installment_count: z.coerce.number().min(1).default(1),
-  account_id: z.string().min(1, 'Selecione uma conta ou caixa'),
-  credit_card_bill_date: z.string().optional(),
+function makeTransactionSchema(v: { descriptionRequired: string; amountPositive: string; dateRequired: string; accountRequired: string }) {
+  return z.object({
+    transaction_type: z.enum(['entrada', 'saida']),
+    category: z.string().optional(),
+    description: z.string().min(1, v.descriptionRequired),
+    amount: z.coerce.number().positive(v.amountPositive),
+    transaction_date: z.string().min(1, v.dateRequired),
+    is_paid: z.boolean().default(true),
+    notes: z.string().optional(),
+    payment_method: z.string().optional(),
+    installment_count: z.coerce.number().min(1).default(1),
+    account_id: z.string().min(1, v.accountRequired),
+    credit_card_bill_date: z.string().optional(),
+  });
+}
+
+// Fallback schema para uso fora de componente (e.g. inferência de tipo)
+const transactionSchema = makeTransactionSchema({
+  descriptionRequired: 'Descrição é obrigatória',
+  amountPositive: 'Valor deve ser positivo',
+  dateRequired: 'Data é obrigatória',
+  accountRequired: 'Selecione uma conta ou caixa',
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -75,6 +88,9 @@ interface CreditCardBillSectionProps {
 }
 
 function CreditCardBillSection({ form, cardName, account, installmentCount, totalAmount, transactionDate }: CreditCardBillSectionProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const tf = MESSAGES[locale].app.finance.transactionForm;
+
   const billDate = form.watch('credit_card_bill_date');
   const billLabel = billDate
     ? format(parseISO(billDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR })
@@ -98,25 +114,30 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
       })
     : null;
 
-  const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+  const fmt = (v: number) => formatMoney(v, currency, locale);
 
   return (
     <div className="rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800 p-3 space-y-2">
       <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300">
         <CreditCard className="h-4 w-4 shrink-0" />
-        <p className="text-sm font-medium">Despesa no Cartão de Crédito</p>
+        <p className="text-sm font-medium">{tf.creditCardSection.title}</p>
       </div>
 
       {installmentBreakdown ? (
         <div className="space-y-1">
           <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
             <Info className="h-3 w-3 shrink-0" />
-            {installmentCount} parcelas distribuídas nas faturas do cartão {cardName}:
+            {tf.creditCardSection.installmentInfo.replace('{count}', String(installmentCount)).replace('{card}', cardName)}
           </p>
           <div className="space-y-0.5 pl-4">
             {installmentBreakdown.map(({ num, label, amount }) => (
               <div key={num} className="flex justify-between text-xs text-violet-700 dark:text-violet-300">
-                <span className="capitalize">{num}/{installmentCount} → fatura de {label}</span>
+                <span className="capitalize">
+                  {tf.creditCardSection.installmentRow
+                    .replace('{num}', String(num))
+                    .replace('{total}', String(installmentCount))
+                    .replace('{month}', label)}
+                </span>
                 <span className="font-medium">{fmt(amount)}</span>
               </div>
             ))}
@@ -126,7 +147,9 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
         billLabel && (
           <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
             <Info className="h-3 w-3" />
-            Esta despesa será acumulada na <strong>fatura de {billLabel}</strong> do cartão {cardName}
+            {tf.creditCardSection.billInMonthPrefix}{' '}
+            <strong>{tf.creditCardSection.billInMonthStrong.replace('{month}', billLabel)}</strong>{' '}
+            {tf.creditCardSection.billInMonthSuffix.replace('{card}', cardName)}
           </p>
         )
       )}
@@ -134,11 +157,11 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
       {!installmentBreakdown && (
         <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs text-violet-700 dark:text-violet-300">Mês da fatura</FormLabel>
+            <FormLabel className="text-xs text-violet-700 dark:text-violet-300">{tf.creditCardSection.billMonthLabel}</FormLabel>
             <Select onValueChange={field.onChange} value={field.value || ''}>
               <FormControl>
                 <SelectTrigger className="h-8 text-sm border-violet-300 dark:border-violet-700">
-                  <SelectValue placeholder="Selecione o mês" />
+                  <SelectValue placeholder={tf.creditCardSection.billMonthPlaceholder} />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
@@ -188,6 +211,8 @@ interface AttachmentsSectionProps {
 function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPendingFiles, installmentCount = 1 }: AttachmentsSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const tf = MESSAGES[locale].app.finance.transactionForm;
 
   // Anexos persistidos (modo edit)
   const { data: savedAttachments = [], isLoading: loadingSaved } = useTransactionAttachments(
@@ -252,9 +277,13 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <FormLabel>Comprovantes / Notas Fiscais</FormLabel>
+        <FormLabel>{tf.attachmentsLabel}</FormLabel>
         {totalCount > 0 && (
-          <span className="text-xs text-muted-foreground">{totalCount} anexo{totalCount !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-muted-foreground">
+            {totalCount !== 1
+              ? tf.attachmentsCountPlural.replace('{count}', String(totalCount))
+              : tf.attachmentsCount.replace('{count}', String(totalCount))}
+          </span>
         )}
       </div>
 
@@ -269,7 +298,7 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
 
       {/* Lista — anexos já salvos (modo edit) */}
       {isEditing && loadingSaved && (
-        <p className="text-xs text-muted-foreground">Carregando anexos…</p>
+        <p className="text-xs text-muted-foreground">{tf.attachmentsLoading}</p>
       )}
 
       {savedAttachments.length > 0 && (
@@ -342,14 +371,14 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
 
       <Button type="button" variant="outline" className="w-full gap-2" onClick={handlePick} disabled={uploadMutation.isPending}>
         {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        {totalCount > 0 ? 'Adicionar mais' : 'Anexar comprovantes'}
+        {totalCount > 0 ? tf.attachmentsAdd : tf.attachmentsAttach}
       </Button>
-      <p className="text-xs text-muted-foreground">Aceita imagens (JPG, PNG) e PDFs. Você pode anexar vários.</p>
+      <p className="text-xs text-muted-foreground">{tf.attachmentsHint}</p>
 
       {showInstallmentInfo && (
         <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md p-2 flex items-start gap-1.5">
           <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>Os comprovantes serão vinculados a todas as {installmentCount} parcelas.</span>
+          <span>{tf.attachmentsInstallmentInfo.replace('{count}', String(installmentCount))}</span>
         </p>
       )}
     </div>
@@ -372,6 +401,9 @@ interface TransactionFormDialogProps {
 export function TransactionFormDialog({
   open, onOpenChange, transaction, onSubmit, isLoading, defaultType = 'entrada',
 }: TransactionFormDialogProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const fin = MESSAGES[locale].app.finance;
+  const tf = fin.transactionForm;
   const { categories: dbCategories, createCategory } = useFinancialCategories();
   const { accounts } = useFinancialAccounts();
   const { toast } = useToast();
@@ -410,8 +442,14 @@ export function TransactionFormDialog({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [transaction, defaultType]);
 
+  const localizedSchema = useMemo(
+    () => makeTransactionSchema(tf.validations),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [locale],
+  );
+
   const form = useForm<TransactionFormData>({
-    resolver: zodResolver(transactionSchema),
+    resolver: zodResolver(localizedSchema),
     defaultValues: defaults,
   });
 
@@ -479,16 +517,15 @@ export function TransactionFormDialog({
         ? `Todas as ${originalInstallmentTotal} parcelas originais serão removidas`
         : 'A transação original será removida';
       const ok = window.confirm(
-        `Você está alterando a forma de pagamento desta despesa. ` +
-        `${grupoInfo} e será recriada (${parcelasInfo}) com a nova forma de pagamento. ` +
-        `Os anexos serão preservados. Continuar?`
+        tf.changeMethodConfirm
+          .replace('{groupInfo}', grupoInfo)
+          .replace('{parcelas}', parcelasInfo)
       );
       if (!ok) { submitGuard.current = false; return; }
     } else if (wasOnePayment && willBeMultiple) {
       const ok = window.confirm(
-        `Você está alterando esta despesa para ${data.installment_count} parcelas. ` +
-        `A transação original será removida e ${data.installment_count} novas parcelas serão criadas no lugar. ` +
-        `Os anexos serão preservados em todas as parcelas. Continuar?`
+        tf.changeInstallmentConfirm
+          .replace(/\{count\}/g, String(data.installment_count))
       );
       if (!ok) { submitGuard.current = false; return; }
     }
@@ -571,11 +608,11 @@ export function TransactionFormDialog({
 
   const footer = (
     <div className="flex justify-end gap-3">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tf.cancelLabel}</Button>
       <Button type="submit" form="transaction-form" disabled={busy}
         className={isEntrada ? 'bg-success hover:bg-success/90 text-white' : 'bg-destructive hover:bg-destructive/90 text-white'}>
         {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Salvar
+        {tf.saveLabel}
       </Button>
     </div>
   );
@@ -598,7 +635,7 @@ export function TransactionFormDialog({
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={transaction ? 'Editar Transação' : 'Nova Transação'}
+      title={transaction ? tf.titleEdit : tf.titleNew}
       className="sm:max-w-[520px]"
       footer={footer}
     >
@@ -610,24 +647,24 @@ export function TransactionFormDialog({
           form.reset({ ...defaults, transaction_type: defaultType });
         }}
       />
-      <p className="text-sm text-muted-foreground -mt-2 mb-4">Registre uma receita ou despesa</p>
+      <p className="text-sm text-muted-foreground -mt-2 mb-4">{tf.subtitle}</p>
 
       <Form {...form}>
         <form id="transaction-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           {/* Type toggle */}
           <FormField control={form.control} name="transaction_type" render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo de Movimentação</FormLabel>
+              <FormLabel>{tf.typeLabel}</FormLabel>
               <div className="grid grid-cols-2 gap-3">
                 <button type="button" onClick={() => field.onChange('entrada')}
                   className={cn('flex items-center justify-center gap-2 rounded-lg border-2 py-3 text-sm font-semibold transition-all',
                     field.value === 'entrada' ? 'border-success bg-success text-white' : 'border-border bg-background text-muted-foreground hover:border-success/50')}>
-                  <TrendingUp className="h-4 w-4" /> Receita
+                  <TrendingUp className="h-4 w-4" /> {tf.typeRevenue}
                 </button>
                 <button type="button" onClick={() => field.onChange('saida')}
                   className={cn('flex items-center justify-center gap-2 rounded-lg border-2 py-3 text-sm font-semibold transition-all',
                     field.value === 'saida' ? 'border-destructive bg-destructive text-white' : 'border-border bg-background text-muted-foreground hover:border-destructive/50')}>
-                  <TrendingDown className="h-4 w-4" /> Despesa
+                  <TrendingDown className="h-4 w-4" /> {tf.typeExpense}
                 </button>
               </div>
               <FormMessage />
@@ -640,12 +677,12 @@ export function TransactionFormDialog({
               selecionada). */}
           <FormField control={form.control} name="category" render={({ field }) => (
             <FormItem>
-              <FormLabel>Categoria</FormLabel>
+              <FormLabel>{tf.categoryLabel}</FormLabel>
               <div className="flex gap-2">
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione uma categoria" />
+                      <SelectValue placeholder={tf.categoryPlaceholder} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -672,8 +709,8 @@ export function TransactionFormDialog({
                   size="icon"
                   className="shrink-0"
                   onClick={() => setCategoryFormOpen(true)}
-                  title="Nova categoria"
-                  aria-label="Nova categoria"
+                  title={tf.newCategoryAriaLabel}
+                  aria-label={tf.newCategoryAriaLabel}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -693,9 +730,9 @@ export function TransactionFormDialog({
               : '';
             return (
               <FormItem>
-                <FormLabel>Valor (R$)</FormLabel>
+                <FormLabel>{tf.amountLabel}</FormLabel>
                 <FormControl>
-                  <Input placeholder="0,00" value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
+                  <Input placeholder={tf.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -705,18 +742,18 @@ export function TransactionFormDialog({
           {/* Account */}
           {accounts.length === 0 ? (
             <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">Nenhuma conta cadastrada</p>
+              <p className="font-medium text-amber-900 dark:text-amber-200">{tf.noAccountTitle}</p>
               <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                É necessário cadastrar pelo menos uma conta ou caixa para registrar transações.{' '}
-                <a href="/financeiro/caixas-bancos" className="underline font-medium">Cadastrar agora</a>
+                {tf.noAccountDescription}{' '}
+                <a href="/financeiro/caixas-bancos" className="underline font-medium">{tf.noAccountLink}</a>
               </p>
             </div>
           ) : (
             <FormField control={form.control} name="account_id" render={({ field }) => (
               <FormItem>
-                <FormLabel>Conta Bancária / Caixa <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>{tf.accountLabel} <span className="text-destructive">*</span></FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || ''}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger><SelectValue placeholder={tf.accountPlaceholder} /></SelectTrigger></FormControl>
                   <SelectContent>
                     {accounts.filter(a => a.is_active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
@@ -740,16 +777,16 @@ export function TransactionFormDialog({
               despesa de PIX → Cartão (ou vice-versa) com as parcelas corretas. */}
           <FormField control={form.control} name="payment_method" render={({ field }) => (
             <FormItem>
-              <FormLabel>Forma de pagamento</FormLabel>
+              <FormLabel>{tf.paymentMethodLabel}</FormLabel>
               <Select onValueChange={field.onChange} value={field.value || ''}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger></FormControl>
+                <FormControl><SelectTrigger><SelectValue placeholder={tf.paymentMethodPlaceholder} /></SelectTrigger></FormControl>
                 <SelectContent>
-                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                  <SelectItem value="transferencia">Transferência</SelectItem>
-                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="dinheiro">{tf.paymentMethods.dinheiro}</SelectItem>
+                  <SelectItem value="pix">{tf.paymentMethods.pix}</SelectItem>
+                  <SelectItem value="cartao_credito">{tf.paymentMethods.cartao_credito}</SelectItem>
+                  <SelectItem value="cartao_debito">{tf.paymentMethods.cartao_debito}</SelectItem>
+                  <SelectItem value="transferencia">{tf.paymentMethods.transferencia}</SelectItem>
+                  <SelectItem value="boleto">{tf.paymentMethods.boleto}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -783,8 +820,8 @@ export function TransactionFormDialog({
           {/* Description */}
           <FormField control={form.control} name="description" render={({ field }) => (
             <FormItem>
-              <FormLabel>Descrição</FormLabel>
-              <FormControl><Textarea placeholder="Descreva a movimentação" rows={2} {...field} /></FormControl>
+              <FormLabel>{tf.descriptionLabel}</FormLabel>
+              <FormControl><Textarea placeholder={tf.descriptionPlaceholder} rows={2} {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
@@ -793,7 +830,7 @@ export function TransactionFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="transaction_date" render={({ field }) => (
               <FormItem>
-                <FormLabel>Data</FormLabel>
+                <FormLabel>{tf.dateLabel}</FormLabel>
                 <FormControl><Input type="date" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
@@ -815,11 +852,11 @@ export function TransactionFormDialog({
               if (wasAlreadyMultiple) {
                 return (
                   <FormItem>
-                    <FormLabel>Parcelas</FormLabel>
+                    <FormLabel>{tf.installmentsLabel}</FormLabel>
                     <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
                       <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span>
-                        Parcela {(transaction as any)?.installment_number ?? '?'}/{originalInstallmentTotal}
+                        {tf.installmentBadgePrefix} {(transaction as any)?.installment_number ?? '?'}/{originalInstallmentTotal}
                       </span>
                     </div>
                   </FormItem>
@@ -828,11 +865,11 @@ export function TransactionFormDialog({
               return (
                 <FormField control={form.control} name="installment_count" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Parcelas</FormLabel>
+                    <FormLabel>{tf.installmentsLabel}</FormLabel>
                     <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value || 1)}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="1">À vista</SelectItem>
+                        <SelectItem value="1">{tf.installmentSingle}</SelectItem>
                         {[2,3,4,5,6,7,8,9,10,11,12].map((n) => (
                           <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
                         ))}
@@ -850,21 +887,21 @@ export function TransactionFormDialog({
               porque o campo vira badge read-only). */}
           {!((transaction as any)?.installment_total > 1) && (form.watch('installment_count') || 1) > 1 && !isCardAccount && (
             <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
-              Serão geradas {form.watch('installment_count')} parcelas de{' '}
-              <strong>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                  (form.watch('amount') || 0) / (form.watch('installment_count') || 1)
-                )}
-              </strong>{' '}
-              com vencimentos mensais a partir da data informada.
+              {tf.installmentInfo
+                .replace('{count}', String(form.watch('installment_count')))
+                .replace('{amount}', formatMoney(
+                  (form.watch('amount') || 0) / (form.watch('installment_count') || 1),
+                  currency,
+                  locale,
+                ))}
             </p>
           )}
 
           {/* Notes */}
           <FormField control={form.control} name="notes" render={({ field }) => (
             <FormItem>
-              <FormLabel>Observações</FormLabel>
-              <FormControl><Textarea placeholder="Anotações internas (opcional)" rows={2} {...field} /></FormControl>
+              <FormLabel>{tf.notesLabel}</FormLabel>
+              <FormControl><Textarea placeholder={tf.notesPlaceholder} rows={2} {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
@@ -883,11 +920,13 @@ export function TransactionFormDialog({
             <FormField control={form.control} name="is_paid" render={({ field }) => (
               <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
-                  <FormLabel className="!mt-0 font-medium">Já foi {isEntrada ? 'recebido' : 'pago'}</FormLabel>
+                  <FormLabel className="!mt-0 font-medium">
+                    {isEntrada ? tf.isPaidLabelRevenue : tf.isPaidLabelExpense}
+                  </FormLabel>
                   <p className="text-xs text-muted-foreground">
                     {field.value
-                      ? (isEntrada ? 'Será registrado como recebido' : 'Será registrado como pago')
-                      : (isEntrada ? 'Irá para contas a receber' : 'Irá para contas a pagar')
+                      ? (isEntrada ? tf.isPaidDescReceivedTrue : tf.isPaidDescPaidTrue)
+                      : (isEntrada ? tf.isPaidDescReceivedFalse : tf.isPaidDescPaidFalse)
                     }
                   </p>
                 </div>

@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Car, Wrench, HardHat, Gift, Package, ChevronDown, ChevronUp } from 'lucide-react';
-import { formatBRL } from '@/utils/currency';
 import { useServiceCostResources } from '@/hooks/useServiceCostResources';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { CostResource, CostResourceCategory } from '@/hooks/useCostResources';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface LinkedResourcesSectionProps {
   serviceId: string | null;
@@ -25,15 +27,10 @@ const categoryIcons: Record<CostResourceCategory, React.ComponentType<{ classNam
   other: Package,
 };
 
-const categoryLabels: Record<CostResourceCategory, string> = {
-  vehicle: 'Veículos',
-  tool: 'Ferramentas',
-  gift: 'Brindes',
-  epi: 'EPIs',
-  other: 'Outros',
-};
-
 export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange }: LinkedResourcesSectionProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm.costModals;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const {
     linkedResources,
     allResources,
@@ -110,14 +107,14 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
     <Card>
       <CardContent className="p-4 space-y-4">
         <div>
-          <p className="text-sm font-semibold text-foreground">Recursos Vinculados</p>
+          <p className="text-sm font-semibold text-foreground">{t.linkedTitle}</p>
           <p className="text-xs text-muted-foreground">
-            Selecione recursos globais para este serviço. Custo = custo/hora × {serviceHours}h
+            {t.linkedSubtitle.replace('{hours}', String(serviceHours))}
           </p>
         </div>
 
         {isLoading ? (
-          <div className="py-4 text-center text-sm text-muted-foreground">Carregando recursos...</div>
+          <div className="py-4 text-center text-sm text-muted-foreground">{t.linkedLoading}</div>
         ) : (
           <div className="space-y-3">
             {categoriesToShow.map(category => {
@@ -135,17 +132,19 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                     <Button variant="ghost" className="w-full justify-between p-2 h-auto">
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{categoryLabels[category]}</span>
+                        <span className="font-medium">{t.linkedCategoryLabels[category]}</span>
                         {linkedCount > 0 && (
                           <Badge variant="secondary" className="text-xs">
-                            {linkedCount} vinculado{linkedCount > 1 ? 's' : ''}
+                            {linkedCount > 1
+                              ? t.linkedBadgeLinked_other.replace('{count}', String(linkedCount))
+                              : t.linkedBadgeLinked_one.replace('{count}', String(linkedCount))}
                           </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         {linkedCount > 0 && (
                           <span className="text-sm font-medium text-primary">
-                            R$ {formatBRL(categoryTotal)}
+                            {fmt(categoryTotal)}
                           </span>
                         )}
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -176,7 +175,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                               <Label htmlFor={`resource-${resource.id}`} className="cursor-pointer">
                                 <span className="font-medium">{resource.name}</span>
                                 <span className="text-xs text-muted-foreground ml-2">
-                                  R$ {formatBRL(hourlyRate)}/h
+                                  {t.linkedPerHour.replace('{rate}', fmt(hourlyRate))}
                                 </span>
                               </Label>
                             </div>
@@ -185,18 +184,18 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                           {isLinked && (
                             <div className="ml-0 sm:ml-6 flex flex-col gap-2 text-sm">
                               <span className="text-muted-foreground">
-                                {serviceHours}h × R$ {formatBRL(hourlyRate)} = 
-                                <span className={`font-medium ml-1 ${hasOverride ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                                  R$ {formatBRL(calculatedCost)}
+                                {serviceHours}h &times; {fmt(hourlyRate)} =&nbsp;
+                                <span className={`font-medium ${hasOverride ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                  {fmt(calculatedCost)}
                                 </span>
                               </span>
                               <div className="flex items-center gap-2">
-                                <Label className="text-xs text-muted-foreground whitespace-nowrap">Sobrescrever:</Label>
+                                <Label className="text-xs text-muted-foreground whitespace-nowrap">{t.linkedOverrideLabel}</Label>
                                 <Input
                                   type="number"
                                   min={0}
                                   step="0.01"
-                                  placeholder="Auto"
+                                  placeholder={t.linkedOverridePlaceholder}
                                   className="w-24 h-7 text-xs"
                                   value={overrideInputs[resource.id] ?? (linked?.override_value ?? '')}
                                   onChange={(e) => setOverrideInputs(prev => ({ ...prev, [resource.id]: e.target.value }))}
@@ -204,7 +203,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                                 />
                                 {hasOverride && (
                                   <span className="text-xs font-medium text-primary">
-                                    = R$ {formatBRL(finalCost)}
+                                    = {fmt(finalCost)}
                                   </span>
                                 )}
                               </div>
@@ -225,18 +224,20 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                   <Button variant="ghost" className="w-full justify-between p-2 h-auto">
                     <div className="flex items-center gap-2">
                       <Gift className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Brindes</span>
-                      <Badge variant="outline" className="text-xs">por execução</Badge>
+                      <span className="font-medium">{t.linkedCategoryLabels.gift}</span>
+                      <Badge variant="outline" className="text-xs">{t.linkedBadgePerExecution}</Badge>
                       {gifts.length > 0 && (
                         <Badge variant="secondary" className="text-xs">
-                          {gifts.length} vinculado{gifts.length > 1 ? 's' : ''}
+                          {gifts.length > 1
+                            ? t.linkedBadgeLinked_other.replace('{count}', String(gifts.length))
+                            : t.linkedBadgeLinked_one.replace('{count}', String(gifts.length))}
                         </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {gifts.length > 0 && (
                         <span className="text-sm font-medium text-primary">
-                          R$ {formatBRL(totals.gift)}
+                          {fmt(totals.gift)}
                         </span>
                       )}
                       {expandedCategories.includes('gift') ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -275,7 +276,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                           </Label>
                         </div>
                         <span className="text-sm font-medium text-foreground">
-                          R$ {formatBRL(resource.total_monthly_cost ?? 0)} / execução
+                          {t.linkedPerExecution.replace('{amount}', fmt(resource.total_monthly_cost ?? 0))}
                         </span>
                       </div>
                     );
@@ -289,8 +290,8 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
         {/* Total summary */}
         {totals.total > 0 && (
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
-            <span className="text-sm font-medium text-foreground">Total recursos vinculados</span>
-            <span className="text-lg font-bold text-primary">R$ {formatBRL(totals.total)}</span>
+            <span className="text-sm font-medium text-foreground">{t.linkedTotalLabel}</span>
+            <span className="text-lg font-bold text-primary">{fmt(totals.total)}</span>
           </div>
         )}
       </CardContent>

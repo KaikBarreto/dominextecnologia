@@ -24,12 +24,14 @@ import { formatBRL } from '@/utils/currency';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { useCreditCardBills, effectiveBillStatus, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
-const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  open: { label: 'Aberta', color: 'text-blue-600', icon: Clock },
-  closed: { label: 'Fechada', color: 'text-orange-600', icon: AlertCircle },
-  partial: { label: 'Parcial', color: 'text-yellow-600', icon: AlertCircle },
-  paid: { label: 'Paga', color: 'text-green-600', icon: CheckCircle2 },
+const BILL_STATUS_COLORS: Record<string, { color: string; icon: React.ElementType }> = {
+  open: { color: 'text-blue-600', icon: Clock },
+  closed: { color: 'text-orange-600', icon: AlertCircle },
+  partial: { color: 'text-yellow-600', icon: AlertCircle },
+  paid: { color: 'text-green-600', icon: CheckCircle2 },
 };
 
 function parseLocalDate(dateStr: string): Date {
@@ -54,6 +56,16 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
+
+  const { locale } = useAppLocaleContext();
+  const cc = MESSAGES[locale].app.finance.creditCard;
+
+  const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+    open: { label: cc.statusOpen, ...BILL_STATUS_COLORS.open },
+    closed: { label: cc.statusClosed, ...BILL_STATUS_COLORS.closed },
+    partial: { label: cc.statusPartial, ...BILL_STATUS_COLORS.partial },
+    paid: { label: cc.statusPaid, ...BILL_STATUS_COLORS.paid },
+  };
 
   // Carrega o hook pra ter acesso ao payBill — escopo da conta deste card.
   const { payBill } = useCreditCardBills(account.id);
@@ -115,7 +127,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
         disabled={!canPay}
       >
         {canPay ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-        Pagar Fatura
+        {cc.payBillButton}
       </Button>
     );
     if (canPay) return buttonNode;
@@ -127,7 +139,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             <span>{buttonNode}</span>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-[220px] text-xs">
-            Pagamento liberado após o fechamento em {format(closingDate, 'dd/MM/yyyy')}
+            {cc.payLockedHint.replace('{date}', format(closingDate, 'dd/MM/yyyy'))}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -149,7 +161,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             }
             title={
               <div className="flex items-center gap-1.5">
-                <span className="capitalize truncate">Fatura {formatMonth(invoice.reference_month)}</span>
+                <span className="capitalize truncate">{cc.invoiceLabel} {formatMonth(invoice.reference_month)}</span>
               </div>
             }
             subtitle={
@@ -157,11 +169,11 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="truncate">{account.name}</span>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                    {txnCount} {txnCount === 1 ? 'despesa' : 'despesas'}
+                    {txnCount} {txnCount === 1 ? cc.expenseNounSingular : cc.expenseNounPlural}
                   </Badge>
                 </div>
                 <span className="text-[11px]">
-                  Vence {format(parseLocalDate(invoice.due_date), 'dd/MM')} · Fecha {format(closingDate, 'dd/MM')}
+                  {cc.due} {format(parseLocalDate(invoice.due_date), 'dd/MM')} · {cc.closes} {format(closingDate, 'dd/MM')}
                 </span>
               </div>
             }
@@ -194,14 +206,14 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium capitalize text-sm">
-                Fatura {formatMonth(invoice.reference_month)} — {account.name}
+                {cc.invoiceLabel} {formatMonth(invoice.reference_month)} — {account.name}
               </p>
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                {txnCount} {txnCount === 1 ? 'despesa' : 'despesas'}
+                {txnCount} {txnCount === 1 ? cc.expenseNounSingular : cc.expenseNounPlural}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Vence {format(parseLocalDate(invoice.due_date), 'dd/MM/yyyy')} · Fecha {format(closingDate, 'dd/MM/yyyy')}
+              {cc.due} {format(parseLocalDate(invoice.due_date), 'dd/MM/yyyy')} · {cc.closes} {format(closingDate, 'dd/MM/yyyy')}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
@@ -223,7 +235,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
       <ResponsiveModal
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title={`Fatura ${formatMonth(invoice.reference_month).replace(/^./, (c) => c.toUpperCase())}`}
+        title={`${cc.invoiceLabel} ${formatMonth(invoice.reference_month).replace(/^./, (c) => c.toUpperCase())}`}
         className="sm:max-w-[480px]"
       >
         <div className="space-y-4">
@@ -241,7 +253,7 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-sm truncate">{account.name}</p>
               <p className="text-xs text-muted-foreground">
-                Fecha {format(closingDate, 'dd/MM/yyyy')} · Vence {format(parseLocalDate(invoice.due_date), 'dd/MM/yyyy')}
+                {cc.closes} {format(closingDate, 'dd/MM/yyyy')} · {cc.due} {format(parseLocalDate(invoice.due_date), 'dd/MM/yyyy')}
               </p>
             </div>
             <Badge variant="outline" className={cn('text-[10px] gap-1', statusCfg.color)}>
@@ -253,17 +265,17 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
           {/* Resumo financeiro */}
           <div className="border rounded-lg p-3 text-sm space-y-1">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total da fatura</span>
+              <span className="text-muted-foreground">{cc.total}</span>
               <span className="font-medium">{formatBRL(billTotal)}</span>
             </div>
             {alreadyPaid > 0 && (
               <>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Já pago</span>
+                  <span className="text-muted-foreground">{cc.alreadyPaid}</span>
                   <span className="text-success">− {formatBRL(alreadyPaid)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 mt-1">
-                  <span className="font-medium">Restante</span>
+                  <span className="font-medium">{cc.remaining}</span>
                   <span className="font-bold">{formatBRL(remaining)}</span>
                 </div>
               </>
@@ -273,11 +285,11 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
           {/* Lista de despesas */}
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-              Despesas ({txnCount})
+              {cc.expensesLabel} ({txnCount})
             </p>
             {txnCount === 0 ? (
               <p className="text-xs text-muted-foreground py-3 text-center border rounded-lg">
-                Sem despesas nesta fatura
+                {cc.noExpensesTitle}
               </p>
             ) : (
               <div className="rounded-lg border bg-card overflow-hidden max-h-[40vh] overflow-y-auto">
@@ -303,13 +315,13 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             canPay ? (
               <Button className="w-full gap-2" onClick={() => openPay()}>
                 <CheckCircle2 className="h-4 w-4" />
-                Pagar fatura
+                {cc.payBillButtonShort}
               </Button>
             ) : (
               <div className="rounded-lg border border-muted bg-muted/30 p-3 flex items-start gap-2 text-xs text-muted-foreground">
                 <Lock className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>
-                  Pagamento liberado após o fechamento em <strong>{format(closingDate, 'dd/MM/yyyy')}</strong>.
+                  {cc.payLockedHint.replace('{date}', format(closingDate, 'dd/MM/yyyy'))}
                 </span>
               </div>
             )
@@ -321,34 +333,34 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
       <ResponsiveModal
         open={payOpen}
         onOpenChange={setPayOpen}
-        title="Pagar Fatura"
+        title={cc.payModalTitle}
         className="sm:max-w-[440px]"
       >
         <div className="space-y-4">
           <div className="border rounded-lg p-3 bg-muted/30 text-sm space-y-1">
             <p className="font-semibold capitalize mb-2">
-              Fatura {formatMonth(invoice.reference_month)} — {account.name}
+              {cc.invoiceLabel} {formatMonth(invoice.reference_month)} — {account.name}
             </p>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total da fatura</span>
+              <span className="text-muted-foreground">{cc.total}</span>
               <span className="font-medium">{formatBRL(billTotal)}</span>
             </div>
             {alreadyPaid > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Já pago</span>
+                <span className="text-muted-foreground">{cc.alreadyPaid}</span>
                 <span className="text-success">− {formatBRL(alreadyPaid)}</span>
               </div>
             )}
             <div className="flex justify-between border-t pt-1 mt-1">
-              <span className="font-medium">Restante a pagar</span>
+              <span className="font-medium">{cc.remainingToPay}</span>
               <span className="font-bold">{formatBRL(remaining)}</span>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Pagar com *</Label>
+            <Label>{cc.payWith}</Label>
             <Select value={payAccountId} onValueChange={setPayAccountId}>
-              <SelectTrigger><SelectValue placeholder="Selecione conta/caixa" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={cc.payWithPlaceholder} /></SelectTrigger>
               <SelectContent>
                 {cashBankAccounts.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
@@ -364,17 +376,17 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
               </SelectContent>
             </Select>
             {cashBankAccounts.length === 0 && (
-              <p className="text-xs text-destructive">Cadastre um caixa ou conta primeiro.</p>
+              <p className="text-xs text-destructive">{cc.noAccountHint}</p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label>Data do pagamento *</Label>
+            <Label>{cc.payDate}</Label>
             <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Valor a pagar (R$)</Label>
+            <Label>{cc.payAmount}</Label>
             <Input
               placeholder="0,00"
               value={payAmount > 0 ? payAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
@@ -384,33 +396,33 @@ export function CreditCardInvoiceRow({ invoice, account, cashBankAccounts, isMob
             {isFullPayment ? (
               <p className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1.5 rounded flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                Fatura será completamente quitada
+                {cc.payFullHint}
               </p>
             ) : afterPayment > 0.01 ? (
               <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-1.5 rounded">
-                Pagamento parcial — ficará <strong>{formatBRL(afterPayment)}</strong> em aberto
+                {cc.payPartialHint.replace('{amount}', formatBRL(afterPayment))}
               </p>
             ) : null}
           </div>
 
           <div className="space-y-1.5">
-            <Label>Observações</Label>
+            <Label>{cc.payNotes}</Label>
             <Textarea
               value={payNotes}
               onChange={(e) => setPayNotes(e.target.value)}
-              placeholder="Opcional"
+              placeholder={cc.payNotesPlaceholder}
               rows={2}
               className="resize-none"
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>{cc.cancelLabel}</Button>
             <Button
               onClick={handleConfirmPay}
               disabled={!payAccountId || payAmount <= 0 || payBill.isPending}
             >
-              {payBill.isPending ? 'Registrando...' : 'Confirmar Pagamento'}
+              {payBill.isPending ? cc.confirmingPay : cc.confirmPay}
             </Button>
           </div>
         </div>

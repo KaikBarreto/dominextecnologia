@@ -4,6 +4,8 @@ import { PenLine } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { substituteVariables, buildPreviewContext } from '@/utils/pmocVariables';
 import type { PmocVariableContext } from '@/utils/pmocVariables';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Prévia do documento PMOC (folha A4 branca).
@@ -54,6 +56,9 @@ export function PmocDocPreviewModal({
   html,
   templateContext,
 }: PmocDocPreviewModalProps) {
+  const { locale } = useAppLocaleContext();
+  const dp = MESSAGES[locale].app.pmoc.docPreview;
+
   // Contexto da prévia: valores reais quando existem, genéricos de exemplo pro
   // que faltar. Garante folha SEMPRE preenchida (nunca linha pontilhada).
   const previewContext = useMemo(
@@ -72,7 +77,7 @@ export function PmocDocPreviewModal({
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Prévia do documento"
+      title={dp.title}
       className="sm:!max-w-4xl"
     >
       {/* Fundo neutro pra a folha branca "saltar" como documento. */}
@@ -114,7 +119,7 @@ export function PmocDocPreviewModal({
             </div>
             <p className="mt-5 flex items-center justify-center gap-1.5 text-[10px] leading-snug text-black/40">
               <PenLine className="h-3 w-3 shrink-0" aria-hidden="true" />
-              Espaço reservado para a assinatura do Responsável Técnico.
+              {dp.signatureFooter}
             </p>
           </div>
         </div>

@@ -6,7 +6,6 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Calculator, Plus, Trash2, Users, Check, ChevronsUpDown } from 'lucide-react';
-import { formatBRL } from '@/utils/currency';
 import { useEmployees } from '@/hooks/useEmployees';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -14,6 +13,9 @@ import { cn } from '@/lib/utils';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from './MonthlyCostCalculatorModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface Worker {
   id: string;
@@ -55,6 +57,9 @@ function EmployeeCombobox({
   employeeId: string | null;
   onChange: (name: string, employeeId: string | null, monthlyCost: number, breakdown: MonthlyCostBreakdown | null) => void;
 }) {
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm.costModals;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const { employees } = useEmployees();
   const [open, setOpen] = useState(false);
   const activeEmployees = useMemo(
@@ -69,7 +74,7 @@ function EmployeeCombobox({
           <Input
             value={value}
             onChange={e => onChange(e.target.value, null, 0, null)}
-            placeholder="Nome ou selecione..."
+            placeholder={t.laborEmployeePlaceholder}
             className="h-8 text-sm font-medium pr-8"
           />
           <Button
@@ -84,9 +89,9 @@ function EmployeeCombobox({
       </PopoverTrigger>
       <PopoverContent className="w-[260px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Buscar funcionário..." />
+          <CommandInput placeholder={t.laborEmployeeSearch} />
           <CommandList>
-            <CommandEmpty>Nenhum encontrado</CommandEmpty>
+            <CommandEmpty>{t.laborEmployeeEmpty}</CommandEmpty>
             <CommandGroup>
               {activeEmployees.map(emp => {
                 const displayCost = emp.monthly_cost ?? emp.salary ?? 0;
@@ -108,7 +113,7 @@ function EmployeeCombobox({
                     </div>
                     {displayCost > 0 && (
                       <span className="ml-auto text-xs text-muted-foreground">
-                        R$ {formatBRL(displayCost)}
+                        {fmt(displayCost)}
                       </span>
                     )}
                   </CommandItem>
@@ -123,6 +128,9 @@ function EmployeeCombobox({
 }
 
 export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalculatorModalProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm.costModals;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const { monthlyHours: companyMonthlyHours } = useEmployeeWorkHours(null);
   const [monthlyHours, setMonthlyHours] = useState(176);
   const [defaultServiceHours, setDefaultServiceHours] = useState(2);
@@ -185,9 +193,9 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
 
   const footer = (
     <div className="flex gap-2 w-full">
-      <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t.laborCancel}</Button>
       <Button className="flex-1" onClick={handleApply} disabled={calculations.totalCost <= 0}>
-        Aplicar R$ {formatBRL(calculations.avgRate)}/h
+        {t.laborApply.replace('{rate}', `${fmt(calculations.avgRate)}`)}
       </Button>
     </div>
   );
@@ -197,34 +205,34 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
       <ResponsiveModal
         open={open}
         onOpenChange={onOpenChange}
-        title="Calcular Custo de Mão de Obra"
+        title={t.laborCalcTitle}
         className="sm:max-w-lg"
         footer={footer}
       >
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-primary mb-2">
             <Calculator className="h-4 w-4" />
-            <span className="text-sm font-medium">Calculadora de equipe</span>
+            <span className="text-sm font-medium">{t.laborCalcBadge}</span>
           </div>
 
           {/* Global settings */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Horas mensais base</Label>
+              <Label className="text-xs">{t.laborMonthlyHoursLabel}</Label>
               <NumericInput
                 value={String(monthlyHours ?? '')}
                 onValueChange={v => setMonthlyHours(Number(v) || 0)}
               />
-              <p className="text-[11px] text-muted-foreground">Padrão: 176h/mês (22d × 8h)</p>
+              <p className="text-[11px] text-muted-foreground">{t.laborMonthlyHoursHint}</p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Horas padrão neste serviço</Label>
+              <Label className="text-xs">{t.laborServiceHoursLabel}</Label>
               <NumericInput
                 decimal
                 value={String(defaultServiceHours ?? '')}
                 onValueChange={v => handleDefaultHoursChange(Number(v.replace(',', '.')) || 0)}
               />
-              <p className="text-[11px] text-muted-foreground">Aplica a todos não editados</p>
+              <p className="text-[11px] text-muted-foreground">{t.laborServiceHoursHint}</p>
             </div>
           </div>
 
@@ -233,10 +241,10 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                 <Users className="h-4 w-4" />
-                Funcionários ({workers.length})
+                {t.laborEmployeesHeader.replace('{count}', String(workers.length))}
               </div>
               <Button size="sm" variant="outline" onClick={addWorker}>
-                <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
+                <Plus className="h-3.5 w-3.5 mr-1" />{t.laborAddEmployee}
               </Button>
             </div>
 
@@ -282,13 +290,13 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                       onCheckedChange={checked => updateWorker(w.id, { isFixedCost: checked })}
                     />
                     <Label htmlFor={`fixed-${w.id}`} className="text-[11px] cursor-pointer text-muted-foreground">
-                      Valor fixo por serviço (não é mensalista)
+                      {t.laborFixedCostToggle}
                     </Label>
                   </div>
 
                   {w.isFixedCost ? (
                     <div className="space-y-1">
-                      <Label className="text-[11px]">Valor fixo para este serviço (R$)</Label>
+                      <Label className="text-[11px]">{t.laborFixedCostLabel}</Label>
                       <Input
                         type="number" min={0} step="0.01"
                         value={w.fixedCost || ''}
@@ -296,12 +304,12 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                         placeholder="Ex: 150"
                         className="h-8 text-sm"
                       />
-                      <p className="text-[11px] text-muted-foreground">Este valor será somado diretamente ao custo total</p>
+                      <p className="text-[11px] text-muted-foreground">{t.laborFixedCostHint}</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Custo mensal (R$)</Label>
+                        <Label className="text-[11px]">{t.laborMonthlyCostLabel}</Label>
                         <div className="flex gap-1">
                           <Input
                             type="number" min={0} step="0.01"
@@ -316,14 +324,14 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                             size="sm"
                             className="h-8 px-2 shrink-0"
                             onClick={() => setCostCalcWorkerId(w.id)}
-                            title="Calcular custo mensal detalhado"
+                            title={t.laborCalcMonthlyDetail}
                           >
                             <Calculator className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Horas neste serviço</Label>
+                        <Label className="text-[11px]">{t.laborServiceHoursWorkerLabel}</Label>
                         <NumericInput
                           decimal
                           value={String(w.hours ?? '')}
@@ -337,9 +345,9 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                   {detail && detail.cost > 0 && (
                     <p className="text-[11px] text-muted-foreground">
                       {w.isFixedCost ? (
-                        <>Custo fixo: <span className="font-medium text-foreground">R$ {formatBRL(detail.cost)}</span></>
+                        <>{t.laborWorkerFixedDetail.replace('{total}', fmt(detail.cost))}</>
                       ) : (
-                        <>R$ {formatBRL(detail.rate)}/h × {w.hours}h = <span className="font-medium text-foreground">R$ {formatBRL(detail.cost)}</span></>
+                        <>{fmt(detail.rate)}/h &times; {w.hours}h = <span className="font-medium text-foreground">{fmt(detail.cost)}</span></>
                       )}
                     </p>
                   )}
@@ -353,36 +361,36 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
             {calculations.details.filter(d => d.cost > 0).map(d => (
               <div key={d.id} className="flex justify-between text-xs">
                 <span className="text-muted-foreground">
-                  {d.name || 'Funcionário'}
-                  {d.isFixedCost && <span className="ml-1 text-primary">(fixo)</span>}
+                  {d.name || t.laborEmployeeFallback}
+                  {d.isFixedCost && <span className="ml-1 text-primary">{t.laborFixedBadge}</span>}
                 </span>
-                <span className="font-medium">R$ {formatBRL(d.cost)}</span>
+                <span className="font-medium">{fmt(d.cost)}</span>
               </div>
             ))}
             {calculations.details.filter(d => d.cost > 0).length > 1 && (
               <div className="border-t pt-2" />
             )}
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Horas do serviço</span>
+              <span className="text-muted-foreground">{t.laborSummaryHours}</span>
               <span className="font-medium">{calculations.totalHours}h</span>
             </div>
             {calculations.totalCostFixed > 0 && (
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Custos fixos incluídos</span>
-                <span className="font-medium">R$ {formatBRL(calculations.totalCostFixed)}</span>
+                <span className="text-muted-foreground">{t.laborSummaryFixed}</span>
+                <span className="font-medium">{fmt(calculations.totalCostFixed)}</span>
               </div>
             )}
             <div className="flex justify-between items-center pt-2 border-t">
-              <span className="text-sm font-semibold">Custo HH total</span>
-              <span className="text-sm font-bold text-primary">R$ {formatBRL(calculations.totalCost)}</span>
+              <span className="text-sm font-semibold">{t.laborSummaryHHTotal}</span>
+              <span className="text-sm font-bold text-primary">{fmt(calculations.totalCost)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold">Custo/hora médio</span>
-              <span className="text-sm font-bold text-primary">R$ {formatBRL(calculations.avgRate)}/h</span>
+              <span className="text-sm font-semibold">{t.laborSummaryAvgRate}</span>
+              <span className="text-sm font-bold text-primary">{fmt(calculations.avgRate)}/h</span>
             </div>
             {calculations.totalCostFixed > 0 && (
               <p className="text-[10px] text-muted-foreground">
-                * Custos fixos são diluídos no custo/hora médio para compor o preço final
+                {t.laborSummaryFixedNote}
               </p>
             )}
           </div>

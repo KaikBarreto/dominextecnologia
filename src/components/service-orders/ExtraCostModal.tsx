@@ -5,15 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, Wrench, HardHat, Fuel, ShieldCheck, MoreHorizontal, Plus } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
-const EXTRA_COST_TYPES = [
-  { value: 'Veículo', icon: Car },
-  { value: 'Ferramentas', icon: Wrench },
-  { value: 'EPI', icon: ShieldCheck },
-  { value: 'Combustível', icon: Fuel },
-  { value: 'Equipamentos', icon: HardHat },
-  { value: 'Outro', icon: MoreHorizontal },
-] as const;
+// Internal key → icon mapping (keys are stable, labels come from i18n)
+const EXTRA_COST_ICONS = [
+  { key: 'vehicle' as const, icon: Car },
+  { key: 'tools' as const, icon: Wrench },
+  { key: 'epi' as const, icon: ShieldCheck },
+  { key: 'fuel' as const, icon: Fuel },
+  { key: 'equipment' as const, icon: HardHat },
+  { key: 'other' as const, icon: MoreHorizontal },
+];
 
 interface ExtraCostModalProps {
   open: boolean;
@@ -22,11 +25,15 @@ interface ExtraCostModalProps {
 }
 
 export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProps) {
-  const [type, setType] = useState('Veículo');
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm.costModals;
+
+  const [typeKey, setTypeKey] = useState<string>('vehicle');
   const [customLabel, setCustomLabel] = useState('');
   const [amount, setAmount] = useState(0);
 
-  const label = type === 'Outro' ? (customLabel || 'Custo extra') : type;
+  const typeLabel = t.extraCostTypes[typeKey as keyof typeof t.extraCostTypes] ?? typeKey;
+  const label = typeKey === 'other' ? (customLabel || typeLabel) : typeLabel;
 
   const handleAdd = () => {
     if (amount <= 0) return;
@@ -40,57 +47,54 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Adicionar Custo Extra"
+      title={t.extraCostTitle}
       footer={
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">{t.extraCostCancel}</Button>
           <Button onClick={handleAdd} disabled={amount <= 0} className="flex-1">
-            <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
+            <Plus className="h-3.5 w-3.5 mr-1" />{t.extraCostAdd}
           </Button>
         </div>
       }
     >
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label className="text-xs">Tipo</Label>
-          <Select value={type} onValueChange={setType}>
+          <Label className="text-xs">{t.extraCostTypeLabel}</Label>
+          <Select value={typeKey} onValueChange={setTypeKey}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {EXTRA_COST_TYPES.map(t => {
-                const Icon = t.icon;
-                return (
-                  <SelectItem key={t.value} value={t.value}>
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-3.5 w-3.5" />
-                      {t.value}
-                    </div>
-                  </SelectItem>
-                );
-              })}
+              {EXTRA_COST_ICONS.map(({ key, icon: Icon }) => (
+                <SelectItem key={key} value={key}>
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5" />
+                    {t.extraCostTypes[key]}
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        {type === 'Outro' && (
+        {typeKey === 'other' && (
           <div className="space-y-1.5">
-            <Label className="text-xs">Descrição</Label>
+            <Label className="text-xs">{t.extraCostDescLabel}</Label>
             <Input
               value={customLabel}
               onChange={e => setCustomLabel(e.target.value)}
-              placeholder="Descreva o custo"
+              placeholder={t.extraCostDescPlaceholder}
             />
           </div>
         )}
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Valor (R$)</Label>
+          <Label className="text-xs">{t.extraCostAmountLabel}</Label>
           <Input
             type="number" min={0} step="0.01"
             value={amount || ''}
             onChange={e => setAmount(Number(e.target.value) || 0)}
-            placeholder="0,00"
+            placeholder={t.extraCostAmountPlaceholder}
           />
         </div>
       </div>

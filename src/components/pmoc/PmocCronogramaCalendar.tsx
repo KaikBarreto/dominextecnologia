@@ -18,6 +18,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Calendar reutilizável da Onda C — PMOC.
@@ -134,6 +136,8 @@ export function PmocCronogramaCalendar({
   className,
 }: PmocCronogramaCalendarProps) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const cal = MESSAGES[locale].app.pmoc.calendarNav;
   const [internalView, setInternalView] = useState<PmocCronogramaView>(viewProp ?? 'month');
   const view = viewProp ?? internalView;
   // Quando o pai controla `selectedDate`, ele vira a fonte da verdade — assim
@@ -250,7 +254,7 @@ export function PmocCronogramaCalendar({
             <button
               type="button"
               onClick={handlePrev}
-              aria-label="Período anterior"
+              aria-label={cal.prevAriaLabel}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors active:bg-muted/80"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -265,14 +269,14 @@ export function PmocCronogramaCalendar({
                   onClick={handleToday}
                   className="text-[11px] text-primary font-medium leading-tight"
                 >
-                  Voltar para hoje
+                  {cal.backToToday}
                 </button>
               )}
             </div>
             <button
               type="button"
               onClick={handleNext}
-              aria-label="Próximo período"
+              aria-label={cal.nextAriaLabel}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors active:bg-muted/80"
             >
               <ChevronRight className="h-5 w-5" />
@@ -287,9 +291,9 @@ export function PmocCronogramaCalendar({
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="day">Dia</TabsTrigger>
-                <TabsTrigger value="week">Semana</TabsTrigger>
-                <TabsTrigger value="month">Mês</TabsTrigger>
+                <TabsTrigger value="day">{cal.viewDay}</TabsTrigger>
+                <TabsTrigger value="week">{cal.viewWeek}</TabsTrigger>
+                <TabsTrigger value="month">{cal.viewMonth}</TabsTrigger>
               </TabsList>
             </Tabs>
           )}
@@ -300,7 +304,7 @@ export function PmocCronogramaCalendar({
       {serviceOrders.length === 0 && (
         <div className="rounded-md border border-dashed bg-muted/30 px-4 py-2 text-center text-xs text-muted-foreground">
           <CalendarIcon className="mx-auto mb-1 h-4 w-4" aria-hidden="true" />
-          Nenhuma ordem de serviço deste contrato neste período.
+          {cal.emptyPeriod}
         </div>
       )}
 

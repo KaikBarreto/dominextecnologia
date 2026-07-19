@@ -3,10 +3,9 @@ import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction } from '@/types/database';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 /**
  * Datas financeiras são guardadas como 'YYYY-MM-DD' (sem hora). Ancoramos ao
@@ -15,20 +14,6 @@ function formatCurrency(value: number) {
  */
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
-}
-
-function formatPaymentMethod(method: string | null | undefined): string {
-  if (!method) return '—';
-  const map: Record<string, string> = {
-    pix: 'PIX',
-    dinheiro: 'Dinheiro',
-    debito: 'Cartão de Débito',
-    credito: 'Cartão de Crédito',
-    boleto: 'Boleto',
-    transferencia: 'Transferência',
-    cheque: 'Cheque',
-  };
-  return map[method] ?? method;
 }
 
 interface CustomerTransactionDetailModalProps {
@@ -53,12 +38,23 @@ function DetailRow({ label, value, valueClassName }: { label: string; value: Rea
  * é a visão "olho" da aba Financeiro do cadastro do cliente.
  */
 export function CustomerTransactionDetailModal({ open, onOpenChange, transaction }: CustomerTransactionDetailModalProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const td = MESSAGES[locale].app.finance.transactionDetail;
+
   if (!transaction) return null;
 
   const isEntrada = transaction.transaction_type === 'entrada';
   const amount = Number(transaction.amount ?? 0);
   const received = Number(transaction.amount_received ?? 0);
   const remaining = Math.max(0, amount - received);
+
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
+  const formatPaymentMethod = (method: string | null | undefined): string => {
+    if (!method) return '—';
+    return (td.paymentMethods as Record<string, string>)[method] ?? method;
+  };
+  const formatDateLocal = (dateStr: string) =>
+    format(parseLocalDate(dateStr), 'dd/MM/yyyy', { locale: ptBR });
 
   return (
     <ResponsiveModal
@@ -71,7 +67,7 @@ export function CustomerTransactionDetailModal({ open, onOpenChange, transaction
         {/* Resumo de valores */}
         <div className="rounded-xl border bg-muted/30 p-3 space-y-1.5">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Valor</span>
+            <span className="text-muted-foreground">{td.amountLabel}</span>
             <span className={`font-semibold ${isEntrada ? 'text-success' : 'text-destructive'}`}>
               {isEntrada ? '+' : '-'} {formatCurrency(amount)}
             </span>
@@ -79,11 +75,11 @@ export function CustomerTransactionDetailModal({ open, onOpenChange, transaction
           {isEntrada && received > 0 && remaining > 0 && (
             <>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Já recebido</span>
+                <span className="text-muted-foreground">{td.alreadyReceived}</span>
                 <span className="font-semibold text-success">{formatCurrency(received)}</span>
               </div>
               <div className="flex items-center justify-between text-sm border-t pt-1.5">
-                <span className="text-muted-foreground">Restante</span>
+                <span className="text-muted-foreground">{td.remaining}</span>
                 <span className="font-semibold text-warning">{formatCurrency(remaining)}</span>
               </div>
             </>
@@ -93,49 +89,49 @@ export function CustomerTransactionDetailModal({ open, onOpenChange, transaction
         {/* Campos do lançamento */}
         <div className="rounded-xl border bg-card px-3 divide-y">
           <DetailRow
-            label="Tipo"
+            label={td.typeLabel}
             value={
               <Badge variant="secondary" className={isEntrada ? 'text-success' : 'text-destructive'}>
-                {isEntrada ? 'Entrada' : 'Saída'}
+                {isEntrada ? td.typeEntrada : td.typeSaida}
               </Badge>
             }
           />
           <DetailRow
-            label="Status"
+            label={td.statusLabel}
             value={
               <Badge variant={transaction.is_paid ? 'default' : 'secondary'}>
-                {transaction.is_paid ? (isEntrada ? 'Recebido' : 'Pago') : 'Pendente'}
+                {transaction.is_paid ? (isEntrada ? td.statusReceived : td.statusPaid) : td.statusPending}
               </Badge>
             }
           />
-          {transaction.category && <DetailRow label="Categoria" value={transaction.category} />}
+          {transaction.category && <DetailRow label={td.categoryLabel} value={transaction.category} />}
           <DetailRow
-            label="Data do lançamento"
-            value={format(parseLocalDate(transaction.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
+            label={td.dateLabel}
+            value={formatDateLocal(transaction.transaction_date)}
           />
           {transaction.due_date && (
             <DetailRow
-              label="Vencimento"
-              value={format(parseLocalDate(transaction.due_date), 'dd/MM/yyyy', { locale: ptBR })}
+              label={td.dueDateLabel}
+              value={formatDateLocal(transaction.due_date)}
             />
           )}
           {transaction.paid_date && (
             <DetailRow
-              label={isEntrada ? 'Recebido em' : 'Pago em'}
-              value={format(parseLocalDate(transaction.paid_date), 'dd/MM/yyyy', { locale: ptBR })}
+              label={isEntrada ? td.receivedOnLabel : td.paidOnLabel}
+              value={formatDateLocal(transaction.paid_date)}
             />
           )}
           {transaction.payment_method && (
-            <DetailRow label="Forma de pagamento" value={formatPaymentMethod(transaction.payment_method)} />
+            <DetailRow label={td.paymentMethodLabel} value={formatPaymentMethod(transaction.payment_method)} />
           )}
           {transaction.installment_total && transaction.installment_total > 1 && (
             <DetailRow
-              label="Parcela"
-              value={`${transaction.installment_number ?? 1} de ${transaction.installment_total}`}
+              label={td.installmentLabel}
+              value={`${transaction.installment_number ?? 1} ${td.installmentOf} ${transaction.installment_total}`}
             />
           )}
           {transaction.notes && (
-            <DetailRow label="Observações" value={<span className="whitespace-pre-wrap">{transaction.notes}</span>} />
+            <DetailRow label={td.notesLabel} value={<span className="whitespace-pre-wrap">{transaction.notes}</span>} />
           )}
         </div>
       </div>

@@ -9,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { phoneMask } from '@/utils/masks';
 import {
   useResponsibleTechnicians,
@@ -68,6 +70,8 @@ export function ResponsibleTechnicianFormDialog({
 }: ResponsibleTechnicianFormDialogProps) {
   const { toast } = useToast();
   const { companyId } = useUserCompany();
+  const { locale } = useAppLocaleContext();
+  const trt = MESSAGES[locale].app.pmoc.rt;
   const { createTechnician, updateTechnician } = useResponsibleTechnicians();
 
   const isEditing = !!technician;
@@ -112,8 +116,8 @@ export function ResponsibleTechnicianFormDialog({
   }, [open, technician]);
 
   const titleText = useMemo(
-    () => (isEditing ? 'Editar Responsável Técnico' : 'Novo Responsável Técnico'),
-    [isEditing]
+    () => (isEditing ? trt.titleEdit : trt.titleNew),
+    [isEditing, trt]
   );
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -122,10 +126,10 @@ export function ResponsibleTechnicianFormDialog({
 
   const validateImage = (file: File): string | null => {
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      return 'Formato inválido. Use PNG ou JPG.';
+      return trt.imageInvalidFormat;
     }
     if (file.size > MAX_IMAGE_SIZE) {
-      return 'Imagem muito grande. Máximo 2MB.';
+      return trt.imageTooBig;
     }
     return null;
   };
@@ -135,7 +139,7 @@ export function ResponsibleTechnicianFormDialog({
     if (!file) return;
     const err = validateImage(file);
     if (err) {
-      toast({ variant: 'destructive', title: 'Imagem rejeitada', description: err });
+      toast({ variant: 'destructive', title: trt.imageRejected, description: err });
       return;
     }
     setSignatureFile(file);
@@ -148,7 +152,7 @@ export function ResponsibleTechnicianFormDialog({
     if (!file) return;
     const err = validateImage(file);
     if (err) {
-      toast({ variant: 'destructive', title: 'Imagem rejeitada', description: err });
+      toast({ variant: 'destructive', title: trt.imageRejected, description: err });
       return;
     }
     setStampFile(file);
@@ -186,11 +190,11 @@ export function ResponsibleTechnicianFormDialog({
 
   const handleSubmit = async () => {
     if (!form.full_name.trim()) {
-      toast({ variant: 'destructive', title: 'Nome obrigatório', description: 'Informe o nome completo do responsável técnico.' });
+      toast({ variant: 'destructive', title: trt.nameRequired, description: trt.nameRequiredDesc });
       return;
     }
     if (!companyId) {
-      toast({ variant: 'destructive', title: 'Empresa não identificada', description: 'Recarregue a página e tente novamente.' });
+      toast({ variant: 'destructive', title: trt.companyNotFound, description: trt.companyNotFoundDesc });
       return;
     }
 
@@ -283,7 +287,7 @@ export function ResponsibleTechnicianFormDialog({
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
+            {trt.cancel}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -291,7 +295,7 @@ export function ResponsibleTechnicianFormDialog({
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditing ? 'Salvar alterações' : 'Cadastrar responsável'}
+            {isEditing ? trt.saveBtn : trt.createBtn}
           </Button>
         </div>
       }
@@ -300,13 +304,13 @@ export function ResponsibleTechnicianFormDialog({
         {/* Nome */}
         <div className="space-y-1.5">
           <Label htmlFor="rt-name">
-            Nome completo <span className="text-destructive">*</span>
+            {trt.fieldFullName} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="rt-name"
             value={form.full_name}
             onChange={(e) => setField('full_name', e.target.value)}
-            placeholder="Ex: João da Silva"
+            placeholder={trt.placeholderName}
             autoFocus
           />
         </div>
@@ -314,71 +318,71 @@ export function ResponsibleTechnicianFormDialog({
         {/* CFT/CREA + Modalidade */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="rt-cftcrea">CFT/CREA</Label>
+            <Label htmlFor="rt-cftcrea">{trt.fieldCftCrea}</Label>
             <Input
               id="rt-cftcrea"
               value={form.cft_crea}
               onChange={(e) => setField('cft_crea', e.target.value)}
-              placeholder="Ex: CREA-SP 1234567"
+              placeholder={trt.placeholderCftCrea}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="rt-modality">Modalidade</Label>
+            <Label htmlFor="rt-modality">{trt.fieldModality}</Label>
             <Input
               id="rt-modality"
               value={form.modality}
               onChange={(e) => setField('modality', e.target.value)}
-              placeholder="Ex: Engenheiro Mecânico"
+              placeholder={trt.placeholderModality}
             />
           </div>
         </div>
 
         {/* Registro ART/TRT */}
         <div className="space-y-1.5">
-          <Label htmlFor="rt-registry">Número de registro (ART/TRT)</Label>
+          <Label htmlFor="rt-registry">{trt.fieldRegistry}</Label>
           <Input
             id="rt-registry"
             value={form.registry_number}
             onChange={(e) => setField('registry_number', e.target.value)}
-            placeholder="Ex: ART 1234567/2026"
+            placeholder={trt.placeholderRegistry}
           />
         </div>
 
         {/* Email + Telefone */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="rt-email">Email</Label>
+            <Label htmlFor="rt-email">{trt.fieldEmail}</Label>
             <Input
               id="rt-email"
               type="email"
               value={form.email}
               onChange={(e) => setField('email', e.target.value)}
-              placeholder="email@exemplo.com.br"
+              placeholder={trt.placeholderEmail}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="rt-phone">Telefone</Label>
+            <Label htmlFor="rt-phone">{trt.fieldPhone}</Label>
             <Input
               id="rt-phone"
               value={form.phone}
               onChange={(e) => setField('phone', phoneMask(e.target.value))}
-              placeholder="(21) 99999-9999"
+              placeholder={trt.placeholderPhone}
             />
           </div>
         </div>
 
         {/* Assinatura — híbrida (upload OU canvas). Default upload, recomendado. */}
         <div className="space-y-1.5">
-          <Label>Assinatura digitalizada</Label>
+          <Label>{trt.fieldSignature}</Label>
           <Tabs value={signatureMode} onValueChange={(v) => setSignatureMode(v as 'upload' | 'draw')}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="upload" className="gap-1.5">
                 <Camera className="h-3.5 w-3.5" />
-                Enviar imagem
+                {trt.tabUpload}
               </TabsTrigger>
               <TabsTrigger value="draw" className="gap-1.5">
                 <Pen className="h-3.5 w-3.5" />
-                Desenhar
+                {trt.tabDraw}
               </TabsTrigger>
             </TabsList>
 
@@ -388,9 +392,12 @@ export function ResponsibleTechnicianFormDialog({
                 preview={signaturePreview}
                 onChange={handleSignatureChange}
                 onClear={clearSignature}
+                removeLabel={trt.removeImage}
+                formatHint={trt.imageFormatHint}
+                selectLabel={trt.selectImage}
               />
               <p className="text-xs text-muted-foreground">
-                Fotografe a assinatura no papel e envie. Mais aceito juridicamente.
+                {trt.signaturePhotoHint}
               </p>
             </TabsContent>
 
@@ -405,23 +412,26 @@ export function ResponsibleTechnicianFormDialog({
 
         {/* Carimbo — upload apenas. Desenhar carimbo não faz sentido. */}
         <div className="space-y-1.5">
-          <Label>Carimbo do responsável</Label>
+          <Label>{trt.fieldStamp}</Label>
           <ImageUploadField
             label=""
             preview={stampPreview}
             onChange={handleStampChange}
             onClear={clearStamp}
+            removeLabel={trt.removeImage}
+            formatHint={trt.imageFormatHint}
+            selectLabel={trt.selectImage}
           />
         </div>
 
         {/* Observações */}
         <div className="space-y-1.5">
-          <Label htmlFor="rt-notes">Observações</Label>
+          <Label htmlFor="rt-notes">{trt.fieldNotes}</Label>
           <Textarea
             id="rt-notes"
             value={form.notes}
             onChange={(e) => setField('notes', e.target.value)}
-            placeholder="Informações adicionais (opcional)"
+            placeholder={trt.placeholderNotes}
             rows={3}
           />
         </div>
@@ -429,9 +439,9 @@ export function ResponsibleTechnicianFormDialog({
         {/* Ativo */}
         <div className="flex items-center justify-between rounded-lg border bg-card/50 p-3">
           <div>
-            <Label htmlFor="rt-active" className="font-medium">Cadastro ativo</Label>
+            <Label htmlFor="rt-active" className="font-medium">{trt.fieldActive}</Label>
             <p className="text-xs text-muted-foreground">
-              Quando inativo, este RT não aparece como opção em novos contratos.
+              {trt.fieldActiveDesc}
             </p>
           </div>
           <Switch
@@ -453,9 +463,12 @@ interface ImageUploadFieldProps {
   preview: string | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void;
+  removeLabel?: string;
+  formatHint?: string;
+  selectLabel?: string;
 }
 
-function ImageUploadField({ label, preview, onChange, onClear }: ImageUploadFieldProps) {
+function ImageUploadField({ label, preview, onChange, onClear, removeLabel = 'Remover imagem', formatHint = 'PNG ou JPG (máx. 2MB)', selectLabel = 'Selecionar' }: ImageUploadFieldProps) {
   // `label` pode ser string vazia (quando o componente pai já renderizou o label).
   const safeKey = label.trim() ? label.toLowerCase().replace(/\s+/g, '-') : `field-${Math.random().toString(36).slice(2, 8)}`;
   const inputId = `upload-${safeKey}`;
@@ -474,7 +487,7 @@ function ImageUploadField({ label, preview, onChange, onClear }: ImageUploadFiel
             <button
               type="button"
               onClick={onClear}
-              aria-label="Remover imagem"
+              aria-label={removeLabel}
               className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
             >
               <X className="h-4 w-4" />
@@ -486,10 +499,10 @@ function ImageUploadField({ label, preview, onChange, onClear }: ImageUploadFiel
             className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50"
           >
             <ImageIcon className="h-6 w-6" />
-            <span className="text-xs">PNG ou JPG (máx. 2MB)</span>
+            <span className="text-xs">{formatHint}</span>
             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
               <Upload className="h-3 w-3" />
-              Selecionar
+              {selectLabel}
             </span>
           </label>
         )}

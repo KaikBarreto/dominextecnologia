@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Calculator, Clock } from 'lucide-react';
-import { formatBRL } from '@/utils/currency';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 export interface MonthlyCostBreakdown {
   baseSalary: number;
@@ -87,6 +89,8 @@ function ModeToggleField({
   onModeChange: (m: 'percent' | 'fixed') => void;
   computedValue: number;
 }) {
+  const { locale, currency } = useAppLocaleContext();
+  const fmtLocal = (v: number) => formatMoney(v, currency, locale);
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
@@ -129,7 +133,7 @@ function ModeToggleField({
       )}
       {computedValue > 0 && (
         <p className="text-[10px] text-muted-foreground">
-          = R$ {formatBRL(computedValue)}
+          = {fmtLocal(computedValue)}
         </p>
       )}
     </div>
@@ -137,6 +141,9 @@ function ModeToggleField({
 }
 
 export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, initialBreakdown, onApply, defaultMonthlyHours }: MonthlyCostCalculatorModalProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm.costModals;
+  const fmt = (v: number) => formatMoney(v, currency, locale);
   const [bd, setBd] = useState<MonthlyCostBreakdown>({ ...defaultBreakdown });
 
   // Currency display states
@@ -216,32 +223,32 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
   const footer = (
     <div className="flex gap-2 w-full">
-      <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t.monthlyCostCancel}</Button>
       <Button className="flex-1" onClick={handleApply}>
-        Aplicar R$ {formatBRL(total)}
+        {t.monthlyCostApply.replace('{amount}', fmt(total))}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Calcular Custo Mensal" className="sm:max-w-lg" footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.monthlyCostTitle} className="sm:max-w-lg" footer={footer}>
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-primary mb-1">
           <Calculator className="h-4 w-4" />
-          <span className="text-sm font-medium">Composição do custo mensal</span>
+          <span className="text-sm font-medium">{t.monthlyCostBadge}</span>
         </div>
 
         {/* Base + Encargos */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Salário e Encargos</h4>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t.monthlyCostSectionSalary}</h4>
           <CurrencyField
-            label="Salário base"
+            label={t.monthlyCostBaseSalaryLabel}
             value={salaryDisplay}
             onChange={v => updateCurrencyField('baseSalary', v, setSalaryDisplay)}
           />
           <div className="grid grid-cols-2 gap-3">
             <ModeToggleField
-              label="Periculosidade"
+              label={t.monthlyCostPericulosidadeLabel}
               percentValue={bd.periculosidadeMode === 'percent' ? bd.periculosidade : 0}
               fixedValue={pericFixedDisplay}
               mode={bd.periculosidadeMode}
@@ -257,7 +264,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
               computedValue={periculosidadeVal}
             />
             <ModeToggleField
-              label="Leis sociais"
+              label={t.monthlyCostLeisLabel}
               percentValue={bd.leisSociaisMode === 'percent' ? bd.leisSociais : 0}
               fixedValue={leisFixedDisplay}
               mode={bd.leisSociaisMode}
@@ -277,32 +284,32 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
         {/* Benefícios */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Benefícios mensais</h4>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t.monthlyCostSectionBenefits}</h4>
           <div className="grid grid-cols-2 gap-3">
-            <CurrencyField label="Plano de saúde" value={planoSaudeDisplay} onChange={v => updateCurrencyField('planoSaude', v, setPlanoSaudeDisplay)} />
-            <CurrencyField label="Plano odontológico" value={planoOdontoDisplay} onChange={v => updateCurrencyField('planoOdonto', v, setPlanoOdontoDisplay)} />
-            <CurrencyField label="Seguro de vida" value={seguroVidaDisplay} onChange={v => updateCurrencyField('seguroVida', v, setSeguroVidaDisplay)} />
-            <CurrencyField label="Transporte" value={transporteDisplay} onChange={v => updateCurrencyField('transporte', v, setTransporteDisplay)} />
-            <CurrencyField label="Refeição / alimentação" value={refeicaoDisplay} onChange={v => updateCurrencyField('refeicao', v, setRefeicaoDisplay)} />
+            <CurrencyField label={t.monthlyCostHealthLabel} value={planoSaudeDisplay} onChange={v => updateCurrencyField('planoSaude', v, setPlanoSaudeDisplay)} />
+            <CurrencyField label={t.monthlyCostDentalLabel} value={planoOdontoDisplay} onChange={v => updateCurrencyField('planoOdonto', v, setPlanoOdontoDisplay)} />
+            <CurrencyField label={t.monthlyCostLifeInsLabel} value={seguroVidaDisplay} onChange={v => updateCurrencyField('seguroVida', v, setSeguroVidaDisplay)} />
+            <CurrencyField label={t.monthlyCostTransportLabel} value={transporteDisplay} onChange={v => updateCurrencyField('transporte', v, setTransporteDisplay)} />
+            <CurrencyField label={t.monthlyCostMealLabel} value={refeicaoDisplay} onChange={v => updateCurrencyField('refeicao', v, setRefeicaoDisplay)} />
           </div>
         </div>
 
         {/* Anuais rateados */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Custos anuais (rateado ÷ 12)</h4>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t.monthlyCostSectionAnnual}</h4>
           <div className="grid grid-cols-2 gap-3">
-            <CurrencyField label="Treinamentos e NRs" value={treinamentosDisplay} onChange={v => updateCurrencyField('treinamentosAnual', v, setTreinamentosDisplay)} hint={bd.treinamentosAnual > 0 ? `Mensal: R$ ${formatBRL(bd.treinamentosAnual / 12)}` : undefined} />
-            <CurrencyField label="ASO / Saúde ocupacional" value={asoDisplay} onChange={v => updateCurrencyField('asoAnual', v, setAsoDisplay)} hint={bd.asoAnual > 0 ? `Mensal: R$ ${formatBRL(bd.asoAnual / 12)}` : undefined} />
-            <CurrencyField label="EPI e uniformes" value={epiDisplay} onChange={v => updateCurrencyField('epiAnual', v, setEpiDisplay)} hint={bd.epiAnual > 0 ? `Mensal: R$ ${formatBRL(bd.epiAnual / 12)}` : undefined} />
-            <CurrencyField label="Celular e internet" value={celularDisplay} onChange={v => updateCurrencyField('celularAnual', v, setCelularDisplay)} hint={bd.celularAnual > 0 ? `Mensal: R$ ${formatBRL(bd.celularAnual / 12)}` : undefined} />
+            <CurrencyField label={t.monthlyCostTrainingLabel} value={treinamentosDisplay} onChange={v => updateCurrencyField('treinamentosAnual', v, setTreinamentosDisplay)} hint={bd.treinamentosAnual > 0 ? t.monthlyCostAnnualHint.replace('{amount}', fmt(bd.treinamentosAnual / 12)) : undefined} />
+            <CurrencyField label={t.monthlyCostAsoLabel} value={asoDisplay} onChange={v => updateCurrencyField('asoAnual', v, setAsoDisplay)} hint={bd.asoAnual > 0 ? t.monthlyCostAnnualHint.replace('{amount}', fmt(bd.asoAnual / 12)) : undefined} />
+            <CurrencyField label={t.monthlyCostEpiLabel} value={epiDisplay} onChange={v => updateCurrencyField('epiAnual', v, setEpiDisplay)} hint={bd.epiAnual > 0 ? t.monthlyCostAnnualHint.replace('{amount}', fmt(bd.epiAnual / 12)) : undefined} />
+            <CurrencyField label={t.monthlyCostPhoneLabel} value={celularDisplay} onChange={v => updateCurrencyField('celularAnual', v, setCelularDisplay)} hint={bd.celularAnual > 0 ? t.monthlyCostAnnualHint.replace('{amount}', fmt(bd.celularAnual / 12)) : undefined} />
           </div>
         </div>
 
-        {/* Horas mensais */}
+        {/* Jornada */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jornada</h4>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t.monthlyCostSectionWorkload}</h4>
           <div className="space-y-1">
-            <Label className="text-xs">Horas trabalhadas por mês</Label>
+            <Label className="text-xs">{t.monthlyCostWorkHoursLabel}</Label>
             <div className="relative">
               <NumericInput
                 value={bd.monthlyHours ? String(bd.monthlyHours) : ''}
@@ -314,8 +321,8 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
             </div>
             <p className="text-[10px] text-muted-foreground">
               {defaultMonthlyHours && defaultMonthlyHours !== 176
-                ? `Baseado na jornada configurada: ${defaultMonthlyHours}h/mês`
-                : 'Padrão: 176h (22 dias × 8h)'}
+                ? t.monthlyCostWorkHoursHint.replace('{hours}', String(defaultMonthlyHours))
+                : t.monthlyCostWorkHoursDefault}
             </p>
           </div>
         </div>
@@ -323,45 +330,45 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
         {/* Resumo */}
         <div className="rounded-lg border p-3 bg-muted/30 space-y-1.5">
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Salário base</span>
-            <span>R$ {formatBRL(bd.baseSalary)}</span>
+            <span className="text-muted-foreground">{t.monthlyCostSummaryBase}</span>
+            <span>{fmt(bd.baseSalary)}</span>
           </div>
           {periculosidadeVal > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">
-                + Periculosidade {bd.periculosidadeMode === 'percent' ? `(${bd.periculosidade}%)` : ''}
+                {t.monthlyCostSummaryPeric.replace('{pct}', bd.periculosidadeMode === 'percent' ? `(${bd.periculosidade}%)` : '')}
               </span>
-              <span>R$ {formatBRL(periculosidadeVal)}</span>
+              <span>{fmt(periculosidadeVal)}</span>
             </div>
           )}
           {leisSociaisVal > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">
-                + Leis sociais {bd.leisSociaisMode === 'percent' ? `(${bd.leisSociais}%)` : ''}
+                {t.monthlyCostSummaryLeis.replace('{pct}', bd.leisSociaisMode === 'percent' ? `(${bd.leisSociais}%)` : '')}
               </span>
-              <span>R$ {formatBRL(leisSociaisVal)}</span>
+              <span>{fmt(leisSociaisVal)}</span>
             </div>
           )}
           {beneficios > 0 && (
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">+ Benefícios</span>
-              <span>R$ {formatBRL(beneficios)}</span>
+              <span className="text-muted-foreground">{t.monthlyCostSummaryBenefits}</span>
+              <span>{fmt(beneficios)}</span>
             </div>
           )}
           {anuaisRateados > 0 && (
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">+ Custos anuais (÷12)</span>
-              <span>R$ {formatBRL(anuaisRateados)}</span>
+              <span className="text-muted-foreground">{t.monthlyCostSummaryAnnual}</span>
+              <span>{fmt(anuaisRateados)}</span>
             </div>
           )}
           <div className="flex justify-between items-center pt-2 border-t">
-            <span className="text-sm font-semibold">Custo Total Mensal</span>
-            <span className="text-sm font-bold text-primary">R$ {formatBRL(total)}</span>
+            <span className="text-sm font-semibold">{t.monthlyCostSummaryTotal}</span>
+            <span className="text-sm font-bold text-primary">{fmt(total)}</span>
           </div>
           {bd.monthlyHours > 0 && total > 0 && (
             <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold">Hora Homem (HH)</span>
-              <span className="text-sm font-bold text-primary">R$ {formatBRL(hourlyRate)}/h</span>
+              <span className="text-sm font-semibold">{t.monthlyCostSummaryHH}</span>
+              <span className="text-sm font-bold text-primary">{fmt(hourlyRate)}/h</span>
             </div>
           )}
         </div>

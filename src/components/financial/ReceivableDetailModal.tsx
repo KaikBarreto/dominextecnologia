@@ -11,27 +11,12 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction } from '@/types/database';
 import { useReceivablePayments } from '@/hooks/useReceivablePayments';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
-}
-
-function formatPaymentMethod(method: string | null): string {
-  if (!method) return '—';
-  const map: Record<string, string> = {
-    pix: 'PIX',
-    dinheiro: 'Dinheiro',
-    debito: 'Cartão de Débito',
-    credito: 'Cartão de Crédito',
-    boleto: 'Boleto',
-    transferencia: 'Transferência',
-    cheque: 'Cheque',
-  };
-  return map[method] ?? method;
 }
 
 interface ReceivableDetailModalProps {
@@ -46,10 +31,20 @@ interface ReceivableDetailModalProps {
  * com mais blocos no futuro (anexos, contrato, etc).
  */
 export function ReceivableDetailModal({ open, onOpenChange, transaction }: ReceivableDetailModalProps) {
+  const { locale, currency } = useAppLocaleContext();
+  const rd = MESSAGES[locale].app.finance.receivableDetail;
+  const td = MESSAGES[locale].app.finance.transactionDetail;
+
   const { payments, isLoading, reverse } = useReceivablePayments(transaction?.id);
   const [reversingId, setReversingId] = useState<string | null>(null);
 
   if (!transaction) return null;
+
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
+  const formatPaymentMethod = (method: string | null): string => {
+    if (!method) return '—';
+    return (td.paymentMethods as Record<string, string>)[method] ?? method;
+  };
 
   const amount = Number(transaction.amount ?? 0);
   const received = Number(transaction.amount_received ?? 0);
@@ -68,17 +63,17 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
           {/* Resumo de valores — mostra a "régua" da conta */}
           <div className="rounded-xl border bg-muted/30 p-3 space-y-1.5">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Valor total</span>
+              <span className="text-muted-foreground">{rd.totalLabel}</span>
               <span className="font-semibold">{formatCurrency(amount)}</span>
             </div>
             {received > 0 && (
               <>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Já recebido</span>
+                  <span className="text-muted-foreground">{rd.alreadyReceived}</span>
                   <span className="font-semibold text-success">{formatCurrency(received)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm border-t pt-1.5">
-                  <span className="text-muted-foreground">Restante</span>
+                  <span className="text-muted-foreground">{rd.remaining}</span>
                   <span className="font-semibold text-warning">{formatCurrency(remaining)}</span>
                 </div>
               </>
@@ -87,7 +82,7 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" />
-                  Vencimento
+                  {rd.dueDateLabel}
                 </span>
                 <span>{format(parseLocalDate(transaction.due_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
               </div>
@@ -99,7 +94,7 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Receipt className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-sm">Histórico de recebimentos</h3>
+                <h3 className="font-semibold text-sm">{rd.historyTitle}</h3>
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{payments.length}</Badge>
               </div>
               <div className="rounded-xl border divide-y bg-card">
@@ -130,7 +125,7 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
                       size="icon"
                       className="text-destructive h-8 w-8 shrink-0"
                       onClick={() => setReversingId(p.id)}
-                      title="Estornar recebimento"
+                      title={rd.reverseAriaLabel}
                       disabled={reverse.isPending}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -146,7 +141,7 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
             <div className="rounded-xl border border-dashed bg-muted/20 p-4 text-center">
               <Receipt className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">
-                Nenhum recebimento registrado ainda nesta conta.
+                {rd.emptyTitle}
               </p>
             </div>
           )}
@@ -156,16 +151,15 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
       <AlertDialog open={!!reversingId} onOpenChange={() => !reverse.isPending && setReversingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Estornar recebimento?</AlertDialogTitle>
+            <AlertDialogTitle>{rd.reverseTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {paymentBeingReversed
-                ? `O valor de ${formatCurrency(Number(paymentBeingReversed.amount))} voltará a ficar pendente nesta conta.`
-                : 'O valor voltará a ficar pendente nesta conta.'}
-              {' '}Esta ação não pode ser desfeita.
+                ? rd.reverseDescription.replace('{amount}', formatCurrency(Number(paymentBeingReversed.amount)))
+                : rd.reverseFallbackDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={reverse.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={reverse.isPending}>{rd.reverseCancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               disabled={reverse.isPending}
@@ -175,7 +169,7 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
                 setReversingId(null);
               }}
             >
-              {reverse.isPending ? 'Estornando...' : 'Estornar'}
+              {reverse.isPending ? rd.reversing : rd.reverseConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

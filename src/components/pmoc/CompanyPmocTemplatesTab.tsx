@@ -27,6 +27,8 @@ import {
   buildDefaultCertificadoHtml,
   htmlPreview,
 } from '@/utils/pmocDocumentTemplates';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Aba "Documentos" das Configurações de Contrato — edita os MODELOS PADRÃO
@@ -56,6 +58,11 @@ function TemplateCard({
   onEdit,
   onReset,
   resetDisabled,
+  badgeCustomized = 'Personalizado',
+  badgeDefault = 'Texto padrão',
+  restoreBtn = 'Restaurar texto padrão',
+  editBtn = 'Editar texto',
+  fallbackPreview = 'Texto padrão do sistema. Toque em "Editar texto" pra personalizar.',
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
@@ -66,6 +73,11 @@ function TemplateCard({
   onEdit: () => void;
   onReset: () => void;
   resetDisabled: boolean;
+  badgeCustomized?: string;
+  badgeDefault?: string;
+  restoreBtn?: string;
+  editBtn?: string;
+  fallbackPreview?: string;
 }) {
   return (
     <div className="flex h-full flex-col gap-3 rounded-2xl border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-sm">
@@ -93,11 +105,11 @@ function TemplateCard({
             </div>
             {edited ? (
               <Badge variant="warning" className="shrink-0 text-[10px]">
-                Personalizado
+                {badgeCustomized}
               </Badge>
             ) : (
               <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground">
-                Texto padrão
+                {badgeDefault}
               </Badge>
             )}
           </div>
@@ -107,7 +119,7 @@ function TemplateCard({
 
       {/* Prévia do texto */}
       <p className="min-h-[40px] flex-1 break-words rounded-xl bg-muted/40 p-2.5 text-xs leading-relaxed text-muted-foreground">
-        {preview || 'Texto padrão do sistema. Toque em "Editar texto" pra personalizar.'}
+        {preview || fallbackPreview}
       </p>
 
       {/* Ações: restaurar (neutro) + editar (warning/laranja) */}
@@ -121,7 +133,7 @@ function TemplateCard({
             disabled={resetDisabled}
           >
             <RotateCcw className="mr-1 h-3.5 w-3.5" />
-            Restaurar texto padrão
+            {restoreBtn}
           </Button>
         )}
         <Button
@@ -131,7 +143,7 @@ function TemplateCard({
           onClick={onEdit}
         >
           <Pencil className="mr-1 h-3.5 w-3.5" />
-          Editar texto
+          {editBtn}
         </Button>
       </div>
     </div>
@@ -149,6 +161,8 @@ function num(s: string, fallback: number): number {
 }
 
 export function CompanyPmocTemplatesTab() {
+  const { locale } = useAppLocaleContext();
+  const tmpl = MESSAGES[locale].app.pmoc.templates;
   const {
     templates,
     saveTermoRT,
@@ -203,36 +217,45 @@ export function CompanyPmocTemplatesTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
             <FileText className="h-5 w-5 shrink-0" />
-            <span className="min-w-0 break-words">Modelos padrão de documentos PMOC</span>
+            <span className="min-w-0 break-words">{tmpl.cardTitle}</span>
           </CardTitle>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Modelos usados como ponto de partida ao criar um novo contrato PMOC.
-            Editar aqui não altera contratos já existentes.
+            {tmpl.cardDesc}
           </p>
         </CardHeader>
         <CardContent className="min-w-0">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <TemplateCard
               icon={ShieldCheck}
-              title="Termo de Responsabilidade Técnica"
-              description="Página 2 do Dossiê PMOC"
+              title={tmpl.trtCardTitle}
+              description={tmpl.trtCardDesc}
               preview={termoRtPreview}
               edited={!!termoRtHtml}
-              helperTooltip="Modelo usado como ponto de partida do TRT (página 2 do Dossiê PMOC) ao criar um novo contrato. Variáveis aparecem como badges e são preenchidas com os dados de cada contrato no PDF."
+              helperTooltip={tmpl.trtCardTooltip}
               onEdit={() => setEditorOpen('termo_rt')}
               onReset={() => resetTermoRTToDefault()}
               resetDisabled={isSaving}
+              badgeCustomized={tmpl.badgeCustomized}
+              badgeDefault={tmpl.badgeDefault}
+              restoreBtn={tmpl.restoreBtn}
+              editBtn={tmpl.editBtn}
+              fallbackPreview={tmpl.fallbackPreview}
             />
             <TemplateCard
               icon={FileCheck}
-              title="Certificado de Conformidade"
-              description="Página 3 do Dossiê PMOC · Lei 13.589/2018"
+              title={tmpl.certCardTitle}
+              description={tmpl.certCardDesc}
               preview={certificadoPreview}
               edited={!!certificadoHtml}
-              helperTooltip="Modelo usado como ponto de partida do Certificado (página 3 do Dossiê PMOC) ao criar um novo contrato, com o selo da Lei Federal 13.589/2018."
+              helperTooltip={tmpl.certCardTooltip}
               onEdit={() => setEditorOpen('certificado')}
               onReset={() => resetCertificadoToDefault()}
               resetDisabled={isSaving}
+              badgeCustomized={tmpl.badgeCustomized}
+              badgeDefault={tmpl.badgeDefault}
+              restoreBtn={tmpl.restoreBtn}
+              editBtn={tmpl.editBtn}
+              fallbackPreview={tmpl.fallbackPreview}
             />
           </div>
         </CardContent>
@@ -244,17 +267,16 @@ export function CompanyPmocTemplatesTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
             <CalendarClock className="h-5 w-5 shrink-0" />
-            <span className="min-w-0 break-words">Validade dos documentos</span>
+            <span className="min-w-0 break-words">{tmpl.validityCardTitle}</span>
           </CardTitle>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Quantos meses cada documento gerado fica válido. A data de vencimento
-            é calculada a partir da data de geração. Padrão: {DEFAULT_DOC_VALIDITY_MONTHS} meses.
+            {tmpl.validityCardDesc.replace('{n}', String(DEFAULT_DOC_VALIDITY_MONTHS))}
           </p>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="termo-validity">Validade do TRT (meses)</Label>
+              <Label htmlFor="termo-validity">{tmpl.termValidityLabel}</Label>
               <NumericInput
                 id="termo-validity"
                 value={termoMonths}
@@ -264,7 +286,7 @@ export function CompanyPmocTemplatesTab() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cert-validity">Validade do Certificado (meses)</Label>
+              <Label htmlFor="cert-validity">{tmpl.certValidityLabel}</Label>
               <NumericInput
                 id="cert-validity"
                 value={certMonths}
@@ -284,7 +306,7 @@ export function CompanyPmocTemplatesTab() {
               {isSavingValidity ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : null}
-              Salvar validade
+              {tmpl.saveValidityBtn}
             </Button>
           </div>
         </CardContent>
@@ -295,24 +317,24 @@ export function CompanyPmocTemplatesTab() {
       <PmocDocEditorDialog
         open={editorOpen === 'termo_rt'}
         onOpenChange={(o) => !o && setEditorOpen(null)}
-        title="Editar modelo do Termo de Responsabilidade Técnica"
+        title={tmpl.editorTrtTitle}
         initialHtml={termoRtHtml}
         defaultHtml={defaultTermoRt}
         onSave={saveTermoRT}
         onResetToDefault={resetTermoRTToDefault}
         isSaving={isSaving}
-        helperText="Este é o modelo padrão da empresa. Variáveis aparecem como badges; cada contrato substitui pelos próprios dados ao gerar o PDF."
+        helperText={tmpl.editorHelperTrt}
       />
       <PmocDocEditorDialog
         open={editorOpen === 'certificado'}
         onOpenChange={(o) => !o && setEditorOpen(null)}
-        title="Editar modelo do Certificado de Conformidade"
+        title={tmpl.editorCertTitle}
         initialHtml={certificadoHtml}
         defaultHtml={defaultCertificado}
         onSave={saveCertificado}
         onResetToDefault={resetCertificadoToDefault}
         isSaving={isSaving}
-        helperText="Este é o modelo padrão da empresa. Variáveis aparecem como badges; cada contrato substitui pelos próprios dados ao gerar o PDF."
+        helperText={tmpl.editorHelperCert}
       />
     </div>
   );

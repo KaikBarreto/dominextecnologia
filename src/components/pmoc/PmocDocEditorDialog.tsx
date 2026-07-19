@@ -22,6 +22,8 @@ import {
 import { PmocRichTextEditor } from './PmocRichTextEditor';
 import { PmocDocPreviewModal } from './PmocDocPreviewModal';
 import type { PmocVariableContext } from '@/utils/pmocVariables';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Modal de edição rich-text dos termos PMOC (Onda C — v1.9.x).
@@ -91,6 +93,8 @@ export function PmocDocEditorDialog({
   templateContext,
 }: PmocDocEditorDialogProps) {
   const isMobile = useIsMobile();
+  const { locale } = useAppLocaleContext();
+  const de = MESSAGES[locale].app.pmoc.docEditor;
   const seed = initialHtml && initialHtml.trim() !== '' ? initialHtml : defaultHtml;
   const [html, setHtml] = useState<string>(seed);
   const [isDirty, setIsDirty] = useState(false);
@@ -203,7 +207,7 @@ export function PmocDocEditorDialog({
             className="min-h-[40px]"
           >
             <RotateCcw className="mr-1 h-3.5 w-3.5" />
-            Restaurar texto padrão
+            {de.restoreBtn}
           </Button>
         )}
         {onPullCompanyTemplate && (
@@ -221,13 +225,13 @@ export function PmocDocEditorDialog({
                     className="min-h-[40px]"
                   >
                     <Building2 className="mr-1 h-3.5 w-3.5" />
-                    Puxar template padrão da empresa
+                    {de.pullTemplateBtn}
                   </Button>
                 </span>
               </TooltipTrigger>
               {pullCompanyTemplateDisabled && (
                 <TooltipContent side="top" className="max-w-xs text-xs">
-                  Sua empresa ainda não definiu um modelo padrão para este documento.
+                  {de.pullTemplateDisabledTooltip}
                 </TooltipContent>
               )}
             </Tooltip>
@@ -244,7 +248,7 @@ export function PmocDocEditorDialog({
           className="min-h-[40px]"
         >
           <Eye className="mr-1 h-3.5 w-3.5" />
-          Prévia
+          {de.previewBtn}
         </Button>
         <Button
           type="button"
@@ -254,7 +258,7 @@ export function PmocDocEditorDialog({
           disabled={isSaving}
           className="min-h-[40px]"
         >
-          Cancelar
+          {de.cancelBtn}
         </Button>
         <Button
           type="button"
@@ -268,7 +272,7 @@ export function PmocDocEditorDialog({
           ) : (
             <Save className="mr-1 h-3.5 w-3.5" />
           )}
-          Salvar
+          {de.saveBtn}
         </Button>
       </div>
     </div>
@@ -300,11 +304,11 @@ export function PmocDocEditorDialog({
             // O componente já tem max-h interno de 60vh + overflow-y, então
             // não estoura tela.
             minHeight={isMobile ? 280 : 520}
-            placeholder="Edite o texto do documento PMOC…"
+            placeholder={de.editorPlaceholder}
             templateContext={templateContext}
           />
           <p className="text-[11px] text-muted-foreground">
-            Este texto será embutido no PDF do dossiê PMOC ao gerar uma nova versão.
+            {de.footerHint}
           </p>
         </div>
       </ResponsiveModal>
@@ -313,20 +317,20 @@ export function PmocDocEditorDialog({
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Restaurar texto padrão?</AlertDialogTitle>
+            <AlertDialogTitle>{de.resetTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Isso vai sobrescrever suas edições com o template original. Esta ação não pode ser desfeita.
+              {de.resetDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSaving}>{de.resetCancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleResetConfirmed}
               disabled={isSaving}
               className="bg-warning text-warning-foreground hover:bg-warning/90"
             >
               {isSaving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="mr-1 h-3.5 w-3.5" />}
-              Restaurar
+              {de.resetConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -336,18 +340,18 @@ export function PmocDocEditorDialog({
       <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+            <AlertDialogTitle>{de.discardTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Você tem alterações não salvas. Se sair agora, elas serão perdidas.
+              {de.discardDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogCancel>{de.discardCancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDiscard}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Descartar
+              {de.discardConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
