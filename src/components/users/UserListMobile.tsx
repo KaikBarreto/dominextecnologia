@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import type { UserWithRole } from '@/hooks/useUsers';
 import type { UserPermission, PermissionPreset } from '@/hooks/usePermissions';
 import { getAllPermissionKeys } from '@/hooks/usePermissions';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 interface UserListMobileProps {
   users: UserWithRole[];
@@ -51,6 +53,10 @@ export function UserListMobile({
   onDelete,
   onPreviewPhoto,
 }: UserListMobileProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.users;
+  const tl = t.list;
+
   const getUserPermission = (userId: string) =>
     userPermissions.find((p) => p.user_id === userId);
 
@@ -68,12 +74,8 @@ export function UserListMobile({
     return (
       <EmptyState
         icon={<UserIcon className="h-12 w-12" />}
-        title={searchQuery ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
-        description={
-          searchQuery
-            ? 'Tente uma busca diferente'
-            : 'Toque em "Novo Usuário" para começar'
-        }
+        title={searchQuery ? t.emptyFiltered : t.emptyAll}
+        description={searchQuery ? tl.emptyFilteredDesc : tl.emptyAllDesc}
       />
     );
   }
@@ -95,14 +97,14 @@ export function UserListMobile({
         const roleLabel = preset
           ? preset.name
           : isAllPerms
-            ? 'Acesso Total'
-            : `${permCount} permissões`;
+            ? t.badgeAllPerms
+            : t.badgePermCount.replace('{count}', String(permCount));
 
         const actions: ItemAction[] = canManageRoles
           ? [
               {
                 key: 'edit',
-                label: 'Editar',
+                label: t.btnEdit,
                 icon: <Pencil className="h-4 w-4" />,
                 variant: 'edit',
                 onClick: () => onEdit(userProfile),
@@ -112,7 +114,7 @@ export function UserListMobile({
                     isActive
                       ? ({
                           key: 'deactivate',
-                          label: 'Desativar',
+                          label: t.btnDeactivate,
                           icon: <UserX className="h-4 w-4" />,
                           // 'edit' pinta laranja/warning (cor semântica de desativar).
                           variant: 'edit',
@@ -120,14 +122,14 @@ export function UserListMobile({
                         } as ItemAction)
                       : ({
                           key: 'reactivate',
-                          label: canAddUser ? 'Reativar' : 'Reativar (sem slot)',
+                          label: canAddUser ? t.btnReactivate : tl.reactivateNoSlot,
                           icon: <UserCheck className="h-4 w-4" />,
                           variant: 'success',
                           onClick: () => onReactivate(userProfile),
                         } as ItemAction),
                     {
                       key: 'delete',
-                      label: 'Excluir',
+                      label: t.delete,
                       icon: <Trash2 className="h-4 w-4" />,
                       variant: 'destructive' as const,
                       onClick: () => onDelete(userProfile),
@@ -151,7 +153,7 @@ export function UserListMobile({
                   }
                 }}
                 className="shrink-0"
-                aria-label="Ver foto"
+                aria-label={tl.ariaViewPhoto}
               >
                 <Avatar className="h-10 w-10 border border-border">
                   <AvatarImage
@@ -169,7 +171,7 @@ export function UserListMobile({
                 <span className="truncate">{userProfile.full_name}</span>
                 {isSelf && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
-                    Você
+                    {t.badgeYou}
                   </Badge>
                 )}
               </span>
@@ -189,11 +191,11 @@ export function UserListMobile({
             trailing={
               isActive ? (
                 <Badge className="bg-primary/15 text-primary border-0 text-[10px] px-2 py-0.5">
-                  Ativo
+                  {t.badgeActive}
                 </Badge>
               ) : (
                 <Badge className="bg-destructive/15 text-destructive border-0 text-[10px] px-2 py-0.5">
-                  Inativo
+                  {t.badgeInactive}
                 </Badge>
               )
             }

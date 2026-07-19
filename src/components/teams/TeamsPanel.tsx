@@ -12,6 +12,8 @@ import { useTeams, type TeamWithMembers } from '@/hooks/useTeams';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { TeamFormDialog } from '@/components/teams/TeamFormDialog';
 import { SignedImg } from '@/components/ui/SignedImg';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const ICON_MAP: Record<string, any> = {
   UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
@@ -19,21 +21,23 @@ const ICON_MAP: Record<string, any> = {
 };
 
 export function TeamsPanel() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.teams;
   const { teamsWithMembers, isLoading, createTeam, updateTeam, deleteTeam } = useTeams();
   const { data: profiles } = useTechnicians();
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamWithMembers | null>(null);
 
-  const filtered = teamsWithMembers.filter(t =>
-    fuzzyIncludes(t.name, searchQuery)
+  const filtered = teamsWithMembers.filter(team =>
+    fuzzyIncludes(team.name, searchQuery)
   );
 
   const getInitials = (n: string) => n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   const getMemberName = (userId: string) => {
     const p = profiles?.find(pr => pr.user_id === userId);
-    return p?.full_name ?? 'Usuário';
+    return p?.full_name ?? t.userFallback;
   };
 
   const getMemberAvatar = (userId: string) => {
@@ -42,7 +46,7 @@ export function TeamsPanel() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta equipe?')) return;
+    if (!confirm(t.panelConfirmDelete)) return;
     await deleteTeam.mutateAsync(id);
   };
 
@@ -57,7 +61,7 @@ export function TeamsPanel() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar equipe..."
+            placeholder={t.searchPlaceholderDesktop}
             className="pl-10"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
@@ -65,7 +69,7 @@ export function TeamsPanel() {
         </div>
         <Button size="sm" onClick={() => { setEditingTeam(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
-          Nova Equipe
+          {t.btnNew}
         </Button>
       </div>
 
@@ -81,15 +85,15 @@ export function TeamsPanel() {
             {searchQuery ? (
               <EmptyState
                 icon={<UsersRound className="h-12 w-12" />}
-                title="Nenhuma equipe encontrada"
-                description="Tente outro termo de busca."
+                title={t.emptySearchTitle}
+                description={t.panelEmptySearchDesc}
               />
             ) : (
               <EmptyState
                 icon={<UsersRound className="h-12 w-12" />}
-                title="Nenhuma equipe"
-                description="Cadastre sua primeira equipe para organizar os técnicos."
-                action={{ label: 'Nova equipe', onClick: () => { setEditingTeam(null); setFormOpen(true); } }}
+                title={t.emptyTitle}
+                description={t.panelEmptyDesc}
+                action={{ label: t.panelNewTeamAction, onClick: () => { setEditingTeam(null); setFormOpen(true); } }}
               />
             )}
           </CardContent>
@@ -121,7 +125,7 @@ export function TeamsPanel() {
                       </div>
                     </div>
                     <Badge variant={team.is_active ? 'default' : 'secondary'} className="text-xs shrink-0">
-                      {team.is_active ? 'Ativa' : 'Inativa'}
+                      {team.is_active ? t.badgeActive : t.badgeInactive}
                     </Badge>
                   </div>
 
@@ -136,13 +140,13 @@ export function TeamsPanel() {
                       <span className="text-xs text-muted-foreground ml-1">+{team.members.length - 5}</span>
                     )}
                     {team.members.length === 0 && (
-                      <span className="text-xs text-muted-foreground">Sem membros</span>
+                      <span className="text-xs text-muted-foreground">{t.memberCount0}</span>
                     )}
                   </div>
 
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditingTeam(team); setFormOpen(true); }}>
-                      <Pencil className="h-3 w-3 mr-1" /> Editar
+                      <Pencil className="h-3 w-3 mr-1" /> {t.panelBtnEdit}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDelete(team.id)}>
                       <Trash2 className="h-3 w-3" />

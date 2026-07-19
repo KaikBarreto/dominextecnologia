@@ -15,16 +15,21 @@ import { cn } from '@/lib/utils';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
-
-const STATUS_CONFIG = {
-  present: { label: 'Presente', className: 'bg-success text-white', dot: true },
-  absent: { label: 'Ausente', className: 'bg-muted text-muted-foreground', dot: false },
-  on_break: { label: 'Em intervalo', className: 'bg-warning text-white', dot: false },
-  finished: { label: 'Concluído', className: 'bg-info text-white', dot: false },
-  late: { label: 'Atrasado', className: 'bg-destructive text-white', dot: false },
-};
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export function TimeToday() {
+  const { locale } = useAppLocaleContext();
+  const tc = MESSAGES[locale].app.employees.timeclock;
+
+  const STATUS_CONFIG = {
+    present: { label: tc.status.present, className: 'bg-success text-white', dot: true },
+    absent: { label: tc.status.absent, className: 'bg-muted text-muted-foreground', dot: false },
+    on_break: { label: tc.status.on_break, className: 'bg-warning text-white', dot: false },
+    finished: { label: tc.status.finished, className: 'bg-info text-white', dot: false },
+    late: { label: tc.status.late, className: 'bg-destructive text-white', dot: false },
+  };
+
   const { employees, isLoading, getRecordsForEmployee, getEmployeeStatus, kpis, registerManualPunch } = useAdminTimeSheet();
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
   const [manualEmployee, setManualEmployee] = useState<{ id: string; name: string } | null>(null);
@@ -48,11 +53,13 @@ export function TimeToday() {
   }
 
   const statItems = [
-    { key: 'present', label: 'Presentes', count: kpis.present, icon: <Users className="h-4 w-4" />, accentColor: 'hsl(var(--success))' },
-    { key: 'absent', label: 'Ausentes', count: kpis.absent, icon: <UserX className="h-4 w-4" />, accentColor: 'hsl(var(--muted-foreground))' },
-    { key: 'onBreak', label: 'Em intervalo', count: kpis.onBreak, icon: <Coffee className="h-4 w-4" />, accentColor: 'hsl(var(--warning))' },
-    { key: 'finished', label: 'Concluídos', count: kpis.finished, icon: <CheckCircle2 className="h-4 w-4" />, accentColor: 'hsl(var(--info))' },
+    { key: 'present', label: tc.kpis.present, count: kpis.present, icon: <Users className="h-4 w-4" />, accentColor: 'hsl(var(--success))' },
+    { key: 'absent', label: tc.kpis.absent, count: kpis.absent, icon: <UserX className="h-4 w-4" />, accentColor: 'hsl(var(--muted-foreground))' },
+    { key: 'onBreak', label: tc.kpis.onBreak, count: kpis.onBreak, icon: <Coffee className="h-4 w-4" />, accentColor: 'hsl(var(--warning))' },
+    { key: 'finished', label: tc.kpis.finished, count: kpis.finished, icon: <CheckCircle2 className="h-4 w-4" />, accentColor: 'hsl(var(--info))' },
   ];
+
+  const tbl = tc.todayTable;
 
   return (
     <div className="space-y-4">
@@ -64,8 +71,8 @@ export function TimeToday() {
         employees.length === 0 ? (
           <EmptyState
             icon={<Clock className="h-12 w-12" />}
-            title="Nenhum funcionário cadastrado"
-            description="Cadastre funcionários para acompanhar o ponto do dia."
+            title={tc.todayEmpty.title}
+            description={tc.todayEmpty.description}
           />
         ) : (
           <div className="rounded-xl border bg-card overflow-hidden">
@@ -80,13 +87,13 @@ export function TimeToday() {
               const itemActions: ItemAction[] = [
                 {
                   key: 'view',
-                  label: 'Ver detalhes',
+                  label: tc.actions.viewDetails,
                   icon: <Eye className="h-4 w-4" />,
                   onClick: () => setSelectedEmployee({ id: emp.id, name: emp.name }),
                 },
                 {
                   key: 'manual',
-                  label: 'Registro manual',
+                  label: tc.actions.manualPunch,
                   icon: <PenLine className="h-4 w-4" />,
                   variant: 'edit' as const,
                   onClick: () => setManualEmployee({ id: emp.id, name: emp.name }),
@@ -94,8 +101,8 @@ export function TimeToday() {
               ];
 
               const subtitleParts: string[] = [];
-              subtitleParts.push(`Entrada ${clockIn ? format(new Date(clockIn.recorded_at), 'HH:mm') : '—'}`);
-              subtitleParts.push(`Saída ${clockOut ? format(new Date(clockOut.recorded_at), 'HH:mm') : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockIn} ${clockIn ? format(new Date(clockIn.recorded_at), 'HH:mm') : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${clockOut ? format(new Date(clockOut.recorded_at), 'HH:mm') : '—'}`);
               subtitleParts.push(records.length > 0 ? formatMinutes(worked) : '—');
 
               return (
@@ -136,13 +143,13 @@ export function TimeToday() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left px-4 py-3 font-medium">Funcionário</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Entrada</th>
-                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Intervalo</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Saída</th>
-                    <th className="text-left px-4 py-3 font-medium">Trabalhado</th>
-                    <th className="text-left px-4 py-3 font-medium">Status</th>
-                    <th className="text-right px-4 py-3 font-medium">Ações</th>
+                    <th className="text-left px-4 py-3 font-medium">{tbl.employee}</th>
+                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">{tbl.clockIn}</th>
+                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">{tbl.break}</th>
+                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">{tbl.clockOut}</th>
+                    <th className="text-left px-4 py-3 font-medium">{tbl.worked}</th>
+                    <th className="text-left px-4 py-3 font-medium">{tbl.status}</th>
+                    <th className="text-right px-4 py-3 font-medium">{tbl.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,7 +183,7 @@ export function TimeToday() {
                         <td className="px-4 py-3 hidden md:table-cell">
                           {breakStart && breakEnd
                             ? `${format(new Date(breakStart.recorded_at), 'HH:mm')} – ${format(new Date(breakEnd.recorded_at), 'HH:mm')}`
-                            : breakStart ? `Em intervalo desde ${format(new Date(breakStart.recorded_at), 'HH:mm')}` : '—'}
+                            : breakStart ? `${tc.actions.onBreakSince} ${format(new Date(breakStart.recorded_at), 'HH:mm')}` : '—'}
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell">{clockOut ? format(new Date(clockOut.recorded_at), 'HH:mm') : '—'}</td>
                         <td className="px-4 py-3">{records.length > 0 ? formatMinutes(worked) : '—'}</td>

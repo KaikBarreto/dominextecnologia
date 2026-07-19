@@ -7,6 +7,246 @@
 // Copy PT-BR sem travessão (—): usar vírgula.
 export const employees = {
   'pt-br': {
+    // ── Controle de Ponto (AdminTimePanel + sub-componentes) ────────────────
+    timeclock: {
+      // AdminTimePanel — abas internas
+      tabs: {
+        today: 'Hoje',
+        history: 'Histórico',
+        report: 'Relatório',
+        settings: 'Config',
+      },
+
+      // TimeToday — status dos funcionários
+      status: {
+        present: 'Presente',
+        absent: 'Ausente',
+        on_break: 'Em intervalo',
+        finished: 'Concluído',
+        late: 'Atrasado',
+      },
+
+      // TimeToday — KPIs do carrossel
+      kpis: {
+        present: 'Presentes',
+        absent: 'Ausentes',
+        onBreak: 'Em intervalo',
+        finished: 'Concluídos',
+      },
+
+      // TimeToday — cabeçalhos de tabela desktop
+      todayTable: {
+        employee: 'Funcionário',
+        clockIn: 'Entrada',
+        break: 'Intervalo',
+        clockOut: 'Saída',
+        worked: 'Trabalhado',
+        status: 'Status',
+        actions: 'Ações',
+      },
+
+      // TimeToday — subtítulo de lista mobile (partes)
+      todaySubtitle: {
+        clockIn: 'Entrada',
+        clockOut: 'Saída',
+      },
+
+      // TimeToday — empty state
+      todayEmpty: {
+        title: 'Nenhum funcionário cadastrado',
+        description: 'Cadastre funcionários para acompanhar o ponto do dia.',
+      },
+
+      // TimeToday — ações de item
+      actions: {
+        viewDetails: 'Ver detalhes',
+        manualPunch: 'Registro manual',
+        onBreakSince: 'Em intervalo desde',
+      },
+
+      // ManualPunchModal
+      manualPunch: {
+        titlePrefix: 'Registro manual,',
+        typeLabel: 'Tipo de registro',
+        timeLabel: 'Horário',
+        notesLabel: 'Justificativa *',
+        notesPlaceholder: 'Motivo do registro manual...',
+        cancel: 'Cancelar',
+        submit: 'Registrar',
+        submitting: 'Salvando...',
+        punchTypes: {
+          clock_in: 'Entrada',
+          break_start: 'Início intervalo',
+          break_end: 'Fim intervalo',
+          clock_out: 'Saída',
+        },
+      },
+
+      // TimeDayDetailModal
+      dayDetail: {
+        titlePrefix: 'Registros do dia,',
+        noRecords: 'Nenhum registro para este dia.',
+        punchTypes: {
+          clock_in: 'Entrada',
+          break_start: 'Início intervalo',
+          break_end: 'Fim intervalo',
+          clock_out: 'Saída',
+        },
+        totals: {
+          worked: 'Trabalhado',
+          break: 'Intervalo',
+          balance: 'Saldo',
+        },
+      },
+
+      // TimeHistory — status dos dias
+      historyStatus: {
+        open: 'Em andamento',
+        complete: 'Completo',
+        incomplete: 'Incompleto',
+        justified: 'Justificado',
+        holiday: 'Feriado',
+        day_off: 'Folga',
+      },
+
+      // TimeHistory — filtros
+      historyFilters: {
+        employeeLabel: 'Funcionário',
+        periodLabel: 'Período',
+        statusLabel: 'Status',
+        allEmployees: 'Todos',
+        allStatuses: 'Todos',
+        statusComplete: 'Completo',
+        statusIncomplete: 'Incompleto',
+        statusJustified: 'Justificado',
+      },
+
+      // TimeHistory — contagem de registros
+      historyCount: {
+        one: '{{count}} registro',
+        other: '{{count}} registros',
+      },
+
+      // TimeHistory — subtítulo de lista mobile (reutiliza todaySubtitle.clockIn/clockOut)
+      // TimeHistory — totais (mobile card + desktop footer)
+      historyTotals: {
+        expected: 'Esperado',
+        worked: 'Trabalhado',
+        balance: 'Saldo',
+      },
+
+      // TimeHistory — cabeçalhos de tabela desktop
+      historyTable: {
+        date: 'Data',
+        employee: 'Funcionário',
+        clockIn: 'Entrada',
+        clockOut: 'Saída',
+        worked: 'Trabalhado',
+        balance: 'Saldo',
+        status: 'Status',
+        actions: 'Ações',
+      },
+
+      // TimeHistory — empty state
+      historyEmpty: {
+        title: 'Nenhum registro de ponto',
+        descriptionFiltered: 'Ajuste os filtros para visualizar registros de outro período.',
+        descriptionEmpty: 'Ainda não há registros de ponto no período.',
+      },
+
+      // TimeHistory — ação de visualização
+      viewDetails: 'Ver detalhes',
+
+      // TimeReport — filtros
+      reportFilters: {
+        monthLabel: 'Mês',
+        yearLabel: 'Ano',
+        employeeLabel: 'Funcionário',
+        allEmployees: 'Todos',
+        overviewAll: 'Visão geral de todos os funcionários',
+        reportSingle: 'Relatório de {{name}}',
+        reportMultiple: 'Relatório de {{count}} funcionários',
+      },
+
+      // TimeReport — calendário
+      reportCalendar: {
+        title: 'Calendário',
+        noRecord: 'Sem registro',
+        weekdays: {
+          sun: 'Dom',
+          mon: 'Seg',
+          tue: 'Ter',
+          wed: 'Qua',
+          thu: 'Qui',
+          fri: 'Sex',
+          sat: 'Sáb',
+        },
+        popoverClockIn: 'Entrada',
+        popoverClockOut: 'Saída',
+        popoverWorked: 'Trabalhado',
+      },
+
+      // TimeReport — card de resumo (funcionário único)
+      reportSummary: {
+        workedDays: 'Dias trabalhados',
+        totalWorked: 'Total trabalhado',
+        monthBalance: 'Saldo do mês',
+        absencesLate: 'Faltas / Atrasos',
+      },
+
+      // TimeReport — gráfico
+      reportChart: {
+        title: 'Horas por dia',
+        tooltipLabel: 'Horas',
+      },
+
+      // TimeReport — meses (nomes localizados)
+      months: {
+        '0': 'Janeiro',
+        '1': 'Fevereiro',
+        '2': 'Março',
+        '3': 'Abril',
+        '4': 'Maio',
+        '5': 'Junho',
+        '6': 'Julho',
+        '7': 'Agosto',
+        '8': 'Setembro',
+        '9': 'Outubro',
+        '10': 'Novembro',
+        '11': 'Dezembro',
+      },
+
+      // TimeSettings
+      settings: {
+        companyDefaultsTitle: 'Jornada Padrão da Empresa',
+        individualTitle: 'Jornada Individual',
+        defaultIn: 'Entrada padrão',
+        defaultOut: 'Saída padrão',
+        breakMin: 'Intervalo (min)',
+        requireSelfie: 'Exigir selfie',
+        requireGeo: 'Exigir geolocalização',
+        maxRadius: 'Raio máximo (metros)',
+        maxRadiusHint: '0 = sem restrição',
+        lateTolerance: 'Tolerância atraso (min)',
+        allowOffHours: 'Permitir fora do horário',
+        saveButton: 'Salvar configurações',
+        scheduleModalTitlePrefix: 'Jornada,',
+        cancelSchedule: 'Cancelar',
+        saveSchedule: 'Salvar jornada',
+        inheritCompany: 'Herda empresa ({{in}}-{{out}})',
+        dayOff: 'Folga',
+        weekdays: {
+          sun: 'Dom',
+          mon: 'Seg',
+          tue: 'Ter',
+          wed: 'Qua',
+          thu: 'Qui',
+          fri: 'Sex',
+          sat: 'Sáb',
+        },
+      },
+    },
+
     // ── Cabeçalho da página ────────────────────────────────────────────────
     page: {
       title: 'Funcionários',
@@ -354,6 +594,201 @@ export const employees = {
 
   // ── English ────────────────────────────────────────────────────────────────
   en: {
+    // ── Time Clock (AdminTimePanel + sub-components) ──────────────────────
+    timeclock: {
+      tabs: {
+        today: 'Today',
+        history: 'History',
+        report: 'Report',
+        settings: 'Settings',
+      },
+      status: {
+        present: 'Present',
+        absent: 'Absent',
+        on_break: 'On break',
+        finished: 'Finished',
+        late: 'Late',
+      },
+      kpis: {
+        present: 'Present',
+        absent: 'Absent',
+        onBreak: 'On break',
+        finished: 'Finished',
+      },
+      todayTable: {
+        employee: 'Employee',
+        clockIn: 'Clock in',
+        break: 'Break',
+        clockOut: 'Clock out',
+        worked: 'Worked',
+        status: 'Status',
+        actions: 'Actions',
+      },
+      todaySubtitle: {
+        clockIn: 'In',
+        clockOut: 'Out',
+      },
+      todayEmpty: {
+        title: 'No employees registered',
+        description: 'Register employees to track today\'s attendance.',
+      },
+      actions: {
+        viewDetails: 'View details',
+        manualPunch: 'Manual punch',
+        onBreakSince: 'On break since',
+      },
+      manualPunch: {
+        titlePrefix: 'Manual punch,',
+        typeLabel: 'Record type',
+        timeLabel: 'Time',
+        notesLabel: 'Justification *',
+        notesPlaceholder: 'Reason for manual record...',
+        cancel: 'Cancel',
+        submit: 'Register',
+        submitting: 'Saving...',
+        punchTypes: {
+          clock_in: 'Clock in',
+          break_start: 'Break start',
+          break_end: 'Break end',
+          clock_out: 'Clock out',
+        },
+      },
+      dayDetail: {
+        titlePrefix: 'Day records,',
+        noRecords: 'No records for this day.',
+        punchTypes: {
+          clock_in: 'Clock in',
+          break_start: 'Break start',
+          break_end: 'Break end',
+          clock_out: 'Clock out',
+        },
+        totals: {
+          worked: 'Worked',
+          break: 'Break',
+          balance: 'Balance',
+        },
+      },
+      historyStatus: {
+        open: 'In progress',
+        complete: 'Complete',
+        incomplete: 'Incomplete',
+        justified: 'Justified',
+        holiday: 'Holiday',
+        day_off: 'Day off',
+      },
+      historyFilters: {
+        employeeLabel: 'Employee',
+        periodLabel: 'Period',
+        statusLabel: 'Status',
+        allEmployees: 'All',
+        allStatuses: 'All',
+        statusComplete: 'Complete',
+        statusIncomplete: 'Incomplete',
+        statusJustified: 'Justified',
+      },
+      historyCount: {
+        one: '{{count}} record',
+        other: '{{count}} records',
+      },
+      historyTotals: {
+        expected: 'Expected',
+        worked: 'Worked',
+        balance: 'Balance',
+      },
+      historyTable: {
+        date: 'Date',
+        employee: 'Employee',
+        clockIn: 'Clock in',
+        clockOut: 'Clock out',
+        worked: 'Worked',
+        balance: 'Balance',
+        status: 'Status',
+        actions: 'Actions',
+      },
+      historyEmpty: {
+        title: 'No time records',
+        descriptionFiltered: 'Adjust filters to view records for another period.',
+        descriptionEmpty: 'No time records yet for this period.',
+      },
+      viewDetails: 'View details',
+      reportFilters: {
+        monthLabel: 'Month',
+        yearLabel: 'Year',
+        employeeLabel: 'Employee',
+        allEmployees: 'All',
+        overviewAll: 'Overview of all employees',
+        reportSingle: 'Report for {{name}}',
+        reportMultiple: 'Report for {{count}} employees',
+      },
+      reportCalendar: {
+        title: 'Calendar',
+        noRecord: 'No record',
+        weekdays: {
+          sun: 'Sun',
+          mon: 'Mon',
+          tue: 'Tue',
+          wed: 'Wed',
+          thu: 'Thu',
+          fri: 'Fri',
+          sat: 'Sat',
+        },
+        popoverClockIn: 'In',
+        popoverClockOut: 'Out',
+        popoverWorked: 'Worked',
+      },
+      reportSummary: {
+        workedDays: 'Days worked',
+        totalWorked: 'Total worked',
+        monthBalance: 'Month balance',
+        absencesLate: 'Absences / Late',
+      },
+      reportChart: {
+        title: 'Hours per day',
+        tooltipLabel: 'Hours',
+      },
+      months: {
+        '0': 'January',
+        '1': 'February',
+        '2': 'March',
+        '3': 'April',
+        '4': 'May',
+        '5': 'June',
+        '6': 'July',
+        '7': 'August',
+        '8': 'September',
+        '9': 'October',
+        '10': 'November',
+        '11': 'December',
+      },
+      settings: {
+        companyDefaultsTitle: 'Company Default Schedule',
+        individualTitle: 'Individual Schedule',
+        defaultIn: 'Default start',
+        defaultOut: 'Default end',
+        breakMin: 'Break (min)',
+        requireSelfie: 'Require selfie',
+        requireGeo: 'Require geolocation',
+        maxRadius: 'Max radius (meters)',
+        maxRadiusHint: '0 = no restriction',
+        lateTolerance: 'Late tolerance (min)',
+        allowOffHours: 'Allow off-hours',
+        saveButton: 'Save settings',
+        scheduleModalTitlePrefix: 'Schedule,',
+        cancelSchedule: 'Cancel',
+        saveSchedule: 'Save schedule',
+        inheritCompany: 'Inherits company ({{in}}-{{out}})',
+        dayOff: 'Day off',
+        weekdays: {
+          sun: 'Sun',
+          mon: 'Mon',
+          tue: 'Tue',
+          wed: 'Wed',
+          thu: 'Thu',
+          fri: 'Fri',
+          sat: 'Sat',
+        },
+      },
+    },
     page: {
       title: 'Employees',
       subtitle: 'Manage employees, advances, payments and statements',
@@ -672,6 +1107,201 @@ export const employees = {
 
   // ── Español ────────────────────────────────────────────────────────────────
   es: {
+    // ── Control de Fichaje ────────────────────────────────────────────────
+    timeclock: {
+      tabs: {
+        today: 'Hoy',
+        history: 'Historial',
+        report: 'Informe',
+        settings: 'Config',
+      },
+      status: {
+        present: 'Presente',
+        absent: 'Ausente',
+        on_break: 'En descanso',
+        finished: 'Finalizado',
+        late: 'Tarde',
+      },
+      kpis: {
+        present: 'Presentes',
+        absent: 'Ausentes',
+        onBreak: 'En descanso',
+        finished: 'Finalizados',
+      },
+      todayTable: {
+        employee: 'Empleado',
+        clockIn: 'Entrada',
+        break: 'Descanso',
+        clockOut: 'Salida',
+        worked: 'Trabajado',
+        status: 'Estado',
+        actions: 'Acciones',
+      },
+      todaySubtitle: {
+        clockIn: 'Entrada',
+        clockOut: 'Salida',
+      },
+      todayEmpty: {
+        title: 'Sin empleados registrados',
+        description: 'Registra empleados para controlar el fichaje del día.',
+      },
+      actions: {
+        viewDetails: 'Ver detalles',
+        manualPunch: 'Fichaje manual',
+        onBreakSince: 'En descanso desde',
+      },
+      manualPunch: {
+        titlePrefix: 'Fichaje manual,',
+        typeLabel: 'Tipo de registro',
+        timeLabel: 'Hora',
+        notesLabel: 'Justificación *',
+        notesPlaceholder: 'Motivo del registro manual...',
+        cancel: 'Cancelar',
+        submit: 'Registrar',
+        submitting: 'Guardando...',
+        punchTypes: {
+          clock_in: 'Entrada',
+          break_start: 'Inicio descanso',
+          break_end: 'Fin descanso',
+          clock_out: 'Salida',
+        },
+      },
+      dayDetail: {
+        titlePrefix: 'Registros del día,',
+        noRecords: 'Sin registros para este día.',
+        punchTypes: {
+          clock_in: 'Entrada',
+          break_start: 'Inicio descanso',
+          break_end: 'Fin descanso',
+          clock_out: 'Salida',
+        },
+        totals: {
+          worked: 'Trabajado',
+          break: 'Descanso',
+          balance: 'Saldo',
+        },
+      },
+      historyStatus: {
+        open: 'En curso',
+        complete: 'Completo',
+        incomplete: 'Incompleto',
+        justified: 'Justificado',
+        holiday: 'Festivo',
+        day_off: 'Libre',
+      },
+      historyFilters: {
+        employeeLabel: 'Empleado',
+        periodLabel: 'Período',
+        statusLabel: 'Estado',
+        allEmployees: 'Todos',
+        allStatuses: 'Todos',
+        statusComplete: 'Completo',
+        statusIncomplete: 'Incompleto',
+        statusJustified: 'Justificado',
+      },
+      historyCount: {
+        one: '{{count}} registro',
+        other: '{{count}} registros',
+      },
+      historyTotals: {
+        expected: 'Esperado',
+        worked: 'Trabajado',
+        balance: 'Saldo',
+      },
+      historyTable: {
+        date: 'Fecha',
+        employee: 'Empleado',
+        clockIn: 'Entrada',
+        clockOut: 'Salida',
+        worked: 'Trabajado',
+        balance: 'Saldo',
+        status: 'Estado',
+        actions: 'Acciones',
+      },
+      historyEmpty: {
+        title: 'Sin registros de fichaje',
+        descriptionFiltered: 'Ajusta los filtros para ver registros de otro período.',
+        descriptionEmpty: 'Aún no hay registros de fichaje en este período.',
+      },
+      viewDetails: 'Ver detalles',
+      reportFilters: {
+        monthLabel: 'Mes',
+        yearLabel: 'Año',
+        employeeLabel: 'Empleado',
+        allEmployees: 'Todos',
+        overviewAll: 'Vista general de todos los empleados',
+        reportSingle: 'Informe de {{name}}',
+        reportMultiple: 'Informe de {{count}} empleados',
+      },
+      reportCalendar: {
+        title: 'Calendario',
+        noRecord: 'Sin registro',
+        weekdays: {
+          sun: 'Dom',
+          mon: 'Lun',
+          tue: 'Mar',
+          wed: 'Mié',
+          thu: 'Jue',
+          fri: 'Vie',
+          sat: 'Sáb',
+        },
+        popoverClockIn: 'Entrada',
+        popoverClockOut: 'Salida',
+        popoverWorked: 'Trabajado',
+      },
+      reportSummary: {
+        workedDays: 'Días trabajados',
+        totalWorked: 'Total trabajado',
+        monthBalance: 'Saldo del mes',
+        absencesLate: 'Faltas / Atrasos',
+      },
+      reportChart: {
+        title: 'Horas por día',
+        tooltipLabel: 'Horas',
+      },
+      months: {
+        '0': 'Enero',
+        '1': 'Febrero',
+        '2': 'Marzo',
+        '3': 'Abril',
+        '4': 'Mayo',
+        '5': 'Junio',
+        '6': 'Julio',
+        '7': 'Agosto',
+        '8': 'Septiembre',
+        '9': 'Octubre',
+        '10': 'Noviembre',
+        '11': 'Diciembre',
+      },
+      settings: {
+        companyDefaultsTitle: 'Jornada Estándar de la Empresa',
+        individualTitle: 'Jornada Individual',
+        defaultIn: 'Entrada estándar',
+        defaultOut: 'Salida estándar',
+        breakMin: 'Descanso (min)',
+        requireSelfie: 'Exigir selfie',
+        requireGeo: 'Exigir geolocalización',
+        maxRadius: 'Radio máximo (metros)',
+        maxRadiusHint: '0 = sin restricción',
+        lateTolerance: 'Tolerancia retraso (min)',
+        allowOffHours: 'Permitir fuera de horario',
+        saveButton: 'Guardar configuración',
+        scheduleModalTitlePrefix: 'Jornada,',
+        cancelSchedule: 'Cancelar',
+        saveSchedule: 'Guardar jornada',
+        inheritCompany: 'Hereda empresa ({{in}}-{{out}})',
+        dayOff: 'Libre',
+        weekdays: {
+          sun: 'Dom',
+          mon: 'Lun',
+          tue: 'Mar',
+          wed: 'Mié',
+          thu: 'Jue',
+          fri: 'Vie',
+          sat: 'Sáb',
+        },
+      },
+    },
     page: {
       title: 'Empleados',
       subtitle: 'Gestiona empleados, adelantos, pagos y extractos',
@@ -990,6 +1620,201 @@ export const employees = {
 
   // ── Français ───────────────────────────────────────────────────────────────
   fr: {
+    // ── Pointage (AdminTimePanel + sous-composants) ───────────────────────
+    timeclock: {
+      tabs: {
+        today: "Aujourd'hui",
+        history: 'Historique',
+        report: 'Rapport',
+        settings: 'Config',
+      },
+      status: {
+        present: 'Présent',
+        absent: 'Absent',
+        on_break: 'En pause',
+        finished: 'Terminé',
+        late: 'En retard',
+      },
+      kpis: {
+        present: 'Présents',
+        absent: 'Absents',
+        onBreak: 'En pause',
+        finished: 'Terminés',
+      },
+      todayTable: {
+        employee: 'Employé',
+        clockIn: 'Arrivée',
+        break: 'Pause',
+        clockOut: 'Départ',
+        worked: 'Travaillé',
+        status: 'Statut',
+        actions: 'Actions',
+      },
+      todaySubtitle: {
+        clockIn: 'Arrivée',
+        clockOut: 'Départ',
+      },
+      todayEmpty: {
+        title: 'Aucun employé enregistré',
+        description: 'Enregistrez des employés pour suivre le pointage du jour.',
+      },
+      actions: {
+        viewDetails: 'Voir les détails',
+        manualPunch: 'Pointage manuel',
+        onBreakSince: 'En pause depuis',
+      },
+      manualPunch: {
+        titlePrefix: 'Pointage manuel,',
+        typeLabel: 'Type de pointage',
+        timeLabel: 'Heure',
+        notesLabel: 'Justification *',
+        notesPlaceholder: 'Raison du pointage manuel...',
+        cancel: 'Annuler',
+        submit: 'Enregistrer',
+        submitting: 'Sauvegarde...',
+        punchTypes: {
+          clock_in: 'Arrivée',
+          break_start: 'Début de pause',
+          break_end: 'Fin de pause',
+          clock_out: 'Départ',
+        },
+      },
+      dayDetail: {
+        titlePrefix: 'Pointages du jour,',
+        noRecords: 'Aucun pointage pour ce jour.',
+        punchTypes: {
+          clock_in: 'Arrivée',
+          break_start: 'Début de pause',
+          break_end: 'Fin de pause',
+          clock_out: 'Départ',
+        },
+        totals: {
+          worked: 'Travaillé',
+          break: 'Pause',
+          balance: 'Solde',
+        },
+      },
+      historyStatus: {
+        open: 'En cours',
+        complete: 'Complet',
+        incomplete: 'Incomplet',
+        justified: 'Justifié',
+        holiday: 'Férié',
+        day_off: 'Repos',
+      },
+      historyFilters: {
+        employeeLabel: 'Employé',
+        periodLabel: 'Période',
+        statusLabel: 'Statut',
+        allEmployees: 'Tous',
+        allStatuses: 'Tous',
+        statusComplete: 'Complet',
+        statusIncomplete: 'Incomplet',
+        statusJustified: 'Justifié',
+      },
+      historyCount: {
+        one: '{{count}} pointage',
+        other: '{{count}} pointages',
+      },
+      historyTotals: {
+        expected: 'Prévu',
+        worked: 'Travaillé',
+        balance: 'Solde',
+      },
+      historyTable: {
+        date: 'Date',
+        employee: 'Employé',
+        clockIn: 'Arrivée',
+        clockOut: 'Départ',
+        worked: 'Travaillé',
+        balance: 'Solde',
+        status: 'Statut',
+        actions: 'Actions',
+      },
+      historyEmpty: {
+        title: 'Aucun pointage',
+        descriptionFiltered: 'Ajustez les filtres pour voir les pointages d\'une autre période.',
+        descriptionEmpty: 'Aucun pointage pour cette période.',
+      },
+      viewDetails: 'Voir les détails',
+      reportFilters: {
+        monthLabel: 'Mois',
+        yearLabel: 'Année',
+        employeeLabel: 'Employé',
+        allEmployees: 'Tous',
+        overviewAll: 'Vue globale de tous les employés',
+        reportSingle: 'Rapport de {{name}}',
+        reportMultiple: 'Rapport de {{count}} employés',
+      },
+      reportCalendar: {
+        title: 'Calendrier',
+        noRecord: 'Sans pointage',
+        weekdays: {
+          sun: 'Dim',
+          mon: 'Lun',
+          tue: 'Mar',
+          wed: 'Mer',
+          thu: 'Jeu',
+          fri: 'Ven',
+          sat: 'Sam',
+        },
+        popoverClockIn: 'Arrivée',
+        popoverClockOut: 'Départ',
+        popoverWorked: 'Travaillé',
+      },
+      reportSummary: {
+        workedDays: 'Jours travaillés',
+        totalWorked: 'Total travaillé',
+        monthBalance: 'Solde du mois',
+        absencesLate: 'Absences / Retards',
+      },
+      reportChart: {
+        title: 'Heures par jour',
+        tooltipLabel: 'Heures',
+      },
+      months: {
+        '0': 'Janvier',
+        '1': 'Février',
+        '2': 'Mars',
+        '3': 'Avril',
+        '4': 'Mai',
+        '5': 'Juin',
+        '6': 'Juillet',
+        '7': 'Août',
+        '8': 'Septembre',
+        '9': 'Octobre',
+        '10': 'Novembre',
+        '11': 'Décembre',
+      },
+      settings: {
+        companyDefaultsTitle: 'Horaire standard de l\'entreprise',
+        individualTitle: 'Horaire individuel',
+        defaultIn: 'Heure d\'arrivée par défaut',
+        defaultOut: 'Heure de départ par défaut',
+        breakMin: 'Pause (min)',
+        requireSelfie: 'Exiger un selfie',
+        requireGeo: 'Exiger la géolocalisation',
+        maxRadius: 'Rayon maximum (mètres)',
+        maxRadiusHint: '0 = sans restriction',
+        lateTolerance: 'Tolérance retard (min)',
+        allowOffHours: 'Autoriser hors horaires',
+        saveButton: 'Enregistrer la configuration',
+        scheduleModalTitlePrefix: 'Horaire,',
+        cancelSchedule: 'Annuler',
+        saveSchedule: 'Enregistrer l\'horaire',
+        inheritCompany: 'Hérite entreprise ({{in}}-{{out}})',
+        dayOff: 'Repos',
+        weekdays: {
+          sun: 'Dim',
+          mon: 'Lun',
+          tue: 'Mar',
+          wed: 'Mer',
+          thu: 'Jeu',
+          fri: 'Ven',
+          sat: 'Sam',
+        },
+      },
+    },
     page: {
       title: 'Employés',
       subtitle: 'Gérez les employés, avances, paiements et relevés',

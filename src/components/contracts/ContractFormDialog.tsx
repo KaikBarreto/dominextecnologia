@@ -2586,7 +2586,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         on={{ value: 'calendar', label: 'Calendário' }}
                         size="default"
                         className="[&_button]:text-xs"
-                        aria-label="Visualização da prévia das visitas"
+                        aria-label={t.frequency.previewVisitsAriaLabel}
                       />
                     </div>
                     {visitsView === 'list' ? (
@@ -2781,7 +2781,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               locked && 'bg-muted/40',
                             )}>
                               <div className="min-w-0 flex items-center gap-2">
-                                {locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Travado pelo padrão da norma" />}
+                                {locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label={t.frequency.lockedAriaLabel} />}
                                 <span className="font-medium truncate">{a.description}</span>
                                 <Badge variant={a.freq_code === 'E' ? 'outline' : 'info'} className="shrink-0 text-[10px]">{freqLabel}</Badge>
                               </div>
@@ -2798,7 +2798,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                       : 'bg-muted text-muted-foreground border-border',
                                     locked && 'opacity-60 cursor-not-allowed',
                                   )}
-                                  title={locked ? t.frequency.lockedByNorm : 'Alterna entre repetir a atividade por equipamento ou tratá-la como geral (local)'}
+                                  title={locked ? t.frequency.lockedByNorm : t.frequency.perEquipTooltip}
                                 >
                                   {perEquip ? t.frequency.perEquipment : t.frequency.general}
                                 </button>
@@ -2814,19 +2814,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         {isPmoc && pmocStandardOn && (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                             <Lock className="h-3.5 w-3.5 shrink-0" />
-                            Atividades do padrão travadas pela norma. Desligue o padrão PMOC para personalizar.
+                            {t.frequency.normLockNote}
                           </div>
                         )}
                         {usePlanEngine ? (
                           <div className="flex items-center gap-2 text-xs text-info pt-1">
                             <Info className="h-3.5 w-3.5 shrink-0" />
-                            {groupedVisits.length} visita(s) serão geradas (1 por mês com serviços a vencer).
-                            Eventuais não entram no cronograma automático.
+                            {groupedVisits.length} {t.frequency.groupedVisitsNote}
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-xs text-warning pt-1">
                             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                            Só há serviços eventuais — nenhuma visita será agendada automaticamente.
+                            {t.frequency.onlyEventualWarning}
                           </div>
                         )}
                       </div>
@@ -2958,10 +2957,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <div className="flex items-center justify-between gap-2">
                   <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <Wrench className="h-3.5 w-3.5 text-info" />
-                    Equipamentos deste ambiente ({env.equipment_ids.length})
+                    {t.items.envEquipHeader} ({env.equipment_ids.length})
                   </Label>
                   <Button type="button" variant="outline" size="sm" className="min-h-9 active:scale-[0.98] transition-transform rounded-xl" disabled={!customerId} onClick={() => openMemberPicker(env.key)}>
-                    <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
+                    <Plus className="mr-1 h-4 w-4" /> {t.items.addEquipButton}
                   </Button>
                 </div>
 
@@ -2969,9 +2968,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   <EmptyState
                     size="compact"
                     icon={<Wrench className="h-10 w-10" />}
-                    title="Nenhum equipamento neste ambiente"
-                    description={customerId ? 'Adicione um equipamento do cliente a este ambiente.' : 'Selecione o cliente na etapa 1 primeiro.'}
-                    action={customerId ? { label: 'Adicionar equipamento', onClick: () => openMemberPicker(env.key) } : undefined}
+                    title={t.items.noEquipEmptyTitle}
+                    description={customerId ? t.items.noEquipEmptyDescWithCustomer : t.items.noEquipEmptyDescNoCustomer}
+                    action={customerId ? { label: t.items.addEquipButton, onClick: () => openMemberPicker(env.key) } : undefined}
                   />
                 ) : (
                   <div className="divide-y overflow-hidden rounded-lg border bg-muted/20">
@@ -2979,7 +2978,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       const eq = equipmentById.get(eqId);
                       const cfg = machineConfigs[eqId];
                       const expanded = expandedEqIds.has(eqId);
-                      const name = eq?.name ?? 'Equipamento';
+                      const name = eq?.name ?? t.equipmentFallback;
                       return (
                         <div key={eqId}>
                           <div
@@ -3010,8 +3009,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               variant="ghost"
                               size="icon"
                               className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
-                              title={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
-                              aria-label={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
+                              title={isPmoc ? t.items.removeEquipTitlePmoc : t.items.removeEquipTitleCommon}
+                              aria-label={isPmoc ? t.items.removeEquipTitlePmoc : t.items.removeEquipTitleCommon}
                               onClick={(e) => { e.stopPropagation(); setRemovingMember({ mode: 'env', envKey: env.key, eqId }); }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -3184,10 +3183,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <div className="flex items-center justify-between gap-2">
                   <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <Wrench className="h-3.5 w-3.5 text-info" />
-                    Equipamentos sem ambiente ({looseItems.length})
+                    {t.items.unassignedEquipmentTitle} ({looseItems.length})
                   </Label>
                   <Button type="button" variant="outline" size="sm" className="min-h-9 active:scale-[0.98] transition-transform rounded-xl" disabled={!customerId} onClick={() => openMemberPicker(LOOSE_ENV_KEY)}>
-                    <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
+                    <Plus className="mr-1 h-4 w-4" /> {t.items.addEquipButton}
                   </Button>
                 </div>
 
@@ -3195,14 +3194,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   <EmptyState
                     size="compact"
                     icon={<Wrench className="h-10 w-10" />}
-                    title="Nenhum equipamento sem ambiente"
-                    description="Todos os equipamentos do contrato já estão em algum ambiente."
+                    title={t.items.noEquipLoose}
+                    description={t.items.noEquipAllAssigned}
                   />
                 ) : (
                   <div className="divide-y overflow-hidden rounded-lg border bg-muted/20">
                     {looseItems.map((it, looseIdx) => {
                       const eq = it.equipment_id ? equipmentById.get(it.equipment_id) : null;
-                      const name = eq?.name ?? it.item_name ?? 'Equipamento';
+                      const name = eq?.name ?? it.item_name ?? t.equipmentFallback;
                       // Só item COM equipamento tem checklist por equipamento.
                       const looseExpanded = !!it.equipment_id && expandedEqIds.has(it.equipment_id);
                       return (
@@ -3213,7 +3212,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 type="button"
                                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
                                 onClick={() => toggleExpanded(it.equipment_id!)}
-                                aria-label={looseExpanded ? 'Recolher checklist' : 'Expandir checklist'}
+                                aria-label={looseExpanded ? t.items.collapseChecklistAriaLabel : t.items.expandChecklistAriaLabel}
                                 aria-expanded={looseExpanded}
                               >
                                 <ChevronDown className={cn('h-4 w-4 transition-transform', looseExpanded && 'rotate-180')} />
@@ -3239,8 +3238,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 variant="ghost"
                                 size="icon"
                                 className="h-9 w-9 shrink-0 text-muted-foreground active:scale-90 transition-transform rounded-xl"
-                                title="Mover para ambiente"
-                                aria-label="Mover para ambiente"
+                                title={t.items.moveToEnvTitle}
+                                aria-label={t.items.moveToEnvAriaLabel}
                                 onClick={() => setMovingLooseIdx(looseIdx)}
                               >
                                 <ChevronRight className="h-4 w-4" />
@@ -3251,8 +3250,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                               variant="ghost"
                               size="icon"
                               className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
-                              title="Remover do contrato"
-                              aria-label="Remover do contrato"
+                              title={t.items.removeFromContractTitle}
+                              aria-label={t.items.removeFromContractAriaLabel}
                               onClick={() => setRemovingMember({ mode: 'loose', looseIdx })}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -3279,21 +3278,21 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 {/* Item manual (sem equipamento) — só comum. */}
                 {!showManualItem ? (
                   <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setShowManualItem(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Adicionar item manual
+                    <Plus className="h-3.5 w-3.5 mr-1.5" /> {t.items.addManualItem}
                   </Button>
                 ) : (
                   <div className="rounded-lg border p-3 space-y-3">
                     <div className="space-y-2">
-                      <Label>Nome do item</Label>
-                      <Input value={manualName} onChange={e => setManualName(e.target.value)} placeholder="Ex: Limpeza de dutos" />
+                      <Label>{t.items.manualItemNameLabel}</Label>
+                      <Input value={manualName} onChange={e => setManualName(e.target.value)} placeholder={t.items.manualItemNamePlaceholder} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Descrição (opcional)</Label>
-                      <Input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="Detalhes adicionais" />
+                      <Label>{t.items.manualItemDescLabel}</Label>
+                      <Input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder={t.items.manualItemDescPlaceholder} />
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setShowManualItem(false)}>Cancelar</Button>
-                      <Button size="sm" onClick={addManualItem} disabled={!manualName.trim()}>Adicionar</Button>
+                      <Button variant="outline" size="sm" onClick={() => setShowManualItem(false)}>{t.items.cancelButton}</Button>
+                      <Button size="sm" onClick={addManualItem} disabled={!manualName.trim()}>{t.items.addButton}</Button>
                     </div>
                   </div>
                 )}
@@ -3304,14 +3303,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               return (
                 <div className="space-y-4">
                   <Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform" onClick={() => setSelectedEnvKey(null)}>
-                    <ChevronLeft className="mr-1 h-4 w-4" /> Voltar aos ambientes
+                    <ChevronLeft className="mr-1 h-4 w-4" /> {t.items.backToEnv}
                   </Button>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="shrink-0">Sem ambiente</Badge>
-                    <span className="text-base font-semibold">Equipamentos não atribuídos</span>
+                    <Badge variant="outline" className="shrink-0">{t.items.noEnvGroupLabel}</Badge>
+                    <span className="text-base font-semibold">{t.items.unassignedEquipmentTitle}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Equipamentos deste contrato que ainda não estão em nenhum ambiente. Adicione a um ambiente ou remova do contrato.
+                    {t.items.noEnvGroupDesc}
                   </p>
                   {renderLooseEquipment()}
                 </div>
@@ -3322,13 +3321,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               return (
                 <div className="space-y-4">
                   <Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform" onClick={() => setSelectedEnvKey(null)}>
-                    <ChevronLeft className="mr-1 h-4 w-4" /> Voltar aos ambientes
+                    <ChevronLeft className="mr-1 h-4 w-4" /> {t.items.backToEnv}
                   </Button>
                   <div className="flex w-full items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <Badge variant="info" className="shrink-0">Ambiente {selectedEnvIdx + 1}</Badge>
+                      <Badge variant="info" className="shrink-0">{t.items.envGroupLabel} {selectedEnvIdx + 1}</Badge>
                       <span className="min-w-0 break-words text-base font-semibold">
-                        {selectedEnv.identificacao.trim() || 'Sem identificação'}
+                        {selectedEnv.identificacao.trim() || t.noIdentification}
                       </span>
                     </div>
                     <Button
@@ -3336,8 +3335,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       size="icon"
                       className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
                       onClick={() => setRemovingEnvKey(selectedEnv.key)}
-                      aria-label="Remover ambiente"
-                      title="Remover ambiente"
+                      aria-label={t.items.removeEnvAriaLabel}
+                      title={t.items.removeEnvTitle}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -3355,14 +3354,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="flex items-center gap-2 text-base font-semibold">
                       <ShieldCheck className="h-5 w-5 shrink-0 text-info" />
-                      {isPmoc ? 'Ambientes climatizados' : 'Ambientes'} ({environments.length})
+                      {isPmoc ? t.items.envListTitle : t.items.envListTitleCommon} ({environments.length})
                     </span>
                     {!customerId && (
-                      <p className="text-xs text-warning">Selecione o cliente na etapa 1 para escolher equipamentos.</p>
+                      <p className="text-xs text-warning">{t.items.selectCustomerFirst}</p>
                     )}
                   </div>
                   <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={addEnvironment}>
-                    <Plus className="mr-1 h-4 w-4" /> Adicionar ambiente
+                    <Plus className="mr-1 h-4 w-4" /> {t.items.addEnvButton}
                   </Button>
                 </div>
 
@@ -3371,14 +3370,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     <EmptyState
                       size="compact"
                       icon={<ShieldCheck className="h-10 w-10" />}
-                      title="Nenhum ambiente cadastrado"
-                      description={isPmoc ? 'Cadastre os ambientes climatizados deste contrato.' : 'Organize os equipamentos deste contrato em ambientes.'}
-                      action={{ label: 'Adicionar ambiente', onClick: addEnvironment }}
+                      title={t.items.noEnvEmptyTitle}
+                      description={isPmoc ? t.items.noEnvEmptyDescPmoc : t.items.noEnvEmptyDescCommon}
+                      action={{ label: t.items.addEnvButton, onClick: addEnvironment }}
                     />
                     {/* Comum: também permite adicionar equipamento sem criar ambiente. */}
                     {!isPmoc && (
                       <Button type="button" variant="ghost" size="sm" className="w-full justify-center text-muted-foreground" disabled={!customerId} onClick={() => openMemberPicker(LOOSE_ENV_KEY)}>
-                        <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento sem ambiente
+                        <Plus className="mr-1 h-4 w-4" /> {t.items.addEquipNoEnv}
                       </Button>
                     )}
                   </div>
@@ -3392,7 +3391,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         className="flex w-full min-h-16 items-center gap-3 rounded-2xl border-2 bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/40 active:scale-[0.99]"
                       >
                         {env.photo_url ? (
-                          <img src={env.photo_url} alt={env.identificacao.trim() || `Ambiente ${idx + 1}`} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                          <img src={env.photo_url} alt={env.identificacao.trim() || `${t.items.envGroupLabel} ${idx + 1}`} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
                         ) : (
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                             <ShieldCheck className="h-6 w-6" />
@@ -3400,13 +3399,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
-                            <span className="truncate text-sm font-semibold">{env.identificacao.trim() || 'Sem identificação'}</span>
+                            <Badge variant="info" className="shrink-0">{t.items.envGroupLabel} {idx + 1}</Badge>
+                            <span className="truncate text-sm font-semibold">{env.identificacao.trim() || t.noIdentification}</span>
                           </div>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
                             {env.tipo_atividade.trim() && <span>{env.tipo_atividade.trim()} • </span>}
                             <span className="inline-flex items-center gap-1">
-                              <Wrench className="h-3 w-3" /> {env.equipment_ids.length} equipamento(s)
+                              <Wrench className="h-3 w-3" /> {env.equipment_ids.length} {t.items.pickerEquipment}(s)
                             </span>
                           </p>
                         </div>
@@ -3425,12 +3424,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="shrink-0">Sem ambiente</Badge>
-                            <span className="truncate text-sm font-semibold">Equipamentos não atribuídos</span>
+                            <Badge variant="outline" className="shrink-0">{t.items.noEnvGroupLabel}</Badge>
+                            <span className="truncate text-sm font-semibold">{t.items.unassignedEquipmentTitle}</span>
                           </div>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
                             <span className="inline-flex items-center gap-1">
-                              <Wrench className="h-3 w-3" /> {looseItems.length} equipamento(s)
+                              <Wrench className="h-3 w-3" /> {looseItems.length} {t.items.pickerEquipment}(s)
                             </span>
                           </p>
                         </div>
@@ -3441,12 +3440,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     {/* Comum sem nenhum loose ainda: atalho pra adicionar item sem ambiente. */}
                     {!isPmoc && looseItems.length === 0 && (
                       <Button type="button" variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" disabled={!customerId} onClick={() => { openMemberPicker(LOOSE_ENV_KEY); }}>
-                        <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento sem ambiente
+                        <Plus className="mr-1 h-4 w-4" /> {t.items.addEquipNoEnv}
                       </Button>
                     )}
 
                     <p className="pt-1 text-xs text-muted-foreground">
-                      {totalEquipment} equipamento(s) no total entram neste contrato.
+                      {totalEquipment} {t.items.totalEquipSummary}
                     </p>
                   </div>
                 )}

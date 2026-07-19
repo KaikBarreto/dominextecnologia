@@ -146,6 +146,9 @@ export const contracts = {
         onlyEventualWarning: 'Só há serviços eventuais — nenhuma visita será agendada automaticamente.',
         groupedVisitsNote: 'visita(s) serão geradas (1 por mês com serviços a vencer). Eventuais não entram no cronograma automático.',
         visitOfDate: 'Visita de',
+        previewVisitsAriaLabel: 'Visualização da prévia das visitas',
+        lockedAriaLabel: 'Travado pelo padrão da norma',
+        perEquipTooltip: 'Alterna entre repetir a atividade por equipamento ou tratá-la como geral (local)',
       },
 
       // ── Etapa Ambientes e Equipamentos ──
@@ -463,6 +466,11 @@ export const contracts = {
       saveButton: 'Salvar alterações',
       checklistToastTitle: 'Checklists atualizados',
       checklistToastCount: '({n} item(ns))',
+      // ── Labels dinâmicos da aba de ambientes ──
+      unsavedContractNote: 'Há alterações não salvas neste contrato.',
+      envGroupLabel: 'Ambiente',
+      noEnvGroupBadge: 'Sem ambiente',
+      equipmentCountSuffix: 'equipamento(s)',
     },
 
     equipmentTab: {
@@ -806,6 +814,9 @@ export const contracts = {
         onlyEventualWarning: 'Only occasional services — no visits will be scheduled automatically.',
         groupedVisitsNote: 'visit(s) will be generated (1 per month with services due). Occasional services are not included in the automatic schedule.',
         visitOfDate: 'Visit of',
+        previewVisitsAriaLabel: 'Visits preview view',
+        lockedAriaLabel: 'Locked by regulation standard',
+        perEquipTooltip: 'Toggle between repeating this activity per equipment or treating it as a general (site-level) activity',
       },
 
       items: {
@@ -1112,6 +1123,10 @@ export const contracts = {
       saveButton: 'Save changes',
       checklistToastTitle: 'Checklists updated',
       checklistToastCount: '({n} item(s))',
+      unsavedContractNote: 'There are unsaved changes in this contract.',
+      envGroupLabel: 'Environment',
+      noEnvGroupBadge: 'No environment',
+      equipmentCountSuffix: 'equipment item(s)',
     },
 
     equipmentTab: {
@@ -1413,6 +1428,9 @@ export const contracts = {
         onlyEventualWarning: 'Solo hay servicios eventuales — no se programarán visitas automáticamente.',
         groupedVisitsNote: 'visita(s) serán generadas (1 por mes con servicios a vencer). Los servicios eventuales no entran en el cronograma automático.',
         visitOfDate: 'Visita del',
+        previewVisitsAriaLabel: 'Vista previa de visitas',
+        lockedAriaLabel: 'Bloqueado por el estándar de la norma',
+        perEquipTooltip: 'Alterna entre repetir esta actividad por equipo o tratarla como general (sitio)',
       },
 
       items: {
@@ -1719,6 +1737,10 @@ export const contracts = {
       saveButton: 'Guardar cambios',
       checklistToastTitle: 'Listas de verificación actualizadas',
       checklistToastCount: '({n} elemento(s))',
+      unsavedContractNote: 'Hay cambios no guardados en este contrato.',
+      envGroupLabel: 'Ambiente',
+      noEnvGroupBadge: 'Sin ambiente',
+      equipmentCountSuffix: 'equipo(s)',
     },
 
     equipmentTab: {
@@ -2020,6 +2042,9 @@ export const contracts = {
         onlyEventualWarning: `Il n'y a que des services occasionnels — aucune visite ne sera planifiée automatiquement.`,
         groupedVisitsNote: `visite(s) seront générées (1 par mois avec des services à échoir). Les services occasionnels ne font pas partie du calendrier automatique.`,
         visitOfDate: 'Visite du',
+        previewVisitsAriaLabel: `Aperçu des visites`,
+        lockedAriaLabel: `Verrouillé par le standard de la norme`,
+        perEquipTooltip: `Alterne entre répéter cette activité par équipement ou la traiter comme générale (site)`,
       },
 
       items: {
@@ -2326,6 +2351,10 @@ export const contracts = {
       saveButton: 'Enregistrer les modifications',
       checklistToastTitle: `Listes de contrôle mises à jour`,
       checklistToastCount: `({n} élément(s))`,
+      unsavedContractNote: `Il y a des modifications non enregistrées dans ce contrat.`,
+      envGroupLabel: `Environnement`,
+      noEnvGroupBadge: `Sans environnement`,
+      equipmentCountSuffix: `équipement(s)`,
     },
 
     equipmentTab: {

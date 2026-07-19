@@ -5,13 +5,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SignedImg } from '@/components/ui/SignedImg';
-
-const TYPE_LABELS: Record<string, string> = {
-  clock_in: 'Entrada',
-  break_start: 'Início intervalo',
-  break_end: 'Fim intervalo',
-  clock_out: 'Saída',
-};
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 const TYPE_COLORS: Record<string, string> = {
   clock_in: 'bg-success',
@@ -29,16 +24,19 @@ interface Props {
 }
 
 export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeName, date }: Props) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.timeclock.dayDetail;
+
   const { data: records = [], isLoading } = useTimeRecordsForDay(employeeId, date);
   const { worked, breakMin } = calculateWorkedMinutes(records);
   const balance = worked - 480;
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registros do dia — ${employeeName}`} className="sm:max-w-[500px]">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`${t.titlePrefix} ${employeeName}`} className="sm:max-w-[500px]">
       {isLoading ? (
         <div className="space-y-3 py-4">{[1,2,3].map(i => <Skeleton key={i} className="h-12" />)}</div>
       ) : records.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">Nenhum registro para este dia.</p>
+        <p className="text-center text-muted-foreground py-8">{t.noRecords}</p>
       ) : (
         <div className="space-y-6 py-2">
           {/* Timeline */}
@@ -50,7 +48,7 @@ export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeNam
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm">{format(new Date(rec.recorded_at), 'HH:mm:ss')}</span>
-                    <span className="text-xs text-muted-foreground">— {TYPE_LABELS[rec.type]}</span>
+                    <span className="text-xs text-muted-foreground">— {t.punchTypes[rec.type as keyof typeof t.punchTypes] ?? rec.type}</span>
                   </div>
                   {rec.address && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
@@ -69,15 +67,15 @@ export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeNam
           {/* Totals */}
           <div className="border-t pt-4 grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-xs text-muted-foreground">Trabalhado</p>
+              <p className="text-xs text-muted-foreground">{t.totals.worked}</p>
               <p className="font-semibold">{formatMinutes(worked)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Intervalo</p>
+              <p className="text-xs text-muted-foreground">{t.totals.break}</p>
               <p className="font-semibold">{formatMinutes(breakMin)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Saldo</p>
+              <p className="text-xs text-muted-foreground">{t.totals.balance}</p>
               <p className={cn('font-semibold', balance >= 0 ? 'text-success' : 'text-destructive')}>
                 {balance >= 0 ? '+' : ''}{formatMinutes(balance)}
               </p>

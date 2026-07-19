@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Loader2, Monitor, Settings2 } from 'lucide-react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +28,8 @@ interface PermissionPresetDialogProps {
 }
 
 export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, onUpdate, onDelete }: PermissionPresetDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const tp = MESSAGES[locale].app.settings.users.presets;
   const [editing, setEditing] = useState<PermissionPreset | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -80,10 +84,10 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
 
   const footer = showForm ? (
     <div className="flex justify-end gap-3">
-      <Button variant="outline" onClick={() => { setEditing(null); setIsCreating(false); }}>Cancelar</Button>
+      <Button variant="outline" onClick={() => { setEditing(null); setIsCreating(false); }}>{tp.btnCancel}</Button>
       <Button onClick={handleSave} disabled={loading || !form.name}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {editing ? 'Salvar' : 'Criar Cargo'}
+        {editing ? tp.btnSave : tp.btnSaveNew}
       </Button>
     </div>
   ) : undefined;
@@ -92,25 +96,25 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Configurações de Cargos"
-      description="Crie e edite perfis de acesso com permissões pré-definidas"
+      title={tp.dialogTitle}
+      description={tp.dialogDesc}
       footer={footer}
     >
       <div className="space-y-0">
         {!showForm ? (
           <div className="space-y-3 pb-4">
             <Button onClick={() => setIsCreating(true)} className="w-full gap-2">
-              <Plus className="h-4 w-4" /> Novo Cargo
+              <Plus className="h-4 w-4" /> {tp.btnCreate}
             </Button>
             {presets.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhum cargo cadastrado</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{tp.empty}</p>
             ) : (
               presets.map(preset => (
                 <div key={preset.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
                   <div>
                     <p className="font-medium text-sm">{preset.name}</p>
                     {preset.description && <p className="text-xs text-muted-foreground">{preset.description}</p>}
-                    <Badge variant="secondary" className="mt-1 text-xs">{preset.permissions.length} permissões</Badge>
+                    <Badge variant="secondary" className="mt-1 text-xs">{tp.permCount.replace('{count}', String(preset.permissions.length))}</Badge>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => setEditing(preset)}>
@@ -127,15 +131,15 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
         ) : (
           <div className="space-y-4 pb-4">
             <Button variant="ghost" size="sm" onClick={() => { setEditing(null); setIsCreating(false); }}>
-              ← Voltar
+              {tp.btnBack}
             </Button>
             <div>
-              <Label>Nome *</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Técnico de Campo" />
+              <Label>{tp.labelName}</Label>
+              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={tp.placeholderName} />
             </div>
             <div>
-              <Label>Descrição</Label>
-              <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descrição opcional" rows={2} />
+              <Label>{tp.labelDesc}</Label>
+              <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={tp.placeholderDesc} rows={2} />
             </div>
 
             <Separator />
@@ -144,7 +148,7 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Monitor className="h-5 w-5 text-primary" />
-                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Telas</Label>
+                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tp.sectionScreens}</Label>
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {screenCategories.map(catKey => {
@@ -185,7 +189,7 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-primary" />
-                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Funções</Label>
+                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tp.sectionFunctions}</Label>
               </div>
               <div className="border rounded-lg p-4 space-y-3">
                 {FUNCTION_PERMISSIONS.map(action => (

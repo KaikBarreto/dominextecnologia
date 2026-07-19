@@ -318,7 +318,7 @@ export function ServiceTypesPanel() {
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ex: Manutenção Preventiva"
+              placeholder={t.placeholderName}
             />
           </div>
           <div className="space-y-2">
@@ -351,7 +351,7 @@ export function ServiceTypesPanel() {
               <Input
                 value={form.number_prefix}
                 onChange={(e) => setForm({ ...form, number_prefix: e.target.value })}
-                placeholder="Ex: MP, MC, INS"
+                placeholder={t.placeholderPrefix}
                 className="w-40"
               />
               <span className="text-sm font-mono text-muted-foreground whitespace-nowrap">

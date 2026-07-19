@@ -10,6 +10,8 @@ import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 // Detecta iPhone/iPad (inclui iPadOS que se disfarça de Mac no userAgent).
 const isIOS = () => {
@@ -111,6 +113,8 @@ export function OsPhotoField({
   showEmptyPlaceholder = true,
   aspectClassName = 'aspect-square',
 }: OsPhotoFieldProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.osPhotoField;
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<number | null>(null);
@@ -140,7 +144,7 @@ export function OsPhotoField({
     const cached = capturedFilesRef.current.get(url);
     if (cached) {
       const how = savePhotoToDevice(cached);
-      if (how === 'download') toast({ title: 'Imagem salva no aparelho' });
+      if (how === 'download') toast({ title: t.toastSavedToDevice });
       return;
     }
     fetch(url)
@@ -149,7 +153,7 @@ export function OsPhotoField({
         const how = savePhotoToDevice(
           new File([b], `os-foto-${Date.now()}.jpg`, { type: b.type || 'image/jpeg' }),
         );
-        if (how === 'download') toast({ title: 'Imagem salva no aparelho' });
+        if (how === 'download') toast({ title: t.toastSavedToDevice });
       })
       .catch(() => {
         /* best-effort */
@@ -174,8 +178,8 @@ export function OsPhotoField({
     if (!allowMultiple && photoUrls.length >= 1) {
       toast({
         variant: 'destructive',
-        title: 'Apenas uma foto permitida',
-        description: 'Remova a atual para enviar outra.',
+        title: t.toastUploadErrorOnlyOne,
+        description: t.toastUploadErrorOnlyOneDesc,
       });
       event.target.value = '';
       return;
@@ -219,12 +223,12 @@ export function OsPhotoField({
       if (fromCamera && saveToDeviceEnabled && rawFiles.length) {
         setPhotosToSave(rawFiles);
       } else {
-        toast({ title: `${selectedFiles.length > 1 ? `${selectedFiles.length} fotos enviadas` : 'Foto enviada'}!` });
+        toast({ title: selectedFiles.length > 1 ? t.toastCountUploaded.replace('{n}', String(selectedFiles.length)) : t.toastPhotoUploaded });
       }
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao enviar foto',
+        title: t.toastUploadError,
         description: getErrorMessage(error),
       });
     } finally {
@@ -250,7 +254,7 @@ export function OsPhotoField({
         <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
           <span>
             <Camera className="h-3 w-3 mr-1" />
-            {uploading ? 'Enviando...' : 'Tirar Foto'}
+            {uploading ? t.btnUploading : t.btnTakePhoto}
           </span>
         </Button>
       </label>
@@ -267,7 +271,7 @@ export function OsPhotoField({
           <Button variant="outline" size="sm" className="w-full" asChild disabled={photoDisabled}>
             <span>
               <ImageIcon className="h-3 w-3 mr-1" />
-              {uploading ? 'Enviando...' : 'Galeria'}
+              {uploading ? t.btnUploading : t.btnGallery}
             </span>
           </Button>
         </label>
@@ -293,7 +297,7 @@ export function OsPhotoField({
                   // pra não vazar por cima deles ao rolar.
                   className="absolute top-1 right-1 z-[1] p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
                   onClick={() => setPendingRemoval(idx)}
-                  title="Remover foto"
+                  title={t.titleRemovePhoto}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -306,7 +310,7 @@ export function OsPhotoField({
                   // pra não vazar por cima deles ao rolar.
                   className="absolute bottom-1 right-1 z-[1] p-1.5 rounded-full bg-black/60 text-white shadow-sm"
                   onClick={() => handleSavePhotoToDevice(photoUrls[idx])}
-                  title="Salvar imagem no aparelho"
+                  title={t.titleSavePhoto}
                 >
                   <Download className="h-3 w-3" />
                 </button>
@@ -330,7 +334,9 @@ export function OsPhotoField({
 
       {photoUrls.length > 0 && (
         <p className="text-xs text-muted-foreground text-center">
-          {photoUrls.length} foto{allowMultiple && photoUrls.length > 1 ? 's' : ''}
+          {allowMultiple && photoUrls.length > 1
+            ? t.photoCountPlural.replace('{n}', String(photoUrls.length))
+            : t.photoCount.replace('{n}', String(photoUrls.length))}
         </p>
       )}
 
@@ -338,20 +344,20 @@ export function OsPhotoField({
       <ResponsiveModal
         open={pendingRemoval !== null}
         onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
-        title="Remover foto?"
+        title={t.modalRemoveTitle}
         footer={
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setPendingRemoval(null)}>
-              Cancelar
+              {t.modalRemoveCancel}
             </Button>
             <Button variant="destructive" className="flex-1" onClick={confirmRemovePhoto}>
-              Remover
+              {t.modalRemoveConfirm}
             </Button>
           </div>
         }
       >
         <p className="text-sm text-muted-foreground">
-          Tem certeza que deseja remover esta foto? Essa ação não pode ser desfeita.
+          {t.modalRemoveBody}
         </p>
       </ResponsiveModal>
 
@@ -359,11 +365,11 @@ export function OsPhotoField({
       <ResponsiveModal
         open={photosToSave !== null}
         onOpenChange={(o) => { if (!o) setPhotosToSave(null); }}
-        title="Salvar foto no aparelho?"
+        title={t.modalSaveTitle}
         footer={
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setPhotosToSave(null)}>
-              Agora não
+              {t.modalSaveNotNow}
             </Button>
             <Button
               variant="default"
@@ -371,42 +377,47 @@ export function OsPhotoField({
               onClick={() => {
                 if (photosToSave) {
                   const how = savePhotosToDevice(photosToSave);
-                  if (how === 'download') toast({ title: 'Imagem salva no aparelho' });
+                  if (how === 'download') toast({ title: t.toastSavedToDevice });
                 }
                 setPhotosToSave(null);
               }}
             >
-              Salvar imagem
+              {t.modalSaveBtnLabel}
             </Button>
           </div>
         }
       >
         <p className="text-sm text-muted-foreground">
-          Deseja guardar {photosToSave && photosToSave.length > 1 ? `estas ${photosToSave.length} fotos` : 'esta foto'} no seu aparelho?
+          {t.modalSaveBody.replace(
+            '{count}',
+            photosToSave && photosToSave.length > 1
+              ? t.modalSaveBodyPlural.replace('{n}', String(photosToSave.length))
+              : t.modalSaveBodySingular,
+          )}
         </p>
         {isIOS() && (
           <div className="mt-3 rounded-lg border bg-muted/40 p-3">
             <p className="text-[11px] text-muted-foreground mb-2 text-center">
-              Quando abrir, toque em <span className="font-semibold text-foreground">"Salvar Imagem"</span>:
+              {t.modalSaveIOSHint} <span className="font-semibold text-foreground">&quot;{t.modalSaveIOSAction}&quot;</span>:
             </p>
             <div className="flex items-end justify-center gap-4">
               <div className="flex flex-col items-center gap-1 opacity-40">
                 <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center">
                   <Copy className="h-5 w-5 text-foreground" />
                 </div>
-                <span className="text-[10px] text-muted-foreground">Copiar</span>
+                <span className="text-[10px] text-muted-foreground">{t.modalSaveIOSLabelCopy}</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <div className="h-11 w-11 rounded-full bg-muted ring-2 ring-primary ring-offset-2 ring-offset-background flex items-center justify-center">
                   <Download className="h-5 w-5 text-foreground" />
                 </div>
-                <span className="text-[10px] font-semibold text-foreground text-center leading-tight">Salvar<br/>Imagem</span>
+                <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{t.modalSaveIOSLabelSave}</span>
               </div>
               <div className="flex flex-col items-center gap-1 opacity-40">
                 <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center">
                   <ChevronDown className="h-5 w-5 text-foreground" />
                 </div>
-                <span className="text-[10px] text-muted-foreground">Ver Mais</span>
+                <span className="text-[10px] text-muted-foreground">{t.modalSaveIOSLabelMore}</span>
               </div>
             </div>
           </div>

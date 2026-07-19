@@ -8,6 +8,8 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface ServiceOption {
   id: string;
@@ -31,6 +33,8 @@ interface ServicesMultiSelectProps {
  * abre como drawer (ResponsiveModal).
  */
 export function ServicesMultiSelect({ services, selectedIds, onChange, disabled }: ServicesMultiSelectProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.servicesMultiSelect;
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -74,10 +78,10 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
   const isServiceChecked = (id: string) => appliesToAll || selectedIds.includes(id);
 
   const summary = appliesToAll
-    ? 'Todos os serviços'
+    ? t.allServices
     : selectedIds.length === 1
-      ? activeServices.find(s => s.id === selectedIds[0])?.name ?? '1 serviço'
-      : `${selectedIds.length} serviços`;
+      ? activeServices.find(s => s.id === selectedIds[0])?.name ?? t.summaryOne.replace('{name}', '')
+      : t.summaryN.replace('{n}', String(selectedIds.length));
 
   const body = (
     <>
@@ -85,7 +89,7 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar serviço..."
+            placeholder={t.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-8 h-9"
@@ -97,11 +101,11 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
           {/* Todos */}
           <label className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-muted/50 cursor-pointer font-medium">
             <Checkbox checked={allChecked} onCheckedChange={(c) => handleToggleAll(!!c)} />
-            <span className="text-sm">Todos os serviços</span>
+            <span className="text-sm">{t.allServices}</span>
           </label>
           <div className="my-1 h-px bg-border" />
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nenhum serviço encontrado</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t.noneFound}</p>
           ) : (
             filtered.map(s => (
               <label
@@ -143,7 +147,7 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
     return (
       <>
         {trigger}
-        <ResponsiveModal open={open} onOpenChange={setOpen} title="Serviços habilitados">
+        <ResponsiveModal open={open} onOpenChange={setOpen} title={t.modalTitle}>
           <div className="rounded-lg border overflow-hidden">{body}</div>
         </ResponsiveModal>
       </>

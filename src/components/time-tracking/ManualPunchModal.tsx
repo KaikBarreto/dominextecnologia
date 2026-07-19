@@ -6,13 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PunchType } from '@/hooks/useTimeRecords';
-
-const TYPE_OPTIONS: { value: PunchType; label: string }[] = [
-  { value: 'clock_in', label: 'Entrada' },
-  { value: 'break_start', label: 'Início intervalo' },
-  { value: 'break_end', label: 'Fim intervalo' },
-  { value: 'clock_out', label: 'Saída' },
-];
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface Props {
   open: boolean;
@@ -23,6 +18,16 @@ interface Props {
 }
 
 export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName, onSubmit }: Props) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.employees.timeclock.manualPunch;
+
+  const TYPE_OPTIONS: { value: PunchType; label: string }[] = [
+    { value: 'clock_in', label: t.punchTypes.clock_in },
+    { value: 'break_start', label: t.punchTypes.break_start },
+    { value: 'break_end', label: t.punchTypes.break_end },
+    { value: 'clock_out', label: t.punchTypes.clock_out },
+  ];
+
   const [type, setType] = useState<PunchType>('clock_in');
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -45,18 +50,18 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
 
   const footer = (
     <div className="flex justify-end gap-2">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
       <Button onClick={handleSubmit} disabled={!time || !notes.trim() || loading}>
-        {loading ? 'Salvando...' : 'Registrar'}
+        {loading ? t.submitting : t.submit}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registro manual — ${employeeName}`} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`${t.titlePrefix} ${employeeName}`} footer={footer}>
       <div className="space-y-4 py-2">
         <div className="space-y-2">
-          <Label>Tipo de registro</Label>
+          <Label>{t.typeLabel}</Label>
           <Select value={type} onValueChange={(v) => setType(v as PunchType)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -65,12 +70,12 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Horário</Label>
+          <Label>{t.timeLabel}</Label>
           <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Justificativa *</Label>
-          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Motivo do registro manual..." />
+          <Label>{t.notesLabel}</Label>
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.notesPlaceholder} />
         </div>
       </div>
     </ResponsiveModal>

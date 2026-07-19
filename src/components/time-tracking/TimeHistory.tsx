@@ -20,17 +20,23 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useTableSort } from '@/hooks/useTableSort';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
-
-const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  open: { label: 'Em andamento', className: 'bg-info text-white' },
-  complete: { label: 'Completo', className: 'bg-success text-white' },
-  incomplete: { label: 'Incompleto', className: 'bg-warning text-white' },
-  justified: { label: 'Justificado', className: 'bg-muted text-muted-foreground' },
-  holiday: { label: 'Feriado', className: 'bg-muted text-muted-foreground' },
-  day_off: { label: 'Folga', className: 'bg-muted text-muted-foreground' },
-};
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export function TimeHistory() {
+  const { locale } = useAppLocaleContext();
+  const tc = MESSAGES[locale].app.employees.timeclock;
+
+  // Status label map derived from translations
+  const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+    open: { label: tc.historyStatus.open, className: 'bg-info text-white' },
+    complete: { label: tc.historyStatus.complete, className: 'bg-success text-white' },
+    incomplete: { label: tc.historyStatus.incomplete, className: 'bg-warning text-white' },
+    justified: { label: tc.historyStatus.justified, className: 'bg-muted text-muted-foreground' },
+    holiday: { label: tc.historyStatus.holiday, className: 'bg-muted text-muted-foreground' },
+    day_off: { label: tc.historyStatus.day_off, className: 'bg-muted text-muted-foreground' },
+  };
+
   const { employees } = useAdminTimeSheet();
   const isMobile = useIsMobile();
   // Filtros multi-select: vazio = "todos" (mostra tudo). Mobile e desktop usam FilterCheckboxGroup.
@@ -99,6 +105,11 @@ export function TimeHistory() {
     setPreset('this_month');
   };
 
+  const tf = tc.historyFilters;
+  const tt = tc.historyTable;
+  const tot = tc.historyTotals;
+  const em = tc.historyEmpty;
+
   // ----------------------------------------------------------------
   // Filtros — multi-select (FilterCheckboxGroup) tanto no mobile quanto desktop.
   // Vazio = mostra tudo; marcar 1+ filtra. Mesmo estado array em ambos os modos.
@@ -106,29 +117,33 @@ export function TimeHistory() {
   const filtersBody = (
     <>
       <FilterCheckboxGroup
-        label="Funcionário"
+        label={tf.employeeLabel}
         selected={employeeIds}
         onChange={setEmployeeIds}
-        emptyLabel="Todos"
+        emptyLabel={tf.allEmployees}
         options={employees.map(e => ({ value: e.id, label: e.name }))}
       />
       <div className="space-y-2">
-        <Label className="text-xs">Período</Label>
+        <Label className="text-xs">{tf.periodLabel}</Label>
         <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
       </div>
       <FilterCheckboxGroup
-        label="Status"
+        label={tf.statusLabel}
         selected={statusFilter}
         onChange={setStatusFilter}
-        emptyLabel="Todos"
+        emptyLabel={tf.allStatuses}
         options={[
-          { value: 'complete', label: 'Completo' },
-          { value: 'incomplete', label: 'Incompleto' },
-          { value: 'justified', label: 'Justificado' },
+          { value: 'complete', label: tf.statusComplete },
+          { value: 'incomplete', label: tf.statusIncomplete },
+          { value: 'justified', label: tf.statusJustified },
         ]}
       />
     </>
   );
+
+  const countLabel = sheets.length === 1
+    ? tc.historyCount.one.replace('{{count}}', String(sheets.length))
+    : tc.historyCount.other.replace('{{count}}', String(sheets.length));
 
   return (
     <div className="space-y-4">
@@ -152,7 +167,7 @@ export function TimeHistory() {
       ) : (
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
-            {sheets.length} registro{sheets.length !== 1 ? 's' : ''}
+            {countLabel}
           </p>
           <div className="flex items-center gap-2">
             <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
@@ -175,10 +190,10 @@ export function TimeHistory() {
       {isMobile && sheets.length > 0 && (
         <Card>
           <CardContent className="p-3 flex flex-wrap gap-3 text-xs">
-            <span>Esperado: <strong>{formatMinutes(totals.totalExpected)}</strong></span>
-            <span>Trabalhado: <strong>{formatMinutes(totals.totalWorked)}</strong></span>
+            <span>{tot.expected}: <strong>{formatMinutes(totals.totalExpected)}</strong></span>
+            <span>{tot.worked}: <strong>{formatMinutes(totals.totalWorked)}</strong></span>
             <span className={cn('font-semibold', totals.balance >= 0 ? 'text-success' : 'text-destructive')}>
-              Saldo: {totals.balance >= 0 ? '+' : ''}{formatMinutes(totals.balance)}
+              {tot.balance}: {totals.balance >= 0 ? '+' : ''}{formatMinutes(totals.balance)}
             </span>
           </CardContent>
         </Card>
@@ -190,11 +205,11 @@ export function TimeHistory() {
           <EmptyState
             size="compact"
             icon={<Clock className="h-10 w-10" />}
-            title="Nenhum registro de ponto"
+            title={em.title}
             description={
               activeFilterCount > 0
-                ? 'Ajuste os filtros para visualizar registros de outro período.'
-                : 'Ainda não há registros de ponto no período.'
+                ? em.descriptionFiltered
+                : em.descriptionEmpty
             }
           />
         ) : (
@@ -204,15 +219,15 @@ export function TimeHistory() {
               const itemActions: ItemAction[] = [
                 {
                   key: 'view',
-                  label: 'Ver detalhes',
+                  label: tc.viewDetails,
                   icon: <Eye className="h-4 w-4" />,
                   onClick: () => handleViewDetail(sh),
                 },
               ];
 
               const subtitleParts: string[] = [];
-              subtitleParts.push(`Entrada ${sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}`);
-              subtitleParts.push(`Saída ${sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockIn} ${sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}`);
+              subtitleParts.push(`${tc.todaySubtitle.clockOut} ${sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}`);
               subtitleParts.push(sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—');
 
               return (
@@ -246,14 +261,14 @@ export function TimeHistory() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHead sortKey="_date_ts" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
-                    <SortableTableHead sortKey="_employee_name" sortConfig={sortConfig} onSort={handleSort}>Funcionário</SortableTableHead>
-                    <SortableTableHead sortKey="_in_ts" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Entrada</SortableTableHead>
-                    <SortableTableHead sortKey="_out_ts" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Saída</SortableTableHead>
-                    <SortableTableHead sortKey="total_worked_min" sortConfig={sortConfig} onSort={handleSort}>Trabalhado</SortableTableHead>
-                    <SortableTableHead sortKey="balance_min" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Saldo</SortableTableHead>
-                    <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">Ações</SortableTableHead>
+                    <SortableTableHead sortKey="_date_ts" sortConfig={sortConfig} onSort={handleSort}>{tt.date}</SortableTableHead>
+                    <SortableTableHead sortKey="_employee_name" sortConfig={sortConfig} onSort={handleSort}>{tt.employee}</SortableTableHead>
+                    <SortableTableHead sortKey="_in_ts" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">{tt.clockIn}</SortableTableHead>
+                    <SortableTableHead sortKey="_out_ts" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">{tt.clockOut}</SortableTableHead>
+                    <SortableTableHead sortKey="total_worked_min" sortConfig={sortConfig} onSort={handleSort}>{tt.worked}</SortableTableHead>
+                    <SortableTableHead sortKey="balance_min" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{tt.balance}</SortableTableHead>
+                    <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>{tt.status}</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">{tt.actions}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -284,11 +299,11 @@ export function TimeHistory() {
                         <EmptyState
                           size="compact"
                           icon={<Clock className="h-10 w-10" />}
-                          title="Nenhum registro de ponto"
+                          title={em.title}
                           description={
                             activeFilterCount > 0
-                              ? 'Ajuste os filtros para visualizar registros de outro período.'
-                              : 'Ainda não há registros de ponto no período.'
+                              ? em.descriptionFiltered
+                              : em.descriptionEmpty
                           }
                         />
                       </TableCell>
@@ -299,10 +314,10 @@ export function TimeHistory() {
             </div>
             {sheets.length > 0 && (
               <div className="border-t px-4 py-3 flex flex-wrap gap-4 text-sm">
-                <span>Esperado: <strong>{formatMinutes(totals.totalExpected)}</strong></span>
-                <span>Trabalhado: <strong>{formatMinutes(totals.totalWorked)}</strong></span>
+                <span>{tot.expected}: <strong>{formatMinutes(totals.totalExpected)}</strong></span>
+                <span>{tot.worked}: <strong>{formatMinutes(totals.totalWorked)}</strong></span>
                 <span className={cn('font-semibold', totals.balance >= 0 ? 'text-success' : 'text-destructive')}>
-                  Saldo: {totals.balance >= 0 ? '+' : ''}{formatMinutes(totals.balance)}
+                  {tot.balance}: {totals.balance >= 0 ? '+' : ''}{formatMinutes(totals.balance)}
                 </span>
               </div>
             )}

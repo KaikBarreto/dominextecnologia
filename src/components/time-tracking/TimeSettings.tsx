@@ -12,10 +12,23 @@ import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Pencil, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export function TimeSettingsPanel() {
+  const { locale } = useAppLocaleContext();
+  const ts = MESSAGES[locale].app.employees.timeclock.settings;
+
+  const WEEKDAYS = [
+    ts.weekdays.sun,
+    ts.weekdays.mon,
+    ts.weekdays.tue,
+    ts.weekdays.wed,
+    ts.weekdays.thu,
+    ts.weekdays.fri,
+    ts.weekdays.sat,
+  ];
+
   const { settings, upsert } = useTimeSettings();
   const { schedules, upsertSchedule } = useTimeSchedules();
   const { employees } = useAdminTimeSheet();
@@ -89,63 +102,63 @@ export function TimeSettingsPanel() {
     <div className="space-y-6">
       {/* Company defaults */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Jornada Padrão da Empresa</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{ts.companyDefaultsTitle}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Entrada padrão</Label>
+              <Label>{ts.defaultIn}</Label>
               <Input type="time" value={form.default_in} onChange={e => setForm(f => ({ ...f, default_in: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Saída padrão</Label>
+              <Label>{ts.defaultOut}</Label>
               <Input type="time" value={form.default_out} onChange={e => setForm(f => ({ ...f, default_out: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Intervalo (min)</Label>
+              <Label>{ts.breakMin}</Label>
               <NumericInput value={String(form.default_break_min ?? '')} onValueChange={v => setForm(f => ({ ...f, default_break_min: v === '' ? 0 : parseInt(v, 10) }))} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex items-center justify-between rounded-lg border p-3">
-              <Label>Exigir selfie</Label>
+              <Label>{ts.requireSelfie}</Label>
               <Switch checked={form.require_selfie} onCheckedChange={v => setForm(f => ({ ...f, require_selfie: v }))} />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
-              <Label>Exigir geolocalização</Label>
+              <Label>{ts.requireGeo}</Label>
               <Switch checked={form.require_geolocation} onCheckedChange={v => setForm(f => ({ ...f, require_geolocation: v }))} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Raio máximo (metros)</Label>
+              <Label>{ts.maxRadius}</Label>
               <NumericInput value={String(form.max_radius_meters ?? '')} onValueChange={v => setForm(f => ({ ...f, max_radius_meters: v === '' ? 0 : parseInt(v, 10) }))} />
-              <p className="text-xs text-muted-foreground">0 = sem restrição</p>
+              <p className="text-xs text-muted-foreground">{ts.maxRadiusHint}</p>
             </div>
             <div className="space-y-2">
-              <Label>Tolerância atraso (min)</Label>
+              <Label>{ts.lateTolerance}</Label>
               <NumericInput value={String(form.late_tolerance_min ?? '')} onValueChange={v => setForm(f => ({ ...f, late_tolerance_min: v === '' ? 0 : parseInt(v, 10) }))} />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
-              <Label>Permitir fora do horário</Label>
+              <Label>{ts.allowOffHours}</Label>
               <Switch checked={form.allow_off_hours} onCheckedChange={v => setForm(f => ({ ...f, allow_off_hours: v }))} />
             </div>
           </div>
           <Button onClick={() => upsert.mutate(form)} className="gap-2">
-            <Save className="h-4 w-4" /> Salvar configurações
+            <Save className="h-4 w-4" /> {ts.saveButton}
           </Button>
         </CardContent>
       </Card>
 
       {/* Individual schedules */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Jornada Individual</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{ts.individualTitle}</CardTitle></CardHeader>
         <CardContent className="p-0 sm:p-0">
           {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left px-4 py-3 font-medium">Funcionário</th>
+                  <th className="text-left px-4 py-3 font-medium">{MESSAGES[locale].app.employees.timeclock.todayTable.employee}</th>
                   {WEEKDAYS.map(d => <th key={d} className="text-center px-2 py-3 font-medium text-xs">{d}</th>)}
                   <th className="px-4 py-3" />
                 </tr>
@@ -170,7 +183,7 @@ export function TimeSettingsPanel() {
                         if (hasCustom && sched) {
                           return (
                             <td key={i} className="text-center px-2 py-3 text-xs">
-                              {sched.is_work_day ? `${sched.expected_in.slice(0,5)}-${sched.expected_out.slice(0,5)}` : 'Folga'}
+                              {sched.is_work_day ? `${sched.expected_in.slice(0,5)}-${sched.expected_out.slice(0,5)}` : ts.dayOff}
                             </td>
                           );
                         }
@@ -178,7 +191,7 @@ export function TimeSettingsPanel() {
                           const isWorkDay = i !== 0 && i !== 6;
                           return (
                             <td key={i} className="text-center px-2 py-3 text-xs text-muted-foreground">
-                              {isWorkDay ? `${form.default_in.slice(0,5)}-${form.default_out.slice(0,5)}` : 'Folga'}
+                              {isWorkDay ? `${form.default_in.slice(0,5)}-${form.default_out.slice(0,5)}` : ts.dayOff}
                             </td>
                           );
                         }
@@ -207,7 +220,11 @@ export function TimeSettingsPanel() {
                 }
                 return i !== 0 && i !== 6;
               });
-              const scheduleLabel = hasCustom ? workDayLabels.join(', ') : `Herda empresa (${form.default_in.slice(0,5)}-${form.default_out.slice(0,5)})`;
+              const scheduleLabel = hasCustom
+                ? workDayLabels.join(', ')
+                : ts.inheritCompany
+                    .replace('{{in}}', form.default_in.slice(0,5))
+                    .replace('{{out}}', form.default_out.slice(0,5));
               return (
                 <Card key={emp.id}>
                   <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -236,12 +253,12 @@ export function TimeSettingsPanel() {
       <ResponsiveModal
         open={!!editingEmployee}
         onOpenChange={() => setEditingEmployee(null)}
-        title={`Jornada — ${editingEmp?.name || ''}`}
+        title={`${ts.scheduleModalTitlePrefix} ${editingEmp?.name || ''}`}
         className="sm:max-w-[500px]"
         footer={
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setEditingEmployee(null)}>Cancelar</Button>
-            <Button onClick={saveSchedule}>Salvar jornada</Button>
+            <Button type="button" variant="outline" onClick={() => setEditingEmployee(null)}>{ts.cancelSchedule}</Button>
+            <Button onClick={saveSchedule}>{ts.saveSchedule}</Button>
           </div>
         }
       >
@@ -262,7 +279,7 @@ export function TimeSettingsPanel() {
                     onChange={e => setScheduleForm(f => ({ ...f, [i]: { ...f[i], out: e.target.value } }))} />
                 </div>
               ) : (
-                <span className="text-sm text-muted-foreground">Folga</span>
+                <span className="text-sm text-muted-foreground">{ts.dayOff}</span>
               )}
             </div>
           ))}

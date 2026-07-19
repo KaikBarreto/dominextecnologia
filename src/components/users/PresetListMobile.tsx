@@ -7,6 +7,8 @@ import {
 } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import type { PermissionPreset } from '@/hooks/usePermissions';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 interface PresetListMobileProps {
   presets: PermissionPreset[];
@@ -25,6 +27,9 @@ export function PresetListMobile({
   onDuplicate,
   onDelete,
 }: PresetListMobileProps) {
+  const { locale } = useAppLocaleContext();
+  const tp = MESSAGES[locale].app.settings.users.presets;
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -39,8 +44,8 @@ export function PresetListMobile({
     return (
       <EmptyState
         icon={<ShieldCheck className="h-12 w-12" />}
-        title="Nenhum cargo cadastrado"
-        description='Toque em "Novo Cargo" para criar um perfil de acesso'
+        title={tp.emptyMobileTitle}
+        description={tp.emptyMobileDesc}
       />
     );
   }
@@ -52,20 +57,20 @@ export function PresetListMobile({
           ? [
               {
                 key: 'edit',
-                label: 'Editar',
+                label: tp.actionEdit,
                 icon: <Pencil className="h-4 w-4" />,
                 variant: 'edit',
                 onClick: () => onEdit(preset),
               },
               {
                 key: 'duplicate',
-                label: 'Duplicar',
+                label: tp.actionDuplicate,
                 icon: <Copy className="h-4 w-4" />,
                 onClick: () => onDuplicate(preset),
               },
               {
                 key: 'delete',
-                label: 'Excluir',
+                label: tp.actionDelete,
                 icon: <Trash2 className="h-4 w-4" />,
                 variant: 'destructive',
                 onClick: () => onDelete(preset),
@@ -83,7 +88,7 @@ export function PresetListMobile({
               </div>
             }
             title={preset.name}
-            subtitle={preset.description || 'Sem descrição'}
+            subtitle={preset.description || tp.noDescription}
             trailing={
               <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
                 {preset.permissions.length}

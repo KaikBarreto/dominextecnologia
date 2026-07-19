@@ -13,13 +13,33 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
-
-const MONTHS = Array.from({ length: 12 }, (_, i) => ({
-  value: String(i),
-  label: format(new Date(2026, i, 1), 'MMMM', { locale: ptBR }),
-}));
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export function TimeReport() {
+  const { locale } = useAppLocaleContext();
+  const tc = MESSAGES[locale].app.employees.timeclock;
+  const tf = tc.reportFilters;
+  const cal = tc.reportCalendar;
+  const summ = tc.reportSummary;
+  const chart = tc.reportChart;
+  const months = tc.months;
+
+  const MONTHS_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
+    value: String(i),
+    label: months[String(i) as keyof typeof months],
+  }));
+
+  const WEEKDAYS_LABELS = [
+    cal.weekdays.sun,
+    cal.weekdays.mon,
+    cal.weekdays.tue,
+    cal.weekdays.wed,
+    cal.weekdays.thu,
+    cal.weekdays.fri,
+    cal.weekdays.sat,
+  ];
+
   const now = new Date();
   const { employees } = useAdminTimeSheet();
   const [month, setMonth] = useState(String(now.getMonth()));
@@ -103,6 +123,12 @@ export function TimeReport() {
     };
   });
 
+  const overviewLabel = employeeIds.length === 0
+    ? tf.overviewAll
+    : employeeIds.length === 1
+      ? tf.reportSingle.replace('{{name}}', employees.find(e => e.id === employeeIds[0])?.name ?? '')
+      : tf.reportMultiple.replace('{{count}}', String(employeeIds.length));
+
   return (
     <div className="space-y-4">
       {/* Filtros consolidados em UM botão "Filtros" (pattern sistema-wide v1.9.9).
@@ -110,22 +136,18 @@ export function TimeReport() {
           de baixo no mobile, sheet lateral no desktop. */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {employeeIds.length === 0
-            ? 'Visão geral de todos os funcionários'
-            : employeeIds.length === 1
-              ? `Relatório de ${employees.find(e => e.id === employeeIds[0])?.name ?? ''}`
-              : `Relatório de ${employeeIds.length} funcionários`}
+          {overviewLabel}
         </p>
         <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
           <div className="space-y-1.5">
-            <Label className="text-xs">Mês</Label>
+            <Label className="text-xs">{tf.monthLabel}</Label>
             <Select value={month} onValueChange={setMonth}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+              <SelectContent>{MONTHS_OPTIONS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Ano</Label>
+            <Label className="text-xs">{tf.yearLabel}</Label>
             <Select value={year} onValueChange={setYear}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -134,10 +156,10 @@ export function TimeReport() {
             </Select>
           </div>
           <FilterCheckboxGroup
-            label="Funcionário"
+            label={tf.employeeLabel}
             selected={employeeIds}
             onChange={setEmployeeIds}
-            emptyLabel="Todos"
+            emptyLabel={tf.allEmployees}
             options={employees.map(e => ({ value: e.id, label: e.name }))}
           />
         </FilterButton>
@@ -159,10 +181,10 @@ export function TimeReport() {
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div><p className="text-muted-foreground">Dias trabalhados</p><p className="font-bold">{summary.workedDays}/{summary.workDays}</p></div>
-              <div><p className="text-muted-foreground">Total trabalhado</p><p className="font-bold">{formatMinutes(summary.totalWorked)}</p></div>
-              <div><p className="text-muted-foreground">Saldo do mês</p><p className={cn('font-bold', summary.balance >= 0 ? 'text-success' : 'text-destructive')}>{summary.balance >= 0 ? '+' : ''}{formatMinutes(summary.balance)}</p></div>
-              <div><p className="text-muted-foreground">Faltas / Atrasos</p><p className="font-bold">{summary.absences} / {summary.lateCount}</p></div>
+              <div><p className="text-muted-foreground">{summ.workedDays}</p><p className="font-bold">{summary.workedDays}/{summary.workDays}</p></div>
+              <div><p className="text-muted-foreground">{summ.totalWorked}</p><p className="font-bold">{formatMinutes(summary.totalWorked)}</p></div>
+              <div><p className="text-muted-foreground">{summ.monthBalance}</p><p className={cn('font-bold', summary.balance >= 0 ? 'text-success' : 'text-destructive')}>{summary.balance >= 0 ? '+' : ''}{formatMinutes(summary.balance)}</p></div>
+              <div><p className="text-muted-foreground">{summ.absencesLate}</p><p className="font-bold">{summary.absences} / {summary.lateCount}</p></div>
             </div>
           </CardContent>
         </Card>
@@ -171,9 +193,9 @@ export function TimeReport() {
       {/* Calendar */}
       <Card>
         <CardContent className="p-4">
-          <h4 className="font-semibold mb-3">Calendário</h4>
+          <h4 className="font-semibold mb-3">{cal.title}</h4>
           <div className="grid grid-cols-7 gap-1 text-center text-xs">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+            {WEEKDAYS_LABELS.map(d => (
               <div key={d} className="font-medium text-muted-foreground py-1">{d}</div>
             ))}
             {Array.from({ length: getDay(days[0]) }).map((_, i) => <div key={`e-${i}`} />)}
@@ -190,11 +212,11 @@ export function TimeReport() {
                     <p className="font-semibold">{format(d, 'EEEE, dd MMM', { locale: ptBR })}</p>
                     {sh ? (
                       <>
-                        <p>Entrada: {sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}</p>
-                        <p>Saída: {sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}</p>
-                        <p>Trabalhado: {sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</p>
+                        <p>{cal.popoverClockIn}: {sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}</p>
+                        <p>{cal.popoverClockOut}: {sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}</p>
+                        <p>{cal.popoverWorked}: {sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</p>
                       </>
-                    ) : <p className="text-muted-foreground">Sem registro</p>}
+                    ) : <p className="text-muted-foreground">{cal.noRecord}</p>}
                   </PopoverContent>
                 </Popover>
               );
@@ -206,7 +228,7 @@ export function TimeReport() {
       {/* Chart */}
       <Card>
         <CardContent className="p-4">
-          <h4 className="font-semibold mb-3">Horas por dia</h4>
+          <h4 className="font-semibold mb-3">{chart.title}</h4>
           <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -220,7 +242,7 @@ export function TimeReport() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="day" className="text-xs" />
                 <YAxis domain={[0, 12]} className="text-xs" />
-                <Tooltip formatter={(v: number) => [`${v}h`, 'Horas']} />
+                <Tooltip formatter={(v: number) => [`${v}h`, chart.tooltipLabel]} />
                 <ReferenceLine y={8} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="8h" />
                 <Bar dataKey="horas" fill="url(#timereport-grad-primary-vertical)" radius={[4, 4, 0, 0]} />
               </BarChart>

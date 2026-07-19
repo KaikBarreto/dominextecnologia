@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { phoneMask } from '@/utils/masks';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2, Mail } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
@@ -60,6 +62,8 @@ interface UserFormDialogProps {
 }
 
 export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingUser }: UserFormDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const tf = MESSAGES[locale].app.settings.users.form;
   const isEditing = !!editingUser;
   const [loading, setLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -183,14 +187,14 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? 'Editar Usuário' : 'Criar Usuário'}
-      description={isEditing ? 'Atualize os dados e permissões do usuário' : 'Preencha os dados do novo usuário'}
+      title={isEditing ? tf.titleEdit : tf.titleCreate}
+      description={isEditing ? tf.descEdit : tf.descCreate}
       footer={
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">{tf.cancel}</Button>
           <Button onClick={handleSubmit} disabled={loading || (!isEditing && (!form.full_name || !form.email || !form.password))} className="w-full sm:w-auto">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditing ? 'Atualizar' : 'Criar Usuário'}
+            {isEditing ? tf.save : tf.create}
           </Button>
         </div>
       }
@@ -200,7 +204,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
           <div className="grid grid-cols-1 gap-4">
             {/* Photo Upload */}
             <div>
-              <Label className="text-[13px] font-normal uppercase tracking-wider">Foto do Usuário</Label>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">{tf.photoLabel}</Label>
               <div className="flex items-center gap-4 mt-2">
                 <div className="relative group shrink-0">
                   <Avatar className="h-16 w-16 border-2 border-border">
@@ -222,16 +226,16 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                 <div className="flex-1 space-y-1">
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                      {photoPreview ? 'Substituir' : 'Selecionar foto'}
+                      {photoPreview ? tf.photoReplace : tf.photoSelect}
                     </Button>
                     {photoPreview && (
                       <Button type="button" variant="ghost" size="sm" onClick={handleRemovePhoto} className="text-destructive hover:text-destructive">
                         <X className="h-4 w-4 mr-1" />
-                        Remover
+                        {tf.photoRemove}
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Foto opcional do usuário</p>
+                  <p className="text-xs text-muted-foreground">{tf.photoHint}</p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -244,37 +248,37 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
             </div>
 
             <div>
-              <Label className="text-[13px] font-normal uppercase tracking-wider">Nome Completo *</Label>
-              <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Nome do usuário" />
+              <Label className="text-[13px] font-normal uppercase tracking-wider">{tf.labelFullName}</Label>
+              <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder={tf.placeholderFullName} />
             </div>
             {!isEditing && (
               <div>
-                <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
-                <PasswordInput value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Crie uma senha segura" />
+                <Label className="text-[13px] font-normal uppercase tracking-wider">{tf.labelPassword}</Label>
+                <PasswordInput value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={tf.placeholderPassword} />
                 <PasswordStrengthIndicator password={form.password} />
               </div>
             )}
             <div>
-              <Label className="text-[13px] font-normal uppercase tracking-wider">Email {!isEditing ? '*' : ''}</Label>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">{!isEditing ? tf.labelEmailRequired : tf.labelEmail}</Label>
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@exemplo.com" />
-              {isEditing && <p className="text-xs text-muted-foreground mt-1">Alterar o email mudará o login de acesso do usuário</p>}
+              {isEditing && <p className="text-xs text-muted-foreground mt-1">{tf.labelEmailHint}</p>}
             </div>
             <div>
-              <Label className="text-[13px] font-normal uppercase tracking-wider">Telefone</Label>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">{tf.labelPhone}</Label>
               <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: phoneMask(e.target.value) }))} placeholder="(00) 00000-0000" />
             </div>
 
             {/* Link to employee */}
             <div>
               <Label className="text-[13px] font-normal uppercase tracking-wider flex items-center gap-1.5">
-                <Link2 className="h-3.5 w-3.5" /> Vincular a Funcionário
+                <Link2 className="h-3.5 w-3.5" /> {tf.labelEmployee}
               </Label>
               <Select value={form.employee_id || '_none'} onValueChange={(v) => setForm(f => ({ ...f, employee_id: v === '_none' ? null : v }))}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Nenhum funcionário vinculado" />
+                  <SelectValue placeholder={tf.placeholderEmployee} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_none">Nenhum</SelectItem>
+                  <SelectItem value="_none">{tf.employeeNone}</SelectItem>
                   {employees.map(emp => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.name} {emp.position ? `(${emp.position})` : ''}
@@ -282,7 +286,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">Vincula este usuário a um funcionário cadastrado</p>
+              <p className="text-xs text-muted-foreground mt-1">{tf.employeeHint}</p>
 
               {/* Email conflict resolution */}
               {!isEditing && form.employee_id && (() => {
@@ -293,7 +297,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                   return (
                     <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 space-y-2">
                       <p className="text-xs font-medium flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
-                        <Mail className="h-3.5 w-3.5" /> Os emails são diferentes. Qual deve prevalecer?
+                        <Mail className="h-3.5 w-3.5" /> {tf.emailConflictTitle}
                       </p>
                       <RadioGroup
                         value={form.chosen_email || userEmail}
@@ -303,17 +307,17 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                         <div className="flex items-center gap-2">
                           <RadioGroupItem value={userEmail} id="email-user" />
                           <Label htmlFor="email-user" className="text-xs cursor-pointer">
-                            <span className="font-medium">Usuário:</span> {userEmail}
+                            <span className="font-medium">{tf.emailConflictUser}</span> {userEmail}
                           </Label>
                         </div>
                         <div className="flex items-center gap-2">
                           <RadioGroupItem value={empEmail} id="email-emp" />
                           <Label htmlFor="email-emp" className="text-xs cursor-pointer">
-                            <span className="font-medium">Funcionário:</span> {empEmail}
+                            <span className="font-medium">{tf.emailConflictEmployee}</span> {empEmail}
                           </Label>
                         </div>
                       </RadioGroup>
-                      <p className="text-[11px] text-muted-foreground">O email escolhido será aplicado em ambos os cadastros</p>
+                      <p className="text-[11px] text-muted-foreground">{tf.emailConflictHint}</p>
                     </div>
                   );
                 }
@@ -324,11 +328,11 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
 
           {/* Técnico / Interno Toggle */}
           <div className="space-y-2">
-            <Label className="text-[13px] font-normal uppercase tracking-wider">Tipo de Usuário</Label>
+            <Label className="text-[13px] font-normal uppercase tracking-wider">{tf.labelUserType}</Label>
             <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
               <div className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${form.role !== 'tecnico' ? 'text-foreground' : 'text-muted-foreground'}`}>
                 <Building2 className="h-4 w-4" />
-                Interno
+                {tf.typeInternal}
               </div>
               <Switch
                 checked={form.role === 'tecnico'}
@@ -336,13 +340,11 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
               />
               <div className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${form.role === 'tecnico' ? 'text-foreground' : 'text-muted-foreground'}`}>
                 <Wrench className="h-4 w-4" />
-                Técnico
+                {tf.typeTech}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              {form.role === 'tecnico'
-                ? 'Aparece na listagem de técnicos da OS e pode ser adicionado a equipes'
-                : 'Usuário interno do sistema, não aparece como técnico nas OS'}
+              {form.role === 'tecnico' ? tf.descTech : tf.descInternal}
             </p>
           </div>
 
@@ -350,14 +352,14 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
 
           {/* Preset Selection */}
           <div>
-            <Label className="text-[13px] font-normal uppercase tracking-wider">Perfil de Acesso</Label>
+            <Label className="text-[13px] font-normal uppercase tracking-wider">{tf.labelProfile}</Label>
             <Select value={accessProfile} onValueChange={handlePresetChange}>
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Selecione um perfil" />
+                <SelectValue placeholder={tf.placeholderProfile} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="custom">Personalizado</SelectItem>
-                <SelectItem value="all">Acesso Total</SelectItem>
+                <SelectItem value="custom">{tf.profileCustom}</SelectItem>
+                <SelectItem value="all">{tf.profileAll}</SelectItem>
                 {presets.map(p => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}{p.description ? ` - ${p.description}` : ''}
@@ -371,10 +373,10 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Monitor className="h-5 w-5 text-primary" />
-              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Telas</h3>
+              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tf.sectionScreens}</h3>
             </div>
             <p className="text-xs text-muted-foreground">
-              Selecione quais telas este usuário pode acessar
+              {tf.hintScreens}
             </p>
             <div className="grid grid-cols-1 gap-4">
               {screenCategories.map(catKey => {
@@ -414,10 +416,10 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Settings2 className="h-5 w-5 text-primary" />
-              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Funções</h3>
+              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tf.sectionFunctions}</h3>
             </div>
             <p className="text-xs text-muted-foreground">
-              Selecione quais ações este usuário pode realizar
+              {tf.hintFunctions}
             </p>
             <div className="border rounded-lg p-4 space-y-3">
               {FUNCTION_PERMISSIONS.map(action => (

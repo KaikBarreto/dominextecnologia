@@ -192,6 +192,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.contracts.environmentsTab;
+  const tForm = MESSAGES[locale].app.contracts.contractForm;
   const { updateContract } = useContracts();
   const { equipment, createEquipment } = useEquipment(contract.customer_id || undefined);
   const { categories } = useEquipmentCategories();
@@ -1125,17 +1126,17 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform"
               onClick={() => setSelectedEnvKey(null)}
             >
-              <ChevronLeft className="mr-1 h-4 w-4" /> Voltar aos ambientes
+              <ChevronLeft className="mr-1 h-4 w-4" /> {tForm.items.backToEnv}
             </Button>
             <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
-              <Badge variant="outline" className="shrink-0">Sem ambiente</Badge>
-              <span className="min-w-0 break-words">Equipamentos não atribuídos</span>
+              <Badge variant="outline" className="shrink-0">{t.noEnvGroupBadge}</Badge>
+              <span className="min-w-0 break-words">{tForm.items.unassignedEquipmentTitle}</span>
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Equipamentos deste contrato que ainda não estão em nenhum ambiente. Adicione a um ambiente ou remova do contrato.
+              {tForm.items.noEnvGroupDesc}
             </p>
             {dirty && (
-              <span className="text-xs text-warning">Há alterações não salvas neste contrato.</span>
+              <span className="text-xs text-warning">{t.unsavedContractNote}</span>
             )}
           </CardHeader>
           <CardContent className="min-w-0 space-y-4">
@@ -1153,13 +1154,13 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform"
               onClick={() => setSelectedEnvKey(null)}
             >
-              <ChevronLeft className="mr-1 h-4 w-4" /> Voltar aos ambientes
+              <ChevronLeft className="mr-1 h-4 w-4" /> {tForm.items.backToEnv}
             </Button>
             <div className="flex w-full items-center justify-between gap-2">
               <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
-                <Badge variant="info" className="shrink-0">Ambiente {selectedEnvIdx + 1}</Badge>
+                <Badge variant="info" className="shrink-0">{t.envGroupLabel} {selectedEnvIdx + 1}</Badge>
                 <span className="min-w-0 break-words">
-                  {selectedEnv.identificacao.trim() || 'Sem identificação'}
+                  {selectedEnv.identificacao.trim() || tForm.noIdentification}
                 </span>
               </CardTitle>
               <Button
@@ -1167,14 +1168,14 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                 size="icon"
                 className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
                 onClick={() => setRemovingEnvKey(selectedEnv.key)}
-                aria-label="Remover ambiente"
-                title="Remover ambiente"
+                aria-label={tForm.items.removeEnvAriaLabel}
+                title={tForm.items.removeEnvTitle}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
             {dirty && (
-              <span className="text-xs text-warning">Há alterações não salvas neste contrato.</span>
+              <span className="text-xs text-warning">{t.unsavedContractNote}</span>
             )}
           </CardHeader>
           <CardContent className="min-w-0 space-y-4">
@@ -1190,7 +1191,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
             <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
               <ShieldCheck className="h-5 w-5 shrink-0 text-info" />
               <span className="min-w-0 break-words">
-                {isPmoc ? 'Ambientes climatizados' : 'Ambientes'} ({envs.length})
+                {isPmoc ? tForm.items.envListTitle : tForm.items.envListTitleCommon} ({envs.length})
               </span>
             </CardTitle>
             <Button
@@ -1199,7 +1200,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl"
               onClick={addEnvironment}
             >
-              <Plus className="mr-1 h-4 w-4" /> Adicionar ambiente
+              <Plus className="mr-1 h-4 w-4" /> {tForm.items.addEnvButton}
             </Button>
           </CardHeader>
           <CardContent className="min-w-0 space-y-4">
@@ -1207,13 +1208,13 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               <EmptyState
                 size="compact"
                 icon={<ShieldCheck className="h-10 w-10" />}
-                title="Nenhum ambiente cadastrado"
+                title={tForm.items.noEnvEmptyTitle}
                 description={
                   isPmoc
-                    ? 'Cadastre os ambientes climatizados deste contrato.'
-                    : 'Organize os equipamentos deste contrato em ambientes.'
+                    ? tForm.items.noEnvEmptyDescPmoc
+                    : tForm.items.noEnvEmptyDescCommon
                 }
-                action={{ label: 'Adicionar ambiente', onClick: addEnvironment }}
+                action={{ label: tForm.items.addEnvButton, onClick: addEnvironment }}
               />
             ) : (
               <div className="space-y-2">
@@ -1237,15 +1238,15 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Badge variant="info" className="shrink-0">Ambiente {idx + 1}</Badge>
+                        <Badge variant="info" className="shrink-0">{t.envGroupLabel} {idx + 1}</Badge>
                         <span className="truncate text-sm font-semibold">
-                          {env.identificacao.trim() || 'Sem identificação'}
+                          {env.identificacao.trim() || tForm.noIdentification}
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {env.tipo_atividade.trim() && <span>{env.tipo_atividade.trim()} • </span>}
                         <span className="inline-flex items-center gap-1">
-                          <Wrench className="h-3 w-3" /> {env.equipment_ids.length} equipamento(s)
+                          <Wrench className="h-3 w-3" /> {env.equipment_ids.length} {t.equipmentCountSuffix}
                         </span>
                       </p>
                     </div>
@@ -1267,12 +1268,12 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="shrink-0">Sem ambiente</Badge>
-                        <span className="truncate text-sm font-semibold">Equipamentos não atribuídos</span>
+                        <Badge variant="outline" className="shrink-0">{t.noEnvGroupBadge}</Badge>
+                        <span className="truncate text-sm font-semibold">{tForm.items.unassignedEquipmentTitle}</span>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          <Wrench className="h-3 w-3" /> {looseItems.length} equipamento(s)
+                          <Wrench className="h-3 w-3" /> {looseItems.length} {t.equipmentCountSuffix}
                         </span>
                       </p>
                     </div>
@@ -1281,7 +1282,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                 )}
 
                 <p className="pt-1 text-xs text-muted-foreground">
-                  {totalEquipment} equipamento(s) no total entram neste contrato.
+                  {totalEquipment} {tForm.items.totalEquipSummary}
                 </p>
               </div>
             )}
@@ -1295,14 +1296,14 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       <ResponsiveModal
         open={showCatalogPicker}
         onOpenChange={(v) => { setShowCatalogPicker(v); if (!v) { setPickerMachineEqId(null); setPickerMachineScope(null); } }}
-        title="Checklists da Máquina"
+        title={tForm.catalogPicker.titleMachine}
         className="sm:max-w-3xl"
         footer={
           <div className="flex flex-row items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">{pickerSelection.size + pickerTemplateSelection.size} selecionada(s)</span>
+            <span className="text-xs text-muted-foreground">{pickerSelection.size + pickerTemplateSelection.size} {tForm.catalogPicker.selected}</span>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>Cancelar</Button>
-              <Button onClick={confirmCatalogPicker}>Aplicar à máquina</Button>
+              <Button variant="outline" onClick={() => { setShowCatalogPicker(false); setPickerMachineEqId(null); setPickerMachineScope(null); }}>{tForm.catalogPicker.cancelButton}</Button>
+              <Button onClick={confirmCatalogPicker}>{tForm.catalogPicker.applyMachine}</Button>
             </div>
           </div>
         }
@@ -1326,7 +1327,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       <ResponsiveModal
         open={!!memberPickerEnvKey}
         onOpenChange={(v) => { if (!v) setMemberPickerEnvKey(null); }}
-        title={memberPickerEnvKey === LOOSE_ENV_KEY ? 'Adicionar equipamento ao contrato' : 'Adicionar equipamento ao ambiente'}
+        title={memberPickerEnvKey === LOOSE_ENV_KEY ? tForm.memberPicker.titleLoose : tForm.memberPicker.titleEnv}
         footer={
           <Button
             className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
@@ -1334,8 +1335,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
             disabled={memberPickerSelection.size === 0}
           >
             <Plus className="mr-2 h-4 w-4" />
-            Adicionar {memberPickerSelection.size > 0 ? `${memberPickerSelection.size} ` : ''}
-            equipamento{memberPickerSelection.size !== 1 ? 's' : ''}
+            {tForm.memberPicker.confirmButton} {memberPickerSelection.size > 0 ? `${memberPickerSelection.size} ` : ''}
+            {memberPickerSelection.size !== 1 ? tForm.memberPicker.equipments : tForm.memberPicker.equipment}
           </Button>
         }
       >
@@ -1343,7 +1344,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar equipamento do cliente..."
+              placeholder={tForm.memberPicker.searchPlaceholder}
               value={memberPickerSearch}
               onChange={(e) => setMemberPickerSearch(e.target.value)}
               className="pl-8"
@@ -1355,13 +1356,13 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
             className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
             onClick={() => setShowCreateEquipment(true)}
           >
-            <Plus className="mr-2 h-4 w-4" /> Criar novo equipamento
+            <Plus className="mr-2 h-4 w-4" /> {tForm.memberPicker.createNew}
           </Button>
 
           {pickerAvailable.length === 0 ? (
             memberPickerSearch.trim() ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhum equipamento encontrado para "{memberPickerSearch.trim()}".
+                {tForm.memberPicker.noResultsSearch} "{memberPickerSearch.trim()}".
               </p>
             ) : (
               <EmptyState
@@ -1369,13 +1370,13 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                 icon={<Wrench className="h-10 w-10" />}
                 title={
                   activeEquipment.length === 0
-                    ? 'Cliente sem equipamentos ativos'
-                    : 'Todos já estão em algum ambiente'
+                    ? tForm.memberPicker.emptyNoEquip
+                    : tForm.memberPicker.emptyAllAssigned
                 }
                 description={
                   activeEquipment.length === 0
-                    ? 'Crie um equipamento para adicioná-lo a este ambiente.'
-                    : 'Os equipamentos do cliente já foram distribuídos nos ambientes.'
+                    ? tForm.memberPicker.emptyNoEquipDesc
+                    : tForm.memberPicker.emptyAllAssignedDesc
                 }
               />
             )
@@ -1433,20 +1434,20 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       <AlertDialog open={!!removingEnvKey} onOpenChange={(open) => { if (!open) setRemovingEnvKey(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover ambiente?</AlertDialogTitle>
+            <AlertDialogTitle>{tForm.dialogs.removeEnvTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {removingEnvEquipCount > 0
-                ? `Os ${removingEnvEquipCount} equipamento(s) deste ambiente serão removidos do contrato e das próximas visitas. Visitas já realizadas e em andamento são preservadas. A mudança só é aplicada ao salvar. Continuar?`
-                : 'O ambiente sairá do contrato. A mudança só é aplicada ao salvar.'}
+                ? `${removingEnvEquipCount} ${tForm.dialogs.removeEnvDescEquip} ${isPmoc ? tForm.dialogs.removeEnvDescPmocSuffix : tForm.dialogs.removeEnvDescCommonSuffix}`
+                : tForm.dialogs.removeEnvDescEmpty}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tForm.dialogs.cancelButton}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => { if (removingEnvKey) removeEnvironment(removingEnvKey); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Remover
+              <Trash2 className="mr-2 h-4 w-4" /> {tForm.dialogs.removeButton}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1460,22 +1461,22 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           <AlertDialogHeader>
             <AlertDialogTitle>
               {removingMember?.mode === 'loose'
-                ? 'Remover equipamento do contrato?'
+                ? tForm.dialogs.removeMemberTitleLoose
                 : !isPmoc
-                  ? 'Tirar equipamento do ambiente?'
-                  : 'Remover equipamento do ambiente?'}
+                  ? tForm.dialogs.removeMemberTitleCommon
+                  : tForm.dialogs.removeMemberTitlePmoc}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{removingMember ? (removingMember.label ?? (removingMember.eqId ? equipmentById.get(removingMember.eqId)?.name : null) ?? 'Equipamento') : ''}</strong>{' '}
+              <strong>{removingMember ? (removingMember.label ?? (removingMember.eqId ? equipmentById.get(removingMember.eqId)?.name : null) ?? tForm.equipmentFallback) : ''}</strong>{' '}
               {removingMember?.mode === 'loose'
-                ? 'sai do contrato. A mudança só é aplicada ao salvar — aí as visitas futuras são recalculadas sem esse equipamento.'
+                ? tForm.dialogs.removeMemberLooseSuffix
                 : !isPmoc
-                  ? 'volta para o grupo "Sem ambiente" (continua no contrato). A mudança só é aplicada ao salvar.'
-                  : 'sai deste ambiente e do contrato. A mudança só é aplicada ao salvar — aí as visitas futuras são recalculadas sem esse equipamento.'}
+                  ? tForm.dialogs.removeMemberCommonSuffix
+                  : tForm.dialogs.removeMemberPmocSuffix}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{tForm.dialogs.cancelButton}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (!removingMember) return;
@@ -1489,7 +1490,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              {removingMember?.mode === 'env' && !isPmoc ? 'Tirar do ambiente' : 'Remover'}
+              {removingMember?.mode === 'env' && !isPmoc ? tForm.dialogs.removeMemberCommonButton : tForm.dialogs.removeButton}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1499,25 +1500,24 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       <AlertDialog open={showRegenConfirm} onOpenChange={setShowRegenConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Recalcular visitas futuras?</AlertDialogTitle>
+            <AlertDialogTitle>{tForm.dialogs.regenTitle}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  Mudar os equipamentos ou a rotina (escopo, fase, checklists) vai{' '}
-                  <strong>refazer {regenCount} visita(s) futura(s)</strong> ainda não realizadas, atualizando o checklist
-                  por equipamento.
+                  {tForm.dialogs.regenDesc1}{' '}
+                  <strong>{regenCount} {tForm.dialogs.regenDesc2}</strong>
                 </p>
                 <p className="text-sm">
-                  Visitas <strong>concluídas, em andamento</strong> e <strong>passadas</strong> são preservadas intactas.
+                  {tForm.dialogs.regenDesc3}
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={saving}>{tForm.dialogs.cancelButton}</AlertDialogCancel>
             <AlertDialogAction onClick={applySave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-              Salvar e recalcular
+              {tForm.dialogs.regenConfirmButton}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1563,23 +1563,23 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         />
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-xs">Identificação do ambiente</Label>
-            <Input value={env.identificacao} onChange={(e) => updateField(env.key, 'identificacao', e.target.value)} placeholder="Ex: 2º andar — Sala 201" />
+            <Label className="text-xs">{tForm.items.envIdentLabel}</Label>
+            <Input value={env.identificacao} onChange={(e) => updateField(env.key, 'identificacao', e.target.value)} placeholder={tForm.items.envIdentPlaceholder} />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">{isPmoc ? 'Tipo de atividade' : 'Tipo / uso do ambiente'}</Label>
-            <Input value={env.tipo_atividade} onChange={(e) => updateField(env.key, 'tipo_atividade', e.target.value)} placeholder="Ex: Escritório administrativo" />
+            <Label className="text-xs">{isPmoc ? tForm.items.envTypeActivityLabelPmoc : tForm.items.envTypeActivityLabelCommon}</Label>
+            <Input value={env.tipo_atividade} onChange={(e) => updateField(env.key, 'tipo_atividade', e.target.value)} placeholder={tForm.items.envTypeActivityPlaceholder} />
           </div>
           {isPmoc && (
           <>
           <div className="space-y-1.5">
-            <Label className="text-xs">Área climatizada (m²)</Label>
+            <Label className="text-xs">{tForm.items.envAreaLabel}</Label>
             <div className="flex items-center gap-2">
               <NumericInput
                 decimal
                 value={env.area_climatizada_m2}
                 onValueChange={(v) => updateField(env.key, 'area_climatizada_m2', v)}
-                placeholder="Ex: 120,5"
+                placeholder={tForm.items.envAreaPlaceholder}
                 className="flex-1"
               />
               <Button
@@ -1590,20 +1590,20 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                 onClick={() => setAreaCalcEnvKey(env.key)}
               >
                 <Calculator className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">Calcular</span>
+                <span className="hidden sm:inline">{tForm.items.envAreaCalcButton}</span>
               </Button>
             </div>
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
-              <Label className="text-xs">Carga térmica (TR)</Label>
+              <Label className="text-xs">{tForm.items.envThermalLoadLabel}</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que é TR?">
+                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label={tForm.items.envThermalLoadTooltipAriaLabel}>
                     <HelpCircle className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs text-xs">TR (Tonelada de Refrigeração) é a unidade de capacidade de refrigeração. 1 TR = 12.000 BTU/h.</TooltipContent>
+                <TooltipContent className="max-w-xs text-xs">{tForm.items.envThermalLoadTooltip}</TooltipContent>
               </Tooltip>
             </div>
             {(() => {
@@ -1616,7 +1616,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                       decimal
                       value={env.carga_termica_tr}
                       onValueChange={(v) => updateField(env.key, 'carga_termica_tr', v)}
-                      placeholder="Ex: 5,0"
+                      placeholder={tForm.items.envThermalLoadPlaceholder}
                       className={showHint ? 'pr-24' : undefined}
                     />
                     {showHint && (
@@ -1633,7 +1633,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     onClick={() => setCargaCalcEnvKey(env.key)}
                   >
                     <Calculator className="h-4 w-4 sm:mr-1.5" />
-                    <span className="hidden sm:inline">Calcular</span>
+                    <span className="hidden sm:inline">{tForm.items.envAreaCalcButton}</span>
                   </Button>
                 </div>
               );
@@ -1641,31 +1641,31 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
-              <Label className="text-xs">Nº de ocupantes fixos</Label>
+              <Label className="text-xs">{tForm.items.envFixedOccLabel}</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes fixos?">
+                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label={tForm.items.envFixedOccTooltipAriaLabel}>
                     <HelpCircle className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs text-xs">Pessoas que ocupam o ambiente de forma permanente/regular (ex.: funcionários que trabalham no local).</TooltipContent>
+                <TooltipContent className="max-w-xs text-xs">{tForm.items.envFixedOccTooltip}</TooltipContent>
               </Tooltip>
             </div>
-            <NumericInput value={env.ocupantes_fixos} onValueChange={(v) => updateField(env.key, 'ocupantes_fixos', v)} placeholder="Ex: 12" />
+            <NumericInput value={env.ocupantes_fixos} onValueChange={(v) => updateField(env.key, 'ocupantes_fixos', v)} placeholder={tForm.items.envFixedOccPlaceholder} />
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
-              <Label className="text-xs">Nº de ocupantes flutuantes</Label>
+              <Label className="text-xs">{tForm.items.envFloatingOccLabel}</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="O que são ocupantes flutuantes?">
+                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label={tForm.items.envFloatingOccTooltipAriaLabel}>
                     <HelpCircle className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs text-xs">Pessoas que circulam pelo ambiente de forma temporária e variável (ex.: clientes, visitantes).</TooltipContent>
+                <TooltipContent className="max-w-xs text-xs">{tForm.items.envFloatingOccTooltip}</TooltipContent>
               </Tooltip>
             </div>
-            <NumericInput value={env.ocupantes_flutuantes} onValueChange={(v) => updateField(env.key, 'ocupantes_flutuantes', v)} placeholder="Ex: 30" />
+            <NumericInput value={env.ocupantes_flutuantes} onValueChange={(v) => updateField(env.key, 'ocupantes_flutuantes', v)} placeholder={tForm.items.envFloatingOccPlaceholder} />
           </div>
           </>
           )}
@@ -1682,7 +1682,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         <div className="flex items-center justify-between gap-2">
           <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Wrench className="h-3.5 w-3.5 text-info" />
-            Equipamentos deste ambiente ({env.equipment_ids.length})
+            {tForm.items.envEquipHeader} ({env.equipment_ids.length})
           </Label>
           <Button
             type="button"
@@ -1691,7 +1691,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
             className="min-h-9 active:scale-[0.98] transition-transform rounded-xl"
             onClick={() => openMemberPicker(env.key)}
           >
-            <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
+            <Plus className="mr-1 h-4 w-4" /> {tForm.items.addEquipButton}
           </Button>
         </div>
 
@@ -1699,9 +1699,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           <EmptyState
             size="compact"
             icon={<Wrench className="h-10 w-10" />}
-            title="Nenhum equipamento neste ambiente"
-            description="Adicione um equipamento do cliente a este ambiente."
-            action={{ label: 'Adicionar equipamento', onClick: () => openMemberPicker(env.key) }}
+            title={tForm.items.noEquipEmptyTitle}
+            description={tForm.items.noEquipEmptyDescWithCustomer}
+            action={{ label: tForm.items.addEquipButton, onClick: () => openMemberPicker(env.key) }}
           />
         ) : (
           <div className="divide-y overflow-hidden rounded-lg border bg-muted/20">
@@ -1723,7 +1723,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         type="button"
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
                         onClick={() => toggleExpanded(eqId)}
-                        aria-label={expanded ? 'Recolher configuração' : 'Expandir configuração'}
+                        aria-label={expanded ? tForm.items.collapseChecklistAriaLabel : tForm.items.expandChecklistAriaLabel}
                         aria-expanded={expanded}
                       >
                         <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
@@ -1733,7 +1733,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         type="button"
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
                         onClick={() => toggleChecklistExpanded(eqId)}
-                        aria-label={checklistExpanded ? 'Recolher checklists' : 'Expandir checklists'}
+                        aria-label={checklistExpanded ? tForm.items.collapseChecklistAriaLabel : tForm.items.expandChecklistAriaLabel}
                         aria-expanded={checklistExpanded}
                       >
                         <ChevronDown className={cn('h-4 w-4 transition-transform', checklistExpanded && 'rotate-180')} />
@@ -1761,8 +1761,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
-                      title={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
-                      aria-label={isPmoc ? 'Remover do ambiente' : 'Tirar do ambiente'}
+                      title={isPmoc ? tForm.items.removeEquipTitlePmoc : tForm.items.removeEquipTitleCommon}
+                      aria-label={isPmoc ? tForm.items.removeEquipTitlePmoc : tForm.items.removeEquipTitleCommon}
                       onClick={() => setRemovingMember({ mode: 'env', envKey: env.key, eqId })}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1793,15 +1793,15 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                       {/* 1) Escopo da norma */}
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-1">
-                          <span className="text-[11px] font-medium text-muted-foreground">Escopo da norma</span>
+                          <span className="text-[11px] font-medium text-muted-foreground">{tForm.items.scopeLabel}</span>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre o escopo">
+                              <button type="button" className="text-muted-foreground hover:text-foreground" aria-label={tForm.items.scopeTooltipAriaLabel}>
                                 <HelpCircle className="h-3.5 w-3.5" />
                               </button>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs text-xs">
-                              Expansão Direta cobre split/ACJ/cassete/piso teto. Sistemas Centrais inclui VRF, chiller, fan coil, UTA e self contained.
+                              {tForm.items.scopeTooltip}
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -1812,8 +1812,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                             value: 'ac',
                             label: (
                               <span className="flex flex-col leading-tight">
-                                <span>Expansão Direta</span>
-                                <span className="text-[10px] font-normal text-muted-foreground">(Split, Cassete, Piso Teto, Hi-wall, Janela, ACJ)</span>
+                                <span>{tForm.items.scopeDirectExpansion}</span>
+                                <span className="text-[10px] font-normal text-muted-foreground">{tForm.items.scopeDirectExpansionSub}</span>
                               </span>
                             ),
                           }}
@@ -1821,14 +1821,14 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                             value: 'full',
                             label: (
                               <span className="flex flex-col leading-tight">
-                                <span>Sistemas Centrais</span>
-                                <span className="text-[10px] font-normal text-muted-foreground">(VRF, Chiller, Fan Coil, UTA, Self Contained)</span>
+                                <span>{tForm.items.scopeCentralSystems}</span>
+                                <span className="text-[10px] font-normal text-muted-foreground">{tForm.items.scopeCentralSystemsSub}</span>
                               </span>
                             ),
                           }}
                           size="default"
                           className="[&_button]:text-xs"
-                          aria-label="Escopo da norma da máquina"
+                          aria-label={tForm.items.scopeAriaLabel}
                         />
                       </div>
 
@@ -1839,15 +1839,15 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         {!pmocCustomCadence && (
                           <div className="flex flex-1 flex-col gap-1.5">
                             <div className="flex items-center gap-1">
-                              <span className="text-[11px] font-medium text-muted-foreground">Começa na visita</span>
+                              <span className="text-[11px] font-medium text-muted-foreground">{tForm.items.startVisitLabel}</span>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Sobre começa na visita">
+                                  <button type="button" className="text-muted-foreground hover:text-foreground" aria-label={tForm.items.startVisitTooltipAriaLabel}>
                                     <HelpCircle className="h-3.5 w-3.5" />
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs text-xs">
-                                  Define a 1ª visita desta máquina no ciclo de 12. Acumulativo: Visita 12 (Anual) já faz a revisão completa; Visita 1 começa só pelo mensal.
+                                  {tForm.items.startVisitTooltip}
                                 </TooltipContent>
                               </Tooltip>
                             </div>
@@ -1873,14 +1873,14 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                           onClick={() => openMachinePicker(eqId)}
                         >
                           <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-info" />
-                          Checklists da Máquina
+                          {tForm.items.machineChecklistsButton}
                         </Button>
                       </div>
 
                       {/* Resumo dos checklists da máquina */}
                       <span className="block text-[11px] text-muted-foreground">
-                        {cfg ? `${cfg.activities.length} checklist(s)` : '—'}
-                        {cfg?.customized && <span className="ml-1 text-info">· personalizado</span>}
+                        {cfg ? `${cfg.activities.length} ${tForm.items.machineChecklistsCount}` : '—'}
+                        {cfg?.customized && <span className="ml-1 text-info">{tForm.items.machineCustomized}</span>}
                       </span>
 
                       {/* Preview: em que visita começa e o que inclui (só ciclo mensal) */}
@@ -1888,7 +1888,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                           <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
                           <span>
-                            Começa na <strong>{startVisitLabel(cfg.startVisit)}</strong> — 1ª visita faz: {firstVisitContents(cfg.startVisit)}.
+                            {tForm.items.machineStartNote} <strong>{startVisitLabel(cfg.startVisit)}</strong>: {firstVisitContents(cfg.startVisit)}.
                           </span>
                         </div>
                       )}
@@ -1898,7 +1898,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                           <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-info mt-px" />
                           <span>
-                            Na cadência personalizada, o que entra em cada visita é definido pela frequência de cada pergunta e pelo "Adicionar na 1ª OS".
+                            {tForm.items.machineCustomCadenceNote}
                           </span>
                         </div>
                       )}
@@ -1922,7 +1922,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         <div className="flex items-center justify-between gap-2">
           <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Wrench className="h-3.5 w-3.5 text-info" />
-            Equipamentos sem ambiente ({looseItems.length})
+            {tForm.items.unassignedEquipmentTitle} ({looseItems.length})
           </Label>
           <Button
             type="button"
@@ -1931,7 +1931,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
             className="min-h-9 active:scale-[0.98] transition-transform rounded-xl"
             onClick={() => openMemberPicker(LOOSE_ENV_KEY)}
           >
-            <Plus className="mr-1 h-4 w-4" /> Adicionar equipamento
+            <Plus className="mr-1 h-4 w-4" /> {tForm.items.addEquipButton}
           </Button>
         </div>
 
@@ -1939,8 +1939,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           <EmptyState
             size="compact"
             icon={<Wrench className="h-10 w-10" />}
-            title="Nenhum equipamento sem ambiente"
-            description="Todos os equipamentos do contrato já estão em algum ambiente."
+            title={tForm.items.noEquipLoose}
+            description={tForm.items.noEquipAllAssigned}
           />
         ) : (
           <div className="divide-y overflow-hidden rounded-lg border bg-muted/20">
@@ -1965,7 +1965,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                         type="button"
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
                         onClick={() => toggleChecklistExpanded(eqId)}
-                        aria-label={checklistExpanded ? 'Recolher checklists' : 'Expandir checklists'}
+                        aria-label={checklistExpanded ? tForm.items.collapseChecklistAriaLabel : tForm.items.expandChecklistAriaLabel}
                         aria-expanded={checklistExpanded}
                       >
                         <ChevronDown className={cn('h-4 w-4 transition-transform', checklistExpanded && 'rotate-180')} />
@@ -1997,8 +1997,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
-                      title="Remover do contrato"
-                      aria-label="Remover do contrato"
+                      title={tForm.items.removeFromContractTitle}
+                      aria-label={tForm.items.removeFromContractAriaLabel}
                       onClick={() => setRemovingMember({ mode: 'loose', eqId, looseKey: key, label: name })}
                     >
                       <Trash2 className="h-4 w-4" />
