@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { cn } from '@/lib/utils';
-import { formatBRL } from '@/utils/currency';
 import { unitLabel } from '@/lib/inventoryUnits';
 import { useIsCompact } from '@/hooks/use-mobile';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { useLocaleFormatters } from '@/lib/format/hooks';
 import { useCompraCotacoes } from '@/hooks/useCompraCotacoes';
 import type { CotacaoRow } from '@/hooks/useCompraCotacoes';
 import type { CompraMaterial } from '@/hooks/useCompras';
@@ -60,6 +62,9 @@ function toInput(n: number): string {
 export function CotacaoDialog({
   open, onOpenChange, compraId, materials, cotacao, availableSuppliers = [],
 }: CotacaoDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.cotacaoDialog;
+  const { money } = useLocaleFormatters();
   const isCompact = useIsCompact();
   const { loadPrices, savePrices, createCotacaoWithPrices } = useCompraCotacoes(compraId);
 
@@ -133,8 +138,11 @@ export function CotacaoDialog({
   /** Valor a exibir no campo "Total": o que o usuário está digitando, ou o derivado do unitário. */
   const totalDisplay = (mat: CompraMaterial): string => {
     if (mat.id in totals) return totals[mat.id];
-    const t = lineTotalOf(mat);
-    return t > 0 ? formatBRL(t).replace(/\./g, '') : '';
+    const total = lineTotalOf(mat);
+    // Exibe em formato pt-BR com vírgula para os inputs de cotação (entrada manual BR)
+    return total > 0
+      ? total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\./g, '')
+      : '';
   };
 
   const buildPrices = () =>
@@ -157,9 +165,9 @@ export function CotacaoDialog({
 
   const title = isEditing
     ? readOnly
-      ? `Preços — ${cotacao!.supplier_name}`
-      : `Editar cotação — ${cotacao!.supplier_name}`
-    : 'Nova cotação';
+      ? t.titleView.replace('{name}', cotacao!.supplier_name)
+      : t.titleEdit.replace('{name}', cotacao!.supplier_name)
+    : t.titleNew;
 
   return (
     <ResponsiveModal
@@ -170,18 +178,18 @@ export function CotacaoDialog({
       footer={
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm">
-            <span className="text-muted-foreground">Total geral: </span>
-            <span className="font-semibold">R$ {formatBRL(grandTotal)}</span>
+            <span className="text-muted-foreground">{t.grandTotal}</span>
+            <span className="font-semibold">{money(grandTotal)}</span>
           </div>
           {readOnly ? (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{t.close}</Button>
           ) : (
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
+                {t.cancel}
               </Button>
               <Button onClick={handleSave} disabled={saving || !canSave}>
-                {saving ? 'Salvando...' : isEditing ? 'Salvar preços' : 'Salvar cotação'}
+                {saving ? t.saving : isEditing ? t.savePrices : t.saveQuote}
               </Button>
             </div>
           )}
@@ -192,25 +200,25 @@ export function CotacaoDialog({
         {/* Fornecedor */}
         {isEditing ? (
           <div className="space-y-1">
-            <Label className="text-xs font-medium text-muted-foreground">Fornecedor</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t.supplierLabel}</Label>
             <p className="font-medium">{cotacao!.supplier_name}</p>
           </div>
         ) : (
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">Fornecedor *</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t.supplierRequired}</Label>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex-1">
                 <SearchableSelect
                   options={availableSuppliers}
                   value={supplierId}
                   onValueChange={setSupplierId}
-                  placeholder="Escolher fornecedor..."
-                  searchPlaceholder="Buscar fornecedor..."
-                  emptyMessage="Todos os fornecedores já têm cotação."
+                  placeholder={t.supplierPlaceholder}
+                  searchPlaceholder={t.supplierSearchPlaceholder}
+                  emptyMessage={t.supplierAllHaveQuotes}
                 />
               </div>
               <Button variant="outline" className="gap-1.5 shrink-0" onClick={() => setQuickOpen(true)}>
-                <Plus className="h-4 w-4" /> Novo
+                <Plus className="h-4 w-4" /> {t.newSupplierButton}
               </Button>
             </div>
           </div>
@@ -218,10 +226,10 @@ export function CotacaoDialog({
 
         {/* Planilha de preços */}
         {loading ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Carregando preços...</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">{t.loadingPrices}</p>
         ) : materials.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            Esta compra não tem materiais.
+            {t.noMaterials}
           </p>
         ) : isCompact ? (
           /* ---- MOBILE: card por material, dois campos rotulados lado a lado ---- */
@@ -229,17 +237,17 @@ export function CotacaoDialog({
             {materials.map((m) => (
               <div key={m.id} className="space-y-3 rounded-lg border p-3">
                 <div>
-                  <p className="font-medium">{m.material_name || 'Material'}</p>
+                  <p className="font-medium">{m.material_name || t.materialFallback}</p>
                   <p className="text-xs text-muted-foreground">
                     {m.quantity} {unitLabel(m.unit)}
                     {!m.inventory_id && (
-                      <span className="ml-2 text-warning">fora do estoque</span>
+                      <span className="ml-2 text-warning">{t.outOfStock}</span>
                     )}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Valor unitário</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t.table.unitPrice}</label>
                     <div className="flex items-center gap-1">
                       <span className="text-sm text-muted-foreground">R$</span>
                       <Input
@@ -253,7 +261,7 @@ export function CotacaoDialog({
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Valor total</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t.table.lineTotal}</label>
                     <div className="flex items-center gap-1">
                       <span className="text-sm text-muted-foreground">R$</span>
                       <Input
@@ -276,19 +284,19 @@ export function CotacaoDialog({
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b bg-muted">
-                  <th className="p-2 text-left font-medium">Material</th>
-                  <th className="w-28 p-2 text-right font-medium">Qtd.</th>
-                  <th className="w-44 p-2 text-right font-medium">Valor unitário (R$)</th>
-                  <th className="w-44 p-2 text-right font-medium">Valor total (R$)</th>
+                  <th className="p-2 text-left font-medium">{t.table.material}</th>
+                  <th className="w-28 p-2 text-right font-medium">{t.table.qty}</th>
+                  <th className="w-44 p-2 text-right font-medium">{t.table.unitPrice}</th>
+                  <th className="w-44 p-2 text-right font-medium">{t.table.lineTotal}</th>
                 </tr>
               </thead>
               <tbody>
                 {materials.map((m) => (
                   <tr key={m.id} className="border-b odd:bg-muted/30">
                     <td className="p-2">
-                      <span className="font-medium">{m.material_name || 'Material'}</span>
+                      <span className="font-medium">{m.material_name || t.materialFallback}</span>
                       {!m.inventory_id && (
-                        <span className="ml-2 text-xs text-warning">fora do estoque</span>
+                        <span className="ml-2 text-xs text-warning">{t.outOfStock}</span>
                       )}
                     </td>
                     <td className="p-2 text-right text-muted-foreground">
@@ -325,8 +333,8 @@ export function CotacaoDialog({
               </tbody>
               <tfoot className="sticky bottom-0">
                 <tr className="border-t bg-muted font-semibold">
-                  <td className="p-2" colSpan={3}>Total geral</td>
-                  <td className="p-2 text-right">R$ {formatBRL(grandTotal)}</td>
+                  <td className="p-2" colSpan={3}>{t.table.grandTotal}</td>
+                  <td className="p-2 text-right">{money(grandTotal)}</td>
                 </tr>
               </tfoot>
             </table>

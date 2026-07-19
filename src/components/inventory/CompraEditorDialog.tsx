@@ -14,6 +14,8 @@ import {
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { cn } from '@/lib/utils';
 import { INVENTORY_UNITS } from '@/lib/inventoryUnits';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { useInventory } from '@/hooks/useInventory';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -47,6 +49,8 @@ function newKey(): string {
 }
 
 export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.purchaseEditor;
   const { items: inventory } = useInventory();
   const { toast } = useToast();
   const { loadCompra, createCompra, updateCompra } = useCompras();
@@ -130,14 +134,14 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
   const validate = (): string | null => {
-    if (!title.trim()) return 'Dê um título à compra.';
-    if (rows.length === 0) return 'Adicione ao menos um material.';
+    if (!title.trim()) return t.validate.needTitle;
+    if (rows.length === 0) return t.validate.needMaterial;
     for (const r of rows) {
       if (r.origin === 'manual' && !r.material_name.trim()) {
-        return 'Dê um nome ao material fora do estoque antes de salvar.';
+        return t.validate.needManualName;
       }
       if (!(r.quantity > 0)) {
-        return `Quantidade do material "${r.material_name || 'sem nome'}" deve ser maior que zero.`;
+        return t.validate.invalidQty.replace('{name}', r.material_name || 'sem nome');
       }
     }
     return null;
@@ -146,7 +150,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
   const handleSave = async () => {
     const err = validate();
     if (err) {
-      toast({ title: 'Confira a compra', description: err, variant: 'destructive' });
+      toast({ title: t.validate.toastTitle, description: err, variant: 'destructive' });
       return;
     }
     const materials: CompraMaterialDraft[] = rows.map((r) => ({
@@ -171,70 +175,70 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={editingId ? 'Editar Compra' : 'Nova Compra'}
+      title={editingId ? t.titleEdit : t.titleNew}
       className="sm:max-w-[640px]"
       footer={
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-            Cancelar
+            {t.cancel}
           </Button>
           <Button onClick={handleSave} disabled={!canSave || isPending} className="flex-1">
-            {isPending ? 'Salvando...' : 'Salvar'}
+            {isPending ? t.saving : t.save}
           </Button>
         </div>
       }
     >
       {loading ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">Carregando...</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">{t.loading}</p>
       ) : (
         <div className="space-y-5">
           {editingId && compra && compra.cotacao_count > 0 && (
             <p className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
-              Esta compra já tem cotações. Mudar os materiais vai apagar os preços já informados.
+              {t.cotacaoWarning}
             </p>
           )}
 
           {/* Título */}
           <div className="space-y-2">
-            <Label>Título *</Label>
+            <Label>{t.fields.title}</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex.: Reposição de materiais — Junho"
+              placeholder={t.fields.titlePlaceholder}
             />
           </div>
 
           {/* Materiais */}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold">Materiais</h3>
+            <h3 className="text-sm font-semibold">{t.materials.sectionTitle}</h3>
 
             <div className="space-y-2 rounded-lg border bg-muted/30 p-2">
               <LabeledSwitch<Origin>
                 value={originToAdd}
                 onChange={setOriginToAdd}
-                off={{ value: 'estoque', label: 'Do estoque' }}
-                on={{ value: 'manual', label: 'Fora do estoque' }}
+                off={{ value: 'estoque', label: t.materials.originStock }}
+                on={{ value: 'manual', label: t.materials.originManual }}
                 size="default"
-                aria-label="Origem do material a adicionar"
+                aria-label={t.materials.originAriaLabel}
               />
               {originToAdd === 'estoque' ? (
                 <SearchableSelect
                   options={availableItems}
                   value=""
                   onValueChange={addStockItem}
-                  placeholder="Adicionar material do estoque..."
-                  searchPlaceholder="Buscar material..."
-                  emptyMessage="Nenhum material disponível."
+                  placeholder={t.materials.stockPlaceholder}
+                  searchPlaceholder={t.materials.stockSearchPlaceholder}
+                  emptyMessage={t.materials.stockEmptyMessage}
                 />
               ) : (
                 <Button variant="outline" className="w-full gap-1.5" onClick={addManualItem}>
-                  <Plus className="h-4 w-4" /> Adicionar material fora do estoque
+                  <Plus className="h-4 w-4" /> {t.materials.addManualButton}
                 </Button>
               )}
             </div>
 
             {rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum material adicionado.</p>
+              <p className="text-sm text-muted-foreground">{t.materials.noneAdded}</p>
             ) : (
               <div className="space-y-2">
                 {rows.map((r) => {
@@ -249,14 +253,14 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
                           {isManual ? (
                             <Input
                               className="h-8"
-                              placeholder="Nome do material..."
+                              placeholder={t.materials.manualNamePlaceholder}
                               value={r.material_name}
                               onChange={(e) => patchItem(r.key, { material_name: e.target.value })}
                             />
                           ) : (
                             <p className="truncate text-sm font-medium">{r.material_name || 'Item'}</p>
                           )}
-                          {isManual && <Badge variant="warning" className="text-[10px]">Fora do estoque</Badge>}
+                          {isManual && <Badge variant="warning" className="text-[10px]">{t.materials.badgeOutOfStock}</Badge>}
                           {!isManual && r.inventory_id && inventoryById.get(r.inventory_id)?.sku && (
                             <span className="text-xs text-muted-foreground">
                               {inventoryById.get(r.inventory_id)?.sku}
@@ -268,7 +272,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
                           size="icon"
                           className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
                           onClick={() => removeItem(r.key)}
-                          aria-label="Remover material"
+                          aria-label={t.materials.ariaRemove}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -276,7 +280,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
 
                       <div className="flex items-end gap-2 pl-6">
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Quantidade</Label>
+                          <Label className="text-xs text-muted-foreground">{t.materials.quantity}</Label>
                           <NumericInput
                             decimal
                             className="h-8 w-24"
@@ -285,7 +289,7 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Unidade</Label>
+                          <Label className="text-xs text-muted-foreground">{t.materials.unit}</Label>
                           <Select value={r.unit} onValueChange={(v) => patchItem(r.key, { unit: v })}>
                             <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -305,11 +309,11 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
 
           {/* Observações */}
           <div className="space-y-2">
-            <Label>Observações</Label>
+            <Label>{t.fields.notes}</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Anotações da compra..."
+              placeholder={t.fields.notesPlaceholder}
               rows={2}
             />
           </div>

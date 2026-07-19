@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { AlertTriangle, ChevronDown, Loader2, ShieldCheck, WifiOff } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -187,9 +189,11 @@ interface ResetGroupProps {
   options: ResetOptions;
   isLoading: boolean;
   onToggle: (key: keyof ResetOptions, checked: boolean) => void;
+  tGroup?: { label?: string; [key: string]: { title?: string; description?: string } | string | undefined };
+  forcedByMaterialsLabel?: string;
 }
 
-function ResetGroup({ group, options, isLoading, onToggle }: ResetGroupProps) {
+function ResetGroup({ group, options, isLoading, onToggle, tGroup, forcedByMaterialsLabel }: ResetGroupProps) {
   const [open, setOpen] = useState(true);
 
   const groupKeys = group.items.map((i) => i.key);
@@ -226,11 +230,11 @@ function ResetGroup({ group, options, isLoading, onToggle }: ResetGroupProps) {
               onCheckedChange={(c) => handleToggleGroup(c === true)}
               disabled={isLoading}
               onClick={(e) => e.stopPropagation()}
-              aria-label={`Selecionar tudo em ${group.label}`}
+              aria-label={`Selecionar tudo em ${tGroup?.label ?? group.label}`}
             />
           </div>
 
-          <span className="flex-1 text-sm font-semibold text-foreground">{group.label}</span>
+          <span className="flex-1 text-sm font-semibold text-foreground">{tGroup?.label ?? group.label}</span>
 
           {selectedInGroup > 0 && (
             <span className="text-xs text-muted-foreground mr-1">
@@ -273,13 +277,15 @@ function ResetGroup({ group, options, isLoading, onToggle }: ResetGroupProps) {
                   className="mt-0.5 shrink-0"
                 />
                 <div className="flex-1 space-y-0.5">
-                  <div className="text-sm font-medium text-foreground">{cfg.title}</div>
+                  <div className="text-sm font-medium text-foreground">
+                    {(tGroup?.[cfg.key] as { title?: string } | undefined)?.title ?? cfg.title}
+                  </div>
                   <div className="text-xs text-muted-foreground leading-snug">
-                    {cfg.description}
+                    {(tGroup?.[cfg.key] as { description?: string } | undefined)?.description ?? cfg.description}
                   </div>
                   {forcedByMaterials && (
                     <div className="text-[11px] text-muted-foreground italic">
-                      Necessário porque o cadastro de materiais foi marcado.
+                      {forcedByMaterialsLabel ?? cfg.description}
                     </div>
                   )}
                 </div>
@@ -300,6 +306,8 @@ export function ResetSystemDialog({
   companyName,
   companyId,
 }: ResetSystemDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.resetSystem;
   const { toast } = useToast();
   const { reset, isLoading, currentStep, currentStepIndex, totalSteps } = useResetSystem();
 
@@ -376,8 +384,8 @@ export function ResetSystemDialog({
     try {
       await reset(companyId, options);
       toast({
-        title: 'Sistema zerado com sucesso',
-        description: 'Os dados selecionados foram removidos. O log de auditoria foi gerado.',
+        title: t.successTitle,
+        description: t.successDesc,
       });
       onOpenChange(false);
     } catch (err) {
@@ -385,34 +393,29 @@ export function ResetSystemDialog({
       const message = (err as { message?: string }).message ?? '';
       const step = (err as { step?: string }).step;
 
-      const stepLabel = step ? STEP_LABEL[step] ?? step : null;
-      const stepPrefix = stepLabel ? `Erro na etapa "${stepLabel}". ` : '';
+      const stepLabelRaw = step ? (t.stepLabels as Record<string, string>)[step] ?? step : null;
+      const stepPrefix = stepLabelRaw ? t.errorStepPrefix.replace('{step}', stepLabelRaw) + ' ' : '';
 
       let toastMessage: string;
       if (code === '42501') {
-        toastMessage =
-          'Voce nao tem permissao pra zerar o sistema. Apenas o administrador da empresa pode fazer isso.';
+        toastMessage = t.errorPermission;
       } else if (code === '57014') {
-        toastMessage =
-          'Uma etapa demorou demais. Tente novamente, o que ja foi apagado continua apagado.';
+        toastMessage = t.errorTimeout;
       } else if (code === '23503') {
-        toastMessage =
-          'Nao foi possivel concluir a etapa por uma dependencia inesperada. Avise o suporte com o nome da etapa.';
+        toastMessage = t.errorDependency;
       } else if (code === '23505') {
-        toastMessage =
-          'Nao foi possivel recriar uma configuracao padrao. Tente novamente em alguns segundos.';
+        toastMessage = t.errorDuplicate;
       } else if (code === 'P0001' && message) {
         toastMessage = message;
       } else if (message) {
         toastMessage = message;
       } else {
-        toastMessage =
-          'Nao foi possivel zerar o sistema. Tente novamente ou avise o suporte.';
+        toastMessage = t.errorGeneric;
       }
 
       toast({
         variant: 'destructive',
-        title: 'Nao foi possivel zerar o sistema',
+        title: t.errorTitle,
         description: `${stepPrefix}${toastMessage}`,
       });
     }
@@ -426,16 +429,16 @@ export function ResetSystemDialog({
 
   // ===== Footer (muda durante execucao) =====
 
-  const currentStepLabel = currentStep ? STEP_LABEL[currentStep] ?? currentStep : '';
+  const currentStepLabel = currentStep ? (t.stepLabels as Record<string, string>)[currentStep] ?? currentStep : '';
   const progressNumber = currentStepIndex >= 0 ? currentStepIndex + 1 : 1;
 
   const footer = isLoading ? (
     <div className="flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 p-3">
       <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-warning" />
       <div className="text-sm text-foreground">
-        <div className="font-medium">Apagando dados...</div>
+        <div className="font-medium">{t.progressTitle}</div>
         <div className="text-xs text-muted-foreground">
-          Etapa <strong>{progressNumber}</strong> de <strong>{totalSteps}</strong>:{' '}
+          {t.progressStep.replace('{current}', String(progressNumber)).replace('{total}', String(totalSteps))}{' '}
           {currentStepLabel || '...'}
         </div>
       </div>
@@ -447,7 +450,7 @@ export function ResetSystemDialog({
         onClick={() => onOpenChange(false)}
         className="w-full sm:w-auto"
       >
-        Cancelar
+        {t.cancel}
       </Button>
       <Button
         variant="destructive"
@@ -456,7 +459,7 @@ export function ResetSystemDialog({
         className="w-full sm:w-auto"
       >
         <AlertTriangle className="mr-2 h-4 w-4" />
-        Sim, Zerar Sistema
+        {t.confirmButton}
       </Button>
     </div>
   );
@@ -465,7 +468,7 @@ export function ResetSystemDialog({
     <ResponsiveModal
       open={open}
       onOpenChange={handleOpenChange}
-      title="Zerar Sistema"
+      title={t.modalTitle}
       footer={footer}
     >
       <div className="space-y-4">
@@ -473,11 +476,10 @@ export function ResetSystemDialog({
         <div className="flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
           <p className="text-sm text-foreground">
-            Esta acao ira{' '}
-            <strong className="text-destructive">DELETAR PERMANENTEMENTE</strong> os dados
-            operacionais da empresa{' '}
-            <strong className="text-foreground">{companyName || '...'}</strong>. Escolha o
-            que deseja remover:
+            {t.irreversibleWarning}{' '}
+            <strong className="text-destructive">{t.deletePermanently}</strong>{' '}
+            {t.warningCompany}{' '}
+            <strong className="text-foreground">{companyName || '...'}</strong>. {t.chooseWhat}
           </p>
         </div>
 
@@ -492,25 +494,31 @@ export function ResetSystemDialog({
             onCheckedChange={(c) => handleToggleAll(c === true)}
             disabled={isLoading}
           />
-          <span className="text-sm font-semibold text-foreground">Marcar tudo</span>
+          <span className="text-sm font-semibold text-foreground">{t.selectAll}</span>
           {selectedCount > 0 && (
             <span className="ml-auto text-xs text-muted-foreground">
-              {selectedCount}/{ALL_CHECKBOXES.length} selecionados
+              {t.selectedCount.replace('{count}', String(selectedCount)).replace('{total}', String(ALL_CHECKBOXES.length))}
             </span>
           )}
         </label>
 
         {/* 4 grupos expansiveis */}
         <div className="space-y-2">
-          {GROUPS.map((group) => (
-            <ResetGroup
-              key={group.id}
-              group={group}
-              options={options}
-              isLoading={isLoading}
-              onToggle={handleToggle}
-            />
-          ))}
+          {GROUPS.map((group) => {
+            const groupKey = group.id === 'rh-inventario' ? 'rh_inventario' : group.id;
+            const tGroup = (t.groups as Record<string, { label?: string; [k: string]: { title?: string; description?: string } | string | undefined }>)[groupKey];
+            return (
+              <ResetGroup
+                key={group.id}
+                group={group}
+                options={options}
+                isLoading={isLoading}
+                onToggle={handleToggle}
+                tGroup={tGroup}
+                forcedByMaterialsLabel={t.forcedByMaterials}
+              />
+            );
+          })}
         </div>
 
         <Separator />
@@ -519,19 +527,19 @@ export function ResetSystemDialog({
         <div className="rounded-md border bg-muted/30 p-3 space-y-2">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">Serao mantidos:</span>
+            <span className="text-sm font-medium text-foreground">{t.preserved.title}</span>
           </div>
           <ul className="space-y-1 pl-6 text-xs text-muted-foreground list-disc">
-            <li>Dados basicos da empresa</li>
-            <li>Usuarios cadastrados</li>
-            <li>Historico de pagamentos</li>
+            <li>{t.preserved.companyData}</li>
+            <li>{t.preserved.users}</li>
+            <li>{t.preserved.paymentHistory}</li>
           </ul>
         </div>
 
         {/* Aviso final em vermelho */}
         <div className="rounded-md border border-destructive bg-destructive/10 p-3">
           <p className="text-center text-sm font-bold text-destructive">
-            Esta acao NAO PODE ser desfeita!
+            {t.finalWarning}
           </p>
         </div>
 
@@ -541,7 +549,7 @@ export function ResetSystemDialog({
             htmlFor="reset-confirm-name"
             className="text-xs font-semibold uppercase tracking-wide text-foreground"
           >
-            Para confirmar, digite o nome da empresa:
+            {t.confirmLabel}
           </Label>
           <div className="rounded-md border bg-muted/40 px-3 py-2">
             <span className="text-sm font-medium text-foreground select-none">
@@ -552,7 +560,7 @@ export function ResetSystemDialog({
             id="reset-confirm-name"
             value={confirmName}
             onChange={(e) => setConfirmName(e.target.value)}
-            placeholder="Nome da empresa"
+            placeholder={t.confirmPlaceholder}
             disabled={isLoading}
             autoComplete="off"
             autoCorrect="off"
@@ -560,7 +568,7 @@ export function ResetSystemDialog({
           />
           {confirmName.length > 0 && !nameMatches && (
             <p className="text-xs text-destructive">
-              O nome digitado nao confere com o nome da empresa.
+              {t.nameMismatch}
             </p>
           )}
         </div>
@@ -570,7 +578,7 @@ export function ResetSystemDialog({
           <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3">
             <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <p className="text-xs text-foreground">
-              Esta acao precisa de conexao com a internet. Voce esta offline.
+              {t.offline}
             </p>
           </div>
         )}

@@ -99,8 +99,9 @@ export const shell = {
     adminPanelLabel: 'Painel Administrativo',
     // Fallback do nome exibido quando o perfil não tem nome
     defaultUserName: 'Usuário',
-    // ── Relógio do header (tooltip de fuso) ──────────────────────────────────
+    // ── Relógio do header (tooltip de fuso + aria-label) ─────────────────────
     clockTimezoneLabel: 'Fuso horário',
+    clockDateTimeLabel: 'Data e hora',
   },
 
   en: {
@@ -169,6 +170,7 @@ export const shell = {
     adminPanelLabel: 'Admin Panel',
     defaultUserName: 'User',
     clockTimezoneLabel: 'Time zone',
+    clockDateTimeLabel: 'Date and time',
   },
 
   es: {
@@ -237,6 +239,7 @@ export const shell = {
     adminPanelLabel: 'Panel Administrativo',
     defaultUserName: 'Usuario',
     clockTimezoneLabel: 'Zona horaria',
+    clockDateTimeLabel: 'Fecha y hora',
   },
 
   fr: {
@@ -305,5 +308,6 @@ export const shell = {
     adminPanelLabel: "Panneau d'administration",
     defaultUserName: 'Utilisateur',
     clockTimezoneLabel: 'Fuseau horaire',
+    clockDateTimeLabel: 'Date et heure',
   },
 };

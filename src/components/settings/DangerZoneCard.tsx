@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResetSystemDialog } from '@/components/settings/ResetSystemDialog';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 /**
  * Card vermelho "Zona de Perigo" — entrada visual pra feature destrutiva
@@ -18,6 +20,8 @@ export interface DangerZoneCardProps {
 }
 
 export function DangerZoneCard({ companyName, companyId }: DangerZoneCardProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.dangerZone;
   const [resetOpen, setResetOpen] = useState(false);
 
   return (
@@ -29,9 +33,9 @@ export function DangerZoneCard({ companyName, companyId }: DangerZoneCardProps) 
             <AlertTriangle className="h-5 w-5 text-destructive" />
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-base font-semibold text-destructive">Zona de Perigo</h3>
+            <h3 className="text-base font-semibold text-destructive">{t.title}</h3>
             <p className="text-xs text-muted-foreground">
-              Ações irreversíveis. Revise cuidadosamente antes de confirmar.
+              {t.description}
             </p>
           </div>
         </div>
@@ -42,11 +46,10 @@ export function DangerZoneCard({ companyName, companyId }: DangerZoneCardProps) 
             <div className="space-y-1 sm:pr-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
-                <span className="text-sm font-semibold text-foreground">Zerar Sistema</span>
+                <span className="text-sm font-semibold text-foreground">{t.resetSystem.label}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Exclui dados operacionais selecionados. Dados da empresa e usuários são preservados.
-                Toda operação fica registrada em log de auditoria.
+                {t.resetSystem.description}
               </p>
             </div>
             <Button
@@ -56,7 +59,7 @@ export function DangerZoneCard({ companyName, companyId }: DangerZoneCardProps) 
               disabled={!companyId}
             >
               <AlertTriangle className="mr-2 h-4 w-4" />
-              Zerar Sistema
+              {t.resetSystem.button}
             </Button>
           </div>
         </div>

@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
@@ -46,15 +48,6 @@ const UsersPage = lazy(() => import('@/pages/Users'));
 
 const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia'];
 
-const settingsTabs: SettingsTab[] = [
-  { value: 'empresa', label: 'Empresa', icon: Building },
-  { value: 'regional', label: 'Regional', icon: Globe },
-  { value: 'usuarios', label: 'Usuários e Permissões', icon: UserCircle },
-  { value: 'usabilidade', label: 'Usabilidade', icon: SlidersHorizontal },
-  { value: 'atalhos', label: 'Atalhos', icon: Keyboard },
-  { value: 'aparencia', label: 'Aparência', icon: Palette },
-];
-
 // Snapshot canônico de `settings` no MESMO shape/ordem do payload salvo
 // (buildPayload). Usado em 2 lugares: baseline do auto-save (lastSavedJsonRef)
 // e guard anti-eco da hidratação — por isso vive num helper único.
@@ -90,6 +83,18 @@ function settingsToJson(settings: any): string {
 }
 
 export default function Settings() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings;
+
+  const settingsTabs: SettingsTab[] = [
+    { value: 'empresa', label: t.page.tabs.empresa, icon: Building },
+    { value: 'regional', label: t.page.tabs.regional, icon: Globe },
+    { value: 'usuarios', label: t.page.tabs.usuarios, icon: UserCircle },
+    { value: 'usabilidade', label: t.page.tabs.usabilidade, icon: SlidersHorizontal },
+    { value: 'atalhos', label: t.page.tabs.atalhos, icon: Keyboard },
+    { value: 'aparencia', label: t.page.tabs.aparencia, icon: Palette },
+  ];
+
   const { hasScreenAccess, hasRole } = useAuth();
   const { hasModule } = useCompanyModules();
   const { companyId } = useUserCompany();
@@ -328,11 +333,11 @@ export default function Settings() {
     if (!file) return;
     file = await processImageFile(file);
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorFileSize });
       return;
     }
     if (!file.type.startsWith('image/')) {
-      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorFileType });
       return;
     }
     setUploading(true);
@@ -350,7 +355,7 @@ export default function Settings() {
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ logo_url: publicUrl });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorUpload, description: getErrorMessage(err) });
     } finally {
       setUploading(false);
     }
@@ -371,11 +376,11 @@ export default function Settings() {
     if (!file) return;
     file = await processImageFile(file);
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorFileSize });
       return;
     }
     if (!file.type.startsWith('image/')) {
-      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorFileType });
       return;
     }
     setWlUploading(true);
@@ -393,7 +398,7 @@ export default function Settings() {
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ white_label_logo_url: publicUrl });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorUpload, description: getErrorMessage(err) });
     } finally {
       setWlUploading(false);
     }
@@ -408,11 +413,11 @@ export default function Settings() {
     if (!file) return;
     file = await processImageFile(file);
     if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorFileSize });
       return;
     }
     if (!file.type.startsWith('image/')) {
-      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorFileType });
       return;
     }
     setWlIconUploading(true);
@@ -430,7 +435,7 @@ export default function Settings() {
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ white_label_icon_url: publicUrl });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar ícone', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorIconUpload, description: getErrorMessage(err) });
     } finally {
       setWlIconUploading(false);
     }
@@ -451,44 +456,44 @@ export default function Settings() {
     const updated = { ...usabilitySettings, [key]: value };
     setUsabilitySettings(updated);
     localStorage.setItem('usability-settings', JSON.stringify(updated));
-    toast({ title: 'Preferência salva!' });
+    toast({ title: t.usability.preferenceSaved });
   };
 
   const usabilitySections = [
     {
-      title: 'Ordens de Serviço',
+      title: t.usability.sections.os.title,
       icon: ClipboardList,
-      description: 'Comportamentos relacionados às ordens de serviço',
+      description: t.usability.sections.os.description,
       items: [
-        { key: 'autoSaveOS', title: 'Salvamento Automático', description: 'Salvar automaticamente rascunhos de ordens de serviço ao editar' },
-        { key: 'showOSValues', title: 'Exibir Valores', description: 'Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço' },
-        { key: 'requireSignature', title: 'Exigir Assinatura', description: 'Tornar obrigatória a assinatura do cliente ao finalizar OS' },
-        { key: 'saveOSPhotosToDevice', title: 'Salvar fotos no dispositivo', description: 'Mostra um botão para salvar a foto no seu aparelho. No iPhone abre a opção "Salvar Imagem"; no Android baixa direto.' },
+        { key: 'autoSaveOS', title: t.usability.sections.os.autoSaveOS.title, description: t.usability.sections.os.autoSaveOS.description },
+        { key: 'showOSValues', title: t.usability.sections.os.showOSValues.title, description: t.usability.sections.os.showOSValues.description },
+        { key: 'requireSignature', title: t.usability.sections.os.requireSignature.title, description: t.usability.sections.os.requireSignature.description },
+        { key: 'saveOSPhotosToDevice', title: t.usability.sections.os.saveOSPhotosToDevice.title, description: t.usability.sections.os.saveOSPhotosToDevice.description },
       ],
     },
     {
-      title: 'Interface',
+      title: t.usability.sections.interface.title,
       icon: TableProperties,
-      description: 'Preferências visuais de listagens e tabelas',
+      description: t.usability.sections.interface.description,
       items: [
-        { key: 'compactTables', title: 'Tabelas Compactas', description: 'Reduzir espaçamento nas tabelas para exibir mais dados por página' },
-        { key: 'showEquipmentPhotos', title: 'Fotos de Equipamentos', description: 'Exibir miniaturas de fotos dos equipamentos nas listagens' },
+        { key: 'compactTables', title: t.usability.sections.interface.compactTables.title, description: t.usability.sections.interface.compactTables.description },
+        { key: 'showEquipmentPhotos', title: t.usability.sections.interface.showEquipmentPhotos.title, description: t.usability.sections.interface.showEquipmentPhotos.description },
       ],
     },
     {
-      title: 'Segurança',
+      title: t.usability.sections.security.title,
       icon: ShieldCheck,
-      description: 'Confirmações e validações de segurança',
+      description: t.usability.sections.security.description,
       items: [
-        { key: 'confirmDelete', title: 'Confirmar Exclusões', description: 'Exibir diálogo de confirmação antes de excluir registros' },
+        { key: 'confirmDelete', title: t.usability.sections.security.confirmDelete.title, description: t.usability.sections.security.confirmDelete.description },
       ],
     },
     {
-      title: 'Agenda',
+      title: t.usability.sections.schedule.title,
       icon: Calendar,
-      description: 'Configurações da agenda e calendário',
+      description: t.usability.sections.schedule.description,
       items: [
-        { key: 'showHolidays', title: 'Exibir Feriados', description: 'Mostrar feriados nacionais e municipais na agenda' },
+        { key: 'showHolidays', title: t.usability.sections.schedule.showHolidays.title, description: t.usability.sections.schedule.showHolidays.description },
       ],
     },
   ];
@@ -502,9 +507,9 @@ export default function Settings() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Building className="h-5 w-5 text-primary" />
-                <CardTitle>Dados da Empresa</CardTitle>
+                <CardTitle>{t.company.cardTitle}</CardTitle>
               </div>
-              <CardDescription>Informações da empresa que aparecem em etiquetas e documentos</CardDescription>
+              <CardDescription>{t.company.cardDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
 
@@ -512,9 +517,9 @@ export default function Settings() {
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Image className="h-4 w-4 text-primary" />
-                  Identidade Visual
+                  {t.company.visualIdentity.sectionTitle}
                 </h3>
-                <p className="text-xs text-muted-foreground">Logo da empresa para documentos e sistema</p>
+                <p className="text-xs text-muted-foreground">{t.company.visualIdentity.sectionDescription}</p>
               </div>
 
               <div className="pl-0 sm:pl-6">
@@ -525,24 +530,24 @@ export default function Settings() {
                       <Button variant="outline" size="sm" asChild disabled={uploading}>
                         <label className="cursor-pointer">
                           {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                          Substituir
+                          {t.company.visualIdentity.replace}
                           <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                         </label>
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="destructive-ghost" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" /> Remover
+                            <Trash2 className="mr-2 h-4 w-4" /> {t.company.visualIdentity.remove}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Remover logo?</AlertDialogTitle>
-                            <AlertDialogDescription>O logo atual será removido permanentemente.</AlertDialogDescription>
+                            <AlertDialogTitle>{t.company.visualIdentity.removeLogoTitle}</AlertDialogTitle>
+                            <AlertDialogDescription>{t.company.visualIdentity.removeLogoDesc}</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleRemoveLogo}>Remover</AlertDialogAction>
+                            <AlertDialogCancel>{MESSAGES[locale].app.common.cancel}</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleRemoveLogo}>{t.company.visualIdentity.remove}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -555,8 +560,8 @@ export default function Settings() {
                     ) : (
                       <>
                         <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                        <span className="text-sm text-muted-foreground">Clique para enviar o logo</span>
-                        <span className="text-xs text-muted-foreground">PNG, JPG até 5MB</span>
+                        <span className="text-sm text-muted-foreground">{t.company.visualIdentity.uploadPrompt}</span>
+                        <span className="text-xs text-muted-foreground">{t.company.visualIdentity.uploadHint}</span>
                       </>
                     )}
                     <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
@@ -570,36 +575,36 @@ export default function Settings() {
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
-                  Dados Cadastrais
+                  {t.company.registrationData.sectionTitle}
                 </h3>
-                <p className="text-xs text-muted-foreground">Razão social, documento e informações oficiais</p>
+                <p className="text-xs text-muted-foreground">{t.company.registrationData.sectionDescription}</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Nome da Empresa</Label>
+                    <Label>{t.company.registrationData.companyName}</Label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <span className="text-[10px] text-muted-foreground">{t.company.registrationData.showInDocs}</span>
                       <Switch checked={showNameInDocs} onCheckedChange={setShowNameInDocs} className="scale-75" />
                     </div>
                   </div>
-                  <Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Nome da sua empresa" />
+                  <Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={t.company.registrationData.companyNamePlaceholder} />
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>CNPJ/CPF</Label>
+                    <Label>{t.company.registrationData.cnpj}</Label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <span className="text-[10px] text-muted-foreground">{t.company.registrationData.showInDocs}</span>
                       <Switch checked={showCnpjInDocs} onCheckedChange={setShowCnpjInDocs} className="scale-75" />
                     </div>
                   </div>
-                  <Input value={companyDoc} onChange={e => setCompanyDoc(cpfCnpjMask(e.target.value))} placeholder="00.000.000/0000-00" />
+                  <Input value={companyDoc} onChange={e => setCompanyDoc(cpfCnpjMask(e.target.value))} placeholder={t.company.registrationData.cnpjPlaceholder} />
                 </div>
               </div>
 
               <div className="space-y-2 pl-0 sm:pl-6">
-                <Label>Segmento de Atuação da Empresa</Label>
+                <Label>{t.company.registrationData.segment}</Label>
                 {/* Somente-leitura: o segmento define quais ferramentas/recursos
                     aparecem e só pode ser alterado pela Dominex. O usuário vê
                     qual é, mas não troca aqui. */}
@@ -610,12 +615,12 @@ export default function Settings() {
                     <div className="flex items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
                       {Icon && <Icon className="h-4 w-4 shrink-0" style={{ color: seg!.color }} />}
                       <span className={seg ? 'text-foreground' : 'text-muted-foreground'}>
-                        {seg ? seg.label : 'Não definido'}
+                        {seg ? seg.label : t.company.registrationData.segmentNotDefined}
                       </span>
                     </div>
                   );
                 })()}
-                <p className="text-xs text-muted-foreground">Define quais ferramentas e recursos do seu segmento aparecem no sistema. Para alterar, fale com a Dominex.</p>
+                <p className="text-xs text-muted-foreground">{t.company.registrationData.segmentHint}</p>
               </div>
 
               <Separator className="my-6" />
@@ -624,31 +629,31 @@ export default function Settings() {
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Phone className="h-4 w-4 text-primary" />
-                  Contato
+                  {t.company.contact.sectionTitle}
                 </h3>
-                <p className="text-xs text-muted-foreground">Telefone e e-mail da empresa</p>
+                <p className="text-xs text-muted-foreground">{t.company.contact.sectionDescription}</p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Telefone</Label>
+                    <Label>{t.company.contact.phone}</Label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <span className="text-[10px] text-muted-foreground">{t.company.contact.showInDocs}</span>
                       <Switch checked={showPhoneInDocs} onCheckedChange={setShowPhoneInDocs} className="scale-75" />
                     </div>
                   </div>
-                  <Input value={companyPhone} onChange={e => setCompanyPhone(phoneMask(e.target.value))} placeholder="(00) 0000-0000" />
+                  <Input value={companyPhone} onChange={e => setCompanyPhone(phoneMask(e.target.value))} placeholder={t.company.contact.phonePlaceholder} />
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Email</Label>
+                    <Label>{t.company.contact.email}</Label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <span className="text-[10px] text-muted-foreground">{t.company.contact.showInDocs}</span>
                       <Switch checked={showEmailInDocs} onCheckedChange={setShowEmailInDocs} className="scale-75" />
                     </div>
                   </div>
-                  <Input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} placeholder="contato@empresa.com" />
+                  <Input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} placeholder={t.company.contact.emailPlaceholder} />
                 </div>
               </div>
 
@@ -659,19 +664,19 @@ export default function Settings() {
                 <div className="space-y-1">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-primary" />
-                    Endereço
+                    {t.company.address.sectionTitle}
                   </h3>
-                  <p className="text-xs text-muted-foreground">Localização física da empresa</p>
+                  <p className="text-xs text-muted-foreground">{t.company.address.sectionDescription}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                  <span className="text-[10px] text-muted-foreground">{t.company.address.showInDocs}</span>
                   <Switch checked={showAddressInDocs} onCheckedChange={setShowAddressInDocs} className="scale-75" />
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
                 <div className="space-y-2">
-                  <Label>CEP</Label>
+                  <Label>{t.company.address.zip}</Label>
                   <CepLookup
                     value={companyZip}
                     onChange={setCompanyZip}
@@ -684,7 +689,7 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Endereço</Label>
+                  <Label>{t.company.address.street}</Label>
                   <AddressAutocomplete
                     value={companyAddress}
                     onChange={setCompanyAddress}
@@ -699,23 +704,23 @@ export default function Settings() {
                         setCompanyZip(c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
                       }
                     }}
-                    placeholder="Rua, Avenida..."
+                    placeholder={t.company.address.streetPlaceholder}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Número</Label>
-                  <Input value={companyNumber} onChange={e => setCompanyNumber(e.target.value)} placeholder="Nº" />
+                  <Label>{t.company.address.number}</Label>
+                  <Input value={companyNumber} onChange={e => setCompanyNumber(e.target.value)} placeholder={t.company.address.numberPlaceholder} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Complemento</Label>
-                  <Input value={companyComplement} onChange={e => setCompanyComplement(e.target.value)} placeholder="Sala, Andar..." />
+                  <Label>{t.company.address.complement}</Label>
+                  <Input value={companyComplement} onChange={e => setCompanyComplement(e.target.value)} placeholder={t.company.address.complementPlaceholder} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bairro</Label>
-                  <Input value={companyNeighborhood} onChange={e => setCompanyNeighborhood(e.target.value)} placeholder="Bairro" />
+                  <Label>{t.company.address.neighborhood}</Label>
+                  <Input value={companyNeighborhood} onChange={e => setCompanyNeighborhood(e.target.value)} placeholder={t.company.address.neighborhoodPlaceholder} />
                 </div>
                 <div className="space-y-2">
-                  <Label>UF / Cidade</Label>
+                  <Label>{t.company.address.stateCity}</Label>
                   <StateCitySelector
                     selectedState={companyState}
                     selectedCity={companyCity}
@@ -733,9 +738,9 @@ export default function Settings() {
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Paintbrush className="h-4 w-4 text-primary" />
-                  White Label
+                  {t.company.whiteLabelSection.sectionTitle}
                 </h3>
-                <p className="text-xs text-muted-foreground">Personalize o sistema com a identidade visual da sua marca</p>
+                <p className="text-xs text-muted-foreground">{t.company.whiteLabelSection.sectionDescription}</p>
               </div>
               </>
               ) : (
@@ -748,11 +753,11 @@ export default function Settings() {
                 <div className="space-y-1">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Paintbrush className="h-4 w-4 text-muted-foreground" />
-                    White Label
+                    {t.company.whiteLabelSection.sectionTitle}
                   </h3>
-                  <p className="text-xs text-muted-foreground">Módulo não disponível no seu plano atual</p>
+                  <p className="text-xs text-muted-foreground">{t.company.whiteLabelSection.moduleUnavailable}</p>
                 </div>
-                <Badge variant="secondary">Contratar</Badge>
+                <Badge variant="secondary">{t.company.whiteLabelSection.hire}</Badge>
               </div>
               <ModuleGateModal
                 open={wlGateOpen}
@@ -768,8 +773,8 @@ export default function Settings() {
               {hasModule('white_label') && <div className="space-y-4 pl-0 sm:pl-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Ativar White Label</Label>
-                    <p className="text-xs text-muted-foreground">Substitui o logo e a cor padrão do sistema</p>
+                    <Label className="text-sm font-medium">{t.company.whiteLabelSection.enableLabel}</Label>
+                    <p className="text-xs text-muted-foreground">{t.company.whiteLabelSection.enableDescription}</p>
                   </div>
                   <Switch checked={wlEnabled} onCheckedChange={setWlEnabled} />
                 </div>
@@ -782,13 +787,13 @@ export default function Settings() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       {/* WL Logo */}
                       <div className="space-y-2">
-                        <Label>Logo completo</Label>
+                        <Label>{t.company.whiteLabelSection.fullLogo}</Label>
                         <p className="text-xs text-muted-foreground">
                           {settings?.white_label_logo_url
-                            ? 'Logo personalizado configurado'
+                            ? t.company.whiteLabelSection.fullLogoConfigured
                             : settings?.logo_url
-                              ? 'Usando o logo da empresa por padrão'
-                              : 'Será utilizado o logo da empresa'}
+                              ? t.company.whiteLabelSection.fullLogoUsingCompany
+                              : t.company.whiteLabelSection.fullLogoFallback}
                         </p>
                         {(settings?.white_label_logo_url || settings?.logo_url) ? (
                           <div className="flex items-center gap-4">
@@ -803,12 +808,12 @@ export default function Settings() {
                               <Button variant="outline" size="sm" asChild disabled={wlUploading}>
                                 <label className="cursor-pointer">
                                   {wlUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                                  Substituir
+                                  {t.company.visualIdentity.replace}
                                   <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} />
                                 </label>
                               </Button>
                               <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlLogo}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Remover
+                                <Trash2 className="mr-2 h-4 w-4" /> {t.company.visualIdentity.remove}
                               </Button>
                             </div>
                           </div>
@@ -819,7 +824,7 @@ export default function Settings() {
                             ) : (
                               <>
                                 <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                                <span className="text-xs text-muted-foreground">Enviar logo (opcional)</span>
+                                <span className="text-xs text-muted-foreground">{t.company.whiteLabelSection.uploadLogoPrompt}</span>
                               </>
                             )}
                             <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
@@ -829,9 +834,9 @@ export default function Settings() {
 
                       {/* WL Icon */}
                       <div className="space-y-2">
-                        <Label>Ícone (1:1)</Label>
+                        <Label>{t.company.whiteLabelSection.icon}</Label>
                         <p className="text-xs text-muted-foreground">
-                          Ícone quadrado para o menu lateral recolhido. 128×128px.
+                          {t.company.whiteLabelSection.iconDescription}
                         </p>
                         {settings?.white_label_icon_url ? (
                           <div className="flex items-center gap-4">
@@ -846,12 +851,12 @@ export default function Settings() {
                               <Button variant="outline" size="sm" asChild disabled={wlIconUploading}>
                                 <label className="cursor-pointer">
                                   {wlIconUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                                  Substituir
+                                  {t.company.visualIdentity.replace}
                                   <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} />
                                 </label>
                               </Button>
                               <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlIcon}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Remover
+                                <Trash2 className="mr-2 h-4 w-4" /> {t.company.visualIdentity.remove}
                               </Button>
                             </div>
                           </div>
@@ -862,7 +867,7 @@ export default function Settings() {
                             ) : (
                               <>
                                 <Upload className="h-5 w-5 text-muted-foreground mb-1" />
-                                <span className="text-[10px] text-muted-foreground text-center">Enviar ícone</span>
+                                <span className="text-[10px] text-muted-foreground text-center">{t.company.whiteLabelSection.uploadIconPrompt}</span>
                               </>
                             )}
                             <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} disabled={wlIconUploading} />
@@ -875,8 +880,8 @@ export default function Settings() {
 
                     {/* WL Color */}
                      <div className="space-y-2">
-                      <Label>Cor primária</Label>
-                      <p className="text-xs text-muted-foreground">Substitui a cor verde padrão do sistema</p>
+                      <Label>{t.company.whiteLabelSection.primaryColor}</Label>
+                      <p className="text-xs text-muted-foreground">{t.company.whiteLabelSection.primaryColorDescription}</p>
                       <div className="flex items-center gap-3">
                         <ColorPicker value={wlColor} onChange={setWlColor} />
                         <div
@@ -891,9 +896,9 @@ export default function Settings() {
                     {/* Report Header Customization */}
                     <div className="space-y-4">
                       <div className="space-y-1">
-                        <Label className="text-sm font-medium">Cabeçalho do Relatório de Serviço</Label>
+                        <Label className="text-sm font-medium">{t.company.whiteLabelSection.reportHeader}</Label>
                         <p className="text-xs text-muted-foreground">
-                          Personalize o visual do cabeçalho que aparece no relatório da OS concluída
+                          {t.company.whiteLabelSection.reportHeaderDescription}
                         </p>
                       </div>
 
@@ -928,28 +933,28 @@ export default function Settings() {
                       {/* Controls */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-xs">Cor de fundo do cabeçalho</Label>
+                          <Label className="text-xs">{t.company.whiteLabelSection.reportBgColor}</Label>
                           <div className="flex items-center gap-3">
                             <ColorPicker value={reportBgColor} onChange={setReportBgColor} />
                             <div className="h-8 flex-1 rounded-md border" style={{ backgroundColor: reportBgColor }} />
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Cor do texto</Label>
+                          <Label className="text-xs">{t.company.whiteLabelSection.reportTextColor}</Label>
                           <div className="flex items-center gap-3">
                             <ColorPicker value={reportTextColor} onChange={setReportTextColor} />
                             <div className="h-8 flex-1 rounded-md border" style={{ backgroundColor: reportTextColor }} />
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Cor da barra de status</Label>
+                          <Label className="text-xs">{t.company.whiteLabelSection.reportStatusBarColor}</Label>
                           <div className="flex items-center gap-3">
                             <ColorPicker value={reportStatusBarColor} onChange={setReportStatusBarColor} />
                             <div className="h-8 flex-1 rounded-md border" style={{ backgroundColor: reportStatusBarColor }} />
                           </div>
                         </div>
                         <div className="space-y-2">
-                           <Label className="text-xs">Tamanho do logo ({reportLogoSize}px)</Label>
+                           <Label className="text-xs">{t.company.whiteLabelSection.reportLogoSize.replace('{size}', String(reportLogoSize))}</Label>
                           <Slider
                             value={[reportLogoSize]}
                             onValueChange={([v]) => setReportLogoSize(v)}
@@ -964,21 +969,21 @@ export default function Settings() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5">
-                            <Label className="text-xs">Fundo atrás do logo</Label>
-                            <p className="text-[11px] text-muted-foreground">Remove o fundo quando desativado</p>
+                            <Label className="text-xs">{t.company.whiteLabelSection.reportLogoBg}</Label>
+                            <p className="text-[11px] text-muted-foreground">{t.company.whiteLabelSection.reportLogoBgDescription}</p>
                           </div>
                           <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
                         </div>
                         {reportShowLogoBg && (
                           <div className="flex items-center gap-2">
-                            <Label className="text-xs whitespace-nowrap">Cor do fundo</Label>
+                            <Label className="text-xs whitespace-nowrap">{t.company.whiteLabelSection.reportLogoBgColor}</Label>
                             <ColorPicker value={reportLogoBgColor} onChange={setReportLogoBgColor} />
                           </div>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-xs">Tipo de logo no relatório</Label>
+                        <Label className="text-xs">{t.company.whiteLabelSection.reportLogoType}</Label>
                         <div className="flex gap-2">
                           <Button
                             type="button"
@@ -987,7 +992,7 @@ export default function Settings() {
                             onClick={() => setReportLogoType('full')}
                             className="flex-1"
                           >
-                            Logo Completo
+                            {t.company.whiteLabelSection.reportLogoTypeFull}
                           </Button>
                           <Button
                             type="button"
@@ -996,11 +1001,11 @@ export default function Settings() {
                             onClick={() => setReportLogoType('icon')}
                             className="flex-1"
                           >
-                            Ícone
+                            {t.company.whiteLabelSection.reportLogoTypeIcon}
                           </Button>
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          {reportLogoType === 'icon' ? 'Usa o ícone configurado no White Label' : 'Usa o logo completo da empresa'}
+                          {reportLogoType === 'icon' ? t.company.whiteLabelSection.reportLogoTypeHintIcon : t.company.whiteLabelSection.reportLogoTypeHintFull}
                         </p>
                       </div>
                     </div>
@@ -1017,10 +1022,10 @@ export default function Settings() {
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
-                  Documentos Legais
+                  {t.company.legalDocs.sectionTitle}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Consulte e baixe os termos que regem o uso do Dominex
+                  {t.company.legalDocs.sectionDescription}
                 </p>
               </div>
               <Button
@@ -1029,12 +1034,12 @@ export default function Settings() {
                 onClick={() => setTermsModalOpen(true)}
               >
                 <FileText className="h-4 w-4" />
-                Ver termos de uso
+                {t.company.legalDocs.viewTerms}
               </Button>
               {termsAcceptedLabel && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-500 shrink-0" />
-                  Aceito em {termsAcceptedLabel}
+                  {t.company.legalDocs.acceptedAt.replace('{date}', termsAcceptedLabel)}
                 </p>
               )}
             </CardContent>
@@ -1067,9 +1072,9 @@ export default function Settings() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="h-5 w-5 text-primary" />
-                <CardTitle>Usabilidade</CardTitle>
+                <CardTitle>{t.usability.cardTitle}</CardTitle>
               </div>
-              <CardDescription>Preferências de comportamento do sistema</CardDescription>
+              <CardDescription>{t.usability.cardDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {usabilitySections.map((section, sIdx) => (
@@ -1115,14 +1120,14 @@ export default function Settings() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <Tags className="h-5 w-5 text-primary" />
-                    <CardTitle>Origens</CardTitle>
+                    <CardTitle>{t.usability.origins.cardTitle}</CardTitle>
                   </div>
                   <CardDescription>
-                    Lista de origens usada no cadastro de clientes e nas oportunidades do CRM
+                    {t.usability.origins.cardDescription}
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" className="shrink-0" onClick={() => setOriginManagerOpen(true)}>
-                  Gerenciar origens
+                  {t.usability.origins.manage}
                 </Button>
               </div>
             </CardHeader>
@@ -1130,14 +1135,14 @@ export default function Settings() {
               {customerOrigins.length === 0 ? (
                 <div className="flex flex-col items-start gap-3 py-2">
                   <p className="text-sm text-muted-foreground">
-                    Nenhuma origem cadastrada. Crie um conjunto inicial e edite à vontade depois.
+                    {t.usability.origins.empty}
                   </p>
                   <Button
                     size="sm"
                     onClick={() => { if (!seedDefaultOrigins.isPending) seedDefaultOrigins.mutate(); }}
                     disabled={seedDefaultOrigins.isPending}
                   >
-                    {seedDefaultOrigins.isPending ? 'Criando…' : 'Criar origens padrão'}
+                    {seedDefaultOrigins.isPending ? t.usability.origins.seedLoading : t.usability.origins.seedButton}
                   </Button>
                 </div>
               ) : (
@@ -1154,7 +1159,7 @@ export default function Settings() {
                         </div>
                         <span className="flex-1 text-sm font-medium truncate">{o.name}</span>
                         {!o.is_active && (
-                          <span className="text-xs text-muted-foreground">Inativa</span>
+                          <span className="text-xs text-muted-foreground">{t.usability.origins.inactive}</span>
                         )}
                       </div>
                     );
@@ -1191,7 +1196,7 @@ export default function Settings() {
       return (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Salvando…
+          {t.saveStatus.saving}
         </span>
       );
     }
@@ -1199,7 +1204,7 @@ export default function Settings() {
       return (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
-          Alterações não salvas
+          {t.saveStatus.unsaved}
         </span>
       );
     }
@@ -1207,7 +1212,7 @@ export default function Settings() {
       return (
         <span className="flex items-center gap-1.5 text-xs text-success">
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Salvo
+          {t.saveStatus.saved}
         </span>
       );
     }
@@ -1217,8 +1222,8 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Configurações"
-        subtitle="Gerencie as configurações do sistema"
+        title={t.page.title}
+        subtitle={t.page.subtitle}
         icon={SettingsIcon}
         actions={saveStatus}
       />

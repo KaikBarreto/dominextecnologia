@@ -10,6 +10,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { NfseStatus } from '@/hooks/useNfse';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface StatusMeta {
   label: string;
@@ -97,23 +99,27 @@ export function getNfseStatusMeta(status: NfseStatus): StatusMeta {
   return STATUS_META[status] ?? FALLBACK;
 }
 
-/** Lista de status pro filtro multi-seleção (mesma ordem da legenda). */
+/** Valores canônicos de status (sem tradução) — usados pelo filtro. */
 export const NFSE_STATUS_FILTER_OPTIONS = [
-  { value: 'pendente', label: 'Pendente' },
-  { value: 'processando', label: 'Processando' },
-  { value: 'autorizada', label: 'Autorizada' },
-  { value: 'rejeitada', label: 'Rejeitada' },
-  { value: 'cancelada', label: 'Cancelada' },
-  { value: 'falhou', label: 'Falhou' },
-];
+  { value: 'pendente' },
+  { value: 'processando' },
+  { value: 'autorizada' },
+  { value: 'rejeitada' },
+  { value: 'cancelada' },
+  { value: 'falhou' },
+] as const;
 
 export function NfseStatusBadge({ status, className }: { status: NfseStatus; className?: string }) {
+  const { locale } = useAppLocaleContext();
+  const tStatus = MESSAGES[locale].app.nfse.status;
   const meta = getNfseStatusMeta(status);
   const Icon = meta.icon;
+  const label =
+    tStatus[status as keyof typeof tStatus] ?? tStatus.unknown ?? meta.label;
   return (
     <Badge className={cn('gap-1 font-medium', meta.badgeClass, className)}>
       <Icon className={cn('h-3 w-3', status === 'processando' && 'animate-spin')} />
-      {meta.label}
+      {label}
     </Badge>
   );
 }

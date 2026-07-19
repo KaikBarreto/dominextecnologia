@@ -308,7 +308,7 @@ export function FiscalSettingsModal({ open, onOpenChange, initialSection }: Fisc
     if (!file) return;
     const lower = file.name.toLowerCase();
     if (!lower.endsWith('.pfx') && !lower.endsWith('.p12')) {
-      toast.error('O certificado deve ser um arquivo .pfx ou .p12.');
+      toast.error(t.settings.certificado.toasts.invalidFile);
       return;
     }
     setCertFile(file);

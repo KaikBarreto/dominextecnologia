@@ -5,8 +5,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PanelLeft, PanelTop, Sun, Moon, Palette } from 'lucide-react';
 import { useNavigationPreference, NavigationStyle } from '@/hooks/useNavigationPreference';
 import { useState } from 'react';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n';
 
 export function SettingsAppearanceContent() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.appearance;
   const { navigationStyle, setNavigationStyle } = useNavigationPreference();
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -27,18 +31,18 @@ export function SettingsAppearanceContent() {
       <CardHeader>
         <div className="flex items-center gap-2">
           <Palette className="h-5 w-5 text-primary" />
-          <CardTitle>Aparência</CardTitle>
+          <CardTitle>{t.cardTitle}</CardTitle>
         </div>
-        <CardDescription>Personalize a interface visual do sistema</CardDescription>
+        <CardDescription>{t.cardDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Navigation Style */}
         <div className="space-y-1">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            Estilo de Navegação (Desktop)
+            {t.navigationStyle.sectionTitle}
           </h3>
           <p className="text-xs text-muted-foreground">
-            Escolha entre menu lateral ou menu superior. Esta opção só afeta a visualização em desktop.
+            {t.navigationStyle.sectionDescription}
           </p>
         </div>
 
@@ -61,8 +65,8 @@ export function SettingsAppearanceContent() {
                 <PanelLeft className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium">Menu Lateral</p>
-                <p className={`text-xs ${navigationStyle === 'sidebar' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>Sidebar tradicional à esquerda</p>
+                <p className="font-medium">{t.navigationStyle.sidebar}</p>
+                <p className={`text-xs ${navigationStyle === 'sidebar' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{t.navigationStyle.sidebarDescription}</p>
               </div>
             </div>
           </Label>
@@ -81,8 +85,8 @@ export function SettingsAppearanceContent() {
                 <PanelTop className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium">Menu Superior</p>
-                <p className={`text-xs ${navigationStyle === 'topbar' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>Barra horizontal no topo</p>
+                <p className="font-medium">{t.navigationStyle.topbar}</p>
+                <p className={`text-xs ${navigationStyle === 'topbar' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{t.navigationStyle.topbarDescription}</p>
               </div>
             </div>
           </Label>
@@ -93,10 +97,10 @@ export function SettingsAppearanceContent() {
         {/* Theme */}
         <div className="space-y-1">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            Tema do Sistema
+            {t.theme.sectionTitle}
           </h3>
           <p className="text-xs text-muted-foreground">
-            Escolha entre tema claro ou escuro para a interface.
+            {t.theme.sectionDescription}
           </p>
         </div>
 
@@ -127,7 +131,7 @@ export function SettingsAppearanceContent() {
               </div>
             </div>
             <div className="bg-[#f9fafb] px-4 py-2 text-center border-t">
-              <span className="text-sm font-medium text-[#111827]">Tema Claro</span>
+              <span className="text-sm font-medium text-[#111827]">{t.theme.light}</span>
             </div>
             {!darkMode && (
               <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
@@ -164,7 +168,7 @@ export function SettingsAppearanceContent() {
               </div>
             </div>
             <div className="bg-[#141414] px-4 py-2 text-center border-t border-[#2e2e2e]">
-              <span className="text-sm font-medium text-[#f2f2f2]">Tema Escuro</span>
+              <span className="text-sm font-medium text-[#f2f2f2]">{t.theme.dark}</span>
             </div>
             {darkMode && (
               <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">

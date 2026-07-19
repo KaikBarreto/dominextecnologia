@@ -52,6 +52,7 @@ export const nfse = {
     list: {
       notePrefix: 'Nota nº',
       empty: 'Nenhuma nota encontrada com esses filtros.',
+      customerFallback: 'Cliente',
     },
     // ── Status das notas ────────────────────────────────────────────────────
     status: {
@@ -129,6 +130,9 @@ export const nfse = {
           placeholder: 'Buscar por código ou descrição...',
           hint: 'Nomenclatura Brasileira de Serviços. Digite ao menos 2 caracteres pra buscar.',
         },
+      },
+      quotaBlock: {
+        tierFallback: 'Nível {tier}',
       },
       toasts: {
         noCustomer: 'Selecione o cliente.',
@@ -267,6 +271,7 @@ export const nfse = {
         toasts: {
           noFile: 'Selecione o arquivo do certificado.',
           noPassword: 'Informe a senha do certificado.',
+          invalidFile: 'O certificado deve ser um arquivo .pfx ou .p12.',
           uploadSuccess: 'Certificado enviado com sucesso.',
           uploadError: 'Falha ao enviar o certificado.',
           saveError: 'Não foi possível salvar os dados da empresa.',
@@ -292,6 +297,17 @@ export const nfse = {
           saveError: 'Não foi possível salvar as configurações fiscais.',
         },
       },
+    },
+    // ── Combobox de códigos fiscais (TaxCodeCombobox) ────────────────────────
+    taxCode: {
+      selectPlaceholder: 'Selecione o código...',
+      searching: 'Buscando...',
+      minCharsHint: 'Digite ao menos {min} caracteres para buscar.',
+      fetchError: 'Não foi possível buscar os códigos agora.',
+      retryBtn: 'Tentar novamente',
+      useTypedCode: 'Ou usar o código "{code}" digitado',
+      emptyResult: 'Nenhum código encontrado.',
+      useTypedEmpty: 'Toque para usar "{code}".',
     },
   },
 
@@ -342,6 +358,7 @@ export const nfse = {
     list: {
       notePrefix: 'Invoice #',
       empty: 'No invoices found for these filters.',
+      customerFallback: 'Customer',
     },
     status: {
       pendente: 'Pending',
@@ -415,6 +432,9 @@ export const nfse = {
           placeholder: 'Search by code or description...',
           hint: 'Brazilian Services Nomenclature. Type at least 2 characters to search.',
         },
+      },
+      quotaBlock: {
+        tierFallback: 'Plan {tier}',
       },
       toasts: {
         noCustomer: 'Please select a customer.',
@@ -549,6 +569,7 @@ export const nfse = {
         toasts: {
           noFile: 'Please select the certificate file.',
           noPassword: 'Please enter the certificate password.',
+          invalidFile: 'The certificate must be a .pfx or .p12 file.',
           uploadSuccess: 'Certificate uploaded successfully.',
           uploadError: 'Failed to upload the certificate.',
           saveError: 'Could not save company details.',
@@ -574,6 +595,17 @@ export const nfse = {
           saveError: 'Could not save tax settings.',
         },
       },
+    },
+    // ── Tax code combobox (TaxCodeCombobox) ──────────────────────────────────
+    taxCode: {
+      selectPlaceholder: 'Select a code...',
+      searching: 'Searching...',
+      minCharsHint: 'Type at least {min} characters to search.',
+      fetchError: 'Could not load tax codes right now.',
+      retryBtn: 'Try again',
+      useTypedCode: 'Or use the typed code "{code}"',
+      emptyResult: 'No codes found.',
+      useTypedEmpty: 'Tap to use "{code}".',
     },
   },
 
@@ -624,6 +656,7 @@ export const nfse = {
     list: {
       notePrefix: 'Factura nº',
       empty: 'No se encontraron facturas con estos filtros.',
+      customerFallback: 'Cliente',
     },
     status: {
       pendente: 'Pendiente',
@@ -697,6 +730,9 @@ export const nfse = {
           placeholder: 'Buscar por código o descripción...',
           hint: 'Nomenclatura Brasileña de Servicios. Escribe al menos 2 caracteres para buscar.',
         },
+      },
+      quotaBlock: {
+        tierFallback: 'Plan {tier}',
       },
       toasts: {
         noCustomer: 'Selecciona el cliente.',
@@ -833,6 +869,7 @@ export const nfse = {
         toasts: {
           noFile: 'Selecciona el archivo del certificado.',
           noPassword: 'Ingresa la contraseña del certificado.',
+          invalidFile: 'El certificado debe ser un archivo .pfx o .p12.',
           uploadSuccess: 'Certificado enviado con éxito.',
           uploadError: 'Error al enviar el certificado.',
           saveError: 'No se pudieron guardar los datos de la empresa.',
@@ -858,6 +895,17 @@ export const nfse = {
           saveError: 'No se pudo guardar la configuración fiscal.',
         },
       },
+    },
+    // ── Combobox de códigos fiscales (TaxCodeCombobox) ───────────────────────
+    taxCode: {
+      selectPlaceholder: 'Selecciona el código...',
+      searching: 'Buscando...',
+      minCharsHint: 'Escribe al menos {min} caracteres para buscar.',
+      fetchError: 'No se pudieron cargar los códigos en este momento.',
+      retryBtn: 'Intentar de nuevo',
+      useTypedCode: 'O usar el código "{code}" escrito',
+      emptyResult: 'No se encontraron códigos.',
+      useTypedEmpty: 'Toca para usar "{code}".',
     },
   },
 
@@ -908,6 +956,7 @@ export const nfse = {
     list: {
       notePrefix: 'Facture n°',
       empty: 'Aucune facture trouvée avec ces filtres.',
+      customerFallback: 'Client',
     },
     status: {
       pendente: 'En attente',
@@ -981,6 +1030,9 @@ export const nfse = {
           placeholder: 'Rechercher par code ou description...',
           hint: 'Nomenclature brésilienne des services. Saisissez au moins 2 caractères pour lancer la recherche.',
         },
+      },
+      quotaBlock: {
+        tierFallback: 'Niveau {tier}',
       },
       toasts: {
         noCustomer: 'Veuillez sélectionner le client.',
@@ -1117,6 +1169,7 @@ export const nfse = {
         toasts: {
           noFile: 'Veuillez sélectionner le fichier du certificat.',
           noPassword: 'Veuillez saisir le mot de passe du certificat.',
+          invalidFile: 'Le certificat doit être un fichier .pfx ou .p12.',
           uploadSuccess: 'Certificat envoyé avec succès.',
           uploadError: "Échec de l'envoi du certificat.",
           saveError: "Impossible d'enregistrer les données de l'entreprise.",
@@ -1142,6 +1195,17 @@ export const nfse = {
           saveError: "Impossible d'enregistrer les paramètres fiscaux.",
         },
       },
+    },
+    // ── Combobox de codes fiscaux (TaxCodeCombobox) ───────────────────────────
+    taxCode: {
+      selectPlaceholder: 'Sélectionnez un code...',
+      searching: 'Recherche en cours...',
+      minCharsHint: 'Saisissez au moins {min} caracteres pour lancer la recherche.',
+      fetchError: 'Impossible de charger les codes fiscaux pour le moment.',
+      retryBtn: 'Réessayer',
+      useTypedCode: 'Ou utiliser le code "{code}" saisi',
+      emptyResult: 'Aucun code trouvé.',
+      useTypedEmpty: 'Touchez pour utiliser "{code}".',
     },
   },
 };

@@ -14,6 +14,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 /**
  * Autocomplete (busca-enquanto-digita) de códigos fiscais oficiais via edge
@@ -107,9 +109,11 @@ export function TaxCodeCombobox({
   type,
   value,
   onSelect,
-  placeholder = 'Buscar por código ou descrição...',
+  placeholder,
   disabled,
 }: TaxCodeComboboxProps) {
+  const { locale } = useAppLocaleContext();
+  const tc = MESSAGES[locale].app.nfse.taxCode;
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [items, setItems] = React.useState<TaxCodeItem[]>([]);
@@ -233,7 +237,7 @@ export function TaxCodeCombobox({
               ? type === 'servico'
                 ? maskServiceCode(value)
                 : value
-              : 'Selecione o código...'}
+              : tc.selectPlaceholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -261,20 +265,20 @@ export function TaxCodeCombobox({
             <CommandGroup>
               {loading && (
                 <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Buscando...
+                  <Loader2 className="h-4 w-4 animate-spin" /> {tc.searching}
                 </div>
               )}
 
               {!loading && type === 'nbs' && query.trim().length < minChars && (
                 <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  Digite ao menos {minChars} caracteres para buscar.
+                  {tc.minCharsHint.replace('{min}', String(minChars))}
                 </p>
               )}
 
               {!loading && failed && (
                 <div className="flex flex-col items-center gap-3 px-3 py-6 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Não foi possível buscar os códigos agora.
+                    {tc.fetchError}
                   </p>
                   <Button
                     type="button"
@@ -284,7 +288,7 @@ export function TaxCodeCombobox({
                     className="gap-2"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    Tentar novamente
+                    {tc.retryBtn}
                   </Button>
                   {query.trim() && (
                     <button
@@ -292,7 +296,7 @@ export function TaxCodeCombobox({
                       onClick={handleManual}
                       className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                     >
-                      Ou usar o código "{query.trim()}" digitado
+                      {tc.useTypedCode.replace('{code}', query.trim())}
                     </button>
                   )}
                 </div>
@@ -335,8 +339,8 @@ export function TaxCodeCombobox({
                     className="block w-full px-3 py-6 text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
                     disabled={!query.trim()}
                   >
-                    Nenhum código encontrado.
-                    {query.trim() ? ` Toque para usar "${query.trim()}".` : ''}
+                    {tc.emptyResult}
+                    {query.trim() ? ` ${tc.useTypedEmpty.replace('{code}', query.trim())}` : ''}
                   </button>
                 )}
             </CommandGroup>

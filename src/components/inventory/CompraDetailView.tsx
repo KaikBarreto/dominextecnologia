@@ -12,8 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { cn } from '@/lib/utils';
-import { formatBRL } from '@/utils/currency';
+import { useLocaleFormatters } from '@/lib/format/hooks';
 import { unitLabel } from '@/lib/inventoryUnits';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useCompras, type CompraListRow, type CompraMaterial } from '@/hooks/useCompras';
 import { useCompraCotacoes, type CotacaoRow } from '@/hooks/useCompraCotacoes';
@@ -25,19 +27,10 @@ interface CompraDetailViewProps {
   onEdit: (compra: CompraListRow) => void;
 }
 
-const COMPRA_STATUS: Record<string, { label: string; variant: 'info' | 'success' | 'destructive' }> = {
-  aberta: { label: 'Aberta', variant: 'info' },
-  concluida: { label: 'Concluída', variant: 'success' },
-  cancelada: { label: 'Cancelada', variant: 'destructive' },
-};
-
-const COTACAO_STATUS: Record<string, { label: string; variant: 'muted' | 'success' | 'destructive' }> = {
-  pendente: { label: 'Pendente', variant: 'muted' },
-  aceita: { label: 'Aceita', variant: 'success' },
-  recusada: { label: 'Recusada', variant: 'destructive' },
-};
-
 export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.purchaseDetail;
+  const { money } = useLocaleFormatters();
   const { suppliers } = useSuppliers();
   const { loadCompra, setStatus, deleteCompra } = useCompras();
   const {
@@ -80,29 +73,45 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
     return best;
   }, [cotacoes]);
 
+  // Status da compra (canônico → traduzido)
+  type CompraVariant = 'info' | 'success' | 'destructive';
+  const COMPRA_STATUS: Record<string, { label: string; variant: CompraVariant }> = {
+    aberta: { label: t.status.aberta, variant: 'info' },
+    concluida: { label: t.status.concluida, variant: 'success' },
+    cancelada: { label: t.status.cancelada, variant: 'destructive' },
+  };
+
+  // Status da cotação (canônico → traduzido)
+  type CotacaoVariant = 'muted' | 'success' | 'destructive';
+  const COTACAO_STATUS: Record<string, { label: string; variant: CotacaoVariant }> = {
+    pendente: { label: t.quoteStatus.pendente, variant: 'muted' },
+    aceita: { label: t.quoteStatus.aceita, variant: 'success' },
+    recusada: { label: t.quoteStatus.recusada, variant: 'destructive' },
+  };
+
   const meta = COMPRA_STATUS[compra.status] ?? COMPRA_STATUS.aberta;
 
   const compraActions: RowAction[] = [
-    { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => onEdit(compra) },
+    { label: t.compraActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(compra) },
     {
-      label: 'Concluir compra',
+      label: t.compraActions.complete,
       icon: CheckCheck,
       onClick: () => setStatus.mutate({ id: compra.id, status: 'concluida' }),
       hidden: compra.status !== 'aberta',
     },
     {
-      label: 'Reabrir compra',
+      label: t.compraActions.reopen,
       icon: RotateCcw,
       onClick: () => setStatus.mutate({ id: compra.id, status: 'aberta' }),
       hidden: compra.status === 'aberta',
     },
     {
-      label: 'Cancelar compra',
+      label: t.compraActions.cancel,
       icon: XCircle,
       onClick: () => setToCancelCompra(true),
       hidden: compra.status === 'cancelada',
     },
-    { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setToDeleteCompra(true) },
+    { label: t.compraActions.delete, icon: Trash2, variant: 'delete', onClick: () => setToDeleteCompra(true) },
   ];
 
   return (
@@ -115,7 +124,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
           onClick={onBack}
           className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Voltar para compras
+          <ArrowLeft className="h-3.5 w-3.5" /> {t.backLabel}
         </button>
 
         {/* Título principal da tela: nome da compra + status */}
@@ -131,7 +140,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
             )}
           </div>
           <div className="shrink-0">
-            <RowActionsMenu actions={compraActions} label="Ações" />
+            <RowActionsMenu actions={compraActions} label={t.actionsLabel} />
           </div>
         </div>
       </div>
@@ -139,18 +148,18 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       {/* Materiais da compra */}
       <section className="space-y-2.5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Materiais
+          {t.sectionMaterials}
         </h2>
         {materials.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Carregando materiais...</p>
+          <p className="text-sm text-muted-foreground">{t.loadingMaterials}</p>
         ) : (
           <div className="space-y-1.5">
             {materials.map((m) => (
               <div key={m.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
                 <span className="truncate max-w-[70%]">
-                  {m.material_name || 'Material'}
+                  {m.material_name || t.materialFallback}
                   {!m.inventory_id && (
-                    <span className="ml-2 text-xs text-warning">fora do estoque</span>
+                    <span className="ml-2 text-xs text-warning">{t.outOfStock}</span>
                   )}
                 </span>
                 <span className="shrink-0 text-muted-foreground">
@@ -166,22 +175,22 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Cotações
+            {t.sectionQuotes}
           </h2>
           <Button size="sm" className="gap-1.5" onClick={() => setNewCotacaoOpen(true)}>
-            <Plus className="h-4 w-4" /> Nova cotação
+            <Plus className="h-4 w-4" /> {t.newQuoteButton}
           </Button>
         </div>
 
         {isLoading ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">Carregando cotações...</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">{t.loadingQuotes}</p>
         ) : cotacoes.length === 0 ? (
           <EmptyState
             size="compact"
             icon={<FileText className="h-10 w-10" />}
-            title="Nenhuma cotação"
-            description="Adicione cotações de fornecedores para comparar preços."
-            action={{ label: 'Nova cotação', onClick: () => setNewCotacaoOpen(true) }}
+            title={t.emptyQuotes.title}
+            description={t.emptyQuotes.description}
+            action={{ label: t.emptyQuotes.action, onClick: () => setNewCotacaoOpen(true) }}
           />
         ) : (
           <div className="space-y-2">
@@ -194,12 +203,12 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
 
               const cotacaoActions: RowAction[] = [
                 {
-                  label: isRefused ? 'Ver preços' : 'Editar preços',
+                  label: isRefused ? t.quoteActions.viewPrices : t.quoteActions.editPrices,
                   icon: isRefused ? Eye : FileSpreadsheet,
                   onClick: () => setSheetFor(c),
                 },
                 {
-                  label: 'Aceitar',
+                  label: t.quoteActions.accept,
                   icon: Check,
                   variant: 'default',
                   onClick: () => decideCotacao.mutate({ cotacaoId: c.id, status: 'aceita' }),
@@ -207,34 +216,34 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                   hidden: !isPending,
                 },
                 {
-                  label: 'Registrar entrada no estoque',
+                  label: t.quoteActions.registerEntry,
                   icon: PackagePlus,
                   onClick: () => setToRegister(c),
                   hidden: !isAccepted,
                 },
                 {
-                  label: 'Desfazer aceite',
+                  label: t.quoteActions.undoAccept,
                   icon: RotateCcw,
                   onClick: () => decideCotacao.mutate({ cotacaoId: c.id, status: 'pendente' }),
                   disabled: decideCotacao.isPending,
                   hidden: !isAccepted,
                 },
                 {
-                  label: 'Reabrir',
+                  label: t.quoteActions.reopenRefused,
                   icon: RotateCcw,
                   onClick: () => decideCotacao.mutate({ cotacaoId: c.id, status: 'pendente' }),
                   disabled: decideCotacao.isPending,
                   hidden: !isRefused,
                 },
                 {
-                  label: 'Recusar',
+                  label: t.quoteActions.refuse,
                   icon: X,
                   variant: 'delete',
                   onClick: () => setToRefuse(c),
                   hidden: !isPending,
                 },
                 {
-                  label: 'Excluir',
+                  label: t.quoteActions.delete,
                   icon: Trash2,
                   variant: 'delete',
                   onClick: () => setToDelete(c),
@@ -258,26 +267,28 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                         <Badge variant={cmeta.variant} className="text-[10px]">{cmeta.label}</Badge>
                         {isCheapest && (
                           <Badge variant="success" className="gap-1 text-[10px]">
-                            <Trophy className="h-3 w-3" /> Mais barata
+                            <Trophy className="h-3 w-3" /> {t.badgeCheapest}
                           </Badge>
                         )}
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {c.priced_count}/{materials.length} materiais com preço
+                        {t.pricedCount
+                          .replace('{priced}', String(c.priced_count))
+                          .replace('{total}', String(materials.length))}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <div className="text-right">
-                        <span className="text-base font-bold">R$ {formatBRL(c.total)}</span>
+                        <span className="text-base font-bold">{money(c.total)}</span>
                       </div>
-                      <RowActionsMenu actions={cotacaoActions} label="Ações" />
+                      <RowActionsMenu actions={cotacaoActions} label={t.actionsLabel} />
                     </div>
                   </div>
 
                   {isAccepted && (
                     <p className="flex items-center gap-1 text-xs text-success">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      Aceitar não mexe no estoque. Use "Registrar entrada" quando o material chegar.
+                      {t.acceptNote}
                     </p>
                   )}
                 </div>
@@ -311,14 +322,15 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       <AlertDialog open={!!toRefuse} onOpenChange={(o) => !o && setToRefuse(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Recusar cotação?</AlertDialogTitle>
+            <AlertDialogTitle>{t.refuseDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              {toRefuse ? `A cotação de "${toRefuse.supplier_name}" será marcada como recusada. ` : ''}
-              Os preços ficam guardados, só não entram na comparação.
+              {toRefuse
+                ? t.refuseDialog.description.replace('{name}', toRefuse.supplier_name)
+                : t.refuseDialog.descriptionGeneric}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t.refuseDialog.back}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
@@ -326,7 +338,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                 setToRefuse(null);
               }}
             >
-              Recusar
+              {t.refuseDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -336,14 +348,15 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cotação?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteQuoteDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              {toDelete ? `A cotação de "${toDelete.supplier_name}" e seus preços serão removidos. ` : ''}
-              Esta ação não pode ser desfeita.
+              {toDelete
+                ? t.deleteQuoteDialog.description.replace('{name}', toDelete.supplier_name)
+                : t.deleteQuoteDialog.descriptionGeneric}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t.deleteQuoteDialog.back}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
@@ -351,7 +364,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                 setToDelete(null);
               }}
             >
-              Excluir
+              {t.deleteQuoteDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -361,28 +374,28 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       <AlertDialog open={!!toRegister} onOpenChange={(o) => !o && setToRegister(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Registrar entrada no estoque?</AlertDialogTitle>
+            <AlertDialogTitle>{t.registerEntryDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Os materiais desta compra serão dados de entrada com o fornecedor
-              {toRegister ? ` "${toRegister.supplier_name}"` : ''} e os preços desta cotação.
-              Materiais fora do estoque serão criados automaticamente. O movimento aparece no histórico (Kardex).
+              {toRegister
+                ? t.registerEntryDialog.description.replace('{name}', toRegister.supplier_name)
+                : t.registerEntryDialog.descriptionNoName}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul className="max-h-56 space-y-1.5 overflow-y-auto py-1 text-sm">
             {materials.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
                 <span className="min-w-0 truncate">
-                  {m.material_name || 'Material'}
+                  {m.material_name || t.materialFallback}
                   <span className="text-muted-foreground"> • {m.quantity} {unitLabel(m.unit)}</span>
                 </span>
                 {!m.inventory_id && (
-                  <Badge variant="warning" className="shrink-0 text-[10px]">Criar no estoque</Badge>
+                  <Badge variant="warning" className="shrink-0 text-[10px]">{t.registerEntryDialog.badgeCreateInStock}</Badge>
                 )}
               </li>
             ))}
           </ul>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t.registerEntryDialog.back}</AlertDialogCancel>
             <AlertDialogAction
               disabled={registerStockEntry.isPending}
               onClick={async () => {
@@ -396,7 +409,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                 setToRegister(null);
               }}
             >
-              {registerStockEntry.isPending ? 'Registrando...' : 'Registrar entrada'}
+              {registerStockEntry.isPending ? t.registerEntryDialog.confirming : t.registerEntryDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -406,13 +419,13 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       <AlertDialog open={toCancelCompra} onOpenChange={setToCancelCompra}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar compra?</AlertDialogTitle>
+            <AlertDialogTitle>{t.cancelCompraDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              A compra ficará marcada como cancelada. Você pode reabri-la ou excluí-la depois.
+              {t.cancelCompraDialog.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancelCompraDialog.back}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
@@ -420,7 +433,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                 setToCancelCompra(false);
               }}
             >
-              Cancelar compra
+              {t.cancelCompraDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -430,13 +443,13 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       <AlertDialog open={toDeleteCompra} onOpenChange={setToDeleteCompra}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir compra?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteCompraDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              "{compra.title}" e suas cotações serão removidas. Esta ação não pode ser desfeita.
+              {t.deleteCompraDialog.description.replace('{title}', compra.title)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t.deleteCompraDialog.back}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={async () => {
@@ -445,7 +458,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                 onBack();
               }}
             >
-              Excluir
+              {t.deleteCompraDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

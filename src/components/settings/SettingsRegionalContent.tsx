@@ -16,6 +16,7 @@ import FlagIcon from '@/components/i18n/FlagIcon';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useToast } from '@/hooks/use-toast';
+import { MESSAGES } from '@/lib/i18n';
 import { LOCALES, getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
 import { CURRENCIES, currencyLabel } from '@/lib/i18n/currencies';
 import { getTimezoneOptions } from '@/lib/i18n/timezones';
@@ -46,6 +47,7 @@ interface SettingsRegionalContentProps {
 
 export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalContentProps) {
   const { locale: userLocale, setUserLanguage } = useAppLocaleContext();
+  const t = MESSAGES[userLocale].app.settings.regional;
   const { settings, isLoading, updateSettings, canSave } = useCompanySettings();
   const { toast } = useToast();
 
@@ -170,7 +172,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
     setCurrency(defaults.currency);
     setTimezone(defaults.timezone);
     setSuggestLocale(null);
-    toast({ title: `Padrões de ${getLocaleDef(loc).label} aplicados` });
+    toast({ title: t.companyCard.localeDefaultsApplied.replace('{locale}', getLocaleDef(loc).label) });
   };
 
   const currencyChanged = hadData && !!settings?.currency && currency !== settings.currency;
@@ -179,21 +181,21 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
     if (updateSettings.isPending) {
       return (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando...
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.companyCard.savingStatus}
         </span>
       );
     }
     if (isDirty) {
       return (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" /> Alterações não salvas
+          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" /> {t.companyCard.unsavedStatus}
         </span>
       );
     }
     if (loadedRef.current) {
       return (
         <span className="flex items-center gap-1.5 text-xs text-success">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Salvo
+          <CheckCircle2 className="h-3.5 w-3.5" /> {t.companyCard.savedStatus}
         </span>
       );
     }
@@ -207,15 +209,15 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
         <CardHeader>
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
-            <CardTitle>Meu idioma</CardTitle>
+            <CardTitle>{t.personalCard.title}</CardTitle>
           </div>
-          <CardDescription>O idioma que VOCÊ vê no sistema. Aplica na hora, só para você.</CardDescription>
+          <CardDescription>{t.personalCard.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-primary" />
-              Idioma
+              {t.personalCard.languageLabel}
             </Label>
             <Select
               value={personalLocale}
@@ -241,7 +243,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Preferência pessoal. Sobrepõe o idioma padrão da empresa só para você.
+              {t.personalCard.languageHint}
             </p>
           </div>
         </CardContent>
@@ -254,11 +256,11 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Globe className="h-5 w-5 text-primary" />
-              <CardTitle>Padrões da empresa</CardTitle>
+              <CardTitle>{t.companyCard.title}</CardTitle>
             </div>
             <CardDescription>
-              Idioma padrão, moeda e fuso horário para toda a empresa
-              {!isAdmin && <span className="ml-1 text-muted-foreground/70">(somente admin)</span>}
+              {t.companyCard.description}
+              {!isAdmin && <span className="ml-1 text-muted-foreground/70">{t.companyCard.adminOnly}</span>}
             </CardDescription>
           </div>
           {saveStatus}
@@ -270,10 +272,10 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-primary" />
-            Idioma padrão da empresa
+            {t.companyCard.languageLabel}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Idioma aplicado a todos que não escolheram um pessoalmente.
+            {t.companyCard.languageHint}
           </p>
           <Select
             value={language}
@@ -298,14 +300,14 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
           {suggestLocale && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border border-primary/30 bg-primary/5 p-3">
               <p className="text-xs text-foreground">
-                Usar os padrões de {getLocaleDef(suggestLocale).label} para moeda e fuso?
+                {t.companyCard.localeDefaultsPrompt.replace('{locale}', getLocaleDef(suggestLocale).label)}
               </p>
               <div className="flex gap-2 shrink-0">
                 <Button size="sm" variant="ghost" onClick={() => setSuggestLocale(null)}>
-                  Manter atuais
+                  {t.companyCard.keepCurrent}
                 </Button>
                 <Button size="sm" onClick={() => applyLocaleDefaults(suggestLocale)}>
-                  Usar padrões
+                  {t.companyCard.useDefaults}
                 </Button>
               </div>
             </div>
@@ -318,7 +320,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
             <Coins className="h-4 w-4 text-primary" />
-            Moeda
+            {t.companyCard.currencyLabel}
           </Label>
           <Select value={currency} onValueChange={setCurrency} disabled={!canSave || !isAdmin}>
             <SelectTrigger>
@@ -336,13 +338,12 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
             <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3">
               <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
               <p className="text-xs text-foreground">
-                A moeda é a de operação da empresa. Trocar não converte os valores já registrados,
-                eles continuam com o número original.
+                {t.companyCard.currencyChangedWarning}
               </p>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Moeda de operação usada nos valores do sistema.
+              {t.companyCard.currencyHint}
             </p>
           )}
         </div>
@@ -353,18 +354,18 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
-            Fuso horário
+            {t.companyCard.timezoneLabel}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Usado para datas e horários exibidos no sistema.
+            {t.companyCard.timezoneHint}
           </p>
           <SearchableSelect
             groups={tzGroups}
             value={timezone}
             onValueChange={setTimezone}
-            placeholder="Selecione o fuso"
-            searchPlaceholder="Buscar fuso (ex: Sao Paulo)"
-            emptyMessage="Nenhum fuso encontrado."
+            placeholder={t.companyCard.timezonePlaceholder}
+            searchPlaceholder={t.companyCard.timezoneSearchPlaceholder}
+            emptyMessage={t.companyCard.timezoneEmpty}
             disabled={!canSave || !isAdmin}
           />
         </div>

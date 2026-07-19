@@ -162,7 +162,7 @@ export function NovaNotaModal({ open, onOpenChange, onEmitted }: NovaNotaModalPr
           nextTier: nt
             ? {
                 tier: Number(nt.tier),
-                name: String(nt.name ?? `Nível ${nt.tier}`),
+                name: String(nt.name ?? t.newNote.quotaBlock.tierFallback.replace('{tier}', String(nt.tier))),
                 limit: nt.limit == null ? null : Number(nt.limit),
                 price: Number(nt.price ?? 0),
               }

@@ -35,6 +35,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useNfeImport, type NfeImportLine } from '@/hooks/useNfeImport';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { useLocaleFormatters } from '@/lib/format/hooks';
 import {
   parseNfeXml,
   NfeParseError,
@@ -42,18 +45,6 @@ import {
 } from '@/lib/nfeParser';
 import { cpfCnpjMask } from '@/utils/masks';
 import { fuzzyIncludes } from '@/lib/utils';
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-
-const formatDateBR = (iso: string | null) => {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  } catch {
-    return iso;
-  }
-};
 
 /** Sugere o melhor item de estoque para casar com um nome de produto. */
 function suggestMatch(name: string, items: InventoryItem[]): string | null {
@@ -83,6 +74,9 @@ interface NfeImportDialogProps {
 }
 
 export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.nfeImport;
+  const { money, dateTime } = useLocaleFormatters();
   const { toast } = useToast();
   const { items } = useInventory();
   const { suppliers } = useSuppliers();
@@ -218,11 +212,12 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
     // M6 — quantidade ≤ 0 geraria movimento inútil (lixo no Kardex). Bloqueia.
     const invalidQty = includedLines.filter((l) => !(l.quantity > 0));
     if (invalidQty.length > 0) {
+      const count = invalidQty.length;
       toast({
-        title: 'Quantidade inválida',
-        description: `Corrija a quantidade (maior que zero) de ${
-          invalidQty.length === 1 ? '1 item' : `${invalidQty.length} itens`
-        } ou desmarque ${invalidQty.length === 1 ? 'esse item' : 'esses itens'} antes de importar.`,
+        title: t.toastInvalidQty.title,
+        description: count === 1
+          ? t.toastInvalidQty.descriptionSingular
+          : t.toastInvalidQty.descriptionPlural.replace('{count}', String(count)),
         variant: 'destructive',
       });
       return;
@@ -246,13 +241,23 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
         lines: importLines,
       });
 
-      const parts = [`${res.imported} ite${res.imported === 1 ? 'm' : 'ns'} importado${res.imported === 1 ? '' : 's'}`];
-      if (res.created > 0) parts.push(`${res.created} novo${res.created === 1 ? '' : 's'}`);
-      if (res.failed > 0) parts.push(`${res.failed} com falha`);
+      const parts: string[] = [
+        res.imported === 1
+          ? t.toastSuccess.imported.replace('{count}', '1')
+          : t.toastSuccess.importedPlural.replace('{count}', String(res.imported)),
+      ];
+      if (res.created > 0) {
+        parts.push(
+          res.created === 1
+            ? t.toastSuccess.created.replace('{count}', '1')
+            : t.toastSuccess.createdPlural.replace('{count}', String(res.created)),
+        );
+      }
+      if (res.failed > 0) parts.push(t.toastSuccess.failed.replace('{count}', String(res.failed)));
 
       toast({
-        title: res.failed > 0 ? 'Importação concluída com avisos' : 'NF-e importada',
-        description: parts.join(' • ') + '. Entrada registrada no estoque.',
+        title: res.failed > 0 ? t.toastSuccess.titleWithWarnings : t.toastSuccess.titleOk,
+        description: parts.join(' • ') + t.toastSuccess.suffix,
         variant: res.failed > 0 ? 'default' : undefined,
       });
       handleClose(false);
@@ -268,13 +273,14 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
       <ResponsiveModal
         open={open}
         onOpenChange={handleClose}
-        title="Importar XML (NF-e)"
+        title={t.title}
         footer={
           parsed && lines.length > 0 ? (
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{includedLines.length}</span> ite
-                {includedLines.length === 1 ? 'm' : 'ns'} • {formatCurrency(includedTotal)}
+                <span className="font-medium text-foreground">{includedLines.length}</span>{' '}
+                {includedLines.length === 1 ? t.footer.itemSingular : t.footer.itemPlural}{' '}
+                • {money(includedTotal)}
               </div>
               <Button
                 onClick={handleConfirm}
@@ -282,7 +288,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                 className="min-h-11 rounded-xl gap-2"
               >
                 <Check className="h-4 w-4" />
-                {importing ? 'Importando...' : 'Confirmar entrada'}
+                {importing ? t.importing : t.confirmButton}
               </Button>
             </div>
           ) : undefined
@@ -294,8 +300,9 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
             <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-center">
               <FileUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
               <p className="text-sm text-muted-foreground mb-4">
-                Selecione o arquivo <span className="font-medium text-foreground">.xml</span> da
-                nota fiscal eletrônica para dar entrada no estoque.
+                {t.step1.instruction}{' '}
+                <span className="font-medium text-foreground">.xml</span>{' '}
+                {t.step1.instructionDetail}
               </p>
               <Button
                 variant="outline"
@@ -303,7 +310,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <FileUp className="h-4 w-4" />
-                Escolher arquivo XML
+                {t.step1.chooseFile}
               </Button>
             </div>
             <input
@@ -324,9 +331,9 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                   <Building2 className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">Fornecedor</p>
+                  <p className="text-xs text-muted-foreground">{t.supplierSection.label}</p>
                   <p className="truncate text-sm font-medium">
-                    {parsed.supplier.name || 'Não identificado'}
+                    {parsed.supplier.name || t.supplierSection.notIdentified}
                   </p>
                   {parsed.supplier.cnpj && (
                     <p className="text-xs text-muted-foreground">
@@ -336,17 +343,17 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                 </div>
                 {matchedSupplier ? (
                   <Badge variant="secondary" className="shrink-0 gap-1 text-[11px]">
-                    <PackageCheck className="h-3 w-3" /> Vinculado
+                    <PackageCheck className="h-3 w-3" /> {t.supplierSection.linked}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="shrink-0 gap-1 text-[11px]">
-                    <PackagePlus className="h-3 w-3" /> Novo
+                    <PackagePlus className="h-3 w-3" /> {t.supplierSection.isNew}
                   </Badge>
                 )}
               </div>
               {!matchedSupplier && parsed.supplier.name && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Será criado o fornecedor "{parsed.supplier.name}".
+                  {t.supplierSection.willCreate.replace('{name}', parsed.supplier.name)}
                 </p>
               )}
             </div>
@@ -355,18 +362,24 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
             {!parsed.accessKey && (
               <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
-                Esta nota não tem chave de acesso. Não será possível avisar se ela for
-                importada de novo.
+                {t.noAccessKey}
               </p>
             )}
 
             {/* Produtos */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm">Produtos da nota</Label>
+                <Label className="text-sm">{t.productsSection.label}</Label>
                 <span className="text-xs text-muted-foreground">
-                  {newCount > 0 && `${newCount} novo${newCount === 1 ? '' : 's'} • `}
-                  {lines.length} no total
+                  {newCount > 0
+                    ? (newCount === 1
+                        ? t.productsSection.countSummary
+                        : t.productsSection.countSummaryPlural
+                      )
+                        .replace('{newCount}', String(newCount))
+                        .replace('{total}', String(lines.length))
+                    : t.productsSection.countTotal.replace('{total}', String(lines.length))
+                  }
                 </span>
               </div>
 
@@ -383,7 +396,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                       <Checkbox
                         checked={line.include}
                         onCheckedChange={(v) => updateLine(line.key, { include: v === true })}
-                        aria-label={`Incluir ${line.name}`}
+                        aria-label={t.productsSection.ariaInclude.replace('{name}', line.name)}
                         className="mt-2"
                       />
                       <div className="min-w-0 flex-1 space-y-2">
@@ -392,7 +405,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                           onChange={(e) => updateLine(line.key, { name: e.target.value })}
                           disabled={!line.include}
                           className="h-9 text-sm font-medium"
-                          aria-label="Nome do produto"
+                          aria-label={t.productsSection.ariaProductName}
                         />
                         {/* Referência discreta cProd / EAN */}
                         {(line.cProd || line.ean) && (
@@ -408,7 +421,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                     {/* Linha 2: qtd + unidade + custo unit. */}
                     <div className="mt-2 grid grid-cols-3 gap-2 pl-7">
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">Qtd</Label>
+                        <Label className="text-[11px] text-muted-foreground">{t.productsSection.qty}</Label>
                         <NumericInput
                           decimal
                           value={line.quantity ? String(line.quantity) : ''}
@@ -422,7 +435,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                         />
                       </div>
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">Unidade</Label>
+                        <Label className="text-[11px] text-muted-foreground">{t.productsSection.unit}</Label>
                         <Input
                           value={line.unit}
                           onChange={(e) => updateLine(line.key, { unit: e.target.value })}
@@ -431,7 +444,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                         />
                       </div>
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">Custo un.</Label>
+                        <Label className="text-[11px] text-muted-foreground">{t.productsSection.unitCost}</Label>
                         <Input
                           type="text"
                           inputMode="decimal"
@@ -450,7 +463,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                     {/* Linha 3: casar com item existente ou criar novo */}
                     <div className="mt-2 pl-7">
                       <Label className="text-[11px] text-muted-foreground">
-                        Destino no estoque
+                        {t.productsSection.stockDestination}
                       </Label>
                       <Select
                         value={line.matchId || 'new'}
@@ -465,7 +478,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                         <SelectContent>
                           <SelectItem value="new">
                             <span className="flex items-center gap-2">
-                              <PackagePlus className="h-3.5 w-3.5" /> Criar novo item
+                              <PackagePlus className="h-3.5 w-3.5" /> {t.productsSection.createNew}
                             </span>
                           </SelectItem>
                           {items.map((it) => (
@@ -492,13 +505,14 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                           {qtyInvalid && (
                             <p className="flex items-center gap-1 text-[11px] text-destructive">
                               <AlertTriangle className="h-3 w-3 shrink-0" />
-                              Quantidade precisa ser maior que zero.
+                              {t.productsSection.warnQtyZero}
                             </p>
                           )}
                           {unitDiverges && (
                             <p className="flex items-center gap-1 text-[11px] text-warning">
                               <AlertTriangle className="h-3 w-3 shrink-0" />
-                              Unidade da nota: {line.unit.toUpperCase()} ≠ cadastro:{' '}
+                              {/* Aviso técnico: mantém siglas da nota como vieram */}
+                              Unidade da nota: {line.unit.toUpperCase()} &ne; cadastro:{' '}
                               {(matched?.unit ?? '').toUpperCase()}
                             </p>
                           )}
@@ -519,18 +533,24 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-warning" />
-              Nota já importada
+              {t.dupDialog.title}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta nota já foi importada
-              {dupConfirm?.importedAt ? ` em ${formatDateBR(dupConfirm.importedAt)}` : ''}.
-              Importar de novo vai duplicar a entrada no estoque. Deseja continuar?
+              {t.dupDialog.description.replace(
+                '{date}',
+                dupConfirm?.importedAt
+                  ? t.dupDialog.descriptionDatePrefix.replace(
+                      '{date}',
+                      dateTime(dupConfirm.importedAt),
+                    )
+                  : '',
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelDuplicate}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={cancelDuplicate}>{t.dupDialog.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDuplicate}>
-              Importar mesmo assim
+              {t.dupDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

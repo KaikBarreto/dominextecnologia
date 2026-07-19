@@ -102,8 +102,8 @@ export default function NotasFiscais() {
   const customerName = useMemo(() => {
     const map = new Map<string, string>();
     (customers ?? []).forEach((c) => map.set(c.id, c.name));
-    return (id: string | null) => (id ? map.get(id) ?? 'Cliente' : 'Cliente');
-  }, [customers]);
+    return (id: string | null) => (id ? map.get(id) ?? t.list.customerFallback : t.list.customerFallback);
+  }, [customers, t.list.customerFallback]);
 
   // Busca UNIVERSAL: quando há texto, procura no dataset completo e ignora o
   // filtro de status. Filtro de status só vale com a busca vazia.
@@ -216,7 +216,7 @@ export default function NotasFiscais() {
   // Opções de filtro de status com rótulos traduzidos.
   const statusFilterOptions = NFSE_STATUS_FILTER_OPTIONS.map((o) => ({
     value: o.value,
-    label: t.status[o.value as keyof typeof t.status] ?? o.label,
+    label: t.status[o.value as keyof typeof t.status] ?? o.value,
   }));
 
   const filterButton = (
