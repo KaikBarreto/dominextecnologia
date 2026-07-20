@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.3',
+    date: '20 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Telefone e celular separados, e cadastro fiscal mais completo',
+        description: 'No cadastro e na edição de cliente, agora você registra o telefone e o celular em campos separados, cada um com a sua máscara. A aba Fiscal ganhou os campos Razão Social e Nome Fantasia, e ao buscar o CNPJ eles também são preenchidos sozinhos. O código do município saiu da tela e passa a ser identificado automaticamente pelo CEP, deixando o cadastro mais simples e os dados prontos para a emissão da nota.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.2',
     date: '20 de julho de 2026',
     type: 'patch',

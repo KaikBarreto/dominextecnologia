@@ -10,6 +10,8 @@ interface AddressData {
   bairro: string;
   cidade: string;
   estado: string;
+  /** Código IBGE do município (7 dígitos) — retornado pelo ViaCEP via edge cep-lookup */
+  ibge?: string;
 }
 
 interface CepLookupProps {

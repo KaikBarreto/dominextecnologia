@@ -5,6 +5,29 @@ export function phoneMask(value: string): string {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+/**
+ * Máscara de TELEFONE FIXO: (00) 0000-0000 — 10 dígitos (DDD + 8).
+ * Best-effort: formata os dígitos disponíveis sem lançar erro nem descartar
+ * de forma destrutiva. Se vier um valor legado com mais dígitos, capa em 10.
+ */
+export function landlineMask(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+}
+
+/**
+ * Máscara de CELULAR: (00) 00000-0000 — 11 dígitos (DDD + 9).
+ * Best-effort: formata os dígitos disponíveis sem lançar erro; capa em 11.
+ */
+export function mobileMask(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 export function cpfCnpjMask(value: string): string {
   const digits = value.replace(/\D/g, '');
   if (digits.length <= 11) {

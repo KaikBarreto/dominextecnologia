@@ -39,9 +39,11 @@ export interface Customer {
   customer_type: CustomerType;
   name: string;
   company_name?: string;
+  nome_fantasia?: string;
   document?: string;
   email?: string;
   phone?: string;
+  celular?: string;
   address?: string;
   address_number?: string;
   complement?: string;

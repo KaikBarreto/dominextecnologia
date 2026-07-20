@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
-import { phoneMask } from '@/utils/masks';
+import { landlineMask, mobileMask } from '@/utils/masks';
 import { CnpjDocumentInput } from '@/components/customers/CnpjDocumentInput';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -37,9 +37,11 @@ const customerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
   customer_type: z.enum(['pf', 'pj']),
   company_name: z.string().optional(),
+  nome_fantasia: z.string().optional(),
   document: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
+  celular: z.string().optional(),
   birth_date: z.string().optional(),
   address: z.string().optional(),
   address_number: z.string().optional(),
@@ -58,8 +60,8 @@ const customerSchema = z.object({
 type CustomerFormData = z.infer<typeof customerSchema>;
 
 const EMPTY_FORM: CustomerFormData = {
-  name: '', customer_type: 'pj', company_name: '', document: '',
-  email: '', phone: '', birth_date: '', address: '', address_number: '',
+  name: '', customer_type: 'pj', company_name: '', nome_fantasia: '', document: '',
+  email: '', phone: '', celular: '', birth_date: '', address: '', address_number: '',
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
   notes: '', origin: '', inscricao_municipal: '', ibge_municipality_code: '',
 };
@@ -129,9 +131,11 @@ export function CustomerFormDialog({
           name: customer?.name ?? '',
           customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
           company_name: (customer as any)?.company_name ?? '',
+          nome_fantasia: (customer as any)?.nome_fantasia ?? '',
           document: customer?.document ?? '',
           email: customer?.email ?? '',
           phone: customer?.phone ?? '',
+          celular: (customer as any)?.celular ?? '',
           birth_date: (customer as any)?.birth_date ?? '',
           address: customer?.address ?? '',
           address_number: (customer as any)?.address_number ?? (customer as any)?.street_number ?? '',
@@ -297,21 +301,27 @@ export function CustomerFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="company_name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.company}</FormLabel>
-                    <FormControl><Input placeholder={t.companyPlaceholder} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.phone}</FormLabel>
                     <FormControl>
                       <Input
+                        placeholder="(00) 0000-0000"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(landlineMask(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="celular" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.celular}</FormLabel>
+                    <FormControl>
+                      <Input
                         placeholder="(00) 00000-0000"
                         value={field.value || ''}
-                        onChange={(e) => field.onChange(phoneMask(e.target.value))}
+                        onChange={(e) => field.onChange(mobileMask(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -370,6 +380,20 @@ export function CustomerFormDialog({
                 {t.fiscalHint}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
+                <FormField control={form.control} name="company_name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.razaoSocial}</FormLabel>
+                    <FormControl><Input placeholder={t.razaoSocialPlaceholder} {...field} value={field.value || ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="nome_fantasia" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.nomeFantasia}</FormLabel>
+                    <FormControl><Input placeholder={t.nomeFantasiaPlaceholder} {...field} value={field.value || ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <FormField control={form.control} name="document" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.document}</FormLabel>
@@ -381,8 +405,9 @@ export function CustomerFormDialog({
                         onDataFound={(d) => {
                           // Sobrescreve campos fiscais/endereço com o oficial, mas só quando o dado veio preenchido
                           if (d.razaoSocial) form.setValue('company_name', d.razaoSocial);
+                          if (d.nomeFantasia) form.setValue('nome_fantasia', d.nomeFantasia);
                           if (d.email) form.setValue('email', d.email);
-                          if (d.phone) form.setValue('phone', phoneMask(d.phone));
+                          if (d.phone) form.setValue('phone', landlineMask(d.phone));
                           if (d.zipCode) {
                             const c = d.zipCode.replace(/\D/g, '');
                             form.setValue('zip_code', c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c);
@@ -432,6 +457,8 @@ export function CustomerFormDialog({
                           if (addr.bairro) form.setValue('neighborhood', addr.bairro);
                           if (addr.cidade) form.setValue('city', addr.cidade);
                           if (addr.estado) form.setValue('state', addr.estado);
+                          // Código IBGE resolvido automaticamente pelo CEP — nunca exposto ao usuário
+                          if (addr.ibge) form.setValue('ibge_municipality_code', addr.ibge);
                         }}
                       />
                     </FormControl>
@@ -507,13 +534,8 @@ export function CustomerFormDialog({
                     }}
                   />
                 </div>
-                <FormField control={form.control} name="ibge_municipality_code" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.ibgeCode}</FormLabel>
-                    <FormControl><Input placeholder={t.ibgeCodePlaceholder} {...field} value={field.value || ''} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {/* ibge_municipality_code é preenchido automaticamente pelo CEP ou pelo
+                    StateCitySelector — não é exposto ao usuário como campo editável */}
               </div>
             </TabsContent>
           </Tabs>

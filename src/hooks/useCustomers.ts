@@ -10,9 +10,11 @@ export interface CustomerInput {
   name: string;
   customer_type: CustomerType;
   company_name?: string;
+  nome_fantasia?: string;
   document?: string;
   email?: string;
   phone?: string;
+  celular?: string;
   address?: string;
   address_number?: string;
   complement?: string;

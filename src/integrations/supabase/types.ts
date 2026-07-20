@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -2243,6 +2218,7 @@ export type Database = {
           address: string | null
           address_number: string | null
           birth_date: string | null
+          celular: string | null
           city: string | null
           company_id: string
           company_name: string | null
@@ -2262,6 +2238,7 @@ export type Database = {
           longitude: number | null
           name: string
           neighborhood: string | null
+          nome_fantasia: string | null
           notes: string | null
           origin: string | null
           phone: string | null
@@ -2276,6 +2253,7 @@ export type Database = {
           address?: string | null
           address_number?: string | null
           birth_date?: string | null
+          celular?: string | null
           city?: string | null
           company_id: string
           company_name?: string | null
@@ -2295,6 +2273,7 @@ export type Database = {
           longitude?: number | null
           name: string
           neighborhood?: string | null
+          nome_fantasia?: string | null
           notes?: string | null
           origin?: string | null
           phone?: string | null
@@ -2309,6 +2288,7 @@ export type Database = {
           address?: string | null
           address_number?: string | null
           birth_date?: string | null
+          celular?: string | null
           city?: string | null
           company_id?: string
           company_name?: string | null
@@ -2328,6 +2308,7 @@ export type Database = {
           longitude?: number | null
           name?: string
           neighborhood?: string | null
+          nome_fantasia?: string | null
           notes?: string | null
           origin?: string | null
           phone?: string | null
@@ -8280,9 +8261,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],

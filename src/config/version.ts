@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.2";
+export const APP_VERSION = "1.17.3";
 
-export const VERSION_NOTES = "No cadastro de cliente, digite o CNPJ e clique na lupa para preencher razão social, telefone, e-mail e endereço completo automaticamente, com os dados oficiais da empresa. Menos digitação e menos erro.";
+export const VERSION_NOTES = "O cadastro de cliente agora tem telefone e celular em campos separados, e a aba Fiscal ganhou Razão Social e Nome Fantasia, deixando os dados prontos para a nota. O código do município some da tela e é identificado sozinho pelo CEP.";
