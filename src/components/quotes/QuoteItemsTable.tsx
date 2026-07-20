@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { Plus, Trash2, Wrench, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,7 @@ function ServiceInputRow({
   serviceTypes,
   onAdd,
 }: {
-  serviceOptions: { value: string; label: string; sublabel?: string }[];
+  serviceOptions: { value: string; label: string; sublabel?: string; icon?: ReactNode }[];
   serviceTypes: { id: string; name: string }[];
   onAdd: (item: QuoteItem) => void;
 }) {
@@ -232,6 +233,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
       value: s.id,
       label: s.name,
       sublabel: s.description || undefined,
+      icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: s.color }} />,
     })),
     [serviceTypes]
   );

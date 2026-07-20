@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
@@ -46,7 +47,11 @@ export function ServiceCostsTab() {
   const { totalCost: materialsTotal } = useServiceMaterials(serviceId || null);
 
   const serviceOptions = useMemo(
-    () => serviceTypes.map((st) => ({ value: st.id, label: st.name })),
+    () => serviceTypes.map((st) => ({
+      value: st.id,
+      label: st.name,
+      icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
+    })),
     [serviceTypes]
   );
 
@@ -90,18 +95,32 @@ export function ServiceCostsTab() {
   );
 
   const { settings } = usePricingSettings();
-  const taxRate = Number(settings?.tax_rate ?? 10);
-  const adminRate = Number(settings?.admin_indirect_rate ?? 12);
-  const profitRate = Number(settings?.default_profit_rate ?? 10);
+  const defaultTaxRate = Number(settings?.tax_rate ?? 10);
+  const defaultAdminRate = Number(settings?.admin_indirect_rate ?? 12);
+  const defaultProfitRate = Number(settings?.default_profit_rate ?? 10);
   const kmCost = Number(settings?.km_cost ?? 1);
   const cardDiscountRate = Number(settings?.card_discount_rate ?? 6);
   const cardInstallments = Number(settings?.card_installments ?? 10);
 
+  // Simulacao local do BDI — NAO persiste, nao altera configuracoes nem orcamento
+  const [simTax, setSimTax] = useState<number>(defaultTaxRate);
+  const [simAdmin, setSimAdmin] = useState<number>(defaultAdminRate);
+  const [simProfit, setSimProfit] = useState<number>(defaultProfitRate);
+
+  useEffect(() => {
+    // volta ao padrao quando os settings carregam ou troca de servico
+    setSimTax(defaultTaxRate);
+    setSimAdmin(defaultAdminRate);
+    setSimProfit(defaultProfitRate);
+  }, [defaultTaxRate, defaultAdminRate, defaultProfitRate, serviceId]);
+
+  const isSimDirty = simTax !== defaultTaxRate || simAdmin !== defaultAdminRate || simProfit !== defaultProfitRate;
+
   const bdi = useBDICalculator({
-    taxRate,
-    adminRate,
-    profitRate,
-    items: [{ totalCost: totalServiceCost, profitRate }],
+    taxRate: simTax,
+    adminRate: simAdmin,
+    profitRate: simProfit,
+    items: [{ totalCost: totalServiceCost, profitRate: simProfit }],
     distanceKm: 0,
     kmCost,
     cardDiscountRate,
@@ -184,12 +203,26 @@ export function ServiceCostsTab() {
                   onTabChange={setCostsTab}
                 />
               ) : (
-                <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
-                  <TabsTrigger value="mao_de_obra">{tsc.tabLabor}</TabsTrigger>
-                  {hasPricing && <TabsTrigger value="recursos">{tsc.tabResources}</TabsTrigger>}
-                  <TabsTrigger value="materiais">{tsc.tabMaterials}</TabsTrigger>
-                  {hasPricing && <TabsTrigger value="resumo">{tsc.tabSummary}</TabsTrigger>}
-                </TabsList>
+                <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
+                  {[
+                    { value: 'mao_de_obra', label: tsc.tabLabor },
+                    ...(hasPricing ? [{ value: 'recursos', label: tsc.tabResources }] : []),
+                    { value: 'materiais', label: tsc.tabMaterials },
+                    ...(hasPricing ? [{ value: 'resumo', label: tsc.tabSummary }] : []),
+                  ].map((tab) => (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      onClick={() => setCostsTab(tab.value)}
+                      className={cn(
+                        'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
+                        costsTab === tab.value ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               )}
 
               <TabsContent value="mao_de_obra" className="mt-4">
@@ -323,6 +356,31 @@ export function ServiceCostsTab() {
                         </div>
                       </div>
 
+                      <div className="rounded-lg border border-border p-3 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">{tsc.simTax}</Label>
+                            <NumericInput decimal value={String(simTax)} onValueChange={(v) => setSimTax(Number(v.replace(',', '.')) || 0)} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">{tsc.simAdmin}</Label>
+                            <NumericInput decimal value={String(simAdmin)} onValueChange={(v) => setSimAdmin(Number(v.replace(',', '.')) || 0)} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">{tsc.simProfit}</Label>
+                            <NumericInput decimal value={String(simProfit)} onValueChange={(v) => setSimProfit(Number(v.replace(',', '.')) || 0)} />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">{tsc.simHint}</p>
+                          {isSimDirty && (
+                            <Button variant="ghost" size="sm" onClick={() => { setSimTax(defaultTaxRate); setSimAdmin(defaultAdminRate); setSimProfit(defaultProfitRate); }}>
+                              {tsc.simReset}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="rounded-xl border border-border p-4 bg-muted/30">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold text-foreground">{tsc.summaryTotalCost}</p>
@@ -335,7 +393,7 @@ export function ServiceCostsTab() {
                         <p className="mt-1 text-xs text-muted-foreground">
                           {tsc.summaryBdiFactor
                             .replace('{factor}', bdi.bdiFactor.toFixed(4))
-                            .replace('{profit}', profitRate.toFixed(2))}
+                            .replace('{profit}', simProfit.toFixed(2))}
                         </p>
                       </div>
                     </CardContent>

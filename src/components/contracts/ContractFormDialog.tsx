@@ -3501,7 +3501,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       <SelectContent>
                         <SelectItem value="none">{t.team.serviceTypeNone}</SelectItem>
                         {serviceTypes.filter(st => st.is_active).map(st => (
-                          <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
+                          <SelectItem key={st.id} value={st.id}>
+                            <span className="flex items-center gap-2">
+                              <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
+                              {st.name}
+                            </span>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.0";
+export const APP_VERSION = "1.17.1";
 
-export const VERSION_NOTES = "O Dominex agora fala 4 idiomas: português, inglês, espanhol e francês. Escolha o seu em Configurações; os links que você envia ao cliente seguem o idioma da sua empresa.";
+export const VERSION_NOTES = "Agora dá para simular o preço de um serviço ajustando imposto, administração e lucro e ver o resultado na hora, sem mexer nas suas configurações. Os campos de tipo de serviço passaram a mostrar a cor de cada serviço ao lado do nome.";

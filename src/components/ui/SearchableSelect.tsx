@@ -103,7 +103,8 @@ export function SearchableSelect({
           disabled={disabled}
           className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground', className)}
         >
-          <span className="truncate">
+          <span className="flex items-center gap-2 truncate">
+            {selected?.icon}
             {selected ? selected.label : placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

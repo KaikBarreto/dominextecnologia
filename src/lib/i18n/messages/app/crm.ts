@@ -529,6 +529,11 @@ export const crm = {
       summaryTotalCost: 'Custo total',
       summarySuggestedPrice: 'Preço sugerido (BDI)',
       summaryBdiFactor: 'BDI: {factor} | Lucro padrão: {profit}%',
+      simTax: 'Imposto (%)',
+      simAdmin: 'Adm. indireta (%)',
+      simProfit: 'Lucro (%)',
+      simHint: 'Simulação. Não altera suas configurações de precificação.',
+      simReset: 'Restaurar padrão',
     },
 
     // ── Custos Globais (GlobalCostsTab) ──
@@ -1373,6 +1378,11 @@ export const crm = {
       summaryTotalCost: 'Total cost',
       summarySuggestedPrice: 'Suggested price (BDI)',
       summaryBdiFactor: 'BDI: {factor} | Default profit: {profit}%',
+      simTax: 'Tax (%)',
+      simAdmin: 'Indirect admin (%)',
+      simProfit: 'Profit (%)',
+      simHint: 'Simulation only. Does not change your pricing settings.',
+      simReset: 'Restore default',
     },
 
     globalCosts: {
@@ -2186,6 +2196,11 @@ export const crm = {
       summaryTotalCost: 'Costo total',
       summarySuggestedPrice: 'Precio sugerido (BDI)',
       summaryBdiFactor: 'BDI: {factor} | Ganancia estándar: {profit}%',
+      simTax: 'Impuesto (%)',
+      simAdmin: 'Adm. indirecta (%)',
+      simProfit: 'Ganancia (%)',
+      simHint: 'Simulación. No cambia tu configuración de precios.',
+      simReset: 'Restaurar predeterminado',
     },
 
     globalCosts: {
@@ -2999,6 +3014,11 @@ export const crm = {
       summaryTotalCost: 'Coût total',
       summarySuggestedPrice: 'Prix suggéré (BDI)',
       summaryBdiFactor: 'BDI : {factor} | Marge par défaut : {profit}%',
+      simTax: 'Taxe (%)',
+      simAdmin: 'Admin. indirecte (%)',
+      simProfit: 'Marge (%)',
+      simHint: 'Simulation. Ne modifie pas vos paramètres de tarification.',
+      simReset: `Rétablir la valeur par défaut`,
     },
 
     globalCosts: {

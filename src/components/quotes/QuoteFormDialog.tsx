@@ -683,7 +683,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     [customers]
   );
   const serviceOptions = useMemo(
-    () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({ value: s.id, label: s.name })),
+    () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({
+      value: s.id,
+      label: s.name,
+      icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: s.color }} />,
+    })),
     [serviceTypes]
   );
   const inventoryOptions = useMemo(

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.1',
+    date: '20 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Simule o preço de um serviço na hora',
+        description: 'Na tela de custos por tipo de serviço, no resumo você já via o preço sugerido. Agora dá para ajustar imposto, administração e lucro ali mesmo e ver o preço mudar na hora, ideal para testar cenários de margem antes de fechar o valor. É só uma simulação, não altera as suas configurações de precificação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cor do serviço nos campos de seleção',
+        description: 'Ao escolher um tipo de serviço em orçamentos, contratos e no cálculo de custos, agora aparece uma bolinha na cor do serviço ao lado do nome, tanto na lista aberta quanto no campo já preenchido, ficando mais fácil identificar cada um de relance. As abas dessa tela também ganharam um visual mais limpo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.0',
     date: '19 de julho de 2026',
     type: 'minor',
