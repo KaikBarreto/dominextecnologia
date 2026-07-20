@@ -764,6 +764,22 @@ export const settings = {
       showLess: 'Ver menos',
     },
 
+    // ── Chrome do Modal/PDF de Termos de Uso ─────────────────────────────────
+    terms: {
+      modalTitle: 'Termos de Uso — Dominex',
+      pdfTitle: 'TERMOS DE USO — DOMINEX',
+      pdfFilename: 'TERMOS DE USO - DOMINEX',
+      checkboxLabel: 'Li e concordo com os Termos de Uso do Dominex',
+      btnAccept: 'Aceito os Termos',
+      btnAccepting: 'Confirmando...',
+      btnDownloadPdf: 'Baixar PDF',
+      btnGeneratingPdf: 'Gerando PDF...',
+      btnClose: 'Fechar',
+      acceptedAt: 'Aceito em {date}',
+      pdfFooterPage: 'Página {current} de {total}',
+      pdfGeneratedOn: 'Documento gerado em {date}',
+      errorPdf: 'Erro ao gerar o PDF dos termos. Tente novamente.',
+    },
 
     // ── Tela Meus Dados (LGPD) ────────────────────────────────────────────────
     myData: {
@@ -1548,6 +1564,22 @@ export const settings = {
       showLess: 'Show less',
     },
 
+    terms: {
+      modalTitle: 'Terms of Use — Dominex',
+      pdfTitle: 'TERMS OF USE — DOMINEX',
+      pdfFilename: 'TERMS OF USE - DOMINEX',
+      checkboxLabel: 'I have read and agree to the Dominex Terms of Use',
+      btnAccept: 'Accept Terms',
+      btnAccepting: 'Confirming...',
+      btnDownloadPdf: 'Download PDF',
+      btnGeneratingPdf: 'Generating PDF...',
+      btnClose: 'Close',
+      acceptedAt: 'Accepted on {date}',
+      pdfFooterPage: 'Page {current} of {total}',
+      pdfGeneratedOn: 'Document generated on {date}',
+      errorPdf: 'Error generating the PDF. Please try again.',
+    },
+
     myData: {
       backToDashboard: '← Back to dashboard',
       pageTitle: 'Privacy Center',
@@ -2323,6 +2355,22 @@ export const settings = {
       showLess: 'Ver menos',
     },
 
+    terms: {
+      modalTitle: 'Términos de Uso — Dominex',
+      pdfTitle: 'TÉRMINOS DE USO — DOMINEX',
+      pdfFilename: 'TERMINOS DE USO - DOMINEX',
+      checkboxLabel: 'He leído y acepto los Términos de Uso de Dominex',
+      btnAccept: 'Acepto los Términos',
+      btnAccepting: 'Confirmando...',
+      btnDownloadPdf: 'Descargar PDF',
+      btnGeneratingPdf: 'Generando PDF...',
+      btnClose: 'Cerrar',
+      acceptedAt: 'Aceptado el {date}',
+      pdfFooterPage: 'Página {current} de {total}',
+      pdfGeneratedOn: 'Documento generado el {date}',
+      errorPdf: 'Error al generar el PDF. Inténtelo de nuevo.',
+    },
+
     myData: {
       backToDashboard: '← Volver al panel',
       pageTitle: 'Centro de Privacidad',
@@ -3096,6 +3144,22 @@ export const settings = {
       changesCount_other: '{count} changements',
       showMore: 'Voir plus',
       showLess: 'Voir moins',
+    },
+
+    terms: {
+      modalTitle: "Conditions d'utilisation — Dominex",
+      pdfTitle: "CONDITIONS D'UTILISATION — DOMINEX",
+      pdfFilename: "CONDITIONS D'UTILISATION - DOMINEX",
+      checkboxLabel: "J'ai lu et j'accepte les Conditions d'utilisation de Dominex",
+      btnAccept: "J'accepte les conditions",
+      btnAccepting: 'Confirmation...',
+      btnDownloadPdf: 'Télécharger le PDF',
+      btnGeneratingPdf: 'Génération du PDF...',
+      btnClose: 'Fermer',
+      acceptedAt: 'Accepté le {date}',
+      pdfFooterPage: 'Page {current} sur {total}',
+      pdfGeneratedOn: 'Document généré le {date}',
+      errorPdf: 'Erreur lors de la génération du PDF. Veuillez réessayer.',
     },
 
     myData: {

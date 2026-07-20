@@ -8,13 +8,15 @@ import { cn } from '@/lib/utils';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { downloadTermsOfUsePdf } from '@/utils/termsOfUsePdfGenerator';
 import {
-  TERMS_SECTIONS,
+  getTermsSections,
   DOMINEX_LEGAL,
-  TERMS_INTRO,
-  TERMS_META_LINE,
+  getTermsIntro,
+  getTermsMetaLine,
 } from '@/data/termsOfUse';
 import { useTermsOfService } from '@/hooks/useTermsOfService';
 import { formatBrtDateTime } from '@/lib/date-br';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 interface TermsOfServiceModalProps {
   open: boolean;
@@ -50,6 +52,14 @@ export const TermsOfServiceModal = ({
   const [accepted, setAccepted] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const { acceptTerms, isAccepting, acceptedAt } = useTermsOfService();
+
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.terms;
+
+  const termsSections = getTermsSections(locale);
+  const termsIntro = getTermsIntro(locale);
+  const termsMetaLine = getTermsMetaLine(locale);
+
   // Só no modo leitura mostramos a data do aceite (no modo obrigatório a
   // pessoa ainda não aceitou). `formatBrtDateTime` devolve null se vazio.
   const acceptedAtLabel = readOnly ? formatBrtDateTime(acceptedAt) : null;
@@ -60,10 +70,10 @@ export const TermsOfServiceModal = ({
   const handleDownloadPdf = async () => {
     try {
       setGeneratingPdf(true);
-      await downloadTermsOfUsePdf();
+      await downloadTermsOfUsePdf(locale);
     } catch (err) {
       console.error('[TermsOfServiceModal] erro ao gerar PDF:', err);
-      toast.error('Erro ao gerar o PDF dos termos. Tente novamente.');
+      toast.error(t.errorPdf);
     } finally {
       setGeneratingPdf(false);
     }
@@ -98,19 +108,19 @@ export const TermsOfServiceModal = ({
               className="h-7 sm:h-9 md:h-11 w-auto dark:invert"
             />
             <h1 className="text-sm sm:text-base md:text-xl font-bold text-center uppercase tracking-tight leading-tight text-foreground">
-              Termos de Uso — Dominex
+              {t.modalTitle}
             </h1>
           </div>
           <p className="mt-2 md:mt-4 text-[11px] sm:text-xs md:text-sm text-muted-foreground text-center leading-snug md:leading-relaxed">
-            {TERMS_INTRO}
+            {termsIntro}
           </p>
           <p className="mt-1.5 md:mt-2 text-[10px] sm:text-[11px] md:text-xs text-muted-foreground text-center leading-tight">
-            {TERMS_META_LINE}
+            {termsMetaLine}
           </p>
           {acceptedAtLabel && (
             <p className="mt-1 text-[10px] sm:text-[11px] md:text-xs text-muted-foreground text-center leading-tight flex items-center justify-center gap-1.5">
               <CheckCircle2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-green-600 dark:text-green-500 shrink-0" />
-              Aceito em {acceptedAtLabel}
+              {t.acceptedAt.replace('{date}', acceptedAtLabel)}
             </p>
           )}
         </div>
@@ -119,7 +129,7 @@ export const TermsOfServiceModal = ({
             o ScrollArea do Radix dentro de flex com altura por max-h. */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 md:px-6 md:py-4">
           <div className="space-y-4 md:space-y-6 pr-1">
-            {TERMS_SECTIONS.map((section, sectionIndex) => (
+            {termsSections.map((section, sectionIndex) => (
               <div
                 key={sectionIndex}
                 className="border-b border-border pb-3 md:pb-4 last:border-0"
@@ -175,14 +185,14 @@ export const TermsOfServiceModal = ({
               className="w-full sm:flex-1 h-10 gap-2"
             >
               <FileDown className="h-4 w-4" />
-              {generatingPdf ? 'Gerando PDF...' : 'Baixar PDF'}
+              {generatingPdf ? t.btnGeneratingPdf : t.btnDownloadPdf}
             </Button>
             <Button
               variant="default"
               onClick={() => onOpenChange(false)}
               className="w-full sm:flex-1 h-10"
             >
-              Fechar
+              {t.btnClose}
             </Button>
           </div>
         ) : (
@@ -198,7 +208,7 @@ export const TermsOfServiceModal = ({
                 className="mt-0.5 shrink-0"
               />
               <span className="text-[11px] sm:text-xs md:text-sm font-medium leading-snug md:leading-relaxed">
-                Li e concordo com os Termos de Uso do Dominex
+                {t.checkboxLabel}
               </span>
             </label>
 
@@ -210,14 +220,14 @@ export const TermsOfServiceModal = ({
                 className="h-11 sm:h-10 gap-2"
               >
                 <FileDown className="h-4 w-4" />
-                {generatingPdf ? 'Gerando PDF...' : 'Baixar PDF'}
+                {generatingPdf ? t.btnGeneratingPdf : t.btnDownloadPdf}
               </Button>
               <Button
                 onClick={handleAccept}
                 disabled={!accepted || isAccepting}
                 className="h-11 sm:h-10 min-w-[150px] font-semibold"
               >
-                {isAccepting ? 'Confirmando...' : 'Aceito os Termos'}
+                {isAccepting ? t.btnAccepting : t.btnAccept}
               </Button>
             </div>
           </div>

@@ -1,11 +1,13 @@
 import jsPDF from 'jspdf';
 import { DOMINEX_LOGO_BLACK_BASE64 } from './dominexLogoBase64';
 import {
-  TERMS_SECTIONS,
+  getTermsSections,
   DOMINEX_LEGAL,
-  TERMS_INTRO,
-  TERMS_META_LINE,
+  getTermsIntro,
+  getTermsMetaLine,
 } from '@/data/termsOfUse';
+import type { LocaleCode } from '@/lib/i18n/locales';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { openPdfInTab } from './openPdfInTab';
 
 // ── Paleta ──────────────────────────────────────────────────────────────────
@@ -50,9 +52,16 @@ function tokenizeBold(text: string): Array<{ text: string; bold: boolean }> {
  * Gera o PDF do Termo de Uso do Dominex replicando o estilo do modal.
  * Texto selecionável (não html2canvas), paginação limpa, rodapé + numeração em
  * todas as páginas. Lê a FONTE ÚNICA em src/data/termsOfUse.ts.
+ *
+ * @param locale — idioma do PDF (default: 'pt-br'). Fallback pra pt-br se não traduzido.
  */
-async function buildTermsDoc(): Promise<jsPDF> {
+async function buildTermsDoc(locale: LocaleCode = 'pt-br'): Promise<jsPDF> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const termsSections = getTermsSections(locale);
+  const termsIntro = getTermsIntro(locale);
+  const termsMetaLine = getTermsMetaLine(locale);
+  const tTerms = MESSAGES[locale].app.settings.terms;
 
   const pageWidth = doc.internal.pageSize.getWidth(); // 210
   const pageHeight = doc.internal.pageSize.getHeight(); // 297
@@ -159,7 +168,7 @@ async function buildTermsDoc(): Promise<jsPDF> {
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(BODY[0], BODY[1], BODY[2]);
   const titleLines = doc.splitTextToSize(
-    'TERMOS DE USO — DOMINEX',
+    tTerms.pdfTitle,
     contentWidth,
   ) as string[];
   for (const line of titleLines) {
@@ -175,15 +184,15 @@ async function buildTermsDoc(): Promise<jsPDF> {
   y += 5;
 
   // Subtítulo introdutório (texto do modal)
-  drawPlainParagraph(TERMS_INTRO, marginX, contentWidth, 9, MUTED, 'normal', 'center');
+  drawPlainParagraph(termsIntro, marginX, contentWidth, 9, MUTED, 'normal', 'center');
   y += 1.5;
 
   // Linha de metadados: versão + data (mesma string da tela, fonte única)
-  drawPlainParagraph(TERMS_META_LINE, marginX, contentWidth, 8, MUTED, 'normal', 'center');
+  drawPlainParagraph(termsMetaLine, marginX, contentWidth, 8, MUTED, 'normal', 'center');
   y += 4;
 
   // ── Seções ───────────────────────────────────────────────────────────────
-  for (const section of TERMS_SECTIONS) {
+  for (const section of termsSections) {
     // Título de seção (bold, uppercase) — preto, idêntico ao <h2> do modal.
     ensureSpace(lineHeight + 6);
     y += 2;
@@ -244,7 +253,10 @@ async function buildTermsDoc(): Promise<jsPDF> {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
     doc.text(FOOTER_LINE, pageWidth / 2, footerY, { align: 'center' });
-    doc.text(`Página ${p} de ${totalPages}`, pageWidth / 2, footerY + 4, {
+    const pageLabel = tTerms.pdfFooterPage
+      .replace('{current}', String(p))
+      .replace('{total}', String(totalPages));
+    doc.text(pageLabel, pageWidth / 2, footerY + 4, {
       align: 'center',
     });
   }
@@ -255,9 +267,11 @@ async function buildTermsDoc(): Promise<jsPDF> {
 /**
  * Gera o PDF do Termo de Uso do Dominex e devolve como Blob.
  * Mantido para compatibilidade com quem já consome o blob diretamente.
+ *
+ * @param locale — idioma do PDF (default: 'pt-br').
  */
-export async function generateTermsOfUsePdfBlob(): Promise<Blob> {
-  const doc = await buildTermsDoc();
+export async function generateTermsOfUsePdfBlob(locale: LocaleCode = 'pt-br'): Promise<Blob> {
+  const doc = await buildTermsDoc(locale);
   return doc.output('blob');
 }
 
@@ -266,19 +280,23 @@ export async function generateTermsOfUsePdfBlob(): Promise<Blob> {
  * Usa `doc.save(...)`, que cria um `<a download="...">` e clica nele — download
  * direto, sem abrir o visualizador nativo do navegador (que ignoraria o nome e
  * salvaria com o UUID do blob URL).
+ *
+ * @param locale — idioma do PDF (default: 'pt-br').
  */
-export async function downloadTermsOfUsePdf(): Promise<void> {
-  const doc = await buildTermsDoc();
-  doc.save('TERMOS DE USO - DOMINEX.pdf');
+export async function downloadTermsOfUsePdf(locale: LocaleCode = 'pt-br'): Promise<void> {
+  const tTerms = MESSAGES[locale].app.settings.terms;
+  const doc = await buildTermsDoc(locale);
+  doc.save(`${tTerms.pdfFilename}.pdf`);
 }
 
 /**
  * Gera o PDF e abre na aba (desktop) / wrapper navegável (mobile).
- * O nome do arquivo baixado é "TERMOS DE USO - DOMINEX.pdf" — o openPdfInTab
- * sanitiza mantendo letras/espaços/hífens e anexa ".pdf".
  * (Mantido por compatibilidade; o botão "Baixar PDF" usa downloadTermsOfUsePdf.)
+ *
+ * @param locale — idioma do PDF (default: 'pt-br').
  */
-export async function openTermsOfUsePdf(): Promise<void> {
-  const blob = await generateTermsOfUsePdfBlob();
-  openPdfInTab(blob, 'TERMOS DE USO - DOMINEX');
+export async function openTermsOfUsePdf(locale: LocaleCode = 'pt-br'): Promise<void> {
+  const tTerms = MESSAGES[locale].app.settings.terms;
+  const blob = await generateTermsOfUsePdfBlob(locale);
+  openPdfInTab(blob, tTerms.pdfFilename);
 }
