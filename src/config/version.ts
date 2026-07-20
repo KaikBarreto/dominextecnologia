@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.1";
+export const APP_VERSION = "1.17.2";
 
-export const VERSION_NOTES = "Agora dá para simular o preço de um serviço ajustando imposto, administração e lucro e ver o resultado na hora, sem mexer nas suas configurações. Os campos de tipo de serviço passaram a mostrar a cor de cada serviço ao lado do nome.";
+export const VERSION_NOTES = "No cadastro de cliente, digite o CNPJ e clique na lupa para preencher razão social, telefone, e-mail e endereço completo automaticamente, com os dados oficiais da empresa. Menos digitação e menos erro.";

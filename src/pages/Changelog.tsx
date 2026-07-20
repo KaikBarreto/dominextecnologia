@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.2',
+    date: '20 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Preencha o cadastro do cliente pelo CNPJ',
+        description: 'No cadastro e na edição de cliente, o campo de documento agora tem uma lupa. Digite o CNPJ e o sistema busca os dados oficiais da empresa e preenche sozinho a razão social, o e-mail, o telefone e o endereço completo, poupando digitação e evitando erros. Se você já tiver escrito o nome do cliente, ele é preservado. Para CPF a busca não se aplica.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.1',
     date: '20 de julho de 2026',
     type: 'patch',

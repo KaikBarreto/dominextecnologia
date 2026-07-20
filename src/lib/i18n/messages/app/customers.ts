@@ -93,6 +93,13 @@ export const customers = {
       nameMin: 'Nome deve ter no mínimo 2 caracteres',
       emailInvalid: 'Email inválido',
       errorTitle: 'Erro',
+      // Consulta de CNPJ na Receita
+      documentLookup: {
+        searchAria: 'Consultar CNPJ na Receita',
+        found: 'Dados da empresa preenchidos!',
+        notFound: 'CNPJ não encontrado na Receita',
+        error: 'Não foi possível consultar o CNPJ agora',
+      },
     },
 
     // ── Detalhe do cliente (CustomerDetail.tsx) ──
@@ -427,6 +434,13 @@ export const customers = {
       nameMin: 'Name must be at least 2 characters',
       emailInvalid: 'Invalid email',
       errorTitle: 'Error',
+      // CNPJ lookup
+      documentLookup: {
+        searchAria: 'Look up CNPJ',
+        found: 'Company details filled in!',
+        notFound: 'CNPJ not found',
+        error: 'Could not look up the CNPJ right now',
+      },
     },
 
     detail: {
@@ -725,6 +739,13 @@ export const customers = {
       nameMin: 'El nombre debe tener al menos 2 caracteres',
       emailInvalid: 'Correo inválido',
       errorTitle: 'Error',
+      // Consulta CNPJ
+      documentLookup: {
+        searchAria: 'Consultar CNPJ',
+        found: '¡Datos de la empresa completados!',
+        notFound: 'CNPJ no encontrado',
+        error: 'No se pudo consultar el CNPJ ahora',
+      },
     },
 
     detail: {
@@ -1023,6 +1044,13 @@ export const customers = {
       nameMin: 'Le nom doit comporter au moins 2 caractères',
       emailInvalid: 'E-mail invalide',
       errorTitle: 'Erreur',
+      // Recherche CNPJ
+      documentLookup: {
+        searchAria: 'Rechercher le CNPJ',
+        found: `Données de l'entreprise remplies !`,
+        notFound: 'CNPJ introuvable',
+        error: 'Impossible de consulter le CNPJ pour le moment',
+      },
     },
 
     detail: {

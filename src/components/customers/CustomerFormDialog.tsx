@@ -21,7 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
-import { cpfCnpjMask, phoneMask } from '@/utils/masks';
+import { phoneMask } from '@/utils/masks';
+import { CnpjDocumentInput } from '@/components/customers/CnpjDocumentInput';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
@@ -373,10 +374,29 @@ export function CustomerFormDialog({
                   <FormItem>
                     <FormLabel>{t.document}</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="000.000.000-00"
+                      <CnpjDocumentInput
                         value={field.value || ''}
-                        onChange={(e) => field.onChange(cpfCnpjMask(e.target.value))}
+                        onChange={field.onChange}
+                        placeholder="000.000.000-00"
+                        onDataFound={(d) => {
+                          // Sobrescreve campos fiscais/endereço com o oficial, mas só quando o dado veio preenchido
+                          if (d.razaoSocial) form.setValue('company_name', d.razaoSocial);
+                          if (d.email) form.setValue('email', d.email);
+                          if (d.phone) form.setValue('phone', phoneMask(d.phone));
+                          if (d.zipCode) {
+                            const c = d.zipCode.replace(/\D/g, '');
+                            form.setValue('zip_code', c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c);
+                          }
+                          if (d.address) form.setValue('address', d.address);
+                          if (d.addressNumber) form.setValue('address_number', d.addressNumber);
+                          if (d.complement) form.setValue('complement', d.complement);
+                          if (d.neighborhood) form.setValue('neighborhood', d.neighborhood);
+                          if (d.city) form.setValue('city', d.city);
+                          if (d.state) form.setValue('state', d.state);
+                          // Nome: só preenche se estiver vazio (não apaga o apelido que o usuário digitou)
+                          const currentName = (form.getValues('name') || '').trim();
+                          if (!currentName) form.setValue('name', d.nomeFantasia || d.razaoSocial || '');
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
