@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.4',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Inscrição Estadual no cadastro do cliente',
+        description: 'A aba Fiscal do cadastro e da edição de cliente agora tem o campo Inscrição Estadual, para você guardar o dado completo do cliente junto com a razão social, o nome fantasia e o endereço fiscal.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.3',
     date: '20 de julho de 2026',
     type: 'patch',

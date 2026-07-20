@@ -27,6 +27,7 @@ export interface CustomerInput {
   origin?: string;
   // Dados fiscais (tomador NFS-e) — todos opcionais
   inscricao_municipal?: string;
+  inscricao_estadual?: string;
   street_number?: string;
   ibge_municipality_code?: string;
   // Coordenadas geocodificadas no cadastro/edição (mapa de rota instantâneo).

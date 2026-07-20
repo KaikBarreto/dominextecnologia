@@ -54,6 +54,7 @@ const customerSchema = z.object({
   origin: z.string().optional(),
   // Dados fiscais (tomador NFS-e) — todos opcionais
   inscricao_municipal: z.string().optional(),
+  inscricao_estadual: z.string().optional(),
   ibge_municipality_code: z.string().optional(),
 });
 
@@ -63,7 +64,7 @@ const EMPTY_FORM: CustomerFormData = {
   name: '', customer_type: 'pj', company_name: '', nome_fantasia: '', document: '',
   email: '', phone: '', celular: '', birth_date: '', address: '', address_number: '',
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
-  notes: '', origin: '', inscricao_municipal: '', ibge_municipality_code: '',
+  notes: '', origin: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
 };
 
 interface CustomerFormDialogProps {
@@ -147,6 +148,7 @@ export function CustomerFormDialog({
           notes: customer?.notes ?? '',
           origin: (customer as any)?.origin ?? '',
           inscricao_municipal: (customer as any)?.inscricao_municipal ?? '',
+          inscricao_estadual: (customer as any)?.inscricao_estadual ?? '',
           ibge_municipality_code: (customer as any)?.ibge_municipality_code ?? '',
         });
       }
@@ -431,6 +433,13 @@ export function CustomerFormDialog({
                   <FormItem>
                     <FormLabel>{t.inscricaoMunicipal}</FormLabel>
                     <FormControl><Input placeholder={t.inscricaoMunicipalPlaceholder} {...field} value={field.value || ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="inscricao_estadual" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.inscricaoEstadual}</FormLabel>
+                    <FormControl><Input placeholder={t.inscricaoEstadualPlaceholder} {...field} value={field.value || ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

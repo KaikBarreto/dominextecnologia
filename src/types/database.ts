@@ -57,6 +57,7 @@ export interface Customer {
   origin?: string;
   // Dados fiscais (tomador NFS-e)
   inscricao_municipal?: string;
+  inscricao_estadual?: string | null;
   street_number?: string;
   ibge_municipality_code?: string;
   created_at: string;

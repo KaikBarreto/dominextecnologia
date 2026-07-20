@@ -474,6 +474,9 @@ export default function CustomerDetail() {
             if (customer.document) {
               rows.push({ label: t.fieldDocument, node: <span className="text-sm font-medium leading-tight">{customer.document}</span> });
             }
+            if ((customer as any).inscricao_estadual) {
+              rows.push({ label: t.fieldInscricaoEstadual, node: <span className="text-sm font-medium leading-tight">{(customer as any).inscricao_estadual}</span> });
+            }
             if (customer.email) {
               rows.push({
                 label: t.fieldEmail,
