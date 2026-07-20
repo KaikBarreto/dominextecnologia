@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useRef, useCallback } from 'react';
 import { escapeHtml, safeImageUrl } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
@@ -46,17 +47,63 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
-import { useEffect } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
-const LABEL_SIZES = [
-  { key: '5x8', label: '5×8cm', width: 189, height: 302, desc: 'QR Code + Info completa' },
-  { key: '5x5', label: '5×5cm', width: 189, height: 189, desc: 'QR Code + Info básica' },
-  { key: '6x6', label: '6×6cm', width: 227, height: 227, desc: 'Para impressora de etiquetas' },
-] as const;
+// cm → px a 96 DPI
+const cmToPx = (cm: number) => Math.round(cm * 37.795);
+const clampCm = (val: number) => Math.min(30, Math.max(2, val));
+
+interface LabelConfig {
+  items: Record<string, boolean>;
+  widthCm: string;
+  heightCm: string;
+}
+
+const LABEL_STORAGE_KEY = 'equipment-label-config';
+
+const DEFAULT_LABEL_CONFIG: LabelConfig = {
+  items: {
+    companyName: true,
+    companyPhone: true,
+    companyEmail: true,
+    qr: true,
+    eqName: true,
+    identifier: true,
+    brand: false,
+    model: false,
+    serial: false,
+    location: false,
+    customer: false,
+  },
+  widthCm: '5',
+  heightCm: '8',
+};
+
+function loadLabelConfig(): LabelConfig {
+  try {
+    const raw = localStorage.getItem(LABEL_STORAGE_KEY);
+    if (!raw) return DEFAULT_LABEL_CONFIG;
+    const parsed = JSON.parse(raw) as Partial<LabelConfig>;
+    return {
+      items: { ...DEFAULT_LABEL_CONFIG.items, ...(parsed.items ?? {}) },
+      widthCm: parsed.widthCm ?? DEFAULT_LABEL_CONFIG.widthCm,
+      heightCm: parsed.heightCm ?? DEFAULT_LABEL_CONFIG.heightCm,
+    };
+  } catch {
+    return DEFAULT_LABEL_CONFIG;
+  }
+}
+
+function saveLabelConfig(cfg: LabelConfig) {
+  try {
+    localStorage.setItem(LABEL_STORAGE_KEY, JSON.stringify(cfg));
+  } catch {
+    // silencioso
+  }
+}
 
 export default function EquipmentDetail() {
   // O param da rota pode ser UUID antigo OU `slug-do-nome-<codigo>` (link
@@ -98,12 +145,30 @@ export default function EquipmentDetail() {
   const [deleteEquipOpen, setDeleteEquipOpen] = useState(false);
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
-  const [selectedLabelSize, setSelectedLabelSize] = useState<string>('5x8');
+  const [labelConfig, setLabelConfig] = useState<LabelConfig>(loadLabelConfig);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [qrExpanded, setQrExpanded] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Persistir configuração da etiqueta quando mudar
+  useEffect(() => {
+    saveLabelConfig(labelConfig);
+  }, [labelConfig]);
+
+  const updateLabelItem = (key: string, checked: boolean) => {
+    setLabelConfig(prev => ({ ...prev, items: { ...prev.items, [key]: checked } }));
+  };
+
+  const updateLabelSize = (field: 'widthCm' | 'heightCm', value: string) => {
+    setLabelConfig(prev => ({ ...prev, [field]: value }));
+  };
+
+  const applyLabelPreset = (w: string, h: string) => {
+    setLabelConfig(prev => ({ ...prev, widthCm: w, heightCm: h }));
+  };
 
   // Auto-canonical: depois que o equipamento carrega, normaliza a URL pro
   // formato bonito (`slug-<codigo>`) sem recarregar. Links antigos (UUID)
@@ -177,28 +242,72 @@ export default function EquipmentDetail() {
     setNewTaskTitle('');
   };
 
+  // Itens disponíveis da etiqueta (baseado no equipment atual)
+  const availableLabelItems = equipment ? {
+    companyName: !!(companySettings?.name),
+    companyPhone: !!(companySettings?.phone),
+    companyEmail: !!(companySettings?.email),
+    qr: hasPortalLink,
+    eqName: !!(equipment.name),
+    identifier: !!(equipment.identifier),
+    brand: !!(equipment.brand),
+    model: !!(equipment.model),
+    serial: !!(equipment.serial_number),
+    location: !!(equipment.location),
+    customer: !!((equipment as any).customer?.name),
+  } : {} as Record<string, boolean>;
+
+  const isLabelItemEnabled = (key: string) => !!(labelConfig.items[key] && availableLabelItems[key]);
+
+  const labelWidthPx = cmToPx(clampCm(parseFloat(labelConfig.widthCm) || 5));
+  const labelHeightPx = cmToPx(clampCm(parseFloat(labelConfig.heightCm) || 8));
+
+  const tfc = MESSAGES[locale].app.equipment.fieldConfig;
+
   const handleDownloadLabel = useCallback(() => {
     if (!labelRef.current || !equipment) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    const labelSize = LABEL_SIZES.find(s => s.key === selectedLabelSize) || LABEL_SIZES[0];
     const svgEl = labelRef.current.querySelector('svg');
     const svgData = svgEl ? new XMLSerializer().serializeToString(svgEl) : '';
+
     printWindow.document.write(`
-      <!DOCTYPE html><html><head><title>${te.labelPrintTitle}${escapeHtml(equipment.name)}</title>
-      <style>@page{size:${labelSize.width}px ${labelSize.height}px;margin:0}body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Arial,sans-serif}.label{width:${labelSize.width}px;height:${labelSize.height}px;border:1px solid #ccc;border-radius:8px;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}.company-name{font-size:11px;font-weight:bold}.company-info{font-size:8px;color:#666}.eq-label{font-size:8px;color:#888}.eq-name{font-size:12px;font-weight:bold}.eq-id{font-size:10px;font-weight:bold}@media print{body{margin:0}.label{border:none}}</style></head><body>
+      <!DOCTYPE html><html><head><title>Etiqueta - ${escapeHtml(equipment.name)}</title>
+      <style>@page{size:${labelWidthPx}px ${labelHeightPx}px;margin:0}body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Arial,sans-serif}.label{width:${labelWidthPx}px;height:${labelHeightPx}px;border:1px solid #ccc;border-radius:8px;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;overflow:hidden}.company-name{font-size:11px;font-weight:bold}.company-info{font-size:8px;color:#666}.eq-label{font-size:8px;color:#888;margin-top:2px}.eq-name{font-size:12px;font-weight:bold}.eq-id{font-size:10px;font-weight:bold}.eq-detail{font-size:9px;color:#555}@media print{body{margin:0}.label{border:none}}</style></head><body>
       <div class="label">
-        ${selectedLabelSize === '5x8' && companySettings ? `<div class="company-name">${escapeHtml(companySettings.name) || 'Empresa'}</div>${companySettings.phone ? `<div class="company-info">${escapeHtml(companySettings.phone)}</div>` : ''}${companySettings.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}` : ''}
-        ${svgData}
-        <div class="eq-label">${te.labelEquipNameField}</div>
-        <div class="eq-name">${escapeHtml(equipment.name)}</div>
-        <div class="eq-label">${te.labelIdentifierField}</div>
-        <div class="eq-id">${escapeHtml(equipment.identifier) || '-'}</div>
+        ${isLabelItemEnabled('companyName') && companySettings ? `<div class="company-name">${escapeHtml(companySettings.name)}</div>` : ''}
+        ${isLabelItemEnabled('companyPhone') && companySettings?.phone ? `<div class="company-info">${escapeHtml(companySettings.phone)}</div>` : ''}
+        ${isLabelItemEnabled('companyEmail') && companySettings?.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}
+        ${isLabelItemEnabled('qr') ? svgData : ''}
+        ${isLabelItemEnabled('eqName') ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemEqName)}</div><div class="eq-name">${escapeHtml(equipment.name)}</div>` : ''}
+        ${isLabelItemEnabled('identifier') && equipment.identifier ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemIdentifier)}</div><div class="eq-id">${escapeHtml(equipment.identifier)}</div>` : ''}
+        ${isLabelItemEnabled('brand') && equipment.brand ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemBrand)}</div><div class="eq-detail">${escapeHtml(equipment.brand)}</div>` : ''}
+        ${isLabelItemEnabled('model') && equipment.model ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemModel)}</div><div class="eq-detail">${escapeHtml(equipment.model)}</div>` : ''}
+        ${isLabelItemEnabled('serial') && equipment.serial_number ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemSerial)}</div><div class="eq-detail">${escapeHtml(equipment.serial_number)}</div>` : ''}
+        ${isLabelItemEnabled('location') && equipment.location ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemLocation)}</div><div class="eq-detail">${escapeHtml(equipment.location)}</div>` : ''}
+        ${isLabelItemEnabled('customer') && (equipment as any).customer?.name ? `<div class="eq-label">${escapeHtml(tfc.detailDialogLabelItemCustomer)}</div><div class="eq-detail">${escapeHtml((equipment as any).customer.name)}</div>` : ''}
       </div>
       <script>setTimeout(()=>window.print(),300)</script></body></html>
     `);
     printWindow.document.close();
-  }, [equipment, selectedLabelSize, companySettings]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipment, labelConfig, companySettings, hasPortalLink, labelWidthPx, labelHeightPx]);
+
+  // Download QR como PNG
+  const handleDownloadQrPng = useCallback(() => {
+    if (!qrCanvasRef.current || !equipment) return;
+    const canvas = qrCanvasRef.current;
+    const dataUrl = canvas.toDataURL('image/png');
+    const slug = (equipment.identifier || equipment.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `qr-${slug}.png`;
+    a.click();
+    toast({ title: tfc.detailDialogQrDownloaded });
+  }, [equipment, tfc.detailDialogQrDownloaded]);
 
   if (eqLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -345,9 +454,24 @@ export default function EquipmentDetail() {
                   <div className="w-full space-y-2 text-center lg:text-left">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
                     <p className="text-sm text-muted-foreground">{te.qrCaption}</p>
+                    {/* Canvas oculto para download PNG */}
+                    {hasPortalLink && (
+                      <div className="hidden" aria-hidden="true">
+                        <QRCodeCanvas ref={qrCanvasRef} value={qrValue} size={1024} level="M" marginSize={2} />
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-center lg:justify-start">
                       <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setLabelDialogOpen(true)}>
                         <Tag className="mr-2 h-3.5 w-3.5" />{te.generateLabel}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                        disabled={!hasPortalLink}
+                        onClick={handleDownloadQrPng}
+                      >
+                        <Download className="mr-2 h-3.5 w-3.5" />{tfc.detailDialogDownloadQrPng}
                       </Button>
                       <Button
                         size="sm"
@@ -762,40 +886,147 @@ export default function EquipmentDetail() {
 
       {/* Label dialog */}
       <ResponsiveModal open={labelDialogOpen} onOpenChange={setLabelDialogOpen} title={te.labelDialogTitle}>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{te.labelDialogDesc}</p>
-          <div className="grid grid-cols-3 gap-3">
-            {LABEL_SIZES.map((size) => (
-              <button
-                key={size.key}
-                onClick={() => setSelectedLabelSize(size.key)}
-                className={cn(
-                  'flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all',
-                  selectedLabelSize === size.key ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-                )}
-              >
-                <QrCode className="h-8 w-8 text-muted-foreground" />
-                <span className="text-sm font-medium">{size.label}</span>
-                <span className="text-xs text-muted-foreground text-center leading-tight">{size.desc}</span>
-              </button>
-            ))}
+        <div className="space-y-5">
+          {/* Hint de impressão */}
+          <div className="bg-accent/50 rounded-lg p-3 text-sm text-muted-foreground flex items-start gap-2">
+            <span className="text-primary shrink-0">ℹ</span>
+            {tfc.detailDialogLabelPrintHint}
           </div>
-          <div className="flex justify-center">
-            <div ref={labelRef} className="border rounded-lg p-4 flex flex-col items-center gap-2 text-center max-w-[200px]">
-              {selectedLabelSize === '5x8' && companySettings && (
-                <>
-                  <p className="text-xs font-bold">{companySettings.name || 'Nome da Empresa'}</p>
-                  {companySettings.phone && <p className="text-[10px] text-muted-foreground">{companySettings.phone}</p>}
-                  {companySettings.email && <p className="text-[10px] text-muted-foreground">{companySettings.email}</p>}
-                </>
-              )}
-              <QRCodeSVG value={qrValue} size={100} />
-              <p className="text-[10px] text-muted-foreground">{te.labelEqName}</p>
-              <p className="text-xs font-bold">{equipment.name}</p>
-              <p className="text-[10px] text-muted-foreground">{te.labelEqId}</p>
-              <p className="text-xs font-bold">{equipment.identifier || '-'}</p>
+
+          {/* Checklist de itens */}
+          <div>
+            <p className="text-sm font-medium mb-3">{tfc.detailDialogLabelItemsHeading}</p>
+            <div className="divide-y border rounded-lg overflow-hidden">
+              {([
+                { key: 'companyName', label: tfc.detailDialogLabelItemCompanyName },
+                { key: 'companyPhone', label: tfc.detailDialogLabelItemCompanyPhone },
+                { key: 'companyEmail', label: tfc.detailDialogLabelItemCompanyEmail },
+                { key: 'qr', label: tfc.detailDialogLabelItemQr },
+                { key: 'eqName', label: tfc.detailDialogLabelItemEqName },
+                { key: 'identifier', label: tfc.detailDialogLabelItemIdentifier },
+                { key: 'brand', label: tfc.detailDialogLabelItemBrand },
+                { key: 'model', label: tfc.detailDialogLabelItemModel },
+                { key: 'serial', label: tfc.detailDialogLabelItemSerial },
+                { key: 'location', label: tfc.detailDialogLabelItemLocation },
+                { key: 'customer', label: tfc.detailDialogLabelItemCustomer },
+              ] as { key: string; label: string }[])
+                .filter(item => availableLabelItems[item.key])
+                .map(item => (
+                  <div key={item.key} className="flex items-center gap-3 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors">
+                    <Checkbox
+                      id={`label-item-${item.key}`}
+                      checked={!!labelConfig.items[item.key]}
+                      onCheckedChange={(checked) => updateLabelItem(item.key, !!checked)}
+                    />
+                    <label htmlFor={`label-item-${item.key}`} className="text-sm cursor-pointer flex-1 select-none">
+                      {item.label}
+                    </label>
+                  </div>
+                ))}
             </div>
           </div>
+
+          {/* Tamanho */}
+          <div>
+            <p className="text-sm font-medium mb-3">{tfc.detailDialogLabelSizeHeading}</p>
+            <div className="flex gap-2 mb-3">
+              {[
+                { label: '5×5', w: '5', h: '5' },
+                { label: '5×8', w: '5', h: '8' },
+                { label: '6×6', w: '6', h: '6' },
+              ].map(preset => {
+                const active = labelConfig.widthCm === preset.w && labelConfig.heightCm === preset.h;
+                return (
+                  <Button
+                    key={preset.label}
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => applyLabelPreset(preset.w, preset.h)}
+                  >
+                    {preset.label} cm
+                  </Button>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{tfc.detailDialogLabelWidthCm}</label>
+                <Input inputMode="decimal" value={labelConfig.widthCm} onChange={(e) => updateLabelSize('widthCm', e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{tfc.detailDialogLabelHeightCm}</label>
+                <Input inputMode="decimal" value={labelConfig.heightCm} onChange={(e) => updateLabelSize('heightCm', e.target.value)} className="h-9" />
+              </div>
+            </div>
+          </div>
+
+          {/* Preview ao vivo */}
+          <div>
+            <p className="text-sm font-medium mb-3">{tfc.detailDialogLabelPreview}</p>
+            <div className="flex justify-center">
+              {(() => {
+                const wCm = clampCm(parseFloat(labelConfig.widthCm) || 5);
+                const hCm = clampCm(parseFloat(labelConfig.heightCm) || 8);
+                const MAX_PREVIEW_W = 180;
+                const MAX_PREVIEW_H = 260;
+                const scaleW = MAX_PREVIEW_W / (wCm * 37.795);
+                const scaleH = MAX_PREVIEW_H / (hCm * 37.795);
+                const scale = Math.min(scaleW, scaleH, 1);
+                const previewW = Math.round(wCm * 37.795 * scale);
+                const previewH = Math.round(hCm * 37.795 * scale);
+
+                return (
+                  <div
+                    ref={labelRef}
+                    className="border rounded-lg flex flex-col items-center justify-center gap-1.5 text-center bg-white dark:bg-white shadow-sm overflow-hidden"
+                    style={{ width: previewW, height: previewH, padding: Math.max(6, 12 * scale) }}
+                  >
+                    {isLabelItemEnabled('companyName') && companySettings && (
+                      <p className="font-bold text-black leading-tight" style={{ fontSize: Math.max(7, 11 * scale) }}>{companySettings.name}</p>
+                    )}
+                    {isLabelItemEnabled('companyPhone') && companySettings?.phone && (
+                      <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(6, 8 * scale) }}>{companySettings.phone}</p>
+                    )}
+                    {isLabelItemEnabled('companyEmail') && companySettings?.email && (
+                      <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(6, 8 * scale) }}>{companySettings.email}</p>
+                    )}
+                    {isLabelItemEnabled('qr') && (
+                      <QRCodeSVG value={qrValue} size={Math.round(80 * scale)} />
+                    )}
+                    {isLabelItemEnabled('eqName') && (
+                      <>
+                        <p className="text-gray-500 leading-tight" style={{ fontSize: Math.max(5, 8 * scale) }}>{tfc.detailDialogLabelItemEqName}</p>
+                        <p className="font-bold text-black leading-tight" style={{ fontSize: Math.max(7, 12 * scale) }}>{equipment.name}</p>
+                      </>
+                    )}
+                    {isLabelItemEnabled('identifier') && equipment.identifier && (
+                      <>
+                        <p className="text-gray-500 leading-tight" style={{ fontSize: Math.max(5, 8 * scale) }}>{tfc.detailDialogLabelItemIdentifier}</p>
+                        <p className="font-bold text-black leading-tight" style={{ fontSize: Math.max(6, 10 * scale) }}>{equipment.identifier}</p>
+                      </>
+                    )}
+                    {isLabelItemEnabled('brand') && equipment.brand && (
+                      <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(5, 8 * scale) }}>{equipment.brand}</p>
+                    )}
+                    {isLabelItemEnabled('model') && equipment.model && (
+                      <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(5, 8 * scale) }}>{equipment.model}</p>
+                    )}
+                    {isLabelItemEnabled('serial') && equipment.serial_number && (
+                      <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(5, 8 * scale) }}>{equipment.serial_number}</p>
+                    )}
+                    {isLabelItemEnabled('location') && equipment.location && (
+                      <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(5, 8 * scale) }}>{equipment.location}</p>
+                    )}
+                    {isLabelItemEnabled('customer') && (equipment as any).customer?.name && (
+                      <p className="text-gray-600 leading-tight" style={{ fontSize: Math.max(5, 8 * scale) }}>{(equipment as any).customer.name}</p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <Button onClick={handleDownloadLabel}>
               <Download className="mr-2 h-4 w-4" />{te.labelPrint}

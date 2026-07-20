@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.6',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Etiqueta de identificação personalizável',
+        description: 'Agora você escolhe exatamente o que sai na etiqueta do equipamento: nome, identificador, marca, modelo, número de série, localização, nome do cliente e os dados da sua empresa. Também dá para ajustar a largura e a altura em centímetros para encaixar em qualquer impressora, com uma prévia ao vivo. O sistema lembra da sua configuração para a próxima vez.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Baixar o QR Code do equipamento em imagem',
+        description: 'Novo botão para baixar apenas o QR Code do equipamento em imagem de alta resolução, pronto para usar em contratos, planilhas ou onde precisar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.5',
     date: '21 de julho de 2026',
     type: 'patch',
