@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
-import { renderPasswordResetEmail, renderPasswordResetText } from '../_shared/passwordResetEmail.ts'
+import { renderPasswordResetEmail, renderPasswordResetText, getPasswordResetSubject } from '../_shared/passwordResetEmail.ts'
 
 const CODE_EXPIRES_MINUTES = 60;
 const RATE_LIMIT_WINDOW_MINUTES = 15;
@@ -80,6 +80,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Busca o idioma preferido do usuário para personalizar o email
+    // Usa auth_user_id_by_email (RPC SECURITY DEFINER) para obter o user_id sem vazar enumeração
+    let locale: string = 'pt-br';
+    const { data: userId } = await supabase.rpc('auth_user_id_by_email', { p_email: normalizedEmail });
+    if (userId) {
+      const { data: prefData } = await supabase
+        .from('user_preferences')
+        .select('language')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (prefData?.language) locale = prefData.language;
+    }
+
     // Gera código + persiste
     const code = generateCode();
     const expiresAt = new Date(Date.now() + CODE_EXPIRES_MINUTES * 60_000).toISOString();
@@ -101,9 +114,10 @@ Deno.serve(async (req) => {
       throw insertError;
     }
 
-    // Envia email via Resend
-    const html = renderPasswordResetEmail({ email: normalizedEmail, code, expiresMinutes: CODE_EXPIRES_MINUTES });
-    const text = renderPasswordResetText({ email: normalizedEmail, code, expiresMinutes: CODE_EXPIRES_MINUTES });
+    // Envia email via Resend no idioma do destinatário
+    const html = renderPasswordResetEmail({ email: normalizedEmail, code, expiresMinutes: CODE_EXPIRES_MINUTES }, locale);
+    const text = renderPasswordResetText({ email: normalizedEmail, code, expiresMinutes: CODE_EXPIRES_MINUTES }, locale);
+    const subject = getPasswordResetSubject(locale);
 
     const resendResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -114,7 +128,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: fromEmail,
         to: [normalizedEmail],
-        subject: 'Código de Recuperação de Senha — Dominex',
+        subject,
         html,
         text,
       }),
