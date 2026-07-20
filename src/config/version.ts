@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.6";
+export const APP_VERSION = "1.17.7";
 
-export const VERSION_NOTES = "A etiqueta de identificação do equipamento agora é personalizável: você escolhe quais informações aparecem e ajusta o tamanho em centímetros. E dá para baixar o QR Code do equipamento em imagem, para usar onde quiser.";
+export const VERSION_NOTES = "Correções: abrir chamado pelo portal do cliente voltou a funcionar, o custo do serviço passa a somar o material corretamente, e a geração de orçamento voltou ao normal.";

@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.7',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abertura de chamado pelo portal voltou a funcionar',
+        description: 'Seus clientes conseguem abrir chamados pelo portal normalmente. O aviso de erro que aparecia ao enviar não acontece mais, e o chamado entra direto na ficha do cliente e no histórico do equipamento escolhido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Custo do serviço agora soma o material corretamente',
+        description: 'Ao adicionar um material com quantidade e valor unitário, o total é calculado e salvo do jeito certo. Continua correto mesmo se você editar depois só a quantidade ou só o preço.',
+        category: 'correcao',
+      },
+      {
+        title: 'Geração de orçamento voltou ao normal',
+        description: 'Criar orçamento parou de dar erro, e a calculadora de preço fica salva junto do orçamento para você consultar depois.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.17.6',
     date: '21 de julho de 2026',
     type: 'patch',

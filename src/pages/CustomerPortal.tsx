@@ -375,7 +375,7 @@ function CustomerPortalContent({
         customer_id: customer.id,
         equipment_id: ticketEquipmentId || null,
         description: ticketDesc,
-        os_type: 'corretiva',
+        os_type: 'manutencao_corretiva',
         status: 'pendente',
         origin: 'portal',
         company_id,

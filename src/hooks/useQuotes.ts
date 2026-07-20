@@ -190,7 +190,7 @@ export function useQuotes() {
     mutationFn: async (input: QuoteInput) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { items, displacement_cost, final_price, ...quoteData } = input as any;
+      const { items, final_price, ...quoteData } = input as any;
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData, [
         'customer_id',
         'assigned_to',
@@ -225,7 +225,7 @@ export function useQuotes() {
   });
 
   const updateQuote = useMutation({
-    mutationFn: async ({ id, items, displacement_cost, final_price, ...quoteData }: QuoteInput & { id: string } & { displacement_cost?: any; final_price?: any }) => {
+    mutationFn: async ({ id, items, final_price, ...quoteData }: QuoteInput & { id: string } & { final_price?: any }) => {
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData as any, [
         'customer_id',
         'assigned_to',

@@ -42,12 +42,13 @@ export function useServiceMaterials(serviceId?: string | null) {
     mutationFn: async (input: Omit<ServiceMaterialInsert, 'id' | 'company_id' | 'service_id' | 'created_at'>) => {
       if (!companyId || !serviceId) throw new Error('Serviço não selecionado.');
 
-      const { subtotal, ...rest } = input as any;
+      const { subtotal: _subtotal, ...rest } = input as any;
 
       const payload: ServiceMaterialInsert = {
         ...rest,
         company_id: companyId,
         service_id: serviceId,
+        subtotal: computeSubtotal(rest.quantity, rest.purchase_price),
       };
 
       const { data, error } = await supabase
@@ -70,7 +71,19 @@ export function useServiceMaterials(serviceId?: string | null) {
 
   const updateMaterial = useMutation({
     mutationFn: async ({ id, ...updates }: ServiceMaterialUpdate & { id: string }) => {
-      const { subtotal, ...rest } = updates as any;
+      const { subtotal: _subtotal, ...rest } = updates as any;
+
+      // Recalcular subtotal quando quantity e/ou purchase_price mudarem.
+      // O componente envia updates PARCIAIS (só quantity OU só purchase_price),
+      // então mesclamos com o valor atual do material para não zerar o subtotal.
+      const hasQuantity = rest.quantity !== undefined && rest.quantity !== null;
+      const hasPrice = rest.purchase_price !== undefined && rest.purchase_price !== null;
+      if (hasQuantity || hasPrice) {
+        const existing = (materialsQuery.data ?? []).find((m) => m.id === id);
+        const finalQuantity = hasQuantity ? rest.quantity : (existing?.quantity ?? 0);
+        const finalPrice = hasPrice ? rest.purchase_price : (existing?.purchase_price ?? 0);
+        rest.subtotal = computeSubtotal(finalQuantity, finalPrice);
+      }
 
       const { data, error } = await supabase
         .from('service_materials')
