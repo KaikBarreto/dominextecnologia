@@ -152,6 +152,8 @@ const Quotes = React.lazy(() => import("./pages/Quotes"));
 const QuotePublic = React.lazy(() => import("./pages/QuotePublic"));
 const ProposalPublic = React.lazy(() => import("./pages/ProposalPublic"));
 const CustomerPortal = React.lazy(() => import("./pages/CustomerPortal"));
+// Formulário público de captação de cliente — link compartilhável, sem auth.
+const PublicLeadCapture = React.lazy(() => import("./pages/PublicLeadCapture"));
 // Portal PMOC público (Onda B — v1.9.1). Lazy: rota pública sem auth,
 // só carrega quando o cliente final escaneia o QR Code.
 const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPortal"));
@@ -609,6 +611,8 @@ const AppRoutes = () => (
     
     {/* Technician OS - Public route with OS ID */}
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />
+    {/* Formulário público de captação de cliente — link amigável /cadastro/<slug-code> */}
+    <Route path="/cadastro/:code" element={<PublicLeadCapture />} />
     {/* Ponto eletrônico por link público — anônimo, fora do AppLayout. O
        funcionário bate o ponto deslogado; tudo passa pela edge time-clock-portal. */}
     <Route path="/ponto/:slug" element={<PontoPublico />} />

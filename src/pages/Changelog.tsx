@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.5',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Formulário público para captar clientes',
+        description: 'Agora você pode montar um formulário escolhendo quais campos pedir e gerar um link com a sua marca para enviar ao cliente. Quando o cliente preenche, o cadastro entra direto na sua lista de clientes, já com proteção contra envios indevidos e com registro do consentimento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Preço padrão no cadastro do serviço',
+        description: 'Você pode cadastrar um preço padrão em cada serviço. Ao escolher o serviço no orçamento, o valor já entra sozinho e você pode ajustar na hora. Quando o serviço tem a calculadora de custo configurada, o preço continua vindo do cálculo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.4',
     date: '21 de julho de 2026',
     type: 'patch',

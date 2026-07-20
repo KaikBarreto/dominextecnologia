@@ -16,6 +16,8 @@ export interface ServiceType {
   codigo_nbs: string | null;
   iss_aliquota: number | null;
   item_lc116: string | null;
+  // Preço padrão para auto-preenchimento de orçamentos (opcional).
+  default_price: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +34,8 @@ export interface ServiceTypeInput {
   codigo_nbs?: string | null;
   iss_aliquota?: number | null;
   item_lc116?: string | null;
+  // Preço padrão para auto-preenchimento de orçamentos (opcional).
+  default_price?: number | null;
 }
 
 export function useServiceTypes() {

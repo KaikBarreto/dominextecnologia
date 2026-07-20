@@ -48,6 +48,8 @@ interface ServiceTypeForm {
   codigo_nbs: string;
   iss_aliquota: string;
   item_lc116: string;
+  // Preço padrão para auto-preenchimento de orçamentos. String crua no form (campo de dinheiro).
+  default_price: string;
 }
 
 const defaultForm: ServiceTypeForm = {
@@ -61,6 +63,7 @@ const defaultForm: ServiceTypeForm = {
   codigo_nbs: '',
   iss_aliquota: '',
   item_lc116: '',
+  default_price: '',
 };
 
 export function ServiceTypesPanel() {
@@ -97,12 +100,13 @@ export function ServiceTypesPanel() {
       codigo_nbs: (st as any).codigo_nbs || '',
       iss_aliquota: (st as any).iss_aliquota != null ? String((st as any).iss_aliquota) : '',
       item_lc116: (st as any).item_lc116 || '',
+      default_price: (st as any).default_price != null ? String((st as any).default_price) : '',
     });
     setFormOpen(true);
   };
 
   const handleSave = async () => {
-    const { iss_aliquota, codigo_servico, codigo_nbs, item_lc116, ...rest } = form;
+    const { iss_aliquota, codigo_servico, codigo_nbs, item_lc116, default_price, ...rest } = form;
     const payload = {
       ...rest,
       // Fiscal: campos opcionais — string vazia vira null pra não poluir o cadastro.
@@ -110,6 +114,8 @@ export function ServiceTypesPanel() {
       codigo_nbs: codigo_nbs.trim() || null,
       item_lc116: item_lc116.trim() || null,
       iss_aliquota: iss_aliquota.trim() === '' ? null : num(iss_aliquota, 0),
+      // Preço padrão: string vazia vira null, valor preenchido converte pra número.
+      default_price: default_price.trim() === '' ? null : num(default_price, 0) || null,
     };
     if (editingId) {
       await updateServiceType.mutateAsync({ id: editingId, ...payload });
@@ -372,6 +378,26 @@ export function ServiceTypesPanel() {
               onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
             />
             <Label>{t.labelActive}</Label>
+          </div>
+
+          {/* -------------------------------------------------------------------
+           * Preço padrão: valor sugerido ao adicionar este serviço em um
+           * orçamento. Opcional. Tem menor precedência que a calculadora de
+           * custos (BDI), mas serve de atalho quando o custo não está
+           * configurado. Campo de dinheiro: type="number" step="0.01".
+           * ------------------------------------------------------------------- */}
+          <div className="space-y-2">
+            <Label>{t.labelDefaultPrice}</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.default_price}
+              onChange={(e) => setForm({ ...form, default_price: e.target.value })}
+              placeholder={t.placeholderDefaultPrice}
+              className="sm:max-w-[200px]"
+            />
+            <p className="text-[11px] text-muted-foreground">{t.helperDefaultPrice}</p>
           </div>
 
           {/* -------------------------------------------------------------------

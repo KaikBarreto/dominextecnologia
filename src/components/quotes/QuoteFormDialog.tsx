@@ -513,7 +513,20 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     }
 
     const unitTotalCost = laborCost + matsCost + extrasCost + resourcesCost + giftsCost;
-    const unitPrice = bdiFactor > 0.01 ? Math.round((unitTotalCost / bdiFactor) * 100) / 100 : unitTotalCost;
+
+    // Regra de precedência do preço sugerido:
+    // 1) Calculadora configurada (unitTotalCost > 0) → preço pelo BDI (fonte preferida).
+    // 2) Sem calculadora mas serviço tem default_price → usa o preço padrão cadastrado.
+    // 3) Nenhum dos dois → 0 (usuário preenche manualmente, sem regressão).
+    const hasCalculatorPrice = unitTotalCost > 0;
+    const defaultPrice = st?.default_price ?? null;
+    const unitPrice = hasCalculatorPrice
+      ? (bdiFactor > 0.01 ? Math.round((unitTotalCost / bdiFactor) * 100) / 100 : unitTotalCost)
+      : (defaultPrice != null ? Math.round(Number(defaultPrice) * 100) / 100 : 0);
+
+    // Se o preço veio do default_price (não da calculadora), marca como override
+    // para o useEffect de recálculo de BDI não sobrescrever com unitTotalCost/bdiFactor = 0.
+    const priceOverride = !hasCalculatorPrice && defaultPrice != null ? unitPrice : null;
 
     setItems(prev => [...prev, {
       item_type: 'servico',
@@ -531,6 +544,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       unit_extras_cost: extrasCost + resourcesCost + giftsCost,
       profit_rate: profitRate,
       bdi: bdiFactor,
+      price_override: priceOverride,
     }]);
     setAddSvcId('');
     setAddSvcQty(1);

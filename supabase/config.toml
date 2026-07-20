@@ -120,6 +120,15 @@ verify_jwt = false
 [functions.time-clock-portal]
 verify_jwt = false
 
+# lead-capture-submit: envio do formulário público de captação de cliente. Anon por
+# design (o visitante do link não está logado). Roda com service_role e delega TUDO
+# à RPC submit_lead_capture_form (resolve tenant pelo short_code, valida, insere em
+# customers, rate-limit por ip_hash). Anti-abuso (honeypot, cap de payload, hash
+# SHA-256 do IP p/ LGPD) fica na própria função. verify_jwt=false porque não há JWT
+# de usuário — só a apikey anon; a segurança é o short_code + rate-limit da RPC.
+[functions.lead-capture-submit]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Customer } from '@/types/database';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
+import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -128,6 +129,7 @@ export default function Customers() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [originConfigOpen, setOriginConfigOpen] = useState(false);
+  const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const [viewMode, setViewMode] = useViewMode('customers-view-mode');
 
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
@@ -190,6 +192,9 @@ export default function Customers() {
               <Button variant="outline" size="icon" onClick={() => setOriginConfigOpen(true)} title={t.configureOrigins}>
                 <Settings2 className="h-4 w-4" />
               </Button>
+              <Button variant="outline" size="icon" onClick={() => setLeadFormsOpen(true)} title="Formulários de captação de cliente">
+                <ClipboardList className="h-4 w-4" />
+              </Button>
               {canCreateCustomer && (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewCustomer}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -221,6 +226,17 @@ export default function Customers() {
             >
               <Settings2 className="h-4 w-4" />
               {t.origins}
+            </Button>
+          )}
+          {isMobile && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLeadFormsOpen(true)}
+              className="gap-2 h-10"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Formulários
             </Button>
           )}
           <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels={!isMobile} />
@@ -579,6 +595,8 @@ export default function Customers() {
       </AlertDialog>
 
       <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
+
+      <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
     </div>
   );
 }

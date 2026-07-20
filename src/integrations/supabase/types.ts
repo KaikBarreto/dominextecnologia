@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -2230,10 +2255,12 @@ export type Database = {
           email: string | null
           ibge_municipality_code: string | null
           id: string
+          inscricao_estadual: string | null
           inscricao_municipal: string | null
           is_deleted: boolean
           lat: number | null
           latitude: number | null
+          lead_consent_at: string | null
           lng: number | null
           longitude: number | null
           name: string
@@ -2265,10 +2292,12 @@ export type Database = {
           email?: string | null
           ibge_municipality_code?: string | null
           id?: string
+          inscricao_estadual?: string | null
           inscricao_municipal?: string | null
           is_deleted?: boolean
           lat?: number | null
           latitude?: number | null
+          lead_consent_at?: string | null
           lng?: number | null
           longitude?: number | null
           name: string
@@ -2300,10 +2329,12 @@ export type Database = {
           email?: string | null
           ibge_municipality_code?: string | null
           id?: string
+          inscricao_estadual?: string | null
           inscricao_municipal?: string | null
           is_deleted?: boolean
           lat?: number | null
           latitude?: number | null
+          lead_consent_at?: string | null
           lng?: number | null
           longitude?: number | null
           name?: string
@@ -4085,6 +4116,100 @@ export type Database = {
           },
         ]
       }
+      lead_capture_forms: {
+        Row: {
+          company_id: string
+          consent_text: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          expires_at: string | null
+          field_config: Json
+          id: string
+          is_active: boolean
+          max_submissions: number | null
+          require_consent: boolean
+          short_code: string | null
+          submission_count: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          consent_text?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          expires_at?: string | null
+          field_config?: Json
+          id?: string
+          is_active?: boolean
+          max_submissions?: number | null
+          require_consent?: boolean
+          short_code?: string | null
+          submission_count?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          consent_text?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          expires_at?: string | null
+          field_config?: Json
+          id?: string
+          is_active?: boolean
+          max_submissions?: number | null
+          require_consent?: boolean
+          short_code?: string | null
+          submission_count?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_capture_forms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_capture_submissions_log: {
+        Row: {
+          created_at: string
+          form_id: string | null
+          id: string
+          ip_hash: string | null
+          short_code: string
+        }
+        Insert: {
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          short_code: string
+        }
+        Update: {
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          short_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_capture_submissions_log_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "lead_capture_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_interactions: {
         Row: {
           created_at: string
@@ -5208,43 +5333,70 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          bdi: number
           created_at: string
           description: string
           id: string
           inventory_id: string | null
           item_type: string
           position: number
+          price_override: number | null
+          profit_rate: number
           quantity: number
           quote_id: string
           service_type_id: string | null
           total_price: number
+          unit_extras_cost: number
+          unit_hourly_rate: number
+          unit_hours: number
+          unit_labor_cost: number
+          unit_materials_cost: number
           unit_price: number
+          unit_total_cost: number
         }
         Insert: {
+          bdi?: number
           created_at?: string
           description: string
           id?: string
           inventory_id?: string | null
           item_type?: string
           position?: number
+          price_override?: number | null
+          profit_rate?: number
           quantity?: number
           quote_id: string
           service_type_id?: string | null
           total_price?: number
+          unit_extras_cost?: number
+          unit_hourly_rate?: number
+          unit_hours?: number
+          unit_labor_cost?: number
+          unit_materials_cost?: number
           unit_price?: number
+          unit_total_cost?: number
         }
         Update: {
+          bdi?: number
           created_at?: string
           description?: string
           id?: string
           inventory_id?: string | null
           item_type?: string
           position?: number
+          price_override?: number | null
+          profit_rate?: number
           quantity?: number
           quote_id?: string
           service_type_id?: string | null
           total_price?: number
+          unit_extras_cost?: number
+          unit_hourly_rate?: number
+          unit_hours?: number
+          unit_labor_cost?: number
+          unit_materials_cost?: number
           unit_price?: number
+          unit_total_cost?: number
         }
         Relationships: [
           {
@@ -5307,7 +5459,9 @@ export type Database = {
       }
       quotes: {
         Row: {
+          admin_indirect_rate: number
           assigned_to: string | null
+          bdi: number
           card_discount_rate: number
           card_installments: number
           company_id: string
@@ -5317,12 +5471,16 @@ export type Database = {
           discount_amount: number | null
           discount_type: string | null
           discount_value: number | null
+          displacement_cost: number
+          distance_km: number
           financial_generated_at: string | null
           financial_transaction_id: string | null
           id: string
           include_gifts: boolean
+          km_cost: number
           last_viewed_at: string | null
           notes: string | null
+          profit_rate: number
           proposal_template_id: string | null
           prospect_email: string | null
           prospect_name: string | null
@@ -5330,15 +5488,20 @@ export type Database = {
           quote_number: number
           status: string
           subtotal: number | null
+          tax_rate: number
           terms: string | null
           token: string
+          total_cost: number
+          total_price: number
           total_value: number | null
           updated_at: string
           valid_until: string | null
           view_count: number
         }
         Insert: {
+          admin_indirect_rate?: number
           assigned_to?: string | null
+          bdi?: number
           card_discount_rate?: number
           card_installments?: number
           company_id: string
@@ -5348,12 +5511,16 @@ export type Database = {
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
+          displacement_cost?: number
+          distance_km?: number
           financial_generated_at?: string | null
           financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
+          km_cost?: number
           last_viewed_at?: string | null
           notes?: string | null
+          profit_rate?: number
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -5361,15 +5528,20 @@ export type Database = {
           quote_number?: number
           status?: string
           subtotal?: number | null
+          tax_rate?: number
           terms?: string | null
           token?: string
+          total_cost?: number
+          total_price?: number
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
           view_count?: number
         }
         Update: {
+          admin_indirect_rate?: number
           assigned_to?: string | null
+          bdi?: number
           card_discount_rate?: number
           card_installments?: number
           company_id?: string
@@ -5379,12 +5551,16 @@ export type Database = {
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
+          displacement_cost?: number
+          distance_km?: number
           financial_generated_at?: string | null
           financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
+          km_cost?: number
           last_viewed_at?: string | null
           notes?: string | null
+          profit_rate?: number
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -5392,8 +5568,11 @@ export type Database = {
           quote_number?: number
           status?: string
           subtotal?: number | null
+          tax_rate?: number
           terms?: string | null
           token?: string
+          total_cost?: number
+          total_price?: number
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
@@ -6644,6 +6823,7 @@ export type Database = {
           color: string
           company_id: string
           created_at: string
+          default_price: number | null
           description: string | null
           id: string
           is_active: boolean
@@ -6660,6 +6840,7 @@ export type Database = {
           color?: string
           company_id: string
           created_at?: string
+          default_price?: number | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -6676,6 +6857,7 @@ export type Database = {
           color?: string
           company_id?: string
           created_at?: string
+          default_price?: number | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -7821,6 +8003,7 @@ export type Database = {
           subscription_status: string
         }[]
       }
+      get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
       get_nps_criteria_averages: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -7872,7 +8055,9 @@ export type Database = {
       get_quote_by_token: {
         Args: { _token: string }
         Returns: {
+          admin_indirect_rate: number
           assigned_to: string | null
+          bdi: number
           card_discount_rate: number
           card_installments: number
           company_id: string
@@ -7882,12 +8067,16 @@ export type Database = {
           discount_amount: number | null
           discount_type: string | null
           discount_value: number | null
+          displacement_cost: number
+          distance_km: number
           financial_generated_at: string | null
           financial_transaction_id: string | null
           id: string
           include_gifts: boolean
+          km_cost: number
           last_viewed_at: string | null
           notes: string | null
+          profit_rate: number
           proposal_template_id: string | null
           prospect_email: string | null
           prospect_name: string | null
@@ -7895,8 +8084,11 @@ export type Database = {
           quote_number: number
           status: string
           subtotal: number | null
+          tax_rate: number
           terms: string | null
           token: string
+          total_cost: number
+          total_price: number
           total_value: number | null
           updated_at: string
           valid_until: string | null
@@ -7963,6 +8155,8 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      lead_valida_cnpj: { Args: { p_doc: string }; Returns: boolean }
+      lead_valida_cpf: { Args: { p_doc: string }; Returns: boolean }
       next_compra_numero: { Args: { p_company_id: string }; Returns: number }
       next_equipment_identifier: {
         Args: { p_company_id: string }
@@ -8082,6 +8276,15 @@ export type Database = {
       seed_company_catalog: {
         Args: { p_company_id: string; p_language?: string }
         Returns: undefined
+      }
+      submit_lead_capture_form: {
+        Args: {
+          p_consent: boolean
+          p_fields: Json
+          p_ip_hash?: string
+          p_short_code: string
+        }
+        Returns: Json
       }
       submit_public_os_rating: {
         Args: {
@@ -8261,6 +8464,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],
