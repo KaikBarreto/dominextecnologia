@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.10',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso de chamados assim que você entra',
+        description: 'Ao abrir o sistema, se houver chamados de clientes aguardando que você ainda não viu, aparece um aviso destacado com quantos são e um atalho para atender. Ele some quando você fecha e só volta a aparecer se chegar um chamado novo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.9',
     date: '21 de julho de 2026',
     type: 'patch',

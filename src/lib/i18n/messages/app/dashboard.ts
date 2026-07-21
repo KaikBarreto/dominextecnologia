@@ -96,6 +96,12 @@ export const dashboard = {
       noDescription: 'Sem descrição',
       timeAgo: 'há {time}',
     },
+    portalCallsAlert: {
+      titleOne: 'Você tem {n} chamado de cliente aguardando',
+      titleOther: 'Você tem {n} chamados de cliente aguardando',
+      viewCalls: 'Ver chamados',
+      dismiss: 'Depois',
+    },
   },
   en: {
     greeting: {
@@ -186,6 +192,12 @@ export const dashboard = {
       customerFallback: 'Customer not provided',
       noDescription: 'No description',
       timeAgo: '{time} ago',
+    },
+    portalCallsAlert: {
+      titleOne: 'You have {n} customer support request waiting',
+      titleOther: 'You have {n} customer support requests waiting',
+      viewCalls: 'View requests',
+      dismiss: 'Later',
     },
   },
   es: {
@@ -278,6 +290,12 @@ export const dashboard = {
       noDescription: 'Sin descripción',
       timeAgo: 'hace {time}',
     },
+    portalCallsAlert: {
+      titleOne: 'Tienes {n} solicitud de cliente pendiente',
+      titleOther: 'Tienes {n} solicitudes de cliente pendientes',
+      viewCalls: 'Ver solicitudes',
+      dismiss: 'Después',
+    },
   },
   fr: {
     greeting: {
@@ -368,6 +386,12 @@ export const dashboard = {
       customerFallback: 'Client non renseigné',
       noDescription: 'Sans description',
       timeAgo: 'il y a {time}',
+    },
+    portalCallsAlert: {
+      titleOne: 'Vous avez {n} demande client en attente',
+      titleOther: 'Vous avez {n} demandes clients en attente',
+      viewCalls: 'Voir les demandes',
+      dismiss: 'Plus tard',
     },
   },
 };

@@ -20,6 +20,7 @@ import { DashboardCashFlow } from '@/components/dashboard/DashboardCashFlow';
 import { DashboardOSEvolution } from '@/components/dashboard/DashboardOSEvolution';
 import { DashboardCriticalOS, type CriticalOS } from '@/components/dashboard/DashboardCriticalOS';
 import { DashboardPortalCalls } from '@/components/dashboard/DashboardPortalCalls';
+import { PortalCallsAlert } from '@/components/dashboard/PortalCallsAlert';
 import { DashboardStatusSummary } from '@/components/dashboard/DashboardStatusSummary';
 import { DashboardTopTechnicians, type TechnicianPerf } from '@/components/dashboard/DashboardTopTechnicians';
 import { DashboardOSByType } from '@/components/dashboard/DashboardOSByType';
@@ -42,7 +43,7 @@ function filterByRange<T extends Record<string, any>>(items: T[], field: string,
 }
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.dashboard;
   const { data: stats, isLoading } = useDashboardStats();
@@ -316,6 +317,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-[100dvh] space-y-5 lg:space-y-6">
+      {/* Aviso dispensável de chamados abertos — aparece uma vez por lote novo */}
+      <PortalCallsAlert
+        portalCalls={stats?.portalCalls ?? []}
+        isLoading={isLoading}
+        userId={user?.id ?? profile?.user_id ?? ''}
+      />
       <MobilePageHeader
         title={t.greeting.hello.replace('{name}', firstName)}
         subtitle={getGreeting(t.greeting)}
