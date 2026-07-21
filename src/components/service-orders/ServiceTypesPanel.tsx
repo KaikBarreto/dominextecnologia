@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Wrench } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wrench, Search } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -74,7 +75,19 @@ export function ServiceTypesPanel() {
   const { hasModule } = useCompanyModules();
   const showFiscal = hasModule('nfe');
   const isMobile = useIsMobile();
-  const { sortedItems: sortedTypes, sortConfig: stSortConfig, handleSort: handleStSort } = useTableSort(serviceTypes);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredTypes = searchQuery.trim()
+    ? serviceTypes.filter((st) => {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          st.name.toLowerCase().includes(q) ||
+          (st.description ?? '').toLowerCase().includes(q)
+        );
+      })
+    : serviceTypes;
+
+  const { sortedItems: sortedTypes, sortConfig: stSortConfig, handleSort: handleStSort } = useTableSort(filteredTypes);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ServiceTypeForm>(defaultForm);
@@ -161,6 +174,19 @@ export function ServiceTypesPanel() {
         </div>
       )}
 
+      {/* Campo de busca — aparece sempre que há tipos cadastrados */}
+      {serviceTypes.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.searchPlaceholder}
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {serviceTypes.length === 0 ? (
         isMobile ? (
           <EmptyState
@@ -174,6 +200,17 @@ export function ServiceTypesPanel() {
               <Wrench className="mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
               <p className="text-muted-foreground">{t.emptyDescriptionDesktop}</p>
+            </CardContent>
+          </Card>
+        )
+      ) : sortedTypes.length === 0 ? (
+        /* Busca retornou vazio, mas há tipos cadastrados */
+        isMobile ? (
+          <p className="text-center text-sm text-muted-foreground py-8">{t.noResults}</p>
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+              <p className="text-muted-foreground text-sm">{t.noResults}</p>
             </CardContent>
           </Card>
         )
@@ -204,6 +241,11 @@ export function ServiceTypesPanel() {
             if (st.description) subtitleParts.push(st.description);
             if (st.number_prefix) subtitleParts.push(`${t.prefixLabel} ${st.number_prefix}`);
 
+            const formattedPrice =
+              st.default_price != null && st.default_price > 0
+                ? formatMoney(st.default_price, 'BRL', locale)
+                : null;
+
             return (
               <MobileListItem
                 key={st.id}
@@ -224,11 +266,11 @@ export function ServiceTypesPanel() {
                     {subtitleParts.length > 0 && (
                       <span className="truncate">{subtitleParts.join(' • ')}</span>
                     )}
+                    {formattedPrice && (
+                      <span className="text-[11px] font-medium text-foreground/70">{formattedPrice}</span>
+                    )}
                     {!st.is_active && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t.badgeInactive}</Badge>
-                    )}
-                    {st.requires_equipment && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{t.colEquipment}</Badge>
                     )}
                   </span>
                 }
@@ -249,8 +291,7 @@ export function ServiceTypesPanel() {
                   <SortableTableHead sortKey="name" sortConfig={stSortConfig} onSort={handleStSort}>{t.colName}</SortableTableHead>
                   <SortableTableHead sortKey="description" sortConfig={stSortConfig} onSort={handleStSort}>{t.colDescription}</SortableTableHead>
                   <SortableTableHead sortKey="number_prefix" sortConfig={stSortConfig} onSort={handleStSort}>{t.colPrefix}</SortableTableHead>
-                  <SortableTableHead sortKey="requires_equipment" sortConfig={stSortConfig} onSort={handleStSort}>{t.colEquipment}</SortableTableHead>
-                  <SortableTableHead sortKey="is_active" sortConfig={stSortConfig} onSort={handleStSort}>{t.colStatus}</SortableTableHead>
+                  <SortableTableHead sortKey="default_price" sortConfig={stSortConfig} onSort={handleStSort}>{t.colValue}</SortableTableHead>
                   <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}} className="w-[100px]">{t.colActions}</SortableTableHead>
                 </TableRow>
               </TableHeader>
@@ -268,17 +309,12 @@ export function ServiceTypesPanel() {
                       {st.description || '-'}
                     </TableCell>
                     <TableCell>
-                      <span className="font-mono text-sm">{(st as any).number_prefix || '-'}</span>
+                      <span className="font-mono text-sm">{st.number_prefix || '-'}</span>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={(st as any).requires_equipment ? 'default' : 'secondary'} className="text-xs">
-                        {(st as any).requires_equipment ? t.badgeYes : t.badgeNo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={st.is_active ? 'default' : 'secondary'} className="text-xs">
-                        {st.is_active ? t.badgeActive : t.badgeInactive}
-                      </Badge>
+                    <TableCell className="text-sm">
+                      {st.default_price != null && st.default_price > 0
+                        ? formatMoney(st.default_price, 'BRL', locale)
+                        : '-'}
                     </TableCell>
                     <TableCell>
                       <RowActionsMenu

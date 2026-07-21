@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.9',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Valor e busca na lista de tipos de serviço',
+        description: 'A lista de tipos de serviço agora mostra o valor de cada serviço e ganhou uma barra de busca por nome ou descrição, deixando mais fácil encontrar o que você procura.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.8',
     date: '21 de julho de 2026',
     type: 'patch',
