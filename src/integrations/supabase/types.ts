@@ -3977,6 +3977,7 @@ export type Database = {
           cost_price: number | null
           created_at: string
           description: string | null
+          group_id: string | null
           id: string
           min_quantity: number | null
           name: string
@@ -3993,6 +3994,7 @@ export type Database = {
           cost_price?: number | null
           created_at?: string
           description?: string | null
+          group_id?: string | null
           id?: string
           min_quantity?: number | null
           name: string
@@ -4009,6 +4011,7 @@ export type Database = {
           cost_price?: number | null
           created_at?: string
           description?: string | null
+          group_id?: string | null
           id?: string
           min_quantity?: number | null
           name?: string
@@ -4027,10 +4030,18 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventory_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "material_groups"
+            referencedColumns: ["id"]
+          },
         ]
       }
       inventory_movements: {
         Row: {
+          client_request_id: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
@@ -4043,10 +4054,12 @@ export type Database = {
           service_order_id: string | null
           stock_after: number | null
           stock_before: number | null
+          stock_id: string
           supplier_id: string | null
           unit_cost: number | null
         }
         Insert: {
+          client_request_id?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -4059,10 +4072,12 @@ export type Database = {
           service_order_id?: string | null
           stock_after?: number | null
           stock_before?: number | null
+          stock_id: string
           supplier_id?: string | null
           unit_cost?: number | null
         }
         Update: {
+          client_request_id?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -4075,6 +4090,7 @@ export type Database = {
           service_order_id?: string | null
           stock_after?: number | null
           stock_before?: number | null
+          stock_id?: string
           supplier_id?: string | null
           unit_cost?: number | null
         }
@@ -4108,10 +4124,65 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_movements_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_movements_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_stock_levels: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          inventory_id: string
+          min_quantity: number | null
+          quantity: number
+          stock_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          inventory_id: string
+          min_quantity?: number | null
+          quantity?: number
+          stock_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          inventory_id?: string
+          min_quantity?: number | null
+          quantity?: number
+          stock_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_stock_levels_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_stock_levels_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
             referencedColumns: ["id"]
           },
         ]
@@ -4423,6 +4494,36 @@ export type Database = {
           ip_address?: string | null
           user_email?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      material_groups: {
+        Row: {
+          color: string | null
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -6878,6 +6979,36 @@ export type Database = {
           },
         ]
       }
+      stocks: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscription_cancellation_requests: {
         Row: {
           admin_notes: string | null
@@ -8213,40 +8344,80 @@ export type Database = {
         Args: { p_contract_id: string }
         Returns: string
       }
-      register_inventory_movement: {
-        Args: {
-          p_inventory_id: string
-          p_movement_type: string
-          p_notes?: string
-          p_quantity: number
-          p_related_movement_id?: string
-          p_service_order_id?: string
-          p_supplier_id?: string
-          p_unit_cost?: number
-        }
-        Returns: {
-          company_id: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          inventory_id: string
-          movement_type: string
-          notes: string | null
-          quantity: number
-          related_movement_id: string | null
-          service_order_id: string | null
-          stock_after: number | null
-          stock_before: number | null
-          supplier_id: string | null
-          unit_cost: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "inventory_movements"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      register_inventory_movement:
+        | {
+            Args: {
+              p_inventory_id: string
+              p_movement_type: string
+              p_notes?: string
+              p_quantity: number
+              p_related_movement_id?: string
+              p_service_order_id?: string
+              p_supplier_id?: string
+              p_unit_cost?: number
+            }
+            Returns: {
+              client_request_id: string | null
+              company_id: string | null
+              created_at: string
+              created_by: string | null
+              id: string
+              inventory_id: string
+              movement_type: string
+              notes: string | null
+              quantity: number
+              related_movement_id: string | null
+              service_order_id: string | null
+              stock_after: number | null
+              stock_before: number | null
+              stock_id: string
+              supplier_id: string | null
+              unit_cost: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "inventory_movements"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_inventory_id: string
+              p_movement_type: string
+              p_notes?: string
+              p_quantity: number
+              p_related_movement_id?: string
+              p_service_order_id?: string
+              p_stock_id?: string
+              p_supplier_id?: string
+              p_unit_cost?: number
+            }
+            Returns: {
+              client_request_id: string | null
+              company_id: string | null
+              created_at: string
+              created_by: string | null
+              id: string
+              inventory_id: string
+              movement_type: string
+              notes: string | null
+              quantity: number
+              related_movement_id: string | null
+              service_order_id: string | null
+              stock_after: number | null
+              stock_before: number | null
+              stock_id: string
+              supplier_id: string | null
+              unit_cost: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "inventory_movements"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       register_manual_company_payment: {
         Args: {
           p_amount: number
@@ -8277,6 +8448,24 @@ export type Database = {
         Args: { p_company_id: string; p_language?: string }
         Returns: undefined
       }
+      set_default_stock: {
+        Args: { p_stock_id: string }
+        Returns: {
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stocks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_lead_capture_form: {
         Args: {
           p_consent: boolean
@@ -8295,6 +8484,40 @@ export type Database = {
           p_os_id: string
         }
         Returns: Json
+      }
+      transfer_stock_between: {
+        Args: {
+          p_client_request_id?: string
+          p_from_stock: string
+          p_inventory_id: string
+          p_notes?: string
+          p_qty: number
+          p_to_stock: string
+        }
+        Returns: {
+          client_request_id: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_id: string
+          movement_type: string
+          notes: string | null
+          quantity: number
+          related_movement_id: string | null
+          service_order_id: string | null
+          stock_after: number | null
+          stock_before: number | null
+          stock_id: string
+          supplier_id: string | null
+          unit_cost: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "inventory_movements"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       unresolve_billing_reminder: {
         Args: { p_transaction_id: string }

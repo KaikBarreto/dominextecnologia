@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
+import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { INVENTORY_UNITS as UNITS } from '@/lib/inventoryUnits';
@@ -19,15 +20,15 @@ interface InventoryFormDialogProps {
   item?: InventoryItem | null;
 }
 
-const CATEGORIES = ['Peças', 'Filtros', 'Gases', 'Ferramentas', 'Materiais', 'Equipamentos', 'Outros'];
 export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.formDialog;
   const { createItem, updateItem } = useInventory();
+  const { groups } = useMaterialGroups();
   const isEditing = !!item;
 
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
-    name: '', sku: '', category: '', description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '',
+    name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '',
   });
   const [isSkuGenerating, setIsSkuGenerating] = useState(false);
 
@@ -53,10 +54,10 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     let cancelled = false;
     const run = async () => {
       if (item) {
-        setFormData({ name: item.name, sku: item.sku || '', category: item.category || '', description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier: item.supplier || '' });
+        setFormData({ name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null, description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier: item.supplier || '' });
         return;
       }
-      setFormData({ name: '', sku: '', category: '', description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '' });
+      setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '' });
       if (!open) return;
       try {
         setIsSkuGenerating(true);
@@ -119,17 +120,32 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>{t.fields.category}</Label>
-            <Select value={formData.category || ''} onValueChange={(value) => handleChange('category', value)}>
-              <SelectTrigger><SelectValue placeholder={t.fields.categoryPlaceholder} /></SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map(cat => (
-                  <SelectItem key={cat} value={cat}>
-                    {(t.categories as Record<string, string>)[cat] ?? cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>{t.fields.group}</Label>
+            {groups.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">{t.fields.groupEmpty}</p>
+            ) : (
+              <Select
+                value={formData.group_id || ''}
+                onValueChange={(value) => handleChange('group_id', value || null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t.fields.groupPlaceholder} />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: g.color ?? '#6B7280' }}
+                        />
+                        {g.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="space-y-2">
             <Label>{t.fields.supplier}</Label>

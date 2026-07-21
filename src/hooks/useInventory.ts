@@ -7,6 +7,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 export type InventoryItem = Tables<'inventory'>;
 export type InventoryItemInsert = TablesInsert<'inventory'>;
 export type InventoryItemUpdate = TablesUpdate<'inventory'>;
+export type InventoryStockLevel = Tables<'inventory_stock_levels'>;
 
 export function useInventory() {
   const { toast } = useToast();
@@ -19,11 +20,38 @@ export function useInventory() {
         .from('inventory')
         .select('*')
         .order('name');
-      
+
       if (error) throw error;
       return data as InventoryItem[];
     },
   });
+
+  // Saldos por estoque — fonte de verdade do novo modelo multi-depósito.
+  // Consultado separado pra não poluir a query principal e ser invalidado
+  // independentemente (transferências, movimentos, etc.).
+  const { data: stockLevels = [] } = useQuery({
+    queryKey: ['inventory-stock-levels'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory_stock_levels')
+        .select('*');
+      if (error) throw error;
+      return data as InventoryStockLevel[];
+    },
+  });
+
+  /**
+   * Retorna a quantidade de um material em um estoque específico.
+   * Quando stockId é null/undefined, retorna o campo quantity do item
+   * (espelho da soma, mantido por trigger legado).
+   */
+  const getQuantityForStock = (inventoryId: string, stockId: string | null | undefined): number => {
+    if (!stockId) return items.find((i) => i.id === inventoryId)?.quantity ?? 0;
+    const level = stockLevels.find(
+      (l) => l.inventory_id === inventoryId && l.stock_id === stockId,
+    );
+    return level?.quantity ?? 0;
+  };
 
   const createItem = useMutation({
     mutationFn: async (item: InventoryItemInsert) => {
@@ -152,11 +180,13 @@ export function useInventory() {
 
   return {
     items,
+    stockLevels,
     isLoading,
     error,
     createItem,
     updateItem,
     deleteItem,
+    getQuantityForStock,
     stats: {
       totalItems,
       lowStockItems: lowStockItems.length,

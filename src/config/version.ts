@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.10";
+export const APP_VERSION = "1.17.11";
 
-export const VERSION_NOTES = "Ao entrar no sistema, se houver chamados de clientes aguardando que você ainda não viu, aparece um aviso destacado com quantos são e um atalho para atender.";
+export const VERSION_NOTES = "Agora você pode ter mais de um estoque na empresa, cada um com suas próprias quantidades, transferir material entre eles e criar seus próprios grupos de material pelo botão de Configurações do Estoque.";

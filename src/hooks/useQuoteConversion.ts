@@ -58,16 +58,19 @@ export function useQuoteConversion() {
       const materialItems = quoteItems.filter(i => i.item_type === 'material' && i.inventory_id);
 
       if (materialItems.length > 0) {
-        const movements = materialItems.map(i => ({
-          inventory_id: i.inventory_id!,
-          service_order_id: serviceOrder.id,
-          quantity: -Math.abs(i.quantity),
-          movement_type: 'saida',
-          notes: `Consumo do Orçamento #${quote.quote_number}`,
-          created_by: user.id,
-        }));
-        const { error: movError } = await supabase.from('inventory_movements').insert(movements);
-        if (movError) throw movError;
+        // Escreve pelo caminho atômico único (register_inventory_movement).
+        // Ele resolve o estoque principal (p_stock_id NULL) e move o saldo em
+        // inventory_stock_levels; inventory.quantity reflete via trigger.
+        for (const i of materialItems) {
+          const { error: movError } = await supabase.rpc('register_inventory_movement', {
+            p_inventory_id: i.inventory_id!,
+            p_movement_type: 'saida',
+            p_quantity: -Math.abs(i.quantity),
+            p_service_order_id: serviceOrder.id,
+            p_notes: `Consumo do Orçamento #${quote.quote_number}`,
+          });
+          if (movError) throw movError;
+        }
       }
 
       const { error: quoteError } = await supabase

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.11',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vários estoques na sua empresa',
+        description: 'Agora você pode ter mais de um estoque, por exemplo o galpão e a van de cada técnico, cada um com suas próprias quantidades. Você navega entre eles pelas abas no topo da tela de Estoque e transfere material de um para o outro em poucos toques, com tudo registrado no histórico.',
+        category: 'recurso',
+      },
+      {
+        title: 'Grupos de material do seu jeito',
+        description: 'As categorias dos materiais deixaram de ser fixas. No botão de Configurações da tela de Estoque você cria, renomeia e organiza seus próprios grupos, e ainda filtra a lista por grupo para achar o que precisa mais rápido.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.10',
     date: '21 de julho de 2026',
     type: 'patch',
