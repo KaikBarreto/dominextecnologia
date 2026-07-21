@@ -11,6 +11,8 @@ export interface ServiceType {
   is_active: boolean;
   requires_equipment: boolean;
   number_prefix: string | null;
+  // Categoria de serviço (agrupamento) — nullable, FK para service_type_categories.
+  category_id: string | null;
   // Campos fiscais (NFS-e por tipo de serviço) — opcionais por tenant.
   codigo_servico: string | null;
   codigo_nbs: string | null;
@@ -29,6 +31,8 @@ export interface ServiceTypeInput {
   is_active?: boolean;
   requires_equipment?: boolean;
   number_prefix?: string;
+  // Categoria de serviço (agrupamento) — nullable.
+  category_id?: string | null;
   // Campos fiscais (NFS-e por tipo de serviço) — opcionais.
   codigo_servico?: string | null;
   codigo_nbs?: string | null;

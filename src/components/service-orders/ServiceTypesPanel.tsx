@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Wrench, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wrench, Search, Tags } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -22,13 +25,16 @@ import {
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Badge } from '@/components/ui/badge';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { ServiceTypeCategoriesDialog } from '@/components/service-orders/ServiceTypeCategoriesDialog';
 
 /** Converte string crua de input numérico em number (padrão do time anti-"0" preso). */
 const num = (s: string, fallback = 0): number => {
@@ -44,6 +50,8 @@ interface ServiceTypeForm {
   is_active: boolean;
   requires_equipment: boolean;
   number_prefix: string;
+  // Categoria de serviço (agrupamento) — string vazia = sem categoria.
+  category_id: string;
   // Fiscal (NFS-e) — opcionais. iss_aliquota fica como string crua no form.
   codigo_servico: string;
   codigo_nbs: string;
@@ -60,6 +68,7 @@ const defaultForm: ServiceTypeForm = {
   is_active: true,
   requires_equipment: true,
   number_prefix: '',
+  category_id: '',
   codigo_servico: '',
   codigo_nbs: '',
   iss_aliquota: '',
@@ -70,22 +79,40 @@ const defaultForm: ServiceTypeForm = {
 export function ServiceTypesPanel() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.serviceTypes;
+  const tCat = MESSAGES[locale].app.os.serviceTypeCategories;
 
   const { serviceTypes, isLoading, createServiceType, updateServiceType, deleteServiceType } = useServiceTypes();
+  const { categories } = useServiceTypeCategories();
   const { hasModule } = useCompanyModules();
   const showFiscal = hasModule('nfe');
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
 
-  const filteredTypes = searchQuery.trim()
-    ? serviceTypes.filter((st) => {
-        const q = searchQuery.trim().toLowerCase();
-        return (
-          st.name.toLowerCase().includes(q) ||
-          (st.description ?? '').toLowerCase().includes(q)
-        );
-      })
-    : serviceTypes;
+  // Helper: resolve category name by id
+  const getCategoryName = (categoryId: string | null): string | undefined => {
+    if (!categoryId) return undefined;
+    return categories.find((c) => c.id === categoryId)?.name;
+  };
+  const getCategoryColor = (categoryId: string | null): string | undefined => {
+    if (!categoryId) return undefined;
+    return categories.find((c) => c.id === categoryId)?.color ?? undefined;
+  };
+
+  // Busca universal (ignora filtros) + filtro por categoria (vazio = todos).
+  const filteredTypes = serviceTypes.filter((st) => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q || (
+      st.name.toLowerCase().includes(q) ||
+      (st.description ?? '').toLowerCase().includes(q)
+    );
+    const matchesCategory =
+      categoryFilter.length === 0 ||
+      (categoryFilter.includes('__none__') && !st.category_id) ||
+      (st.category_id != null && categoryFilter.includes(st.category_id));
+    return matchesSearch && matchesCategory;
+  });
 
   const { sortedItems: sortedTypes, sortConfig: stSortConfig, handleSort: handleStSort } = useTableSort(filteredTypes);
   const [formOpen, setFormOpen] = useState(false);
@@ -109,6 +136,7 @@ export function ServiceTypesPanel() {
       is_active: st.is_active,
       requires_equipment: st.requires_equipment ?? true,
       number_prefix: (st as any).number_prefix || '',
+      category_id: (st as any).category_id || '',
       codigo_servico: (st as any).codigo_servico || '',
       codigo_nbs: (st as any).codigo_nbs || '',
       iss_aliquota: (st as any).iss_aliquota != null ? String((st as any).iss_aliquota) : '',
@@ -119,9 +147,11 @@ export function ServiceTypesPanel() {
   };
 
   const handleSave = async () => {
-    const { iss_aliquota, codigo_servico, codigo_nbs, item_lc116, default_price, ...rest } = form;
+    const { iss_aliquota, codigo_servico, codigo_nbs, item_lc116, default_price, category_id, ...rest } = form;
     const payload = {
       ...rest,
+      // Categoria: string vazia vira null.
+      category_id: category_id.trim() || null,
       // Fiscal: campos opcionais — string vazia vira null pra não poluir o cadastro.
       codigo_servico: codigo_servico.trim() || null,
       codigo_nbs: codigo_nbs.trim() || null,
@@ -146,6 +176,19 @@ export function ServiceTypesPanel() {
     }
   };
 
+  // Opções do filtro de categoria (inclui "Sem categoria" se houver tipos sem categoria).
+  const hasSomeWithoutCategory = serviceTypes.some((st) => !st.category_id);
+  const categoryFilterOptions = [
+    ...(hasSomeWithoutCategory
+      ? [{ value: '__none__', label: tCat.noCategory }]
+      : []),
+    ...categories.map((c) => ({
+      value: c.id,
+      label: c.name,
+      color: c.color ?? undefined,
+    })),
+  ];
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -158,7 +201,7 @@ export function ServiceTypesPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Header: no mobile escondemos texto explicativo (já está no MobilePageHeader da page) e o botão vira FAB. */}
+      {/* Header: no mobile escondemos texto explicativo e o botão vira FAB. */}
       {!isMobile && (
         <div className="flex items-center justify-between">
           <div>
@@ -167,11 +210,25 @@ export function ServiceTypesPanel() {
               {t.subtitle}
             </p>
           </div>
-          <Button onClick={handleNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t.btnNew}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCategoriesDialogOpen(true)}>
+              <Tags className="mr-2 h-4 w-4" />
+              {tCat.btnManage}
+            </Button>
+            <Button onClick={handleNew}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t.btnNew}
+            </Button>
+          </div>
         </div>
+      )}
+
+      {/* Botão Categorias no mobile (acima da busca) */}
+      {isMobile && (
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setCategoriesDialogOpen(true)}>
+          <Tags className="mr-2 h-4 w-4" />
+          {tCat.btnManage}
+        </Button>
       )}
 
       {/* Campo de busca — aparece sempre que há tipos cadastrados */}
@@ -185,6 +242,17 @@ export function ServiceTypesPanel() {
             className="pl-9"
           />
         </div>
+      )}
+
+      {/* Filtro por categoria — só aparece se há categorias cadastradas */}
+      {categories.length > 0 && serviceTypes.length > 0 && (
+        <FilterCheckboxGroup
+          label={tCat.filterLabel}
+          options={categoryFilterOptions}
+          selected={categoryFilter}
+          onChange={setCategoryFilter}
+          emptyLabel={tCat.filterEmpty}
+        />
       )}
 
       {serviceTypes.length === 0 ? (
@@ -204,7 +272,7 @@ export function ServiceTypesPanel() {
           </Card>
         )
       ) : sortedTypes.length === 0 ? (
-        /* Busca retornou vazio, mas há tipos cadastrados */
+        /* Busca ou filtro retornou vazio, mas há tipos cadastrados */
         isMobile ? (
           <p className="text-center text-sm text-muted-foreground py-8">{t.noResults}</p>
         ) : (
@@ -246,6 +314,9 @@ export function ServiceTypesPanel() {
                 ? formatMoney(st.default_price, 'BRL', locale)
                 : null;
 
+            const categoryName = getCategoryName(st.category_id);
+            const categoryColor = getCategoryColor(st.category_id);
+
             return (
               <MobileListItem
                 key={st.id}
@@ -263,6 +334,15 @@ export function ServiceTypesPanel() {
                 title={st.name}
                 subtitle={
                   <span className="flex items-center gap-2 flex-wrap">
+                    {categoryName && (
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span
+                          className="inline-block h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: categoryColor ?? '#6B7280' }}
+                        />
+                        {categoryName}
+                      </span>
+                    )}
                     {subtitleParts.length > 0 && (
                       <span className="truncate">{subtitleParts.join(' • ')}</span>
                     )}
@@ -289,6 +369,7 @@ export function ServiceTypesPanel() {
                 <TableRow>
                   <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}}>{t.colColor}</SortableTableHead>
                   <SortableTableHead sortKey="name" sortConfig={stSortConfig} onSort={handleStSort}>{t.colName}</SortableTableHead>
+                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}}>{tCat.labelCategory}</SortableTableHead>
                   <SortableTableHead sortKey="description" sortConfig={stSortConfig} onSort={handleStSort}>{t.colDescription}</SortableTableHead>
                   <SortableTableHead sortKey="number_prefix" sortConfig={stSortConfig} onSort={handleStSort}>{t.colPrefix}</SortableTableHead>
                   <SortableTableHead sortKey="default_price" sortConfig={stSortConfig} onSort={handleStSort}>{t.colValue}</SortableTableHead>
@@ -296,36 +377,53 @@ export function ServiceTypesPanel() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedTypes.map((st) => (
-                  <TableRow key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
-                    <TableCell>
-                      <div
-                        className="h-6 w-6 rounded-full"
-                        style={{ backgroundColor: st.color }}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{st.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                      {st.description || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-sm">{st.number_prefix || '-'}</span>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {st.default_price != null && st.default_price > 0
-                        ? formatMoney(st.default_price, 'BRL', locale)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <RowActionsMenu
-                        actions={[
-                          { label: t.actionEdit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(st) },
-                          { label: t.actionDelete, icon: Trash2, variant: 'delete', onClick: () => { setToDeleteId(st.id); setDeleteDialogOpen(true); } },
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sortedTypes.map((st) => {
+                  const categoryName = getCategoryName(st.category_id);
+                  const categoryColor = getCategoryColor(st.category_id);
+                  return (
+                    <TableRow key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
+                      <TableCell>
+                        <div
+                          className="h-6 w-6 rounded-full"
+                          style={{ backgroundColor: st.color }}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{st.name}</TableCell>
+                      <TableCell>
+                        {categoryName ? (
+                          <span className="flex items-center gap-1.5 text-sm">
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: categoryColor ?? '#6B7280' }}
+                            />
+                            {categoryName}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                        {st.description || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-sm">{st.number_prefix || '-'}</span>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {st.default_price != null && st.default_price > 0
+                          ? formatMoney(st.default_price, 'BRL', locale)
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <RowActionsMenu
+                          actions={[
+                            { label: t.actionEdit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(st) },
+                            { label: t.actionDelete, icon: Trash2, variant: 'delete', onClick: () => { setToDeleteId(st.id); setDeleteDialogOpen(true); } },
+                          ]}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -340,6 +438,12 @@ export function ServiceTypesPanel() {
           onClick={handleNew}
         />
       )}
+
+      {/* Modal de CRUD de categorias */}
+      <ServiceTypeCategoriesDialog
+        open={categoriesDialogOpen}
+        onOpenChange={setCategoriesDialogOpen}
+      />
 
       <ResponsiveModal
         open={formOpen}
@@ -379,6 +483,34 @@ export function ServiceTypesPanel() {
               />
             </div>
           </div>
+
+          {/* Categoria de serviço */}
+          <div className="space-y-2">
+            <Label>{tCat.labelCategory}</Label>
+            <Select
+              value={form.category_id || '__none__'}
+              onValueChange={(v) => setForm({ ...form, category_id: v === '__none__' ? '' : v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={tCat.noCategory} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">{tCat.noCategory}</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="inline-block h-3 w-3 rounded-full shrink-0"
+                        style={{ backgroundColor: cat.color ?? '#6B7280' }}
+                      />
+                      {cat.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label>{t.labelDescription}</Label>
             <Textarea
@@ -397,7 +529,7 @@ export function ServiceTypesPanel() {
                 className="w-40"
               />
               <span className="text-sm font-mono text-muted-foreground whitespace-nowrap">
-                → {form.number_prefix || 'OS'}-2026-0001
+                {`→ ${form.number_prefix || 'OS'}-2026-0001`}
               </span>
             </div>
           </div>

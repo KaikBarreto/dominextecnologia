@@ -7079,8 +7079,39 @@ export type Database = {
           },
         ]
       }
+      service_type_categories: {
+        Row: {
+          color: string | null
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       service_types: {
         Row: {
+          category_id: string | null
           codigo_nbs: string | null
           codigo_servico: string | null
           color: string
@@ -7098,6 +7129,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category_id?: string | null
           codigo_nbs?: string | null
           codigo_servico?: string | null
           color?: string
@@ -7115,6 +7147,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category_id?: string | null
           codigo_nbs?: string | null
           codigo_servico?: string | null
           color?: string
@@ -7132,6 +7165,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_types_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "service_type_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_types_company_id_fkey"
             columns: ["company_id"]

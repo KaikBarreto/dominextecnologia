@@ -28,6 +28,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useTeams } from '@/hooks/useTeams';
 import { useNpsSettings } from '@/hooks/useNpsSettings';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -99,6 +100,7 @@ export function ServiceOrderFormDialog({
   const { data: technicians } = useProfiles();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+  const { categories: serviceTypeCategories } = useServiceTypeCategories();
   const { teams, teamsWithMembers } = useTeams();
   const { settings: npsSettings } = useNpsSettings();
   const isEditing = !!serviceOrder;
@@ -912,6 +914,9 @@ export function ServiceOrderFormDialog({
                             value: st.id,
                             label: st.name,
                             icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
+                            sublabel: st.category_id
+                              ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
+                              : undefined,
                           })),
                         ]}
                         value={field.value || 'none'}
@@ -996,6 +1001,9 @@ export function ServiceOrderFormDialog({
                             ...serviceTypes.filter(st => st.is_active).map(st => ({
                               value: st.id,
                               label: st.name,
+                              sublabel: st.category_id
+                                ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
+                                : undefined,
                             })),
                           ]}
                           onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
@@ -1437,6 +1445,9 @@ export function ServiceOrderFormDialog({
                           value: st.id,
                           label: st.name,
                           icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
+                          sublabel: st.category_id
+                            ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
+                            : undefined,
                         })),
                       ]}
                       value={field.value || 'none'}

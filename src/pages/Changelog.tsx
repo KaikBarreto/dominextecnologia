@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.14',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Categorias para seus tipos de serviço',
+        description: 'Agora você organiza seus tipos de serviço em categorias que você mesmo cria, por exemplo Instalação, Manutenção e Projeto. Dá para filtrar a lista de serviços por categoria, e a categoria aparece ao lado do nome do serviço na hora de escolher, na ordem de serviço, no contrato e nos checklists.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.13',
     date: '21 de julho de 2026',
     type: 'patch',

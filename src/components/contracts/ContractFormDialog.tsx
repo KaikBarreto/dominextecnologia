@@ -25,6 +25,7 @@ import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog'
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
@@ -188,6 +189,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { data: allProfiles } = useProfiles();
   const { teams, teamsWithMembers } = useTeams();
   const { serviceTypes } = useServiceTypes();
+  const { categories: serviceTypeCategories } = useServiceTypeCategories();
   const { templates, isLoading: templatesLoading } = useFormTemplates();
   // Segmento da empresa logada — gateia o PMOC, que é exclusivo de refrigeração.
   const { settings: companySettings } = useCompanySettings();
@@ -3500,14 +3502,22 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       <SelectTrigger><SelectValue placeholder={t.team.serviceTypePlaceholder} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">{t.team.serviceTypeNone}</SelectItem>
-                        {serviceTypes.filter(st => st.is_active).map(st => (
-                          <SelectItem key={st.id} value={st.id}>
-                            <span className="flex items-center gap-2">
-                              <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
-                              {st.name}
-                            </span>
-                          </SelectItem>
-                        ))}
+                        {serviceTypes.filter(st => st.is_active).map(st => {
+                          const cat = st.category_id
+                            ? serviceTypeCategories.find(c => c.id === st.category_id)
+                            : undefined;
+                          return (
+                            <SelectItem key={st.id} value={st.id}>
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
+                                <span className="truncate">{st.name}</span>
+                                {cat && (
+                                  <span className="text-xs text-muted-foreground shrink-0">{cat.name}</span>
+                                )}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

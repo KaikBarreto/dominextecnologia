@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -49,6 +50,7 @@ export function ChecklistsPanel() {
 
   const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+  const { categories: serviceTypeCategories } = useServiceTypeCategories();
   const activeTemplates = templates.filter((template) => template.is_active);
   const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(activeTemplates);
 
@@ -312,16 +314,26 @@ export function ChecklistsPanel() {
             </div>
             {!allServices && (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {serviceTypes.filter(t => t.is_active).map((st) => (
-                  <label key={st.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      checked={selectedServiceIds.includes(st.id)}
-                      onCheckedChange={() => toggleServiceId(st.id)}
-                    />
-                    <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
-                    {st.name}
-                  </label>
-                ))}
+                {serviceTypes.filter(t => t.is_active).map((st) => {
+                  const cat = st.category_id
+                    ? serviceTypeCategories.find(c => c.id === st.category_id)
+                    : undefined;
+                  return (
+                    <label key={st.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
+                      <Checkbox
+                        checked={selectedServiceIds.includes(st.id)}
+                        onCheckedChange={() => toggleServiceId(st.id)}
+                      />
+                      <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
+                      <span className="flex-1 min-w-0">
+                        <span className="truncate">{st.name}</span>
+                        {cat && (
+                          <span className="block text-xs text-muted-foreground truncate">{cat.name}</span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -495,6 +495,28 @@ export const os = {
       btnDelete: 'Excluir',
     },
 
+    // ── Categorias de Tipo de Serviço ─────────────────────────────────────
+    serviceTypeCategories: {
+      title: 'Categorias de Serviço',
+      btnManage: 'Categorias',
+      empty: 'Nenhuma categoria cadastrada.',
+      newCategory: 'Nova categoria',
+      namePlaceholder: 'Nome da categoria...',
+      editLabel: 'Editar',
+      deleteLabel: 'Excluir',
+      deleteTitle: 'Excluir categoria?',
+      deleteDescription: 'A categoria será removida. Tipos de serviço vinculados ficarão sem categoria.',
+      deleteCancel: 'Cancelar',
+      deleteConfirm: 'Excluir',
+      labelCategory: 'Categoria',
+      noCategory: 'Sem categoria',
+      filterLabel: 'Categoria',
+      filterEmpty: 'Todas as categorias',
+      toastCreated: 'Categoria criada!',
+      toastUpdated: 'Categoria atualizada!',
+      toastDeleted: 'Categoria excluída!',
+    },
+
     // ── Painel de Tipos de Tarefas ────────────────────────────────────────
     taskTypes: {
       title: 'Tipos de Tarefas',
@@ -1871,6 +1893,27 @@ export const os = {
       btnDelete: 'Delete',
     },
 
+    serviceTypeCategories: {
+      title: 'Service Categories',
+      btnManage: 'Categories',
+      empty: 'No categories registered.',
+      newCategory: 'New category',
+      namePlaceholder: 'Category name...',
+      editLabel: 'Edit',
+      deleteLabel: 'Delete',
+      deleteTitle: 'Delete category?',
+      deleteDescription: 'The category will be removed. Service types linked to it will have no category.',
+      deleteCancel: 'Cancel',
+      deleteConfirm: 'Delete',
+      labelCategory: 'Category',
+      noCategory: 'No category',
+      filterLabel: 'Category',
+      filterEmpty: 'All categories',
+      toastCreated: 'Category created!',
+      toastUpdated: 'Category updated!',
+      toastDeleted: 'Category deleted!',
+    },
+
     taskTypes: {
       title: 'Task types',
       subtitle: 'Configure the task types used in the schedule',
@@ -3197,6 +3240,27 @@ export const os = {
       btnDelete: 'Eliminar',
     },
 
+    serviceTypeCategories: {
+      title: 'Categorías de servicio',
+      btnManage: 'Categorías',
+      empty: 'No hay categorías registradas.',
+      newCategory: 'Nueva categoría',
+      namePlaceholder: 'Nombre de la categoría...',
+      editLabel: 'Editar',
+      deleteLabel: 'Eliminar',
+      deleteTitle: '¿Eliminar categoría?',
+      deleteDescription: 'La categoría será eliminada. Los tipos de servicio vinculados quedarán sin categoría.',
+      deleteCancel: 'Cancelar',
+      deleteConfirm: 'Eliminar',
+      labelCategory: 'Categoría',
+      noCategory: 'Sin categoría',
+      filterLabel: 'Categoría',
+      filterEmpty: 'Todas las categorías',
+      toastCreated: 'Categoría creada.',
+      toastUpdated: 'Categoría actualizada.',
+      toastDeleted: 'Categoría eliminada.',
+    },
+
     taskTypes: {
       title: 'Tipos de tarea',
       subtitle: 'Configura los tipos de tarea usados en la agenda',
@@ -4521,6 +4585,27 @@ export const os = {
       deleteDescription: 'Voulez-vous vraiment supprimer ce type de service ? Cette action est irréversible.',
       btnCancelDelete: 'Annuler',
       btnDelete: 'Supprimer',
+    },
+
+    serviceTypeCategories: {
+      title: 'Catégories de service',
+      btnManage: 'Catégories',
+      empty: 'Aucune catégorie enregistrée.',
+      newCategory: 'Nouvelle catégorie',
+      namePlaceholder: 'Nom de la catégorie...',
+      editLabel: 'Modifier',
+      deleteLabel: 'Supprimer',
+      deleteTitle: 'Supprimer la catégorie ?',
+      deleteDescription: `La catégorie sera supprimée. Les types de service liés n'auront plus de catégorie.`,
+      deleteCancel: 'Annuler',
+      deleteConfirm: 'Supprimer',
+      labelCategory: 'Catégorie',
+      noCategory: 'Sans catégorie',
+      filterLabel: 'Catégorie',
+      filterEmpty: 'Toutes les catégories',
+      toastCreated: 'Catégorie créée.',
+      toastUpdated: 'Catégorie mise à jour.',
+      toastDeleted: 'Catégorie supprimée.',
     },
 
     taskTypes: {
