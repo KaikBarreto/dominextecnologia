@@ -132,6 +132,9 @@ export interface ServiceOrder {
   // Finalização parcial: quando true e status='pausada', a OS é exibida como
   // "Parcialmente Concluída" (finalizada parcialmente pelo técnico, aguardando conclusão).
   partial_finish?: boolean;
+  // Origem da OS: 'manual' (criada internamente) ou 'portal' (aberta pelo cliente
+  // final via portal público). Usado para distinguir chamados de clientes.
+  origin?: string | null;
   // Endereço de serviço próprio da OS (opcional). Quando preenchido, sobrepõe
   // o endereço do cliente no mapa de rota, na exibição e nos links Maps/Waze.
   // Vazio = usa o endereço do cliente.

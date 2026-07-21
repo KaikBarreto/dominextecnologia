@@ -87,6 +87,15 @@ export const dashboard = {
       openLiveMap: 'Abrir Mapa ao Vivo',
       technicianFallback: 'Técnico',
     },
+    portalCalls: {
+      title: 'Chamados abertos',
+      viewAll: 'Ver todos os chamados',
+      empty: 'Nenhum chamado aberto',
+      emptySubtitle: 'Chamados recebidos pelo portal aparecem aqui',
+      customerFallback: 'Cliente não informado',
+      noDescription: 'Sem descrição',
+      timeAgo: 'há {time}',
+    },
   },
   en: {
     greeting: {
@@ -168,6 +177,15 @@ export const dashboard = {
       empty: 'No technician in the field right now',
       openLiveMap: 'Open Live Map',
       technicianFallback: 'Technician',
+    },
+    portalCalls: {
+      title: 'Open support requests',
+      viewAll: 'View all support requests',
+      empty: 'No open support requests',
+      emptySubtitle: 'Requests submitted via the customer portal appear here',
+      customerFallback: 'Customer not provided',
+      noDescription: 'No description',
+      timeAgo: '{time} ago',
     },
   },
   es: {
@@ -251,6 +269,15 @@ export const dashboard = {
       openLiveMap: 'Abrir Mapa en Vivo',
       technicianFallback: 'Técnico',
     },
+    portalCalls: {
+      title: 'Avisos abiertos',
+      viewAll: 'Ver todos los avisos',
+      empty: 'Ningún aviso abierto',
+      emptySubtitle: 'Las solicitudes recibidas por el portal aparecen aquí',
+      customerFallback: 'Cliente no informado',
+      noDescription: 'Sin descripción',
+      timeAgo: 'hace {time}',
+    },
   },
   fr: {
     greeting: {
@@ -332,6 +359,15 @@ export const dashboard = {
       empty: 'Aucun technicien sur le terrain pour le moment',
       openLiveMap: 'Ouvrir la Carte en Direct',
       technicianFallback: 'Technicien',
+    },
+    portalCalls: {
+      title: 'Demandes ouvertes',
+      viewAll: 'Voir toutes les demandes',
+      empty: 'Aucune demande ouverte',
+      emptySubtitle: 'Les demandes reçues via le portail apparaissent ici',
+      customerFallback: 'Client non renseigné',
+      noDescription: 'Sans description',
+      timeAgo: 'il y a {time}',
     },
   },
 };

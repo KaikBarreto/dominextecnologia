@@ -19,6 +19,7 @@ import { DashboardKPIs } from '@/components/dashboard/DashboardKPIs';
 import { DashboardCashFlow } from '@/components/dashboard/DashboardCashFlow';
 import { DashboardOSEvolution } from '@/components/dashboard/DashboardOSEvolution';
 import { DashboardCriticalOS, type CriticalOS } from '@/components/dashboard/DashboardCriticalOS';
+import { DashboardPortalCalls } from '@/components/dashboard/DashboardPortalCalls';
 import { DashboardStatusSummary } from '@/components/dashboard/DashboardStatusSummary';
 import { DashboardTopTechnicians, type TechnicianPerf } from '@/components/dashboard/DashboardTopTechnicians';
 import { DashboardOSByType } from '@/components/dashboard/DashboardOSByType';
@@ -370,6 +371,9 @@ export default function Dashboard() {
           </div>
           <div className="order-7 lg:order-none">
             <DashboardCriticalOS items={criticalOS} isLoading={isLoading} />
+          </div>
+          <div className="order-8 lg:order-none">
+            <DashboardPortalCalls items={stats?.portalCalls ?? []} isLoading={isLoading} />
           </div>
         </div>
       </div>

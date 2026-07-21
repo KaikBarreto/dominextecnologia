@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import type { ServiceOrder } from '@/types/database';
+
+// Status que fazem o chamado "sumir" do card (encerrado)
+const PORTAL_CALL_CLOSED_STATUSES = ['concluida', 'cancelada'];
 
 export function useDashboardStats() {
   return useQuery({
@@ -21,9 +25,16 @@ export function useDashboardStats() {
             check_out_time,
             created_at,
             service_type_id,
+            origin,
+            description,
             customer:customers(name, city, state, lat, lng)
           `)
           .order('created_at', { ascending: false })
+      );
+
+      // Chamados abertos: origin='portal' e status fora dos encerradores
+      const portalCalls = (allOS as ServiceOrder[]).filter(
+        (os) => os.origin === 'portal' && !PORTAL_CALL_CLOSED_STATUSES.includes(os.status),
       );
 
       // Fetch customer count
@@ -67,6 +78,8 @@ export function useDashboardStats() {
         profiles: profiles ?? [],
         ratings,
         serviceTypes: serviceTypes ?? [],
+        portalCalls,
+        portalCallsCount: portalCalls.length,
       };
     },
     refetchInterval: 30000,

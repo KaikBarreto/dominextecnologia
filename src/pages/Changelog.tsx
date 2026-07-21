@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.8',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso na hora que um cliente abre um chamado',
+        description: 'Quando um cliente abre um chamado pelo portal, todo mundo da sua empresa recebe um aviso no sininho na hora, com o nome do cliente e o problema descrito. É só clicar no aviso para ir atender.',
+        category: 'recurso',
+      },
+      {
+        title: 'Chamados abertos no painel inicial',
+        description: 'A tela inicial ganhou um bloco com os chamados abertos pelos seus clientes pelo portal, para você acompanhar e não perder nenhum pedido.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.7',
     date: '21 de julho de 2026',
     type: 'patch',

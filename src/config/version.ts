@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.7";
+export const APP_VERSION = "1.17.8";
 
-export const VERSION_NOTES = "Correções: abrir chamado pelo portal do cliente voltou a funcionar, o custo do serviço passa a somar o material corretamente, e a geração de orçamento voltou ao normal.";
+export const VERSION_NOTES = "Agora, quando um cliente abre um chamado pelo portal, todo mundo da empresa recebe um aviso na hora, e a tela inicial mostra um bloco com os chamados abertos para você acompanhar.";
