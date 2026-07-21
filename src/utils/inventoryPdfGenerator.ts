@@ -284,7 +284,8 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
     tr.colTotal,
   ];
 
-  const footCols = hasMinQty ? 8 : 7;
+  // headRow.length - 2: penúltima coluna = "Total geral" label, última = valor.
+  const footCols = headRow.length - 2;
   const emptyRow: string[] = new Array(headRow.length).fill('');
   emptyRow[headRow.length - 1] = tr.noItems;
 

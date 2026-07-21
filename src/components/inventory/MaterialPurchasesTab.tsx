@@ -174,9 +174,13 @@ export function MaterialPurchasesTab() {
         >
           <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
           <span className="flex-1 text-sm text-destructive">
-            {lowStockRows.length === 1
-              ? t.lowStockAlert.singular.replace('{count}', String(lowStockRows.length))
-              : t.lowStockAlert.plural.replace('{count}', String(lowStockRows.length))}
+            {(() => {
+              // Conta materiais únicos (não pares material×local)
+              const uniqueCount = new Set(lowStockRows.map((r) => r.inventory_id)).size;
+              return uniqueCount === 1
+                ? t.lowStockAlert.singular.replace('{count}', String(uniqueCount))
+                : t.lowStockAlert.plural.replace('{count}', String(uniqueCount));
+            })()}
           </span>
           <span className="shrink-0 text-xs font-medium text-destructive underline-offset-2 hover:underline">
             {t.lowStockAlert.action}

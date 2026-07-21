@@ -19,12 +19,14 @@ interface InventoryFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: InventoryItem | null;
+  /** ID do local ativo na tela — usado para ajuste de qty no local correto. */
+  activeStockId?: string | null;
 }
 
-export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormDialogProps) {
+export function InventoryFormDialog({ open, onOpenChange, item, activeStockId }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.formDialog;
-  const { createItem, updateItem, getMinQuantityForStock, updateStockLevelMinQuantity } = useInventory();
+  const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity } = useInventory();
   const { stocks } = useStocks();
   const { groups } = useMaterialGroups();
   const isEditing = !!item;
@@ -103,7 +105,13 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     let savedItemId: string | null = null;
 
     if (isEditing && item) {
-      await updateItem.mutateAsync({ id: item.id, ...formData, previousQuantity: item.quantity });
+      // Use stock-specific qty as the "previous" so the adjustment targets the
+      // active local (not the global sum). Falls back to item.quantity when no
+      // active stock is selected (single-stock or "all" view).
+      const previousQty = activeStockId
+        ? getQuantityForStock(item.id, activeStockId)
+        : (item.quantity ?? 0);
+      await updateItem.mutateAsync({ id: item.id, ...formData, previousQuantity: previousQty, activeStockId: activeStockId ?? undefined });
       savedItemId = item.id;
     } else {
       const created = await createItem.mutateAsync(formData as InventoryItemInsert);

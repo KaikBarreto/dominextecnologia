@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Tags } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -201,6 +201,15 @@ function CategoryRow({
   const [name, setName] = useState(category.name);
   const [color, setColor] = useState(category.color ?? '#6B7280');
 
+  // Fix 1: sync local state when the prop changes (server invalidation after save)
+  // but only when NOT in edit mode — don't clobber the user's in-progress typing.
+  useEffect(() => {
+    if (!isEditing) {
+      setName(category.name);
+      setColor(category.color ?? '#6B7280');
+    }
+  }, [category.name, category.color, isEditing]);
+
   if (isEditing) {
     return (
       <div className="flex items-center gap-2 p-2 bg-muted/30">
@@ -210,7 +219,7 @@ function CategoryRow({
           className="flex-1 h-8"
           autoFocus
           onKeyDown={(e) => {
-            if (e.key === 'Enter') onSaveEdit(name.trim(), color);
+            if (e.key === 'Enter' && name.trim()) onSaveEdit(name.trim(), color);
             if (e.key === 'Escape') onCancelEdit();
           }}
         />
@@ -220,6 +229,7 @@ function CategoryRow({
           variant="ghost"
           className="h-8 w-8 text-success hover:text-success"
           onClick={() => onSaveEdit(name.trim(), color)}
+          disabled={!name.trim()}
         >
           <Check className="h-4 w-4" />
         </Button>

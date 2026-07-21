@@ -71,7 +71,12 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
   };
 
   const canProceedToScope = selectedStocks.length > 0;
-  const canConfirm = selectedStocks.length > 0;
+  // Evita criar inventário vazio: exige seleção dentro do escopo escolhido.
+  const canConfirm =
+    selectedStocks.length > 0 &&
+    (scopeMode === 'all' ||
+      (scopeMode === 'groups' && selectedGroups.length > 0) ||
+      (scopeMode === 'items' && selectedItems.length > 0));
 
   const handleCreate = async () => {
     try {

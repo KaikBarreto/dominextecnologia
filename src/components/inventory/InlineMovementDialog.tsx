@@ -69,18 +69,21 @@ export function InlineMovementDialog({
       return;
     }
 
-    await registerInlineMovement.mutateAsync({
-      inventoryId: item.id,
-      stockId: activeStockId,
-      movementType,
-      quantity,
-      notes: notes.trim() || undefined,
-    });
-
-    toast({
-      title: isEntrada ? t.successEntrada : t.successSaida,
-    });
-    onOpenChange(false);
+    try {
+      await registerInlineMovement.mutateAsync({
+        inventoryId: item.id,
+        stockId: activeStockId,
+        movementType,
+        quantity,
+        notes: notes.trim() || undefined,
+      });
+      toast({
+        title: isEntrada ? t.successEntrada : t.successSaida,
+      });
+      onOpenChange(false);
+    } catch {
+      // onError do mutation já exibe o toast de erro — não duplicar.
+    }
   };
 
   const title = isEntrada ? t.titleEntrada : t.titleSaida;

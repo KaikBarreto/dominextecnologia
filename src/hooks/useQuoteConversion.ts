@@ -55,7 +55,7 @@ export function useQuoteConversion() {
       if (osError) throw osError;
 
       const quoteItems = quote.quote_items || [];
-      const materialItems = quoteItems.filter(i => i.item_type === 'material' && i.inventory_id);
+      const materialItems = quoteItems.filter(i => i.item_type === 'material' && i.inventory_id && i.quantity > 0);
 
       if (materialItems.length > 0) {
         // Escreve pelo caminho atômico único (register_inventory_movement).

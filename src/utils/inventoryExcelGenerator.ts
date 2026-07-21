@@ -99,7 +99,8 @@ export async function generateInventoryExcel({
 
   // Linha de TOTAL geral
   aoa.push([]);
-  const footerRow: (string | number)[] = new Array(headerRow.length - 1).fill('');
+  // headerRow.length colunas: penúltima = label "Total geral", última = valor.
+  const footerRow: (string | number)[] = new Array(headerRow.length).fill('');
   footerRow[footerRow.length - 2] = tr.footerGrandTotal;
   footerRow[footerRow.length - 1] = totalEstoque;
   aoa.push(footerRow);

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,9 +49,12 @@ export function useLowStock() {
 
   /**
    * IDs dos materiais de estoque que estão abaixo do mínimo em ALGUM local.
-   * Útil para sinalizar o alerta no seletor de material.
+   * Memoizado para não criar um Set novo a cada render (evita quebrar memo dos consumidores).
    */
-  const lowStockInventoryIds = new Set<string>(lowStockRows.map((r) => r.inventory_id));
+  const lowStockInventoryIds = useMemo(
+    () => new Set<string>(lowStockRows.map((r) => r.inventory_id)),
+    [lowStockRows],
+  );
 
   /**
    * Retorna as linhas de baixo estoque filtradas por local (stock_id).

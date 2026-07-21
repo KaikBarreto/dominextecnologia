@@ -77,7 +77,7 @@ const defaultForm: ServiceTypeForm = {
 };
 
 export function ServiceTypesPanel() {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.serviceTypes;
   const tCat = MESSAGES[locale].app.os.serviceTypeCategories;
 
@@ -311,7 +311,7 @@ export function ServiceTypesPanel() {
 
             const formattedPrice =
               st.default_price != null && st.default_price > 0
-                ? formatMoney(st.default_price, 'BRL', locale)
+                ? formatMoney(st.default_price, currency, locale)
                 : null;
 
             const categoryName = getCategoryName(st.category_id);
@@ -410,7 +410,7 @@ export function ServiceTypesPanel() {
                       </TableCell>
                       <TableCell className="text-sm">
                         {st.default_price != null && st.default_price > 0
-                          ? formatMoney(st.default_price, 'BRL', locale)
+                          ? formatMoney(st.default_price, currency, locale)
                           : '-'}
                       </TableCell>
                       <TableCell>

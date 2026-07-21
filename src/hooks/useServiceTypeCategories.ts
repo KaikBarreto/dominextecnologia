@@ -96,6 +96,21 @@ export function useServiceTypeCategories() {
   });
 
   const reorderCategories = useMutation({
+    // Optimistic update: reorder cache immediately, revert on error.
+    onMutate: async (orderedIds: string[]) => {
+      await queryClient.cancelQueries({ queryKey: ['service-type-categories'] });
+      const previous = queryClient.getQueryData<ServiceTypeCategory[]>(['service-type-categories']);
+      queryClient.setQueryData<ServiceTypeCategory[]>(['service-type-categories'], (old = []) => {
+        const byId = new Map(old.map((c) => [c.id, c]));
+        return orderedIds
+          .map((id, idx) => {
+            const cat = byId.get(id);
+            return cat ? { ...cat, sort_order: idx + 1 } : null;
+          })
+          .filter(Boolean) as ServiceTypeCategory[];
+      });
+      return { previous };
+    },
     mutationFn: async (orderedIds: string[]) => {
       for (let i = 0; i < orderedIds.length; i++) {
         const { error } = await supabase
@@ -108,7 +123,12 @@ export function useServiceTypeCategories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-type-categories'] });
     },
-    onError: (err) => {
+    onError: (err, _orderedIds, context) => {
+      // Revert optimistic update
+      if (context?.previous) {
+        queryClient.setQueryData(['service-type-categories'], context.previous);
+      }
+      queryClient.invalidateQueries({ queryKey: ['service-type-categories'] });
       toast({ variant: 'destructive', title: 'Erro ao reordenar categorias', description: getErrorMessage(err) });
     },
   });

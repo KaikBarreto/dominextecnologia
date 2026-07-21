@@ -167,15 +167,17 @@ export function useInventory() {
   });
 
   const updateItem = useMutation({
-    // `previousQuantity` é o valor ANTES da edição (o que está no banco hoje).
+    // `previousQuantity` é o valor ANTES da edição no local ativo (não a soma global).
+    // `activeStockId` — quando fornecido, o ajuste vai pro local certo via p_stock_id.
     // Quando a quantidade muda, NÃO escrevemos quantity no update direto: a
     // diferença vira um movimento 'ajuste' via RPC atômica, que já recalcula o
     // estoque e deixa rastro no Kardex. Os demais campos seguem no update normal.
     mutationFn: async ({
       id,
       previousQuantity,
+      activeStockId,
       ...updates
-    }: InventoryItemUpdate & { id: string; previousQuantity?: number | null }) => {
+    }: InventoryItemUpdate & { id: string; previousQuantity?: number | null; activeStockId?: string }) => {
       // Separa a quantidade dos demais campos.
       const { quantity: newQuantityRaw, ...nonQuantity } = updates;
 
@@ -191,6 +193,7 @@ export function useInventory() {
       // 2) Se a quantidade mudou, registra um movimento de ajuste (delta
       //    assinado). A RPC trava a linha, recalcula e grava o movimento —
       //    por isso NÃO aplicamos a quantity no update acima (evita double-count).
+      //    Passa p_stock_id quando temos o local ativo, para ajustar o local certo.
       const oldQty = previousQuantity ?? 0;
       const newQty = newQuantityRaw ?? oldQty;
       const delta = newQty - oldQty;
@@ -200,6 +203,7 @@ export function useInventory() {
           p_movement_type: 'ajuste',
           p_quantity: delta,
           p_notes: 'Ajuste manual',
+          ...(activeStockId ? { p_stock_id: activeStockId } : {}),
         });
         if (rpcError) throw rpcError;
       }
@@ -208,6 +212,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       toast({ title: 'Item atualizado com sucesso!' });
     },
@@ -245,6 +250,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       toast({ title: 'Item removido com sucesso!' });
     },
@@ -255,11 +261,23 @@ export function useInventory() {
 
   // Statistics
   const totalItems = items.length;
-  const lowStockItems = items.filter(item => 
-    item.quantity !== null && 
-    item.min_quantity !== null && 
-    item.quantity <= item.min_quantity
+  // Conta materiais ÚNICOS com saldo abaixo do mínimo em algum local (via stockLevels).
+  // Usa o mesmo critério do ícone de alerta na lista (qty < min, strict, por local).
+  // Fallback pro campo global legado quando não há stockLevels ainda.
+  const lowStockMaterialIds = new Set<string>(
+    stockLevels
+      .filter((l) => l.min_quantity != null && l.quantity < l.min_quantity)
+      .map((l) => l.inventory_id),
   );
+  const lowStockItems =
+    lowStockMaterialIds.size > 0
+      ? lowStockMaterialIds.size
+      : items.filter((item) =>
+          item.quantity !== null &&
+          item.min_quantity !== null &&
+          item.quantity < item.min_quantity,
+        ).length;
+
   const totalValue = items.reduce((acc, item) => {
     const qty = item.quantity || 0;
     const price = item.cost_price || 0;
@@ -285,7 +303,7 @@ export function useInventory() {
     registerInlineMovement,
     stats: {
       totalItems,
-      lowStockItems: lowStockItems.length,
+      lowStockItems,
       totalValue,
       totalSaleValue,
     },

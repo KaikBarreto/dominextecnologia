@@ -42,6 +42,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateInventoryCountPdf } from '@/utils/inventoryCountPdfGenerator';
 import { generateInventoryCountExcel } from '@/utils/inventoryCountExcelGenerator';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/lib/format';
 
 interface Props {
   open: boolean;
@@ -157,8 +158,8 @@ export function InventoryCountDetailModal({
   };
 
   const totalDiffValue = divergences.reduce((acc, d) => acc + (d.diff_value ?? 0), 0);
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale, { style: 'currency', currency: 'BRL' }).format(v);
+  // Usa a moeda do contexto (currency) via formatMoney — não cravar BRL.
+  const formatCurrency = (v: number) => formatMoney(v, currency, locale);
 
   const footer = (
     <div className="flex items-center justify-between gap-2 p-4 border-t bg-background flex-wrap">
@@ -419,6 +420,12 @@ export function InventoryCountDetailModal({
               {divergences.length > 0
                 ? t.finalizeDialog.descriptionWithDivergences
                     .replace('{count}', String(divergences.length))
+                    .replace(
+                      '{countLabel}',
+                      divergences.length === 1
+                        ? t.finalizeDialog.descriptionWithDivergencesSingular
+                        : t.finalizeDialog.descriptionWithDivergencesPlural,
+                    )
                     .replace('{value}', formatCurrency(totalDiffValue))
                 : t.finalizeDialog.descriptionNone}
             </AlertDialogDescription>

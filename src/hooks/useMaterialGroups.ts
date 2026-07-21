@@ -28,9 +28,12 @@ export function useMaterialGroups() {
   const createGroup = useMutation({
     mutationFn: async ({ name, color }: { name: string; color?: string }) => {
       const maxOrder = groups.reduce((m, g) => Math.max(m, g.sort_order), 0);
+      // company_id must be passed explicitly — NOT NULL without default, no trigger.
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const companyId = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('material_groups')
-        .insert({ name, color: color ?? '#6B7280', sort_order: maxOrder + 1 } as MaterialGroupInsert)
+        .insert({ name, color: color ?? '#6B7280', sort_order: maxOrder + 1, company_id: companyId } as MaterialGroupInsert)
         .select()
         .single();
       if (error) throw error;

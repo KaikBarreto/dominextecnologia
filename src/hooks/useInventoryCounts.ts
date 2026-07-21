@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { Tables, Database } from '@/integrations/supabase/types';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 
 export type InventoryCount = Tables<'inventory_counts'>;
 export type InventoryCountItem = Tables<'inventory_count_items'>;
@@ -19,6 +21,8 @@ export interface CountItemWithDetails extends InventoryCountItem {
 export function useInventoryCounts() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.inventory.inventoryCount;
 
   // Lista todos os inventários da empresa, ordenado por numero desc
   const { data: counts = [], isLoading } = useQuery({
@@ -54,14 +58,16 @@ export function useInventoryCounts() {
     }));
   };
 
-  // Carrega divergências (todos os itens com diff <> 0) de um inventário
+  // Carrega divergências (itens CONTADOS com diff != 0) de um inventário.
+  // Itens não contados (counted_qty = null) são ignorados — diff negativo deles
+  // não é divergência real, é apenas "não foi contado".
   const getDivergences = async (countId: string): Promise<InventoryCountDivergence[]> => {
     const { data, error } = await supabase
       .from('inventory_count_divergences')
       .select('*')
       .eq('count_id', countId);
     if (error) throw error;
-    return (data ?? []).filter((d) => d.diff !== 0) as InventoryCountDivergence[];
+    return (data ?? []).filter((d) => d.diff !== 0 && d.counted_qty !== null) as InventoryCountDivergence[];
   };
 
   // Cria inventário: cabeçalho + stocks + geração de itens
@@ -161,7 +167,7 @@ export function useInventoryCounts() {
     onError: (err) => {
       toast({
         variant: 'destructive',
-        title: 'Erro ao criar inventário',
+        title: t.toasts.errorCreate,
         description: getErrorMessage(err),
       });
     },
@@ -214,11 +220,11 @@ export function useInventoryCounts() {
       queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       const adj = result?.items_adjusted ?? 0;
       toast({
-        title: 'Inventário finalizado',
+        title: t.toasts.finalized,
         description:
           adj > 0
-            ? `${adj} ${adj === 1 ? 'item ajustado' : 'itens ajustados'} no estoque.`
-            : 'Nenhuma divergência encontrada.',
+            ? (adj === 1 ? t.toasts.finalizedSingle : t.toasts.finalizedPlural).replace('{adj}', String(adj))
+            : t.toasts.finalizedNone,
       });
     },
     onError: (err) => {
@@ -233,20 +239,25 @@ export function useInventoryCounts() {
   // Cancela um inventário aberto
   const cancelCount = useMutation({
     mutationFn: async (countId: string) => {
+      const companyId = await getCurrentUserCompanyId();
       const { error } = await supabase
         .from('inventory_counts')
         .update({ status: 'cancelado' })
-        .eq('id', countId);
+        .eq('id', countId)
+        // Nunca cancela inventário já finalizado (evita reverter ajustes confirmados)
+        .eq('status', 'aberto')
+        // Guard client redundante ao RLS — padrão do projeto
+        .eq('company_id', companyId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-counts'] });
-      toast({ title: 'Inventário cancelado' });
+      toast({ title: t.toasts.canceled });
     },
     onError: (err) => {
       toast({
         variant: 'destructive',
-        title: 'Erro ao cancelar inventário',
+        title: t.toasts.errorCancel,
         description: getErrorMessage(err),
       });
     },

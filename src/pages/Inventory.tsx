@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -123,6 +123,14 @@ export default function Inventory() {
 
   // Estoque (depósito) ativo dentro da aba "Estoque Atual"
   const [activeStockId, setActiveStockId] = useState<string | null>(null);
+
+  // Se o local ativo foi excluído, redefine para null (cai no defaultStock).
+  useEffect(() => {
+    if (activeStockId && stocks.length > 0 && !stocks.some((s) => s.id === activeStockId)) {
+      setActiveStockId(null);
+    }
+  }, [stocks, activeStockId]);
+
   // Inicializa com o estoque padrão quando ele carregar
   const resolvedStockId = activeStockId ?? defaultStock?.id ?? null;
 
@@ -157,7 +165,13 @@ export default function Inventory() {
     return matchesSearch && matchesCategory && matchesGroup && matchesLowStock;
   });
 
-  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredItems);
+  // Enriquece cada item com effectiveQty (saldo do local ativo) para que a
+  // ordenação pela coluna "Quantidade" bata com o que a coluna exibe.
+  const filteredItemsWithEffectiveQty = filteredItems.map((item) => ({
+    ...item,
+    quantity: resolvedStockId ? getQuantityForStock(item.id, resolvedStockId) : (item.quantity ?? 0),
+  }));
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredItemsWithEffectiveQty);
   const pagination = useDataPagination(sortedItems);
 
   // Categorias presentes nos itens (filtro legado)
@@ -859,6 +873,7 @@ export default function Inventory() {
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         item={editingItem}
+        activeStockId={resolvedStockId}
       />
 
       {/* Dialog de transferência entre depósitos */}

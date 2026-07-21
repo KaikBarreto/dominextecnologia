@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.15',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ajustes no novo módulo de estoque',
+        description: 'Deixamos o novo módulo de estoque mais redondo em vários pontos: a criação de locais de estoque e de grupos, os alertas de estoque baixo, a moeda exibida e os totais dos relatórios em PDF e Excel agora saem certos em todos os casos.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.17.14',
     date: '21 de julho de 2026',
     type: 'patch',

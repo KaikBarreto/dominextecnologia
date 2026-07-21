@@ -72,15 +72,19 @@ export function StockTransferDialog({
       toast({ variant: 'destructive', title: t.errors.title, description: err });
       return;
     }
-    await transferStock.mutateAsync({
-      inventoryId: item.id,
-      fromStockId,
-      toStockId,
-      quantity,
-      notes: notes.trim() || undefined,
-      clientRequestId: crypto.randomUUID(),
-    });
-    onOpenChange(false);
+    try {
+      await transferStock.mutateAsync({
+        inventoryId: item.id,
+        fromStockId,
+        toStockId,
+        quantity,
+        notes: notes.trim() || undefined,
+        clientRequestId: crypto.randomUUID(),
+      });
+      onOpenChange(false);
+    } catch {
+      // onError do mutation já exibe o toast de erro — não duplicar.
+    }
   };
 
   const toStockOptions = stocks.filter((s) => s.id !== fromStockId);

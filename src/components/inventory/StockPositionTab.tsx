@@ -44,6 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateStockPositionPdf } from '@/utils/stockPositionPdfGenerator';
 import { generateStockPositionExcel } from '@/utils/stockPositionExcelGenerator';
 import { fuzzyIncludes } from '@/lib/utils';
+import { formatMoney } from '@/lib/format';
 
 /** Formata timestamp local para o input datetime-local */
 function toLocalInputValue(d: Date): string {
@@ -112,8 +113,8 @@ export function StockPositionTab() {
   const totalValor = filteredRows.reduce((acc, r) => acc + (r.valor ?? 0), 0);
   const totalProjecao = filteredRows.reduce((acc, r) => acc + (r.projecao ?? 0), 0);
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale, { style: 'currency', currency: 'BRL' }).format(v);
+  // Usa a moeda do contexto (currency) via formatMoney — não cravar BRL.
+  const formatCurrency = (v: number) => formatMoney(v, currency, locale);
   const formatNum = (v: number) =>
     new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale, { maximumFractionDigits: 2 }).format(v);
 

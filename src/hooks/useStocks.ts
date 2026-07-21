@@ -30,9 +30,12 @@ export function useStocks() {
   const createStock = useMutation({
     mutationFn: async (name: string) => {
       const maxOrder = stocks.reduce((m, s) => Math.max(m, s.sort_order), 0);
+      // company_id must be passed explicitly — NOT NULL without default, no trigger.
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const companyId = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('stocks')
-        .insert({ name, sort_order: maxOrder + 1 } as StockInsert)
+        .insert({ name, sort_order: maxOrder + 1, company_id: companyId } as StockInsert)
         .select()
         .single();
       if (error) throw error;

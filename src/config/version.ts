@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.14";
+export const APP_VERSION = "1.17.15";
 
-export const VERSION_NOTES = "Agora você organiza seus tipos de serviço em categorias que você mesmo cria, filtra a lista por categoria e vê a categoria ao lado do nome do serviço ao escolher na ordem de serviço, no contrato e nos checklists.";
+export const VERSION_NOTES = "Ajustes de estabilidade no novo módulo de estoque: criação de locais e grupos, alertas de estoque baixo, moeda e totais dos relatórios em PDF e Excel agora funcionam certinho em todos os casos.";
