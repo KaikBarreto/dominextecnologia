@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.15";
+export const APP_VERSION = "1.17.16";
 
-export const VERSION_NOTES = "Ajustes de estabilidade no novo módulo de estoque: criação de locais e grupos, alertas de estoque baixo, moeda e totais dos relatórios em PDF e Excel agora funcionam certinho em todos os casos.";
+export const VERSION_NOTES = "No inventário você agora busca e seleciona todos os materiais de uma vez ao montar a contagem, e corrigimos o cadastro de material para registrar a quantidade inicial certinho no local, garantindo que todo estoque tenha um local principal.";

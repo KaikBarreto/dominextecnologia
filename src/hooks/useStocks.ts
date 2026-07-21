@@ -33,9 +33,12 @@ export function useStocks() {
       // company_id must be passed explicitly — NOT NULL without default, no trigger.
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const companyId = await getCurrentUserCompanyId();
+      // Primeiro local da empresa vira principal automaticamente para que a tela
+      // de estoque tenha sempre um "local ativo" resolvido ao criar materiais.
+      const isFirstStock = stocks.length === 0;
       const { data, error } = await supabase
         .from('stocks')
-        .insert({ name, sort_order: maxOrder + 1, company_id: companyId } as StockInsert)
+        .insert({ name, sort_order: maxOrder + 1, company_id: companyId, is_default: isFirstStock } as StockInsert)
         .select()
         .single();
       if (error) throw error;

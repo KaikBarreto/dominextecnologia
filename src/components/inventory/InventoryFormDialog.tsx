@@ -114,11 +114,22 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId }:
       await updateItem.mutateAsync({ id: item.id, ...formData, previousQuantity: previousQty, activeStockId: activeStockId ?? undefined });
       savedItemId = item.id;
     } else {
-      const created = await createItem.mutateAsync(formData as InventoryItemInsert);
+      // Extrai a quantidade inicial do formData — ela NÃO vai no payload do catálogo
+      // (quantity fica 0 na tabela; o saldo real nasce pela RPC de entrada no hook).
+      const { quantity: initialQty, ...catalogFields } = formData;
+      const created = await createItem.mutateAsync({
+        ...(catalogFields as InventoryItemInsert),
+        initialQuantity: initialQty ?? 0,
+        activeStockId: activeStockId ?? null,
+      });
       savedItemId = created?.id ?? null;
     }
 
-    // Grava min_quantity por estoque (somente locais que têm valor informado)
+    // Grava min_quantity por estoque (somente locais que têm valor informado).
+    // ORDEM IMPORTANTE na criação: a RPC de entrada já criou o level do local ativo
+    // com a quantidade correta; aqui só fazemos UPDATE do min nesse level (e INSERT
+    // com qty=0 nos demais). Assim não há risco de sobrescrever o saldo nem de
+    // duplicar o level (UNIQUE inventory_id, stock_id).
     if (savedItemId) {
       for (const s of stocks) {
         const rawMin = stockMinQtyMap[s.id] ?? '';

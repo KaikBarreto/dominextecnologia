@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.16',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca e seleção rápida no inventário',
+        description: 'Ao montar a contagem do inventário e escolher os materiais que entram, agora você pode buscar pelo nome ou código e selecionar todos de uma vez, o que agiliza bastante quando há muitos itens.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastro de material e locais mais confiáveis',
+        description: 'Corrigimos o cadastro de material para que a quantidade inicial informada seja registrada corretamente como saldo no local de estoque, e garantimos que todo estoque tenha sempre um local principal definido.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.17.15',
     date: '21 de julho de 2026',
     type: 'patch',

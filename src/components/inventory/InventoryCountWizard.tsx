@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useStocks } from '@/hooks/useStocks';
 import { useInventory } from '@/hooks/useInventory';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
@@ -12,8 +12,8 @@ import { useInventoryCounts } from '@/hooks/useInventoryCounts';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Package, Warehouse, Users, AlignJustify } from 'lucide-react';
+import { cn, fuzzyIncludes } from '@/lib/utils';
+import { Package, Warehouse, Users, AlignJustify, Search } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -37,6 +37,8 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [scopeMode, setScopeMode] = useState<'all' | 'groups' | 'items'>('all');
   const [notes, setNotes] = useState('');
+  const [itemSearch, setItemSearch] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
 
   const reset = useCallback(() => {
     setStep('stocks');
@@ -45,6 +47,8 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
     setSelectedItems([]);
     setScopeMode('all');
     setNotes('');
+    setItemSearch('');
+    setGroupSearch('');
   }, []);
 
   const handleClose = () => {
@@ -68,6 +72,50 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
     setSelectedItems((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
+  };
+
+  // Itens filtrados pela busca (modo 'items')
+  const filteredItems = useMemo(
+    () =>
+      inventoryItems.filter(
+        (item) =>
+          fuzzyIncludes(item.name, itemSearch) || fuzzyIncludes(item.sku, itemSearch),
+      ),
+    [inventoryItems, itemSearch],
+  );
+
+  // Grupos filtrados pela busca (modo 'groups')
+  const filteredGroups = useMemo(
+    () => groups.filter((g) => fuzzyIncludes(g.name, groupSearch)),
+    [groups, groupSearch],
+  );
+
+  // Selecionar todos os visíveis / limpar
+  const allVisibleItemsSelected =
+    filteredItems.length > 0 && filteredItems.every((i) => selectedItems.includes(i.id));
+
+  const allVisibleGroupsSelected =
+    filteredGroups.length > 0 && filteredGroups.every((g) => selectedGroups.includes(g.id));
+
+  const toggleSelectAllItems = () => {
+    if (allVisibleItemsSelected) {
+      // Remove apenas os visíveis; mantém selecionados fora do filtro
+      const visibleIds = new Set(filteredItems.map((i) => i.id));
+      setSelectedItems((prev) => prev.filter((id) => !visibleIds.has(id)));
+    } else {
+      const visibleIds = filteredItems.map((i) => i.id);
+      setSelectedItems((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
+  const toggleSelectAllGroups = () => {
+    if (allVisibleGroupsSelected) {
+      const visibleIds = new Set(filteredGroups.map((g) => g.id));
+      setSelectedGroups((prev) => prev.filter((id) => !visibleIds.has(id)));
+    } else {
+      const visibleIds = filteredGroups.map((g) => g.id);
+      setSelectedGroups((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    }
   };
 
   const canProceedToScope = selectedStocks.length > 0;
@@ -216,31 +264,62 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
             {/* Seleção de grupos */}
             {scopeMode === 'groups' && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{t.selectGroups}</p>
                 {groups.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t.noGroups}</p>
                 ) : (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {groups.map((g) => (
-                      <label
-                        key={g.id}
-                        className={cn(
-                          'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
-                          selectedGroups.includes(g.id) ? 'border-primary bg-primary/5' : 'border-border',
-                        )}
+                  <>
+                    {/* Campo de busca */}
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        value={groupSearch}
+                        onChange={(e) => setGroupSearch(e.target.value)}
+                        placeholder={t.searchGroupsPlaceholder}
+                        className="pl-8 h-8 text-sm"
+                      />
+                    </div>
+                    {/* Selecionar todos + contador */}
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={toggleSelectAllGroups}
+                        className="text-xs text-primary hover:underline"
                       >
-                        <Checkbox
-                          checked={selectedGroups.includes(g.id)}
-                          onCheckedChange={() => toggleGroup(g.id)}
-                        />
-                        <div
-                          className="h-3 w-3 rounded-full shrink-0"
-                          style={{ backgroundColor: g.color ?? '#6B7280' }}
-                        />
-                        <span className="text-sm">{g.name}</span>
-                      </label>
-                    ))}
-                  </div>
+                        {allVisibleGroupsSelected ? t.clearSelection : t.selectAll}
+                      </button>
+                      <span className="text-xs text-muted-foreground">
+                        {t.selectedCount
+                          .replace('{selected}', String(selectedGroups.length))
+                          .replace('{total}', String(groups.length))}
+                      </span>
+                    </div>
+                    {/* Lista */}
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {filteredGroups.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2 text-center">{t.noGroups}</p>
+                      ) : (
+                        filteredGroups.map((g) => (
+                          <label
+                            key={g.id}
+                            className={cn(
+                              'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                              selectedGroups.includes(g.id) ? 'border-primary bg-primary/5' : 'border-border',
+                            )}
+                          >
+                            <Checkbox
+                              checked={selectedGroups.includes(g.id)}
+                              onCheckedChange={() => toggleGroup(g.id)}
+                            />
+                            <div
+                              className="h-3 w-3 rounded-full shrink-0"
+                              style={{ backgroundColor: g.color ?? '#6B7280' }}
+                            />
+                            <span className="text-sm">{g.name}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -248,33 +327,64 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
             {/* Seleção de itens */}
             {scopeMode === 'items' && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{t.selectItems}</p>
                 {inventoryItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t.noItems}</p>
                 ) : (
-                  <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                    {inventoryItems.map((item) => (
-                      <label
-                        key={item.id}
-                        className={cn(
-                          'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
-                          selectedItems.includes(item.id) ? 'border-primary bg-primary/5' : 'border-border',
-                        )}
+                  <>
+                    {/* Campo de busca */}
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        value={itemSearch}
+                        onChange={(e) => setItemSearch(e.target.value)}
+                        placeholder={t.searchItemsPlaceholder}
+                        className="pl-8 h-8 text-sm"
+                      />
+                    </div>
+                    {/* Selecionar todos + contador */}
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={toggleSelectAllItems}
+                        className="text-xs text-primary hover:underline"
                       >
-                        <Checkbox
-                          checked={selectedItems.includes(item.id)}
-                          onCheckedChange={() => toggleItem(item.id)}
-                        />
-                        <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-sm truncate block">{item.name}</span>
-                          {item.sku && (
-                            <span className="text-[10px] text-muted-foreground font-mono">{item.sku}</span>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+                        {allVisibleItemsSelected ? t.clearSelection : t.selectAll}
+                      </button>
+                      <span className="text-xs text-muted-foreground">
+                        {t.selectedCount
+                          .replace('{selected}', String(selectedItems.length))
+                          .replace('{total}', String(inventoryItems.length))}
+                      </span>
+                    </div>
+                    {/* Lista */}
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                      {filteredItems.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2 text-center">{t.noItems}</p>
+                      ) : (
+                        filteredItems.map((item) => (
+                          <label
+                            key={item.id}
+                            className={cn(
+                              'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                              selectedItems.includes(item.id) ? 'border-primary bg-primary/5' : 'border-border',
+                            )}
+                          >
+                            <Checkbox
+                              checked={selectedItems.includes(item.id)}
+                              onCheckedChange={() => toggleItem(item.id)}
+                            />
+                            <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-sm truncate block">{item.name}</span>
+                              {item.sku && (
+                                <span className="text-[10px] text-muted-foreground font-mono">{item.sku}</span>
+                              )}
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             )}

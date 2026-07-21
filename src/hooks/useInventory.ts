@@ -147,18 +147,41 @@ export function useInventory() {
   });
 
   const createItem = useMutation({
-    mutationFn: async (item: InventoryItemInsert) => {
+    mutationFn: async ({
+      initialQuantity,
+      activeStockId: stockId,
+      ...item
+    }: InventoryItemInsert & { initialQuantity?: number; activeStockId?: string | null }) => {
+      // (a) Insere o catálogo com quantity = 0. O saldo real virá do inventory_stock_levels
+      // via trigger de espelho após a RPC de entrada abaixo.
       const { data, error } = await supabase
         .from('inventory')
-        .insert(item)
+        .insert({ ...item, quantity: 0 })
         .select()
         .single();
-      
+
       if (error) throw error;
+
+      // (b) Se foi informada uma quantidade inicial > 0, registra como 'entrada' no
+      // local ativo (ou principal quando stockId é null/undefined). Isso cria o
+      // inventory_stock_levels com a quantidade correta e deixa rastro no Kardex.
+      if (initialQuantity && initialQuantity > 0) {
+        const { error: rpcError } = await supabase.rpc('register_inventory_movement', {
+          p_inventory_id: data.id,
+          p_movement_type: 'entrada',
+          p_quantity: initialQuantity,
+          p_notes: 'Cadastro inicial',
+          ...(stockId ? { p_stock_id: stockId } : {}),
+        });
+        if (rpcError) throw rpcError;
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       toast({ title: 'Item cadastrado com sucesso!' });
     },
     onError: (error) => {
