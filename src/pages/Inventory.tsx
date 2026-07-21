@@ -10,6 +10,7 @@ import {
   Edit,
   Trash2,
   TrendingUp,
+  TrendingDown,
   Boxes,
   Eye,
   FileDown,
@@ -43,6 +44,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { useStocks } from '@/hooks/useStocks';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
@@ -51,6 +55,10 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
 import { StockTransferDialog } from '@/components/inventory/StockTransferDialog';
 import { InventorySettingsDialog } from '@/components/inventory/InventorySettingsDialog';
+import {
+  InlineMovementDialog,
+  type InlineMovementType,
+} from '@/components/inventory/InlineMovementDialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -85,7 +93,7 @@ export default function Inventory() {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
-  const { items, isLoading, stats, deleteItem, getQuantityForStock } = useInventory();
+  const { items, isLoading, stats, deleteItem, getQuantityForStock, getMinQuantityForStock } = useInventory();
   const { stocks, defaultStock } = useStocks();
   const { groups } = useMaterialGroups();
   const { settings: companySettings } = useCompanySettings();
@@ -97,6 +105,7 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
@@ -107,12 +116,33 @@ export default function Inventory() {
   const [transferItem, setTransferItem] = useState<InventoryItem | null>(null);
   const [activeTab, setActiveTab] = useState('estoque');
 
+  // Inline movement state
+  const [inlineMovementOpen, setInlineMovementOpen] = useState(false);
+  const [inlineMovementItem, setInlineMovementItem] = useState<InventoryItem | null>(null);
+  const [inlineMovementType, setInlineMovementType] = useState<InlineMovementType>('entrada');
+
   // Estoque (depósito) ativo dentro da aba "Estoque Atual"
   const [activeStockId, setActiveStockId] = useState<string | null>(null);
   // Inicializa com o estoque padrão quando ele carregar
   const resolvedStockId = activeStockId ?? defaultStock?.id ?? null;
 
-  // Itens filtrados considerando busca, grupo e estoque ativo
+  // Quantidade do item no estoque selecionado
+  const getItemQty = (item: InventoryItem): number =>
+    resolvedStockId
+      ? getQuantityForStock(item.id, resolvedStockId)
+      : (item.quantity ?? 0);
+
+  // Mínimo do item no estoque selecionado
+  const getItemMinQty = (item: InventoryItem): number | null =>
+    resolvedStockId ? getMinQuantityForStock(item.id, resolvedStockId) : null;
+
+  const isLowStockForActiveStock = (item: InventoryItem) => {
+    const qty = getItemQty(item);
+    const min = getItemMinQty(item);
+    return min !== null && qty < min;
+  };
+
+  // Itens filtrados considerando busca, grupo, estoque ativo e filtro de estoque baixo
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       fuzzyIncludes(item.name, searchQuery) ||
@@ -122,7 +152,9 @@ export default function Inventory() {
       categoryFilter.length === 0 || categoryFilter.includes(item.category || '');
     const matchesGroup =
       groupFilter.length === 0 || groupFilter.includes(item.group_id || '');
-    return matchesSearch && matchesCategory && matchesGroup;
+    // filtro de estoque baixo só aplica se busca vazia (padrão busca universal)
+    const matchesLowStock = !lowStockOnly || searchQuery ? true : isLowStockForActiveStock(item);
+    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock;
   });
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredItems);
@@ -157,6 +189,13 @@ export default function Inventory() {
     setTransferOpen(true);
   };
 
+  const handleInlineMovement = (item: InventoryItem, type: InlineMovementType, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setInlineMovementItem(item);
+    setInlineMovementType(type);
+    setInlineMovementOpen(true);
+  };
+
   const handleConfirmDelete = async () => {
     if (itemToDelete) {
       await deleteItem.mutateAsync(itemToDelete.id);
@@ -181,19 +220,29 @@ export default function Inventory() {
   };
 
   const handleExportConfirm = async (selected: InventoryItem[]) => {
-    const rows = selected.map((i) => ({
-      name: i.name,
-      sku: i.sku ?? null,
-      category: i.category ?? null,
-      quantity: i.quantity ?? null,
-      unit: i.unit ?? null,
-      cost_price: i.cost_price ?? null,
-      sale_price: i.sale_price ?? null,
-    }));
+    const activeStock = stocks.find((s) => s.id === resolvedStockId);
+    const rows = selected.map((i) => {
+      const qty = resolvedStockId
+        ? getQuantityForStock(i.id, resolvedStockId)
+        : (i.quantity ?? null);
+      const min = resolvedStockId
+        ? getMinQuantityForStock(i.id, resolvedStockId)
+        : null;
+      return {
+        name: i.name,
+        sku: i.sku ?? null,
+        category: i.category ?? null,
+        quantity: qty,
+        min_quantity: min,
+        unit: i.unit ?? null,
+        cost_price: i.cost_price ?? null,
+        sale_price: i.sale_price ?? null,
+      };
+    });
     const title = t.export.reportTitle;
     try {
       if (exportFormat === 'excel') {
-        await generateInventoryExcel({ title, rows, locale, currency });
+        await generateInventoryExcel({ title, rows, locale, currency, stockName: activeStock?.name });
       } else {
         await generateInventoryReportPdf({
           company: companySettings,
@@ -202,6 +251,7 @@ export default function Inventory() {
           rows,
           locale,
           currency,
+          stockName: activeStock?.name,
         });
       }
     } catch (err) {
@@ -244,17 +294,6 @@ export default function Inventory() {
     </DropdownMenu>
   );
 
-  // Quantidade do item no estoque selecionado
-  const getItemQty = (item: InventoryItem): number =>
-    resolvedStockId
-      ? getQuantityForStock(item.id, resolvedStockId)
-      : (item.quantity ?? 0);
-
-  const isLowStock = (item: InventoryItem) => {
-    const qty = getItemQty(item);
-    return item.min_quantity !== null && qty <= item.min_quantity;
-  };
-
   const statItems = [
     {
       key: 'total',
@@ -289,16 +328,33 @@ export default function Inventory() {
   const activeFilterCount =
     (searchQuery ? 1 : 0) +
     (categoryFilter.length > 0 ? 1 : 0) +
-    (groupFilter.length > 0 ? 1 : 0);
+    (groupFilter.length > 0 ? 1 : 0) +
+    (lowStockOnly ? 1 : 0);
 
   const clearFilters = () => {
     setSearchQuery('');
     setCategoryFilter([]);
     setGroupFilter([]);
+    setLowStockOnly(false);
   };
 
   const filterContent = (
     <>
+      {/* Filtro de estoque baixo */}
+      <div className="space-y-2">
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border accent-destructive cursor-pointer"
+            checked={lowStockOnly}
+            onChange={(e) => setLowStockOnly(e.target.checked)}
+          />
+          <span className="text-sm font-medium flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+            {t.filters.lowStockOnly}
+          </span>
+        </label>
+      </div>
       {groups.length > 0 && (
         <FilterCheckboxGroup
           label={t.groupFilter.label}
@@ -324,7 +380,8 @@ export default function Inventory() {
     </>
   );
 
-  const hasAnyFilter = groups.length > 0 || categories.length > 0;
+  // Há filtros disponíveis (inclui low-stock toggle)
+  const hasAnyFilter = true;
 
   const inventoryTabs: SettingsTab[] = [
     { value: 'estoque', label: t.tabs.current, icon: Boxes },
@@ -353,6 +410,27 @@ export default function Inventory() {
       {!isMobile && t.actions.settings}
     </Button>
   );
+
+  // Ícone de alerta abaixo do mínimo com tooltip
+  const LowStockIcon = ({ item }: { item: InventoryItem }) => {
+    const qty = getItemQty(item);
+    const min = getItemMinQty(item);
+    if (min === null || qty >= min) return null;
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="shrink-0 cursor-help" tabIndex={0} aria-label={t.lowStockTooltip.replace('{qty}', String(qty)).replace('{min}', String(min))}>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {t.lowStockTooltip.replace('{qty}', String(qty)).replace('{min}', String(min))}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
 
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
@@ -500,12 +578,12 @@ export default function Inventory() {
                   <EmptyState
                     icon={<Package className="h-12 w-12" />}
                     title={
-                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0
+                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
                         ? t.empty.noneFoundTitle
                         : t.empty.noneTitle
                     }
                     description={
-                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0
+                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
                         ? t.empty.noneFoundDescription
                         : t.empty.noneDescriptionMobile
                     }
@@ -515,6 +593,8 @@ export default function Inventory() {
                     <div className="rounded-xl border bg-card overflow-hidden">
                       {pagination.paginatedItems.map((item) => {
                         const qty = getItemQty(item);
+                        const min = getItemMinQty(item);
+                        const belowMin = min !== null && qty < min;
                         const itemGroup = groups.find((g) => g.id === item.group_id);
 
                         const itemActions: ItemAction[] = [
@@ -530,6 +610,18 @@ export default function Inventory() {
                             icon: <Edit className="h-4 w-4" />,
                             variant: 'edit' as const,
                             onClick: () => handleEdit(item),
+                          },
+                          {
+                            key: 'entrada',
+                            label: t.rowActions.registerEntrada,
+                            icon: <TrendingUp className="h-4 w-4" />,
+                            onClick: () => handleInlineMovement(item, 'entrada'),
+                          },
+                          {
+                            key: 'saida',
+                            label: t.rowActions.registerSaida,
+                            icon: <TrendingDown className="h-4 w-4" />,
+                            onClick: () => handleInlineMovement(item, 'saida'),
                           },
                           ...(stocks.length > 1
                             ? [{
@@ -551,9 +643,9 @@ export default function Inventory() {
                         const subtitleParts: string[] = [];
                         if (itemGroup) subtitleParts.push(itemGroup.name);
                         else if (item.category) subtitleParts.push(item.category);
-                        subtitleParts.push(`${qty} ${item.unit || 'un'}`);
-                        if (item.min_quantity !== null && item.min_quantity !== undefined) {
-                          subtitleParts.push(`mín ${item.min_quantity}`);
+                        subtitleParts.push(`${qty} ${item.unit || t.unitFallback}`);
+                        if (min !== null) {
+                          subtitleParts.push(`${t.minShort} ${min}`);
                         }
 
                         return (
@@ -581,13 +673,16 @@ export default function Inventory() {
                                     {item.sku}
                                   </span>
                                 )}
+                                {belowMin && (
+                                  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                                )}
                               </div>
                             }
                             subtitle={subtitleParts.join(' · ')}
                             trailing={
-                              isLowStock(item) ? (
+                              belowMin ? (
                                 <Badge
-                                  variant="warning"
+                                  variant="destructive"
                                   className="text-[10px] px-2 py-0.5 whitespace-nowrap"
                                 >
                                   <AlertTriangle className="mr-1 h-3 w-3" />
@@ -628,19 +723,20 @@ export default function Inventory() {
                       ))}
                     </div>
                   ) : filteredItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Package className="mb-4 h-12 w-12 text-muted-foreground" />
-                      <h3 className="text-lg font-medium">
-                        {searchQuery || categoryFilter.length > 0 || groupFilter.length > 0
+                    <EmptyState
+                      size="compact"
+                      icon={<Package className="h-12 w-12" />}
+                      title={
+                        searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
                           ? t.empty.noneFoundTitle
-                          : t.empty.noneTitle}
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {searchQuery || categoryFilter.length > 0 || groupFilter.length > 0
+                          : t.empty.noneTitle
+                      }
+                      description={
+                        searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
                           ? t.empty.noneFoundDescription
-                          : t.empty.noneDescriptionDesktop}
-                      </p>
-                    </div>
+                          : t.empty.noneDescriptionDesktop
+                      }
+                    />
                   ) : (
                     <>
                       <div className="overflow-x-auto">
@@ -659,18 +755,15 @@ export default function Inventory() {
                           <TableBody>
                             {pagination.paginatedItems.map((item) => {
                               const qty = getItemQty(item);
+                              const min = getItemMinQty(item);
+                              const belowMin = min !== null && qty < min;
                               const itemGroup = groups.find((g) => g.id === item.group_id);
                               return (
-                                <TableRow key={item.id}>
+                                <TableRow key={item.id} className={belowMin ? 'bg-destructive/5' : undefined}>
                                   <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
+                                      <LowStockIcon item={item} />
                                       {item.name}
-                                      {isLowStock(item) && (
-                                        <Badge variant="warning">
-                                          <AlertTriangle className="mr-1 h-3 w-3" />
-                                          {t.badge.low}
-                                        </Badge>
-                                      )}
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-muted-foreground">{item.sku || '-'}</TableCell>
@@ -688,7 +781,13 @@ export default function Inventory() {
                                     ) : null}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    {qty} {item.unit}
+                                    <span className={belowMin ? 'text-destructive font-semibold' : ''}>
+                                      {qty}
+                                    </span>
+                                    {' '}{item.unit}
+                                    {min !== null && (
+                                      <span className="ml-1 text-xs text-muted-foreground">/ {t.minShort} {min}</span>
+                                    )}
                                   </TableCell>
                                   <TableCell className="text-right">
                                     {item.cost_price ? formatCurrency(item.cost_price) : '-'}
@@ -700,6 +799,8 @@ export default function Inventory() {
                                     <RowActionsMenu
                                       actions={[
                                         { label: t.rowActions.edit, icon: Edit, variant: 'edit', onClick: () => handleEdit(item) },
+                                        { label: t.rowActions.registerEntrada, icon: TrendingUp, variant: 'default', onClick: () => handleInlineMovement(item, 'entrada') },
+                                        { label: t.rowActions.registerSaida, icon: TrendingDown, variant: 'default', onClick: () => handleInlineMovement(item, 'saida') },
                                         ...(stocks.length > 1
                                           ? [{ label: t.rowActions.transfer, icon: ArrowRightLeft, variant: 'default' as const, onClick: () => handleTransferClick(item) }]
                                           : []),
@@ -784,6 +885,18 @@ export default function Inventory() {
         format={exportFormat}
         items={items}
         onConfirm={handleExportConfirm}
+      />
+
+      {/* Movimentação inline (entrada/saída) */}
+      <InlineMovementDialog
+        open={inlineMovementOpen}
+        onOpenChange={(v) => {
+          setInlineMovementOpen(v);
+          if (!v) setInlineMovementItem(null);
+        }}
+        item={inlineMovementItem}
+        movementType={inlineMovementType}
+        activeStockId={resolvedStockId}
       />
 
       {/* Confirmação de exclusão */}

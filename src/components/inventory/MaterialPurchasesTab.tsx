@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ShoppingCart, Plus, Search, Users, Pencil, Trash2, CheckCheck, XCircle, RotateCcw,
+  ShoppingCart, Plus, Search, Users, Pencil, Trash2, CheckCheck, XCircle, RotateCcw, AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,8 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { fuzzyIncludes } from '@/lib/utils';
-import { formatBRL } from '@/utils/currency';
 import { useCompras, type CompraListRow, type CompraStatus } from '@/hooks/useCompras';
+import { useLowStock } from '@/hooks/useLowStock';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { SuppliersDialog } from './SuppliersDialog';
@@ -34,15 +34,18 @@ const STATUS_VARIANT: Record<string, 'info' | 'success' | 'destructive'> = {
 // Ordem fixa para o filtro de status.
 const STATUS_FILTER_KEYS: CompraStatus[] = ['aberta', 'concluida', 'cancelada'];
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale === 'pt-br' ? 'pt-BR' : locale, { timeZone: 'America/Sao_Paulo' });
 }
 
 export function MaterialPurchasesTab() {
   const isMobile = useIsMobile();
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchases;
+  const formatCurrency = (v: number) =>
+    new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale, { style: 'currency', currency: currency || 'BRL' }).format(v);
   const { compras, isLoading, setStatus, deleteCompra } = useCompras();
+  const { lowStockRows } = useLowStock();
 
   const [search, setSearch] = useState('');
   // Filtro de status multi-seleção. Vazio = mostra todas (régua do projeto).
@@ -156,11 +159,30 @@ export function MaterialPurchasesTab() {
 
   return (
     <div className="space-y-4">
-      {/* Título da aba (só na lista; o detalhe usa o nome da compra). Mesmo
+      {/* Título da aba (só na lista; o detalhe usa o nome da requisição). Mesmo
           estilo dos títulos das outras abas do Estoque. */}
       <h2 className="text-lg sm:text-xl font-semibold text-foreground">
         {t.title}
       </h2>
+
+      {/* Alerta de materiais abaixo do mínimo */}
+      {lowStockRows.length > 0 && (
+        <button
+          type="button"
+          className="flex w-full items-center gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-left transition-colors hover:bg-destructive/15"
+          onClick={openNew}
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+          <span className="flex-1 text-sm text-destructive">
+            {lowStockRows.length === 1
+              ? t.lowStockAlert.singular.replace('{count}', String(lowStockRows.length))
+              : t.lowStockAlert.plural.replace('{count}', String(lowStockRows.length))}
+          </span>
+          <span className="shrink-0 text-xs font-medium text-destructive underline-offset-2 hover:underline">
+            {t.lowStockAlert.action}
+          </span>
+        </button>
+      )}
 
       {/* Cabeçalho de ações */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -250,7 +272,7 @@ export function MaterialPurchasesTab() {
                     {/* Linha secundária: data + nº de cotações + fornecedor aceito */}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(c.created_at)} • {c.cotacao_count === 1
+                        {formatDate(c.created_at, locale)} • {c.cotacao_count === 1
                           ? t.card.quotes.replace('{count}', String(c.cotacao_count))
                           : t.card.quotesPlural.replace('{count}', String(c.cotacao_count))}
                       </p>
@@ -265,7 +287,7 @@ export function MaterialPurchasesTab() {
                     {c.lowest_total != null && (
                       <p className="text-sm">
                         <span className="text-muted-foreground">{t.card.lowestQuote}</span>
-                        <span className="font-semibold text-success">R$ {formatBRL(c.lowest_total)}</span>
+                        <span className="font-semibold text-success">{formatCurrency(c.lowest_total)}</span>
                       </p>
                     )}
                   </button>

@@ -9,6 +9,15 @@ export type InventoryItemInsert = TablesInsert<'inventory'>;
 export type InventoryItemUpdate = TablesUpdate<'inventory'>;
 export type InventoryStockLevel = Tables<'inventory_stock_levels'>;
 
+export interface InlineMovementParams {
+  inventoryId: string;
+  stockId: string;
+  movementType: 'entrada' | 'saida' | 'ajuste';
+  /** Quantidade POSITIVA (o sinal é aplicado internamente com base no tipo). */
+  quantity: number;
+  notes?: string;
+}
+
 export function useInventory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -52,6 +61,90 @@ export function useInventory() {
     );
     return level?.quantity ?? 0;
   };
+
+  /**
+   * Retorna o estoque mínimo de um material em um estoque específico.
+   * Retorna null quando não há level cadastrado ou min_quantity não definido.
+   */
+  const getMinQuantityForStock = (inventoryId: string, stockId: string | null | undefined): number | null => {
+    if (!stockId) return null;
+    const level = stockLevels.find(
+      (l) => l.inventory_id === inventoryId && l.stock_id === stockId,
+    );
+    return level?.min_quantity ?? null;
+  };
+
+  /**
+   * Atualiza o min_quantity em inventory_stock_levels para um par (item, estoque).
+   * Tenta UPDATE primeiro (nivel já existe); se nenhuma linha foi afetada, faz
+   * INSERT buscando company_id do perfil do usuário atual.
+   */
+  const updateStockLevelMinQuantity = useMutation({
+    mutationFn: async ({ inventoryId, stockId, minQuantity }: { inventoryId: string; stockId: string; minQuantity: number | null }) => {
+      // Tenta UPDATE no nível existente (company_id já está na linha)
+      const { error: updateErr, data: updatedRows } = await supabase
+        .from('inventory_stock_levels')
+        .update({ min_quantity: minQuantity })
+        .match({ inventory_id: inventoryId, stock_id: stockId })
+        .select('id');
+      if (updateErr) throw updateErr;
+
+      // Se nenhuma linha foi atualizada, o level ainda não existe: cria com quantity=0
+      if (!updatedRows || updatedRows.length === 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .single();
+        if (!profileData?.company_id) return;
+        const { error: insertErr } = await supabase
+          .from('inventory_stock_levels')
+          .insert({
+            inventory_id: inventoryId,
+            stock_id: stockId,
+            min_quantity: minQuantity,
+            quantity: 0,
+            company_id: profileData.company_id,
+          });
+        if (insertErr) throw insertErr;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+    },
+    onError: (error) => {
+      toast({ title: 'Erro ao atualizar mínimo', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+
+  /**
+   * Registra um movimento inline de entrada ou saída no estoque.
+   * Chama a RPC register_inventory_movement com o p_stock_id correto.
+   */
+  const registerInlineMovement = useMutation({
+    mutationFn: async ({ inventoryId, stockId, movementType, quantity, notes }: InlineMovementParams) => {
+      // Sinal: entrada = positivo, saida = negativo, ajuste = como vier (positivo significa adição)
+      const signedQty = movementType === 'saida' ? -Math.abs(quantity) : Math.abs(quantity);
+      const { error } = await supabase.rpc('register_inventory_movement', {
+        p_inventory_id: inventoryId,
+        p_movement_type: movementType,
+        p_quantity: signedQty,
+        p_notes: notes ?? null,
+        p_stock_id: stockId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    },
+    onError: (error) => {
+      toast({ title: 'Erro ao registrar movimentação', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
 
   const createItem = useMutation({
     mutationFn: async (item: InventoryItemInsert) => {
@@ -187,6 +280,9 @@ export function useInventory() {
     updateItem,
     deleteItem,
     getQuantityForStock,
+    getMinQuantityForStock,
+    updateStockLevelMinQuantity,
+    registerInlineMovement,
     stats: {
       totalItems,
       lowStockItems: lowStockItems.length,

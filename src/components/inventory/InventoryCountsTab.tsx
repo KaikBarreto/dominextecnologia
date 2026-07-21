@@ -65,7 +65,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === 'cancelado') {
     return (
-      <Badge className="bg-muted-foreground text-white gap-1">
+      <Badge variant="muted" className="gap-1">
         <Ban className="h-3 w-3" />
         {t.statusLabel.cancelado}
       </Badge>
@@ -256,7 +256,7 @@ export function InventoryCountsTab() {
                         <ClipboardList className="h-5 w-5 text-primary" />
                       </div>
                     }
-                    title={`${t.countNumberLabel} #${count.numero ?? '—'}`}
+                    title={`${t.countNumberLabel} #${count.numero ?? '-'}`}
                     subtitle={formatDate(count.created_at, locale)}
                     trailing={<StatusBadge status={count.status} />}
                   />
@@ -304,7 +304,7 @@ export function InventoryCountsTab() {
                     {counts.map((count) => (
                       <TableRow key={count.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(count)}>
                         <TableCell className="font-medium">
-                          #{count.numero ?? '—'}
+                          #{count.numero ?? '-'}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={count.status} />
@@ -313,7 +313,7 @@ export function InventoryCountsTab() {
                           {formatDate(count.created_at, locale)}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
-                          {count.notes ?? '—'}
+                          {count.notes ?? '-'}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1">

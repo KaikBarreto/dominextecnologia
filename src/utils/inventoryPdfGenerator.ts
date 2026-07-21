@@ -26,9 +26,19 @@ export interface InventoryReportRow {
   sku: string | null;
   category: string | null;
   quantity: number | null;
+  /** Estoque mínimo definido para este item no local exportado. */
+  min_quantity?: number | null;
   unit: string | null;
   cost_price: number | null;
   sale_price: number | null;
+}
+
+/**
+ * Retorna true quando a linha deve ser destacada (abaixo do mínimo).
+ */
+function isBelowMin(row: InventoryReportRow): boolean {
+  if (row.min_quantity == null) return false;
+  return (row.quantity ?? 0) < row.min_quantity;
 }
 
 interface InventoryPdfData {
@@ -41,6 +51,8 @@ interface InventoryPdfData {
   locale: LocaleCode;
   /** Código ISO 4217 da moeda da empresa (ex.: 'BRL', 'USD'). */
   currency: string;
+  /** Nome do local de estoque exportado (opcional, aparece no subtítulo). */
+  stockName?: string | null;
 }
 
 function buildFormatters(locale: LocaleCode, currency: string) {
@@ -113,7 +125,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const MARGIN = 14; // mm
 
 export async function generateInventoryReportPdf(data: InventoryPdfData): Promise<void> {
-  const { company, whiteLabel, title, rows, locale, currency } = data;
+  const { company, whiteLabel, title, rows, locale, currency, stockName } = data;
   const tr = MESSAGES[locale].app.inventory.report;
   const { formatCurrency, formatNum } = buildFormatters(locale, currency);
 
@@ -207,8 +219,9 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
   const registros = count !== 1
     ? tr.itemCountPlural.replace('{count}', String(count))
     : tr.itemCount.replace('{count}', String(count));
+  const stockLabel = stockName ? `  |  ${tr.stockLabel ?? 'Local'}: ${stockName}` : '';
   doc.text(
-    `${registros}  |  ${tr.generatedAt} ${formatGeneratedAt(locale)}`,
+    `${registros}${stockLabel}  |  ${tr.generatedAt} ${formatGeneratedAt(locale)}`,
     pageWidth / 2,
     y,
     { align: 'center' },
@@ -232,44 +245,73 @@ export async function generateInventoryReportPdf(data: InventoryPdfData): Promis
   y += cardHeight + 6;
 
   // ===== Tabela paginada (autoTable repete o head em cada página A4) =====
+  const hasMinQty = rows.some((r) => r.min_quantity != null);
+
   const body = rows.map((r) => {
     const qty = r.quantity || 0;
     const valorTotal = qty * (r.cost_price || 0);
-    return [
+    const belowMin = isBelowMin(r);
+    const rowData: (string | { content: string; styles?: Record<string, unknown> })[] = [
       r.name || '—',
       r.sku || '—',
       r.category || '—',
       formatNum(qty),
       r.unit || '—',
+      ...(hasMinQty ? [r.min_quantity != null ? formatNum(r.min_quantity) : '—'] : []),
       r.cost_price != null ? formatCurrency(r.cost_price) : '—',
       r.sale_price != null ? formatCurrency(r.sale_price) : '—',
       formatCurrency(valorTotal),
     ];
+    // Destaque vermelho nas linhas abaixo do mínimo
+    if (belowMin) {
+      return rowData.map((cell) => ({
+        content: typeof cell === 'string' ? cell : cell,
+        styles: { textColor: [185, 28, 28] as [number, number, number] },
+      }));
+    }
+    return rowData;
   });
+
+  const headRow = [
+    tr.colName,
+    tr.colSku,
+    tr.colCategory,
+    tr.colQty,
+    tr.colUnit,
+    ...(hasMinQty ? [tr.colMinQty ?? 'Mín.'] : []),
+    tr.colCostUnit,
+    tr.colSaleUnit,
+    tr.colTotal,
+  ];
+
+  const footCols = hasMinQty ? 8 : 7;
+  const emptyRow: string[] = new Array(headRow.length).fill('');
+  emptyRow[headRow.length - 1] = tr.noItems;
 
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN, bottom: 18 },
-    head: [[
-      tr.colName,
-      tr.colSku,
-      tr.colCategory,
-      tr.colQty,
-      tr.colUnit,
-      tr.colCostUnit,
-      tr.colSaleUnit,
-      tr.colTotal,
-    ]],
-    body: body.length > 0 ? body : [['', '', '', '', '', '', '', tr.noItems]],
+    head: [headRow],
+    body: body.length > 0 ? (body as Parameters<typeof autoTable>[1]['body']) : [emptyRow],
     foot: body.length > 0
-      ? [['', '', '', '', '', '', tr.footerGrandTotal, formatCurrency(totalEstoque)]]
+      ? [new Array(footCols).fill('').concat([tr.footerGrandTotal, formatCurrency(totalEstoque)])]
       : undefined,
     theme: 'striped',
     styles: { fontSize: 8, cellPadding: 2, valign: 'middle', overflow: 'linebreak' },
     headStyles: { fillColor: [31, 41, 55], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
     footStyles: { fillColor: [240, 240, 240], textColor: [17, 24, 39], fontStyle: 'bold', fontSize: 8 },
     alternateRowStyles: { fillColor: [250, 250, 250] },
-    columnStyles: {
+    columnStyles: hasMinQty ? {
+      0: { cellWidth: 'auto' },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 14, halign: 'right' },
+      4: { cellWidth: 10, halign: 'center' },
+      5: { cellWidth: 14, halign: 'right' },
+      6: { cellWidth: 20, halign: 'right' },
+      7: { cellWidth: 20, halign: 'right' },
+      8: { cellWidth: 22, halign: 'right' },
+    } : {
       0: { cellWidth: 'auto' },
       1: { cellWidth: 24 },
       2: { cellWidth: 24 },

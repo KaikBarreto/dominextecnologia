@@ -143,31 +143,34 @@ function MaterialGroupsPanel() {
   return (
     <div className="space-y-4">
       {/* Lista */}
-      <div className="space-y-1">
-        {groups.map((group) => (
-          <GroupRow
-            key={group.id}
-            group={group}
-            isEditing={editingId === group.id}
-            isDragging={draggedId === group.id}
-            isDragOver={dragOverId === group.id}
-            onEdit={() => setEditingId(group.id)}
-            onCancelEdit={() => setEditingId(null)}
-            onSaveEdit={(name, color) => {
-              updateGroup.mutate({ id: group.id, name, color }, { onSuccess: () => setEditingId(null) });
-            }}
-            onDelete={() => setDeleteId(group.id)}
-            onDragStart={(e) => handleDragStart(e, group.id)}
-            onDragEnd={handleDragEnd}
-            onDragOver={(e) => handleDragOver(e, group.id)}
-            onDrop={(e) => handleDrop(e, group.id)}
-            dragNodeRef={dragNodeRef}
-          />
-        ))}
-        {groups.length === 0 && (
-          <p className="text-sm text-muted-foreground py-4 text-center">{t.empty}</p>
-        )}
-      </div>
+      {groups.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">{t.empty}</p>
+      ) : (
+        <div className="rounded-xl border divide-y overflow-hidden">
+          {groups.map((group) => (
+            <GroupRow
+              key={group.id}
+              group={group}
+              isEditing={editingId === group.id}
+              isDragging={draggedId === group.id}
+              isDragOver={dragOverId === group.id}
+              onEdit={() => setEditingId(group.id)}
+              onCancelEdit={() => setEditingId(null)}
+              onSaveEdit={(name, color) => {
+                updateGroup.mutate({ id: group.id, name, color }, { onSuccess: () => setEditingId(null) });
+              }}
+              onDelete={() => setDeleteId(group.id)}
+              onDragStart={(e) => handleDragStart(e, group.id)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => handleDragOver(e, group.id)}
+              onDrop={(e) => handleDrop(e, group.id)}
+              dragNodeRef={dragNodeRef}
+              editLabel={t.editLabel}
+              deleteLabel={t.deleteLabel}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Criar novo grupo */}
       <div className="border-t pt-4 space-y-2">
@@ -228,6 +231,8 @@ interface GroupRowProps {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   dragNodeRef: React.MutableRefObject<HTMLDivElement | null>;
+  editLabel: string;
+  deleteLabel: string;
 }
 
 function GroupRow({
@@ -243,6 +248,8 @@ function GroupRow({
   onDragEnd,
   onDragOver,
   onDrop,
+  editLabel,
+  deleteLabel,
 }: GroupRowProps) {
   const [name, setName] = useState(group.name);
   const [color, setColor] = useState(group.color ?? '#6B7280');
@@ -284,9 +291,9 @@ function GroupRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={cn(
-        'flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors select-none',
+        'flex items-center gap-2 px-2 py-1.5 transition-colors select-none',
         isDragging && 'opacity-40',
-        isDragOver && 'border-primary bg-primary/5',
+        isDragOver && 'bg-primary/5',
       )}
     >
       <div className="cursor-grab text-muted-foreground">
@@ -299,8 +306,8 @@ function GroupRow({
       <span className="flex-1 text-sm truncate">{group.name}</span>
       <RowActionsMenu
         actions={[
-          { label: 'Editar', icon: Pencil, variant: 'edit', onClick: onEdit },
-          { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: onDelete },
+          { label: editLabel, icon: Pencil, variant: 'edit', onClick: onEdit },
+          { label: deleteLabel, icon: Trash2, variant: 'delete', onClick: onDelete },
         ]}
       />
     </div>
@@ -333,25 +340,26 @@ function StocksPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        {stocks.map((stock) => (
-          <StockRow
-            key={stock.id}
-            stock={stock}
-            isEditing={editingId === stock.id}
-            onEdit={() => setEditingId(stock.id)}
-            onCancelEdit={() => setEditingId(null)}
-            onSaveEdit={(name) => {
-              renameStock.mutate({ id: stock.id, name }, { onSuccess: () => setEditingId(null) });
-            }}
-            onDelete={() => setDeleteId(stock.id)}
-            onSetDefault={() => setDefaultStock.mutate(stock.id)}
-          />
-        ))}
-        {stocks.length === 0 && (
-          <p className="text-sm text-muted-foreground py-4 text-center">{t.empty}</p>
-        )}
-      </div>
+      {stocks.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">{t.empty}</p>
+      ) : (
+        <div className="rounded-xl border divide-y overflow-hidden">
+          {stocks.map((stock) => (
+            <StockRow
+              key={stock.id}
+              stock={stock}
+              isEditing={editingId === stock.id}
+              onEdit={() => setEditingId(stock.id)}
+              onCancelEdit={() => setEditingId(null)}
+              onSaveEdit={(name) => {
+                renameStock.mutate({ id: stock.id, name }, { onSuccess: () => setEditingId(null) });
+              }}
+              onDelete={() => setDeleteId(stock.id)}
+              onSetDefault={() => setDefaultStock.mutate(stock.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Criar novo depósito */}
       <div className="border-t pt-4 space-y-2">
@@ -443,7 +451,7 @@ function StockRow({ stock, isEditing, onEdit, onCancelEdit, onSaveEdit, onDelete
   }
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border">
+    <div className="flex items-center gap-2 px-2 py-1.5">
       <Warehouse className="h-4 w-4 text-muted-foreground shrink-0" />
       <span className="flex-1 text-sm truncate">{stock.name}</span>
       {stock.is_default && (

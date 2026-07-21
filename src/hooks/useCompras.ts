@@ -158,10 +158,10 @@ export function useCompras() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
-      toast({ title: 'Compra criada!' });
+      toast({ title: 'Requisição criada!' });
     },
     onError: (error) => {
-      toast({ title: 'Erro ao criar compra', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Erro ao criar requisição', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -189,10 +189,10 @@ export function useCompras() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
       queryClient.invalidateQueries({ queryKey: ['compra-cotacoes'] });
-      toast({ title: 'Compra atualizada!' });
+      toast({ title: 'Requisição atualizada!' });
     },
     onError: (error) => {
-      toast({ title: 'Erro ao atualizar compra', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Erro ao atualizar requisição', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -206,9 +206,9 @@ export function useCompras() {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
       const labels: Record<CompraStatus, string> = {
-        aberta: 'Compra reaberta.',
-        concluida: 'Compra concluída.',
-        cancelada: 'Compra cancelada.',
+        aberta: 'Requisição reaberta.',
+        concluida: 'Requisição concluída.',
+        cancelada: 'Requisição cancelada.',
       };
       toast({ title: labels[res.status] });
     },
@@ -225,10 +225,10 @@ export function useCompras() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
-      toast({ title: 'Compra excluída.' });
+      toast({ title: 'Requisição excluída.' });
     },
     onError: (error) => {
-      toast({ title: 'Erro ao excluir compra', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Erro ao excluir requisição', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

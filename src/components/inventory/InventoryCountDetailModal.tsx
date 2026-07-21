@@ -34,6 +34,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { useInventoryCounts, type InventoryCount, type CountItemWithDetails, type InventoryCountDivergence } from '@/hooks/useInventoryCounts';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -349,9 +350,11 @@ export function InventoryCountDetailModal({
               {activeTab === 'divergences' && (
                 <div className="overflow-x-auto">
                   {divergences.length === 0 ? (
-                    <div className="py-8 text-center text-muted-foreground text-sm">
-                      {t.empty.noDivergences}
-                    </div>
+                    <EmptyState
+                      size="compact"
+                      icon={<CheckCircle2 className="h-10 w-10 text-success" />}
+                      title={t.empty.noDivergences}
+                    />
                   ) : (
                     <Table>
                       <TableHeader>

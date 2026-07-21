@@ -8218,6 +8218,37 @@ export type Database = {
           },
         ]
       }
+      inventory_low_stock: {
+        Row: {
+          company_id: string | null
+          cost_price: number | null
+          deficit: number | null
+          inventory_id: string | null
+          material_name: string | null
+          material_sku: string | null
+          min_quantity: number | null
+          quantity: number | null
+          stock_id: string | null
+          stock_name: string | null
+          unit: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_stock_levels_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_stock_levels_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salespeople_basic: {
         Row: {
           email: string | null

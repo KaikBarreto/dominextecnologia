@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.13',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Estoque mínimo com alerta e aviso',
+        description: 'Agora cada material pode ter uma quantidade mínima em cada local de estoque. Quando o saldo fica abaixo do mínimo, o material ganha um alerta vermelho na lista com a explicação ao passar o mouse, você recebe um aviso no sino e pode filtrar de uma vez tudo que está em falta. Nos relatórios em PDF e Excel os itens abaixo do mínimo saem destacados, com a coluna de mínimo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Entrada e saída de material em um toque',
+        description: 'Direto na lista do estoque, cada material passou a ter as opções de registrar entrada e registrar saída. O movimento entra sozinho no histórico do material.',
+        category: 'recurso',
+      },
+      {
+        title: 'Requisição de compra puxando o que falta',
+        description: 'A compra de material agora se chama requisição de compra e consegue puxar de uma vez os materiais que estão abaixo do mínimo, já sugerindo a quantidade a repor. No momento de escolher o material, os itens em falta aparecem sinalizados.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.12',
     date: '21 de julho de 2026',
     type: 'patch',

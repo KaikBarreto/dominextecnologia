@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import type { InventoryItem } from '@/hooks/useInventory';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import type { InventoryReportRow } from '@/utils/inventoryPdfGenerator';
 
 export type ExportFormat = 'pdf' | 'excel';
 
@@ -161,3 +162,6 @@ export function InventoryExportDialog({
     </ResponsiveModal>
   );
 }
+
+// Re-export para compatibilidade com chamadores existentes
+export type { InventoryReportRow };

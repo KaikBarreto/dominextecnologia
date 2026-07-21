@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Wand2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
+import { useStocks } from '@/hooks/useStocks';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -23,7 +24,8 @@ interface InventoryFormDialogProps {
 export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.formDialog;
-  const { createItem, updateItem } = useInventory();
+  const { createItem, updateItem, getMinQuantityForStock, updateStockLevelMinQuantity } = useInventory();
+  const { stocks } = useStocks();
   const { groups } = useMaterialGroups();
   const isEditing = !!item;
 
@@ -31,6 +33,9 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '',
   });
   const [isSkuGenerating, setIsSkuGenerating] = useState(false);
+
+  // Estado de mínimo por estoque: { [stockId]: string (raw numeric) }
+  const [stockMinQtyMap, setStockMinQtyMap] = useState<Record<string, string>>({});
 
   const getNextSequentialSku = async (): Promise<string> => {
     const { data, error } = await supabase.from('inventory').select('sku, created_at').ilike('sku', 'EST-%').order('created_at', { ascending: false }).limit(200);
@@ -50,14 +55,32 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     finally { setIsSkuGenerating(false); }
   };
 
+  // Inicializa o mapa de mínimos por estoque (edição: lê do hook; criação: vazio)
+  const initStockMinMap = useCallback(() => {
+    if (item) {
+      const map: Record<string, string> = {};
+      for (const s of stocks) {
+        const min = getMinQuantityForStock(item.id, s.id);
+        map[s.id] = min != null ? String(min) : '';
+      }
+      setStockMinQtyMap(map);
+    } else {
+      const map: Record<string, string> = {};
+      for (const s of stocks) { map[s.id] = ''; }
+      setStockMinQtyMap(map);
+    }
+  }, [item, stocks, getMinQuantityForStock]);
+
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       if (item) {
         setFormData({ name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null, description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier: item.supplier || '' });
+        initStockMinMap();
         return;
       }
       setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier: '' });
+      initStockMinMap();
       if (!open) return;
       try {
         setIsSkuGenerating(true);
@@ -70,20 +93,48 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     return () => { cancelled = true; };
   }, [item, open]);
 
+  // Quando stocks carregar (assíncrono), re-inicializa o mapa
+  useEffect(() => {
+    if (open) initStockMinMap();
+  }, [stocks.length, open]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let savedItemId: string | null = null;
+
     if (isEditing && item) {
-      // Passa a quantidade ANTERIOR pro hook: se a quantidade mudou, ele converte
-      // a diferença num movimento 'ajuste' (Kardex) em vez de gravar direto.
       await updateItem.mutateAsync({ id: item.id, ...formData, previousQuantity: item.quantity });
+      savedItemId = item.id;
+    } else {
+      const created = await createItem.mutateAsync(formData as InventoryItemInsert);
+      savedItemId = created?.id ?? null;
     }
-    else { await createItem.mutateAsync(formData as InventoryItemInsert); }
+
+    // Grava min_quantity por estoque (somente locais que têm valor informado)
+    if (savedItemId) {
+      for (const s of stocks) {
+        const rawMin = stockMinQtyMap[s.id] ?? '';
+        const minVal = rawMin.trim() === '' ? null : (parseFloat(rawMin.replace(',', '.')) || 0);
+        // Só atualiza se mudou (na edição) ou se há valor (na criação)
+        if (isEditing) {
+          const prevMin = getMinQuantityForStock(savedItemId, s.id);
+          if (minVal !== prevMin) {
+            await updateStockLevelMinQuantity.mutateAsync({ inventoryId: savedItemId, stockId: s.id, minQuantity: minVal });
+          }
+        } else if (minVal !== null) {
+          await updateStockLevelMinQuantity.mutateAsync({ inventoryId: savedItemId, stockId: s.id, minQuantity: minVal });
+        }
+      }
+    }
+
     onOpenChange(false);
   };
 
   const handleChange = (field: keyof InventoryItemInsert, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const isPending = createItem.isPending || updateItem.isPending || updateStockLevelMinQuantity.isPending;
 
   return (
     <ResponsiveModal
@@ -93,9 +144,9 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
       className="sm:max-w-[600px]"
       footer={
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">{t.cancel}</Button>
-          <Button onClick={handleSubmit as any} disabled={createItem.isPending || updateItem.isPending} className="flex-1">
-            {createItem.isPending || updateItem.isPending ? t.saving : t.save}
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isPending}>{t.cancel}</Button>
+          <Button onClick={handleSubmit as any} disabled={isPending} className="flex-1">
+            {isPending ? t.saving : t.save}
           </Button>
         </div>
       }
@@ -184,6 +235,39 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
             <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
           </div>
         </div>
+
+        {/* Mínimo por local de estoque */}
+        {stocks.length > 0 && (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm font-semibold">{t.fields.minQtyPerStockLabel}</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">{t.fields.minQtyPerStockHint}</p>
+            </div>
+            <div className="rounded-xl border divide-y">
+              {stocks.map((s) => (
+                <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{s.name}</p>
+                    {s.is_default && (
+                      <p className="text-xs text-muted-foreground">{t.fields.minQtyDefaultBadge}</p>
+                    )}
+                  </div>
+                  <div className="w-28 shrink-0">
+                    <NumericInput
+                      decimal
+                      value={stockMinQtyMap[s.id] ?? ''}
+                      onValueChange={(v) =>
+                        setStockMinQtyMap((prev) => ({ ...prev, [s.id]: v }))
+                      }
+                      placeholder={t.fields.minQtyPlaceholder}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </form>
     </ResponsiveModal>
   );
