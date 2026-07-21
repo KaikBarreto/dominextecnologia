@@ -4039,6 +4039,168 @@ export type Database = {
           },
         ]
       }
+      inventory_count_items: {
+        Row: {
+          company_id: string
+          count_id: string
+          counted_qty: number | null
+          created_at: string
+          diff: number | null
+          expected_qty: number
+          id: string
+          inventory_id: string
+          stock_id: string
+          unit_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          count_id: string
+          counted_qty?: number | null
+          created_at?: string
+          diff?: number | null
+          expected_qty: number
+          id?: string
+          inventory_id: string
+          stock_id: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          count_id?: string
+          counted_qty?: number | null
+          created_at?: string
+          diff?: number | null
+          expected_qty?: number
+          id?: string
+          inventory_id?: string
+          stock_id?: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_count_items_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_count_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_count_items_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_count_number_counters: {
+        Row: {
+          company_id: string
+          next_value: number
+        }
+        Insert: {
+          company_id: string
+          next_value?: number
+        }
+        Update: {
+          company_id?: string
+          next_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_count_number_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_count_stocks: {
+        Row: {
+          company_id: string
+          count_id: string
+          created_at: string
+          id: string
+          stock_id: string
+        }
+        Insert: {
+          company_id: string
+          count_id: string
+          created_at?: string
+          id?: string
+          stock_id: string
+        }
+        Update: {
+          company_id?: string
+          count_id?: string
+          created_at?: string
+          id?: string
+          stock_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_count_stocks_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_count_stocks_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_counts: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          finalized_at: string | null
+          id: string
+          notes: string | null
+          numero: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          finalized_at?: string | null
+          id?: string
+          notes?: string | null
+          numero?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          finalized_at?: string | null
+          id?: string
+          notes?: string | null
+          numero?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           client_request_id: string | null
@@ -8013,6 +8175,49 @@ export type Database = {
           },
         ]
       }
+      inventory_count_divergences: {
+        Row: {
+          company_id: string | null
+          count_id: string | null
+          count_numero: number | null
+          count_status: string | null
+          counted_qty: number | null
+          diff: number | null
+          diff_value: number | null
+          expected_qty: number | null
+          inventory_id: string | null
+          item_id: string | null
+          material_name: string | null
+          material_sku: string | null
+          material_unit: string | null
+          stock_id: string | null
+          stock_name: string | null
+          unit_cost: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_count_items_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_count_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_count_items_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salespeople_basic: {
         Row: {
           email: string | null
@@ -8108,6 +8313,10 @@ export type Database = {
       ensure_pmoc_norm_templates: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      finalize_inventory_count: {
+        Args: { p_count_id: string; p_notes?: string }
+        Returns: Json
       }
       fisqal_next_dps_number: {
         Args: { p_company_id: string }
@@ -8256,6 +8465,22 @@ export type Database = {
         }
       }
       get_rating_with_os_by_token: { Args: { p_token: string }; Returns: Json }
+      get_stock_balance_at_date: {
+        Args: { p_at: string; p_stock_ids?: string[] }
+        Returns: {
+          cost_price: number
+          inventory_id: string
+          name: string
+          projecao: number
+          saldo: number
+          sale_price: number
+          sku: string
+          stock_id: string
+          stock_name: string
+          unit: string
+          valor: number
+        }[]
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }
       has_admin_permission: {
@@ -8292,6 +8517,10 @@ export type Database = {
       next_equipment_identifier: {
         Args: { p_company_id: string }
         Returns: string
+      }
+      next_inventory_count_numero: {
+        Args: { p_company_id: string }
+        Returns: number
       }
       nfse_can_emit: { Args: { p_company_id: string }; Returns: Json }
       nfse_month_usage: { Args: { p_company_id: string }; Returns: number }

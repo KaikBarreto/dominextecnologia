@@ -22,6 +22,8 @@ import {
   ArrowRightLeft,
   Settings,
   Star,
+  ClipboardList,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,6 +78,8 @@ import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSi
 import { InventoryKardexTab } from '@/components/inventory/InventoryKardexTab';
 import { MaterialPurchasesTab } from '@/components/inventory/MaterialPurchasesTab';
 import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
+import { InventoryCountsTab } from '@/components/inventory/InventoryCountsTab';
+import { StockPositionTab } from '@/components/inventory/StockPositionTab';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
@@ -326,6 +330,8 @@ export default function Inventory() {
     { value: 'estoque', label: t.tabs.current, icon: Boxes },
     { value: 'historico', label: t.tabs.kardex, icon: History },
     { value: 'compras', label: t.tabs.purchases, icon: ShoppingCart },
+    { value: 'inventarios', label: t.tabs.inventories, icon: ClipboardList },
+    { value: 'posicao', label: t.tabs.position, icon: BarChart3 },
   ];
 
   // Subabas dos depósitos dentro da aba Estoque Atual
@@ -362,7 +368,7 @@ export default function Inventory() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       >
-        {activeTab !== 'compras' && (
+        {activeTab !== 'compras' && activeTab !== 'inventarios' && activeTab !== 'posicao' && (
           <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
             {inventoryTabs.find((tab) => tab.value === activeTab)?.label}
           </h2>
@@ -730,6 +736,12 @@ export default function Inventory() {
 
         {/* ===================== ABA: COMPRAS DE MATERIAL ===================== */}
         {activeTab === 'compras' && <MaterialPurchasesTab />}
+
+        {/* ===================== ABA: INVENTÁRIOS ===================== */}
+        {activeTab === 'inventarios' && <InventoryCountsTab />}
+
+        {/* ===================== ABA: POSIÇÃO DE ESTOQUE ===================== */}
+        {activeTab === 'posicao' && <StockPositionTab />}
       </SettingsSidebarLayout>
 
       {/* FAB mobile-only (só na aba de estoque) */}

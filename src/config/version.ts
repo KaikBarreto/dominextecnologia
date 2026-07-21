@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.11";
+export const APP_VERSION = "1.17.12";
 
-export const VERSION_NOTES = "Agora você pode ter mais de um estoque na empresa, cada um com suas próprias quantidades, transferir material entre eles e criar seus próprios grupos de material pelo botão de Configurações do Estoque.";
+export const VERSION_NOTES = "Agora você faz o inventário do estoque com contagem por local, relatório de divergências e ajuste automático no histórico, e tem uma nova tela de posição de estoque para ver a foto do seu saldo em qualquer data, tudo exportável em PDF e Excel.";

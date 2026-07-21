@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.12',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Inventário com contagem e divergências',
+        description: 'Agora você faz o inventário do estoque de ponta a ponta, escolhe os locais e os materiais que entram, informa a quantidade contada de cada um e o sistema mostra na hora as diferenças entre o que estava registrado e o que você contou. Ao finalizar, o ajuste é aplicado sozinho e fica no histórico. Cada inventário fica salvo e sai em PDF e Excel com o relatório de divergências.',
+        category: 'recurso',
+      },
+      {
+        title: 'Posição de estoque em qualquer data',
+        description: 'Uma nova tela mostra a foto do seu estoque na data e hora que você escolher, com saldo, valor e projeção de venda por local. Dá para filtrar por local e exportar em PDF e Excel.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.11',
     date: '21 de julho de 2026',
     type: 'patch',
