@@ -20,6 +20,11 @@ interface InventoryExportDialogProps {
   items: InventoryItem[];
   /** Recebe os itens marcados pra gerar o relatório. */
   onConfirm: (selected: InventoryItem[]) => void;
+  /** Local de estoque ativo (resolvedStockId). Quando informado, o badge exibe a
+   *  quantidade desse local em vez da soma global. */
+  activeStockId?: string | null;
+  /** Resolver de quantidade por item/local — vem do hook useInventory. */
+  getQuantityForStock?: (itemId: string, stockId: string) => number;
 }
 
 export function InventoryExportDialog({
@@ -28,6 +33,8 @@ export function InventoryExportDialog({
   format,
   items,
   onConfirm,
+  activeStockId,
+  getQuantityForStock,
 }: InventoryExportDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.exportDialog;
@@ -151,7 +158,10 @@ export function InventoryExportDialog({
                     )}
                   </div>
                   <Badge variant="secondary" className="shrink-0 text-[11px]">
-                    {item.quantity ?? 0} {item.unit || 'un'}
+                    {activeStockId && getQuantityForStock
+                      ? getQuantityForStock(item.id, activeStockId)
+                      : (item.quantity ?? 0)}{' '}
+                    {item.unit || 'un'}
                   </Badge>
                 </label>
               );

@@ -409,8 +409,8 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
                     {scopeMode === 'all'
                       ? t.scopeAll
                       : scopeMode === 'groups'
-                      ? `${selectedGroups.length} ${t.confirmGroupCount}`
-                      : `${selectedItems.length} ${t.confirmItemCount}`}
+                      ? `${selectedGroups.length} ${selectedGroups.length === 1 ? t.confirmGroupCountOne : t.confirmGroupCount}`
+                      : `${selectedItems.length} ${selectedItems.length === 1 ? t.confirmItemCountOne : t.confirmItemCount}`}
                   </span>
                 </p>
               </div>

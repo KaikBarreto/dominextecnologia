@@ -894,6 +894,8 @@ export default function Inventory() {
         format={exportFormat}
         items={items}
         onConfirm={handleExportConfirm}
+        activeStockId={resolvedStockId}
+        getQuantityForStock={getQuantityForStock}
       />
 
       {/* Movimentação inline (entrada/saída) */}

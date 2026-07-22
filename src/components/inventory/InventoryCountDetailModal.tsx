@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,6 +80,48 @@ export function InventoryCountDetailModal({
 
   const isEditable = count?.status === 'aberto';
 
+  // Divergências otimistas: calculadas a partir dos items já carregados,
+  // aplicando os editingValues locais. Evita piscar "0" ao trocar de aba
+  // antes do refetch do servidor chegar.
+  const optimisticDivergences = useMemo<InventoryCountDivergence[]>(() => {
+    return items
+      .map((item) => {
+        // Aplica o valor em edição local se existir
+        const rawEditing = item.id in editingValues ? editingValues[item.id] : undefined;
+        const effectiveCounted =
+          rawEditing !== undefined
+            ? (rawEditing === '' ? null : Number(rawEditing.replace(',', '.')))
+            : item.counted_qty;
+
+        if (effectiveCounted == null) return null;
+        const diff = effectiveCounted - item.expected_qty;
+        if (diff === 0) return null;
+
+        const diffValue =
+          item.unit_cost != null ? diff * item.unit_cost : null;
+
+        return {
+          item_id: item.id,
+          count_id: item.count_id,
+          company_id: item.company_id,
+          count_numero: count?.numero ?? null,
+          count_status: count?.status ?? null,
+          inventory_id: item.inventory_id,
+          stock_id: item.stock_id,
+          material_name: item.material_name,
+          material_sku: item.material_sku,
+          material_unit: item.material_unit,
+          stock_name: item.stock_name,
+          expected_qty: item.expected_qty,
+          counted_qty: effectiveCounted,
+          diff,
+          unit_cost: item.unit_cost,
+          diff_value: diffValue,
+        } as InventoryCountDivergence;
+      })
+      .filter((d): d is InventoryCountDivergence => d !== null);
+  }, [items, editingValues, count]);
+
   const getDisplayValue = (item: CountItemWithDetails): string => {
     if (item.id in editingValues) return editingValues[item.id];
     if (item.counted_qty != null) return String(item.counted_qty);
@@ -127,7 +169,7 @@ export function InventoryCountDetailModal({
     if (!count) return;
     try {
       const rows = items.map((item) => {
-        const div = divergences.find((d) => d.item_id === item.id);
+        const div = optimisticDivergences.find((d) => d.item_id === item.id);
         return {
           material_name: item.material_name,
           material_sku: item.material_sku,
@@ -157,7 +199,11 @@ export function InventoryCountDetailModal({
     }
   };
 
-  const totalDiffValue = divergences.reduce((acc, d) => acc + (d.diff_value ?? 0), 0);
+  // totalDiffValue usa as divergências otimistas para exibição em tempo real.
+  // No dialog de finalização, o servidor recalcula o valor real.
+  const totalDiffValue = optimisticDivergences.reduce((acc, d) => acc + (d.diff_value ?? 0), 0);
+  // Para o dialog de finalização, usa os dados server-side (mais precisos).
+  const serverTotalDiffValue = divergences.reduce((acc, d) => acc + (d.diff_value ?? 0), 0);
   // Usa a moeda do contexto (currency) via formatMoney — não cravar BRL.
   const formatCurrency = (v: number) => formatMoney(v, currency, locale);
 
@@ -220,10 +266,10 @@ export function InventoryCountDetailModal({
           )}
 
           {/* Mini-relatório de divergências */}
-          {divergences.length > 0 && (
+          {optimisticDivergences.length > 0 && (
             <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 space-y-2">
               <p className="text-sm font-semibold text-warning">
-                {t.divergenceReport}: {divergences.length} {divergences.length === 1 ? t.item : t.items}
+                {t.divergenceReport}: {optimisticDivergences.length} {optimisticDivergences.length === 1 ? t.item : t.items}
               </p>
               <p className="text-xs text-muted-foreground">
                 {t.totalDiffLabel}: <span className="font-semibold text-foreground">{formatCurrency(totalDiffValue)}</span>
@@ -235,7 +281,7 @@ export function InventoryCountDetailModal({
           <div className="flex gap-0 border-b">
             {([
               { key: 'items', label: t.tabItems },
-              { key: 'divergences', label: `${t.tabDivergences} (${divergences.length})` },
+              { key: 'divergences', label: `${t.tabDivergences} (${optimisticDivergences.length})` },
             ] as const).map((tab) => (
               <button
                 key={tab.key}
@@ -350,7 +396,7 @@ export function InventoryCountDetailModal({
               {/* Aba Divergências */}
               {activeTab === 'divergences' && (
                 <div className="overflow-x-auto">
-                  {divergences.length === 0 ? (
+                  {optimisticDivergences.length === 0 ? (
                     <EmptyState
                       size="compact"
                       icon={<CheckCircle2 className="h-10 w-10 text-success" />}
@@ -369,7 +415,7 @@ export function InventoryCountDetailModal({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {divergences.map((d) => {
+                        {optimisticDivergences.map((d) => {
                           const diff = d.diff ?? 0;
                           return (
                             <TableRow key={d.item_id}>
@@ -426,7 +472,7 @@ export function InventoryCountDetailModal({
                         ? t.finalizeDialog.descriptionWithDivergencesSingular
                         : t.finalizeDialog.descriptionWithDivergencesPlural,
                     )
-                    .replace('{value}', formatCurrency(totalDiffValue))
+                    .replace('{value}', formatCurrency(serverTotalDiffValue))
                 : t.finalizeDialog.descriptionNone}
             </AlertDialogDescription>
           </AlertDialogHeader>
