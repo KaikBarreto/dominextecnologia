@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.19',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Descrição em cada item do orçamento',
+        description: 'Agora cada serviço ou material do orçamento pode ter uma descrição, que aparece abaixo do nome na proposta, em texto mais leve, deixando a apresentação mais completa. Quando o serviço já tem uma descrição cadastrada, ela vem preenchida automaticamente e você pode ajustar em cada orçamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.18',
     date: '22 de julho de 2026',
     type: 'patch',

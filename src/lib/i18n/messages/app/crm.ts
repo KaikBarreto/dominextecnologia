@@ -368,6 +368,7 @@ export const crm = {
 
       serviceSelectPlaceholder: 'Selecionar tipo de serviço...',
       serviceQtyLabel: 'Qtd:',
+      itemDetailsPlaceholder: 'Descrição (opcional)',
       serviceAddButton: 'Adicionar',
       serviceNoCosts: 'Sem custos configurados',
       serviceEmpty: 'Nenhum serviço adicionado',
@@ -1246,6 +1247,7 @@ export const crm = {
 
       serviceSelectPlaceholder: 'Select service type...',
       serviceQtyLabel: 'Qty:',
+      itemDetailsPlaceholder: 'Description (optional)',
       serviceAddButton: 'Add',
       serviceNoCosts: 'No costs configured',
       serviceEmpty: 'No services added',
@@ -2088,6 +2090,7 @@ export const crm = {
 
       serviceSelectPlaceholder: 'Seleccionar tipo de servicio...',
       serviceQtyLabel: 'Cant.:',
+      itemDetailsPlaceholder: 'Descripción (opcional)',
       serviceAddButton: 'Agregar',
       serviceNoCosts: 'Sin costos configurados',
       serviceEmpty: 'Sin servicios agregados',
@@ -2930,6 +2933,7 @@ export const crm = {
 
       serviceSelectPlaceholder: 'Sélectionner le type de service...',
       serviceQtyLabel: 'Qté :',
+      itemDetailsPlaceholder: 'Description (facultatif)',
       serviceAddButton: 'Ajouter',
       serviceNoCosts: 'Sans coûts configurés',
       serviceEmpty: 'Aucun service ajouté',

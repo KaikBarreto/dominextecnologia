@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.18";
+export const APP_VERSION = "1.17.19";
 
-export const VERSION_NOTES = "Seus orçamentos ganharam um modelo novo, mais enxuto e branco, já como padrão. Agora o cliente pode aprovar o orçamento direto pelo link: a aprovação fica registrada no sistema e você recebe um aviso na hora. Também dá para informar a quantidade de cada serviço ou material, com o total calculado automaticamente.";
+export const VERSION_NOTES = "Agora cada serviço ou material do orçamento pode ter uma descrição, que aparece abaixo do nome na proposta em texto mais leve. Quando o serviço já tem uma descrição cadastrada, ela vem preenchida automaticamente e você pode ajustar do jeito que quiser.";

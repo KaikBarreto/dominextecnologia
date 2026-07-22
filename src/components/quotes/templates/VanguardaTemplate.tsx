@@ -97,6 +97,9 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
               </span>
               <div className="min-w-0">
                 <p className="font-semibold text-sm text-white/95 leading-snug">{item.description}</p>
+                {item.details && (
+                  <p className="text-xs text-white/50 mt-1 leading-snug whitespace-pre-wrap">{item.details}</p>
+                )}
                 <p className="text-xs text-white/40 mt-1">{item.quantity} un × {money(item.unit_price || 0)}</p>
               </div>
             </div>

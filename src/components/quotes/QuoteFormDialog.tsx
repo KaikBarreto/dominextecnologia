@@ -44,6 +44,7 @@ interface FormQuoteItem {
   id?: string;
   item_type: 'servico' | 'material';
   description: string;
+  details?: string | null;
   quantity: number;
   unit_total_cost: number;   // cost per unit (before BDI markup)
   unit_price: number;        // final sell price per unit
@@ -76,6 +77,7 @@ function ServiceItemsList({
   allItems,
   onUpdatePrice,
   onUpdateQty,
+  onUpdateDetails,
   onRemove,
   fmt,
   tq,
@@ -84,6 +86,7 @@ function ServiceItemsList({
   allItems: FormQuoteItem[];
   onUpdatePrice: (idx: number, price: number) => void;
   onUpdateQty: (idx: number, qty: number) => void;
+  onUpdateDetails: (idx: number, details: string) => void;
   onRemove: (idx: number) => void;
   fmt: (v: number) => string;
   tq: Messages['app']['crm']['quotes'];
@@ -125,6 +128,13 @@ function ServiceItemsList({
                         {tq.serviceNoCosts}
                       </Badge>
                     )}
+                    <Textarea
+                      value={item.details ?? ''}
+                      onChange={e => onUpdateDetails(globalIdx, e.target.value)}
+                      placeholder={tq.itemDetailsPlaceholder}
+                      rows={1}
+                      className="ml-5 mt-1 min-h-0 h-7 py-1 text-[11px] font-normal text-muted-foreground resize-y w-[calc(100%-1.25rem)]"
+                    />
                   </td>
                   <td className="p-2 text-center">
                     <Input
@@ -420,6 +430,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           id: qi.id,
           item_type: (qi.item_type as 'servico' | 'material') ?? 'servico',
           description: qi.description,
+          details: qi.details ?? '',
           quantity: Number(qi.quantity),
           unit_total_cost: Number(qi.unit_total_cost ?? 0),
           unit_price: Number(qi.unit_price),
@@ -553,6 +564,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setItems(prev => [...prev, {
       item_type: 'servico',
       description: st?.name ?? tq.serviceFallback,
+      // Prefill da descrição do catálogo (editável por orçamento depois).
+      details: st?.description ?? '',
       quantity: addSvcQty,
       unit_total_cost: unitTotalCost,
       unit_price: unitPrice,
@@ -583,6 +596,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setItems(prev => [...prev, {
       item_type: 'material',
       description: name,
+      details: '',
       quantity: addMatQty,
       unit_total_cost: isFromStock ? Number(inv?.cost_price ?? 0) : addMatManualPrice,
       unit_price: unitPrice,
@@ -629,6 +643,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     ));
   };
 
+  // ── Item details update (descrição secundária, opcional) ──
+  const updateItemDetails = (idx: number, newDetails: string) => {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, details: newDetails } : it));
+  };
+
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
 
   // ── Totals ──
@@ -673,6 +692,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       position: idx,
       item_type: it.item_type,
       description: it.description,
+      details: it.details?.trim() ? it.details.trim() : null,
       quantity: it.quantity,
       unit_price: it.unit_price,
       total_price: it.total_price,
@@ -998,7 +1018,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </div>
 
                 {serviceItems.length > 0 ? (
-                  <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onUpdateQty={updateItemQty} onRemove={removeItem} fmt={fmt} tq={tq} />
+                  <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onUpdateQty={updateItemQty} onUpdateDetails={updateItemDetails} onRemove={removeItem} fmt={fmt} tq={tq} />
                 ) : (
                   <EmptyState>{tq.serviceEmpty}</EmptyState>
                 )}
@@ -1069,7 +1089,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                           const globalIdx = items.indexOf(item);
                           return (
                             <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
-                              <td className="p-2 font-medium">{item.description}</td>
+                              <td className="p-2 font-medium align-top">
+                                <span>{item.description}</span>
+                                <Textarea
+                                  value={item.details ?? ''}
+                                  onChange={e => updateItemDetails(globalIdx, e.target.value)}
+                                  placeholder={tq.itemDetailsPlaceholder}
+                                  rows={1}
+                                  className="mt-1 min-h-0 h-7 py-1 text-[11px] font-normal text-muted-foreground resize-y w-full"
+                                />
+                              </td>
                               <td className="p-2 text-center">
                                 <Input
                                   type="number" min={1} step="1"

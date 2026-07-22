@@ -67,6 +67,11 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                 <tr key={item.id ?? i} style={{ background: i % 2 === 1 ? '#fafbfc' : '#fff' }}>
                   <td className="px-4 py-3 align-top" style={{ color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>
                     <span className="font-medium">{item.description}</span>
+                    {item.details && (
+                      <p className="text-[12px] leading-snug mt-1 whitespace-pre-wrap" style={{ color: '#64748b' }}>
+                        {item.details}
+                      </p>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums align-top whitespace-nowrap" style={{ color: '#334155', borderBottom: '1px solid #f1f5f9' }}>
                     {money(item.unit_price || 0)}

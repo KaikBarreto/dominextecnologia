@@ -5599,6 +5599,7 @@ export type Database = {
           bdi: number
           created_at: string
           description: string
+          details: string | null
           id: string
           inventory_id: string | null
           item_type: string
@@ -5621,6 +5622,7 @@ export type Database = {
           bdi?: number
           created_at?: string
           description: string
+          details?: string | null
           id?: string
           inventory_id?: string | null
           item_type?: string
@@ -5643,6 +5645,7 @@ export type Database = {
           bdi?: number
           created_at?: string
           description?: string
+          details?: string | null
           id?: string
           inventory_id?: string | null
           item_type?: string

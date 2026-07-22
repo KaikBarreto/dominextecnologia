@@ -12,6 +12,9 @@ export interface QuoteItem {
   position: number;
   item_type: string;
   description: string;
+  // Descrição secundária (parágrafo abaixo do nome na proposta). Prefilada do
+  // catálogo do tipo de serviço, mas editável por orçamento. Opcional.
+  details?: string | null;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -151,6 +154,7 @@ function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
     position: idx,
     item_type: item.item_type,
     description: item.description,
+    details: item.details ?? null,
     quantity: item.quantity,
     unit_price: item.unit_price,
     total_price: item.quantity * item.unit_price,
