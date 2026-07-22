@@ -69,6 +69,19 @@ export interface PortalUnit {
 
 export interface PortalContract {
   name: string | null;
+  /**
+   * ID do cliente vinculado ao contrato. Exposto no payload (1.10.0+) pra
+   * que o portal público possa abrir chamado na unidade sem exigir lookup
+   * adicional. Leitura defensiva — pode ser null em payloads antigos.
+   */
+  customer_id?: string | null;
+  /**
+   * ID da empresa dona do contrato. Obrigatorio no INSERT de service_orders
+   * (company_id NOT NULL, sem preenchimento automatico no anon).
+   * Exposto no payload junto de customer_id. Leitura defensiva — pode ser
+   * null em payloads antigos.
+   */
+  company_id?: string | null;
   start_date: string | null;
   /** Ex: "Mensal", "Trimestral" — já formatado pra exibição. */
   frequency_label: string;

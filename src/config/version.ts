@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.25";
+export const APP_VERSION = "1.17.26";
 
-export const VERSION_NOTES = "Agora você controla quais materiais existem em cada local de estoque. Ao cadastrar um material, escolha em quais locais ele fica (todos por padrão), e em cada local use a engrenagem para configurar os itens, inclusive adicionando um grupo inteiro de uma vez. Cada local passa a mostrar só os seus materiais.";
+export const VERSION_NOTES = "Os portais que você compartilha com seus clientes ganharam cara de aplicativo: a identidade da sua empresa no topo, navegação por seções e, no computador, um menu lateral. Ficou mais fácil abrir um chamado (botão em destaque, e no portal do contrato dá para abrir já na unidade), falar com a empresa pelo WhatsApp e avaliar um atendimento concluído.";

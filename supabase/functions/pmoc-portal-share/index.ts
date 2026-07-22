@@ -1040,6 +1040,8 @@ Deno.serve(async (req) => {
         state: customer?.state ?? null,
       },
       contract: {
+        customer_id: contract.customer_id ?? null,
+        company_id: contract.company_id ?? null,
         name: contract.name ?? null,
         start_date: contract.start_date ?? null,
         frequency_label: frequencyLabel(

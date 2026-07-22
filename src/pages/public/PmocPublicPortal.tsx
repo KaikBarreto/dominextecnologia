@@ -1,26 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ShieldCheck,
-  MapPin,
   CalendarClock,
   FileText,
-  Star,
   Loader2,
   AlertCircle,
   Wrench,
   Award,
   House,
   Download,
-  Building2,
   Lock,
   Repeat,
   ExternalLink,
   ClipboardCheck,
+  MapPin,
+  Send,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { useToast } from '@/hooks/use-toast';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { parseISO } from 'date-fns';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -36,7 +39,6 @@ import {
   type PmocCronogramaCalendarOrder,
 } from '@/components/pmoc/PmocCronogramaCalendar';
 import { OsDetailPortalModal } from '@/components/pmoc/OsDetailPortalModal';
-import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import {
   DEFAULT_HEADER_CONFIG,
   type ReportHeaderConfig,
@@ -49,6 +51,12 @@ import {
   PortalPrivateError,
 } from '@/utils/pmocPortalApi';
 import PortalUnavailable from '@/components/portal/PortalUnavailable';
+import { PublicPortalShell, type PortalNavSection } from '@/components/portal/PublicPortalShell';
+import { PortalContactButton } from '@/components/portal/PortalContactButton';
+import { idealForeground } from '@/lib/colorContrast';
+import { supabaseAnon } from '@/integrations/supabase/anonClient';
+import { getErrorMessage } from '@/utils/errorMessages';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import type {
   PortalHealthStatus,
   PortalOsStatus,
@@ -64,38 +72,33 @@ import {
   getDocumentValidityStatus,
   getValidityLabel,
 } from '@/lib/documentValidity';
-import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
 /**
  * Portal do Contrato (público) — PMOC e não-PMOC.
  *
- * Rotas: `/contrato/unidade/:token` (+ alias legado `/pmoc/unidade/:token`) — fora do auth wall, ver App.tsx.
+ * Rotas: `/contrato/unidade/:token` (+ alias legado `/pmoc/unidade/:token`) — fora do auth wall.
  *
- * Layout:
- *  - Header hero (identidade do tenant) sempre visível no topo.
+ * Layout (app-nativo via PublicPortalShell):
+ *  - Header hero branded (identidade do tenant).
  *  - Abas: Visão Geral, Cronograma, Ocorrências, Histórico (+ Documentos só PMOC).
- *  - Mobile: pills horizontais (via SettingsSidebarLayout).
- *  - Desktop: sidebar fixa esquerda.
- *  - Rodapé com info do tenant + bloco Dominex (se NÃO white-label).
+ *  - Mobile: pills horizontais rolando horizontalmente.
+ *  - Desktop: sidebar fixa esquerda (grid 3 colunas, espelha TechnicianOS).
+ *  - Rodapé sticky escuro: "Próxima manutenção {data}" + CTA "Abrir chamado nesta unidade".
  *
- * Acesso (espelha o Portal do Cliente):
- *  - anônimo → read-only.
- *  - usuário logado da empresa dona → `viewer_can_fill` → botão "Preencher OS".
- *  - portal privado + anônimo → tela "Portal privado" (oferece login).
- *  - contrato NÃO-PMOC → esconde a seção/aba de Documentos.
- *
- * Plano: docs/planos/2026-05-24-pmoc-portal-publico-redesign.md
+ * Gating:
+ *  - Documentos: SÓ contrato PMOC + `documents_released`.
+ *  - Histórico PMOC: SÓ contrato PMOC + `documents_released`.
+ *  - "Abrir chamado": customer_id do payload; insere em service_orders via anon.
  */
 
-// Labels de saúde e status de OS vêm do i18n (MESSAGES[locale].app.pmoc.publicPortal).
-// Estes objetos guardam apenas os dados de estilo (invariantes por locale).
+// ── Constantes de estilo ──────────────────────────────────────────────────────
+
 const HEALTH_STYLE: Record<PortalHealthStatus, {
   tone: 'success' | 'warning' | 'destructive';
-  ringClass: string;
 }> = {
-  em_dia: { tone: 'success', ringClass: 'ring-success/30' },
-  manutencao_pendente: { tone: 'warning', ringClass: 'ring-warning/30' },
-  necessita_atencao: { tone: 'destructive', ringClass: 'ring-destructive/30' },
+  em_dia: { tone: 'success' },
+  manutencao_pendente: { tone: 'warning' },
+  necessita_atencao: { tone: 'destructive' },
 };
 
 const OS_STATUS_CLASS: Record<PortalOsStatus, string> = {
@@ -108,59 +111,34 @@ const OS_STATUS_CLASS: Record<PortalOsStatus, string> = {
   cancelada: 'bg-destructive/10 text-destructive',
 };
 
+// Teal padrão Dominex — idêntico ao CustomerPortal.
+const PORTAL_ACCENT_PRIMARY = '#00C684';
+
 type PublicPortalMessages = typeof MESSAGES['pt-br']['app']['pmoc']['publicPortal'];
 
-/**
- * Abas do portal. "Documentos" só entra pra contrato PMOC. "Ocorrências" é a
- * linha do tempo completa das visitas do contrato (read-only; viewer logado da
- * empresa ganha "Preencher OS").
- */
-function buildTabs(isPmoc: boolean, hasExecutionHistory: boolean, t: PublicPortalMessages): SettingsTab[] {
-  const tabs: SettingsTab[] = [
-    { value: 'visao-geral', label: t.tabOverview, icon: House },
-    { value: 'cronograma', label: t.tabSchedule, icon: CalendarClock },
-    { value: 'ocorrencias', label: t.tabOccurrences, icon: Repeat },
+// ── Abas ──────────────────────────────────────────────────────────────────────
+
+function buildNavSections(
+  isPmoc: boolean,
+  hasExecutionHistory: boolean,
+  t: PublicPortalMessages,
+): PortalNavSection[] {
+  const sections: PortalNavSection[] = [
+    { value: 'visao-geral', label: t.tabOverview, icon: <House className="h-4 w-4 shrink-0" /> },
+    { value: 'cronograma', label: t.tabSchedule, icon: <CalendarClock className="h-4 w-4 shrink-0" /> },
+    { value: 'ocorrencias', label: t.tabOccurrences, icon: <Repeat className="h-4 w-4 shrink-0" /> },
   ];
   if (isPmoc) {
-    tabs.push({ value: 'documentos', label: t.tabDocuments, icon: FileText });
+    sections.push({ value: 'documentos', label: t.tabDocuments, icon: <FileText className="h-4 w-4 shrink-0" /> });
   }
-  tabs.push({ value: 'historico', label: t.tabHistory, icon: Wrench });
-  // Frente F: prova de cumprimento da Planilha PMOC, tarefa-a-tarefa. Só PMOC e
-  // só quando há execução liberada (a edge gateia por documents_released).
+  sections.push({ value: 'historico', label: t.tabHistory, icon: <Wrench className="h-4 w-4 shrink-0" /> });
   if (isPmoc && hasExecutionHistory) {
-    tabs.push({ value: 'historico-pmoc', label: t.tabHistoryPmoc, icon: ClipboardCheck });
+    sections.push({ value: 'historico-pmoc', label: t.tabHistoryPmoc, icon: <ClipboardCheck className="h-4 w-4 shrink-0" /> });
   }
-  return tabs;
+  return sections;
 }
 
-/**
- * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
- * Usado pra tingir Tailwind classes (`bg-primary`, `text-primary-foreground`) do
- * sidebar/pills do portal com a cor do banner do tenant white-label.
- */
-function hexToHsl(hex: string | null | undefined): string | null {
-  if (!hex) return null;
-  const h = hex.replace('#', '');
-  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
-  const m = full.match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  if (!m) return null;
-  const r = parseInt(m[1], 16) / 255;
-  const g = parseInt(m[2], 16) / 255;
-  const b = parseInt(m[3], 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  let H = 0, S = 0;
-  if (max !== min) {
-    const d = max - min;
-    S = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === r) H = ((g - b) / d + (g < b ? 6 : 0));
-    else if (max === g) H = ((b - r) / d + 2);
-    else H = ((r - g) / d + 4);
-    H /= 6;
-  }
-  return `${Math.round(H * 360)} ${Math.round(S * 100)}% ${Math.round(l * 100)}%`;
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function parseLocal(date: string | null): Date | null {
   if (!date) return null;
@@ -171,8 +149,6 @@ function parseLocal(date: string | null): Date | null {
   }
 }
 
-// `locale` e `timezone` são opcionais — passados por quem tem contexto (PortalContent).
-// Fallback: pt-br / America/Sao_Paulo (comportamento anterior idêntico).
 function formatLocal(
   date: string | null,
   locale: string = 'pt-br',
@@ -186,7 +162,7 @@ function formatLocal(
   }
 }
 
-// ----- SEO --------------------------------------------------------------------
+// ── SEO ───────────────────────────────────────────────────────────────────────
 
 function setMeta(attr: 'name' | 'property', key: string, content: string) {
   if (typeof document === 'undefined') return;
@@ -219,7 +195,6 @@ function setThemeColor(color: string) {
   if (el) el.setAttribute('content', color);
 }
 
-/** Mapeia locale do app → og:locale BCP-47 (Open Graph exige underline). */
 function toOgLocale(locale: string): string {
   switch (locale) {
     case 'en': return 'en_US';
@@ -250,7 +225,6 @@ function usePortalSeo(
     const url = buildPmocPortalUrl(token);
 
     document.title = title;
-
     setMeta('name', 'description', description);
     setMeta('name', 'robots', 'index, follow');
     setMeta('property', 'og:type', 'website');
@@ -265,9 +239,6 @@ function usePortalSeo(
     setMeta('name', 'twitter:card', 'summary_large_image');
     setMeta('name', 'twitter:title', title);
     setMeta('name', 'twitter:description', description);
-
-    // Onda 1.4.0 — status bar do navegador casa com o bg do header configurado
-    // (espelha o do Relatório de Serviço). Feel app nativo no iOS Safari.
     setThemeColor(themeColor || DEFAULT_THEME_COLOR);
 
     setJsonLd('pmoc-portal', {
@@ -294,7 +265,7 @@ function usePortalSeo(
   }, [payload, token, themeColor, locale]);
 }
 
-// ----- Página -----------------------------------------------------------------
+// ── Página principal ───────────────────────────────────────────────────────────
 
 export default function PmocPublicPortal() {
   const { token } = useParams<{ token: string }>();
@@ -303,8 +274,6 @@ export default function PmocPublicPortal() {
     queryKey: ['pmoc-portal', token],
     enabled: !!token,
     retry: (failureCount, err) => {
-      // Não re-tenta estados terminais: token inválido, módulo fora da
-      // assinatura e portal privado (todos são estados próprios, não rede).
       if (err instanceof PortalModuleUnavailableError) return false;
       if (err instanceof PortalPrivateError) return false;
       if (err instanceof Error && err.message === 'portal_not_found') return false;
@@ -316,13 +285,9 @@ export default function PmocPublicPortal() {
   if (isLoading) return <PortalSkeleton />;
 
   if (isError) {
-    // Módulo "Portal do Cliente" fora da assinatura da empresa dona: tela neutra
-    // pro cliente final. Tratado ANTES de "token inválido" — é um estado próprio.
     if (error instanceof PortalModuleUnavailableError) {
       return <PortalUnavailable companyName={error.companyName} />;
     }
-    // Portal privado + visitante sem permissão: tela sóbria com opção de login
-    // (espelha o Portal do Cliente). Nenhum dado é exibido.
     if (error instanceof PortalPrivateError) {
       return <PortalPrivate token={token!} companyName={error.companyName} />;
     }
@@ -343,7 +308,7 @@ export default function PmocPublicPortal() {
   );
 }
 
-// ----- Conteúdo ---------------------------------------------------------------
+// ── Conteúdo ──────────────────────────────────────────────────────────────────
 
 function PortalContent({ payload, token }: { payload: PortalPayload; token: string }) {
   const {
@@ -361,26 +326,14 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     viewer_can_fill,
   } = payload;
 
-  // Locale da empresa (injetado pelo PublicAppLocaleProvider no pai).
-  // Usado via `lastUpdate` (formatDateTime) e repassado implicitamente pelo
-  // contexto para os sub-componentes (TabOverview, HistoryItem, etc.).
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
+  const { toast } = useToast();
 
-  // Compat: payloads antigos (sem `is_pmoc`) eram sempre PMOC.
   const isPmoc = is_pmoc !== false;
-  // Quem abre logado da empresa dona pode "Preencher OS" (read-write); anônimo não.
   const canFill = viewer_can_fill === true;
-  // Compat: payloads antigos (sem o flag) tratam como liberado.
   const documentsReleased = documents_released !== false;
 
-  const isMobile = useIsMobile();
-
-  // Frente F — adapta as linhas do payload (PortalExecutionRow) pro shape que o
-  // componente compartilhado consome (ContractActivityExecutionRow). Os campos
-  // extras da view autenticada (company_id, contract_id, plan_activity_id, …) não
-  // são usados na renderização → preenchemos com defaults seguros. As linhas já
-  // vêm ordenadas (scheduled_date DESC, sort_order ASC) da edge.
   const executionRows = useMemo<ContractActivityExecutionRow[]>(
     () =>
       (execution_history as PortalExecutionRow[]).map((r) => ({
@@ -396,16 +349,16 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   );
   const hasExecutionHistory = isPmoc && executionRows.length > 0;
 
-  const tabs = useMemo(
-    () => buildTabs(isPmoc, hasExecutionHistory, t),
+  const navSections = useMemo(
+    () => buildNavSections(isPmoc, hasExecutionHistory, t),
     [isPmoc, hasExecutionHistory, t],
   );
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
 
-  // Onda 1.4.0 — Header do portal espelha o do Relatório de Serviço.
-  // Quando white-label: usa os configs do tenant (com fallback campo-a-campo
-  // pro DEFAULT_HEADER_CONFIG). Quando NÃO white-label: usa o default inteiro.
+  // ── Cor de marca (anti-FOUC: inline, nunca localStorage, nunca CSS var global) ──
+  // Segue exatamente o mesmo padrão do CustomerPortal: branco-label usa a cor
+  // configurada; sem white-label usa teal padrão Dominex. NUNCA null.
   const headerConfig: ReportHeaderConfig = useMemo(() => {
     const rh = tenant.report_header;
     if (!rh || !tenant.white_label_enabled) return DEFAULT_HEADER_CONFIG;
@@ -420,23 +373,16 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     };
   }, [tenant.report_header, tenant.white_label_enabled]);
 
-  // Tinge `--primary` no escopo do portal com a cor do banner do tenant white-label.
-  // Resultado: itens ativos do sidebar/pills, botões "primary" e demais elementos
-  // que usam bg-primary/text-primary herdam a identidade visual do tenant.
-  // Quando não-whitelabel, retorna undefined (mantém tema padrão Dominex).
-  const themeOverride = useMemo<React.CSSProperties | undefined>(() => {
-    if (!tenant.white_label_enabled) return undefined;
-    const hsl = hexToHsl(headerConfig.bgColor);
-    if (!hsl) return undefined;
-    return {
-      // CSS variables exigem `as any` no React.CSSProperties.
-      ['--primary' as any]: hsl,
-      ['--primary-foreground' as any]: '0 0% 100%',
-    };
+  // brandColor: white-label usa a cor do header config; sem white-label cai no
+  // teal padrão Dominex. Nunca null (garante header branded sempre colorido).
+  const brandColor = useMemo(() => {
+    if (tenant.white_label_enabled && headerConfig.bgColor) return headerConfig.bgColor;
+    return PORTAL_ACCENT_PRIMARY;
   }, [tenant.white_label_enabled, headerConfig.bgColor]);
 
-  // Resolve o logo a usar (igual ao ReportHeader: se logoType='icon' usa icon_url
-  // do white-label, fallback pro logo_url do tenant).
+  const headerTextColor = idealForeground(brandColor);
+
+  // Logo a usar (espelha ReportHeader)
   const resolvedLogo = useMemo(() => {
     if (headerConfig.logoType === 'icon') {
       return tenant.report_header?.icon_url || tenant.logo_url;
@@ -444,37 +390,63 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     return tenant.logo_url;
   }, [headerConfig.logoType, tenant.logo_url, tenant.report_header]);
 
-  // SEO + theme-color (cor do header) — precisa ser depois de headerConfig.
-  // Passa `locale` da empresa pra que título/descrição e og:locale reflitam o idioma do tenant.
-  usePortalSeo(payload, token, headerConfig.bgColor, locale);
+  usePortalSeo(payload, token, brandColor, locale);
 
-  // Sticky bar com blur no mobile: aparece quando o hero "saiu" do viewport.
-  // Mantém o nome da unidade visível no topo, sensação de navigation bar nativa.
-  const heroSentinelRef = useRef<HTMLDivElement | null>(null);
-  const [heroOffscreen, setHeroOffscreen] = useState(false);
-  useEffect(() => {
-    if (!isMobile) {
-      setHeroOffscreen(false);
+  // ── Modal de chamado ──────────────────────────────────────────────────────
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [ticketDesc, setTicketDesc] = useState('');
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+
+  // customer_id e company_id vem de payload.contract (exposto na edge desde 1.10.0).
+  // Leitura defensiva: pode ser null em payloads antigos ou de outra versão.
+  const customerId = contract.customer_id ?? null;
+  const companyId = contract.company_id ?? null;
+
+  const handleSubmitTicket = async () => {
+    if (ticketDesc.trim().length < 10) return;
+    if (!customerId || !companyId) {
+      toast({
+        variant: 'destructive',
+        title: t.ticketErrorTitle,
+        description: !customerId
+          ? 'customer_id indisponível neste portal.'
+          : 'company_id indisponível neste portal.',
+      });
       return;
     }
-    const sentinel = heroSentinelRef.current;
-    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setHeroOffscreen(!entry.isIntersecting),
-      { rootMargin: '0px', threshold: 0 },
-    );
-    obs.observe(sentinel);
-    return () => obs.disconnect();
-  }, [isMobile]);
+    setTicketSubmitting(true);
+    try {
+      // A RLS "Public can create portal tickets" permite anon INSERT com origin='portal'.
+      // O trigger check_portal_ticket_antispam() valida >= 10 chars e rate-limit no server.
+      // company_id: obrigatorio no INSERT (NOT NULL, sem auto-preenchimento no anon).
+      // Vem de contract.company_id exposto no payload da edge.
+      const insertPayload = normalizeOptionalForeignKeys({
+        customer_id: customerId,
+        company_id: companyId,
+        description: ticketDesc.trim(),
+        os_type: 'manutencao_corretiva',
+        status: 'pendente',
+        origin: 'portal',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any, ['customer_id', 'company_id']);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await supabaseAnon.from('service_orders').insert(insertPayload as any);
+      if (error) throw error;
+      toast({ title: t.ticketSuccess });
+      setShowTicketModal(false);
+      setTicketDesc('');
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: t.ticketErrorTitle, description: getErrorMessage(err) });
+    } finally {
+      setTicketSubmitting(false);
+    }
+  };
 
-  // Mescla schedule + history pro calendário (readOnly). Cada OS é convertida
-  // em pseudo-ServiceOrder pra reaproveitar o componente da agenda.
+  // ── Calendário ────────────────────────────────────────────────────────────
   const calendarOrders = useMemo<PmocCronogramaCalendarOrder[]>(
     () => osEntriesToCalendarOrders([...schedule, ...history], unit.name ?? 'Unidade'),
     [schedule, history, unit.name],
   );
-
-  // Map de id (pseudo) -> entrada original, pro click no calendário abrir o modal.
   const osById = useMemo(() => {
     const map = new Map<string, PortalOsEntry>();
     for (const os of [...schedule, ...history]) {
@@ -498,255 +470,100 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     if (original) setSelectedOS(original);
   };
 
-  const logoPx = headerConfig.logoSize;
-  const hasAddress = !!unit.address;
-  const tenantAddress = tenant.address ?? null;
+  // ── Subtítulo e badge de saúde ───────────────────────────────────────────
+  const subtitle = isPmoc ? t.subtitlePmoc : t.subtitleContract;
+
+  const healthBadge = (
+    <HealthBadge
+      status={contract.health_status}
+      overdueCount={contract.overdue_count}
+    />
+  );
+
+  // ── Footer status ─────────────────────────────────────────────────────────
+  const nextMaintDate = contract.next_pmoc_generation_date
+    ? formatLocal(contract.next_pmoc_generation_date, locale, timezone)
+    : null;
+  const footerStatus = nextMaintDate
+    ? `${t.footerNextOccurrence}: ${nextMaintDate}`
+    : null;
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground" style={themeOverride}>
-      {/* Sticky bar mobile com blur — aparece quando o hero sai do viewport.
-          Mantém o nome da unidade visível como navigation bar de app nativo. */}
-      <div
-        aria-hidden={!heroOffscreen}
-        className={cn(
-          'fixed inset-x-0 top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md lg:hidden',
-          'transition-all duration-200 ease-out',
-          heroOffscreen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0',
-        )}
-        style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
-      >
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-4 pb-2 pt-1">
-          {resolvedLogo ? (
-            <img
-              src={resolvedLogo}
-              alt=""
-              className="h-6 w-6 shrink-0 rounded-md bg-muted object-contain p-0.5"
-              aria-hidden="true"
-            />
-          ) : (
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
-              <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-            </div>
-          )}
-          <p className="min-w-0 flex-1 truncate text-sm font-semibold">
-            {unit.name ?? 'Unidade'}
-          </p>
-          <span
-            className={cn(
-              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
-              contract.health_status === 'em_dia' && 'bg-success/15 text-success',
-              contract.health_status === 'manutencao_pendente' && 'bg-warning/15 text-warning',
-              contract.health_status === 'necessita_atencao' && 'bg-destructive/10 text-destructive',
-            )}
-          >
-            {contract.health_status === 'em_dia'
-              ? t.healthEmDia
-              : contract.health_status === 'manutencao_pendente'
-                ? t.healthManutencaoPendente
-                : t.healthNecessitaAtencao}
+    <PublicPortalShell
+      brandColor={brandColor}
+      logoUrl={resolvedLogo}
+      title={tenant.name || 'Empresa'}
+      subtitle={subtitle}
+      badge={healthBadge}
+      headerAction={
+        <PortalContactButton
+          phone={tenant.phone}
+          email={tenant.email}
+          textColor={headerTextColor}
+        />
+      }
+      navSections={navSections}
+      activeSection={activeTab}
+      onSectionChange={setActiveTab}
+      footerStatus={footerStatus ?? undefined}
+      footerCtaLabel={customerId && companyId ? t.openTicketHere : undefined}
+      onFooterCta={() => setShowTicketModal(true)}
+      navLabel={t.sidebarNavLabel}
+    >
+      {/* Endereço da unidade (sob as pills no mobile, visível no topo do main) */}
+      {unit.address && (
+        <p className="mb-3 flex items-start gap-1.5 text-xs text-muted-foreground">
+          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="break-words">
+            {[unit.address, unit.city, unit.state].filter(Boolean).join(', ')}
           </span>
-        </div>
+        </p>
+      )}
+
+      {/* Conteúdo das abas */}
+      <div key={activeTab} className="animate-in fade-in duration-150">
+        {activeTab === 'visao-geral' && (
+          <TabOverview
+            contract={contract}
+            responsibleTechnician={responsible_technician}
+            isPmoc={isPmoc}
+          />
+        )}
+        {activeTab === 'cronograma' && (
+          <TabSchedule
+            orders={calendarOrders}
+            onOsClick={handleCalendarClick}
+          />
+        )}
+        {activeTab === 'ocorrencias' && (
+          <TabOccurrences
+            occurrences={occurrences}
+            canFill={canFill}
+            onOsClick={setSelectedOS}
+          />
+        )}
+        {/* Documentos: SÓ contrato PMOC. */}
+        {isPmoc && activeTab === 'documentos' && (
+          <TabDocuments documents={documents} released={documentsReleased} />
+        )}
+        {activeTab === 'historico' && (
+          <TabHistory history={history} onOsClick={setSelectedOS} />
+        )}
+        {/* Histórico PMOC: prova da Planilha tarefa-a-tarefa. Só PMOC + liberado. */}
+        {isPmoc && activeTab === 'historico-pmoc' && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold sm:text-lg">{t.historyPmocTitle}</h2>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {t.historyPmocDesc}
+              </p>
+            </div>
+            <PmocExecutionHistoryView rows={executionRows} showHeader={false} />
+          </div>
+        )}
       </div>
 
-      {/* Onda 1.4.0 — Header empresa (espelha ReportHeader do técnico).
-          Coluna direita troca "OS #/tipo" por "Nome unidade + Saúde".
-          Cores e logo vêm do `headerConfig` (white-label) ou DEFAULT. */}
-      <header
-        className="p-4 sm:p-6"
-        style={{
-          background: headerConfig.bgColor,
-          color: headerConfig.textColor,
-          paddingTop: 'max(1rem, env(safe-area-inset-top))',
-        }}
-      >
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-          {/* Logo + dados empresa */}
-          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-            {resolvedLogo ? (
-              <img
-                src={resolvedLogo}
-                alt={tenant.name}
-                className="shrink-0 rounded-lg object-contain"
-                style={{
-                  height: `${logoPx}px`,
-                  width: `${logoPx}px`,
-                  ...(headerConfig.showLogoBg
-                    ? {
-                        backgroundColor: headerConfig.logoBgColor || 'rgba(255,255,255,0.95)',
-                        padding: '6px',
-                      }
-                    : {}),
-                }}
-              />
-            ) : (
-              <div
-                className="flex shrink-0 items-center justify-center rounded-lg"
-                style={{
-                  height: `${logoPx}px`,
-                  width: `${logoPx}px`,
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                }}
-              >
-                <Building2
-                  style={{
-                    width: logoPx * 0.4,
-                    height: logoPx * 0.4,
-                    color: headerConfig.textColor,
-                    opacity: 0.7,
-                  }}
-                  aria-hidden="true"
-                />
-              </div>
-            )}
-            <div className="min-w-0">
-              <h1
-                className="break-words text-base font-bold leading-tight sm:text-xl"
-                style={{ color: headerConfig.textColor }}
-              >
-                {tenant.name || 'Empresa'}
-              </h1>
-              {tenant.document && (
-                <p
-                  className="text-xs sm:text-sm"
-                  style={{ color: headerConfig.textColor, opacity: 0.9 }}
-                >
-                  CNPJ: {tenant.document}
-                </p>
-              )}
-              {(tenant.phone || tenant.email) && (
-                <div
-                  className="mt-0.5 flex flex-col gap-x-4 gap-y-0 text-xs sm:flex-row sm:flex-wrap"
-                  style={{ color: headerConfig.textColor, opacity: 0.8 }}
-                >
-                  {tenant.phone && <span>{tenant.phone}</span>}
-                  {tenant.email && <span className="break-all">{tenant.email}</span>}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Endereço da EMPRESA (mobile — inline, igual ReportHeader) */}
-          {tenantAddress && (
-            <p
-              className="text-xs sm:hidden"
-              style={{ color: headerConfig.textColor, opacity: 0.75 }}
-            >
-              {tenantAddress}
-              {tenant.city && `, ${tenant.city}`}
-              {tenant.state && ` - ${tenant.state}`}
-              {tenant.zip_code && ` | CEP: ${tenant.zip_code}`}
-            </p>
-          )}
-
-          {/* Coluna direita: nome da UNIDADE + badge de saúde
-              (substitui o "OS #N + tipo" do ReportHeader) */}
-          <div className="flex shrink-0 items-center justify-between gap-2 sm:ml-auto sm:flex-col sm:items-end">
-            <div
-              className="break-words text-right text-base font-bold leading-tight sm:text-xl"
-              style={{ color: headerConfig.textColor }}
-            >
-              {unit.name ?? 'Unidade'}
-            </div>
-            <HealthBadge
-              status={contract.health_status}
-              overdueCount={contract.overdue_count}
-              textColor={headerConfig.textColor}
-            />
-          </div>
-        </div>
-
-        {/* Endereço da EMPRESA (desktop — embaixo, igual ReportHeader) */}
-        {tenantAddress && (
-          <p
-            className="mx-auto mt-2 hidden w-full max-w-5xl text-xs sm:block"
-            style={{ color: headerConfig.textColor, opacity: 0.75 }}
-          >
-            {tenantAddress}
-            {tenant.city && `, ${tenant.city}`}
-            {tenant.state && ` - ${tenant.state}`}
-            {tenant.zip_code && ` | CEP: ${tenant.zip_code}`}
-          </p>
-        )}
-
-        {/* Endereço da UNIDADE — abaixo do header de empresa, contextualiza o portal */}
-        {hasAddress && (
-          <p
-            className="mx-auto mt-3 flex w-full max-w-5xl items-start gap-1.5 text-xs sm:text-sm"
-            style={{ color: headerConfig.textColor, opacity: 0.85 }}
-          >
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
-            <span className="break-words">
-              {[unit.address, unit.city, unit.state].filter(Boolean).join(', ')}
-            </span>
-          </p>
-        )}
-      </header>
-
-      {/* Status bar fina (espelha ReportHeader). PMOC → contexto legal;
-          contrato comum → rótulo neutro do portal. */}
-      <div
-        className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide sm:text-sm"
-        style={{ backgroundColor: headerConfig.statusBarColor, color: '#ffffff' }}
-      >
-        {isPmoc ? t.statusBarPmoc : t.statusBarContract}
-      </div>
-
-      {/* Sentinel pra detectar quando o hero sai do viewport (sticky bar aparece). */}
-      <div ref={heroSentinelRef} aria-hidden="true" className="h-px w-full" />
-
-      {/* Abas + conteúdo */}
-      <main className="mx-auto w-full max-w-5xl px-4 pb-8 pt-6 sm:px-6">
-        <SettingsSidebarLayout
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        >
-          {/* key força remount + animação suave a cada troca de aba — feel de app nativo. */}
-          <div key={activeTab} className="animate-in fade-in duration-150">
-            {activeTab === 'visao-geral' && (
-              <TabOverview
-                contract={contract}
-                responsibleTechnician={responsible_technician}
-                isPmoc={isPmoc}
-              />
-            )}
-            {activeTab === 'cronograma' && (
-              <TabSchedule
-                orders={calendarOrders}
-                onOsClick={handleCalendarClick}
-              />
-            )}
-            {activeTab === 'ocorrencias' && (
-              <TabOccurrences
-                occurrences={occurrences}
-                canFill={canFill}
-                onOsClick={setSelectedOS}
-              />
-            )}
-            {/* Documentos: SÓ contrato PMOC. */}
-            {isPmoc && activeTab === 'documentos' && (
-              <TabDocuments documents={documents} released={documentsReleased} />
-            )}
-            {activeTab === 'historico' && (
-              <TabHistory history={history} onOsClick={setSelectedOS} />
-            )}
-            {/* Histórico PMOC: prova da Planilha tarefa-a-tarefa. Só PMOC + liberado. */}
-            {isPmoc && activeTab === 'historico-pmoc' && (
-              <div className="space-y-3">
-                <div>
-                  <h2 className="text-base font-semibold sm:text-lg">{t.historyPmocTitle}</h2>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {t.historyPmocDesc}
-                  </p>
-                </div>
-                <PmocExecutionHistoryView rows={executionRows} showHeader={false} />
-              </div>
-            )}
-          </div>
-        </SettingsSidebarLayout>
-      </main>
-
-      {/* Rodapé */}
+      {/* Rodapé legal (Dominex, URL, PMOC compliance) dentro do corpo rolável */}
       <PortalFooter
         tenant={tenant}
         portalUrl={portalUrl}
@@ -754,7 +571,10 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         isPmoc={isPmoc}
       />
 
-      {/* Modal global de detalhe de OS */}
+      {/* Spacer pro rodapé fixo não cobrir o último card */}
+      <div className="h-6" />
+
+      {/* Modal de detalhe de OS */}
       <OsDetailPortalModal
         os={selectedOS}
         open={!!selectedOS}
@@ -762,11 +582,45 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
           if (!open) setSelectedOS(null);
         }}
       />
-    </div>
+
+      {/* Modal de chamado — não fecha ao clicar fora (regra-lei UI) */}
+      <ResponsiveModal
+        open={showTicketModal}
+        onOpenChange={(v) => {
+          if (!v && ticketSubmitting) return;
+          setShowTicketModal(v);
+        }}
+        title={t.ticketModalTitle}
+      >
+        <div className="space-y-4 p-1">
+          <div>
+            <Label>{t.ticketProblemLabel}</Label>
+            <Textarea
+              value={ticketDesc}
+              onChange={(e) => setTicketDesc(e.target.value)}
+              placeholder={t.ticketProblemPlaceholder}
+              rows={4}
+            />
+            {ticketDesc.length > 0 && ticketDesc.trim().length < 10 && (
+              <p className="mt-1 text-xs text-destructive">{t.ticketDescMinLength}</p>
+            )}
+          </div>
+          <Button
+            className="w-full"
+            onClick={handleSubmitTicket}
+            disabled={ticketSubmitting || ticketDesc.trim().length < 10}
+          >
+            {ticketSubmitting
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t.ticketSubmitting}</>
+              : <><Send className="h-4 w-4 mr-2" />{t.ticketSubmit}</>}
+          </Button>
+        </div>
+      </ResponsiveModal>
+    </PublicPortalShell>
   );
 }
 
-// ----- Abas -------------------------------------------------------------------
+// ── Abas ──────────────────────────────────────────────────────────────────────
 
 function TabOverview({
   contract,
@@ -775,7 +629,6 @@ function TabOverview({
 }: {
   contract: PortalPayload['contract'];
   responsibleTechnician: PortalPayload['responsible_technician'];
-  /** PMOC mostra "Conformidade" (texto legal) + RT; contrato comum não. */
   isPmoc: boolean;
 }) {
   const { locale, timezone } = useAppLocaleContext();
@@ -784,58 +637,59 @@ function TabOverview({
   return (
     <div className="space-y-6">
       <Section title={t.sectionContract} icon={CalendarClock}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <InfoCard label={isPmoc ? t.infoCardPlan : t.infoCardContract} value={contract.name ?? '—'} />
-          <InfoCard label={t.infoCardFrequency} value={contract.frequency_label} />
-          <InfoCard
+        {/* Campos do contrato: container único dividido por linhas (regra UI "lista limpa"). */}
+        <div className="overflow-hidden rounded-2xl border border-border bg-card divide-y divide-border shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <InfoRow label={isPmoc ? t.infoCardPlan : t.infoCardContract} value={contract.name ?? '—'} />
+          <InfoRow label={t.infoCardFrequency} value={contract.frequency_label} />
+          <InfoRow
             label={isPmoc ? t.infoCardNextMaint : t.infoCardNextService}
             value={contract.next_pmoc_generation_date
               ? fmt(contract.next_pmoc_generation_date)
               : t.infoCardTbd}
           />
-          <InfoCard label={t.infoCardContractStart} value={fmt(contract.start_date)} />
+          <InfoRow label={t.infoCardContractStart} value={fmt(contract.start_date)} />
           {isPmoc && (
-            <InfoCard
+            <InfoRow
               label={t.infoCardCompliance}
               value={contract.compliance_text}
               valueClassName="text-info"
             />
           )}
-          <InfoCard label={t.infoCardStatus} value={contract.status_label} />
+          <InfoRow label={t.infoCardStatus} value={contract.status_label} />
         </div>
       </Section>
 
       {responsibleTechnician && (
         <Section title={t.sectionResponsibleTech} icon={Award}>
+          {/* Responsável Técnico: container único com avatar + campos agrupados. */}
           <div
             className={cn(
-              'flex items-start gap-3 rounded-2xl border border-border bg-card p-4',
+              'overflow-hidden rounded-2xl border border-border bg-card',
               'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
             )}
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
-              <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="break-words text-base font-semibold">
+            {/* Linha de identidade (avatar + nome) */}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
+                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <p className="break-words text-sm font-semibold">
                 {responsibleTechnician.full_name ?? '—'}
               </p>
-              {responsibleTechnician.cft_crea && (
-                <p className="break-words text-xs text-muted-foreground">
-                  {responsibleTechnician.cft_crea}
-                </p>
-              )}
-              {responsibleTechnician.modality && (
-                <p className="break-words text-xs text-muted-foreground">
-                  {responsibleTechnician.modality}
-                </p>
-              )}
-              {responsibleTechnician.registry_number && (
-                <p className="break-words text-xs text-muted-foreground">
-                  {t.rtRegistryPrefix} {responsibleTechnician.registry_number}
-                </p>
-              )}
             </div>
+            {/* Campos extras separados por divisor */}
+            {responsibleTechnician.cft_crea && (
+              <InfoRow label={t.rtCftCrea} value={responsibleTechnician.cft_crea} />
+            )}
+            {responsibleTechnician.modality && (
+              <InfoRow label={t.rtModality} value={responsibleTechnician.modality} />
+            )}
+            {responsibleTechnician.registry_number && (
+              <InfoRow
+                label={t.rtRegistryPrefix.replace(/\s*:\s*$/, '')}
+                value={responsibleTechnician.registry_number}
+              />
+            )}
           </div>
         </Section>
       )}
@@ -874,10 +728,8 @@ function TabSchedule({
 }
 
 /**
- * Aba "Ocorrências" — linha do tempo completa das visitas do contrato
- * (espelha a aba "Ocorrências" interna). Read-only: clicar abre o detalhe.
- * Quando `canFill` (viewer logado da empresa dona), cada ocorrência ativa
- * ganha o botão "Preencher OS" → abre /os-tecnico/:id em nova aba.
+ * Aba "Ocorrências" — linha do tempo completa das visitas do contrato.
+ * OS em `a_caminho`/`em_andamento` ganham link "Acompanhar ao vivo" (Task 2.2).
  */
 function TabOccurrences({
   occurrences,
@@ -891,6 +743,7 @@ function TabOccurrences({
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
   const fmt = (d: string | null) => formatLocal(d, locale, timezone);
+
   if (occurrences.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
@@ -901,8 +754,8 @@ function TabOccurrences({
     );
   }
 
-  // Status terminais (read-only): OS concluída/cancelada não recebe "Preencher OS".
   const TERMINAL: PortalOsStatus[] = ['concluida', 'cancelada'];
+  const LIVE_STATUSES: PortalOsStatus[] = ['a_caminho', 'em_andamento'];
 
   return (
     <ol className="space-y-3">
@@ -920,6 +773,9 @@ function TabOccurrences({
         );
         const displayDate = entry.completed_at || entry.scheduled_date;
         const showFill = canFill && !TERMINAL.includes(entry.status);
+        // "Acompanhar ao vivo": OS ativa — link /os-tecnico/:id?modo=cliente (Task 2.2)
+        const isLive = LIVE_STATUSES.includes(entry.status);
+
         return (
           <li key={`${entry.id}-${i}`}>
             <div
@@ -957,6 +813,24 @@ function TabOccurrences({
                 )}
               </button>
 
+              {/* Acompanhar ao vivo (Task 2.2) */}
+              {isLive && (
+                <a
+                  href={`${typeof window !== 'undefined' ? window.location.origin : ''}/os-tecnico/${entry.id}?modo=cliente`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    'mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl',
+                    'bg-primary px-4 text-sm font-semibold text-primary-foreground',
+                    'transition-all duration-100 hover:bg-primary/90 active:scale-[0.98]',
+                  )}
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  {t.trackLive}
+                </a>
+              )}
+
+              {/* Preencher OS (viewer logado da empresa dona) */}
               {showFill && (
                 <a
                   href={`${typeof window !== 'undefined' ? window.location.origin : ''}/os-tecnico/${entry.id}`}
@@ -985,17 +859,13 @@ function TabDocuments({
   released,
 }: {
   documents: PortalRealDocument[];
-  /** Gate (1.5.0): false → o gestor ainda não liberou os documentos. */
   released: boolean;
 }) {
   const available = documents.filter((d) => d.available);
   const unavailable = documents.filter((d) => !d.available);
-
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
 
-  // Gate fechado: não há documentos a mostrar (vêm vazios da edge). Exibe um
-  // aviso neutro, sem header de seção vazio.
   if (!released || documents.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
@@ -1072,7 +942,7 @@ function TabHistory({
   );
 }
 
-// ----- Subcomponentes ---------------------------------------------------------
+// ── Subcomponentes ────────────────────────────────────────────────────────────
 
 function Section({
   title,
@@ -1095,10 +965,8 @@ function Section({
 }
 
 /**
- * Onda 1.4.0 — `textColor` recebido do header config (white-label ou default).
- * Como o header agora pode ter bg claro ou escuro, o badge usa fundo translúcido
- * a partir do próprio `textColor` (rgba dinâmico) pra contrastar em ambos os
- * cenários sem precisar saber qual é qual.
+ * Badge de saúde saturado: bg sólido por status + texto branco.
+ * Regra-lei Dominex: fundo saturado + texto/ícone branco. Nunca outline dessaturado.
  */
 function HealthBadge({
   status,
@@ -1106,8 +974,6 @@ function HealthBadge({
 }: {
   status: PortalHealthStatus;
   overdueCount: number;
-  /** @deprecated mantido por compat; o badge agora pinta SEMPRE bg sólido + texto branco. */
-  textColor?: string;
 }) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
@@ -1115,8 +981,6 @@ function HealthBadge({
   const label = status === 'em_dia' ? t.healthEmDia
     : status === 'manutencao_pendente' ? t.healthManutencaoPendente
     : t.healthNecessitaAtencao;
-  // bg saturado por status + texto branco sempre (cor do bg JÁ comunica o estado;
-  // dot virou redundante e foi removido).
   const bgClass = style.tone === 'success'
     ? 'bg-success'
     : style.tone === 'warning'
@@ -1127,29 +991,28 @@ function HealthBadge({
       className={cn(
         bgClass,
         'text-white shadow-sm',
-        // Mobile: chip pill compacto (1 linha).
         'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1',
-        // Desktop: bloco vertical com header "STATUS" + label + pendências.
-        'sm:flex sm:flex-col sm:items-end sm:gap-0.5 sm:rounded-xl sm:px-3 sm:py-2',
       )}
       aria-label={`${t.healthBadgeStatusLabel}: ${label}${overdueCount > 0 ? ` (${overdueCount} ${overdueCount === 1 ? t.healthBadgePendenciaSingular : t.healthBadgePendenciaPlural})` : ''}`}
     >
-      <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-white/80 sm:block">
-        {t.healthBadgeStatusLabel}
-      </span>
-      <span className="text-xs font-semibold leading-none sm:text-sm sm:font-bold sm:leading-tight">
+      <span className="text-xs font-semibold leading-none">
         {label}
       </span>
       {overdueCount > 0 && (
-        <span className="hidden text-[10px] text-white/85 sm:block">
-          {overdueCount} {overdueCount === 1 ? t.healthBadgePendenciaSingular : t.healthBadgePendenciaPlural}
+        <span className="text-[10px] text-white/85">
+          ({overdueCount})
         </span>
       )}
     </div>
   );
 }
 
-function InfoCard({
+/**
+ * Linha de campo dentro de um container agrupado.
+ * Rótulo pequeno em cima (uppercase, muted) + valor embaixo.
+ * Padding lateral uniforme para alinhar com a linha de avatar do RT.
+ */
+function InfoRow({
   label,
   value,
   valueClassName,
@@ -1159,16 +1022,11 @@ function InfoCard({
   valueClassName?: string;
 }) {
   return (
-    <div
-      className={cn(
-        'min-w-0 rounded-2xl border border-border bg-card p-3.5',
-        'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
-      )}
-    >
+    <div className="px-4 py-3">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </p>
-      <p className={cn('mt-1 break-words text-sm font-medium leading-relaxed', valueClassName)}>
+      <p className={cn('mt-0.5 break-words text-sm font-medium leading-relaxed', valueClassName)}>
         {value}
       </p>
     </div>
@@ -1185,13 +1043,9 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
     : t.docAvailableSoon;
 
   const showPendingSignature = available && doc.signature_status === 'pending';
-
-  // Validade do documento (só docs regulatórios trazem `valid_until`).
-  // Passa `locale` para que o rótulo reflita o idioma da empresa (portal público).
   const validUntil = doc.valid_until ?? null;
   const validityStatus = getDocumentValidityStatus(validUntil);
   const showValidity = available && validityStatus !== 'sem_validade';
-  // Pílula com tokens semânticos: vigente=success, vence_em_breve=warning, vencido=destructive.
   const validityPillClass =
     validityStatus === 'vencido'
       ? 'bg-destructive/15 text-destructive'
@@ -1354,10 +1208,13 @@ function HistoryItem({
   );
 }
 
-// ----- Rodapé -----------------------------------------------------------------
+// ── Rodapé legal do documento (dentro do corpo, NÃO o rodapé sticky do shell) ──
+// Contém: badge de conformidade PMOC + "atualizado em" + URL do portal.
+// Copyright/versao ficam no rodape sticky (PortalStickyFooter / desktopFooter)
+// para nao duplicar com o SystemFooter que ja esta la.
 
 function PortalFooter({
-  tenant,
+  tenant: _tenant,
   portalUrl,
   lastUpdate,
   isPmoc,
@@ -1370,10 +1227,7 @@ function PortalFooter({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
   return (
-    <footer
-      className="mx-auto mt-10 w-full max-w-5xl space-y-6 px-4 pt-8 sm:px-6"
-      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-    >
+    <footer className="mt-10 space-y-6 pt-8 pb-2">
       {isPmoc && <PmocComplianceBadge variant="footer" />}
 
       <div className="space-y-1 text-center">
@@ -1382,33 +1236,12 @@ function PortalFooter({
         </p>
         <p className="break-all text-[11px] text-muted-foreground">{portalUrl}</p>
       </div>
-
-      {/* Bloco Dominex — só aparece pra tenants NÃO white-label */}
-      {!tenant.white_label_enabled && (
-        <div className="flex flex-col items-center gap-1 pb-2 pt-2">
-          <img
-            src={dominexLogoWhite}
-            alt="Dominex"
-            className="h-5 object-contain invert dark:invert-0"
-          />
-          <span className="text-[10px] tracking-wide text-muted-foreground/80">
-            www.dominex.app
-          </span>
-        </div>
-      )}
     </footer>
   );
 }
 
-// ----- Conversão pro calendar -------------------------------------------------
+// ── Conversão pro calendar ─────────────────────────────────────────────────────
 
-/**
- * Converte entradas do portal (schedule + history) em pseudo-ServiceOrders pro
- * componente de calendar reaproveitar a renderização.
- *
- * - Só campos que o calendar consome (id, order_number, status, date, customer).
- * - Status do portal mapeia 1:1 pro tipo `OsStatus` (compartilham strings).
- */
 function osEntriesToCalendarOrders(
   entries: PortalOsEntry[],
   customerName: string,
@@ -1432,7 +1265,7 @@ function osEntriesToCalendarOrders(
     })) as unknown as PmocCronogramaCalendarOrder[];
 }
 
-// ----- Estados de loading/erro ------------------------------------------------
+// ── Estados de loading/erro ───────────────────────────────────────────────────
 
 function PortalSkeleton() {
   return (
@@ -1453,7 +1286,6 @@ function PortalSkeleton() {
           <div className="h-4 w-1/2 animate-pulse rounded bg-muted-foreground/20" />
         </div>
       </div>
-
       <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="space-y-2">
@@ -1466,23 +1298,12 @@ function PortalSkeleton() {
   );
 }
 
-/**
- * Helper: resolve o locale para estados de erro/acesso renderizados FORA do
- * PublicAppLocaleProvider (antes dos dados do tenant chegarem). Usa
- * detectMachineLocale() — idioma do navegador do visitante — com fallback pt-br.
- */
 function useMachineLocaleMessages() {
   const machineLocale = detectMachineLocale();
   const locale = machineLocale ?? 'pt-br';
   return MESSAGES[locale].app.pmoc.publicPortal;
 }
 
-/**
- * Tela "Portal privado" — espelha a do Portal do Cliente (CustomerPortal).
- * Portal com `portal_is_public=false` aberto por anônimo (ou usuário de outra
- * empresa). Sóbria, com DarkVeil + opção de login preservando o retorno pro
- * próprio portal (quem é da empresa dona entra e vê o conteúdo).
- */
 function PortalPrivate({ token, companyName }: { token: string; companyName?: string | null }) {
   const t = useMachineLocaleMessages();
   const portalPath = `/contrato/unidade/${token}`;

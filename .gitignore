@@ -50,3 +50,4 @@ tools/maps-lead-scraper/
 
 # Scripts efêmeros de verificação via Chrome DevTools Protocol (debris de agente)
 cdp-*.mjs
+.superpowers/

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.26',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Portais do cliente e do contrato com cara de aplicativo',
+        description: 'Os portais que você compartilha com seus clientes (o do cliente e o do contrato de manutenção) foram repaginados com visual de app: a identidade da sua empresa no topo, navegação por seções e, no computador, um layout com menu lateral. Ficou mais fácil para o cliente abrir um chamado (botão em destaque, e no portal do contrato dá para abrir já na unidade), falar com a sua empresa pelo WhatsApp e avaliar um atendimento concluído.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.25',
     date: '22 de julho de 2026',
     type: 'patch',
