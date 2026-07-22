@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.24',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso da lei do PMOC só nos contratos de PMOC',
+        description: 'No portal do contrato, o aviso de conformidade com a Lei do PMOC agora aparece apenas nos contratos de PMOC. Contratos comuns não exibem mais esse selo, deixando cada portal com a informação certa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Abertura de chamado mais protegida',
+        description: 'No portal do cliente, a abertura de chamado agora pede uma descrição mínima e evita várias aberturas repetidas em seguida, reduzindo chamados vazios ou duplicados.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.17.23',
     date: '22 de julho de 2026',
     type: 'patch',

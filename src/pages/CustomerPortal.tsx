@@ -283,7 +283,7 @@ export default function CustomerPortal() {
     const errorMsg = error === 'portal_not_found'
       ? tp.errorFallback
       : error === 'portal_load_error'
-        ? tp.loading
+        ? tp.errorLoadFailed
         : tp.errorFallback;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
@@ -367,7 +367,7 @@ function CustomerPortalContent({
   const eqPagination = useDataPagination(equipment);
 
   const handleSubmitTicket = async () => {
-    if (!ticketDesc.trim()) return;
+    if (ticketDesc.trim().length < 10) return;
     setTicketSubmitting(true);
     try {
       const company_id = customer.company_id;
@@ -813,6 +813,9 @@ function CustomerPortalContent({
               placeholder={t.ticketProblemPlaceholder}
               rows={4}
             />
+            {ticketDesc.length > 0 && ticketDesc.trim().length < 10 && (
+              <p className="mt-1 text-xs text-destructive">{t.ticketDescMinLength}</p>
+            )}
           </div>
           {equipment.length > 0 && (
             <div>
@@ -826,7 +829,7 @@ function CustomerPortalContent({
               />
             </div>
           )}
-          <Button className="w-full" onClick={handleSubmitTicket} disabled={ticketSubmitting || !ticketDesc.trim()}>
+          <Button className="w-full" onClick={handleSubmitTicket} disabled={ticketSubmitting || ticketDesc.trim().length < 10}>
             {ticketSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
             {t.ticketSubmit}
           </Button>

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.23";
+export const APP_VERSION = "1.17.24";
 
-export const VERSION_NOTES = "Deixamos a aprovação do orçamento pelo link mais confiável (a resposta do cliente é registrada com segurança e avisa quando já foi respondida) e reforçamos o link da proposta para não expor informações internas da sua empresa. Também ajustamos o Configurar Proposta para descartar edições não salvas ao fechar.";
+export const VERSION_NOTES = "O portal do contrato ficou mais preciso: o aviso de conformidade com a lei do PMOC agora aparece só nos contratos de PMOC. E a abertura de chamado pelo portal do cliente ficou mais protegida, pedindo uma descrição mínima e evitando várias aberturas repetidas em seguida.";

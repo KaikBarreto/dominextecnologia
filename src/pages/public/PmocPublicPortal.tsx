@@ -676,7 +676,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
           >
             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
             <span className="break-words">
-              {[unit.address, unit.city, unit.state].filter(Boolean).join(' — ')}
+              {[unit.address, unit.city, unit.state].filter(Boolean).join(', ')}
             </span>
           </p>
         )}
@@ -751,6 +751,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         tenant={tenant}
         portalUrl={portalUrl}
         lastUpdate={lastUpdate}
+        isPmoc={isPmoc}
       />
 
       {/* Modal global de detalhe de OS */}
@@ -1240,7 +1241,7 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
                 'mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5',
                 'bg-warning/15 text-[10px] font-semibold uppercase tracking-wide text-warning',
               )}
-              title="Documento gerado com linha em branco pra assinar à mão"
+              title={t.docPendingSignatureTooltip}
             >
               <AlertCircle className="h-2.5 w-2.5" aria-hidden="true" />
               {t.docPendingSignature}
@@ -1359,10 +1360,12 @@ function PortalFooter({
   tenant,
   portalUrl,
   lastUpdate,
+  isPmoc,
 }: {
   tenant: PortalTenant;
   portalUrl: string;
   lastUpdate: string;
+  isPmoc: boolean;
 }) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
@@ -1371,7 +1374,7 @@ function PortalFooter({
       className="mx-auto mt-10 w-full max-w-5xl space-y-6 px-4 pt-8 sm:px-6"
       style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
-      <PmocComplianceBadge variant="footer" />
+      {isPmoc && <PmocComplianceBadge variant="footer" />}
 
       <div className="space-y-1 text-center">
         <p className="text-[11px] text-muted-foreground">

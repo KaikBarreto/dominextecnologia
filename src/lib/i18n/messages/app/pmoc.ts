@@ -386,7 +386,7 @@ export const pmoc = {
     // ── Portal Público do Contrato / PMOC (PmocPublicPortal.tsx) ──
     publicPortal: {
       // Barra de status (status bar fina abaixo do header)
-      statusBarPmoc: 'Plano de Manutenção, Operação e Controle — Lei 13.589/2018',
+      statusBarPmoc: 'Plano de Manutenção, Operação e Controle, Lei 13.589/2018',
       statusBarContract: 'Portal do Contrato',
       // Abas
       tabOverview: 'Visão Geral',
@@ -439,6 +439,7 @@ export const pmoc = {
       docAvailableSoon: 'Disponível em breve',
       docValidUntil: 'Válido até',
       docPendingSignature: 'Assinatura pendente',
+      docPendingSignatureTooltip: 'Documento gerado com linha em branco pra assinar à mão',
       docDownloadPdf: 'Baixar PDF',
       // Aba Histórico
       historyEmpty: 'Nenhuma manutenção concluída ainda.',
@@ -1098,7 +1099,7 @@ export const pmoc = {
     },
 
     publicPortal: {
-      statusBarPmoc: 'Preventive Maintenance Plan (PMOC) — Brazilian Law 13.589/2018',
+      statusBarPmoc: 'Preventive Maintenance Plan (PMOC), Brazilian Law 13.589/2018',
       statusBarContract: 'Contract Portal',
       tabOverview: 'Overview',
       tabSchedule: 'Schedule',
@@ -1141,6 +1142,7 @@ export const pmoc = {
       docAvailableSoon: 'Available soon',
       docValidUntil: 'Valid until',
       docPendingSignature: 'Signature pending',
+      docPendingSignatureTooltip: 'Document generated with a blank line for handwritten signature',
       docDownloadPdf: 'Download PDF',
       historyEmpty: 'No completed maintenance yet.',
       historyPmocTitle: 'HVAC Plan History (PMOC)',
@@ -1767,7 +1769,7 @@ export const pmoc = {
     },
 
     publicPortal: {
-      statusBarPmoc: 'Plan de Mantenimiento Preventivo (PMOC) — Ley Federal Brasileña 13.589/2018',
+      statusBarPmoc: 'Plan de Mantenimiento Preventivo (PMOC), Ley Federal Brasileña 13.589/2018',
       statusBarContract: 'Portal del Contrato',
       tabOverview: 'Vista General',
       tabSchedule: 'Cronograma',
@@ -1810,6 +1812,7 @@ export const pmoc = {
       docAvailableSoon: 'Disponible pronto',
       docValidUntil: 'Válido hasta',
       docPendingSignature: 'Firma pendiente',
+      docPendingSignatureTooltip: 'Documento generado con línea en blanco para firmar a mano',
       docDownloadPdf: 'Descargar PDF',
       historyEmpty: 'Ningún mantenimiento completado aún.',
       historyPmocTitle: 'Historial del Plan de Mantenimiento (PMOC)',
@@ -2436,7 +2439,7 @@ export const pmoc = {
     },
 
     publicPortal: {
-      statusBarPmoc: 'Plan de Maintenance Préventive CVC (PMOC) — Loi Fédérale Brésilienne 13.589/2018',
+      statusBarPmoc: 'Plan de Maintenance Préventive CVC (PMOC), Loi Fédérale Brésilienne 13.589/2018',
       statusBarContract: 'Portail du Contrat',
       tabOverview: 'Vue générale',
       tabSchedule: 'Planning',
@@ -2479,6 +2482,7 @@ export const pmoc = {
       docAvailableSoon: 'Disponible bientôt',
       docValidUntil: 'Valide jusqu\'au',
       docPendingSignature: 'Signature en attente',
+      docPendingSignatureTooltip: 'Document généré avec une ligne blanche pour signer à la main',
       docDownloadPdf: 'Télécharger le PDF',
       historyEmpty: 'Aucune maintenance terminée pour l\'instant.',
       historyPmocTitle: 'Historique du Plan de Maintenance CVC (PMOC)',
