@@ -450,6 +450,8 @@ export const crm = {
       rejectedFeedback: 'Proposta rejeitada.',
       alreadyApproved: 'Esta proposta foi aprovada.',
       alreadyRejected: 'Esta proposta foi rejeitada.',
+      alreadyResponded: 'Esta proposta já foi respondida.',
+      responseError: 'Não foi possível registrar sua resposta. Verifique sua conexão e tente novamente.',
 
       // Configurar proposta (ProposalConfigDialog)
       configTitle: 'Configurar Proposta',
@@ -1369,6 +1371,8 @@ export const crm = {
       rejectedFeedback: 'Proposal rejected.',
       alreadyApproved: 'This proposal has been approved.',
       alreadyRejected: 'This proposal has been rejected.',
+      alreadyResponded: 'This proposal has already been answered.',
+      responseError: 'We could not record your response. Please check your connection and try again.',
 
       configTitle: 'Configure Proposal',
 
@@ -2252,6 +2256,8 @@ export const crm = {
       rejectedFeedback: 'Propuesta rechazada.',
       alreadyApproved: 'Esta propuesta fue aprobada.',
       alreadyRejected: 'Esta propuesta fue rechazada.',
+      alreadyResponded: 'Esta propuesta ya fue respondida.',
+      responseError: 'No pudimos registrar su respuesta. Verifique su conexión e inténtelo de nuevo.',
 
       configTitle: 'Configurar Propuesta',
 
@@ -3135,6 +3141,8 @@ export const crm = {
       rejectedFeedback: 'Proposition refusée.',
       alreadyApproved: 'Cette proposition a été approuvée.',
       alreadyRejected: 'Cette proposition a été refusée.',
+      alreadyResponded: `Cette proposition a déjà reçu une réponse.`,
+      responseError: `Nous n'avons pas pu enregistrer votre réponse. Vérifiez votre connexion et réessayez.`,
 
       configTitle: 'Configurer la Proposition',
 

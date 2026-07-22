@@ -113,8 +113,17 @@ export function SearchableSelect({
 
   const canCreate = !!onCreateOption && trimmedQuery.length > 0 && !hasExactMatch;
 
+  // Guarda contra disparo duplo (Enter repetido / dois CommandItem): só cria uma
+  // vez por abertura. Reseta quando o popover fecha.
+  const creatingRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!open) creatingRef.current = false;
+  }, [open]);
+
   const handleCreate = () => {
     if (!onCreateOption || !trimmedQuery) return;
+    if (creatingRef.current) return;
+    creatingRef.current = true;
     onCreateOption(trimmedQuery);
     setOpen(false);
   };
@@ -186,13 +195,10 @@ export function SearchableSelect({
               <div className="p-2">{emptyContent}</div>
             ) : (
               <>
-                <CommandEmpty>
-                  {canCreate ? (
-                    <div className="px-1 py-1">{createItem}</div>
-                  ) : (
-                    emptyMessage
-                  )}
-                </CommandEmpty>
+                {/* Sem matches: só a mensagem vazia. A ação "Criar" NÃO é
+                    renderizada aqui pra não duplicar com o rodapé (mesmo value =
+                    navegação/Enter ambíguos no cmdk). */}
+                <CommandEmpty>{emptyMessage}</CommandEmpty>
                 {groups ? (
                   groups.map((group, idx) => (
                     <CommandGroup key={group.heading ?? idx} heading={group.heading}>
@@ -204,8 +210,8 @@ export function SearchableSelect({
                     {options.map(renderOption)}
                   </CommandGroup>
                 )}
-                {/* Ação de criar sempre disponível no rodapé quando há correspondências
-                    parciais mas nenhuma exata (o CommandEmpty só aparece com zero matches). */}
+                {/* ÚNICO lugar da ação de criar: rodapé, sempre que há texto sem
+                    correspondência exata (com ou sem matches parciais). */}
                 {canCreate && (
                   <CommandGroup>{createItem}</CommandGroup>
                 )}

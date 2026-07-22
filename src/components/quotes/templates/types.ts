@@ -70,6 +70,8 @@ export function getProposalSections(customization?: ProposalCustomization): Prop
   const saved = customization?.sections ?? [];
   const savedByKey = new Map(saved.map((s) => [s.key, s]));
 
+  const keyIndex = new Map<string, number>(PROPOSAL_SECTION_KEYS.map((k, i) => [k, i]));
+
   const merged: ProposalSection[] = PROPOSAL_SECTION_KEYS.map((key, i) => {
     const s = savedByKey.get(key);
     return {
@@ -80,7 +82,12 @@ export function getProposalSections(customization?: ProposalCustomization): Prop
     };
   });
 
-  return merged.sort((a, b) => a.order - b.order);
+  // Ordena por `order`; em empate (orders duplicados) desempata pelo índice
+  // padrão em PROPOSAL_SECTION_KEYS pra ordem ser determinística.
+  return merged.sort((a, b) => {
+    if (a.order !== b.order) return a.order - b.order;
+    return (keyIndex.get(a.key) ?? 0) - (keyIndex.get(b.key) ?? 0);
+  });
 }
 
 export interface ProposalTemplateProps {

@@ -45,13 +45,23 @@ export function CleanTemplate(props: ProposalTemplateProps) {
   const discountAmount = quote.discount_amount ?? 0;
   const displacementCost = quote.displacement_cost ?? 0;
 
+  const hasItems = d.allItems.length > 0;
+
   // ── Opções de pagamento calculadas a partir do total final (quote.total_value)
   const totalValue = quote.total_value ?? 0;
-  const discountRate = quote.card_discount_rate ?? 0;
-  const installments = quote.card_installments ?? 0;
-  const pixValue = discountRate > 0 ? totalValue * (1 - discountRate / 100) : null;
+  // Clampa a taxa de desconto do PIX em 0–100 (config fora do range renderiza
+  // valores absurdos: negativo/zero no PIX ou selo "150%"). Arredonda o selo a
+  // 1 casa pra não exibir "5.333%".
+  const discountRate = Math.min(100, Math.max(0, quote.card_discount_rate ?? 0));
+  const discountRateLabel = Math.round(discountRate * 10) / 10;
+  // Parcelas sempre inteiras no render (config fracionada não faz sentido).
+  const installments = Math.floor(quote.card_installments ?? 0);
+  const rawPixValue = discountRate > 0 ? totalValue * (1 - discountRate / 100) : null;
+  // Não renderiza o card PIX quando o valor calculado fica ≤ 0.
+  const pixValue = rawPixValue !== null && rawPixValue > 0 ? rawPixValue : null;
   const installmentValue = installments > 1 ? totalValue / installments : null;
-  const hasPaymentOptions = totalValue > 0 && (pixValue !== null || installmentValue !== null);
+  // Só oferece formas de pagamento quando o total aparece (há itens e total > 0).
+  const hasPaymentOptions = hasItems && totalValue > 0 && (pixValue !== null || installmentValue !== null);
 
   // ── Rodapé: data/hora de geração (created_at) no fuso da empresa (America/Sao_Paulo)
   const generatedDate = quote.created_at ? fmtDate(quote.created_at) : null;
@@ -106,9 +116,9 @@ export function CleanTemplate(props: ProposalTemplateProps) {
               {rows.map((item, i) => (
                 <tr key={item.id ?? i} style={{ background: i % 2 === 1 ? '#fafbfc' : '#fff' }}>
                   <td className="px-4 py-3 align-top" style={{ color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>
-                    <span className="font-medium">{item.description}</span>
-                    {item.details && (
-                      <p className="text-[12px] leading-snug mt-1 whitespace-pre-wrap" style={{ color: '#64748b' }}>
+                    <span className="font-medium break-words" style={{ overflowWrap: 'anywhere' }}>{item.description}</span>
+                    {item.details?.trim() && (
+                      <p className="text-[12px] leading-snug mt-1 whitespace-pre-wrap break-words" style={{ color: '#64748b', overflowWrap: 'anywhere' }}>
                         {item.details}
                       </p>
                     )}
@@ -138,8 +148,6 @@ export function CleanTemplate(props: ProposalTemplateProps) {
       </div>
     );
   };
-
-  const hasItems = d.allItems.length > 0;
 
   return (
     <div
@@ -212,7 +220,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
 
         {/* ── Abertura (mensagem de saudação, se ligada e com texto) ── */}
         {aberturaText && (
-          <p className="mt-6 text-sm leading-relaxed whitespace-pre-wrap clean-block" style={{ color: '#334155' }}>
+          <p className="mt-6 text-sm leading-relaxed whitespace-pre-wrap clean-block break-words" style={{ color: '#334155', overflowWrap: 'anywhere' }}>
             {aberturaText}
           </p>
         )}
@@ -280,7 +288,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                             className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
                             style={{ background: primary, color: '#ffffff', ...colorAdjust }}
                           >
-                            {discountRate}% {t.cleanPaymentDiscount}
+                            {discountRateLabel}% {t.cleanPaymentDiscount}
                           </span>
                         </div>
                         <p className="text-2xl font-black tabular-nums mt-2" style={{ color: primary }}>{money(pixValue)}</p>
@@ -309,7 +317,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
             // `encerramento` é mensagem corrida, sem título nem card.
             if (sec.key === 'encerramento') {
               return (
-                <p key={sec.key} className="mt-9 text-sm leading-relaxed whitespace-pre-wrap clean-block" style={{ color: '#334155' }}>
+                <p key={sec.key} className="mt-9 text-sm leading-relaxed whitespace-pre-wrap clean-block break-words" style={{ color: '#334155', overflowWrap: 'anywhere' }}>
                   {text}
                 </p>
               );
@@ -320,7 +328,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: primary }}>{title}</p>
                 )}
                 <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: '#334155' }}>{text}</p>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed break-words" style={{ color: '#334155', overflowWrap: 'anywhere' }}>{text}</p>
                 </div>
               </div>
             );

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.23',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais segurança no link da proposta',
+        description: 'Reforçamos o link público da proposta para que informações internas da sua empresa não fiquem acessíveis a quem recebe o orçamento.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Aprovação do orçamento pelo link mais confiável',
+        description: 'A aprovação e a recusa do orçamento pelo link ficaram mais robustas: a resposta do cliente é registrada com segurança e, quando o orçamento já foi respondido, o sistema avisa em vez de duplicar. Também ajustamos o Configurar Proposta para descartar edições não salvas ao fechar sem salvar.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.17.22',
     date: '22 de julho de 2026',
     type: 'patch',

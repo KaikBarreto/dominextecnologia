@@ -20,10 +20,17 @@ export interface CompanySettings {
   state?: string;
   zip_code?: string;
   logo_url?: string;
+  // Espelha ProposalCustomization (src/components/quotes/templates/types.ts).
+  // Mantido inline pra evitar import circular (types.ts importa CompanySettings).
   proposal_customization?: {
     primary_color?: string;
     accent_color?: string;
     header_bg?: string;
+    logo_url?: string;
+    show_pagination?: boolean;
+    show_displacement?: boolean;
+    show_gifts?: boolean;
+    sections?: Array<{ key: string; enabled: boolean; order: number; customText?: string }>;
   };
   white_label_enabled?: boolean;
   white_label_logo_url?: string;

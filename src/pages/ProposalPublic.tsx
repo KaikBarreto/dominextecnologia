@@ -110,6 +110,10 @@ function ProposalPublicContent({
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
   const [done, setDone] = useState(false);
+  // Mensagem amigável exibida quando a resposta NÃO persistiu agora:
+  // 'already' = o orçamento já tinha sido respondido (não travamos como "aprovado agora");
+  // 'error'   = falha de rede (permite tentar de novo, não trava done).
+  const [respondNotice, setRespondNotice] = useState<'already' | 'error' | null>(null);
 
   useOgMeta(company, locale);
 
@@ -179,24 +183,52 @@ function ProposalPublicContent({
   const respond = async (status: 'aprovado' | 'rejeitado') => {
     if (!token) return;
     setResponding(true);
-    await supabase.from('quotes').update({ status }).eq('token', token);
+    setRespondNotice(null);
 
-    // Notifica a empresa dona do orçamento (sino in-app) que o cliente respondeu.
-    // Best-effort e server-side: mandamos SÓ o token — a edge resolve status,
-    // empresa e destinatários (admins) com service_role, sem confiar no client
-    // (contexto anônimo). Falha aqui NUNCA quebra a resposta do cliente, igual
-    // ao record_quote_view.
-    void (async () => {
-      try {
-        await supabase.functions.invoke('notify-quote-response', { body: { token } });
-      } catch {
-        /* silencioso: notificação nunca quebra a proposta */
-      }
-    })();
+    // A transição enviado -> aprovado|rejeitado roda numa RPC SECURITY DEFINER.
+    // Contexto anônimo NÃO pode dar UPDATE direto em quotes (o RLS bloqueia
+    // silenciosamente, 0 linhas), então a fonte da verdade é o retorno da RPC:
+    // { ok, status?, error? }. Nunca confiamos no status do client.
+    const { data, error } = await supabase.rpc('respond_quote_public', {
+      _token: token,
+      _status: status,
+    });
+    const result = (data ?? null) as { ok: boolean; status?: string; error?: string } | null;
 
-    setQuote(prev => prev ? { ...prev, status } : prev);
+    // Falha de rede/servidor: NÃO trava done — o cliente pode tentar de novo.
+    if (error) {
+      setRespondNotice('error');
+      setResponding(false);
+      return;
+    }
+
+    if (result?.ok === true) {
+      // Persistiu de verdade → só aqui notificamos a empresa e travamos a tela.
+      // Best-effort e server-side: mandamos SÓ o token — a edge resolve status,
+      // empresa e destinatários (admins) com service_role. Falha na notificação
+      // NUNCA quebra a resposta do cliente, igual ao record_quote_view.
+      void (async () => {
+        try {
+          await supabase.functions.invoke('notify-quote-response', { body: { token } });
+        } catch {
+          /* silencioso: notificação nunca quebra a proposta */
+        }
+      })();
+
+      setQuote(prev => (prev ? { ...prev, status: (result.status ?? status) } : prev));
+      setResponding(false);
+      setDone(true);
+      return;
+    }
+
+    // ok:false → não transicionou. Caso mais comum: 'not_pending' (já respondido).
+    // Sincronizamos o status local com o que o servidor diz (fonte da verdade) e
+    // mostramos "já respondido", sem fingir que aprovamos agora.
+    if (result?.status) {
+      setQuote(prev => (prev ? { ...prev, status: result.status! } : prev));
+    }
+    setRespondNotice('already');
     setResponding(false);
-    setDone(true);
   };
 
   if (loading) {
@@ -248,22 +280,38 @@ function ProposalPublicContent({
           <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
 
-        {canRespond && !done && (
-          <div className="flex gap-3 mt-6 max-w-md mx-auto">
-            <Button
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base"
-              onClick={() => respond('aprovado')}
-              disabled={responding}
-            >
-              <CheckCircle2 className="h-5 w-5 mr-2" /> {tp.approveBtn}
-            </Button>
-            <Button
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-base"
-              onClick={() => respond('rejeitado')}
-              disabled={responding}
-            >
-              <XCircle className="h-5 w-5 mr-2" /> {tp.rejectBtn}
-            </Button>
+        {canRespond && !done && respondNotice !== 'already' && (
+          <>
+            <div className="flex gap-3 mt-6 max-w-md mx-auto">
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base"
+                onClick={() => respond('aprovado')}
+                disabled={responding}
+              >
+                <CheckCircle2 className="h-5 w-5 mr-2" /> {tp.approveBtn}
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-base"
+                onClick={() => respond('rejeitado')}
+                disabled={responding}
+              >
+                <XCircle className="h-5 w-5 mr-2" /> {tp.rejectBtn}
+              </Button>
+            </div>
+            {/* Falha de rede: mensagem amigável, botões seguem habilitados p/ retry. */}
+            {respondNotice === 'error' && (
+              <p className="text-center text-sm text-red-600 mt-3 max-w-md mx-auto">
+                {tp.responseError}
+              </p>
+            )}
+          </>
+        )}
+
+        {/* Respondeu enquanto olhava (corrida): o servidor disse que já não estava
+            pendente. Não fingimos "aprovado agora" — mostramos "já respondido". */}
+        {respondNotice === 'already' && !done && (
+          <div className="text-center py-6">
+            <p className="text-sm text-gray-400">{tp.alreadyResponded}</p>
           </div>
         )}
 

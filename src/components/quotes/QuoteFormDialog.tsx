@@ -328,6 +328,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setNotes(d.notes || '');
     setTerms(d.terms || '');
     setProposalTemplateId(d.proposalTemplateId || '');
+    // O rascunho leve (sessionStorage) NÃO guarda itens de propósito. Ao retomar,
+    // zeramos os itens pra não herdar os da sessão anterior que sobreviveram.
+    setItems([]);
   };
 
   const resetQuoteForm = () => {
@@ -386,6 +389,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setStep(0);
       setMaxStepReached(0);
       setDraftQuoteId(null);
+      // Limpa os itens ao fechar pra que a próxima abertura (novo/retomar) não
+      // herde itens da sessão anterior. O effect de populate/reset repovoa
+      // corretamente quando o diálogo reabre (edição ou novo).
+      setItems([]);
       return;
     }
     setStep(0);

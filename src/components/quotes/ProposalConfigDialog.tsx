@@ -187,6 +187,20 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
   // estado `colors` + as seções atuais (pra o preview refletir em tempo real).
   const effectiveCustomization: ProposalCustomization = { ...colors, sections };
 
+  // Snapshot do que JÁ ESTÁ persistido (company.proposal_customization),
+  // normalizado. Usado pra salvar o logo SEM arrastar rascunhos de seção/cor
+  // não confirmados do estado local — só o logo (+ o que já estava salvo).
+  const persistedCustomization = (): ProposalCustomization => ({
+    primary_color: existing?.primary_color || '#2563eb',
+    accent_color: existing?.accent_color || '#f97316',
+    header_bg: existing?.header_bg || '#1e3a5f',
+    logo_url: existing?.logo_url || undefined,
+    show_pagination: existing?.show_pagination ?? true,
+    show_displacement: existing?.show_displacement ?? true,
+    show_gifts: existing?.show_gifts ?? true,
+    sections: getProposalSections(existing),
+  });
+
   // ── Manipulação das seções (toggle / reordenar por setas / texto) ──
   // Toda operação recalcula `order` sequencialmente pra manter consistência.
   const reindex = (list: ProposalSection[]): ProposalSection[] =>
@@ -220,6 +234,19 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
       setMaxStepReached(0);
       setPreviewPage(1);
       setPreviewTotal(1);
+      // Descarta edições não salvas: reseta cores/logo/toggles e seções pro
+      // estado PERSISTIDO. Como `existing` não muda ao fechar/reabrir sem save,
+      // reabrir mostraria os rascunhos como se tivessem sido salvos.
+      setColors({
+        primary_color: existing?.primary_color || '#2563eb',
+        accent_color: existing?.accent_color || '#f97316',
+        header_bg: existing?.header_bg || '#1e3a5f',
+        logo_url: existing?.logo_url || undefined,
+        show_pagination: existing?.show_pagination ?? true,
+        show_displacement: existing?.show_displacement ?? true,
+        show_gifts: existing?.show_gifts ?? true,
+      });
+      setSections(getProposalSections(existing));
       return;
     }
     setStep(0);
@@ -267,9 +294,12 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
       const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
-      const next = { ...colors, logo_url: publicUrl };
-      setColors(next);
-      await updateSettings.mutateAsync({ proposal_customization: { ...next, sections } } as any);
+      // Reflete o novo logo no estado local (preview/picker do diálogo aberto)...
+      setColors(prev => ({ ...prev, logo_url: publicUrl }));
+      // ...mas persiste APENAS o logo sobre o que já estava salvo, sem arrastar
+      // rascunhos de seção/cor ainda não confirmados no estado local.
+      const toPersist: ProposalCustomization = { ...persistedCustomization(), logo_url: publicUrl };
+      await updateSettings.mutateAsync({ proposal_customization: toPersist } as any);
       toast({ title: tp.logoUploadedToast });
     } catch (err: any) {
       toast({ variant: 'destructive', title: tp.logoErrorToast, description: getErrorMessage(err) });
@@ -287,9 +317,11 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         if (path) await supabase.storage.from('company-logos').remove([path]);
       } catch {}
     }
-    const next = { ...colors, logo_url: undefined };
-    setColors(next);
-    await updateSettings.mutateAsync({ proposal_customization: { ...next, sections } } as any);
+    setColors(prev => ({ ...prev, logo_url: undefined }));
+    // Persiste só a remoção do logo sobre o estado já salvo (sem arrastar
+    // rascunhos de seção/cor não confirmados).
+    const toPersist: ProposalCustomization = { ...persistedCustomization(), logo_url: undefined };
+    await updateSettings.mutateAsync({ proposal_customization: toPersist } as any);
     toast({ title: tp.logoRemovedToast });
   };
 
