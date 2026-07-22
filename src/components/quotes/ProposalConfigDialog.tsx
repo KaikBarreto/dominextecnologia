@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
-import { Check, Save, Loader2, Upload, Trash2, ImageIcon, LayoutTemplate, Palette, Eye, ChevronLeft, ChevronRight, Gem, AudioLines, Pyramid } from 'lucide-react';
+import { Check, Save, Loader2, Upload, Trash2, ImageIcon, LayoutTemplate, Palette, Eye, ChevronLeft, ChevronRight, Gem, AudioLines, Pyramid, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
@@ -86,6 +86,7 @@ const SAMPLE_QUOTE: Quote = {
 };
 
 const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
+  clean: 'Documento branco e enxuto: cabeçalho da empresa, cliente, tabelas de serviços e materiais, totais e informações. Padrão de novos orçamentos.',
   vanguarda: 'Premium em A4 vertical, fundo escuro, dirigido pela sua cor de marca. Capa marcante + apresentação, escopo, investimento e encerramento.',
   aurora: 'Capa preta com barras em gradiente azul→roxo→rosa. Visual moderno e vibrante, A4 vertical.',
   prisma: 'Capa preta com cubos de vidro 3D iridescentes. Preto e branco minimalista, tipografia condensada, A4 vertical.',
@@ -93,12 +94,14 @@ const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
 
 // Lista de templates FIXA no client (independe das linhas em proposal_templates).
 // A persistência da escolha na quote ainda usa o registro do banco; o preview
-// renderiza só pelo slug. Slugs válidos: vanguarda | aurora | prisma.
+// renderiza só pelo slug. Slugs válidos: clean | vanguarda | aurora | prisma.
 // Cada modelo carrega um ÍCONE autêntico (lucide) que combina com sua identidade:
+//   Clean → FileText (documento branco/limpo, é o padrão → vem primeiro),
 //   Vanguarda → Gem (premium/sofisticado), Aurora → AudioLines (barras vibrantes),
 //   Prisma → Pyramid (geométrico/3D minimalista). A cor do modelo (preview_color)
 //   vira só um leve toque no ícone, não mais uma bolinha lisa.
 const TEMPLATE_OPTIONS = [
+  { id: 'clean', slug: 'clean', name: 'Clean', preview_color: '#0f172a', icon: FileText, description: null },
   { id: 'vanguarda', slug: 'vanguarda', name: 'Vanguarda', preview_color: '#22d3ee', icon: Gem, description: null },
   { id: 'aurora', slug: 'aurora', name: 'Aurora', preview_color: '#ec4899', icon: AudioLines, description: null },
   { id: 'prisma', slug: 'prisma', name: 'Prisma', preview_color: '#c084fc', icon: Pyramid, description: null },
@@ -115,7 +118,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     { key: 'review', label: tp.stepReview },
   ];
   const { settings: company, updateSettings } = useCompanySettings();
-  const [selectedSlug, setSelectedSlug] = useState<string>('vanguarda');
+  // selectedSlug é só PREVIEW — este diálogo NÃO persiste o template (handleSave só
+  // grava proposal_customization/cores). A escolha por-orçamento vive no
+  // QuoteFormDialog. Default = 'clean' pra refletir o padrão de novos orçamentos.
+  const [selectedSlug, setSelectedSlug] = useState<string>('clean');
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -160,7 +166,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
   }, [existing]);
 
   // ── Reset wizard nav on open/close ──
-  // Como sempre há um template default (vanguarda) e cores válidas, a config já
+  // Como sempre há um template default (clean) e cores válidas, a config já
   // está "completa" desde a abertura → navegação livre por todas as etapas
   // (espelha o maxStepReached dos outros wizards no modo edição).
   useEffect(() => {
@@ -245,7 +251,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
   const effectiveLogo = colors.logo_url || company?.logo_url || null;
 
   // ── Wizard gating ──
-  // Etapa Modelo sempre tem um template selecionado (default vanguarda) → ok.
+  // Etapa Modelo sempre tem um template selecionado (default clean) → ok.
   // Demais etapas livres. Voltar é sempre livre.
   const canNext = () => {
     switch (currentStepKey) {

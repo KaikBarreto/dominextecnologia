@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.17";
+export const APP_VERSION = "1.17.18";
 
-export const VERSION_NOTES = "Deixamos a tela de Estoque mais clara: o título mostra de qual local é a lista, a quantidade mínima aparece ao lado da quantidade, e os botões de Configurações e Importar XML ganharam lugar fixo no topo.";
+export const VERSION_NOTES = "Seus orçamentos ganharam um modelo novo, mais enxuto e branco, já como padrão. Agora o cliente pode aprovar o orçamento direto pelo link: a aprovação fica registrada no sistema e você recebe um aviso na hora. Também dá para informar a quantidade de cada serviço ou material, com o total calculado automaticamente.";

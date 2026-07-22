@@ -4,6 +4,7 @@ import type { ProposalCustomization } from './templates/types';
 import { VanguardaTemplate } from './templates/VanguardaTemplate';
 import { AuroraTemplate } from './templates/AuroraTemplate';
 import { PrismaTemplate } from './templates/PrismaTemplate';
+import { CleanTemplate } from './templates/CleanTemplate';
 import { forwardRef } from 'react';
 
 interface ProposalRendererProps {
@@ -14,9 +15,10 @@ interface ProposalRendererProps {
 }
 
 /**
- * Despacha o template de proposta por slug. Slugs válidos: `vanguarda` |
- * `aurora` | `prisma`. Qualquer outro valor (incl. registros antigos como
- * `classico`/`moderno`/`minimalista`) cai no DEFAULT = Vanguarda.
+ * Despacha o template de proposta por slug. Slugs válidos: `clean` | `vanguarda`
+ * | `aurora` | `prisma`. Qualquer outro valor (incl. registros antigos como
+ * `classico`/`moderno`/`minimalista`) cai no DEFAULT = Vanguarda — sem retroação
+ * pros orçamentos já existentes. `clean` é o padrão de NOVOS orçamentos.
  */
 export const ProposalRenderer = forwardRef<HTMLDivElement, ProposalRendererProps>(
   ({ quote, company, templateSlug = 'vanguarda', customization }, ref) => {
@@ -25,7 +27,9 @@ export const ProposalRenderer = forwardRef<HTMLDivElement, ProposalRendererProps
 
     return (
       <div ref={ref}>
-        {templateSlug === 'aurora' ? (
+        {templateSlug === 'clean' ? (
+          <CleanTemplate {...props} />
+        ) : templateSlug === 'aurora' ? (
           <AuroraTemplate {...props} />
         ) : templateSlug === 'prisma' ? (
           <PrismaTemplate {...props} />

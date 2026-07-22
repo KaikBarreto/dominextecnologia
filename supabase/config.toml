@@ -129,6 +129,16 @@ verify_jwt = false
 [functions.lead-capture-submit]
 verify_jwt = false
 
+# notify-quote-response: notifica in-app a empresa dona do orçamento quando o
+# cliente final aprova/recusa pelo link público (/proposta/:token). Anon por
+# design (o cliente final não está logado). Roda com service_role e recebe SÓ o
+# token do quote — resolve status, empresa e destinatários (admins ativos)
+# server-side; nada de company_id/user_id vem do client (anti-vazamento
+# cross-tenant). Idempotência por marcador no action_url. verify_jwt=false porque
+# não há JWT de usuário, só a apikey anon; a segurança é o token do quote.
+[functions.notify-quote-response]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)

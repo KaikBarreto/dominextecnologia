@@ -75,6 +75,7 @@ function ServiceItemsList({
   items: serviceItems,
   allItems,
   onUpdatePrice,
+  onUpdateQty,
   onRemove,
   fmt,
   tq,
@@ -82,6 +83,7 @@ function ServiceItemsList({
   items: FormQuoteItem[];
   allItems: FormQuoteItem[];
   onUpdatePrice: (idx: number, price: number) => void;
+  onUpdateQty: (idx: number, qty: number) => void;
   onRemove: (idx: number) => void;
   fmt: (v: number) => string;
   tq: Messages['app']['crm']['quotes'];
@@ -124,7 +126,14 @@ function ServiceItemsList({
                       </Badge>
                     )}
                   </td>
-                  <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                  <td className="p-2 text-center">
+                    <Input
+                      type="number" min={1} step="1"
+                      value={item.quantity || ''}
+                      onChange={e => onUpdateQty(globalIdx, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="h-7 w-14 text-xs text-center mx-auto px-1"
+                    />
+                  </td>
                   <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">
                     {hasCosts ? fmt(item.unit_total_cost) : '—'}
                   </td>
@@ -325,7 +334,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setNotes('');
     setTerms('');
     setItems([]);
-    setProposalTemplateId(templates[0]?.id ?? '');
+    // Novos orçamentos nascem no template "Clean" (branco/enxuto). Os demais
+    // seguem selecionáveis no seletor de template. Fallback: 1º da lista.
+    setProposalTemplateId(
+      (templates.find(t => t.slug === 'clean') ?? templates[0])?.id ?? ''
+    );
     if (pricing) {
       setTaxRate(Number(pricing.tax_rate ?? 10));
       setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
@@ -335,6 +348,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
     }
   };
+
+  // ── Default de template pra NOVO orçamento: "Clean" (branco/enxuto) ──
+  // Os templates carregam async; quando chegam e ainda não há seleção (orçamento
+  // novo, sem rascunho), aponta pro "clean". Os 3 escuros seguem no seletor.
+  useEffect(() => {
+    if (open && !isEditing && !proposalTemplateId && templates.length > 0) {
+      setProposalTemplateId((templates.find(t => t.slug === 'clean') ?? templates[0]).id);
+    }
+  }, [open, isEditing, proposalTemplateId, templates]);
 
   // ── Initialize BDI config from pricing settings (new quote) ──
   useEffect(() => {
@@ -585,6 +607,25 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const updateItemPrice = (idx: number, newPrice: number) => {
     setItems(prev => prev.map((it, i) =>
       i === idx ? { ...it, unit_price: newPrice, total_price: Math.round(newPrice * it.quantity * 100) / 100, price_override: newPrice } : it
+    ));
+  };
+
+  // ── Item quantity update ──
+  // Quantidade vale pra QUALQUER tipo (serviço, mão de obra, material). Recalcula
+  // total_price = unit_price × quantity. O unit_price fica fixo (é preço por
+  // unidade); mudar a quantidade não deve reprecificar via BDI, então marca
+  // price_override quando o unit_price já existe pra não ser sobrescrito.
+  const updateItemQty = (idx: number, newQty: number) => {
+    const qty = Math.max(1, Math.floor(newQty) || 1);
+    setItems(prev => prev.map((it, i) =>
+      i === idx
+        ? {
+            ...it,
+            quantity: qty,
+            total_price: Math.round(it.unit_price * qty * 100) / 100,
+            price_override: it.unit_price > 0 ? (it.price_override ?? it.unit_price) : it.price_override,
+          }
+        : it
     ));
   };
 
@@ -957,7 +998,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </div>
 
                 {serviceItems.length > 0 ? (
-                  <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onRemove={removeItem} fmt={fmt} tq={tq} />
+                  <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onUpdateQty={updateItemQty} onRemove={removeItem} fmt={fmt} tq={tq} />
                 ) : (
                   <EmptyState>{tq.serviceEmpty}</EmptyState>
                 )}
@@ -1029,7 +1070,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                           return (
                             <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
                               <td className="p-2 font-medium">{item.description}</td>
-                              <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                              <td className="p-2 text-center">
+                                <Input
+                                  type="number" min={1} step="1"
+                                  value={item.quantity || ''}
+                                  onChange={e => updateItemQty(globalIdx, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                  className="h-7 w-14 text-xs text-center mx-auto px-1"
+                                />
+                              </td>
                               <td className="p-2">
                                 <Input
                                   type="number" min={0} step="0.01"

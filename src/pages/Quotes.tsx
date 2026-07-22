@@ -165,6 +165,13 @@ function QuotesList() {
         variant: 'default',
       });
     }
+    // Promove rascunho → enviado só quando gera o link, pra a proposta pública
+    // já exibir os botões Aprovar/Rejeitar (que exigem status 'enviado'). Guard:
+    // NUNCA rebaixa aprovado/rejeitado/convertido/expirado de volta pra enviado.
+    // Best-effort: falha aqui não quebra o fluxo de cópia (link/toast já rolou).
+    if (q.status === 'rascunho') {
+      updateStatus.mutate({ id: q.id, status: 'enviado' });
+    }
   };
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);

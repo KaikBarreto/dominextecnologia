@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.18',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novo modelo de proposta, mais enxuto',
+        description: 'Você tem agora um modelo de orçamento mais limpo e direto, em fundo branco e com menos páginas: dados da sua empresa, serviços, materiais e total em uma proposta objetiva. Ele já vem selecionado nos orçamentos novos, e os modelos anteriores continuam disponíveis para escolher.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cliente aprova o orçamento pelo link e você é avisado na hora',
+        description: 'Quando o cliente aprova (ou recusa) o orçamento pelo link que você enviou, o pedido já fica registrado no sistema e você recebe uma notificação na hora, com o nome de quem aprovou e o valor.',
+        category: 'recurso',
+      },
+      {
+        title: 'Quantidade nos itens do orçamento',
+        description: 'Agora você pode informar mais de uma unidade de um mesmo serviço ou material dentro do orçamento, e o total é calculado automaticamente pela quantidade.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.17',
     date: '21 de julho de 2026',
     type: 'patch',

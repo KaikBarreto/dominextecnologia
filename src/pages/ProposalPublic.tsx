@@ -180,6 +180,20 @@ function ProposalPublicContent({
     if (!token) return;
     setResponding(true);
     await supabase.from('quotes').update({ status }).eq('token', token);
+
+    // Notifica a empresa dona do orçamento (sino in-app) que o cliente respondeu.
+    // Best-effort e server-side: mandamos SÓ o token — a edge resolve status,
+    // empresa e destinatários (admins) com service_role, sem confiar no client
+    // (contexto anônimo). Falha aqui NUNCA quebra a resposta do cliente, igual
+    // ao record_quote_view.
+    void (async () => {
+      try {
+        await supabase.functions.invoke('notify-quote-response', { body: { token } });
+      } catch {
+        /* silencioso: notificação nunca quebra a proposta */
+      }
+    })();
+
     setQuote(prev => prev ? { ...prev, status } : prev);
     setResponding(false);
     setDone(true);
