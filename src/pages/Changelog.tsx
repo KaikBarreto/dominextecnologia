@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.25',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Controle de materiais por local de estoque',
+        description: 'Agora cada local de estoque pode ter seus próprios materiais. Ao cadastrar um material, você escolhe em quais locais ele fica (todos por padrão) e, em cada local, uma engrenagem abre a configuração dos itens daquele lugar, com a opção de adicionar um grupo inteiro de uma vez ou marcar todos. Cada local passa a mostrar só os seus materiais, sem misturar com os outros. Se um material ainda tem saldo num local, o sistema avisa e ajuda a transferir antes de removê-lo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Resumo do estoque mais direto',
+        description: 'O topo da tela de estoque ficou mais limpo: o valor investido agora aparece formatado em reais e o cartão de projeção de venda foi removido.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.24',
     date: '22 de julho de 2026',
     type: 'patch',

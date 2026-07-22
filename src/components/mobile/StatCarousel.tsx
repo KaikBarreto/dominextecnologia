@@ -8,6 +8,8 @@ export interface StatCarouselItem {
   key: string;
   label: string;
   count: number;
+  /** Quando fornecido, substitui `count` na exibição (ex.: valor monetário formatado). */
+  displayValue?: string;
   icon: ReactNode;
   accentColor?: string;
   active?: boolean;
@@ -68,7 +70,7 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate max-w-full">
                 {item.label}
               </span>
-              <span className="text-2xl font-bold leading-none">{item.count}</span>
+              <span className="text-2xl font-bold leading-none">{item.displayValue ?? item.count}</span>
             </button>
           ))}
         </div>
@@ -91,7 +93,7 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">{item.label}</p>
-                <p className="text-xl sm:text-2xl font-bold">{item.count}</p>
+                <p className="text-xl sm:text-2xl font-bold">{item.displayValue ?? item.count}</p>
               </div>
               <div
                 className="rounded-full p-1.5 sm:p-2 text-white"

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.24";
+export const APP_VERSION = "1.17.25";
 
-export const VERSION_NOTES = "O portal do contrato ficou mais preciso: o aviso de conformidade com a lei do PMOC agora aparece só nos contratos de PMOC. E a abertura de chamado pelo portal do cliente ficou mais protegida, pedindo uma descrição mínima e evitando várias aberturas repetidas em seguida.";
+export const VERSION_NOTES = "Agora você controla quais materiais existem em cada local de estoque. Ao cadastrar um material, escolha em quais locais ele fica (todos por padrão), e em cada local use a engrenagem para configurar os itens, inclusive adicionando um grupo inteiro de uma vez. Cada local passa a mostrar só os seus materiais.";

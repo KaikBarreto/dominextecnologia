@@ -28,18 +28,30 @@ interface MobilePillTabsProps {
   activeTab: string;
   onTabChange: (value: string) => void;
   className?: string;
+  /**
+   * Sufixo renderizado à direita do label de cada pill, dentro do container da
+   * pill mas FORA do elemento clicável principal. Usar para ícones de ação
+   * (ex: engrenagem de configuração) sem aninhar <button> dentro de <button>.
+   * O ReactNode recebido deve ser um elemento interativo não-button
+   * (ex: <span role="button" tabIndex={0}>).
+   */
+  renderSuffix?: (tab: PillTab, isActive: boolean) => ReactNode;
 }
 
 /**
  * Segmented control horizontal scrollável pra trocar de aba no mobile.
  * Pills snap-x com gradient fade nas bordas. Visual app nativo.
  */
-export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: MobilePillTabsProps) {
+export function MobilePillTabs({ tabs, activeTab, onTabChange, className, renderSuffix }: MobilePillTabsProps) {
   // Centraliza a pill ativa na vista ao trocar de aba (ex: entrar numa ferramenta
   // pelo carrossel do Início) — senão o carrossel fica preso no começo.
-  const activeRef = useRef<HTMLButtonElement>(null);
+  // Usamos dois refs separados para poder tipar corretamente o <div> (com suffix)
+  // e o <button> (sem suffix), evitando cast de tipo.
+  const activeDivRef = useRef<HTMLDivElement>(null);
+  const activeButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    activeDivRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    activeButtonRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [activeTab]);
 
   return (
@@ -74,10 +86,67 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: Mobi
               : {}
             : {};
 
+          const suffix = renderSuffix ? renderSuffix(tab, isActive) : null;
+
+          // Quando há sufixo, a pill é um <div> container para evitar button-in-button.
+          // A área clicável de troca de aba fica num <span role="tab"> e o sufixo
+          // é irmão separado dentro do container.
+          if (suffix) {
+            return (
+              <div
+                key={tab.value}
+                ref={isActive ? activeDivRef : undefined}
+                style={accentStyle}
+                className={cn(
+                  'snap-start shrink-0 inline-flex items-center rounded-full text-sm font-medium transition-all',
+                  accented
+                    ? isActive
+                      ? 'shadow-sm'
+                      : 'bg-muted/50 text-muted-foreground'
+                    : isActive
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted/50 text-muted-foreground',
+                )}
+              >
+                {/* Área clicável de troca de aba */}
+                <span
+                  role="tab"
+                  aria-selected={isActive}
+                  tabIndex={0}
+                  onClick={() => onTabChange(tab.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTabChange(tab.value); } }}
+                  className="inline-flex items-center gap-1.5 h-9 pl-3.5 pr-1.5 cursor-pointer select-none active:scale-95"
+                >
+                  {tab.icon}
+                  <span className="whitespace-nowrap">{tab.label}</span>
+                  {tab.sublabel && (
+                    <span
+                      style={colorBg && isActive ? { opacity: 0.85 } : undefined}
+                      className={cn(
+                        'whitespace-nowrap text-xs font-semibold tabular-nums',
+                        colorBg
+                          ? isActive ? '' : 'text-muted-foreground/70'
+                          : accented
+                          ? isActive ? 'opacity-80' : 'text-muted-foreground/70'
+                          : isActive ? 'text-primary-foreground/80' : 'text-muted-foreground/70',
+                      )}
+                    >
+                      {tab.sublabel}
+                    </span>
+                  )}
+                </span>
+                {/* Sufixo: elemento interativo irmão, não filho de button */}
+                <span className="flex items-center pr-1.5">
+                  {suffix}
+                </span>
+              </div>
+            );
+          }
+
           return (
             <button
               key={tab.value}
-              ref={isActive ? activeRef : undefined}
+              ref={isActive ? activeButtonRef : undefined}
               type="button"
               onClick={() => onTabChange(tab.value)}
               style={accentStyle}

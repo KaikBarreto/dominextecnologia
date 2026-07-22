@@ -75,6 +75,20 @@ export function useInventory() {
   };
 
   /**
+   * Retorna se o material está presente em um estoque específico.
+   * Default: true (quando não há level cadastrado, o material está presente por padrão — rollout backward-compat).
+   */
+  const getPresenceForStock = (inventoryId: string, stockId: string | null | undefined): boolean => {
+    if (!stockId) return true;
+    const level = stockLevels.find(
+      (l) => l.inventory_id === inventoryId && l.stock_id === stockId,
+    );
+    // Sem level = ainda não foi configurado → padrão é presente (rollout sem sumir nada)
+    if (!level) return true;
+    return level.is_present ?? true;
+  };
+
+  /**
    * Atualiza o min_quantity em inventory_stock_levels para um par (item, estoque).
    * Tenta UPDATE primeiro (nivel já existe); se nenhuma linha foi afetada, faz
    * INSERT buscando company_id do perfil do usuário atual.
@@ -116,6 +130,73 @@ export function useInventory() {
     },
     onError: (error) => {
       toast({ title: 'Erro ao atualizar mínimo', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+
+  /**
+   * Define exatamente em quais locais o material está presente.
+   * RPC set_inventory_presence marca os da lista e desmarca os demais.
+   * Lança erro com token `presence_has_balance:` quando local tem saldo > 0.
+   */
+  const setInventoryPresence = useMutation({
+    mutationFn: async ({ inventoryId, stockIds }: { inventoryId: string; stockIds: string[] }) => {
+      const { error } = await supabase.rpc('set_inventory_presence', {
+        p_inventory_id: inventoryId,
+        p_stock_ids: stockIds,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+    },
+    // Não mostra toast aqui — a UI deve tratar presence_has_balance especificamente
+    onError: (error: Error) => {
+      if (!String(error.message).includes('presence_has_balance')) {
+        toast({ title: 'Erro ao atualizar presença', description: getErrorMessage(error), variant: 'destructive' });
+      }
+      // Se for presence_has_balance, re-throw para a UI tratar
+    },
+  });
+
+  /**
+   * Marca presença de TODOS os materiais de um grupo em um local.
+   */
+  const addGroupToStock = useMutation({
+    mutationFn: async ({ stockId, groupId }: { stockId: string; groupId: string }) => {
+      const { error } = await supabase.rpc('add_group_to_stock', {
+        p_stock_id: stockId,
+        p_group_id: groupId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erro ao adicionar grupo', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+
+  /**
+   * Configura o catálogo de um local inteiro (marca os da lista, desmarca o resto).
+   * Lança erro com token `presence_has_balance:` quando material tem saldo > 0 no local.
+   */
+  const setStockMaterials = useMutation({
+    mutationFn: async ({ stockId, inventoryIds }: { stockId: string; inventoryIds: string[] }) => {
+      const { error } = await supabase.rpc('set_stock_materials', {
+        p_stock_id: stockId,
+        p_inventory_ids: inventoryIds,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+    },
+    // Não mostra toast aqui — a UI deve tratar presence_has_balance especificamente
+    onError: (error: Error) => {
+      if (!String(error.message).includes('presence_has_balance')) {
+        toast({ title: 'Erro ao configurar local', description: getErrorMessage(error), variant: 'destructive' });
+      }
     },
   });
 
@@ -322,7 +403,11 @@ export function useInventory() {
     deleteItem,
     getQuantityForStock,
     getMinQuantityForStock,
+    getPresenceForStock,
     updateStockLevelMinQuantity,
+    setInventoryPresence,
+    addGroupToStock,
+    setStockMaterials,
     registerInlineMovement,
     stats: {
       totalItems,

@@ -23,6 +23,10 @@ interface StockTransferDialogProps {
   onOpenChange: (open: boolean) => void;
   item: InventoryItem | null;
   activeStockId: string | null;
+  /** Quando fornecido, pré-seleciona este local como ORIGEM ao abrir o dialog.
+   *  Útil ao abrir via atalho de "presença bloqueada", onde a origem deve ser
+   *  o local bloqueado, não o local ativo na listagem. */
+  initialFromStockId?: string | null;
 }
 
 export function StockTransferDialog({
@@ -30,6 +34,7 @@ export function StockTransferDialog({
   onOpenChange,
   item,
   activeStockId,
+  initialFromStockId,
 }: StockTransferDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.transferDialog;
@@ -44,11 +49,14 @@ export function StockTransferDialog({
 
   useEffect(() => {
     if (!open) return;
-    setFromStockId(activeStockId ?? defaultStock?.id ?? '');
+    // initialFromStockId tem precedência: vem do atalho de presença bloqueada
+    // (local cujo saldo impede a remoção). Só cai no activeStockId/default quando
+    // o dialog é aberto pelo menu de ações "Transferir" normal.
+    setFromStockId(initialFromStockId ?? activeStockId ?? defaultStock?.id ?? '');
     setToStockId('');
     setQuantityStr('');
     setNotes('');
-  }, [open, activeStockId, defaultStock]);
+  }, [open, initialFromStockId, activeStockId, defaultStock]);
 
   const availableQty = item && fromStockId
     ? getQuantityForStock(item.id, fromStockId)

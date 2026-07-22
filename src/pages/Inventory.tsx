@@ -39,6 +39,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -48,6 +49,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
+import { StockConfiguratorDialog } from '@/components/inventory/StockConfiguratorDialog';
 import { useStocks } from '@/hooks/useStocks';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -88,12 +90,13 @@ import { MaterialPurchasesTab } from '@/components/inventory/MaterialPurchasesTa
 import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
 import { InventoryCountsTab } from '@/components/inventory/InventoryCountsTab';
 import { StockPositionTab } from '@/components/inventory/StockPositionTab';
+import { formatMoney } from '@/lib/format';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
-  const { items, isLoading, stats, deleteItem, getQuantityForStock, getMinQuantityForStock } = useInventory();
+  const { items, isLoading, stats, deleteItem, getQuantityForStock, getMinQuantityForStock, getPresenceForStock } = useInventory();
   const { stocks, defaultStock } = useStocks();
   const { groups } = useMaterialGroups();
   const { settings: companySettings } = useCompanySettings();
@@ -114,6 +117,9 @@ export default function Inventory() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferItem, setTransferItem] = useState<InventoryItem | null>(null);
+  /** Local pré-selecionado como origem quando a transferência vem de um atalho
+   *  de presença bloqueada. null = comportamento padrão (usa activeStockId). */
+  const [transferFromStockId, setTransferFromStockId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('estoque');
 
   // Inline movement state
@@ -123,6 +129,10 @@ export default function Inventory() {
 
   // Estoque (depósito) ativo dentro da aba "Estoque Atual"
   const [activeStockId, setActiveStockId] = useState<string | null>(null);
+
+  // Configurador de itens por local (engrenagem na pill)
+  const [configuratorStockId, setConfiguratorStockId] = useState<string | null>(null);
+  const [configuratorOpen, setConfiguratorOpen] = useState(false);
 
   // Se o local ativo foi excluído, redefine para null (cai no defaultStock).
   useEffect(() => {
@@ -162,7 +172,14 @@ export default function Inventory() {
       groupFilter.length === 0 || groupFilter.includes(item.group_id || '');
     // filtro de estoque baixo só aplica se busca vazia (padrão busca universal)
     const matchesLowStock = !lowStockOnly || searchQuery ? true : isLowStockForActiveStock(item);
-    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock;
+    // Filtro de presença: quando há um local selecionado e NÃO há busca ativa,
+    // mostra só os materiais presentes naquele local.
+    // Com busca ativa, a busca é universal (ignora presença — [[feedback_busca_universal_telas_listagem]]).
+    const matchesPresence =
+      !resolvedStockId || searchQuery
+        ? true
+        : getPresenceForStock(item.id, resolvedStockId);
+    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock && matchesPresence;
   });
 
   // Enriquece cada item com effectiveQty (saldo do local ativo) para que a
@@ -197,8 +214,18 @@ export default function Inventory() {
     setDeleteDialogOpen(true);
   };
 
+  /** Abre o dialog de transferência a partir do menu de ações (origem = activeStockId normal). */
   const handleTransferClick = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    setTransferFromStockId(null);
+    setTransferItem(item);
+    setTransferOpen(true);
+  };
+
+  /** Abre o dialog de transferência a partir de atalho de presença bloqueada,
+   *  pré-selecionando fromStockId como origem. */
+  const handleTransferFromBlockedStock = (item: InventoryItem, fromStockId: string) => {
+    setTransferFromStockId(fromStockId);
     setTransferItem(item);
     setTransferOpen(true);
   };
@@ -226,6 +253,12 @@ export default function Inventory() {
   const openNewItem = () => {
     setEditingItem(null);
     setDialogOpen(true);
+  };
+
+  const openConfigurator = (stockId: string, e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    setConfiguratorStockId(stockId);
+    setConfiguratorOpen(true);
   };
 
   const openExport = (format: ExportFormat) => {
@@ -319,16 +352,10 @@ export default function Inventory() {
     {
       key: 'cost',
       label: t.stats.invested,
-      count: Math.round(stats.totalValue),
+      count: stats.totalValue,
+      displayValue: formatMoney(stats.totalValue, currency, locale),
       icon: <DollarSign className="h-4 w-4" />,
       accentColor: 'hsl(var(--info))',
-    },
-    {
-      key: 'sale',
-      label: t.stats.saleProjection,
-      count: Math.round(stats.totalSaleValue),
-      icon: <TrendingUp className="h-4 w-4" />,
-      accentColor: 'hsl(var(--success))',
     },
     {
       key: 'low',
@@ -356,18 +383,21 @@ export default function Inventory() {
     <>
       {/* Filtro de estoque baixo */}
       <div className="space-y-2">
-        <label className="flex items-center gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border accent-destructive cursor-pointer"
+        <button
+          type="button"
+          className="flex items-center gap-2.5 cursor-pointer w-full text-left"
+          onClick={() => setLowStockOnly((v) => !v)}
+        >
+          <Checkbox
             checked={lowStockOnly}
-            onChange={(e) => setLowStockOnly(e.target.checked)}
+            onCheckedChange={(v) => setLowStockOnly(!!v)}
+            className="pointer-events-none"
           />
           <span className="text-sm font-medium flex items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
             {t.filters.lowStockOnly}
           </span>
-        </label>
+        </button>
       </div>
       {groups.length > 0 && (
         <FilterCheckboxGroup
@@ -416,21 +446,21 @@ export default function Inventory() {
     <div className="flex items-center gap-1.5 shrink-0">
       <Button
         variant="outline"
-        size="icon"
-        className="h-9 w-9 shrink-0 rounded-xl"
+        className="h-9 w-9 lg:w-auto lg:px-3 shrink-0 rounded-xl gap-1.5"
         aria-label={t.ariaLabels.importXml}
         onClick={() => setNfeImportOpen(true)}
       >
-        <FileUp className="h-4 w-4" />
+        <FileUp className="h-4 w-4 shrink-0" />
+        <span className="hidden lg:inline">{t.actions.importXml}</span>
       </Button>
       <Button
         variant="outline"
-        size="icon"
-        className="h-9 w-9 shrink-0 rounded-xl"
+        className="h-9 w-9 lg:w-auto lg:px-3 shrink-0 rounded-xl gap-1.5"
         onClick={() => setSettingsOpen(true)}
         aria-label={t.actions.settings}
       >
-        <Settings className="h-4 w-4" />
+        <Settings className="h-4 w-4 shrink-0" />
+        <span className="hidden lg:inline">{t.actions.settings}</span>
       </Button>
     </div>
   );
@@ -490,26 +520,69 @@ export default function Inventory() {
                     tabs={stockPillTabs}
                     activeTab={resolvedStockId ?? ''}
                     onTabChange={setActiveStockId}
+                    renderSuffix={(tab) => (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label={t.stockConfigurator.gearIconLabel}
+                        onClick={(e) => openConfigurator(tab.value, e)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openConfigurator(tab.value, e);
+                          }
+                        }}
+                        className="flex items-center justify-center h-6 w-6 rounded-full cursor-pointer text-current opacity-60 hover:opacity-100 transition-opacity"
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                      </span>
+                    )}
                   />
                 ) : (
                   <div className="flex gap-1 border-b">
                     {stocks.map((s) => (
-                      <button
+                      // Container da pill — não é <button> para evitar button-in-button
+                      // ao aninhar a engrenagem. A área de troca de aba é um <span role="tab">.
+                      <div
                         key={s.id}
-                        type="button"
-                        onClick={() => setActiveStockId(s.id)}
                         className={cn(
-                          'flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                          'inline-flex items-center border-b-2 -mb-px transition-colors',
                           resolvedStockId === s.id
                             ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                            : 'border-transparent text-muted-foreground',
                         )}
                       >
-                        {s.name}
-                        {s.is_default && (
-                          <Star className="h-3 w-3 text-warning fill-warning" />
-                        )}
-                      </button>
+                        {/* Área clicável de troca de aba */}
+                        <span
+                          role="tab"
+                          aria-selected={resolvedStockId === s.id}
+                          tabIndex={0}
+                          onClick={() => setActiveStockId(s.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
+                          className="flex items-center gap-1.5 pl-3 pr-1 py-2 text-sm font-medium cursor-pointer select-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                        >
+                          {s.name}
+                          {s.is_default && (
+                            <Star className="h-3 w-3 text-warning fill-warning" />
+                          )}
+                        </span>
+                        {/* Engrenagem de configuração — irmã da área de aba, não filha */}
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={t.stockConfigurator.gearIconLabel}
+                          onClick={(e) => openConfigurator(s.id, e)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              openConfigurator(s.id, e);
+                            }
+                          }}
+                          className="flex items-center justify-center h-6 w-6 mr-1 rounded cursor-pointer opacity-40 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -868,6 +941,7 @@ export default function Inventory() {
         onOpenChange={handleDialogClose}
         item={editingItem}
         activeStockId={resolvedStockId}
+        onOpenTransfer={handleTransferFromBlockedStock}
       />
 
       {/* Dialog de transferência entre depósitos */}
@@ -875,10 +949,11 @@ export default function Inventory() {
         open={transferOpen}
         onOpenChange={(v) => {
           setTransferOpen(v);
-          if (!v) setTransferItem(null);
+          if (!v) { setTransferItem(null); setTransferFromStockId(null); }
         }}
         item={transferItem}
         activeStockId={resolvedStockId}
+        initialFromStockId={transferFromStockId}
       />
 
       {/* Dialog de configurações (grupos + depósitos) */}
@@ -909,6 +984,19 @@ export default function Inventory() {
         movementType={inlineMovementType}
         activeStockId={resolvedStockId}
       />
+
+      {/* Configurador de itens por local (engrenagem na pill) */}
+      {configuratorOpen && configuratorStockId && stocks.find((s) => s.id === configuratorStockId) && (
+        <StockConfiguratorDialog
+          open={configuratorOpen}
+          onOpenChange={(v) => {
+            setConfiguratorOpen(v);
+            if (!v) setConfiguratorStockId(null);
+          }}
+          stock={stocks.find((s) => s.id === configuratorStockId)!}
+          onOpenTransfer={handleTransferFromBlockedStock}
+        />
+      )}
 
       {/* Confirmação de exclusão */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

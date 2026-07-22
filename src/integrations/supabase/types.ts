@@ -4307,6 +4307,7 @@ export type Database = {
           created_at: string
           id: string
           inventory_id: string
+          is_present: boolean
           min_quantity: number | null
           quantity: number
           stock_id: string
@@ -4317,6 +4318,7 @@ export type Database = {
           created_at?: string
           id?: string
           inventory_id: string
+          is_present?: boolean
           min_quantity?: number | null
           quantity?: number
           stock_id: string
@@ -4327,6 +4329,7 @@ export type Database = {
           created_at?: string
           id?: string
           inventory_id?: string
+          is_present?: boolean
           min_quantity?: number | null
           quantity?: number
           stock_id?: string
@@ -8376,6 +8379,10 @@ export type Database = {
         Args: { p_version?: string }
         Returns: undefined
       }
+      add_group_to_stock: {
+        Args: { p_group_id: string; p_stock_id: string }
+        Returns: undefined
+      }
       admin_delete_company: {
         Args: { p_company_id: string }
         Returns: undefined
@@ -8817,6 +8824,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_inventory_presence: {
+        Args: { p_inventory_id: string; p_stock_ids: string[] }
+        Returns: undefined
+      }
+      set_stock_materials: {
+        Args: { p_inventory_ids: string[]; p_stock_id: string }
+        Returns: undefined
       }
       submit_lead_capture_form: {
         Args: {
