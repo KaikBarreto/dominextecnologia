@@ -60,6 +60,7 @@ import { timeclock } from './timeclock';
 import { settings } from './settings';
 import { technicianTools } from './technicianTools';
 import { domiflix } from './domiflix';
+import { tasks } from './tasks';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
@@ -82,6 +83,7 @@ function sliceForLocale(locale: LocaleCode) {
     settings: settings[locale],
     technicianTools: technicianTools[locale],
     domiflix: domiflix[locale],
+    tasks: tasks[locale],
     // <dominio>: <dominio>[locale],
   };
 }

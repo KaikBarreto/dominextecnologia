@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import React, { memo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -129,7 +129,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  * - O AccountSwitcher (multi-conta) aparece dentro do dropdown do perfil (não inline na barra).
  * - Visível só em xl: (≥1280px). Abaixo disso, o header mobile/tablet entra em ação.
  */
-export const TopNavbar = memo(() => {
+export const TopNavbar = memo(({ tasksBadgeTrigger }: { tasksBadgeTrigger?: React.ReactNode }) => {
   const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
   const { locale } = useAppLocaleContext();
@@ -299,6 +299,7 @@ export const TopNavbar = memo(() => {
               envolvido pelo wrapper inline) — click expande revelando outras
               contas. Botão Sair FORA do dropdown ao lado, com Tooltip. */}
           <div className="flex items-center gap-1 shrink-0">
+            {tasksBadgeTrigger}
             <NotificationsBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

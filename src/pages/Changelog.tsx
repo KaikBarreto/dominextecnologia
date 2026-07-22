@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.22',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Suas tarefas do dia agora aparecem ao entrar',
+        description: 'Ao abrir o sistema, você recebe um lembrete com as tarefas marcadas para hoje e as que ficaram atrasadas. Um novo botão no topo mostra quantas tarefas estão pendentes e, em um toque, você cria uma nova tarefa com data e responsável, e marca como feita quando concluir. Assim nada importante passa batido.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.17.21',
     date: '22 de julho de 2026',
     type: 'patch',

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.21";
+export const APP_VERSION = "1.17.22";
 
-export const VERSION_NOTES = "Montar orçamento ficou mais rápido: dá pra criar o tipo de serviço na hora se ele ainda não existir, e os itens que você mais usa aparecem primeiro. E no Configurar Proposta você agora liga, desliga, reordena e edita os textos das seções da proposta (abertura, sobre a empresa, garantia, encerramento e mais).";
+export const VERSION_NOTES = "Agora você tem Tarefas: ao entrar no sistema, um lembrete mostra o que está marcado para hoje, e um botão no topo lista tudo que está pendente. Dá pra criar uma tarefa com data e responsável e marcar como feita, sem sair da tela.";

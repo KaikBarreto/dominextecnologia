@@ -7692,6 +7692,51 @@ export type Database = {
           },
         ]
       }
+      tenant_tasks: {
+        Row: {
+          assigned_to: string | null
+          company_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          status: string
+          task_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          company_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          task_date: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          company_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          task_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       terms_update_broadcasts: {
         Row: {
           broadcast_at: string
@@ -8746,6 +8791,10 @@ export type Database = {
       resolve_billing_reminder: {
         Args: { p_transaction_id: string }
         Returns: undefined
+      }
+      respond_quote_public: {
+        Args: { _status: string; _token: string }
+        Returns: Json
       }
       seed_company_catalog: {
         Args: { p_company_id: string; p_language?: string }
