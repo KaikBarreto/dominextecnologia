@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.20',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Formas de pagamento e mais informações na proposta',
+        description: 'O modelo de proposta enxuto agora mostra as formas de pagamento com os valores já calculados: à vista no PIX com o desconto aplicado e o parcelamento no cartão. Além disso, destaca até quando o orçamento é válido, mostra a data em que foi gerado e ficou mais fácil de ler no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.19',
     date: '22 de julho de 2026',
     type: 'patch',

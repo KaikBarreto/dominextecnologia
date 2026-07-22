@@ -1,5 +1,6 @@
 import type { ProposalTemplateProps } from './types';
 import { useLocaleFormatters } from '@/lib/format/hooks';
+import { formatTime } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n';
 import {
   buildProposalData,
@@ -26,7 +27,7 @@ import type { QuoteItem } from '@/hooks/useQuotes';
  */
 export function CleanTemplate(props: ProposalTemplateProps) {
   const { quote, company, customization } = props;
-  const { money, locale, timezone } = useLocaleFormatters();
+  const { money, date: fmtDate, locale, timezone } = useLocaleFormatters();
   const t = MESSAGES[locale].app.crm.proposalPdf;
 
   const d = buildProposalData(props, {
@@ -43,17 +44,29 @@ export function CleanTemplate(props: ProposalTemplateProps) {
   const discountAmount = quote.discount_amount ?? 0;
   const displacementCost = quote.displacement_cost ?? 0;
 
+  // ── Opções de pagamento calculadas a partir do total final (quote.total_value)
+  const totalValue = quote.total_value ?? 0;
+  const discountRate = quote.card_discount_rate ?? 0;
+  const installments = quote.card_installments ?? 0;
+  const pixValue = discountRate > 0 ? totalValue * (1 - discountRate / 100) : null;
+  const installmentValue = installments > 1 ? totalValue / installments : null;
+  const hasPaymentOptions = totalValue > 0 && (pixValue !== null || installmentValue !== null);
+
+  // ── Rodapé: data/hora de geração (created_at) no fuso da empresa (America/Sao_Paulo)
+  const generatedDate = quote.created_at ? fmtDate(quote.created_at) : null;
+  const generatedTime = quote.created_at ? formatTime(quote.created_at, locale, timezone) : null;
+
   const ItemsTable = ({ title, rows }: { title: string; rows: QuoteItem[] }) => {
     if (rows.length === 0) return null;
     const total = sumTotal(rows);
     return (
-      <div className="mt-7">
+      <div className="mt-7 clean-block">
         <div className="flex items-center gap-2 mb-2.5">
           <span className="h-3.5 w-1 rounded-full" style={{ background: primary, ...colorAdjust }} />
           <h3 className="text-[13px] font-bold uppercase tracking-[0.14em]" style={{ color: primary }}>{title}</h3>
         </div>
-        <div className="overflow-hidden rounded-lg" style={{ border: '1px solid #e5e7eb' }}>
-          <table className="w-full text-[13px]" style={{ borderCollapse: 'collapse' }}>
+        <div className="clean-table-wrap rounded-lg" style={{ border: '1px solid #e5e7eb' }}>
+          <table className="clean-table w-full text-[13px]" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
                 <th className="text-left font-semibold px-4 py-2.5" style={{ color: '#475569', borderBottom: '1px solid #e5e7eb' }}>{t.cleanColItem}</th>
@@ -108,8 +121,21 @@ export function CleanTemplate(props: ProposalTemplateProps) {
     >
       <style>{`
         .clean-page { width: 100%; max-width: 794px; background: #ffffff; color: #0f172a; padding: 48px 52px; }
-        @media (max-width: 640px) { .clean-page { padding: 28px 20px; } }
-        @media print { .clean-page { padding: 48px 52px; } }
+        /* Tabela contida: em telas estreitas rola só a tabela, sem estourar a página. */
+        .clean-table-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+        .clean-table { min-width: 480px; }
+        @media (max-width: 640px) {
+          .clean-page { padding: 28px 16px; }
+          /* Reduz paddings/fonte no mobile pra caber sem cortar valores. */
+          .clean-table { font-size: 12px; min-width: 0; }
+          .clean-table th, .clean-table td { padding-left: 8px !important; padding-right: 8px !important; }
+        }
+        @media print {
+          .clean-page { padding: 48px 52px; }
+          .clean-table-wrap { overflow: visible !important; }
+          .clean-table { min-width: 0 !important; }
+          .clean-block { break-inside: avoid; }
+        }
       `}</style>
 
       <section className="clean-page">
@@ -133,7 +159,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
             <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanDocTitle}</p>
             <p className="text-sm font-semibold mt-1" style={{ color: '#0f172a' }}>{t.cleanQuoteNumber} {quote.quote_number}</p>
             {validUntil && (
-              <p className="text-xs mt-1" style={{ color: '#64748b' }}>{t.cleanValidUntil} {validUntil}</p>
+              <span
+                className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                style={{ background: `${primary}14`, color: primary, ...colorAdjust }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: primary, ...colorAdjust }} />
+                {t.cleanValidUntilBadge.replace('{date}', validUntil)}
+              </span>
             )}
           </div>
         </div>
@@ -195,9 +227,43 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           </div>
         )}
 
+        {/* ── Opções de pagamento (calculadas do total final) ── */}
+        {hasPaymentOptions && (
+          <div className="mt-9 clean-block">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanPaymentTitle}</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {pixValue !== null && (
+                <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{t.cleanPaymentPix}</p>
+                    <span
+                      className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                      style={{ background: primary, color: '#ffffff', ...colorAdjust }}
+                    >
+                      {discountRate}% {t.cleanPaymentDiscount}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black tabular-nums mt-2" style={{ color: primary }}>{money(pixValue)}</p>
+                </div>
+              )}
+              {installmentValue !== null && (
+                <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
+                  <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{t.cleanPaymentInstallmentsLabel}</p>
+                  <p className="text-xl font-black tabular-nums mt-2" style={{ color: '#0f172a' }}>
+                    {t.cleanPaymentInstallmentsValue
+                      .replace('{count}', String(installments))
+                      .replace('{value}', money(installmentValue))}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: '#64748b' }}>{t.cleanPaymentInstallmentsTotal}: {money(totalValue)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Informações adicionais ── */}
         {(quote.terms || quote.notes) && (
-          <div className="mt-9 space-y-4">
+          <div className="mt-9 space-y-4 clean-block">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanInfoTitle}</p>
             {quote.terms && (
               <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
@@ -215,7 +281,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         )}
 
         {/* ── Rodapé: profissional/marca do tenant ── */}
-        <div className="mt-10 pt-6" style={{ borderTop: '1px solid #e5e7eb' }}>
+        <div className="mt-10 pt-6 clean-block" style={{ borderTop: '1px solid #e5e7eb' }}>
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: '#94a3b8' }}>{t.cleanFooterPrepared}</p>
           <div className="mt-2 flex items-center gap-3 flex-wrap">
             {d.logoUrl ? (
@@ -230,6 +296,11 @@ export function CleanTemplate(props: ProposalTemplateProps) {
               </div>
             </div>
           </div>
+          {generatedDate && generatedTime && (
+            <p className="text-[11px] mt-4" style={{ color: '#94a3b8' }}>
+              {t.cleanGeneratedAt.replace('{date}', generatedDate).replace('{time}', generatedTime)}
+            </p>
+          )}
         </div>
 
         {/* Respiro pra os botões Aprovar/Rejeitar injetados por fora (ProposalPublic). */}

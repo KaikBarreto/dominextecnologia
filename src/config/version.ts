@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.19";
+export const APP_VERSION = "1.17.20";
 
-export const VERSION_NOTES = "Agora cada serviço ou material do orçamento pode ter uma descrição, que aparece abaixo do nome na proposta em texto mais leve. Quando o serviço já tem uma descrição cadastrada, ela vem preenchida automaticamente e você pode ajustar do jeito que quiser.";
+export const VERSION_NOTES = "A proposta no modelo enxuto agora mostra as formas de pagamento com os valores já calculados (à vista no PIX com desconto e parcelado no cartão), destaca até quando o orçamento é válido e informa a data de geração. Também ficou melhor de ler no celular.";
