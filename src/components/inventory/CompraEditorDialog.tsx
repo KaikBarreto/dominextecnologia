@@ -177,8 +177,8 @@ export function CompraEditorDialog({ open, onOpenChange, compra }: CompraEditorD
       inventory_id: item.inventory_id,
       material_name: item.material_name,
       unit: item.unit,
-      // Sugere o deficit arredondado para cima, mínimo 1.
-      quantity: Math.max(1, Math.ceil(item.deficit)),
+      // Quantidade vazia para o usuário preencher manualmente.
+      quantity: 0,
     }));
     setRows((prev) => [...prev, ...newRows]);
     setBelowMinOpen(false);

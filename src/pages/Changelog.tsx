@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.17',
+    date: '21 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de Estoque mais clara',
+        description: 'O título da lista agora mostra de qual local de estoque são os itens que você está vendo, a quantidade mínima de cada material aparece em uma coluna ao lado da quantidade, e os botões de Configurações e Importar XML passaram para o canto superior direito da tela.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Requisição de compra com quantidade em branco',
+        description: 'Ao puxar os materiais que estão abaixo do mínimo para uma requisição de compra, a quantidade a comprar agora vem em branco para você preencher, em vez de sugerir um número.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.16',
     date: '21 de julho de 2026',
     type: 'patch',

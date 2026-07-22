@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.16";
+export const APP_VERSION = "1.17.17";
 
-export const VERSION_NOTES = "No inventário você agora busca e seleciona todos os materiais de uma vez ao montar a contagem, e corrigimos o cadastro de material para registrar a quantidade inicial certinho no local, garantindo que todo estoque tenha um local principal.";
+export const VERSION_NOTES = "Deixamos a tela de Estoque mais clara: o título mostra de qual local é a lista, a quantidade mínima aparece ao lado da quantidade, e os botões de Configurações e Importar XML ganharam lugar fixo no topo.";

@@ -411,18 +411,28 @@ export default function Inventory() {
     label: s.name,
   }));
 
-  // Botão Configurações — aparece no header (mobile: rightElement; desktop: no toolbar)
-  const settingsButton = (
-    <Button
-      variant="outline"
-      size={isMobile ? 'icon' : 'sm'}
-      className={cn('shrink-0 rounded-xl', isMobile ? 'h-10 w-10' : 'gap-1.5 min-h-11')}
-      onClick={() => setSettingsOpen(true)}
-      aria-label={t.actions.settings}
-    >
-      <Settings className="h-4 w-4" />
-      {!isMobile && t.actions.settings}
-    </Button>
+  // Botões Importar XML e Configurações — ficam no canto superior direito do header (sempre)
+  const headerRightButtons = (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0 rounded-xl"
+        aria-label={t.ariaLabels.importXml}
+        onClick={() => setNfeImportOpen(true)}
+      >
+        <FileUp className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0 rounded-xl"
+        onClick={() => setSettingsOpen(true)}
+        aria-label={t.actions.settings}
+      >
+        <Settings className="h-4 w-4" />
+      </Button>
+    </div>
   );
 
   // Ícone de alerta abaixo do mínimo com tooltip
@@ -452,7 +462,7 @@ export default function Inventory() {
         title={t.header.title}
         subtitle={t.header.subtitle}
         icon={Package}
-        actions={isMobile ? settingsButton : undefined}
+        actions={headerRightButtons}
       />
 
       <SettingsSidebarLayout
@@ -528,15 +538,6 @@ export default function Inventory() {
                   </FilterSheet>
                 )}
                 {exportDropdown(true)}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 shrink-0 rounded-xl"
-                  aria-label={t.ariaLabels.importXml}
-                  onClick={() => setNfeImportOpen(true)}
-                >
-                  <FileUp className="h-4 w-4" />
-                </Button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -559,15 +560,6 @@ export default function Inventory() {
                     </FilterButton>
                   )}
                   {exportDropdown()}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 min-h-11 rounded-xl"
-                    onClick={() => setNfeImportOpen(true)}
-                  >
-                    <FileUp className="h-4 w-4" /> {t.actions.importXml}
-                  </Button>
-                  {settingsButton}
                   <Button
                     className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
                     onClick={openNewItem}
@@ -724,9 +716,14 @@ export default function Inventory() {
             ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    {t.cardTitle}
+                  <CardTitle className="flex items-center gap-2 flex-wrap">
+                    <Package className="h-5 w-5 shrink-0" />
+                    <span>{t.cardTitle}</span>
+                    {resolvedStockId && stocks.find((s) => s.id === resolvedStockId) && (
+                      <span className="text-sm font-normal text-muted-foreground/70">
+                        {t.stockLocationSuffix.replace('{stock}', stocks.find((s) => s.id === resolvedStockId)!.name)}
+                      </span>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -761,8 +758,8 @@ export default function Inventory() {
                               <SortableTableHead sortKey="sku" sortConfig={sortConfig} onSort={handleSort}>{t.table.sku}</SortableTableHead>
                               <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort}>{t.table.category}</SortableTableHead>
                               <SortableTableHead sortKey="quantity" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.quantity}</SortableTableHead>
+                              <TableHead className="text-right">{t.table.minQty}</TableHead>
                               <SortableTableHead sortKey="cost_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.costUnit}</SortableTableHead>
-                              <SortableTableHead sortKey="sale_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.saleUnit}</SortableTableHead>
                               <TableHead className="w-[100px]">{t.table.actions}</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -799,15 +796,12 @@ export default function Inventory() {
                                       {qty}
                                     </span>
                                     {' '}{item.unit}
-                                    {min !== null && (
-                                      <span className="ml-1 text-xs text-muted-foreground">/ {t.minShort} {min}</span>
-                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right text-muted-foreground">
+                                    {min !== null ? min : '-'}
                                   </TableCell>
                                   <TableCell className="text-right">
                                     {item.cost_price ? formatCurrency(item.cost_price) : '-'}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {item.sale_price ? formatCurrency(item.sale_price) : '-'}
                                   </TableCell>
                                   <TableCell>
                                     <RowActionsMenu
