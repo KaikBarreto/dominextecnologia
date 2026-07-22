@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,6 +44,20 @@ interface SearchableSelectProps {
   emptyMessage?: string;
   className?: string;
   disabled?: boolean;
+  /**
+   * Conteúdo custom exibido quando NÃO há nenhuma opção cadastrada (lista vazia),
+   * mesmo sem busca. Ex: CTA "Nenhum tipo de serviço cadastrado ainda / Criar agora".
+   * Se ausente, cai no comportamento padrão (emptyMessage no CommandEmpty).
+   */
+  emptyContent?: React.ReactNode;
+  /**
+   * Habilita "criar na hora": quando o usuário digita um texto que não existe,
+   * renderiza uma ação "Criar '<texto>'" no rodapé da lista e dentro do
+   * CommandEmpty. Recebe o texto digitado; a criação em si fica com o caller.
+   */
+  onCreateOption?: (query: string) => void;
+  /** Rótulo do item de criação. `{name}` é substituído pelo texto digitado. */
+  createOptionLabel?: string;
 }
 
 export function SearchableSelect({
@@ -56,8 +70,17 @@ export function SearchableSelect({
   emptyMessage = 'Nenhum resultado encontrado.',
   className,
   disabled,
+  emptyContent,
+  onCreateOption,
+  createOptionLabel = 'Criar "{name}"',
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+
+  // Limpa a busca ao fechar pra a próxima abertura começar limpa.
+  React.useEffect(() => {
+    if (!open) setQuery('');
+  }, [open]);
 
   // Encontra o item selecionado tanto no modo flat quanto no modo grupos.
   const selected = React.useMemo(() => {
@@ -70,6 +93,31 @@ export function SearchableSelect({
     }
     return options.find((o) => o.value === value);
   }, [groups, options, value]);
+
+  const trimmedQuery = query.trim();
+
+  // A lista está totalmente vazia (nenhuma opção cadastrada, sem busca)?
+  const isEmptyCatalog = React.useMemo(() => {
+    if (groups) return groups.every((g) => g.options.length === 0);
+    return options.length === 0;
+  }, [groups, options]);
+
+  // Existe uma correspondência EXATA (case-insensitive) ao texto digitado?
+  // Se sim, não oferecemos "criar" (evita duplicar um que já existe).
+  const hasExactMatch = React.useMemo(() => {
+    if (!trimmedQuery) return false;
+    const q = trimmedQuery.toLocaleLowerCase();
+    const all = groups ? groups.flatMap((g) => g.options) : options;
+    return all.some((o) => o.label.trim().toLocaleLowerCase() === q);
+  }, [groups, options, trimmedQuery]);
+
+  const canCreate = !!onCreateOption && trimmedQuery.length > 0 && !hasExactMatch;
+
+  const handleCreate = () => {
+    if (!onCreateOption || !trimmedQuery) return;
+    onCreateOption(trimmedQuery);
+    setOpen(false);
+  };
 
   const renderOption = (option: SearchableSelectOption) => (
     <CommandItem
@@ -92,6 +140,17 @@ export function SearchableSelect({
       </div>
     </CommandItem>
   );
+
+  const createItem = canCreate ? (
+    <CommandItem
+      value={`__create__${trimmedQuery}`}
+      onSelect={handleCreate}
+      className="text-primary"
+    >
+      <Plus className="mr-2 h-4 w-4 shrink-0" />
+      <span className="truncate">{createOptionLabel.replace('{name}', trimmedQuery)}</span>
+    </CommandItem>
+  ) : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={true}>
@@ -116,19 +175,41 @@ export function SearchableSelect({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain touch-pan-y">
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
-            {groups ? (
-              groups.map((group, idx) => (
-                <CommandGroup key={group.heading ?? idx} heading={group.heading}>
-                  {group.options.map(renderOption)}
-                </CommandGroup>
-              ))
+            {/* Catálogo vazio (nada cadastrado, sem busca) → CTA custom quando fornecido. */}
+            {isEmptyCatalog && !trimmedQuery && emptyContent ? (
+              <div className="p-2">{emptyContent}</div>
             ) : (
-              <CommandGroup>
-                {options.map(renderOption)}
-              </CommandGroup>
+              <>
+                <CommandEmpty>
+                  {canCreate ? (
+                    <div className="px-1 py-1">{createItem}</div>
+                  ) : (
+                    emptyMessage
+                  )}
+                </CommandEmpty>
+                {groups ? (
+                  groups.map((group, idx) => (
+                    <CommandGroup key={group.heading ?? idx} heading={group.heading}>
+                      {group.options.map(renderOption)}
+                    </CommandGroup>
+                  ))
+                ) : (
+                  <CommandGroup>
+                    {options.map(renderOption)}
+                  </CommandGroup>
+                )}
+                {/* Ação de criar sempre disponível no rodapé quando há correspondências
+                    parciais mas nenhuma exata (o CommandEmpty só aparece com zero matches). */}
+                {canCreate && (
+                  <CommandGroup>{createItem}</CommandGroup>
+                )}
+              </>
             )}
           </CommandList>
         </Command>

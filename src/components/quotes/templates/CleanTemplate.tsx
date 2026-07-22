@@ -1,4 +1,5 @@
 import type { ProposalTemplateProps } from './types';
+import { getProposalSections } from './types';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { formatTime } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n';
@@ -55,6 +56,32 @@ export function CleanTemplate(props: ProposalTemplateProps) {
   // ── Rodapé: data/hora de geração (created_at) no fuso da empresa (America/Sao_Paulo)
   const generatedDate = quote.created_at ? fmtDate(quote.created_at) : null;
   const generatedTime = quote.created_at ? formatTime(quote.created_at, locale, timezone) : null;
+
+  // ── Seções configuráveis (ligar/desligar + ordem + texto default da empresa) ──
+  // O texto do ORÇAMENTO tem prioridade sobre o customText da empresa; seção sem
+  // conteúdo (nem quote nem default) simplesmente não é renderizada.
+  const sections = getProposalSections(customization);
+  const sectionByKey = new Map(sections.map((s) => [s.key, s]));
+  const aberturaSec = sectionByKey.get('abertura');
+  const aberturaText = aberturaSec?.enabled ? (aberturaSec.customText?.trim() || '') : '';
+
+  // Título de cada seção de texto renderizada pós-Totais.
+  const sectionTitle: Record<string, string> = {
+    informacoes: t.cleanInfoTitle,
+    observacoes: t.cleanNotesTitle,
+    sobre: t.cleanSectionSobre,
+    garantia: t.cleanSectionGarantia,
+    // `abertura`/`encerramento` são renderizadas sem título (mensagem corrida).
+  };
+
+  // Resolve o texto efetivo de uma seção de texto (quote > empresa > vazio).
+  const resolveSectionText = (key: string, customText?: string): string => {
+    const fromQuote =
+      key === 'informacoes' ? quote.terms :
+      key === 'observacoes' ? quote.notes :
+      null;
+    return (fromQuote?.trim() || customText?.trim() || '');
+  };
 
   const ItemsTable = ({ title, rows }: { title: string; rows: QuoteItem[] }) => {
     if (rows.length === 0) return null;
@@ -183,6 +210,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           </div>
         </div>
 
+        {/* ── Abertura (mensagem de saudação, se ligada e com texto) ── */}
+        {aberturaText && (
+          <p className="mt-6 text-sm leading-relaxed whitespace-pre-wrap clean-block" style={{ color: '#334155' }}>
+            {aberturaText}
+          </p>
+        )}
+
         {/* ── Tabelas ── */}
         {hasItems ? (
           <>
@@ -227,58 +261,70 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           </div>
         )}
 
-        {/* ── Opções de pagamento (calculadas do total final) ── */}
-        {hasPaymentOptions && (
-          <div className="mt-9 clean-block">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanPaymentTitle}</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {pixValue !== null && (
-                <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{t.cleanPaymentPix}</p>
-                    <span
-                      className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
-                      style={{ background: primary, color: '#ffffff', ...colorAdjust }}
-                    >
-                      {discountRate}% {t.cleanPaymentDiscount}
-                    </span>
+        {/* ── Seções configuráveis pós-Totais (na ordem definida na empresa) ── */}
+        {sections
+          .filter((sec) => sec.enabled && sec.key !== 'abertura')
+          .map((sec) => {
+            // Bloco de pagamento: calculado, sem texto editável.
+            if (sec.key === 'pagamento') {
+              if (!hasPaymentOptions) return null;
+              return (
+                <div key={sec.key} className="mt-9 clean-block">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanPaymentTitle}</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {pixValue !== null && (
+                      <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{t.cleanPaymentPix}</p>
+                          <span
+                            className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                            style={{ background: primary, color: '#ffffff', ...colorAdjust }}
+                          >
+                            {discountRate}% {t.cleanPaymentDiscount}
+                          </span>
+                        </div>
+                        <p className="text-2xl font-black tabular-nums mt-2" style={{ color: primary }}>{money(pixValue)}</p>
+                      </div>
+                    )}
+                    {installmentValue !== null && (
+                      <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
+                        <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{t.cleanPaymentInstallmentsLabel}</p>
+                        <p className="text-xl font-black tabular-nums mt-2" style={{ color: '#0f172a' }}>
+                          {t.cleanPaymentInstallmentsValue
+                            .replace('{count}', String(installments))
+                            .replace('{value}', money(installmentValue))}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: '#64748b' }}>{t.cleanPaymentInstallmentsTotal}: {money(totalValue)}</p>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-2xl font-black tabular-nums mt-2" style={{ color: primary }}>{money(pixValue)}</p>
                 </div>
-              )}
-              {installmentValue !== null && (
-                <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
-                  <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{t.cleanPaymentInstallmentsLabel}</p>
-                  <p className="text-xl font-black tabular-nums mt-2" style={{ color: '#0f172a' }}>
-                    {t.cleanPaymentInstallmentsValue
-                      .replace('{count}', String(installments))
-                      .replace('{value}', money(installmentValue))}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: '#64748b' }}>{t.cleanPaymentInstallmentsTotal}: {money(totalValue)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+              );
+            }
 
-        {/* ── Informações adicionais ── */}
-        {(quote.terms || quote.notes) && (
-          <div className="mt-9 space-y-4 clean-block">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanInfoTitle}</p>
-            {quote.terms && (
-              <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
-                <p className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#64748b' }}>{t.cleanTermsTitle}</p>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: '#334155' }}>{quote.terms}</p>
+            // Seções de texto: quote > customText da empresa > não renderiza.
+            const text = resolveSectionText(sec.key, sec.customText);
+            if (!text) return null;
+            const title = sectionTitle[sec.key];
+            // `encerramento` é mensagem corrida, sem título nem card.
+            if (sec.key === 'encerramento') {
+              return (
+                <p key={sec.key} className="mt-9 text-sm leading-relaxed whitespace-pre-wrap clean-block" style={{ color: '#334155' }}>
+                  {text}
+                </p>
+              );
+            }
+            return (
+              <div key={sec.key} className="mt-9 clean-block">
+                {title && (
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: primary }}>{title}</p>
+                )}
+                <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: '#334155' }}>{text}</p>
+                </div>
               </div>
-            )}
-            {quote.notes && (
-              <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
-                <p className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#64748b' }}>{t.cleanNotesTitle}</p>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: '#334155' }}>{quote.notes}</p>
-              </div>
-            )}
-          </div>
-        )}
+            );
+          })}
 
         {/* ── Rodapé: profissional/marca do tenant ── */}
         <div className="mt-10 pt-6 clean-block" style={{ borderTop: '1px solid #e5e7eb' }}>

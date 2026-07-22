@@ -228,10 +228,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
   const { customers } = useCustomers();
-  const { createQuote, updateQuote } = useQuotes();
+  const { createQuote, updateQuote, quotes } = useQuotes();
   const { templates } = useProposalTemplates();
   const { settings: pricing } = usePricingSettings();
-  const { serviceTypes } = useServiceTypes();
+  const { serviceTypes, createServiceType } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
   const { profile } = useAuth();
   const isEditing = !!quote;
@@ -494,10 +494,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   }, [bdiFactor]);
 
   // ── Add service handler ──
-  const handleAddService = useCallback(async () => {
-    if (!addSvcId) return;
+  // Núcleo reutilizável: busca custos do serviço e empurra o item na lista.
+  // Usado tanto pelo botão "Adicionar" (id selecionado) quanto pelo criar-na-hora
+  // (serviço recém-criado, ainda pode não estar na lista de serviceTypes do cache).
+  const addServiceById = useCallback(async (
+    serviceId: string,
+    qty: number,
+    override?: { name?: string; description?: string | null; default_price?: number | null },
+  ) => {
     setIsFetchingSvc(true);
-    const st = serviceTypes.find(s => s.id === addSvcId);
+    const st = serviceTypes.find(s => s.id === serviceId);
     const companyId = profile?.company_id;
     let laborCost = 0, matsCost = 0, extrasCost = 0, hourlyRate = 0, hours = 0;
     let resourcesCost = 0, giftsCost = 0;
@@ -505,10 +511,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     if (companyId) {
       try {
         const [costRes, matRes, linkedRes, giftsRes] = await Promise.all([
-          supabase.from('service_costs').select('*').eq('company_id', companyId).eq('service_id', addSvcId).maybeSingle(),
-          supabase.from('service_materials').select('*').eq('company_id', companyId).eq('service_id', addSvcId).order('sort_order'),
-          supabase.from('service_cost_resources').select('resource_id, override_value').eq('service_id', addSvcId),
-          supabase.from('service_gifts').select('*').eq('service_id', addSvcId),
+          supabase.from('service_costs').select('*').eq('company_id', companyId).eq('service_id', serviceId).maybeSingle(),
+          supabase.from('service_materials').select('*').eq('company_id', companyId).eq('service_id', serviceId).order('sort_order'),
+          supabase.from('service_cost_resources').select('resource_id, override_value').eq('service_id', serviceId),
+          supabase.from('service_gifts').select('*').eq('service_id', serviceId),
         ]);
         if (costRes.data) {
           hourlyRate = Number(costRes.data.hourly_rate ?? 0);
@@ -552,7 +558,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     // 2) Sem calculadora mas serviço tem default_price → usa o preço padrão cadastrado.
     // 3) Nenhum dos dois → 0 (usuário preenche manualmente, sem regressão).
     const hasCalculatorPrice = unitTotalCost > 0;
-    const defaultPrice = st?.default_price ?? null;
+    const defaultPrice = override?.default_price ?? st?.default_price ?? null;
     const unitPrice = hasCalculatorPrice
       ? (bdiFactor > 0.01 ? Math.round((unitTotalCost / bdiFactor) * 100) / 100 : unitTotalCost)
       : (defaultPrice != null ? Math.round(Number(defaultPrice) * 100) / 100 : 0);
@@ -563,14 +569,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
     setItems(prev => [...prev, {
       item_type: 'servico',
-      description: st?.name ?? tq.serviceFallback,
+      description: override?.name ?? st?.name ?? tq.serviceFallback,
       // Prefill da descrição do catálogo (editável por orçamento depois).
-      details: st?.description ?? '',
-      quantity: addSvcQty,
+      details: override?.description ?? st?.description ?? '',
+      quantity: qty,
       unit_total_cost: unitTotalCost,
       unit_price: unitPrice,
-      total_price: Math.round(unitPrice * addSvcQty * 100) / 100,
-      service_type_id: addSvcId,
+      total_price: Math.round(unitPrice * qty * 100) / 100,
+      service_type_id: serviceId,
       inventory_id: null,
       unit_hourly_rate: hourlyRate,
       unit_hours: hours,
@@ -581,10 +587,44 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       bdi: bdiFactor,
       price_override: priceOverride,
     }]);
+    setIsFetchingSvc(false);
+  }, [serviceTypes, profile, bdiFactor, profitRate, tq.serviceFallback]);
+
+  // Botão "Adicionar": usa o serviço selecionado no seletor.
+  const handleAddService = useCallback(async () => {
+    if (!addSvcId) return;
+    await addServiceById(addSvcId, addSvcQty);
     setAddSvcId('');
     setAddSvcQty(1);
-    setIsFetchingSvc(false);
-  }, [addSvcId, addSvcQty, serviceTypes, profile, bdiFactor, profitRate]);
+  }, [addSvcId, addSvcQty, addServiceById]);
+
+  // ── Criar tipo de serviço na hora (inline) ──
+  // Espelha o campo livre de MATERIAL: usuário digita um nome inexistente no
+  // seletor, escolhe "Criar '<nome>'", e o serviço nasce (is_active) já entrando
+  // no orçamento com a quantidade atual. Preço/qtd seguem editáveis inline.
+  const handleCreateService = useCallback(async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || createServiceType.isPending) return;
+    setIsFetchingSvc(true);
+    try {
+      const created = await createServiceType.mutateAsync({
+        name: trimmed,
+        color: '#00C597',
+        is_active: true,
+      });
+      // invalidate + toast "Tipo de serviço criado!" já ocorrem no onSuccess do hook.
+      if (created?.id) {
+        // Serviço novo não tem custos cadastrados → cai no fluxo preço 0/editável.
+        await addServiceById(created.id, addSvcQty, { name: trimmed, description: null });
+      }
+    } catch {
+      // erro já toasteado pelo hook (onError).
+    } finally {
+      setAddSvcId('');
+      setAddSvcQty(1);
+      setIsFetchingSvc(false);
+    }
+  }, [createServiceType, addSvcQty, addServiceById]);
 
   // ── Add material handler ──
   const handleAddMaterial = useCallback(() => {
@@ -757,21 +797,76 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     () => (customers ?? []).map(c => ({ value: c.id, label: c.name })),
     [customers]
   );
-  const serviceOptions = useMemo(
-    () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({
+
+  // Frequência de uso do tenant — deriva dos quote_items dos orçamentos já
+  // carregados por useQuotes (sem query nova). Conta quantas vezes cada
+  // service_type_id / inventory_id apareceu; usamos pra destacar "Recentes"
+  // no topo do seletor. Estratégia leve: dados já em memória.
+  const usageFreq = useMemo(() => {
+    const svc = new Map<string, number>();
+    const inv = new Map<string, number>();
+    for (const q of quotes ?? []) {
+      for (const it of (q.quote_items ?? [])) {
+        if (it.service_type_id) svc.set(it.service_type_id, (svc.get(it.service_type_id) ?? 0) + 1);
+        if (it.inventory_id) inv.set(it.inventory_id, (inv.get(it.inventory_id) ?? 0) + 1);
+      }
+    }
+    return { svc, inv };
+  }, [quotes]);
+
+  const activeServices = useMemo(
+    () => (serviceTypes ?? []).filter(s => s.is_active),
+    [serviceTypes]
+  );
+
+  const serviceGroups = useMemo(() => {
+    const toOption = (s: typeof activeServices[number]) => ({
       value: s.id,
       label: s.name,
       icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: s.color }} />,
-    })),
-    [serviceTypes]
-  );
-  const inventoryOptions = useMemo(
-    () => (inventoryItems ?? []).map(i => ({
+    });
+    // Top 5 mais usados que existem no catálogo ativo.
+    const recentIds = [...usageFreq.svc.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id)
+      .filter(id => activeServices.some(s => s.id === id))
+      .slice(0, 5);
+    if (recentIds.length === 0) {
+      return [{ options: activeServices.map(toOption) }];
+    }
+    const recentSet = new Set(recentIds);
+    const recents = recentIds
+      .map(id => activeServices.find(s => s.id === id)!)
+      .map(toOption);
+    const rest = activeServices.filter(s => !recentSet.has(s.id)).map(toOption);
+    const groups = [{ heading: tq.serviceSelectRecents, options: recents }];
+    if (rest.length > 0) groups.push({ heading: tq.serviceSelectAll, options: rest });
+    return groups;
+  }, [activeServices, usageFreq.svc, tq.serviceSelectRecents, tq.serviceSelectAll]);
+
+  const inventoryGroups = useMemo(() => {
+    const toOption = (i: typeof inventoryItems[number]) => ({
       value: i.id,
       label: `${i.name}${i.sku ? ` (${i.sku})` : ''}`,
-    })),
-    [inventoryItems]
-  );
+    });
+    const all = inventoryItems ?? [];
+    const recentIds = [...usageFreq.inv.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id)
+      .filter(id => all.some(i => i.id === id))
+      .slice(0, 5);
+    if (recentIds.length === 0) {
+      return [{ options: all.map(toOption) }];
+    }
+    const recentSet = new Set(recentIds);
+    const recents = recentIds.map(id => all.find(i => i.id === id)!).map(toOption);
+    const rest = all.filter(i => !recentSet.has(i.id)).map(toOption);
+    const groups = [{ heading: tq.serviceSelectRecents, options: recents }];
+    if (rest.length > 0) groups.push({ heading: tq.serviceSelectAll, options: rest });
+    return groups;
+  }, [inventoryItems, usageFreq.inv, tq.serviceSelectRecents, tq.serviceSelectAll]);
+
+  const hasAnyService = activeServices.length > 0;
 
   const serviceItems = items.filter(i => i.item_type === 'servico');
   const materialItems = items.filter(i => i.item_type === 'material');
@@ -1000,10 +1095,19 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
                   <div className="flex-1 min-w-0">
                     <SearchableSelect
-                      options={serviceOptions}
+                      groups={serviceGroups}
                       value={addSvcId}
                       onValueChange={setAddSvcId}
                       placeholder={tq.serviceSelectPlaceholder}
+                      searchPlaceholder={tq.serviceSearchPlaceholder}
+                      onCreateOption={handleCreateService}
+                      createOptionLabel={tq.serviceSelectCreate}
+                      emptyContent={!hasAnyService ? (
+                        <div className="flex flex-col items-center gap-1.5 py-4 px-2 text-center">
+                          <p className="text-sm font-medium text-foreground">{tq.serviceSelectEmptyTitle}</p>
+                          <p className="text-xs text-muted-foreground">{tq.serviceSearchPlaceholder}</p>
+                        </div>
+                      ) : undefined}
                     />
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1036,7 +1140,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="flex-1 min-w-0">
                       <SearchableSelect
-                        options={inventoryOptions}
+                        groups={inventoryGroups}
                         value={addMatId}
                         onValueChange={(v) => { setAddMatId(v); setAddMatManualName(''); }}
                         placeholder={tq.materialSelectPlaceholder}

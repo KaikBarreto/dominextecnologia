@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.21',
+    date: '22 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Personalize as seções da sua proposta',
+        description: 'No Configurar Proposta você agora liga, desliga e reordena as seções da proposta (mensagem de abertura, formas de pagamento, informações, sobre a empresa, garantia, encerramento e mais) e edita os textos de cada uma. O que você escrever vira o padrão dos seus orçamentos, com preview ao vivo enquanto ajusta.',
+        category: 'recurso',
+      },
+      {
+        title: 'Montar o orçamento ficou mais rápido',
+        description: 'Ao adicionar um serviço, se ele ainda não existir no seu catálogo você pode criá-lo na hora, sem sair do orçamento. Além disso, os serviços e materiais que você mais usa aparecem primeiro na lista de seleção.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.20',
     date: '22 de julho de 2026',
     type: 'patch',

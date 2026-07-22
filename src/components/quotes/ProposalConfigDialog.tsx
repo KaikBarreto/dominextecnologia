@@ -12,14 +12,17 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
-import { Check, Save, Loader2, Upload, Trash2, ImageIcon, LayoutTemplate, Palette, Eye, ChevronLeft, ChevronRight, Gem, AudioLines, Pyramid, FileText } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Check, Save, Loader2, Upload, Trash2, ImageIcon, LayoutTemplate, Palette, Eye, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Gem, AudioLines, Pyramid, FileText, ListChecks } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { cn } from '@/lib/utils';
 import type { Quote } from '@/hooks/useQuotes';
-import type { ProposalCustomization } from './templates/types';
+import type { ProposalCustomization, ProposalSection } from './templates/types';
+import { getProposalSections, PROPOSAL_TEXT_SECTION_KEYS } from './templates/types';
 
 interface ProposalConfigDialogProps {
   open: boolean;
@@ -107,6 +110,17 @@ const TEMPLATE_OPTIONS = [
   { id: 'prisma', slug: 'prisma', name: 'Prisma', preview_color: '#c084fc', icon: Pyramid, description: null },
 ];
 
+// Resolve o rótulo/placeholder i18n de uma seção a partir da sua `key`.
+// Ex.: 'abertura' → `sectionLabelAbertura` / `sectionPlaceholderAbertura`.
+// `tp` é o namespace de mensagens (MESSAGES[locale].app.crm.proposals).
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+function sectionLabel(tp: Record<string, string>, key: string): string {
+  return tp[`sectionLabel${cap(key)}`] ?? key;
+}
+function sectionPlaceholder(tp: Record<string, string>, key: string): string {
+  return tp[`sectionPlaceholder${cap(key)}`] ?? '';
+}
+
 export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialogProps) {
   const isMobile = useIsMobile();
   const { toast } = useToast();
@@ -149,6 +163,9 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     show_displacement: true,
     show_gifts: true,
   });
+  // Seções configuráveis da proposta (só o Clean respeita). Materializa o default
+  // completo quando a empresa não tem nada salvo (getProposalSections mescla).
+  const [sections, setSections] = useState<ProposalSection[]>(() => getProposalSections(existing));
 
   useEffect(() => {
     if (existing) {
@@ -163,7 +180,35 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         show_gifts: existing.show_gifts ?? true,
       });
     }
+    setSections(getProposalSections(existing));
   }, [existing]);
+
+  // Customização efetiva passada ao PREVIEW e ao SAVE: as cores/logo/toggles do
+  // estado `colors` + as seções atuais (pra o preview refletir em tempo real).
+  const effectiveCustomization: ProposalCustomization = { ...colors, sections };
+
+  // ── Manipulação das seções (toggle / reordenar por setas / texto) ──
+  // Toda operação recalcula `order` sequencialmente pra manter consistência.
+  const reindex = (list: ProposalSection[]): ProposalSection[] =>
+    list.map((s, i) => ({ ...s, order: i }));
+
+  const toggleSection = (key: string, enabled: boolean) => {
+    setSections(prev => reindex(prev.map(s => (s.key === key ? { ...s, enabled } : s))));
+  };
+
+  const moveSection = (index: number, dir: -1 | 1) => {
+    setSections(prev => {
+      const target = index + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return reindex(next);
+    });
+  };
+
+  const setSectionText = (key: string, customText: string) => {
+    setSections(prev => reindex(prev.map(s => (s.key === key ? { ...s, customText } : s))));
+  };
 
   // ── Reset wizard nav on open/close ──
   // Como sempre há um template default (clean) e cores válidas, a config já
@@ -188,7 +233,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
 
   const handleSave = async () => {
     setSaving(true);
-    await updateSettings.mutateAsync({ proposal_customization: colors } as any);
+    await updateSettings.mutateAsync({ proposal_customization: effectiveCustomization } as any);
     setSaving(false);
     toast({ title: tp.savedToast });
   };
@@ -224,7 +269,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       const next = { ...colors, logo_url: publicUrl };
       setColors(next);
-      await updateSettings.mutateAsync({ proposal_customization: next } as any);
+      await updateSettings.mutateAsync({ proposal_customization: { ...next, sections } } as any);
       toast({ title: tp.logoUploadedToast });
     } catch (err: any) {
       toast({ variant: 'destructive', title: tp.logoErrorToast, description: getErrorMessage(err) });
@@ -244,7 +289,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     }
     const next = { ...colors, logo_url: undefined };
     setColors(next);
-    await updateSettings.mutateAsync({ proposal_customization: next } as any);
+    await updateSettings.mutateAsync({ proposal_customization: { ...next, sections } } as any);
     toast({ title: tp.logoRemovedToast });
   };
 
@@ -340,7 +385,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                     quote={SAMPLE_QUOTE}
                     company={company ?? null}
                     templateSlug={selectedSlug}
-                    customization={colors}
+                    customization={effectiveCustomization}
                     maxHeight={300}
                   />
                   {/* Seleção de modelo embaixo */}
@@ -365,7 +410,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                     quote={SAMPLE_QUOTE}
                     company={company ?? null}
                     templateSlug={selectedSlug}
-                    customization={colors}
+                    customization={effectiveCustomization}
                   />
                 </div>
               )}
@@ -500,6 +545,77 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                   aria-label={tp.giftsTitle}
                 />
               </div>
+
+              {/* Seções da proposta — ligar/desligar, reordenar (setas) e texto
+                  padrão. Só o modelo Clean respeita; reflete no preview ao vivo. */}
+              <div className="rounded-xl border border-border p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{tp.sectionsSectionTitle}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{tp.sectionsSectionSubtitle}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {sections.map((s, i) => {
+                    const label = sectionLabel(tp, s.key);
+                    const hasText = PROPOSAL_TEXT_SECTION_KEYS.includes(s.key as any);
+                    const placeholder = sectionPlaceholder(tp, s.key);
+                    return (
+                      <div key={s.key} className="rounded-lg border border-border bg-muted/20 p-3 space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          {/* Setas de reordenação */}
+                          <div className="flex flex-col shrink-0">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-6"
+                              onClick={() => moveSection(i, -1)}
+                              disabled={i === 0}
+                              aria-label={tp.sectionMoveUp}
+                            >
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-6"
+                              onClick={() => moveSection(i, 1)}
+                              disabled={i === sections.length - 1}
+                              aria-label={tp.sectionMoveDown}
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          <span className={cn(
+                            'text-sm font-medium flex-1 min-w-0 truncate',
+                            s.enabled ? 'text-foreground' : 'text-muted-foreground line-through',
+                          )}>
+                            {label}
+                          </span>
+                          <Switch
+                            checked={s.enabled}
+                            onCheckedChange={(v) => toggleSection(s.key, v)}
+                            aria-label={label}
+                          />
+                        </div>
+                        {hasText && s.enabled && (
+                          <Textarea
+                            value={s.customText ?? ''}
+                            onChange={(e) => setSectionText(s.key, e.target.value)}
+                            placeholder={placeholder}
+                            rows={2}
+                            className="text-sm resize-none"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
@@ -520,7 +636,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                 quote={SAMPLE_QUOTE}
                 company={company ?? null}
                 templateSlug={selectedSlug}
-                customization={colors}
+                customization={effectiveCustomization}
                 compact={isMobile}
                 onPageChange={setPreviewPage}
                 onTotalChange={setPreviewTotal}

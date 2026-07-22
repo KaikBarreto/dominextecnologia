@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.17.20";
+export const APP_VERSION = "1.17.21";
 
-export const VERSION_NOTES = "A proposta no modelo enxuto agora mostra as formas de pagamento com os valores já calculados (à vista no PIX com desconto e parcelado no cartão), destaca até quando o orçamento é válido e informa a data de geração. Também ficou melhor de ler no celular.";
+export const VERSION_NOTES = "Montar orçamento ficou mais rápido: dá pra criar o tipo de serviço na hora se ele ainda não existir, e os itens que você mais usa aparecem primeiro. E no Configurar Proposta você agora liga, desliga, reordena e edita os textos das seções da proposta (abertura, sobre a empresa, garantia, encerramento e mais).";

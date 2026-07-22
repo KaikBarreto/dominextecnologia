@@ -1,6 +1,43 @@
 import type { Quote, QuoteItem } from '@/hooks/useQuotes';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
 
+/**
+ * Uma seção CONFIGURÁVEL da proposta (só o template Clean respeita hoje).
+ * `key` identifica a seção; `enabled` liga/desliga; `order` define a posição na
+ * lista de seções pós-Totais; `customText` é o texto DEFAULT da empresa (aplicado
+ * quando o orçamento não trouxer texto próprio). `pagamento` não tem `customText`
+ * (é o bloco calculado de formas de pagamento).
+ */
+export interface ProposalSection {
+  key: string;
+  enabled: boolean;
+  order: number;
+  customText?: string;
+}
+
+/** Chaves das seções configuráveis do Clean, na ordem padrão. */
+export const PROPOSAL_SECTION_KEYS = [
+  'abertura',
+  'pagamento',
+  'informacoes',
+  'observacoes',
+  'sobre',
+  'garantia',
+  'encerramento',
+] as const;
+
+export type ProposalSectionKey = (typeof PROPOSAL_SECTION_KEYS)[number];
+
+/** Seções que carregam texto editável (todas menos `pagamento`, que é calculada). */
+export const PROPOSAL_TEXT_SECTION_KEYS: ProposalSectionKey[] = [
+  'abertura',
+  'informacoes',
+  'observacoes',
+  'sobre',
+  'garantia',
+  'encerramento',
+];
+
 export interface ProposalCustomization {
   primary_color?: string;
   accent_color?: string;
@@ -13,6 +50,37 @@ export interface ProposalCustomization {
   show_displacement?: boolean;
   /** Mostra a seção de Brindes (cortesias). Default: ligado. */
   show_gifts?: boolean;
+  /**
+   * Seções configuráveis da proposta (ligar/desligar, reordenar, texto default).
+   * Ausente em empresas antigas → usar `getProposalSections` pra materializar o
+   * default completo (todas ligadas, ordem padrão).
+   */
+  sections?: ProposalSection[];
+}
+
+/**
+ * Materializa a lista de seções configuráveis mesclando o DEFAULT (todas ligadas,
+ * na ordem padrão de PROPOSAL_SECTION_KEYS) com o que a empresa salvou. Garante
+ * que:
+ *  - configs antigas (sem `sections`) recebem a lista completa;
+ *  - seções NOVAS (adicionadas depois) aparecem mesmo em configs já salvas;
+ *  - a ordem salva é respeitada, com seções novas no fim (na ordem padrão).
+ */
+export function getProposalSections(customization?: ProposalCustomization): ProposalSection[] {
+  const saved = customization?.sections ?? [];
+  const savedByKey = new Map(saved.map((s) => [s.key, s]));
+
+  const merged: ProposalSection[] = PROPOSAL_SECTION_KEYS.map((key, i) => {
+    const s = savedByKey.get(key);
+    return {
+      key,
+      enabled: s?.enabled ?? true,
+      order: s?.order ?? i,
+      customText: s?.customText,
+    };
+  });
+
+  return merged.sort((a, b) => a.order - b.order);
 }
 
 export interface ProposalTemplateProps {
