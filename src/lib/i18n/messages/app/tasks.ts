@@ -10,6 +10,7 @@ export const tasks = {
     drawerTitle: 'Tarefas',
     drawerTitleWithCount: 'Tarefas ({n})',
     badgeAriaLabel: '{n} tarefas pendentes',
+    badgeAriaLabelOne: '1 tarefa pendente',
     badgeAriaLabelNone: 'Tarefas',
 
     // ── Botão de nova tarefa ──
@@ -62,6 +63,7 @@ export const tasks = {
     drawerTitle: 'Tasks',
     drawerTitleWithCount: 'Tasks ({n})',
     badgeAriaLabel: '{n} pending tasks',
+    badgeAriaLabelOne: '1 pending task',
     badgeAriaLabelNone: 'Tasks',
 
     newTask: 'New task',
@@ -108,6 +110,7 @@ export const tasks = {
     drawerTitle: 'Tareas',
     drawerTitleWithCount: 'Tareas ({n})',
     badgeAriaLabel: '{n} tareas pendientes',
+    badgeAriaLabelOne: '1 tarea pendiente',
     badgeAriaLabelNone: 'Tareas',
 
     newTask: 'Nueva tarea',
@@ -154,6 +157,7 @@ export const tasks = {
     drawerTitle: 'Tâches',
     drawerTitleWithCount: 'Tâches ({n})',
     badgeAriaLabel: '{n} tâches en attente',
+    badgeAriaLabelOne: '1 tâche en attente',
     badgeAriaLabelNone: 'Tâches',
 
     newTask: 'Nouvelle tâche',

@@ -27,9 +27,11 @@ export function TasksBadgeTrigger({ onOpen, size = 'icon' }: TasksBadgeTriggerPr
   const { pendingCount } = useTenantTasks();
 
   const ariaLabel =
-    pendingCount > 0
-      ? t.badgeAriaLabel.replace('{n}', String(pendingCount))
-      : t.badgeAriaLabelNone;
+    pendingCount === 0
+      ? t.badgeAriaLabelNone
+      : pendingCount === 1
+        ? t.badgeAriaLabelOne
+        : t.badgeAriaLabel.replace('{n}', String(pendingCount));
 
   return (
     <Button
