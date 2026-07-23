@@ -2873,6 +2873,7 @@ export type Database = {
       }
       equipment: {
         Row: {
+          attachments_public: boolean
           brand: string | null
           capacity: string | null
           category_id: string | null
@@ -2895,6 +2896,7 @@ export type Database = {
           warranty_until: string | null
         }
         Insert: {
+          attachments_public?: boolean
           brand?: string | null
           capacity?: string | null
           category_id?: string | null
@@ -2917,6 +2919,7 @@ export type Database = {
           warranty_until?: string | null
         }
         Update: {
+          attachments_public?: boolean
           brand?: string | null
           capacity?: string | null
           category_id?: string | null

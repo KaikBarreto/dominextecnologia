@@ -52,6 +52,29 @@ export function useEquipment(customerId?: string) {
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
+  const updateEquipment = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<EquipmentInput> & { attachments_public?: boolean } }) => {
+      const { data: updated, error } = await supabase
+        .from('equipment')
+        .update(data as any)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar equipamento',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+
   const createEquipment = useMutation({
     mutationFn: async (input: EquipmentInput) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
@@ -84,6 +107,7 @@ export function useEquipment(customerId?: string) {
     isError: equipmentQuery.isError,
     error: equipmentQuery.error,
     refetch: equipmentQuery.refetch,
+    updateEquipment,
     createEquipment,
   };
 }

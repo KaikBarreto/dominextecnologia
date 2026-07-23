@@ -3,7 +3,6 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Package,
   ClipboardList,
-  Clock,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -11,17 +10,25 @@ import {
   ChevronRight,
   ExternalLink,
   Star,
+  FileText,
+  Paperclip,
+  ImageIcon,
+  Search,
+  Wrench,
+  User,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
@@ -40,6 +47,9 @@ import {
   isAlreadyRatedError,
 } from '@/hooks/useServiceRatings';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
+import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces e constantes
@@ -49,6 +59,13 @@ interface Customer {
   id: string;
   name: string;
   company_id: string;
+}
+
+interface EquipmentAttachment {
+  id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string;
 }
 
 interface Equipment {
@@ -62,6 +79,9 @@ interface Equipment {
   photo_url: string | null;
   identifier: string | null;
   custom_fields?: Record<string, unknown> | null;
+  // Campos entregues pelo dev-database (contrato de dados B)
+  attachments_public?: boolean;
+  attachments?: EquipmentAttachment[];
 }
 
 interface FieldConfig {
@@ -80,6 +100,10 @@ interface ServiceOrder {
   scheduled_date: string | null;
   created_at: string;
   os_type: string;
+  // Campos entregues pelo dev-database (contrato de dados)
+  service_type_name: string | null;
+  technician_name: string | null;
+  team_name: string | null;
 }
 
 interface CompanySettings {
@@ -99,6 +123,16 @@ interface CompanySettings {
   timezone?: string | null;
 }
 
+interface PortalContractSummary {
+  id: string;
+  name: string;
+  is_pmoc: boolean;
+  status: 'active' | 'paused';
+  next_maintenance_date: string | null;
+  public_short_code: string | null;
+  public_pmoc_token: string | null;
+}
+
 interface PortalPayload {
   access?: 'granted' | 'denied' | 'module_unavailable';
   viewer_can_fill?: boolean;
@@ -108,6 +142,7 @@ interface PortalPayload {
   equipment: Equipment[];
   service_orders: ServiceOrder[];
   equipment_field_config?: FieldConfig[];
+  contracts?: PortalContractSummary[];
 }
 
 // Cores de badge por status (fundo saturado + texto branco, regra Dominex).
@@ -134,7 +169,6 @@ const OS_STATUS_STYLE: Record<string, { badgeClass: string; color: string }> = {
   },
 };
 
-const ACTIVE_STATUSES = ['em_andamento', 'a_caminho', 'pendente'];
 const TERMINAL_STATUSES = ['concluida', 'cancelada'];
 
 const BUILT_IN_FIELD_KEYS: Record<string, keyof Equipment> = {
@@ -288,6 +322,7 @@ export default function CustomerPortal() {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentFieldConfig, setEquipmentFieldConfig] = useState<FieldConfig[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
+  const [contracts, setContracts] = useState<PortalContractSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -334,6 +369,7 @@ export default function CustomerPortal() {
       setEquipment(payload.equipment ?? []);
       setEquipmentFieldConfig(payload.equipment_field_config ?? []);
       setServiceOrders(payload.service_orders ?? []);
+      setContracts(payload.contracts ?? []);
     } catch {
       setError('portal_load_error');
     } finally {
@@ -433,6 +469,7 @@ export default function CustomerPortal() {
         equipment={equipment}
         equipmentFieldConfig={equipmentFieldConfig}
         serviceOrders={serviceOrders}
+        contracts={contracts}
         viewerCanFill={viewerCanFill}
         onReload={loadPortalData}
       />
@@ -451,6 +488,7 @@ interface ContentProps {
   equipment: Equipment[];
   equipmentFieldConfig: FieldConfig[];
   serviceOrders: ServiceOrder[];
+  contracts: PortalContractSummary[];
   viewerCanFill: boolean;
   onReload: () => Promise<void>;
 }
@@ -467,6 +505,7 @@ function CustomerPortalContent({
   equipment,
   equipmentFieldConfig,
   serviceOrders,
+  contracts,
   viewerCanFill,
   onReload,
 }: ContentProps) {
@@ -495,12 +534,46 @@ function CustomerPortalContent({
   const [ratingOsId, setRatingOsId] = useState<string | null>(null);
   const [ratedOsIds, setRatedOsIds] = useState<Set<string>>(new Set());
 
+  // ── Busca nas listas ──
+  const [osSearch, setOsSearch] = useState('');
+  const [eqSearch, setEqSearch] = useState('');
+
   // ── Abas e equipamento selecionado ──
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(eqParam);
   const [activeTab, setActiveTab] = useState(eqParam ? 'equipamentos' : 'os');
+  // Sub-aba dentro do detalhe de equipamento
+  const [eqSubTab, setEqSubTab] = useState<'overview' | 'history' | 'attachments'>('overview');
+  // Imagem selecionada para preview (não abre em nova aba)
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
 
-  const osPagination = useDataPagination(serviceOrders);
-  const eqPagination = useDataPagination(equipment);
+  // ── Datasets filtrados pela busca (dataset completo, paginação recalcula sobre o filtrado) ──
+  const filteredServiceOrders = useMemo(() => {
+    if (!osSearch.trim()) return serviceOrders;
+    return serviceOrders.filter((os) => {
+      const num = `#${String(os.order_number).padStart(6, '0')}`;
+      const statusLabel = OS_STATUS_LABEL[os.status] || os.status;
+      return (
+        fuzzyIncludes(num, osSearch) ||
+        fuzzyIncludes(os.description, osSearch) ||
+        fuzzyIncludes(statusLabel, osSearch)
+      );
+    });
+  }, [serviceOrders, osSearch]);
+
+  const filteredEquipment = useMemo(() => {
+    if (!eqSearch.trim()) return equipment;
+    return equipment.filter((eq) =>
+      fuzzyIncludes(eq.name, eqSearch) ||
+      fuzzyIncludes(eq.brand, eqSearch) ||
+      fuzzyIncludes(eq.model, eqSearch) ||
+      fuzzyIncludes(eq.location, eqSearch) ||
+      fuzzyIncludes(eq.identifier, eqSearch) ||
+      fuzzyIncludes(eq.serial_number, eqSearch),
+    );
+  }, [equipment, eqSearch]);
+
+  const osPagination = useDataPagination(filteredServiceOrders);
+  const eqPagination = useDataPagination(filteredEquipment);
 
   // ── White-label ──
   // Cor de marca: quando white-label usa a cor da empresa; senao cai no teal
@@ -526,6 +599,12 @@ function CustomerPortalContent({
 
   // ── Equipamento selecionado ──
   const selectedEq = equipment.find((e) => e.id === selectedEquipment);
+
+  // Reseta sub-aba ao trocar de equipamento
+  const handleSelectEquipment = (id: string | null) => {
+    setSelectedEquipment(id);
+    setEqSubTab('overview');
+  };
   const equipmentOrders = selectedEquipment
     ? serviceOrders.filter((os) => (os as unknown as { equipment_id?: string }).equipment_id === selectedEquipment)
     : [];
@@ -598,6 +677,19 @@ function CustomerPortalContent({
     setRatedOsIds((prev) => new Set(prev).add(osId));
   };
 
+  // ── Campo de busca de OS ──
+  const osSearchBar = (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <Input
+        placeholder={t.searchOsPlaceholder}
+        className="pl-10"
+        value={osSearch}
+        onChange={(e) => { setOsSearch(e.target.value); osPagination.setPage(1); }}
+      />
+    </div>
+  );
+
   // ── Corpo das abas ──
   const osTabContent = (
     <div className="space-y-4">
@@ -608,6 +700,12 @@ function CustomerPortalContent({
             <p className="text-muted-foreground">{t.emptyOs}</p>
           </CardContent>
         </Card>
+      ) : filteredServiceOrders.length === 0 ? (
+        <EmptyState
+          size="compact"
+          icon={<ClipboardList className="h-8 w-8" />}
+          title={t.emptyOsSearch}
+        />
       ) : (
         <>
           <div className="space-y-3">
@@ -621,28 +719,49 @@ function CustomerPortalContent({
               return (
                 <Card key={os.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm font-bold">
-                            #{String(os.order_number).padStart(6, '0')}
+                    {/* Bloco de informacoes — largura total */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-sm font-bold">
+                        #{String(os.order_number).padStart(6, '0')}
+                      </span>
+                      <Badge className={cn('text-xs', style.badgeClass)}>
+                        {label}
+                      </Badge>
+                    </div>
+                    {os.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {os.description}
+                      </p>
+                    )}
+                    {/* Tipo de servico e responsavel */}
+                    {(os.service_type_name || os.technician_name || os.team_name) && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                        {os.service_type_name && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Wrench className="h-3.5 w-3.5 shrink-0" />
+                            {os.service_type_name}
                           </span>
-                          <Badge className={cn('text-xs', style.badgeClass)}>
-                            {label}
-                          </Badge>
-                        </div>
-                        {os.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {os.description}
-                          </p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {os.scheduled_date
-                            ? `${t.scheduledPrefix} ${formatDate(os.scheduled_date, locale, timezone)}`
-                            : `${t.createdPrefix} ${formatDate(os.created_at, locale, timezone)}`}
-                        </p>
+                        {(os.technician_name || os.team_name) && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {os.technician_name
+                              ? <User className="h-3.5 w-3.5 shrink-0" />
+                              : <Users className="h-3.5 w-3.5 shrink-0" />}
+                            {os.technician_name ?? os.team_name}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {os.scheduled_date
+                        ? `${t.scheduledPrefix} ${formatDate(os.scheduled_date, locale, timezone)}`
+                        : `${t.createdPrefix} ${formatDate(os.created_at, locale, timezone)}`}
+                    </p>
+
+                    {/* Divisor */}
+                    <div className="border-t border-border mt-3 pt-3">
+                      {/* Linha de acoes */}
+                      <div className="flex flex-wrap items-center gap-2">
                         {isEnRoute && (
                           <a
                             href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
@@ -665,15 +784,15 @@ function CustomerPortalContent({
                             </Button>
                           </a>
                         )}
-                        {/* Acao de avaliar OS concluida (Task 1.6) */}
+                        {/* Acao de avaliar OS concluida */}
                         {isConcluida && !alreadyRated && (
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="gap-1 text-xs text-warning border-warning/30 hover:bg-warning/5"
+                            variant="ghost"
+                            className="group h-8 gap-1 text-xs text-warning hover:bg-warning hover:text-white"
                             onClick={() => setRatingOsId(os.id)}
                           >
-                            <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                            <Star className="h-3.5 w-3.5 fill-warning text-warning group-hover:fill-white group-hover:text-white" />
                             {t.rateOs}
                           </Button>
                         )}
@@ -688,12 +807,11 @@ function CustomerPortalContent({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <ExternalLink className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            {t.eqViewReport}
                           </Button>
                         </a>
-                        {os.status === 'pendente' && <Clock className="h-5 w-5 text-warning" />}
-                        {isConcluida && !alreadyRated && <CheckCircle className="h-5 w-5 text-success" />}
                       </div>
                     </div>
                   </CardContent>
@@ -712,19 +830,29 @@ function CustomerPortalContent({
     </div>
   );
 
+  // ── Subabas do equipamento (espelha o primitivo do EquipmentDetailDialog logado) ──
+  const eqSubTabs: { key: typeof eqSubTab; label: string }[] = [
+    { key: 'overview', label: t.eqSubTabOverview },
+    { key: 'history', label: t.eqSubTabHistory },
+    { key: 'attachments', label: t.eqSubTabAttachments },
+  ];
+
   const eqTabContent = selectedEquipment && selectedEq ? (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={() => setSelectedEquipment(null)}>
+      <Button variant="ghost" size="sm" onClick={() => handleSelectEquipment(null)}>
         {t.backToList}
       </Button>
 
-      {/* Detalhes do equipamento: container único com borda e divisores (regra UI lista limpa). */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)] divide-y divide-border">
-        {/* Cabeçalho: foto + nome */}
+      {/* Cabeçalho: foto + nome + status (fora das subabas, fixo no topo) */}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3 px-4 py-3">
           {selectedEq.photo_url ? (
             <img src={selectedEq.photo_url} alt="" className="h-12 w-12 rounded-xl object-cover border shrink-0" />
-          ) : null}
+          ) : (
+            <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+              <Package className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="break-words text-sm font-semibold">{selectedEq.name}</p>
             {(selectedEq.brand || selectedEq.model) && (
@@ -733,105 +861,214 @@ function CustomerPortalContent({
               </p>
             )}
           </div>
-          <Badge variant={selectedEq.status === 'active' ? 'default' : 'secondary'} className="shrink-0 text-xs">
+          <Badge
+            className={cn(
+              'shrink-0 text-xs',
+              selectedEq.status === 'active'
+                ? 'bg-success text-white border-transparent'
+                : 'bg-muted text-muted-foreground',
+            )}
+          >
             {selectedEq.status === 'active' ? t.equipStatusActive : t.equipStatusInactive}
           </Badge>
         </div>
-
-        {/* Campos dinâmicos */}
-        {equipmentFieldConfig.length > 0 ? (
-          <>
-            {buildDetailRows(selectedEq).map(({ fc, rawValue }) => (
-              <div key={fc.field_key} className="flex items-start justify-between gap-3 px-4 py-3">
-                <span className="text-xs text-muted-foreground shrink-0">{fc.label}</span>
-                <span className="text-sm text-right break-words font-medium">
-                  {formatFieldValue(rawValue, fc.field_type)}
-                </span>
-              </div>
-            ))}
-            {selectedEq.identifier && (
-              <div className="flex items-start justify-between gap-3 px-4 py-3">
-                <span className="text-xs text-muted-foreground shrink-0">{t.fieldIdentifier}</span>
-                <span className="font-mono text-sm text-right break-words">{selectedEq.identifier}</span>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            {selectedEq.serial_number && (
-              <div className="flex items-start justify-between gap-3 px-4 py-3">
-                <span className="text-xs text-muted-foreground shrink-0">{t.fieldSerialNumber}</span>
-                <span className="font-mono text-sm text-right break-words">{selectedEq.serial_number}</span>
-              </div>
-            )}
-            {selectedEq.identifier && (
-              <div className="flex items-start justify-between gap-3 px-4 py-3">
-                <span className="text-xs text-muted-foreground shrink-0">{t.fieldIdentifier}</span>
-                <span className="font-mono text-sm text-right break-words">{selectedEq.identifier}</span>
-              </div>
-            )}
-            {selectedEq.location && (
-              <div className="flex items-start justify-between gap-3 px-4 py-3">
-                <span className="text-xs text-muted-foreground shrink-0">{t.fieldLocation}</span>
-                <span className="text-sm text-right break-words">{selectedEq.location}</span>
-              </div>
-            )}
-          </>
-        )}
       </div>
 
-      {/* Histórico de OS do equipamento */}
-      <div>
-        <h3 className="mb-2 text-sm font-semibold">{t.equipOsHistory}</h3>
-        {equipmentOrders.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-6 text-center">
-            <p className="text-sm text-muted-foreground">{t.emptyEquipOs}</p>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card divide-y divide-border shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-            {equipmentOrders.map((os) => {
-              const style = OS_STATUS_STYLE[os.status] || OS_STATUS_STYLE.pendente;
-              const label = OS_STATUS_LABEL[os.status] || os.status;
-              return (
-                <div key={os.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <span className="font-mono font-bold">#{String(os.order_number).padStart(6, '0')}</span>
-                    {os.description && (
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{os.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge className={cn('text-[10px]', style.badgeClass)}>{label}</Badge>
-                    {viewerCanFill && !TERMINAL_STATUSES.includes(os.status) && (
+      {/* Subabas — mesma convenção de tab do EquipmentDetailDialog logado */}
+      <div className="flex gap-1 border-b border-border">
+        {eqSubTabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setEqSubTab(tab.key)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+              eqSubTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sub-aba: Visão geral */}
+      {eqSubTab === 'overview' && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)] divide-y divide-border">
+          {equipmentFieldConfig.length > 0 ? (
+            <>
+              {buildDetailRows(selectedEq).map(({ fc, rawValue }) => (
+                <div key={fc.field_key} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <span className="text-xs text-muted-foreground shrink-0">{fc.label}</span>
+                  <span className="text-sm text-right break-words font-medium">
+                    {formatFieldValue(rawValue, fc.field_type)}
+                  </span>
+                </div>
+              ))}
+              {selectedEq.identifier && (
+                <div className="flex items-start justify-between gap-3 px-4 py-3">
+                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldIdentifier}</span>
+                  <span className="font-mono text-sm text-right break-words">{selectedEq.identifier}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {selectedEq.serial_number && (
+                <div className="flex items-start justify-between gap-3 px-4 py-3">
+                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldSerialNumber}</span>
+                  <span className="font-mono text-sm text-right break-words">{selectedEq.serial_number}</span>
+                </div>
+              )}
+              {selectedEq.identifier && (
+                <div className="flex items-start justify-between gap-3 px-4 py-3">
+                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldIdentifier}</span>
+                  <span className="font-mono text-sm text-right break-words">{selectedEq.identifier}</span>
+                </div>
+              )}
+              {selectedEq.location && (
+                <div className="flex items-start justify-between gap-3 px-4 py-3">
+                  <span className="text-xs text-muted-foreground shrink-0">{t.fieldLocation}</span>
+                  <span className="text-sm text-right break-words">{selectedEq.location}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Sub-aba: Histórico */}
+      {eqSubTab === 'history' && (
+        <div>
+          {equipmentOrders.length === 0 ? (
+            <EmptyState
+              size="compact"
+              icon={<ClipboardList className="h-8 w-8" />}
+              title={t.emptyEquipOs}
+            />
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card divide-y divide-border shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              {equipmentOrders.map((os) => {
+                const style = OS_STATUS_STYLE[os.status] || OS_STATUS_STYLE.pendente;
+                const label = OS_STATUS_LABEL[os.status] || os.status;
+                return (
+                  <div key={os.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono font-bold">#{String(os.order_number).padStart(6, '0')}</span>
+                      {os.description && (
+                        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{os.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge className={cn('text-[10px]', style.badgeClass)}>{label}</Badge>
+                      {viewerCanFill && !TERMINAL_STATUSES.includes(os.status) && (
+                        <a
+                          href={`${window.location.origin}/os-tecnico/${os.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button size="sm" variant="default" className="h-7 gap-1 text-xs">
+                            {t.fillOs}
+                          </Button>
+                        </a>
+                      )}
                       <a
-                        href={`${window.location.origin}/os-tecnico/${os.id}`}
+                        href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <Button size="sm" variant="default" className="h-7 gap-1 text-xs">
-                          {t.fillOs}
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          {t.eqViewReport}
                         </Button>
                       </a>
-                    )}
-                    <a
-                      href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </a>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sub-aba: Anexos */}
+      {eqSubTab === 'attachments' && (
+        <div>
+          {/* Restrição: attachments_public=false ou lista vazia */}
+          {(selectedEq.attachments_public === false) ? (
+            <EmptyState
+              size="compact"
+              icon={<Paperclip className="h-8 w-8" />}
+              title={t.eqAttachmentsPrivate}
+              description={t.eqAttachmentsPrivateDesc}
+            />
+          ) : !selectedEq.attachments || selectedEq.attachments.length === 0 ? (
+            <EmptyState
+              size="compact"
+              icon={<Paperclip className="h-8 w-8" />}
+              title={t.eqAttachmentsEmpty}
+              description={t.eqAttachmentsEmptyDesc}
+            />
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card divide-y divide-border shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              {selectedEq.attachments.map((att) => {
+                const isImage = att.file_type?.startsWith('image/') ||
+                  /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(att.file_name);
+                return (
+                  <div key={att.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="shrink-0 text-muted-foreground">
+                      {isImage
+                        ? <ImageIcon className="h-4 w-4" />
+                        : <FileText className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{att.file_name}</p>
+                      <p className="text-xs text-muted-foreground uppercase">{att.file_type?.split('/')[1] || 'arquivo'}</p>
+                    </div>
+                    {isImage ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImage({ src: att.file_url, alt: att.file_name })}
+                        className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        aria-label={att.file_name}
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <a
+                        href={att.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        aria-label={att.file_name}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   ) : (
     <>
+      {/* Campo de busca de equipamentos */}
+      {equipment.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder={t.searchEqPlaceholder}
+            className="pl-10"
+            value={eqSearch}
+            onChange={(e) => { setEqSearch(e.target.value); eqPagination.setPage(1); }}
+          />
+        </div>
+      )}
+
       {equipment.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center py-12">
@@ -839,6 +1076,12 @@ function CustomerPortalContent({
             <p className="text-muted-foreground">{t.emptyEquipment}</p>
           </CardContent>
         </Card>
+      ) : filteredEquipment.length === 0 ? (
+        <EmptyState
+          size="compact"
+          icon={<Package className="h-8 w-8" />}
+          title={t.emptyEqSearch}
+        />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -846,7 +1089,7 @@ function CustomerPortalContent({
               <Card
                 key={eq.id}
                 className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => setSelectedEquipment(eq.id)}
+                onClick={() => handleSelectEquipment(eq.id)}
               >
                 <CardContent className="p-4 flex items-center gap-3">
                   {eq.photo_url ? (
@@ -881,10 +1124,58 @@ function CustomerPortalContent({
     </>
   );
 
+  // ── Conteudo da aba Contratos ──
+  const contractsTabContent = (
+    <div className="space-y-3">
+      {contracts.length === 0 ? null : (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)] divide-y divide-border">
+          {contracts.map((ct) => {
+            const portalUrl = buildPmocPortalUrl({
+              shortCode: ct.public_short_code,
+              name: ct.name,
+              token: ct.public_pmoc_token,
+            });
+            return (
+              <a
+                key={ct.id}
+                href={portalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.contractOpen}
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors group"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold truncate">{ct.name}</span>
+                    {ct.is_pmoc && (
+                      <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white leading-none shrink-0">
+                        {t.contractPmoc}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {ct.next_maintenance_date
+                      ? `${t.contractNextMaint}: ${formatDate(ct.next_maintenance_date, locale, timezone)}`
+                      : `${t.contractNextMaint}: ${t.contractTbd}`}
+                  </p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   // ── Secoes de navegacao (mobile: pilulas; desktop: sidebar) ──
   const navSections = [
     { value: 'os', label: t.tabOs, icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
     { value: 'equipamentos', label: t.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> },
+    // Aba Contratos: so aparece quando o cliente tem ao menos 1 contrato
+    ...(contracts.length > 0
+      ? [{ value: 'contratos', label: t.sectionContracts, icon: <FileText className="h-4 w-4 shrink-0" /> }]
+      : []),
   ];
 
   // ── Render principal com PublicPortalShell ──
@@ -908,62 +1199,17 @@ function CustomerPortalContent({
       onFooterCta={() => setShowTicketForm(true)}
       navLabel={t.sidebarNavLabel}
     >
-      {/* OS ativas em destaque (apenas na aba OS) */}
-      {activeTab === 'os' && serviceOrders.filter((os) => ACTIVE_STATUSES.includes(os.status)).length > 0 && (
-        <div className="space-y-3 mb-4">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-            {t.activeOsTitle}
-          </h2>
-          {serviceOrders.filter((os) => ACTIVE_STATUSES.includes(os.status)).map((os) => {
-            const style = OS_STATUS_STYLE[os.status] || OS_STATUS_STYLE.pendente;
-            const label = OS_STATUS_LABEL[os.status] || os.status;
-            const isEnRoute = os.status === 'a_caminho' || os.status === 'em_andamento';
-            return (
-              <Card key={os.id} className="bg-card border hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-sm font-bold">
-                          #{String(os.order_number).padStart(6, '0')}
-                        </span>
-                        <Badge className={cn('text-xs', style.badgeClass)}>{label}</Badge>
-                      </div>
-                      {os.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">{os.description}</p>
-                      )}
-                      {os.scheduled_date && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t.scheduledPrefix} {formatDate(os.scheduled_date, locale, timezone)}
-                        </p>
-                      )}
-                    </div>
-                    {isEnRoute && (
-                      <a
-                        href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button size="sm" variant="default" className="gap-1 text-xs">
-                          {t.trackBtn}
-                        </Button>
-                      </a>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+      {/* Campo de busca de OS — no topo da aba */}
+      {activeTab === 'os' && (
+        <div className="mb-4">
+          {osSearchBar}
         </div>
       )}
 
       {/* Conteudo das abas */}
       {activeTab === 'os' && osTabContent}
       {activeTab === 'equipamentos' && eqTabContent}
+      {activeTab === 'contratos' && contractsTabContent}
 
       {/* Modal de chamado (preservado integralmente) */}
       <ResponsiveModal
@@ -1029,6 +1275,16 @@ function CustomerPortalContent({
 
       {/* Spacer para o rodape nao cobrir o ultimo card */}
       <div className="h-4" />
+
+      {/* Viewer de imagem de anexo (nunca abre em nova aba) */}
+      {previewImage && (
+        <ImagePreviewModal
+          src={previewImage.src}
+          alt={previewImage.alt}
+          open={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+        />
+      )}
     </PublicPortalShell>
   );
 }

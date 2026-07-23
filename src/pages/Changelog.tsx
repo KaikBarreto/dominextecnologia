@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.17.27',
+    date: '23 de julho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Equipamentos no portal do cliente com seções e anexos',
+        description: 'No portal que você compartilha com seus clientes, cada equipamento agora abre em seções separadas: visão geral (com todos os campos que você cadastrou), histórico de atendimentos e anexos. Os arquivos anexados ao equipamento podem aparecer para o cliente, e você decide isso equipamento por equipamento, com um interruptor na aba de anexos (já vem ligado). Quando os anexos estão desativados, o cliente vê um aviso amigável no lugar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ordens de serviço no portal mais fáceis de ler e buscar',
+        description: 'Na lista de ordens de serviço do portal, cada card ficou mais organizado, com as ações logo abaixo das informações, e passou a mostrar o tipo de serviço e o responsável pelo atendimento. Agora dá para buscar tanto pelas ordens de serviço quanto pelos equipamentos. As cores da sua marca também ficaram mais consistentes no portal, com textos e ícones em branco sobre a cor principal, como no restante do sistema.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.17.26',
     date: '22 de julho de 2026',
     type: 'patch',

@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react';
-import { idealForeground } from '@/lib/colorContrast';
 import { REPORT_HEADER_DARK_GRADIENT } from '@/components/technician/ReportHeader';
 
 /**
@@ -19,7 +18,7 @@ export function portalHeaderStyle(brandColor?: string | null): CSSProperties {
   }
   return {
     background: `linear-gradient(180deg, ${brandColor} 0%, color-mix(in srgb, ${brandColor}, #000 34%) 100%)`,
-    color: idealForeground(brandColor),
+    color: '#ffffff',
   };
 }
 

@@ -32,7 +32,7 @@ export function PortalStickyFooter({
   ctaTextColor,
 }: PortalStickyFooterProps) {
   const brandBg = ctaColor || '#00C597';
-  const textColor = ctaTextColor || '#04150f';
+  const textColor = ctaTextColor || '#ffffff';
 
   return (
     <div

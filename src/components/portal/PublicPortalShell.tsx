@@ -1,10 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { portalHeaderStyle } from './portalTheme';
 import { PortalStickyFooter } from './PortalStickyFooter';
 import { SystemFooter } from '@/components/layout/SystemFooter';
-import { idealForeground } from '@/lib/colorContrast';
 import { cn } from '@/lib/utils';
 
 // TEMA CLARO FORCADO (independente do estado dark/light do usuario). Portal
@@ -128,8 +126,8 @@ export function PublicPortalShell({
 
   const effectiveBrand = brandColor || '#00C684';
   const headerStyle = portalHeaderStyle(effectiveBrand);
-  const textColor = idealForeground(effectiveBrand);
-  const ctaTextColor = idealForeground(effectiveBrand);
+  const textColor = '#ffffff';
+  const ctaTextColor = '#ffffff';
 
   // Mede a altura do header sticky para o offset da sidebar (espelha TechnicianOS).
   const headerRef = useRef<HTMLDivElement | null>(null);
@@ -152,38 +150,16 @@ export function PublicPortalShell({
     return () => ro.disconnect();
   }, [brandColor, title, subtitle]);
 
-  // ── Rodape desktop (via portal no body, sticky, espelha o PortalStickyFooter mobile) ──
-  // Inclui: status (proxima ocorrencia), CTA e SystemFooter (copyright/versao).
-  // Renderizado mesmo sem CTA (quando ha footerStatus ou sempre, pra copyright nao desaparecer no desktop).
+  // ── Rodape desktop ──
+  // Causa-raiz do bug "footer escorrega pro fim do scroll":
+  //   `overflow-x: clip` em `html, body, #root` (index.css) cria um novo
+  //   containing block no Chromium, fazendo `position: fixed` ancorar ao body
+  //   em vez do viewport — mesmo quando renderizado via createPortal(document.body).
+  // Fix: o rodape desktop vive no fluxo normal do outer flex column (fora do
+  //   grid de 3 colunas), com `position: sticky bottom-0`. Isso garante que
+  //   ele SEMPRE fica visivel no fundo da viewport enquanto o usuario rola —
+  //   independente de overflow-x: clip em qualquer ancestral.
   const hasDesktopFooter = !!(footerCtaLabel || footerStatus);
-  const desktopFooter = hasDesktopFooter
-    ? createPortal(
-        <div
-          className="fixed inset-x-0 bottom-0 z-30 hidden lg:flex flex-col border-t border-border bg-card/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 pt-3 pb-2">
-            {footerStatus && (
-              <p className="text-xs text-muted-foreground text-center">{footerStatus}</p>
-            )}
-            {footerCtaLabel && (
-              <button
-                type="button"
-                onClick={onFooterCta}
-                className="w-full rounded-xl py-3 font-extrabold text-sm transition-opacity active:opacity-80"
-                style={{ background: effectiveBrand, color: ctaTextColor }}
-              >
-                {footerCtaLabel}
-              </button>
-            )}
-            <div className="pt-0.5">
-              <SystemFooter variant="light" />
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )
-    : null;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-muted/40">
@@ -273,7 +249,7 @@ export function PublicPortalShell({
                   // Espelha o padrao do SettingsSidebarLayout (bg-primary text-primary-foreground),
                   // mas usa a cor de marca do portal para ser branded (white-label).
                   const activeBg = effectiveBrand;
-                  const activeFg = idealForeground(effectiveBrand);
+                  const activeFg = '#ffffff';
                   return (
                     <li key={section.value}>
                       <button
@@ -316,8 +292,9 @@ export function PublicPortalShell({
           className={cn(
             // Mobile: corpo inteiro rolavel com padding
             'overflow-y-auto px-4 py-4 pb-2',
-            // Desktop: centralizado com espaco pro rodape fixo
-            'lg:w-full lg:max-w-3xl lg:mx-auto lg:px-0 lg:py-0 lg:pb-32',
+            // Desktop: centralizado; pb-6 cobre o espaco ate o rodape sticky
+            // (o rodape fica no fluxo normal, entao nao precisa de pb-32 artificial)
+            'lg:w-full lg:max-w-3xl lg:mx-auto lg:px-0 lg:py-0 lg:pb-6',
           )}
         >
           {/* Pilulas de navegacao mobile (visivel so em mobile) */}
@@ -341,7 +318,7 @@ export function PublicPortalShell({
                       )}
                       style={
                         isActive
-                          ? { backgroundColor: effectiveBrand, color: idealForeground(effectiveBrand) }
+                          ? { backgroundColor: effectiveBrand, color: '#ffffff' }
                           : undefined
                       }
                     >
@@ -372,8 +349,36 @@ export function PublicPortalShell({
         />
       </div>
 
-      {/* ── Rodape desktop (portal no body, identico ao OsActionFooter) ── */}
-      {desktopFooter}
+      {/* ── Rodape desktop (sticky no fluxo normal, oculto no mobile) ──
+          Usa `sticky bottom-0` dentro do outer flex column em vez de
+          `fixed` + createPortal. Isso contorna o bug do Chromium onde
+          `overflow-x: clip` em html/body cria um novo containing block e
+          quebra `position: fixed`, fazendo o footer "escorregar" pro fim do scroll. */}
+      {hasDesktopFooter && (
+        <div
+          className="sticky bottom-0 z-30 hidden lg:flex flex-col border-t border-border bg-card/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 pt-3 pb-2">
+            {footerStatus && (
+              <p className="text-xs text-muted-foreground text-center">{footerStatus}</p>
+            )}
+            {footerCtaLabel && (
+              <button
+                type="button"
+                onClick={onFooterCta}
+                className="w-full rounded-xl py-3 font-extrabold text-sm transition-opacity active:opacity-80"
+                style={{ background: effectiveBrand, color: ctaTextColor }}
+              >
+                {footerCtaLabel}
+              </button>
+            )}
+            <div className="pt-0.5">
+              <SystemFooter variant="light" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

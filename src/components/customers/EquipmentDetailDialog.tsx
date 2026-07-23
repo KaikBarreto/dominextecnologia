@@ -20,7 +20,9 @@ import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
+import { useEquipment } from '@/hooks/useEquipment';
 import { supabase } from '@/integrations/supabase/client';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/types/database';
 
@@ -96,8 +98,32 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const { settings: companySettings } = useCompanySettings();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const { toast } = useToast();
+  const { updateEquipment } = useEquipment();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
+
+  // Estado local do toggle "Mostrar anexos no portal" — espelha equipment.attachments_public
+  // (default true quando coluna ausente, pois o contrato de dados define `default true`)
+  const [attachmentsPublic, setAttachmentsPublic] = useState<boolean>(
+    (equipment as any)?.attachments_public !== false,
+  );
+
+  // Sincroniza quando o equipamento muda (ex: abre outro equipamento)
+  useEffect(() => {
+    setAttachmentsPublic((equipment as any)?.attachments_public !== false);
+  }, [equipment?.id]);
+
+  const handleToggleAttachmentsPublic = (checked: boolean) => {
+    if (!equipment) return;
+    setAttachmentsPublic(checked);
+    updateEquipment.mutate({ id: equipment.id, data: { attachments_public: checked } }, {
+      onError: () => {
+        // Reverte o toggle visual em caso de erro
+        setAttachmentsPublic(!checked);
+        toast({ variant: 'destructive', title: tfc.detailDialogAttachmentsPortalToggle });
+      },
+    });
+  };
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
@@ -517,6 +543,22 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
         {/* Anexos tab */}
         {activeTab === 'anexos' && (
           <div className="space-y-4">
+            {/* Toggle: mostrar anexos no portal do cliente */}
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+              <div className="flex-1 min-w-0 mr-3">
+                <p className="text-sm font-medium leading-tight">{tfc.detailDialogAttachmentsPortalToggle}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {attachmentsPublic ? tfc.detailDialogAttachmentsPortalOn : tfc.detailDialogAttachmentsPortalOff}
+                </p>
+              </div>
+              <Switch
+                checked={attachmentsPublic}
+                onCheckedChange={handleToggleAttachmentsPublic}
+                disabled={updateEquipment.isPending}
+                aria-label={tfc.detailDialogAttachmentsPortalToggle}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">{tfc.detailDialogAttachments}</p>
               <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
