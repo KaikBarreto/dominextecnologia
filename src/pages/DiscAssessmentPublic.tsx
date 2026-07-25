@@ -19,7 +19,7 @@
 // Fallback se foto falhar: SVG data-uri com iniciais do funcionário.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, MousePointerClick, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -219,6 +219,34 @@ export default function DiscAssessmentPublic() {
       setSubmitting(false);
     }
   };
+
+  // Handler de Enter global (window) durante o passo de perguntas.
+  // Avança pra próxima pergunta (ou envia na última). Ignora Enter se submitting.
+  // O DiscScaleSlider não usa Enter (usa ←/→/Home/End/1-5), então não há conflito.
+  const handleQuestionEnter = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      if (phase !== 'questions') return;
+      if (submitting) return;
+      const item = formItems[step];
+      // Só avança se houver resposta registrada (garante que Neutro já foi gravado).
+      if (answers[item.id] === undefined) return;
+      e.preventDefault();
+      const isLast = step === total - 1;
+      if (isLast) {
+        void handleSubmit();
+      } else {
+        setStep((s) => Math.min(total - 1, s + 1));
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [phase, submitting, step, total, formItems, answers],
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleQuestionEnter);
+    return () => window.removeEventListener('keydown', handleQuestionEnter);
+  }, [handleQuestionEnter]);
 
   // Registra a resposta do item atual (1..5). NÃO avança automaticamente:
   // com a barra arrastável o usuário ajusta o nível e depois toca em "Avançar".

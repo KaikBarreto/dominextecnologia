@@ -409,12 +409,8 @@ function RelationshipBlock({
 // ══════════════════════════════════════════════════════════════════════════════
 function HistoryTab({
   employee,
-  onGenerateLink,
-  isGenerating,
 }: {
   employee: Employee;
-  onGenerateLink: () => void;
-  isGenerating: boolean;
 }) {
   const { locale, timezone } = useAppLocaleContext();
   const p = MESSAGES[locale].app.employees.form.disc.profilePage;
@@ -442,20 +438,10 @@ function HistoryTab({
 
   return (
     <div className="space-y-6">
-      {/* Botão nova avaliação */}
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <Button onClick={onGenerateLink} disabled={isGenerating} className="gap-2">
-          {isGenerating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Link2 className="h-4 w-4" />
-          )}
-          {p.newAssessment}
-        </Button>
-        <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
-          {p.newAssessmentHint}
-        </p>
-      </div>
+      {/* Dica sobre nova avaliação (o botão fica no cabeçalho da tela) */}
+      <p className="text-xs leading-relaxed text-muted-foreground rounded-2xl border border-dashed border-border p-3">
+        {p.newAssessmentHint}
+      </p>
 
       {/* Radar de evolução — só com 2+ avaliações */}
       <div>
@@ -637,8 +623,8 @@ export function EmployeeProfileDetail({
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho: botão Voltar + avatar + nome (combobox de troca) + selo do perfil atual */}
-      <div className="flex items-center gap-3 min-w-0">
+      {/* Cabeçalho: botão Voltar + avatar + nome (combobox de troca) + selo do perfil atual + botão Nova Avaliação */}
+      <div className="flex items-center justify-between gap-3 min-w-0">
         <Button
           variant="ghost"
           size="icon"
@@ -740,6 +726,35 @@ export function EmployeeProfileDetail({
             )}
           </div>
         </div>
+
+        {/* Botão Nova Avaliação — visível em todas as subabas, canto direito do cabeçalho */}
+        <Button
+          onClick={handleGenerate}
+          disabled={generating}
+          size="sm"
+          className="shrink-0 gap-1.5 hidden sm:inline-flex"
+        >
+          {generating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Link2 className="h-4 w-4" />
+          )}
+          {p.newAssessment}
+        </Button>
+        {/* Mobile: só ícone para não quebrar o header */}
+        <Button
+          onClick={handleGenerate}
+          disabled={generating}
+          size="icon"
+          className="shrink-0 sm:hidden"
+          aria-label={p.newAssessment}
+        >
+          {generating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Link2 className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
       {/* Sub-abas */}
@@ -783,8 +798,6 @@ export function EmployeeProfileDetail({
       {tab === 'history' && (
         <HistoryTab
           employee={employee}
-          onGenerateLink={handleGenerate}
-          isGenerating={generating}
         />
       )}
     </div>
