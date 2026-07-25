@@ -2431,6 +2431,7 @@ export type Database = {
           public_short_code: string
           scores: Json | null
           secondary_type: string | null
+          show_result_to_employee: boolean | null
           status: string
         }
         Insert: {
@@ -2447,6 +2448,7 @@ export type Database = {
           public_short_code: string
           scores?: Json | null
           secondary_type?: string | null
+          show_result_to_employee?: boolean | null
           status?: string
         }
         Update: {
@@ -2463,6 +2465,7 @@ export type Database = {
           public_short_code?: string
           scores?: Json | null
           secondary_type?: string | null
+          show_result_to_employee?: boolean | null
           status?: string
         }
         Relationships: [

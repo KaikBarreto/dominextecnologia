@@ -21,7 +21,7 @@ function answerSubset(items: readonly { id: string; reverse: boolean }[], value:
 }
 
 /**
- * Responde todos os 48 itens do banco com o mesmo valor Likert.
+ * Responde todos os 56 itens do banco com o mesmo valor Likert.
  */
 function answerAll(value: number): Record<string, number> {
   return Object.fromEntries(DISC_ITEMS.map((item) => [item.id, value]));
@@ -38,7 +38,7 @@ function answerMaxSubset(items: readonly { id: string; reverse: boolean }[]): Re
 }
 
 /**
- * Responde de forma a MAXIMIZAR todos os 48 itens do banco.
+ * Responde de forma a MAXIMIZAR todos os 56 itens do banco.
  */
 function answerMaxAllFactors(): Record<string, number> {
   return Object.fromEntries(
@@ -46,13 +46,13 @@ function answerMaxAllFactors(): Record<string, number> {
   );
 }
 
-// ── Sanidade do banco de itens (48 itens, 12 por fator) ───────────────────────
+// ── Sanidade do banco de itens (56 itens, 14 por fator) ───────────────────────
 
 describe('DISC_ITEMS — mapa canônico (banco completo)', () => {
-  it('tem 48 itens, 12 por fator', () => {
-    expect(DISC_ITEMS).toHaveLength(48);
+  it('tem 56 itens, 14 por fator', () => {
+    expect(DISC_ITEMS).toHaveLength(56);
     for (const f of ['D', 'I', 'S', 'C'] as const) {
-      expect(DISC_ITEMS.filter((i) => i.factor === f)).toHaveLength(12);
+      expect(DISC_ITEMS.filter((i) => i.factor === f)).toHaveLength(14);
     }
   });
 
@@ -122,8 +122,8 @@ describe('computeScores — normalização dinâmica', () => {
     expect(computeScores(answers)).toEqual({ D: 60, I: 60, S: 60, C: 60 });
   });
 
-  it('banco completo (12/fator): todos "3" → 60 em cada fator', () => {
-    // n=12, soma=12×3=36. max=12×5=60. round(100×36/60)=60.
+  it('banco completo (14/fator): todos "3" → 60 em cada fator', () => {
+    // n=14, soma=14×3=42. max=14×5=70. round(100×42/70)=60.
     // Mesmo resultado: normalização dinâmica elimina o viés de tamanho.
     expect(computeScores(answerAll(3))).toEqual({ D: 60, I: 60, S: 60, C: 60 });
   });
@@ -155,15 +155,15 @@ describe('computeScores — normalização dinâmica', () => {
     }
   });
 
-  it('banco completo com todos "5": 9 diretos × 5 + 3 reverse × 1 = 48 bruto, max=60 → 80', () => {
-    // 12 itens/fator, 3 reverse cada. 9×5 + 3×1 = 48. max=12×5=60.
-    // round(100×48/60) = round(80) = 80.
-    expect(computeScores(answerAll(5))).toEqual({ D: 80, I: 80, S: 80, C: 80 });
+  it('banco completo com todos "5": 11 diretos × 5 + 3 reverse × 1 = 58 bruto, max=70 → 83', () => {
+    // 14 itens/fator, 3 reverse cada. 11×5 + 3×1 = 58. max=14×5=70.
+    // round(100×58/70) = round(82.857) = 83.
+    expect(computeScores(answerAll(5))).toEqual({ D: 83, I: 83, S: 83, C: 83 });
   });
 
-  it('banco completo com todos "1": 9 diretos × 1 + 3 reverse × 5 = 24, max=60 → 40', () => {
-    // 9×1 + 3×5 = 24. max=60. round(100×24/60) = 40.
-    expect(computeScores(answerAll(1))).toEqual({ D: 40, I: 40, S: 40, C: 40 });
+  it('banco completo com todos "1": 11 diretos × 1 + 3 reverse × 5 = 26, max=70 → 37', () => {
+    // 11×1 + 3×5 = 26. max=70. round(100×26/70) = round(37.14) = 37.
+    expect(computeScores(answerAll(1))).toEqual({ D: 37, I: 37, S: 37, C: 37 });
   });
 
   it('trata reverse corretamente: item reverse com resposta 5 vira 1 na soma', () => {
@@ -201,8 +201,8 @@ describe('computeScores — normalização dinâmica', () => {
     expect(computeScores(answerAll(0))).toEqual(computeScores(answerAll(1)));
   });
 
-  it('normalização é invariante ao tamanho do subconjunto (3 vs 7 vs 12/fator)', () => {
-    // Responde 3, 7 e 12 itens/fator, todos com valor 3 (neutro).
+  it('normalização é invariante ao tamanho do subconjunto (3 vs 7 vs 14/fator)', () => {
+    // Responde 3, 7 e 14 itens/fator, todos com valor 3 (neutro).
     // Resultado esperado: 60 em todos os cenários.
     const fators = ['D', 'I', 'S', 'C'] as const;
 
@@ -222,7 +222,7 @@ describe('computeScores — normalização dinâmica', () => {
     }
     expect(computeScores(items7)).toEqual({ D: 60, I: 60, S: 60, C: 60 });
 
-    // 12 itens por fator (banco completo)
+    // 14 itens por fator (banco completo)
     expect(computeScores(answerAll(3))).toEqual({ D: 60, I: 60, S: 60, C: 60 });
   });
 });

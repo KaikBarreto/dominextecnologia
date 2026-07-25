@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// DISC — banco de itens Likert (48 itens, 12 por fator).
+// DISC — banco de itens Likert (56 itens, 14 por fator).
 //
 // Fonte canônica: docs/planos/disc-content-fonte.md. O par `factor`/`reverse` de
 // cada item é IMUTÁVEL — o scoring depende deste mapa. O TEXTO de cada afirmação
@@ -24,14 +24,14 @@ export interface DiscItem {
 }
 
 /** Quantidade de itens por fator (banco completo). O scoring usa o subconjunto sorteado. */
-export const ITEMS_PER_FACTOR = 12;
+export const ITEMS_PER_FACTOR = 14;
 
 /** Escala Likert: 1 (discordo totalmente) a 5 (concordo totalmente). */
 export const LIKERT_MIN = 1;
 export const LIKERT_MAX = 5;
 
 /**
- * Os 48 itens, na ordem canônica (D, I, S, C). O mapeamento factor/reverse bate
+ * Os 56 itens, na ordem canônica (D, I, S, C). O mapeamento factor/reverse bate
  * EXATAMENTE com docs/planos/disc-content-fonte.md. Não reordenar altera nada no
  * scoring (é somado por fator), mas mantemos a ordem-fonte por clareza.
  * Cada formulário sorteia um subconjunto deste banco (lógica em outra onda).
@@ -50,6 +50,8 @@ export const DISC_ITEMS: readonly DiscItem[] = [
   { id: 'd10', factor: 'D', reverse: false },
   { id: 'd11', factor: 'D', reverse: true  },
   { id: 'd12', factor: 'D', reverse: false },
+  { id: 'd13', factor: 'D', reverse: false },
+  { id: 'd14', factor: 'D', reverse: false },
 
   // ── I — Influência ──────────────────────────────────────────────────────
   { id: 'i1',  factor: 'I', reverse: false },
@@ -64,6 +66,8 @@ export const DISC_ITEMS: readonly DiscItem[] = [
   { id: 'i10', factor: 'I', reverse: false },
   { id: 'i11', factor: 'I', reverse: true  },
   { id: 'i12', factor: 'I', reverse: false },
+  { id: 'i13', factor: 'I', reverse: false },
+  { id: 'i14', factor: 'I', reverse: false },
 
   // ── S — Estabilidade ────────────────────────────────────────────────────
   { id: 's1',  factor: 'S', reverse: false },
@@ -78,6 +82,8 @@ export const DISC_ITEMS: readonly DiscItem[] = [
   { id: 's10', factor: 'S', reverse: false },
   { id: 's11', factor: 'S', reverse: true  },
   { id: 's12', factor: 'S', reverse: false },
+  { id: 's13', factor: 'S', reverse: false },
+  { id: 's14', factor: 'S', reverse: false },
 
   // ── C — Conscienciosidade ───────────────────────────────────────────────
   { id: 'c1',  factor: 'C', reverse: false },
@@ -92,6 +98,8 @@ export const DISC_ITEMS: readonly DiscItem[] = [
   { id: 'c10', factor: 'C', reverse: false },
   { id: 'c11', factor: 'C', reverse: true  },
   { id: 'c12', factor: 'C', reverse: false },
+  { id: 'c13', factor: 'C', reverse: false },
+  { id: 'c14', factor: 'C', reverse: false },
 ] as const;
 
 /** Todos os ids na ordem canônica (útil pra iterar a tela typeform). */

@@ -78,7 +78,8 @@ export function EmployeeDiscPanel({
   // automaticamente sem exigir um segundo clique do usuário.
   useEffect(() => {
     if (autoGenerate && employeeId && !generateLink.isPending && !pendingAssessment && !currentProfile) {
-      generateLink.mutate(employeeId, {
+      // Não passa showResult → NULL → herda config da empresa via COALESCE.
+      generateLink.mutate({ employeeId }, {
         onSuccess: (row) => {
           const url = buildDiscPublicUrl(employeeName, row.public_short_code);
           void copyLink(url);
@@ -103,12 +104,13 @@ export function EmployeeDiscPanel({
 
   // Gera o link, copia pra área de transferência (regra do app) e mostra toast.
   // Se o funcionário ainda não existe (isNew), delega pro EmployeeFormDialog salvar primeiro.
+  // Não passa showResult → NULL → herda config da empresa via COALESCE.
   const handleGenerate = () => {
     if (isNew || !employeeId) {
       onNeedSaveThenGenerate?.();
       return;
     }
-    generateLink.mutate(employeeId, {
+    generateLink.mutate({ employeeId }, {
       onSuccess: (row) => {
         const url = buildDiscPublicUrl(employeeName, row.public_short_code);
         void copyLink(url);

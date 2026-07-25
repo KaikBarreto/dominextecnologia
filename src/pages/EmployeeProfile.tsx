@@ -61,6 +61,7 @@ import {
 import { DiscReport } from '@/components/employees/disc/DiscReport';
 import { DiscEvolutionRadar } from '@/components/employees/disc/DiscEvolutionRadar';
 import { useDiscMessages } from '@/components/employees/disc/useDiscMessages';
+import { DiscGenerateLinkModal } from '@/components/employees/disc/DiscGenerateLinkModal';
 
 type SubTab = 'overview' | 'interactions' | 'history';
 
@@ -426,6 +427,7 @@ export default function EmployeeProfile() {
 
   const [tab, setTab] = useState<SubTab>('overview');
   const [generating, setGenerating] = useState(false);
+  const [generateModalOpen, setGenerateModalOpen] = useState(false);
 
   const employee = employees.find((e) => e.id === employeeId) ?? null;
 
@@ -437,22 +439,33 @@ export default function EmployeeProfile() {
 
   const selfPrimary = (currentProfile?.primary_type as DiscFactor | undefined) ?? null;
 
+  // Abre o modal de configuração (toggle show_result) antes de gerar o link.
   const handleGenerate = () => {
     if (!employee) return;
+    setGenerateModalOpen(true);
+  };
+
+  // Chamado quando o gestor confirma no modal.
+  const handleGenerateConfirm = (showResult: boolean) => {
+    if (!employee) return;
     setGenerating(true);
-    generateLink.mutate(employee.id, {
-      onSuccess: async (row) => {
-        const url = buildDiscPublicUrl(employee.name, row.public_short_code);
-        try {
-          await navigator.clipboard.writeText(url);
-          toast({ title: tToasts.linkCopied, description: url, duration: 10000 });
-        } catch {
-          toast({ title: tToasts.pontoLinkGenerated, description: url, duration: 10000 });
-        }
-        setGenerating(false);
+    generateLink.mutate(
+      { employeeId: employee.id, showResult },
+      {
+        onSuccess: async (row) => {
+          const url = buildDiscPublicUrl(employee.name, row.public_short_code);
+          setGenerateModalOpen(false);
+          try {
+            await navigator.clipboard.writeText(url);
+            toast({ title: tToasts.linkCopied, description: url, duration: 10000 });
+          } catch {
+            toast({ title: tToasts.pontoLinkGenerated, description: url, duration: 10000 });
+          }
+          setGenerating(false);
+        },
+        onError: () => setGenerating(false),
       },
-      onError: () => setGenerating(false),
-    });
+    );
   };
 
   if (employeesLoading || profilesLoading) {
@@ -546,6 +559,14 @@ export default function EmployeeProfile() {
       {tab === 'history' && (
         <HistoryTab employee={employee} onGenerateLink={handleGenerate} isGenerating={generating} />
       )}
+
+      {/* Modal de confirmação antes de gerar o link (toggle show_result por avaliação) */}
+      <DiscGenerateLinkModal
+        open={generateModalOpen}
+        onOpenChange={setGenerateModalOpen}
+        onConfirm={handleGenerateConfirm}
+        isGenerating={generating}
+      />
     </div>
   );
 }

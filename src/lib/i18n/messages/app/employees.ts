@@ -632,6 +632,13 @@ export const employees = {
           copyLink: 'Copiar link',
           linkCopied: 'Link copiado!',
           factorScore: '{name}: {score}',
+          generateLinkModal: {
+            title: 'Gerar link de avaliação',
+            showResultLabel: 'Funcionário vê o resultado ao final',
+            showResultOffLabel: 'Não',
+            showResultHint: 'Você pode mudar isso a cada avaliação. O padrão vem das configurações da empresa.',
+            confirmButton: 'Gerar link',
+          },
           compare: {
             button: 'Comparar',
             title: 'Comparar perfis',
@@ -697,6 +704,13 @@ export const employees = {
           newAssessmentHint:
             'Ao responder a nova avaliação, ela vira o perfil atual e a atual vai para o histórico.',
           reportOfDate: 'Perfil de {date}',
+          generateLinkModal: {
+            title: 'Gerar link de avaliação',
+            showResultLabel: 'Funcionário vê o resultado ao final',
+            showResultOffLabel: 'Não',
+            showResultHint: 'Você pode mudar isso a cada avaliação. O padrão vem das configurações da empresa.',
+            confirmButton: 'Gerar link',
+          },
         },
       },
       photo: {
@@ -1342,6 +1356,13 @@ export const employees = {
           copyLink: 'Copy link',
           linkCopied: 'Link copied!',
           factorScore: '{name}: {score}',
+          generateLinkModal: {
+            title: 'Generate assessment link',
+            showResultLabel: 'Employee sees the result at the end',
+            showResultOffLabel: 'No',
+            showResultHint: 'You can change this for each assessment. The default comes from company settings.',
+            confirmButton: 'Generate link',
+          },
           compare: {
             button: 'Compare',
             title: 'Compare profiles',
@@ -1404,6 +1425,13 @@ export const employees = {
           newAssessmentHint:
             'When the new assessment is answered, it becomes the current profile and the current one moves to history.',
           reportOfDate: 'Profile from {date}',
+          generateLinkModal: {
+            title: 'Generate assessment link',
+            showResultLabel: 'Employee sees the result at the end',
+            showResultOffLabel: 'No',
+            showResultHint: 'You can change this for each assessment. The default comes from company settings.',
+            confirmButton: 'Generate link',
+          },
         },
       },
       photo: {
@@ -2049,6 +2077,13 @@ export const employees = {
           copyLink: 'Copiar enlace',
           linkCopied: '¡Enlace copiado!',
           factorScore: '{name}: {score}',
+          generateLinkModal: {
+            title: 'Generar enlace de evaluación',
+            showResultLabel: 'El empleado ve el resultado al final',
+            showResultOffLabel: 'No',
+            showResultHint: 'Puedes cambiar esto en cada evaluación. El valor predeterminado viene de la configuración de la empresa.',
+            confirmButton: 'Generar enlace',
+          },
           compare: {
             button: 'Comparar',
             title: 'Comparar perfiles',
@@ -2111,6 +2146,13 @@ export const employees = {
           newAssessmentHint:
             'Al responder la nueva evaluación, se convierte en el perfil actual y el actual pasa al historial.',
           reportOfDate: 'Perfil del {date}',
+          generateLinkModal: {
+            title: 'Generar enlace de evaluación',
+            showResultLabel: 'El empleado ve el resultado al final',
+            showResultOffLabel: 'No',
+            showResultHint: 'Puedes cambiar esto en cada evaluación. El valor predeterminado viene de la configuración de la empresa.',
+            confirmButton: 'Generar enlace',
+          },
         },
       },
       photo: {
@@ -2756,6 +2798,13 @@ export const employees = {
           copyLink: 'Copier le lien',
           linkCopied: 'Lien copié !',
           factorScore: '{name} : {score}',
+          generateLinkModal: {
+            title: `Générer le lien d'évaluation`,
+            showResultLabel: `Le salarié voit le résultat à la fin`,
+            showResultOffLabel: 'Non',
+            showResultHint: `Vous pouvez modifier cela à chaque évaluation. La valeur par défaut vient des paramètres de l'entreprise.`,
+            confirmButton: 'Générer le lien',
+          },
           compare: {
             button: 'Comparer',
             title: 'Comparer les profils',
@@ -2818,6 +2867,13 @@ export const employees = {
           newAssessmentHint:
             'Une fois la nouvelle évaluation répondue, elle devient le profil actuel et l`actuel passe à l`historique.',
           reportOfDate: 'Profil du {date}',
+          generateLinkModal: {
+            title: `Générer le lien d'évaluation`,
+            showResultLabel: `Le salarié voit le résultat à la fin`,
+            showResultOffLabel: 'Non',
+            showResultHint: `Vous pouvez modifier cela à chaque évaluation. La valeur par défaut vient des paramètres de l'entreprise.`,
+            confirmButton: 'Générer le lien',
+          },
         },
       },
       photo: {

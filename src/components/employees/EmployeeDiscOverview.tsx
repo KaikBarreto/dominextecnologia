@@ -25,6 +25,7 @@ import { formatDate } from '@/lib/format';
 import { FACTOR_COLOR, resolveProfile } from '@/lib/disc/profiles';
 import { useCompanyDiscProfiles, buildDiscPublicUrl, type DiscAssessment } from '@/hooks/useEmployeeDisc';
 import { useDiscMessages } from '@/components/employees/disc/useDiscMessages';
+import { DiscGenerateLinkModal } from '@/components/employees/disc/DiscGenerateLinkModal';
 import { EmployeeProfileDetail } from '@/components/employees/EmployeeProfileDetail';
 import { EmployeeDiscCompare } from '@/components/employees/EmployeeDiscCompare';
 import type { Employee } from '@/hooks/useEmployees';
@@ -279,29 +280,47 @@ export function EmployeeDiscOverview({ employees }: EmployeeDiscOverviewProps) {
   // View de comparação de 2 funcionários (in-place)
   const [comparing, setComparing] = useState(false);
 
+  // Modal de geração de link (toggle show_result por avaliação)
+  const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [pendingGenerateEmployeeId, setPendingGenerateEmployeeId] = useState<string | null>(null);
+
   // Apenas funcionários ativos
   const activeEmployees = employees.filter((e) => e.is_active !== false);
 
-  const handleGenerateLink = async (employeeId: string) => {
+  // Abre o modal de configuração (toggle show_result) antes de gerar o link.
+  const handleGenerateLink = (employeeId: string) => {
+    setPendingGenerateEmployeeId(employeeId);
+    setGenerateModalOpen(true);
+  };
+
+  // Chamado quando o gestor confirma no modal.
+  const handleGenerateConfirm = async (showResult: boolean) => {
+    const employeeId = pendingGenerateEmployeeId;
+    if (!employeeId) return;
     const emp = employees.find((e) => e.id === employeeId);
     if (!emp) return;
 
     setGeneratingFor(employeeId);
-    generateLink.mutate(employeeId, {
-      onSuccess: async (row) => {
-        const url = buildDiscPublicUrl(emp.name, row.public_short_code);
-        try {
-          await navigator.clipboard.writeText(url);
-          toast({ title: tToasts.linkCopied, description: url, duration: 10000 });
-        } catch {
-          toast({ title: tToasts.pontoLinkGenerated, description: url, duration: 10000 });
-        }
-        setGeneratingFor(null);
+    generateLink.mutate(
+      { employeeId, showResult },
+      {
+        onSuccess: async (row) => {
+          const url = buildDiscPublicUrl(emp.name, row.public_short_code);
+          setGenerateModalOpen(false);
+          setPendingGenerateEmployeeId(null);
+          try {
+            await navigator.clipboard.writeText(url);
+            toast({ title: tToasts.linkCopied, description: url, duration: 10000 });
+          } catch {
+            toast({ title: tToasts.pontoLinkGenerated, description: url, duration: 10000 });
+          }
+          setGeneratingFor(null);
+        },
+        onError: () => {
+          setGeneratingFor(null);
+        },
       },
-      onError: () => {
-        setGeneratingFor(null);
-      },
-    });
+    );
   };
 
   // View de comparação in-place — renderiza em vez do grid
@@ -390,6 +409,17 @@ export function EmployeeDiscOverview({ employees }: EmployeeDiscOverviewProps) {
           );
         })}
       </div>
+
+      {/* Modal de confirmação antes de gerar o link (toggle show_result por avaliação) */}
+      <DiscGenerateLinkModal
+        open={generateModalOpen}
+        onOpenChange={(o) => {
+          setGenerateModalOpen(o);
+          if (!o) setPendingGenerateEmployeeId(null);
+        }}
+        onConfirm={handleGenerateConfirm}
+        isGenerating={!!generatingFor}
+      />
     </>
   );
 }

@@ -178,6 +178,14 @@ export const discProfile = {
       c10: 'Prefiro qualidade a velocidade.',
       c11: 'Não me importo muito com detalhes.',
       c12: 'Baseio minhas decisões em fatos e números.',
+      d13: 'Gosto de assumir o comando e conduzir as pessoas nas situações.',
+      d14: 'Tomo decisões rápidas, muitas vezes sozinho.',
+      i13: 'Sou animado e me solto fácil quando estou com outras pessoas.',
+      i14: 'Convenço e engajo as pessoas com facilidade.',
+      s13: 'Escuto com atenção e me coloco no lugar do outro.',
+      s14: 'Prefiro seguir planos com calma e constância até o fim.',
+      c13: 'Capricho nos detalhes e gosto de tempo para entregar com precisão.',
+      c14: 'Sigo procedimentos bem definidos para manter o controle.',
     },
 
     // ── Insights por perfil ──────────────────────────────────────────────────
@@ -915,6 +923,14 @@ export const discProfile = {
       c10: 'I prefer quality over speed.',
       c11: 'I do not care much about details.',
       c12: 'I base my decisions on facts and numbers.',
+      d13: 'I like to take charge and lead people through situations.',
+      d14: 'I make quick decisions, often on my own.',
+      i13: 'I am lively and open up easily when I am around other people.',
+      i14: 'I convince and engage people with ease.',
+      s13: 'I listen carefully and put myself in others shoes.',
+      s14: 'I prefer to follow plans calmly and steadily to the end.',
+      c13: 'I take pride in the details and like time to deliver with precision.',
+      c14: 'I follow well-defined procedures to stay in control.',
     },
     profiles: {
       D: {
@@ -1390,6 +1406,14 @@ export const discProfile = {
       c10: 'Prefiero la calidad a la velocidad.',
       c11: 'No me importan mucho los detalles.',
       c12: 'Baso mis decisiones en hechos y datos.',
+      d13: 'Me gusta tomar el mando y guiar a las personas en las situaciones.',
+      d14: 'Tomo decisiones rápidas, muchas veces solo.',
+      i13: 'Soy animado y me suelto fácilmente cuando estoy con otras personas.',
+      i14: 'Convenzo e involucro a las personas con facilidad.',
+      s13: 'Escucho con atención y me pongo en el lugar del otro.',
+      s14: 'Prefiero seguir los planes con calma y constancia hasta el final.',
+      c13: 'Me esmero en los detalles y me gusta tener tiempo para entregar con precisión.',
+      c14: 'Sigo procedimientos bien definidos para mantener el control.',
     },
     profiles: {
       D: {
@@ -1799,10 +1823,19 @@ export const discProfile = {
     disclaimer:
       'Ceci est un outil de connaissance de soi et de communication d’équipe. Ce n’est ni un test clinique ni un diagnostic. Aucun profil n’est meilleur ou pire qu’un autre.',
     items: {
-      d1: `J’aime prendre les commandes des situations.`,      d2: `Je pousse pour que les choses avancent au rythme que je veux.`,      d3: `Je vais droit au but, même si cela paraît dur.`,      d4: `J’aime la compétition et gagner.`,      d5: `Je décide vite, même en prenant un certain risque.`,      d6: `Je préfère céder plutôt que d’entrer en confrontation.`,      d7: `J’ai du mal à dire non.`,      d8: `Je prends des risques pour atteindre un objectif.`,      d9: `J’apprécie les défis difficiles.`,      d10: `Je dis ce que je pense, sans détours.`,      d11: `Je préfère que quelqu’un d’autre prenne les décisions difficiles.`,      d12: `Je reste concentré sur le résultat même sous pression.`,      i1: `Je me fais facilement de nouveaux amis.`,      i2: `J’aime être au centre de l’attention.`,      i3: `Je suis enthousiaste et je communique mon énergie aux autres.`,      i4: `Je préfère échanger des idées plutôt que travailler seul.`,      i5: `Je reste optimiste même face aux problèmes.`,      i6: `Dans un grand groupe, je préfère rester discret.`,      i7: `Je parle peu de moi.`,      i8: `J’aime faire la connaissance de nouvelles personnes.`,      i9: `Je convaincs facilement les autres.`,      i10: `J’apporte de la bonne humeur dans l’environnement de travail.`,      i11: `Je préfère travailler seul plutôt qu’en groupe.`,      i12: `Je m’enthousiasme pour les nouvelles idées.`,      s1: `J’ai de la patience avec les processus lents.`,      s2: `Je préfère la routine et la prévisibilité aux surprises.`,      s3: `J’écoute attentivement avant de me positionner.`,      s4: `J’évite les conflits pour préserver l’harmonie du groupe.`,      s5: `Je suis loyal et constant envers ceux en qui j’ai confiance.`,      s6: `J’aime quand les plans changent soudainement.`,      s7: `Je m’impatiente quand les choses traînent.`,      s8: `Je reste calme dans les situations tendues.`,      s9: `J’aide mes collègues quand ils en ont besoin.`,      s10: `Je préfère un environnement stable et sans surprises.`,      s11: `J’aime prendre des risques et m’adapter au changement.`,      s12: `Je suis généralement le premier à apaiser un conflit.`,      c1: `Je remarque des détails que la plupart ne voient pas.`,      c2: `J’aime que tout soit organisé et en ordre.`,      c3: `Je vérifie mon travail plus d’une fois.`,      c4: `Je préfère suivre des règles et des procédures claires.`,      c5: `J’analyse les données calmement avant de décider.`,      c6: `J’ai tendance à décider sur un coup de tête, sans trop analyser.`,      c7: `Les petites erreurs ne me dérangent pas.`,      c8: `Je suis les listes de contrôle et les procédures à la lettre.`,      c9: `Je relis mon travail pour éviter les erreurs.`,      c10: `Je préfère la qualité à la rapidité.`,      c11: `Je ne me soucie guère des détails.`,      c12: `Je fonde mes décisions sur des faits et des chiffres.`,    },
+      d1: `J’aime prendre les commandes des situations.`,      d2: `Je pousse pour que les choses avancent au rythme que je veux.`,      d3: `Je vais droit au but, même si cela paraît dur.`,      d4: `J’aime la compétition et gagner.`,      d5: `Je décide vite, même en prenant un certain risque.`,      d6: `Je préfère céder plutôt que d’entrer en confrontation.`,      d7: `J’ai du mal à dire non.`,      d8: `Je prends des risques pour atteindre un objectif.`,      d9: `J’apprécie les défis difficiles.`,      d10: `Je dis ce que je pense, sans détours.`,      d11: `Je préfère que quelqu’un d’autre prenne les décisions difficiles.`,      d12: `Je reste concentré sur le résultat même sous pression.`,      i1: `Je me fais facilement de nouveaux amis.`,      i2: `J’aime être au centre de l’attention.`,      i3: `Je suis enthousiaste et je communique mon énergie aux autres.`,      i4: `Je préfère échanger des idées plutôt que travailler seul.`,      i5: `Je reste optimiste même face aux problèmes.`,      i6: `Dans un grand groupe, je préfère rester discret.`,      i7: `Je parle peu de moi.`,      i8: `J’aime faire la connaissance de nouvelles personnes.`,      i9: `Je convaincs facilement les autres.`,      i10: `J’apporte de la bonne humeur dans l’environnement de travail.`,      i11: `Je préfère travailler seul plutôt qu’en groupe.`,      i12: `Je m’enthousiasme pour les nouvelles idées.`,      s1: `J’ai de la patience avec les processus lents.`,      s2: `Je préfère la routine et la prévisibilité aux surprises.`,      s3: `J’écoute attentivement avant de me positionner.`,      s4: `J’évite les conflits pour préserver l’harmonie du groupe.`,      s5: `Je suis loyal et constant envers ceux en qui j’ai confiance.`,      s6: `J’aime quand les plans changent soudainement.`,      s7: `Je m’impatiente quand les choses traînent.`,      s8: `Je reste calme dans les situations tendues.`,      s9: `J’aide mes collègues quand ils en ont besoin.`,      s10: `Je préfère un environnement stable et sans surprises.`,      s11: `J’aime prendre des risques et m’adapter au changement.`,      s12: `Je suis généralement le premier à apaiser un conflit.`,      c1: `Je remarque des détails que la plupart ne voient pas.`,      c2: `J’aime que tout soit organisé et en ordre.`,      c3: `Je vérifie mon travail plus d’une fois.`,      c4: `Je préfère suivre des règles et des procédures claires.`,      c5: `J’analyse les données calmement avant de décider.`,      c6: `J’ai tendance à décider sur un coup de tête, sans trop analyser.`,      c7: `Les petites erreurs ne me dérangent pas.`,      c8: `Je suis les listes de contrôle et les procédures à la lettre.`,      c9: `Je relis mon travail pour éviter les erreurs.`,      c10: `Je préfère la qualité à la rapidité.`,      c11: `Je ne me soucie guère des détails.`,      c12: `Je fonde mes décisions sur des faits et des chiffres.`,
+      d13: `J’aime prendre les commandes et guider les gens dans les situations.`,
+      d14: `Je prends des décisions rapidement, souvent seul.`,
+      i13: `Je suis animé et je me détends facilement en compagnie des autres.`,
+      i14: `Je convaincs et j’implique les gens avec facilité.`,
+      s13: `J’écoute attentivement et je me mets à la place de l’autre.`,
+      s14: `Je préfère suivre les plans calmement et avec constance jusqu’au bout.`,
+      c13: `Je soigne les détails et j’aime avoir le temps de livrer avec précision.`,
+      c14: `Je suis des procédures bien définies pour garder le contrôle.`,
+    },
     profiles: {
       D: {
-        nome: 'L’Exécuteur',
+        nome: `L’Exécuteur`,
         qualidades: ['Orienté résultat et action', 'Affirmé et direct', 'Décide vite sous pression', 'Prend le lead naturellement'],
         pontosDeAtencao: ['Priorise la tâche sur les personnes', 'Peut bousculer les autres', 'Impatient avec les processus lents', 'Écoute peu avant d’agir'],
         comoLiderar: ['Donnez des objectifs clairs et l’autonomie sur le "comment"', 'Concentrez-vous sur le résultat, pas le chemin', 'Soyez direct et concis'],

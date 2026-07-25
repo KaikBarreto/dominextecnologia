@@ -4,8 +4,10 @@
 // Componente NUNCA chama supabase.from direto: tudo passa por aqui. Cobre:
 //   • listAssessments(employeeId) → histórico de versões (desc por data).
 //   • currentProfile(employeeId)  → última aplicação COMPLETED (perfil atual).
-//   • generateLink(employeeId)    → cria uma linha pending e devolve a URL pública
-//                                    amigável (slug-do-nome-<short_code>).
+//   • generateLink({ employeeId, showResult? }) → cria uma linha pending e devolve
+//                                    a URL pública amigável (slug-do-nome-<short_code>).
+//                                    showResult=true/false grava show_result_to_employee;
+//                                    showResult=undefined omite a coluna (NULL → herda empresa).
 //
 // A tabela disc_assessments tem RLS de gestor (can_manage_system) + multi-tenant
 // (company_id). O public_short_code é gerado por trigger no INSERT — nunca
@@ -104,19 +106,32 @@ export function useCompanyDiscProfiles() {
 
   // generateLink reutiliza a mesma lógica do hook individual — cria uma linha
   // pending para o funcionário especificado e invalida o cache da empresa.
+  // showResult: true/false → grava show_result_to_employee; undefined → omite (NULL = herda empresa).
   const generateLink = useMutation({
-    mutationFn: async (targetEmployeeId: string): Promise<DiscAssessment> => {
+    mutationFn: async ({
+      employeeId: targetEmployeeId,
+      showResult,
+    }: {
+      employeeId: string;
+      showResult?: boolean | null;
+    }): Promise<DiscAssessment> => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
       const { data: userData } = await supabase.auth.getUser();
+      const payload: Record<string, unknown> = {
+        company_id,
+        employee_id: targetEmployeeId,
+        status: 'pending',
+        created_by: userData.user?.id ?? null,
+      };
+      // Só inclui a coluna se o chamador passou um valor explícito (true/false).
+      // undefined → omite → NULL no banco → herda config da empresa via COALESCE.
+      if (showResult !== undefined && showResult !== null) {
+        payload.show_result_to_employee = showResult;
+      }
       const { data, error } = await supabase
         .from('disc_assessments')
-        .insert({
-          company_id,
-          employee_id: targetEmployeeId,
-          status: 'pending',
-          created_by: userData.user?.id ?? null,
-        } as any)
+        .insert(payload as any)
         .select()
         .single();
       if (error) throw error;
@@ -208,19 +223,32 @@ export function useEmployeeDisc(employeeId: string | null) {
   // Gera um novo link (nova aplicação pending). Retorna a linha criada com o
   // public_short_code (gerado por trigger). A URL é montada pelo chamador via
   // buildDiscPublicUrl(employeeName, short_code).
+  // showResult: true/false → grava show_result_to_employee; undefined → omite (NULL = herda empresa).
   const generateLink = useMutation({
-    mutationFn: async (targetEmployeeId: string): Promise<DiscAssessment> => {
+    mutationFn: async ({
+      employeeId: targetEmployeeId,
+      showResult,
+    }: {
+      employeeId: string;
+      showResult?: boolean | null;
+    }): Promise<DiscAssessment> => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
       const { data: userData } = await supabase.auth.getUser();
+      const payload: Record<string, unknown> = {
+        company_id,
+        employee_id: targetEmployeeId,
+        status: 'pending',
+        created_by: userData.user?.id ?? null,
+      };
+      // Só inclui a coluna se o chamador passou um valor explícito (true/false).
+      // undefined → omite → NULL no banco → herda config da empresa via COALESCE.
+      if (showResult !== undefined && showResult !== null) {
+        payload.show_result_to_employee = showResult;
+      }
       const { data, error } = await supabase
         .from('disc_assessments')
-        .insert({
-          company_id,
-          employee_id: targetEmployeeId,
-          status: 'pending',
-          created_by: userData.user?.id ?? null,
-        } as any)
+        .insert(payload as any)
         .select()
         .single();
       if (error) throw error;
