@@ -393,7 +393,7 @@ export const customers = {
       rateChooseScore: 'Escolha uma nota de 0 a 10',
       // Secao Contratos (Fase 3 portal)
       sectionContracts: 'Contratos',
-      contractNextMaint: 'Proxima manutencao',
+      contractNextMaint: 'Próxima manutenção',
       contractTbd: 'A definir',
       contractOpen: 'Abrir portal do contrato',
       contractPmoc: 'PMOC',
@@ -1107,7 +1107,7 @@ export const customers = {
       rateChooseScore: 'Elige una nota de 0 a 10',
       // Seccion Contratos (Portal Fase 3)
       sectionContracts: 'Contratos',
-      contractNextMaint: 'Proximo mantenimiento',
+      contractNextMaint: 'Próximo mantenimiento',
       contractTbd: 'Por definir',
       contractOpen: 'Abrir portal del contrato',
       contractPmoc: 'PMOC',
