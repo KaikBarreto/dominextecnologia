@@ -26,27 +26,26 @@ function num(str: string, def = 0): number {
   return Number.isFinite(parsed) ? parsed : def;
 }
 
-type TThermalLoad = (typeof MESSAGES)['pt-br']['app']['technicianTools']['thermalLoad'];
-
 interface CampoNum {
   id: string;
-  fieldKey: keyof TThermalLoad['fields'];
+  label: string;
   placeholder?: string;
   inputMode?: 'decimal' | 'numeric';
 }
 
-const CAMPOS: CampoNum[] = [
-  { id: 'altura', fieldKey: 'height', placeholder: 'Ex: 2,8', inputMode: 'decimal' },
-  { id: 'largura', fieldKey: 'width', placeholder: 'Ex: 4', inputMode: 'decimal' },
-  { id: 'comprimento', fieldKey: 'length', placeholder: 'Ex: 5', inputMode: 'decimal' },
-  { id: 'pessoas', fieldKey: 'people', placeholder: 'Ex: 2', inputMode: 'numeric' },
-  { id: 'eletronicos', fieldKey: 'electronics', placeholder: 'Ex: 3', inputMode: 'numeric' },
-  { id: 'janelas', fieldKey: 'windows', placeholder: 'Ex: 1', inputMode: 'numeric' },
-];
-
 export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.thermalLoad;
+
+  const CAMPOS: CampoNum[] = [
+    { id: 'altura', label: t.fields.height, placeholder: 'Ex: 2,8', inputMode: 'decimal' },
+    { id: 'largura', label: t.fields.width, placeholder: 'Ex: 4', inputMode: 'decimal' },
+    { id: 'comprimento', label: t.fields.length, placeholder: 'Ex: 5', inputMode: 'decimal' },
+    { id: 'pessoas', label: t.fields.people, placeholder: 'Ex: 2', inputMode: 'numeric' },
+    { id: 'eletronicos', label: t.fields.electronics, placeholder: 'Ex: 3', inputMode: 'numeric' },
+    { id: 'janelas', label: t.fields.windows, placeholder: 'Ex: 1', inputMode: 'numeric' },
+  ];
+
   // Estado em string crua — convertido com num() só no cálculo.
   const [valores, setValores] = usePersistedState<Record<string, string>>(
     'tt:state:carga-termica:valores',
@@ -100,7 +99,7 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
           {CAMPOS.map((campo) => (
             <div key={campo.id} className="space-y-1.5">
               <Label htmlFor={campo.id} className="text-base text-muted-foreground md:text-lg">
-                {t.fields[campo.fieldKey]}
+                {campo.label}
               </Label>
               <Input
                 id={campo.id}
